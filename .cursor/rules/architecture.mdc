@@ -1,0 +1,63 @@
+---
+description: Kalshi BTC Edge architecture standards — feature modules, design system, thin routes
+alwaysApply: true
+---
+
+# Architecture
+
+Before implementing any feature:
+
+1. Analyze the existing architecture.
+2. Explain where the feature belongs.
+3. Reuse existing modules before creating new ones.
+4. Extend existing components before duplicating functionality.
+5. Avoid unnecessary abstractions.
+
+## Layer map
+
+| Layer | Path | Responsibility |
+|-------|------|----------------|
+| Routes (thin) | `src/app/` | Routing, layouts, BFF route handlers only |
+| Business logic | `src/features/` | Vertical slices (UI, hooks, api, types) |
+| Shared UI | `src/components/` | Presentational primitives and composites |
+| Infrastructure | `src/lib/` | API clients, design system, utils, db/ai stubs |
+| Providers | `src/providers/` | App-wide React context |
+| Global hooks | `src/hooks/` | Generic hooks with no business logic |
+| Shared types | `src/types/` | Cross-feature domain vocabulary |
+
+Never place business logic inside `src/app/` routes. Keep pages thin.
+
+Prefer feature modules over generic folders. Prefer composition over duplication.
+
+## Feature module shape
+
+```
+features/<name>/
+  components/   hooks/   api/   types.ts   utils.ts   index.ts
+```
+
+Cross-feature imports go through public `index.ts` barrels only.
+
+## Dependencies
+
+Before adding a dependency:
+
+- Explain why it is needed.
+- Prefer existing project dependencies.
+
+## Design system (required)
+
+Always use `src/lib/design-system/` and `src/styles/tokens.css`.
+
+Never hardcode colors, spacing, typography, motion, or border radius in components.
+Use semantic tokens: `toneClasses`, `surfaces`, `labelClass`, `chartColors`, etc.
+
+## Completion summary (required)
+
+Every implementation must summarize:
+
+- Architecture decisions
+- Files created / modified
+- Dependencies added
+- Technical debt introduced
+- Future improvements

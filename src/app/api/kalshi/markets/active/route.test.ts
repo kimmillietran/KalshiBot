@@ -1,0 +1,76 @@
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+import { GET } from "./route";
+
+vi.mock("@/features/market-data/api/kalshiServer", () => ({
+  discoverActiveBtcMarket: vi.fn(),
+}));
+
+import { discoverActiveBtcMarket } from "@/features/market-data/api/kalshiServer";
+
+const mockedDiscover = vi.mocked(discoverActiveBtcMarket);
+
+describe("GET /api/kalshi/markets/active", () => {
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("returns normalized market on success", async () => {
+    mockedDiscover.mockResolvedValue({
+      kind: "market",
+      market: {
+        ticker: "KXBTC15M-26JUN261930-30",
+        title: "BTC price up in next 15 mins?",
+        targetPrice: 59990.31,
+        status: "active",
+        openTime: "2026-06-26T23:15:00Z",
+        closeTime: "2026-06-26T23:30:00Z",
+        timeRemainingMs: 600_000,
+        updatedAt: "2026-06-26T23:20:00.000Z",
+        source: "kalshi",
+        isFallback: false,
+      },
+    });
+
+    const res = await GET();
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.noMarket).toBe(false);
+    expect(body.market.ticker).toBe("KXBTC15M-26JUN261930-30");
+  });
+
+  it("returns no-market response when discovery is empty", async () => {
+    mockedDiscover.mockResolvedValue({
+      kind: "no-market",
+      message: "No active BTC 15m market",
+    });
+
+    const res = await GET();
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body).toEqual({
+      market: null,
+      noMarket: true,
+      message: "No active BTC 15m market",
+    });
+  });
+
+  it("maps upstream failures to 502", async () => {
+    mockedDiscover.mockRejectedValue(new Error("Kalshi markets open unavailable (500)"));
+
+    const res = await GET();
+    const body = await res.json();
+
+    expect(res.status).toBe(502);
+    expect(body.error).toContain("unavailable");
+  });
+
+  it("maps rate limits to 429", async () => {
+    mockedDiscover.mockRejectedValue(new Error("Kalshi rate limit exceeded"));
+
+    const res = await GET();
+    expect(res.status).toBe(429);
+  });
+});

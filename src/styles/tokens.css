@@ -1,0 +1,284 @@
+/**
+ * Kalshi BTC Edge — semantic design tokens.
+ * Dark theme values (app defaults to `.dark` on <html>).
+ * Registered in @theme inline for Tailwind utility classes.
+ */
+
+.dark {
+  /* ── Semantic trading colors ─────────────────────────────────────────── */
+  --bullish: #34d399;
+  --bullish-muted: #10b981;
+  --bullish-subtle: rgb(16 185 129 / 0.1);
+  --bullish-border: rgb(16 185 129 / 0.3);
+  --bullish-hero: rgb(6 78 59 / 0.3);
+  --bullish-hero: rgb(6 78 59 / 0.3);
+
+  --bearish: #f87171;
+  --bearish-muted: #ef4444;
+  --bearish-subtle: rgb(239 68 68 / 0.1);
+  --bearish-border: rgb(239 68 68 / 0.3);
+
+  --warning: #fbbf24;
+  --warning-muted: #f59e0b;
+  --warning-subtle: rgb(245 158 11 / 0.1);
+  --warning-border: rgb(245 158 11 / 0.2);
+
+  --caution: #fbbf24;
+  --caution-subtle: rgb(245 158 11 / 0.05);
+
+  --demo: #c4b5fd;
+  --demo-muted: #8b5cf6;
+  --demo-subtle: rgb(139 92 246 / 0.1);
+  --demo-border: rgb(139 92 246 / 0.3);
+
+  --info: #38bdf8;
+  --info-subtle: rgb(56 189 248 / 0.1);
+  --info-border: rgb(56 189 248 / 0.3);
+
+  /* ── Glass & panel surfaces ──────────────────────────────────────────── */
+  --glass-bg: rgb(255 255 255 / 0.04);
+  --glass-border: rgb(255 255 255 / 0.08);
+  --glass-blur: 12px;
+
+  --panel-bg: rgb(255 255 255 / 0.04);
+  --panel-inset-bg: rgb(0 0 0 / 0.2);
+  --panel-border: rgb(255 255 255 / 0.06);
+  --panel-header-border: rgb(255 255 255 / 0.06);
+  --panel-elevated-ring: rgb(255 255 255 / 0.06);
+
+  /* ── Chart (SVG) ─────────────────────────────────────────────────────── */
+  --chart-line-up: #34d399;
+  --chart-line-down: #f87171;
+  --chart-area-up: #10b981;
+  --chart-area-down: #ef4444;
+  --chart-target: #f59e0b;
+  --chart-target-label: #fbbf24;
+  --chart-grid: rgb(255 255 255 / 0.06);
+  --chart-label-up-bg: #065f46;
+  --chart-label-down-bg: #7f1d1d;
+  --chart-dot-stroke: #0a0a0a;
+
+  /* ── Typography scale ────────────────────────────────────────────────── */
+  --text-label-size: 0.625rem;
+  --text-label-weight: 600;
+  --text-label-tracking: 0.05em;
+  --text-label-line-height: 1.25;
+
+  --text-metric-size: 1.125rem;
+  --text-metric-weight: 700;
+
+  --text-panel-title-size: 0.875rem;
+  --text-panel-title-weight: 600;
+
+  /* ── Spacing scale ───────────────────────────────────────────────────── */
+  --space-panel: 1rem;
+  --space-panel-header-x: 1rem;
+  --space-panel-header-y: 0.75rem;
+  --space-panel-gap: 1rem;
+  --space-grid-gap: 1rem;
+  --space-stat-gap: 0.5rem;
+
+  /* ── Radii ───────────────────────────────────────────────────────────── */
+  --radius-panel: 0.75rem;
+  --radius-card: 0.5rem;
+  --radius-badge: 0.375rem;
+
+  /* ── Shadows ─────────────────────────────────────────────────────────── */
+  --shadow-glass: 0 10px 15px -3px rgb(0 0 0 / 0.25),
+    0 4px 6px -4px rgb(0 0 0 / 0.2);
+
+  /* ── Motion ──────────────────────────────────────────────────────────── */
+  --duration-fast: 150ms;
+  --duration-normal: 250ms;
+  --duration-slow: 400ms;
+  --ease-default: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* ── Icon sizes ──────────────────────────────────────────────────────── */
+  --icon-sm: 0.75rem;
+  --icon-md: 1rem;
+  --icon-lg: 1.25rem;
+}
+
+/* Light-theme fallbacks (unused while dark is default) */
+:root {
+  --bullish: #059669;
+  --bullish-muted: #10b981;
+  --bullish-subtle: rgb(16 185 129 / 0.1);
+  --bullish-border: rgb(16 185 129 / 0.3);
+  --bullish-hero: rgb(6 78 59 / 0.15);
+
+  --bearish: #dc2626;
+  --bearish-muted: #ef4444;
+  --bearish-subtle: rgb(239 68 68 / 0.1);
+  --bearish-border: rgb(239 68 68 / 0.3);
+
+  --warning: #d97706;
+  --warning-muted: #f59e0b;
+  --warning-subtle: rgb(245 158 11 / 0.1);
+  --warning-border: rgb(245 158 11 / 0.2);
+
+  --caution: #d97706;
+  --caution-subtle: rgb(245 158 11 / 0.05);
+
+  --demo: #7c3aed;
+  --demo-muted: #8b5cf6;
+  --demo-subtle: rgb(139 92 246 / 0.1);
+  --demo-border: rgb(139 92 246 / 0.3);
+
+  --info: #0284c7;
+  --info-subtle: rgb(2 132 199 / 0.1);
+  --info-border: rgb(2 132 199 / 0.3);
+
+  --glass-bg: rgb(0 0 0 / 0.02);
+  --glass-border: rgb(0 0 0 / 0.08);
+  --glass-blur: 12px;
+
+  --panel-bg: rgb(0 0 0 / 0.02);
+  --panel-inset-bg: rgb(0 0 0 / 0.04);
+  --panel-border: rgb(0 0 0 / 0.06);
+  --panel-header-border: rgb(0 0 0 / 0.06);
+  --panel-elevated-ring: rgb(0 0 0 / 0.06);
+
+  --chart-line-up: #059669;
+  --chart-line-down: #dc2626;
+  --chart-area-up: #10b981;
+  --chart-area-down: #ef4444;
+  --chart-target: #d97706;
+  --chart-target-label: #d97706;
+  --chart-grid: rgb(0 0 0 / 0.06);
+  --chart-label-up-bg: #065f46;
+  --chart-label-down-bg: #7f1d1d;
+  --chart-dot-stroke: #ffffff;
+
+  --text-label-size: 0.625rem;
+  --text-label-weight: 600;
+  --text-label-tracking: 0.05em;
+  --text-label-line-height: 1.25;
+  --text-metric-size: 1.125rem;
+  --text-metric-weight: 700;
+  --text-panel-title-size: 0.875rem;
+  --text-panel-title-weight: 600;
+
+  --space-panel: 1rem;
+  --space-panel-header-x: 1rem;
+  --space-panel-header-y: 0.75rem;
+  --space-panel-gap: 1rem;
+  --space-grid-gap: 1rem;
+  --space-stat-gap: 0.5rem;
+
+  --radius-panel: 0.75rem;
+  --radius-card: 0.5rem;
+  --radius-badge: 0.375rem;
+
+  --shadow-glass: 0 10px 15px -3px rgb(0 0 0 / 0.1),
+    0 4px 6px -4px rgb(0 0 0 / 0.08);
+
+  --duration-fast: 150ms;
+  --duration-normal: 250ms;
+  --duration-slow: 400ms;
+  --ease-default: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+
+  --icon-sm: 0.75rem;
+  --icon-md: 1rem;
+  --icon-lg: 1.25rem;
+}
+
+@theme inline {
+  --color-bullish: var(--bullish);
+  --color-bullish-muted: var(--bullish-muted);
+  --color-bullish-subtle: var(--bullish-subtle);
+  --color-bullish-border: var(--bullish-border);
+  --color-bullish-hero: var(--bullish-hero);
+
+  --color-bearish: var(--bearish);
+  --color-bearish-muted: var(--bearish-muted);
+  --color-bearish-subtle: var(--bearish-subtle);
+  --color-bearish-border: var(--bearish-border);
+
+  --color-warning: var(--warning);
+  --color-warning-muted: var(--warning-muted);
+  --color-warning-subtle: var(--warning-subtle);
+  --color-warning-border: var(--warning-border);
+
+  --color-caution: var(--caution);
+  --color-caution-subtle: var(--caution-subtle);
+
+  --color-demo: var(--demo);
+  --color-demo-muted: var(--demo-muted);
+  --color-demo-subtle: var(--demo-subtle);
+  --color-demo-border: var(--demo-border);
+
+  --color-info: var(--info);
+  --color-info-subtle: var(--info-subtle);
+  --color-info-border: var(--info-border);
+
+  --color-glass-bg: var(--glass-bg);
+  --color-glass-border: var(--glass-border);
+
+  --color-panel-inset: var(--panel-inset-bg);
+  --color-panel-border: var(--panel-border);
+  --color-panel-elevated-ring: var(--panel-elevated-ring);
+
+  --color-chart-line-up: var(--chart-line-up);
+  --color-chart-line-down: var(--chart-line-down);
+  --color-chart-target: var(--chart-target);
+  --color-chart-grid: var(--chart-grid);
+
+  --radius-panel: 0.75rem;
+  --radius-card: 0.5rem;
+  --radius-badge: 0.375rem;
+}
+
+@layer utilities {
+  .text-label {
+    font-size: var(--text-label-size);
+    font-weight: var(--text-label-weight);
+    letter-spacing: var(--text-label-tracking);
+    line-height: var(--text-label-line-height);
+    text-transform: uppercase;
+  }
+
+  .text-metric {
+    font-family: var(--font-mono);
+    font-size: var(--text-metric-size);
+    font-weight: var(--text-metric-weight);
+    letter-spacing: -0.025em;
+  }
+
+  .text-panel-title {
+    font-family: var(--font-heading);
+    font-size: var(--text-panel-title-size);
+    font-weight: var(--text-panel-title-weight);
+    letter-spacing: -0.025em;
+  }
+
+  @keyframes price-flash-up {
+    0%,
+    100% {
+      background-color: transparent;
+    }
+    50% {
+      background-color: var(--bullish-subtle);
+    }
+  }
+
+  @keyframes price-flash-down {
+    0%,
+    100% {
+      background-color: transparent;
+    }
+    50% {
+      background-color: var(--bearish-subtle);
+    }
+  }
+
+  .animate-price-flash-up {
+    animation: price-flash-up var(--duration-fast) ease-out;
+  }
+
+  .animate-price-flash-down {
+    animation: price-flash-down var(--duration-fast) ease-out;
+  }
+}

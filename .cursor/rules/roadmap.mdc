@@ -1,0 +1,50 @@
+---
+description: Kalshi BTC Edge roadmap discipline — milestone scope, no premature features
+alwaysApply: true
+---
+
+# Roadmap
+
+Only implement the milestone explicitly requested. Do not build future milestones early.
+
+## If functionality belongs to a later milestone
+
+- Leave a TODO or README stub.
+- Create a clean interface or folder skeleton if it unblocks current work.
+- **Do not** implement the full feature.
+
+## Do not add unless explicitly requested
+
+- Authentication
+- Database / persistence
+- AI provider / recommendation engine
+- WebSockets (beyond current BTC feed scope)
+- Analytics
+- Trade journal
+- Dynamic recommendation logic
+- Settings pages
+- Notifications
+
+## Extension-point pattern
+
+If future functionality affects current design:
+
+1. Design the interface now (types, folder, barrel export).
+2. Implement the behavior in the correct milestone later.
+
+## Principles
+
+- Favor incremental, independent milestones.
+- Avoid premature optimization.
+- Preserve existing layout and UX unless the milestone says otherwise.
+- Mock/static data is acceptable until the relevant integration milestone.
+
+## Current milestone context (reference)
+
+| Milestone | Status | Scope |
+|-----------|--------|-------|
+| 1 | Done | Foundation, shell, folder architecture |
+| 2 | Done | Mock trading cockpit |
+| 2.5–2.6 | Done | Design system + UI polish |
+| 3 | Done | Live BTC price feed (Binance BFF) |
+| 4+ | Planned | Kalshi API, dynamic recommendations, auth, db, journal, analytics |

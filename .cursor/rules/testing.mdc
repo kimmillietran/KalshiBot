@@ -1,0 +1,45 @@
+---
+description: Kalshi BTC Edge testing standards — Vitest, RTL, definition of done
+alwaysApply: true
+---
+
+# Testing
+
+Every implementation must include appropriate tests.
+
+## What to test
+
+| Area | Test type |
+|------|-----------|
+| Utilities (`src/lib/utils`, feature `utils.ts`) | Unit tests |
+| Hooks | Hook / component tests when practical |
+| Reusable components (`src/components/`) | Smoke / render tests (React Testing Library) |
+| API routes (`src/app/api/`) | Success + failure cases |
+| Bug fixes | Regression test covering the fix |
+
+## Conventions
+
+- Tests live beside source: `*.test.ts` / `*.test.tsx` under `src/`.
+- Use Vitest + React Testing Library + `@testing-library/jest-dom`.
+- Do not snapshot large components.
+- Do not assert raw Tailwind class strings unless testing design-system exports.
+- Mock `fetch` for BFF/client tests; avoid over-mocking Next.js internals.
+- Use `src/test/test-utils.tsx` for BTC feed provider wrappers when needed.
+
+## Definition of Done
+
+Work is **not complete** until all pass:
+
+```bash
+npm run lint
+npm run build
+npm run test
+```
+
+## Completion summary (required)
+
+Every implementation must include:
+
+- Tests added / updated
+- Commands executed
+- Deferred tests (with reason)
