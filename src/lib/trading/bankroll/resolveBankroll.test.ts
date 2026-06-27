@@ -40,6 +40,14 @@ describe("resolveBankroll", () => {
     expect(resolved.reasoning[1]).toContain("finite");
   });
 
+  it("returns unconfigured when bankroll is -Infinity", () => {
+    const resolved = resolveBankroll({ bankrollDollars: Number.NEGATIVE_INFINITY });
+
+    expect(resolved.bankrollDollars).toBeNull();
+    expect(resolved.configured).toBe(false);
+    expect(resolved.reasoning[1]).toContain("finite");
+  });
+
   it("returns unconfigured when bankroll is zero", () => {
     const resolved = resolveBankroll({ bankrollDollars: 0 });
 
@@ -53,6 +61,7 @@ describe("resolveBankroll", () => {
 
     expect(resolved.bankrollDollars).toBeNull();
     expect(resolved.configured).toBe(false);
+    expect(resolved.reasoning[1]).toContain("greater than zero");
   });
 
   it("returns configured bankroll for positive values", () => {

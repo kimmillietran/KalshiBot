@@ -14,7 +14,7 @@ Kelly sizing can return fraction/percent recommendations without a bankroll. Dol
 
 ```typescript
 type BankrollConfig = {
-  bankrollDollars?: number;
+  bankrollDollars?: number | null;
 };
 
 resolveBankroll(config?) → ResolvedBankroll
@@ -34,7 +34,7 @@ type ResolvedBankroll = {
 | Input | Result |
 |---|---|
 | `undefined` / `null` | `configured: false`, `bankrollDollars: null` |
-| `NaN` / `Infinity` | `configured: false` |
+| `NaN` / `±Infinity` | `configured: false` |
 | `<= 0` | `configured: false` |
 | finite `> 0` | `configured: true`, `bankrollDollars` set |
 
@@ -75,7 +75,7 @@ Attach `bankroll.reasoning` to engine trace when wiring lands. Do not add bankro
 
 ## Tests
 
-`resolveBankroll.test.ts` — undefined, null, NaN, Infinity, zero, negative, positive, determinism.
+`resolveBankroll.test.ts` — undefined, null, NaN, ±Infinity, zero, negative, positive, determinism.
 
 ## Quality gates
 
