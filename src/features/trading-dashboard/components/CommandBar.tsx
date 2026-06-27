@@ -15,6 +15,7 @@ import {
   FALLBACK_MARKET_TICKER,
   useActiveBtcMarket,
 } from "@/features/market-data";
+import { formatMarketContractQuestion } from "@/features/trading-dashboard/utils";
 import {
   iconSize,
   labelClass,
@@ -34,6 +35,12 @@ export function CommandBar() {
   const market = useActiveBtcMarket();
   const isPositive = btc.change24hPercent >= 0;
   const isLoading = btc.status === "loading";
+
+  const marketQuestion = formatMarketContractQuestion(
+    btc.targetPrice,
+    market.expirationFormatted,
+    { noMarket: market.noMarket },
+  );
 
   return (
     <GlassPanel
@@ -74,8 +81,8 @@ export function CommandBar() {
 
       <div className={cn("flex flex-wrap items-center gap-3 lg:gap-6")}>
         <div>
-          <p className={labelClass()}>Market</p>
-          <p className={textSectionValue}>{market.title}</p>
+          <p className={labelClass()}>Contract</p>
+          <p className={textSectionValue}>{marketQuestion}</p>
           {!market.noMarket && market.ticker !== FALLBACK_MARKET_TICKER ? (
             <p className="text-muted-foreground text-xs">{market.ticker}</p>
           ) : null}

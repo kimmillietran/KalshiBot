@@ -1,60 +1,38 @@
-import { Check } from "lucide-react";
-
 import {
   GlassPanel,
   PanelBody,
   PanelHeader,
 } from "@/components/common/GlassPanel";
-import {
-  iconSize,
-  labelClass,
-  panelGap,
-  toneClasses,
-} from "@/lib/design-system";
-import type { TradingMockData } from "@/features/mock-data";
+import { StatusBadge } from "@/components/common/StatusBadge";
+import { panelGap, surfaces, textCaption } from "@/lib/design-system";
 import { cn } from "@/lib/utils";
 
-type AIReasoningPanelProps = {
-  data: TradingMockData["reasoning"];
-};
+import {
+  DECISION_ENGINE_PENDING_MESSAGE,
+  MODEL_NOT_LIVE_LABEL,
+} from "../constants";
 
-export function AIReasoningPanel({ data }: AIReasoningPanelProps) {
+export function AIReasoningPanel() {
   return (
     <GlassPanel className="h-full">
       <PanelHeader
         title="AI Reasoning & Playbook"
-        subtitle="Why this setup qualifies"
+        subtitle={MODEL_NOT_LIVE_LABEL}
+        action={
+          <StatusBadge variant="neutral" emphasis>
+            Milestone 5
+          </StatusBadge>
+        }
       />
-      <PanelBody className={cn("flex flex-col", panelGap)}>
-        <p className="text-muted-foreground text-sm leading-relaxed">
-          {data.summary}
-        </p>
-
-        <div>
-          <p className={cn(labelClass(), "mb-2")}>Playbook Checklist</p>
-          <ul className="space-y-2">
-            {data.playbook.map((item) => (
-              <li key={item.label} className="flex items-center gap-2 text-sm">
-                <span
-                  className={cn(
-                    "flex size-5 shrink-0 items-center justify-center rounded-full",
-                    item.checked
-                      ? toneClasses.bullish.icon
-                      : "bg-muted text-muted-foreground",
-                  )}
-                >
-                  {item.checked ? <Check className={iconSize.sm} /> : null}
-                </span>
-                <span
-                  className={
-                    item.checked ? "text-foreground" : "text-muted-foreground"
-                  }
-                >
-                  {item.label}
-                </span>
-              </li>
-            ))}
-          </ul>
+      <PanelBody className={cn("flex flex-col justify-center", panelGap)}>
+        <div className={cn(surfaces.dashedEmpty, "px-4 py-8 text-center")}>
+          <p className="text-muted-foreground text-sm leading-relaxed">
+            {DECISION_ENGINE_PENDING_MESSAGE}
+          </p>
+          <p className={cn(textCaption, "mt-3")}>
+            Narrative reasoning and playbook checks will populate here after the
+            recommendation engine is integrated.
+          </p>
         </div>
       </PanelBody>
     </GlassPanel>

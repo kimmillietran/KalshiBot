@@ -19,6 +19,8 @@ import {
 import type { TradingMockData } from "@/features/mock-data";
 import { cn } from "@/lib/utils";
 
+import { MODEL_NOT_LIVE_LABEL } from "../constants";
+
 type TradeManagementPanelProps = {
   data: TradingMockData["tradeManagement"];
 };
@@ -28,7 +30,7 @@ export function TradeManagementPanel({ data }: TradeManagementPanelProps) {
     <GlassPanel className="h-full">
       <PanelHeader
         title="Trade Management"
-        subtitle="Position sizing & exit rules"
+        subtitle={MODEL_NOT_LIVE_LABEL}
         action={
           <StatusBadge variant="neutral">
             {data.hasActiveTrade ? "Active" : "No active trade"}
@@ -36,6 +38,12 @@ export function TradeManagementPanel({ data }: TradeManagementPanelProps) {
         }
       />
       <PanelBody className={cn("flex flex-col", panelGap)}>
+        <div className={cn(surfaces.dashedEmpty, "px-3 py-2 text-center")}>
+          <p className={cn(textCaption)}>
+            Entry, exit, and sizing guidance is preview-only until Milestone 5.
+          </p>
+        </div>
+
         {!data.hasActiveTrade ? (
           <div className={cn(surfaces.dashedEmpty, "px-4 py-6 text-center")}>
             <p className="text-muted-foreground text-sm">No active trade</p>
