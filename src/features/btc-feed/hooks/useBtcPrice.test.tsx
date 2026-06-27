@@ -112,6 +112,28 @@ describe("useBtcPrice", () => {
     expect(result.current.isUsingFallback).toBe(true);
     expect(result.current.errorMessage).toContain("502");
   });
+
+  it("enters fallback when the BFF times out", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() =>
+        Promise.resolve({
+          ok: false,
+          status: 504,
+          statusText: "Gateway Timeout",
+          text: async () => "BTC provider request timed out",
+        } as Response),
+      ),
+    );
+
+    const { result } = renderHook(() => useBtcPrice(), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.status).toBe("fallback");
+    });
+
+    expect(result.current.errorMessage).toContain("504");
+  });
 });
 
 describe("useBtcChartData", () => {

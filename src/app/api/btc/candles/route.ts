@@ -1,70 +1,49 @@
 import { NextResponse } from "next/server";
 
-/** Binance public 1m klines — no API key required. */
-const BINANCE_KLINES_URL =
-  "https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1m&limit=30";
+import {
+  BtcProviderMalformedResponseError,
+  BtcProviderNetworkError,
+  BtcProviderRateLimitError,
+  BtcProviderTimeoutError,
+  BtcProviderUnavailableError,
+  fetchBtcCandleHistory,
+} from "@/features/btc-feed/api/btcServer";
 
-type BinanceKline = [
-  number,
-  string,
-  string,
-  string,
-  string,
-  string,
-  number,
-  string,
-  number,
-  string,
-  string,
-  string,
-];
+function mapBtcErrorToResponse(err: unknown) {
+  if (err instanceof BtcProviderTimeoutError) {
+    console.error("[btc] candles request timed out");
+    return NextResponse.json({ error: err.message }, { status: 504 });
+  }
 
-function formatCandleTime(timestampMs: number): string {
-  return new Date(timestampMs).toLocaleTimeString("en-US", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  });
+  if (err instanceof BtcProviderRateLimitError) {
+    return NextResponse.json({ error: err.message }, { status: 429 });
+  }
+
+  if (err instanceof BtcProviderMalformedResponseError) {
+    console.error("[btc] malformed candles payload:", err.message);
+    return NextResponse.json({ error: err.message }, { status: 502 });
+  }
+
+  if (err instanceof BtcProviderUnavailableError) {
+    console.error(`[btc] upstream unavailable (${err.status}):`, err.message);
+    return NextResponse.json({ error: err.message }, { status: 502 });
+  }
+
+  if (err instanceof BtcProviderNetworkError) {
+    console.error("[btc] network error:", err.message);
+    return NextResponse.json({ error: err.message }, { status: 500 });
+  }
+
+  const message =
+    err instanceof Error ? err.message : "Failed to fetch BTC candles";
+  return NextResponse.json({ error: message }, { status: 500 });
 }
 
 export async function GET() {
   try {
-    const res = await fetch(BINANCE_KLINES_URL, {
-      next: { revalidate: 0 },
-      headers: { Accept: "application/json" },
-    });
-
-    if (!res.ok) {
-      return NextResponse.json(
-        { error: "Binance klines unavailable" },
-        { status: 502 },
-      );
-    }
-
-    const rows = (await res.json()) as BinanceKline[];
-
-    const candles = rows.map((row) => {
-      const open = parseFloat(row[1]);
-      const high = parseFloat(row[2]);
-      const low = parseFloat(row[3]);
-      const close = parseFloat(row[4]);
-      const timestamp = row[0];
-
-      return {
-        timestamp,
-        time: formatCandleTime(timestamp),
-        open,
-        high,
-        low,
-        close,
-      };
-    });
-
-    return NextResponse.json({ candles });
-  } catch {
-    return NextResponse.json(
-      { error: "Failed to fetch BTC candles" },
-      { status: 500 },
-    );
+    const data = await fetchBtcCandleHistory();
+    return NextResponse.json(data);
+  } catch (err) {
+    return mapBtcErrorToResponse(err);
   }
 }

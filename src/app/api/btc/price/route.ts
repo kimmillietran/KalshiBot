@@ -1,41 +1,48 @@
 import { NextResponse } from "next/server";
 
-/** Binance public 24hr ticker — no API key required. */
-const BINANCE_TICKER_URL =
-  "https://api.binance.com/api/v3/ticker/24hr?symbol=BTCUSDT";
+import {
+  BtcProviderMalformedResponseError,
+  BtcProviderNetworkError,
+  BtcProviderRateLimitError,
+  BtcProviderTimeoutError,
+  BtcProviderUnavailableError,
+  fetchBtcSpotPrice,
+} from "@/features/btc-feed/api/btcServer";
 
-type BinanceTicker = {
-  lastPrice: string;
-  priceChange: string;
-  priceChangePercent: string;
-};
+function mapBtcErrorToResponse(err: unknown) {
+  if (err instanceof BtcProviderTimeoutError) {
+    console.error("[btc] price request timed out");
+    return NextResponse.json({ error: err.message }, { status: 504 });
+  }
+
+  if (err instanceof BtcProviderRateLimitError) {
+    return NextResponse.json({ error: err.message }, { status: 429 });
+  }
+
+  if (err instanceof BtcProviderMalformedResponseError) {
+    console.error("[btc] malformed price payload:", err.message);
+    return NextResponse.json({ error: err.message }, { status: 502 });
+  }
+
+  if (err instanceof BtcProviderUnavailableError) {
+    console.error(`[btc] upstream unavailable (${err.status}):`, err.message);
+    return NextResponse.json({ error: err.message }, { status: 502 });
+  }
+
+  if (err instanceof BtcProviderNetworkError) {
+    console.error("[btc] network error:", err.message);
+    return NextResponse.json({ error: err.message }, { status: 500 });
+  }
+
+  const message = err instanceof Error ? err.message : "Failed to fetch BTC price";
+  return NextResponse.json({ error: message }, { status: 500 });
+}
 
 export async function GET() {
   try {
-    const res = await fetch(BINANCE_TICKER_URL, {
-      next: { revalidate: 0 },
-      headers: { Accept: "application/json" },
-    });
-
-    if (!res.ok) {
-      return NextResponse.json(
-        { error: "Binance ticker unavailable" },
-        { status: 502 },
-      );
-    }
-
-    const data = (await res.json()) as BinanceTicker;
-
-    return NextResponse.json({
-      price: parseFloat(data.lastPrice),
-      change24h: parseFloat(data.priceChange),
-      change24hPercent: parseFloat(data.priceChangePercent),
-      updatedAt: new Date().toISOString(),
-    });
-  } catch {
-    return NextResponse.json(
-      { error: "Failed to fetch BTC price" },
-      { status: 500 },
-    );
+    const data = await fetchBtcSpotPrice();
+    return NextResponse.json(data);
+  } catch (err) {
+    return mapBtcErrorToResponse(err);
   }
 }

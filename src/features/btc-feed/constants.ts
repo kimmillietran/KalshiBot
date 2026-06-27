@@ -6,6 +6,12 @@ export const BTC_PRICE_POLL_MS = 4_000;
 /** Refresh 1-minute candle history every 60 seconds. */
 export const BTC_CANDLES_POLL_MS = 60_000;
 
+/** Upstream BTC provider HTTP request timeout (AbortSignal). */
+export const BTC_API_TIMEOUT_MS = 5_000;
+
+/** Default number of 1-minute candles requested from the provider. */
+export const BTC_CANDLES_LIMIT = 30;
+
 /** Mark feed stale if no successful update within 15 seconds. */
 export const BTC_STALE_THRESHOLD_MS = 15_000;
 

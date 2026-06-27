@@ -2,7 +2,7 @@
 
 AI-powered trading assistant for Kalshi BTC markets. Built in milestones.
 
-**Current:** Live BTC/USD feed (M3) + Kalshi market discovery (4A) + TanStack Query server-state (4.5) + live Kalshi contract pricing (4B). Recommendation/edge cards remain mocked until Milestone 5.
+**Current:** Live BTC/USD feed via Coinbase provider abstraction (4.6) + Kalshi market discovery (4A) + TanStack Query (4.5) + live contract pricing (4B). Recommendation/edge cards remain mocked until Milestone 5.
 
 ## Engineering Standards
 
@@ -63,11 +63,11 @@ docs/
 | 1 | Foundation, shell, folder architecture |
 | 2 | Mock trading cockpit |
 | 2.5–2.6 | Design system + UI polish |
-| 3 | Live BTC price feed (Binance BFF, polling) |
+| 3 | Live BTC price feed (BFF polling, now Coinbase via 4.6) |
 | 4A | Live Kalshi market discovery (metadata, target, countdown) |
 | 4.5 | TanStack Query server-state foundation |
 | 4B | Live Kalshi contract pricing (YES/NO bid/ask, volume) |
-| 4.6 | BTC provider hardening (multi-provider, geo-restriction fix) |
+| 4.6 | BTC provider abstraction (Coinbase default, typed BFF errors) |
 | 5+ | Dynamic recommendations, auth, db, journal, analytics |
 
 ## Intentionally deferred
