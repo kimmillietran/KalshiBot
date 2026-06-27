@@ -56,17 +56,25 @@ Tracked intentionally — not silent accumulation. Review at each milestone clos
 | Feature consumption by engine | `extractFeaturesFromSnapshot()` + `evaluate()` pipeline; `TradeDecision.features` metadata |
 | Duplicate distance calculation in BTC feed | `calculateDistanceFromTarget()` delegates to feature builder |
 
-## Outstanding (5.3B+)
+## Resolved in 5.3B
+
+| Issue | Resolution |
+|-------|------------|
+| Engine guard layer inline in `evaluate.ts` | Extracted to `src/lib/trading/guards/` with `runEvaluationGuards()` |
+| BTC stale/fallback feed not guarded | `guard-btc-feed-stale`, `guard-btc-fallback-source` |
+| BTC loading/error feed not guarded | `guard-btc-feed-loading`, `guard-btc-feed-error` |
+| Missing candle guard | `guard-btc-candles` enforces `minimumCandles` |
+| Settlement / spread / liquidity not config-enforced | `guard-settlement-window`, `guard-spread-maximum`, `guard-liquidity-minimum` |
+| `gatesTriggered` for programmatic consumers | `TradeDecision.gatesTriggered?: readonly GuardStepId[]` |
+
+## Outstanding (5.4+)
 
 | Issue | Priority | Reason | Suggested fix | Milestone |
 |-------|----------|--------|---------------|-----------|
-| **Engine guard layer refactor** | Medium | Guards inline in `evaluate.ts`; 5.3B extracts to `guards/` module | Merge `feature/m53b-engine-guards` after review | **5.3B** |
 | **Probability model** | High | No fair-value / implied probability; decisions still `NO TRADE` | Deterministic model in `src/lib/trading/` | **5.4** |
 | **EV calculation** | Medium | No expected-value from model vs market prices | Add after probability model | **5.4+** |
 | **Kelly sizing** | Medium | No position sizing from edge | Add after EV | **5.4+** |
 | **Recommendation policy** | Medium | No BUY UP/DOWN selection from edge | Add after Kelly | **5.4+** |
-| **BTC fallback/stale feed guard** | Low | Feed status captured but not guarded | Optional guard when `providerSource=fallback` | **5.3B** |
-| **Optional `gatesTriggered` field** | Low | Reviewer suggestion for explicit guard output | Add to `TradeDecision` if needed | Backlog |
 
 ## Minor follow-ups (5.3A)
 
@@ -90,4 +98,4 @@ Tracked intentionally — not silent accumulation. Review at each milestone clos
 
 ## Health impact
 
-After Milestone 5.3A → **Technical Debt: Low** (feature vector feeds engine; probability stack remains for 5.4+).
+After Milestone 5.3B → **Technical Debt: Low** (guard layer complete; probability stack remains for 5.4+).

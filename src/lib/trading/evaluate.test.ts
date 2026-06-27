@@ -55,6 +55,7 @@ describe("evaluate", () => {
     const decision = evaluate(createValidSnapshot(), DEFAULT_ENGINE_CONFIG);
     expect(decision.action).toBe("NO TRADE");
     expect(decision.features).not.toBeNull();
+    expect(decision.gatesTriggered).toBeUndefined();
     expect(decision.reasoning.steps.map((s) => s.id)).toEqual([
       ...GUARD_STEP_ORDER,
       "feature-extraction",
@@ -75,8 +76,61 @@ describe("evaluate", () => {
     expect(decision.configHash).toBe(hashConfig(DEFAULT_ENGINE_CONFIG));
   });
 
+  it("blocks disabled engine config", () => {
+    const decision = evaluate(createValidSnapshot(), {
+      ...DEFAULT_ENGINE_CONFIG,
+      enabled: false,
+    });
+    expect(decision.gatesTriggered).toEqual(["guard-config-enabled"]);
+    expect(decision.reasoning.summary).toContain("Engine disabled");
+  });
+
+  it("blocks non-ACTIVE lifecycle", () => {
+    const decision = evaluate(
+      createValidSnapshot({
+        market: {
+          ticker: "KXBTC",
+          lifecycle: MarketLifecycle.CLOSED,
+          strikePrice: 64_225,
+          timeRemainingMs: 0,
+          closeTime: "2026-06-26T12:15:00.000Z",
+        },
+      }),
+      DEFAULT_ENGINE_CONFIG,
+    );
+    expect(decision.gatesTriggered).toEqual(["guard-market-lifecycle"]);
+  });
+
+  it("blocks missing BTC spot", () => {
+    const decision = evaluate(createValidSnapshot({ btc: null }), DEFAULT_ENGINE_CONFIG);
+    expect(decision.gatesTriggered).toEqual(["guard-btc-present"]);
+    expect(decision.reasoning.summary).toContain("Missing BTC spot");
+  });
+
+  it("blocks spread when bid/ask quotes are unavailable", () => {
+    const decision = evaluate(
+      createValidSnapshot({
+        pricing: {
+          yesBidCents: null,
+          yesAskCents: null,
+          yesMidCents: 50,
+          noBidCents: null,
+          noAskCents: null,
+          noMidCents: 50,
+          liquidityQuality: "Good",
+          volumeDollars: 500_000,
+        },
+      }),
+      DEFAULT_ENGINE_CONFIG,
+    );
+    expect(decision.gatesTriggered).toEqual(["guard-spread-maximum"]);
+    expect(decision.reasoning.summary).toContain("Spread unavailable");
+  });
+
   it.each([
     ["stale BTC", { btc: { price: 64_100, change24hPercent: 1.2, feedStatus: "stale" as const, providerSource: "upstream" as const, candles: [candle(1, 64_100), candle(2, 64_100)] } }, "guard-btc-feed-stale"],
+    ["loading BTC", { btc: { price: 64_100, change24hPercent: 1.2, feedStatus: "loading" as const, providerSource: "upstream" as const, candles: [candle(1, 64_100), candle(2, 64_100)] } }, "guard-btc-feed-loading"],
+    ["error BTC", { btc: { price: 64_100, change24hPercent: 1.2, feedStatus: "error" as const, providerSource: "upstream" as const, candles: [candle(1, 64_100), candle(2, 64_100)] } }, "guard-btc-feed-error"],
     ["fallback BTC", { btc: { price: 64_100, change24hPercent: null, feedStatus: "fallback" as const, providerSource: "fallback" as const, candles: [candle(1, 64_100), candle(2, 64_100)] } }, "guard-btc-fallback-source"],
     ["wide spread", { pricing: { yesBidCents: 10, yesAskCents: 50, yesMidCents: 30, noBidCents: 37, noAskCents: 39, noMidCents: 38, liquidityQuality: "Good" as const, volumeDollars: 500_000 } }, "guard-spread-maximum"],
     ["low liquidity", { pricing: { yesBidCents: 62, yesAskCents: 64, yesMidCents: 63, noBidCents: 37, noAskCents: 39, noMidCents: 38, liquidityQuality: "Poor" as const, volumeDollars: 500_000 } }, "guard-liquidity-minimum"],

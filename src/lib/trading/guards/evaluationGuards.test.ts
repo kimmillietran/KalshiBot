@@ -56,4 +56,41 @@ describe("runEvaluationGuards", () => {
       expect(result.steps.at(-1)?.outcome).toBe("fail");
     }
   });
+
+  it("blocks disabled config", () => {
+    const result = runEvaluationGuards(validSnapshot, {
+      ...DEFAULT_ENGINE_CONFIG,
+      enabled: false,
+    });
+    expect(result.status).toBe("fail");
+    if (result.status === "fail") {
+      expect(result.gatesTriggered).toEqual(["guard-config-enabled"]);
+    }
+  });
+
+  it("blocks loading and error feed status before stale guard", () => {
+    const loading = runEvaluationGuards(
+      {
+        ...validSnapshot,
+        btc: { ...validSnapshot.btc!, feedStatus: "loading" },
+      },
+      DEFAULT_ENGINE_CONFIG,
+    );
+    expect(loading.status).toBe("fail");
+    if (loading.status === "fail") {
+      expect(loading.gatesTriggered).toEqual(["guard-btc-feed-loading"]);
+    }
+
+    const error = runEvaluationGuards(
+      {
+        ...validSnapshot,
+        btc: { ...validSnapshot.btc!, feedStatus: "error" },
+      },
+      DEFAULT_ENGINE_CONFIG,
+    );
+    expect(error.status).toBe("fail");
+    if (error.status === "fail") {
+      expect(error.gatesTriggered).toEqual(["guard-btc-feed-error"]);
+    }
+  });
 });

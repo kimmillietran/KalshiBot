@@ -1,4 +1,5 @@
 import type { MarketFeatureVector } from "@/lib/features/types";
+import type { GuardStepId } from "@/lib/trading/guards/evaluationGuards";
 
 /**
  * Domain vocabulary for the deterministic trading engine.
@@ -114,5 +115,5 @@ export type TradeDecision = {
    * `null` when evaluation exits before feature extraction (guard failure).
    */
   features: MarketFeatureVector | null;
-  gatesTriggered?: readonly string[];
+  gatesTriggered?: readonly GuardStepId[];
 };

@@ -21,6 +21,8 @@ export const GUARD_STEP_ORDER = [
   "guard-contract-expired",
   "guard-settlement-window",
   "guard-btc-present",
+  "guard-btc-feed-loading",
+  "guard-btc-feed-error",
   "guard-btc-feed-stale",
   "guard-btc-fallback-source",
   "guard-btc-candles",
@@ -153,6 +155,26 @@ export function runEvaluationGuards(
   }
   const { btc } = snapshot;
   steps.push(pass("guard-btc-present", "BTC spot price required", String(btc.price)));
+
+  if (btc.feedStatus === "loading") {
+    return guardFailure(
+      steps,
+      fail("guard-btc-feed-loading", "BTC feed must be ready", "feedStatus=loading"),
+      "BTC feed loading — no trade",
+    );
+  }
+  steps.push(
+    pass("guard-btc-feed-loading", "BTC feed must be ready", btc.feedStatus),
+  );
+
+  if (btc.feedStatus === "error") {
+    return guardFailure(
+      steps,
+      fail("guard-btc-feed-error", "BTC feed must be healthy", "feedStatus=error"),
+      "BTC feed error — no trade",
+    );
+  }
+  steps.push(pass("guard-btc-feed-error", "BTC feed must be healthy", btc.feedStatus));
 
   if (btc.feedStatus === "stale") {
     return guardFailure(
