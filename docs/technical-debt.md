@@ -99,13 +99,20 @@ Tracked intentionally — not silent accumulation. Review at each milestone clos
 | Temporary EV stub on branch | Removed — consumes merged 5.5A module from `main` |
 | Engine version stale | `ENGINE_VERSION` → `5.5.0` |
 
-## Outstanding (5.6+)
+## Resolved in 5.6A
+
+| Issue | Resolution |
+|-------|------------|
+| No decision policy module | `evaluateDecisionPolicy()` in `src/lib/trading/decision-policy/` — edge thresholds, liquidity gate, `BUY UP`/`BUY DOWN`/`HOLD`/`NO TRADE` |
+| No `DecisionPolicyResult` type | `action`, `reasonCode`, `selectedSide`, `reasoning` on policy result |
+
+## Outstanding (5.6B+)
 
 | Issue | Priority | Reason | Suggested fix | Milestone |
 |-------|----------|--------|---------------|-----------|
-| **Decision policy** | Medium | No BUY UP/DOWN selection from EV/edge | `selectTradeAction()` after EV step | **5.6** |
-| **Kelly sizing** | Medium | No position sizing from edge | Add after policy | **5.7** |
-| **Dashboard EV/probability rendering** | Medium | UI still placeholder | Wire `TradeDecision` model outputs | **5.9** |
+| **Decision policy engine wiring** | Medium | `evaluate()` still uses decision-stub / `NO TRADE` | Wire `evaluateDecisionPolicy()` after EV step | **5.6B** |
+| **Kelly sizing** | Medium | No position sizing from edge | Add after policy wiring | **5.7** |
+| **Dashboard decision rendering** | Medium | UI still placeholder | Wire `TradeDecision.action` to panels | **5.9** |
 
 ## Minor follow-ups (5.3A)
 
@@ -148,6 +155,15 @@ Tracked intentionally — not silent accumulation. Review at each milestone clos
 | Type narrowing after pricing guards | Low | Optional non-null assertion cleanup in `evaluate()` |
 | `EngineConfig` policy thresholds | Low | Wire `minEdgePercent` when decision policy lands (5.6) |
 
+## Minor follow-ups (5.6A)
+
+| Issue | Priority | Suggested fix |
+|-------|----------|---------------|
+| Golden policy fixture | Low | Add deterministic golden test vectors |
+| Composition test | Low | End-to-end policy input from real EV/probability shapes |
+| Infinity input test | Low | Guard `Number.POSITIVE_INFINITY` edge inputs |
+| `features` / `minLiquidityQuality` ownership | Low | Decide policy vs guard-layer responsibility |
+
 ## Other outstanding
 
 | Issue | Priority | Reason | Suggested fix | Milestone |
@@ -162,4 +178,4 @@ Tracked intentionally — not silent accumulation. Review at each milestone clos
 
 ## Health impact
 
-After Milestone 5.5B → **Technical Debt: Low** (full model pipeline wired; decision policy and dashboard remain for 5.6+).
+After Milestone 5.6A → **Technical Debt: Low** (decision policy module complete; engine wiring and dashboard remain for 5.6B+).
