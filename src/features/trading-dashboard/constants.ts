@@ -18,3 +18,20 @@ export const REASONING_ENGINE_ONLY_MESSAGE =
 
 export const FEATURES_UNAVAILABLE_MESSAGE =
   "Feature vector unavailable — evaluation stopped before feature extraction.";
+
+/** Shown when evaluation stops before the sizing step. */
+export const POSITION_SIZING_UNAVAILABLE_MESSAGE =
+  "Evaluation stopped before sizing.";
+
+export const POSITION_SIZING_ZERO_REASON = "No qualifying trade";
+
+export const POSITION_SIZING_DOLLARS_UNAVAILABLE_LABEL =
+  "Not available (bankroll not configured)";
+
+export const POSITION_SIZING_RECOMMENDED_POSITION_LABEL = "Recommended Position";
+
+export const POSITION_SIZING_ZERO_ALLOCATION_MESSAGE =
+  "Zero recommended allocation";
+
+export const POSITION_SIZING_RECOMMENDED_ALLOCATION_MESSAGE =
+  "Recommended position";

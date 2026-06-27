@@ -21,21 +21,13 @@ import {
   EXECUTION_DISABLED_MESSAGE,
 } from "../constants";
 import { actionBadgeVariant } from "../formatting/decisionDisplay";
+import { tradeGuidanceCopy } from "../formatting/positionSizingDisplay";
+
+import { PositionSizeSummary } from "./decision/PositionSizeSummary";
 
 type TradeManagementPanelProps = {
   decision: TradeDecision;
 };
-
-function tradeGuidanceCopy(action: TradeDecision["action"]): string {
-  switch (action) {
-    case "BUY UP":
-      return "Engine policy selected BUY UP. Execution remains disabled — review odds and reasoning before any manual trade.";
-    case "BUY DOWN":
-      return "Engine policy selected BUY DOWN. Execution remains disabled — review odds and reasoning before any manual trade.";
-    default:
-      return "No directional signal from the engine. Entry guidance is withheld until policy approves a side.";
-  }
-}
 
 export function TradeManagementPanel({ decision }: TradeManagementPanelProps) {
   return (
@@ -53,10 +45,12 @@ export function TradeManagementPanel({ decision }: TradeManagementPanelProps) {
         <div className={cn(surfaces.dashedEmpty, "px-4 py-6 text-center")}>
           <p className="text-muted-foreground text-sm">No active trade</p>
           <p className={cn(textCaption, "mt-2 leading-relaxed")}>
-            {tradeGuidanceCopy(decision.action)}
+            {tradeGuidanceCopy(decision)}
           </p>
           <p className={cn(textCaption, "mt-2")}>{decision.reasoning.summary}</p>
         </div>
+
+        <PositionSizeSummary positionSize={decision.positionSize} />
 
         <Button className={cn("w-full", surfaces.primaryButton)} disabled>
           Enter Trade
