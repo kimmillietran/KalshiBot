@@ -39,14 +39,14 @@ Tracked intentionally — not silent accumulation. Review at each milestone clos
 |-------|------------|
 | No feature extraction layer | Pure `buildMarketFeatureVector()` in `src/lib/features/` — distance, momentum, volatility, trend, liquidity |
 
-## Resolved in 5.1 (branch — pending merge)
+## Resolved in 5.1
 
 | Issue | Resolution |
 |-------|------------|
 | Engine orchestrator / dashboard wiring | `buildEvaluationSnapshot()` + `useTradeDecision()` wire live feeds to `evaluate()` |
 | BTC/pricing presence guards | `guard-btc-present` and `guard-pricing-present` in `evaluate()` |
 | MarketOddsPanel footer truthfulness | Fake Combined / Best Edge rows removed |
-| Raw ticker in CommandBar | Friendly subtitle + tooltip-only contract ID |
+| Raw ticker in CommandBar | Friendly subtitle + tooltip-only contract ID (preserved from bugfix) |
 | Synthetic candle timestamps | Chart points carry upstream `timestamp`; snapshot maps real ms values |
 
 ## Outstanding (5.3+)
