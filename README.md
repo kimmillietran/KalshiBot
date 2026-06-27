@@ -2,7 +2,7 @@
 
 AI-powered trading assistant for Kalshi BTC markets. Built in milestones.
 
-**Current:** Live BTC/Kalshi feeds with provider-chain failover (4.6B) + dashboard truthfulness pass (4.7). Recommendation/edge panels are labeled placeholders until Milestone 5.
+**Current:** Live BTC/Kalshi feeds (4.6B) + dashboard truthfulness (4.7) + pure trading engine foundation in `src/lib/trading/` (5.0). Dashboard UI not yet wired to the engine; recommendation panels remain placeholders until 5.1+.
 
 ## Engineering Standards
 
@@ -49,7 +49,8 @@ src/
   app/                    # thin routes + BFF (api/btc, api/kalshi)
   components/             # shared UI + layout shell
   features/               # business modules (btc-feed, trading-dashboard, …)
-  lib/                    # design-system, utils, infrastructure
+  lib/                    # design-system, trading engine, utils, infrastructure
+  types/domain/           # shared domain types (trading engine I/O)
   test/                   # shared test helpers
 docs/
   engineering-standards.md
@@ -70,7 +71,8 @@ docs/
 | 4.6 | BTC provider abstraction (Coinbase default, typed BFF errors) — **complete** |
 | 4.6B | Provider chain, Kraken failover, health/metrics — **complete** |
 | 4.7 | Dashboard truthfulness, chart target clarity — **complete** |
-| 5+ | Dynamic recommendations, auth, db, journal, analytics |
+| 5.0 | Pure trading engine foundation (`evaluate`, guards, reasoning trace) — **complete** |
+| 5.1+ | Engine orchestrator, dashboard wiring, probability model, auth, db, journal |
 
 ## Intentionally deferred
 
