@@ -30,6 +30,13 @@ export {
   DEFAULT_DECISION_POLICY_CONFIG,
   DECISION_POLICY_MODEL_VERSION,
 } from "@/lib/trading/decision-policy";
+export {
+  estimatePositionSize,
+  buildPositionSizingReasoning,
+  rawKellyFraction,
+  DEFAULT_POSITION_SIZING_CONFIG,
+  POSITION_SIZING_MODEL_VERSION,
+} from "@/lib/trading/position-sizing";
 
 export type {
   EstimateExpectedValueInput,
@@ -48,6 +55,14 @@ export type {
   DecisionPolicySide,
   EvaluateDecisionPolicyInput,
 } from "@/lib/trading/decision-policy";
+
+export type {
+  EstimatePositionSizeInput,
+  PositionSide,
+  PositionSizeEstimate,
+} from "@/lib/trading/position-sizing";
+
+export type { PositionSizingConfig } from "@/lib/trading/position-sizing";
 
 export type {
   BtcFeedStatus,
