@@ -24,6 +24,12 @@ export {
   EXPECTED_VALUE_MODEL_VERSION,
   ExpectedValueInputError,
 } from "@/lib/trading/expected-value";
+export {
+  evaluateDecisionPolicy,
+  buildDecisionPolicyReasoning,
+  DEFAULT_DECISION_POLICY_CONFIG,
+  DECISION_POLICY_MODEL_VERSION,
+} from "@/lib/trading/decision-policy";
 
 export type {
   EstimateExpectedValueInput,
@@ -33,6 +39,15 @@ export type {
   ExpectedValueReasoning,
   ExpectedValueSide,
 } from "@/lib/trading/expected-value";
+
+export type {
+  DecisionPolicyAction,
+  DecisionPolicyConfig,
+  DecisionPolicyReasonCode,
+  DecisionPolicyResult,
+  DecisionPolicySide,
+  EvaluateDecisionPolicyInput,
+} from "@/lib/trading/decision-policy";
 
 export type {
   BtcFeedStatus,
