@@ -17,6 +17,22 @@ export {
 export { parseVolumeLabelDollars } from "@/lib/trading/snapshot/parseVolumeDollars";
 export { snapshotToFeatureInput } from "@/lib/trading/snapshot/toFeatureInput";
 export { ENGINE_VERSION } from "@/lib/trading/versioning";
+export {
+  estimateExpectedValue,
+  buildExpectedValueReasoning,
+  DEFAULT_EXPECTED_VALUE_CONFIG,
+  EXPECTED_VALUE_MODEL_VERSION,
+  ExpectedValueInputError,
+} from "@/lib/trading/expected-value";
+
+export type {
+  EstimateExpectedValueInput,
+  ExpectedValueConfig,
+  ExpectedValueEstimate,
+  ExpectedValuePricingInput,
+  ExpectedValueReasoning,
+  ExpectedValueSide,
+} from "@/lib/trading/expected-value";
 
 export type {
   BtcFeedStatus,
