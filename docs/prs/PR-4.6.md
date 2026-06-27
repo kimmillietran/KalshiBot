@@ -110,3 +110,18 @@ npm run build
 ```
 
 Do not merge without review.
+
+## Review revision (merge blocker fix)
+
+**Root cause:** `coinbaseCandlesSchema` expected string OHLC fields (`z.string()`), but Coinbase Exchange returns **numeric** candle tuples `[time, low, high, open, close, volume]`. Zod validation failed → generic `"payload is not an array"` → BFF 502 while `/api/btc/price` still worked.
+
+**Fix:** Extracted `coinbaseCandles.ts` with `parseCoinbaseCandlesJson()` / `mapCoinbaseCandleRows()` using per-field numeric validation and specific error messages. Resolved `fetch` at request time via `globalThis.fetch` for reliable test stubs.
+
+**Production verification (local `next start`, PORT=3010):**
+
+| Endpoint | Status | Result |
+|----------|--------|--------|
+| `GET /api/btc/price` | 200 | Live spot + 24h change |
+| `GET /api/btc/candles` | 200 | ≥1 candle (350 rows returned from Coinbase) |
+
+**Tests:** 152 passing (was 139/151 pre-revision) — includes numeric fixture regression, integration chain test, live API smoke.

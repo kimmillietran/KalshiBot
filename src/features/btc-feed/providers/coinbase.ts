@@ -8,6 +8,7 @@ import {
   BtcProviderUnavailableError,
 } from "./errors";
 import { fetchWithTimeout } from "./fetchWithTimeout";
+import { mapCoinbaseCandleRows, parseCoinbaseCandlesJson } from "./coinbaseCandles";
 import type {
   BtcCandleInterval,
   BtcPriceProvider,
@@ -25,28 +26,9 @@ const coinbaseStatsSchema = z.object({
   last: z.string(),
 });
 
-const coinbaseCandleRowSchema = z.tuple([
-  z.number(),
-  z.string(),
-  z.string(),
-  z.string(),
-  z.string(),
-  z.string(),
-]);
-
-const coinbaseCandlesSchema = z.array(coinbaseCandleRowSchema);
-
 const INTERVAL_GRANULARITY: Record<BtcCandleInterval, number> = {
   "1m": 60,
 };
-
-function formatCandleTime(timestampMs: number): string {
-  return new Date(timestampMs).toLocaleTimeString("en-US", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  });
-}
 
 function parsePositiveNumber(value: string, field: string): number {
   const parsed = Number.parseFloat(value);
@@ -101,7 +83,7 @@ export type CoinbaseProviderOptions = {
 export function createCoinbaseBtcProvider(
   options: CoinbaseProviderOptions = {},
 ): BtcPriceProvider {
-  const { fetchImpl = fetch } = options;
+  const resolveFetch = () => options.fetchImpl ?? globalThis.fetch;
 
   return {
     id: "coinbase",
@@ -114,7 +96,7 @@ export function createCoinbaseBtcProvider(
         res = await fetchWithTimeout(url, {
           headers: { Accept: "application/json" },
           cache: "no-store",
-          fetchImpl,
+          fetchImpl: resolveFetch(),
         });
       } catch (err) {
         if (err instanceof BtcProviderTimeoutError) throw err;
@@ -166,7 +148,7 @@ export function createCoinbaseBtcProvider(
         res = await fetchWithTimeout(url.toString(), {
           headers: { Accept: "application/json" },
           cache: "no-store",
-          fetchImpl,
+          fetchImpl: resolveFetch(),
         });
       } catch (err) {
         if (err instanceof BtcProviderTimeoutError) throw err;
@@ -186,27 +168,8 @@ export function createCoinbaseBtcProvider(
         );
       }
 
-      const parsed = coinbaseCandlesSchema.safeParse(json);
-      if (!parsed.success) {
-        throw new BtcProviderMalformedResponseError(
-          "Coinbase candles payload is not an array",
-        );
-      }
-
-      return parsed.data
-        .map((row) => {
-          const timestampSec = row[0];
-          const timestamp = timestampSec * 1000;
-          return {
-            timestamp,
-            time: formatCandleTime(timestamp),
-            open: parsePositiveNumber(row[3], "open"),
-            high: parsePositiveNumber(row[2], "high"),
-            low: parsePositiveNumber(row[1], "low"),
-            close: parsePositiveNumber(row[4], "close"),
-          };
-        })
-        .sort((a, b) => a.timestamp - b.timestamp);
+      const parsed = parseCoinbaseCandlesJson(json);
+      return mapCoinbaseCandleRows(parsed);
     },
   };
 }

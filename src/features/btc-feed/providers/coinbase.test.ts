@@ -9,8 +9,8 @@ import {
   BtcProviderUnavailableError,
 } from "./errors";
 import { createCoinbaseBtcProvider } from "./coinbase";
+import { coinbaseCandlesFixture } from "./fixtures/coinbaseCandles.fixture";
 import type { BtcPriceProvider } from "./interface";
-import { createKrakenBtcProvider } from "./kraken";
 import { createBtcProvider } from "./index";
 
 const statsBody = {
@@ -21,10 +21,7 @@ const statsBody = {
   last: "64250.32",
 };
 
-const candleRows = [
-  [1_700_000_000, "64170", "64200", "64180", "64190", "12.5"],
-  [1_700_000_060, "64190", "64260", "64190", "64250.32", "8.2"],
-] as const;
+const candleRows = [...coinbaseCandlesFixture];
 
 function mockFetchSequence(responses: Array<{ status: number; body: unknown }>) {
   let call = 0;
@@ -47,12 +44,6 @@ describe("BtcPriceProvider contract", () => {
     expect(typeof provider.getCurrentPrice).toBe("function");
     expect(typeof provider.getCandles).toBe("function");
   });
-
-  it("kraken stub throws not implemented", async () => {
-    const provider = createKrakenBtcProvider();
-    await expect(provider.getCurrentPrice()).rejects.toThrow("not implemented");
-    await expect(provider.getCandles("1m", 10)).rejects.toThrow("not implemented");
-  });
 });
 
 describe("createCoinbaseBtcProvider", () => {
@@ -68,16 +59,16 @@ describe("createCoinbaseBtcProvider", () => {
     expect(price.updatedAt).toMatch(/^\d{4}-/);
   });
 
-  it("maps candles to ascending OHLC rows", async () => {
+  it("parses real-shaped numeric Coinbase candle arrays", () => {
     const fetchImpl = mockFetchSequence([{ status: 200, body: candleRows }]);
     const provider = createCoinbaseBtcProvider({ fetchImpl });
 
-    const candles = await provider.getCandles("1m", 30);
-
-    expect(candles).toHaveLength(2);
-    expect(candles[0].timestamp).toBeLessThan(candles[1].timestamp);
-    expect(candles[1].close).toBe(64250.32);
-    expect(candles[0].time).toMatch(/^\d{2}:\d{2}$/);
+    return provider.getCandles("1m", 30).then((candles) => {
+      expect(candles).toHaveLength(3);
+      expect(candles[0].timestamp).toBeLessThan(candles[1].timestamp);
+      expect(candles[1].close).toBe(64250.32);
+      expect(candles[0].open).toBe(64180.0);
+    });
   });
 
   it("throws BtcProviderMalformedResponseError on invalid stats JSON shape", async () => {
@@ -89,12 +80,37 @@ describe("createCoinbaseBtcProvider", () => {
     );
   });
 
-  it("throws BtcProviderMalformedResponseError on invalid candles array", async () => {
+  it("throws BtcProviderMalformedResponseError when payload is not an array", async () => {
     const fetchImpl = mockFetchSequence([{ status: 200, body: "not-array" }]);
     const provider = createCoinbaseBtcProvider({ fetchImpl });
 
-    await expect(provider.getCandles("1m", 10)).rejects.toBeInstanceOf(
-      BtcProviderMalformedResponseError,
+    await expect(provider.getCandles("1m", 10)).rejects.toThrow(
+      /payload is not an array/i,
+    );
+  });
+
+  it("throws when a candle row has invalid length", async () => {
+    const fetchImpl = mockFetchSequence([
+      { status: 200, body: [[1719421200, 64170.12, 64200.55]] },
+    ]);
+    const provider = createCoinbaseBtcProvider({ fetchImpl });
+
+    await expect(provider.getCandles("1m", 10)).rejects.toThrow(
+      /invalid length/i,
+    );
+  });
+
+  it("throws when OHLC values are strings (regression)", async () => {
+    const fetchImpl = mockFetchSequence([
+      {
+        status: 200,
+        body: [[1719421200, "64170.12", 64200.55, 64180.0, 64190.25, 12.5]],
+      },
+    ]);
+    const provider = createCoinbaseBtcProvider({ fetchImpl });
+
+    await expect(provider.getCandles("1m", 10)).rejects.toThrow(
+      /low is not a valid number/i,
     );
   });
 
