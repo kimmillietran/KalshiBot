@@ -71,6 +71,8 @@ Heavy unit coverage with edge cases:
 - Stable normalization
 - Deterministic vector assembly
 
+**251 tests total** on `main` after merge (**42 new** in `src/lib/features/`).
+
 ## Files created
 
 | Path | Purpose |
@@ -78,10 +80,6 @@ Heavy unit coverage with edge cases:
 | `src/lib/features/*.ts` | Feature modules + barrel |
 | `src/lib/features/*.test.ts` | Unit tests |
 | `docs/prs/PR-5.2.md` | This file |
-
-## Minor fix (build)
-
-`hasBtcSpot` / `hasContractPricing` in `snapshot/types.ts` narrowed to proper type guards so `evaluate.ts` type-checks without modification.
 
 ## Deferred
 

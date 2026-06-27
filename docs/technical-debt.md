@@ -33,32 +33,43 @@ Tracked intentionally — not silent accumulation. Review at each milestone clos
 | No deterministic trading engine | Pure `evaluate()` in `src/lib/trading/` with guard rails and reasoning trace |
 | No domain types for engine I/O | `src/types/domain/trading.ts` — snapshot, config, decision types |
 
-## Outstanding (5.1 follow-ups)
+## Resolved in 5.2
+
+| Issue | Resolution |
+|-------|------------|
+| No feature extraction layer | Pure `buildMarketFeatureVector()` in `src/lib/features/` — distance, momentum, volatility, trend, liquidity |
+
+## Outstanding (5.1 — Builder #1, not merged)
 
 | Issue | Priority | Reason | Suggested fix | Milestone |
 |-------|----------|--------|---------------|-----------|
 | **Engine orchestrator / dashboard wiring** | High | Engine not connected to live feeds or UI panels | Map BTC/Kalshi into `EvaluationSnapshot`; wire recommendation panels | **5.1** |
-| **BTC/pricing presence guards** | Medium | Guards cover market/strike; missing explicit BTC spot + contract pricing presence checks | Extend snapshot guards in `evaluate()` | **5.1** |
-| **Invalid strike tests** | Low | Edge cases for zero/negative strike not fully covered | Add regression tests in `evaluate.test.ts` | **5.1** |
-| **UPCOMING / SETTLED lifecycle tests** | Low | Only ACTIVE guard path tested explicitly | Add lifecycle regression tests | **5.1** |
-| **`types/domain` README** | Low | Domain folder lacks orientation doc | Add `src/types/domain/README.md` | **5.1** |
-| **Optional `gatesTriggered` field** | Low | Reviewer suggestion for explicit guard output on decision | Add to `TradeDecision` if orchestrator needs it | **5.1** |
-| **MarketOddsPanel footer truthfulness** | Medium | Static "Combined / overround" and "Best Edge Side" rows look like model output | Remove, placeholder-label, or replace with engine output | **5.1** |
+| **MarketOddsPanel footer truthfulness** | Medium | Static "Combined / overround" and "Best Edge Side" rows | Replace with engine output | **5.1** |
+
+## Outstanding (5.3+)
+
+| Issue | Priority | Reason | Suggested fix | Milestone |
+|-------|----------|--------|---------------|-----------|
+| **Feature consumption by engine** | High | `MarketFeatureVector` not passed into `evaluate()` | Orchestrator maps feeds → features → snapshot | **5.3** |
+| **Probability model** | High | No fair-value / implied probability calculation | Deterministic model in `src/lib/trading/` | **5.3+** |
+| **EV calculation** | Medium | No expected-value from model vs market prices | Add after probability model | **5.3+** |
+| **Kelly sizing** | Medium | No position sizing from edge | Add after EV | **5.3+** |
+| **Recommendation policy** | Medium | No action selection (BUY UP/DOWN/NO TRADE) from edge + Kelly | Add after sizing | **5.3+** |
 
 ## Other outstanding
 
 | Issue | Priority | Reason | Suggested fix | Milestone |
 |-------|----------|--------|---------------|-----------|
-| Chart UX — provider source badge | Low | Provider badge on chart header not added | Backlog item from 4.7 | Backlog |
-| External metrics sink | Low | Metrics log to console only | Wire Datadog/OpenTelemetry | Backlog |
-| Shared circuit state | Low | In-process circuit breaker per instance | Redis or edge config | Backlog |
+| BTC/pricing presence guards | Medium | Explicit BTC spot + contract pricing checks | Extend snapshot guards | 5.1 |
+| Invalid strike / lifecycle tests | Low | Edge-case guard coverage | Regression tests | 5.1 |
+| Chart UX — provider source badge | Low | Provider badge not added | Backlog | Backlog |
+| External metrics sink | Low | Console-only metrics | Datadog/OTel | Backlog |
+| Shared circuit state | Low | In-process circuit breaker | Redis/edge config | Backlog |
 | Kalshi rate-limit retry/backoff | Medium | 429 not retried | Exponential backoff | Backlog |
-| Provider context-bridge pattern | Medium | Hooks read bridged context not query cache | Refactor providers | Backlog |
-| NO last price null in odds display | Low | Kalshi list API omits NO last | Order book or accept fallback | Backlog |
-| Market structure / trade mgmt preview rows | Low | Static demo rows with preview labels | Replace when engine wired | 5.1+ |
-| Layout shell untested | Low | Shell components at 0% coverage | Smoke tests | Backlog |
+| Provider context-bridge pattern | Medium | Hooks read bridged context | Refactor to query cache | Backlog |
+| Layout shell untested | Low | Shell at 0% coverage | Smoke tests | Backlog |
 | Polling-only feeds | Low | No WebSocket | Evaluate when needed | 5+ |
 
 ## Health impact
 
-After Milestone 5.0 → **Technical Debt: Low–Medium** (engine foundation complete; wiring, guard hardening, and UI truthfulness remain for 5.1).
+After Milestone 5.2 → **Technical Debt: Low–Medium** (feature builder complete; engine consumption and probability stack remain for 5.3+).
