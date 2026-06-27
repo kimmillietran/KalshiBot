@@ -4,8 +4,12 @@
  */
 export const RAW_KALSHI_TICKER_PATTERN = /KXBTC\d+M-\d{2}[A-Z]{3}\d{2,}-\d+/i;
 
+/** Primary visible-text regression pattern — matches production leak reports. */
+export const VISIBLE_RAW_TICKER_PATTERN = /KXBTC15M-[A-Z0-9-]+/;
+
 /** Additional leak signatures seen in raw tickers (review regression set). */
 export const RAW_TICKER_UI_PATTERNS = [
+  VISIBLE_RAW_TICKER_PATTERN,
   RAW_KALSHI_TICKER_PATTERN,
   /KXBTC/i,
   /BTC\d+M-\d{2}[A-Z]{3}/i,
@@ -48,4 +52,10 @@ export function findRawTickerLeaksInText(text: string): string[] {
  */
 export function findRawTickerLeaksInContainer(container: HTMLElement): string[] {
   return findRawTickerLeaksInText(container.textContent ?? "");
+}
+
+/** Returns the first visible raw ticker match, if any. */
+export function findVisibleRawTickerMatch(text: string): string | null {
+  const match = text.match(VISIBLE_RAW_TICKER_PATTERN);
+  return match?.[0] ?? null;
 }

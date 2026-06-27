@@ -34,7 +34,7 @@ const livePricing = {
 };
 
 const liveMarket = {
-  ticker: "KXBTC15M-26JUN261930-30",
+  ticker: "KXBTC15M-26JUN270115-15",
   title: "BTC price up in next 15 mins?",
   targetPrice: 59990.31,
   lifecycle: MarketLifecycle.ACTIVE,

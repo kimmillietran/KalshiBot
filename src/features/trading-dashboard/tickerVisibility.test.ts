@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   findRawTickerLeaksInText,
   isRawKalshiTicker,
-  RAW_TICKER_UI_PATTERNS,
+  VISIBLE_RAW_TICKER_PATTERN,
 } from "./tickerVisibility";
 
 describe("tickerVisibility", () => {
@@ -32,9 +32,10 @@ describe("tickerVisibility", () => {
     expect(findRawTickerLeaksInText(friendly)).toEqual([]);
   });
 
-  it("documents regression patterns requested in review", () => {
-    expect(RAW_TICKER_UI_PATTERNS.some((p) => p.test("KXBTC15M-26JUN270100-00"))).toBe(
-      true,
+  it("documents the primary visible-text regression pattern", () => {
+    expect(VISIBLE_RAW_TICKER_PATTERN.test("KXBTC15M-26JUN270115-15")).toBe(true);
+    expect(VISIBLE_RAW_TICKER_PATTERN.test("BTC 15m · Live Kalshi contract")).toBe(
+      false,
     );
   });
 });
