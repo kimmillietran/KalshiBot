@@ -2,7 +2,7 @@
 
 AI-powered trading assistant for Kalshi BTC markets. Built in milestones.
 
-**Current:** Live BTC/Kalshi feeds (4.6B) + trading engine (5.0–5.1) + feature builder (5.2) + feature-vector integration (5.3A) + guard layer (5.3B) + probability (5.4A/B) + expected value (5.5A/B) + decision policy module (5.6A). `evaluateDecisionPolicy()` available; **`evaluate()` not yet wired** — Builder #2 integrates in 5.6B; engine still returns `NO TRADE` via decision-stub until wiring lands.
+**Current:** Live BTC/Kalshi feeds (4.6B) + full trading engine through decision policy (5.0–5.6B). `evaluate()` runs guards → features → probability → expected value → `evaluateDecisionPolicy()`; `TradeDecision.action` is `BUY UP`, `BUY DOWN`, `HOLD`, or `NO TRADE` from deterministic policy (`ENGINE_VERSION` 5.6.0). Kelly sizing and dashboard decision rendering deferred (5.7+).
 
 ## Engineering Standards
 
@@ -81,7 +81,8 @@ docs/
 | 5.5A | Expected value model (`estimateExpectedValue`) — **complete** |
 | 5.5B | Engine EV wiring (`TradeDecision.expectedValue`, `ENGINE_VERSION` 5.5.0) — **complete** |
 | 5.6A | Decision policy module (`evaluateDecisionPolicy`) — **complete** |
-| 5.6B | Engine decision policy wiring — in progress (Builder #2) |
+| 5.6B | Engine decision policy wiring (`TradeDecision.action`, `ENGINE_VERSION` 5.6.0) — **complete** |
+| 5.6C+ | Guard integration test restoration, reasoning polish |
 | 5.7+ | Kelly sizing, dashboard decision rendering, auth, db, journal |
 
 ## Intentionally deferred

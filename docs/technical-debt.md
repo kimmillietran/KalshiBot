@@ -106,12 +106,20 @@ Tracked intentionally — not silent accumulation. Review at each milestone clos
 | No decision policy module | `evaluateDecisionPolicy()` in `src/lib/trading/decision-policy/` — edge thresholds, liquidity gate, `BUY UP`/`BUY DOWN`/`HOLD`/`NO TRADE` |
 | No `DecisionPolicyResult` type | `action`, `reasonCode`, `selectedSide`, `reasoning` on policy result |
 
-## Outstanding (5.6B+)
+## Resolved in 5.6B
+
+| Issue | Resolution |
+|-------|------------|
+| Decision policy not wired into engine | `evaluate()` calls `evaluateDecisionPolicy()` after EV step |
+| `decision-stub` placeholder | Replaced by `decision-policy` reasoning step |
+| `TradeDecision.action` always `NO TRADE` | Mapped from `DecisionPolicyAction` via `toTradeAction()` |
+| Engine version stale | `ENGINE_VERSION` → `5.6.0` |
+
+## Outstanding (5.6C+)
 
 | Issue | Priority | Reason | Suggested fix | Milestone |
 |-------|----------|--------|---------------|-----------|
-| **Decision policy engine wiring** | Medium | `evaluate()` still uses decision-stub / `NO TRADE` | Wire `evaluateDecisionPolicy()` after EV step | **5.6B** |
-| **Kelly sizing** | Medium | No position sizing from edge | Add after policy wiring | **5.7** |
+| **Kelly sizing** | Medium | No position sizing from edge | Kelly module after policy | **5.7** |
 | **Dashboard decision rendering** | Medium | UI still placeholder | Wire `TradeDecision.action` to panels | **5.9** |
 
 ## Minor follow-ups (5.3A)
@@ -164,6 +172,14 @@ Tracked intentionally — not silent accumulation. Review at each milestone clos
 | Infinity input test | Low | Guard `Number.POSITIVE_INFINITY` edge inputs |
 | `features` / `minLiquidityQuality` ownership | Low | Decide policy vs guard-layer responsibility |
 
+## Minor follow-ups (5.6B)
+
+| Issue | Priority | Suggested fix |
+|-------|----------|---------------|
+| Restore three dropped guard integration cases | Low | Re-add BTC null, spread unavailable, config-disabled tests in `evaluate.test.ts` |
+| Document pass/skip semantics in PR-5.6B | Low | Clarify reasoning step outcomes in PR doc |
+| Domain/lib type-coupling polish | Low | Consider `DecisionPolicyAction` re-export via domain types |
+
 ## Other outstanding
 
 | Issue | Priority | Reason | Suggested fix | Milestone |
@@ -178,4 +194,4 @@ Tracked intentionally — not silent accumulation. Review at each milestone clos
 
 ## Health impact
 
-After Milestone 5.6A → **Technical Debt: Low** (decision policy module complete; engine wiring and dashboard remain for 5.6B+).
+After Milestone 5.6B → **Technical Debt: Low** (full evaluation pipeline through decision policy; Kelly and dashboard remain for 5.7+).
