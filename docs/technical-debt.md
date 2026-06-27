@@ -84,6 +84,15 @@ Tracked intentionally — not silent accumulation. Review at each milestone clos
 | Optional hook assertion for `decision.features` | Low | Assert `features` shape in hook test |
 | Vitest teardown warning in `tickerRegression.test.tsx` | Low | Cancel timers on unmount |
 
+## Minor follow-ups (5.3B)
+
+| Issue | Priority | Suggested fix |
+|-------|----------|---------------|
+| Accidental `?` in `evaluate.ts` reasoning strings | Low | Replace with em dashes (—) |
+| Stale "5.3A" description in `versioning.test.ts` | Low | Rename to reflect guard layer milestone |
+| Zero-spread explicit regression test | Low | Optional coverage in `guards/pricing.test.ts` |
+| `GuardStepId` in trading types | Low | Optional relocation to `src/types/domain/` |
+
 ## Other outstanding
 
 | Issue | Priority | Reason | Suggested fix | Milestone |
