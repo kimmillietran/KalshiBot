@@ -49,7 +49,7 @@ Tracked intentionally — not silent accumulation. Review at each milestone clos
 | Raw ticker in CommandBar | Friendly subtitle + tooltip-only contract ID (preserved from bugfix) |
 | Synthetic candle timestamps | Chart points carry upstream `timestamp`; snapshot maps real ms values |
 
-## Resolved in 5.3A (branch — pending merge)
+## Resolved in 5.3A
 
 | Issue | Resolution |
 |-------|------------|
@@ -60,11 +60,21 @@ Tracked intentionally — not silent accumulation. Review at each milestone clos
 
 | Issue | Priority | Reason | Suggested fix | Milestone |
 |-------|----------|--------|---------------|-----------|
-| **Probability model** | High | No fair-value / implied probability calculation | Deterministic model in `src/lib/trading/` | **5.3B+** |
-| **EV calculation** | Medium | No expected-value from model vs market prices | Add after probability model | **5.3+** |
-| **Kelly sizing** | Medium | No position sizing from edge | Add after EV | **5.3+** |
-| **BTC fallback/stale feed guard** | Low | Feed status captured but not guarded in `evaluate()` | Optional guard when `providerSource=fallback` | **5.3** |
+| **Engine guard layer refactor** | Medium | Guards inline in `evaluate.ts`; 5.3B extracts to `guards/` module | Merge `feature/m53b-engine-guards` after review | **5.3B** |
+| **Probability model** | High | No fair-value / implied probability; decisions still `NO TRADE` | Deterministic model in `src/lib/trading/` | **5.4** |
+| **EV calculation** | Medium | No expected-value from model vs market prices | Add after probability model | **5.4+** |
+| **Kelly sizing** | Medium | No position sizing from edge | Add after EV | **5.4+** |
+| **Recommendation policy** | Medium | No BUY UP/DOWN selection from edge | Add after Kelly | **5.4+** |
+| **BTC fallback/stale feed guard** | Low | Feed status captured but not guarded | Optional guard when `providerSource=fallback` | **5.3B** |
 | **Optional `gatesTriggered` field** | Low | Reviewer suggestion for explicit guard output | Add to `TradeDecision` if needed | Backlog |
+
+## Minor follow-ups (5.3A)
+
+| Issue | Priority | Suggested fix |
+|-------|----------|---------------|
+| Stale test name in `useTradeDecision.test.tsx` | Low | Rename to reflect feature-vector integration |
+| Optional hook assertion for `decision.features` | Low | Assert `features` shape in hook test |
+| Vitest teardown warning in `tickerRegression.test.tsx` | Low | Cancel timers on unmount |
 
 ## Other outstanding
 
@@ -80,4 +90,4 @@ Tracked intentionally — not silent accumulation. Review at each milestone clos
 
 ## Health impact
 
-After Milestone 5.1 merge → **Technical Debt: Low** (engine wired to dashboard; feature consumption and probability stack remain for 5.3+).
+After Milestone 5.3A → **Technical Debt: Low** (feature vector feeds engine; probability stack remains for 5.4+).

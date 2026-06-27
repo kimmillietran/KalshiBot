@@ -2,7 +2,7 @@
 
 AI-powered trading assistant for Kalshi BTC markets. Built in milestones.
 
-**Current:** Live BTC/Kalshi feeds (4.6B) + trading engine (5.0) + feature builder (5.2) + engine snapshot wiring (5.1). Dashboard shows live `NO TRADE` + reasoning trace from `evaluate()`; probability model deferred to 5.3+.
+**Current:** Live BTC/Kalshi feeds (4.6B) + trading engine (5.0–5.1) + feature builder (5.2) + feature-vector integration (5.3A). `TradeDecision.features` populated; decisions remain `NO TRADE` until probability model (5.4+).
 
 ## Engineering Standards
 
@@ -74,7 +74,9 @@ docs/
 | 5.0 | Pure trading engine foundation (`evaluate`, guards, reasoning trace) — **complete** |
 | 5.2 | Feature builder foundation (`buildMarketFeatureVector`) — **complete** |
 | 5.1 | Engine snapshot wiring + dashboard integration — **complete** |
-| 5.3+ | Feature consumption by engine, probability model, auth, db, journal |
+| 5.3A | Feature vector integration (`TradeDecision.features`) — **complete** |
+| 5.3B | Engine guard layer refactor — in progress |
+| 5.4+ | Probability model, EV, Kelly, policy, auth, db, journal |
 
 ## Intentionally deferred
 
