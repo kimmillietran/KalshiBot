@@ -22,7 +22,7 @@ Tracked intentionally — not silent accumulation. Review at each milestone clos
 
 | Issue | Resolution |
 |-------|------------|
-| Mock recommendation / overround cards | Placeholder panels; fake BUY UP and model edge hidden until Milestone 5 |
+| Mock recommendation / AI / probability panels | Placeholder UI; fake BUY UP and model edge hidden until Milestone 5 |
 | Chart UX — target context | Settlement target label, above/below badge, distance caption on BTC chart |
 | Misleading market title | Command bar uses contract question wording with live target + expiration |
 
@@ -30,6 +30,7 @@ Tracked intentionally — not silent accumulation. Review at each milestone clos
 
 | Issue | Priority | Reason | Suggested fix | Milestone |
 |-------|----------|--------|---------------|-----------|
+| **MarketOddsPanel footer truthfulness** | Medium | Static "Combined / overround" and "Best Edge Side" rows can look like model output despite live bid/ask above | Remove, placeholder-label, or replace with Milestone 5 engine | **5** |
 | **Chart UX improvements** | Low | Provider source badge, empty-state polish still open | Provider badge on chart header | Backlog |
 | External metrics sink | Low | Metrics log to console + observer hook only | Wire Datadog/OpenTelemetry when ops needs it | Backlog |
 | Shared circuit state | Low | Health/circuit is in-process per server instance | Redis or edge config if multi-instance | Backlog |
