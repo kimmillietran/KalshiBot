@@ -82,14 +82,22 @@ Tracked intentionally — not silent accumulation. Review at each milestone clos
 | `TradeDecision` missing probability | `probability: ProbabilityEstimate \| null` on domain type |
 | Engine version stale | `ENGINE_VERSION` → `5.4.0` |
 
-## Outstanding (5.5+)
+## Resolved in 5.5A
+
+| Issue | Resolution |
+|-------|------------|
+| No expected value calculation | `estimateExpectedValue()` in `src/lib/trading/expected-value/` — per-side EV, edge %, `bestSide` |
+| Duplicate probability stub on branch | Removed — imports use approved `@/lib/trading/probability` |
+| No `ExpectedValueEstimate` type | `evUp` / `evDown` / `edgeUpPercent` / `edgeDownPercent` / `bestSide` / `modelVersion` |
+
+## Outstanding (5.5B+)
 
 | Issue | Priority | Reason | Suggested fix | Milestone |
 |-------|----------|--------|---------------|-----------|
-| **Expected Value calculation** | High | No EV from model probability vs market prices | `calculateExpectedValue()` in `src/lib/trading/` | **5.5** |
-| **Decision policy** | Medium | No BUY UP/DOWN selection from edge | Add after EV | **5.6** |
+| **EV engine wiring** | High | `evaluate()` does not yet attach `ExpectedValueEstimate` | Wire after probability step | **5.5B** |
+| **Decision policy** | Medium | No BUY UP/DOWN selection from edge | Add after EV wiring | **5.6** |
 | **Kelly sizing** | Medium | No position sizing from edge | Add after policy | **5.7** |
-| **Dashboard probability rendering** | Medium | UI still placeholder; engine carries probability | Wire `TradeDecision.probability` to panels | **5.5+** |
+| **Dashboard EV/probability rendering** | Medium | UI still placeholder | Wire `TradeDecision` model outputs | **5.5B+** |
 
 ## Minor follow-ups (5.3A)
 
@@ -116,6 +124,14 @@ Tracked intentionally — not silent accumulation. Review at each milestone clos
 | `ProbabilityEstimate` layering cleanup | Low | Consider re-export via domain types barrel |
 | `ProbabilityModelConfig` on `EngineConfig` | Low | Wire config when model tuning is needed |
 
+## Minor follow-ups (5.5A)
+
+| Issue | Priority | Suggested fix |
+|-------|----------|---------------|
+| Optional immutability tests | Low | Assert frozen outputs on `ExpectedValueEstimate` |
+| Fee/clamp boundary tests | Low | Expand edge cases for `feeCentsPerContract` and `maxEvMagnitude` |
+| YES tie-break documentation | Low | Already in PR-5.5A; optional inline comment in `estimateExpectedValue.ts` |
+
 ## Other outstanding
 
 | Issue | Priority | Reason | Suggested fix | Milestone |
@@ -130,4 +146,4 @@ Tracked intentionally — not silent accumulation. Review at each milestone clos
 
 ## Health impact
 
-After Milestone 5.4B → **Technical Debt: Low** (probability model wired; EV/policy stack remains for 5.5+).
+After Milestone 5.5A → **Technical Debt: Low** (EV model complete; engine wiring and policy remain for 5.5B+).
