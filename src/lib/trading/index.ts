@@ -2,6 +2,11 @@ export { DEFAULT_ENGINE_CONFIG } from "@/lib/trading/config/defaults";
 export { fnv1a32, hashConfig, stableStringify } from "@/lib/trading/config/hashConfig";
 export { evaluate } from "@/lib/trading/evaluate";
 export { extractFeaturesFromSnapshot } from "@/lib/trading/features/extractFeatures";
+export {
+  estimateProbability,
+  DEFAULT_PROBABILITY_MODEL_CONFIG,
+  PROBABILITY_MODEL_VERSION,
+} from "@/lib/trading/probability";
 export { GUARD_STEP_ORDER, runEvaluationGuards, type GuardStepId } from "@/lib/trading/guards";
 export {
   hasMarket,
@@ -31,3 +36,10 @@ export type {
 } from "@/types/domain/trading";
 
 export type { MarketFeatureVector } from "@/lib/features/types";
+
+export type {
+  ProbabilityDriver,
+  ProbabilityDriverContribution,
+  ProbabilityEstimate,
+  ProbabilityModelConfig,
+} from "@/lib/trading/probability";
