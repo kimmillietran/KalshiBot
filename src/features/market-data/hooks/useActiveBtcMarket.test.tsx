@@ -2,6 +2,8 @@ import { renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { QueryTestProvider } from "@/test/query-test-utils";
+
 import { COUNTDOWN_TICK_MS } from "../constants";
 import { FALLBACK_MARKET_TICKER, FALLBACK_TARGET_PRICE } from "../fallback";
 import { MarketDataProvider } from "../MarketDataProvider";
@@ -22,7 +24,11 @@ const liveMarket = {
 };
 
 function wrapper({ children }: { children: ReactNode }) {
-  return <MarketDataProvider>{children}</MarketDataProvider>;
+  return (
+    <QueryTestProvider>
+      <MarketDataProvider>{children}</MarketDataProvider>
+    </QueryTestProvider>
+  );
 }
 
 describe("MarketDataProvider", () => {

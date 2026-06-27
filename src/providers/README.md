@@ -1,7 +1,10 @@
 # providers
 
-App-wide React context providers composed in the root layout (e.g. the TanStack
-Query client provider, theme provider, toaster).
+App-wide React context providers composed in the dashboard layout.
 
-Deferred to a later milestone. Milestone 1 sets the dark theme statically via a
-`dark` class on `<html>`, so no provider is required yet.
+| Provider | Role |
+|----------|------|
+| `QueryProvider` | TanStack Query client for server-state (BTC feed, Kalshi market metadata) |
+| `DashboardProviders` | Composes `QueryProvider`, `MarketDataProvider`, and `BtcFeedProvider` |
+
+Theme remains static via a `dark` class on `<html>` — no theme provider yet.

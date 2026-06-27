@@ -1,5 +1,6 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
 import {
   createContext,
   useCallback,
@@ -9,6 +10,8 @@ import {
   useRef,
   useState,
 } from "react";
+
+import { queryKeys } from "@/lib/query";
 
 import { fetchActiveBtcMarket } from "./api/kalshiClient";
 import {
@@ -55,8 +58,16 @@ export function MarketDataProvider({ children }: { children: React.ReactNode }) 
   const closeTimeRef = useRef<string | null>(null);
   const lastFetchedAtRef = useRef<Date | null>(null);
   const isFallbackRef = useRef(false);
-  const mountedRef = useRef(true);
   const refreshRequestedRef = useRef(false);
+
+  const marketQuery = useQuery({
+    queryKey: queryKeys.kalshi.activeBtcMarket(),
+    queryFn: fetchActiveBtcMarket,
+    refetchInterval: MARKET_POLL_MS,
+    staleTime: MARKET_POLL_MS / 2,
+  });
+
+  const { refetch: refetchMarket } = marketQuery;
 
   const applyFallback = useCallback((message: string) => {
     setErrorMessage(message);
@@ -105,36 +116,39 @@ export function MarketDataProvider({ children }: { children: React.ReactNode }) 
     lastFetchedAtRef.current = fetchedAt;
   }, []);
 
-  const loadMarket = useCallback(async () => {
-    try {
-      const data = await fetchActiveBtcMarket();
-      if (!mountedRef.current) return;
-
-      if (data.noMarket || !data.market) {
-        applyNoMarket(data.message);
-        return;
+  // Bridge TanStack Query results into context state for stable public hooks.
+  /* eslint-disable react-hooks/set-state-in-effect -- preserves useActiveBtcMarket API during migration */
+  useEffect(() => {
+    if (marketQuery.isSuccess && marketQuery.data) {
+      if (marketQuery.data.noMarket || !marketQuery.data.market) {
+        applyNoMarket(marketQuery.data.message);
+      } else {
+        applyMarket(marketQuery.data.market);
       }
+      refreshRequestedRef.current = false;
+      return;
+    }
 
-      applyMarket(data.market);
-    } catch (err) {
-      if (!mountedRef.current) return;
+    if (marketQuery.isError && marketQuery.error) {
       const message =
-        err instanceof Error ? err.message : "Kalshi market unavailable";
+        marketQuery.error instanceof Error
+          ? marketQuery.error.message
+          : "Kalshi market unavailable";
       applyFallback(message);
-    } finally {
       refreshRequestedRef.current = false;
     }
-  }, [applyFallback, applyMarket, applyNoMarket]);
+  }, [
+    applyFallback,
+    applyMarket,
+    applyNoMarket,
+    marketQuery.data,
+    marketQuery.error,
+    marketQuery.isError,
+    marketQuery.isSuccess,
+  ]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   useEffect(() => {
-    mountedRef.current = true;
-
-    const bootTimer = setTimeout(() => {
-      void loadMarket();
-    }, 0);
-
-    const pollInterval = setInterval(() => void loadMarket(), MARKET_POLL_MS);
-
     const countdownInterval = setInterval(() => {
       const closeTime = closeTimeRef.current;
       if (!closeTime) return;
@@ -144,7 +158,7 @@ export function MarketDataProvider({ children }: { children: React.ReactNode }) 
 
       if (remaining <= 0 && !refreshRequestedRef.current) {
         refreshRequestedRef.current = true;
-        void loadMarket();
+        void refetchMarket();
       }
     }, COUNTDOWN_TICK_MS);
 
@@ -164,13 +178,10 @@ export function MarketDataProvider({ children }: { children: React.ReactNode }) 
     }, COUNTDOWN_TICK_MS);
 
     return () => {
-      mountedRef.current = false;
-      clearTimeout(bootTimer);
-      clearInterval(pollInterval);
       clearInterval(countdownInterval);
       clearInterval(staleInterval);
     };
-  }, [loadMarket]);
+  }, [refetchMarket]);
 
   const targetPrice = useMemo(() => {
     if (market?.targetPrice != null) return market.targetPrice;

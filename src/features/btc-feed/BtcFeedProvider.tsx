@@ -1,5 +1,6 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
 import {
   createContext,
   useCallback,
@@ -9,6 +10,8 @@ import {
   useRef,
   useState,
 } from "react";
+
+import { queryKeys } from "@/lib/query";
 
 import { fetchBtcCandles, fetchBtcPrice } from "./api/btcClient";
 import {
@@ -71,6 +74,20 @@ export function BtcFeedProvider({
   const flashTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mountedRef = useRef(true);
 
+  const priceQuery = useQuery({
+    queryKey: queryKeys.btc.price(),
+    queryFn: fetchBtcPrice,
+    refetchInterval: BTC_PRICE_POLL_MS,
+    staleTime: BTC_PRICE_POLL_MS / 2,
+  });
+
+  const candlesQuery = useQuery({
+    queryKey: queryKeys.btc.candles(),
+    queryFn: fetchBtcCandles,
+    refetchInterval: BTC_CANDLES_POLL_MS,
+    staleTime: BTC_CANDLES_POLL_MS / 2,
+  });
+
   const applyPrice = useCallback(
     (nextPrice: number, nextChange24h: number, nextChangePct: number) => {
       const dir = calculatePriceChangeDirection(
@@ -104,56 +121,50 @@ export function BtcFeedProvider({
     [],
   );
 
-  const loadPrice = useCallback(async () => {
-    try {
-      const data = await fetchBtcPrice();
-      if (!mountedRef.current) return;
-      applyPrice(data.price, data.change24h, data.change24hPercent);
-    } catch (err) {
-      if (!mountedRef.current) return;
-      const message =
-        err instanceof Error ? err.message : "BTC feed unavailable";
-      setErrorMessage(message);
+  useEffect(() => {
+    if (!mountedRef.current || !priceQuery.isSuccess || !priceQuery.data) return;
+    applyPrice(
+      priceQuery.data.price,
+      priceQuery.data.change24h,
+      priceQuery.data.change24hPercent,
+    );
+  }, [applyPrice, priceQuery.data, priceQuery.isSuccess]);
 
-      if (!hasLiveDataRef.current) {
-        setIsUsingFallback(true);
-        setStatus("fallback");
-      } else {
-        setStatus("stale");
+  useEffect(() => {
+    if (!mountedRef.current || !priceQuery.isError || !priceQuery.error) return;
+
+    const message =
+      priceQuery.error instanceof Error
+        ? priceQuery.error.message
+        : "BTC feed unavailable";
+    setErrorMessage(message);
+
+    if (!hasLiveDataRef.current) {
+      setIsUsingFallback(true);
+      setStatus("fallback");
+    } else {
+      setStatus("stale");
+    }
+  }, [priceQuery.error, priceQuery.isError]);
+
+  useEffect(() => {
+    if (!mountedRef.current || !candlesQuery.isSuccess || !candlesQuery.data) {
+      return;
+    }
+
+    const points = candlesToChartPoints(candlesQuery.data.candles);
+    setChartPoints((prev) => {
+      const livePrice =
+        prev.length > 0 ? prev[prev.length - 1].price : points.at(-1)?.price;
+      if (livePrice !== undefined) {
+        return mergeLivePriceIntoChart(points, livePrice);
       }
-    }
-  }, [applyPrice]);
-
-  const loadCandles = useCallback(async () => {
-    try {
-      const { candles } = await fetchBtcCandles();
-      if (!mountedRef.current) return;
-      const points = candlesToChartPoints(candles);
-      setChartPoints((prev) => {
-        const livePrice = prev.length > 0 ? prev[prev.length - 1].price : points.at(-1)?.price;
-        if (livePrice !== undefined) {
-          return mergeLivePriceIntoChart(points, livePrice);
-        }
-        return points;
-      });
-    } catch {
-      // Candles are supplementary; price polling handles primary errors.
-    }
-  }, []);
+      return points;
+    });
+  }, [candlesQuery.data, candlesQuery.isSuccess]);
 
   useEffect(() => {
     mountedRef.current = true;
-
-    const bootTimer = setTimeout(() => {
-      void loadCandles();
-      void loadPrice();
-    }, 0);
-
-    const priceInterval = setInterval(() => void loadPrice(), BTC_PRICE_POLL_MS);
-    const candleInterval = setInterval(
-      () => void loadCandles(),
-      BTC_CANDLES_POLL_MS,
-    );
 
     const staleInterval = setInterval(() => {
       if (!lastUpdatedRef.current || !hasLiveDataRef.current) return;
@@ -164,13 +175,10 @@ export function BtcFeedProvider({
 
     return () => {
       mountedRef.current = false;
-      clearTimeout(bootTimer);
-      clearInterval(priceInterval);
-      clearInterval(candleInterval);
       clearInterval(staleInterval);
       if (flashTimeoutRef.current) clearTimeout(flashTimeoutRef.current);
     };
-  }, [loadCandles, loadPrice]);
+  }, []);
 
   const distance = useMemo(
     () => buildDistance(price, targetPrice),

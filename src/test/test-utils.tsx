@@ -3,8 +3,13 @@ import type { ReactElement } from "react";
 import { render } from "@testing-library/react";
 import { vi } from "vitest";
 
-import { DashboardProviders } from "@/providers/DashboardProviders";
+import { BtcFeedProvider } from "@/features/btc-feed";
+import {
+  MarketDataProvider,
+  useActiveBtcMarket,
+} from "@/features/market-data";
 import { MarketLifecycle } from "@/features/market-data/types";
+import { QueryTestProvider } from "@/test/query-test-utils";
 
 const liveMarket = {
   ticker: "KXBTC15M-26JUN261930-30",
@@ -18,6 +23,11 @@ const liveMarket = {
   source: "kalshi" as const,
   isFallback: false,
 };
+
+function BtcFeedWithMarketTarget({ children }: { children: React.ReactNode }) {
+  const { targetPrice } = useActiveBtcMarket();
+  return <BtcFeedProvider targetPrice={targetPrice}>{children}</BtcFeedProvider>;
+}
 
 /** Mock BTC + Kalshi BFF responses for dashboard component tests. */
 export function mockDashboardApiFetch(options?: {
@@ -102,12 +112,26 @@ export function mockDashboardApiFetch(options?: {
   return fetchMock;
 }
 
-export function renderWithDashboard(ui: ReactElement) {
-  mockDashboardApiFetch();
-  return render(<DashboardProviders>{ui}</DashboardProviders>);
+export function renderWithDashboard(
+  ui: ReactElement,
+  options?: {
+    kalshiFails?: boolean;
+    noMarket?: boolean;
+  },
+) {
+  mockDashboardApiFetch(options);
+  return render(
+    <QueryTestProvider>
+      <MarketDataProvider>
+        <BtcFeedWithMarketTarget>{ui}</BtcFeedWithMarketTarget>
+      </MarketDataProvider>
+    </QueryTestProvider>,
+  );
 }
 
 /** @deprecated Use renderWithDashboard — kept for btc-only tests during migration. */
 export function renderWithBtcFeed(ui: ReactElement) {
   return renderWithDashboard(ui);
 }
+
+export { liveMarket };
