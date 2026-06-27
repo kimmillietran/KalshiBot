@@ -20,8 +20,13 @@ afterEach(() => {
 });
 
 describe("resolveBtcProvider", () => {
-  it("returns coinbase by default", () => {
+  it("returns auto chain by default", () => {
     const provider = resolveBtcProvider({});
+    expect(provider.id).toBe("coinbase→kraken→fallback");
+  });
+
+  it("returns coinbase when explicitly configured", () => {
+    const provider = resolveBtcProvider({ BTC_PROVIDER: "coinbase" });
     expect(provider.id).toBe("coinbase");
   });
 

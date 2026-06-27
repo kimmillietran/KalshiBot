@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { fetchBtcCandleHistory } from "@/features/btc-feed/api/btcServer";
+import { FALLBACK_BTC_PRICE } from "@/features/btc-feed/constants";
 import { COINBASE_EXCHANGE_API_BASE, resetDefaultBtcProviderCache } from "@/features/btc-feed/providers";
 import { coinbaseCandlesFixture } from "@/features/btc-feed/providers/fixtures/coinbaseCandles.fixture";
 
@@ -56,7 +57,29 @@ describe("GET /api/btc/candles integration", () => {
     expect(body.candles[0].open).toBe(64180.0);
   });
 
-  it("returns 502 when upstream Coinbase sends string OHLC values", async () => {
+  it("failovers to fallback when default auto chain and Coinbase sends malformed OHLC", async () => {
+    fetchMock.mockImplementation(() =>
+      Promise.resolve({
+        ok: true,
+        status: 200,
+        json: async () => [
+          [1719421200, "64170.12", 64200.55, 64180.0, 64190.25, 12.5],
+        ],
+      } as Response),
+    );
+
+    const res = await GET();
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.candles.length).toBeGreaterThanOrEqual(1);
+    expect(body.candles[0].close).toBe(FALLBACK_BTC_PRICE);
+  });
+
+  it("returns 502 when coinbase-only and upstream sends string OHLC values", async () => {
+    process.env.BTC_PROVIDER = "coinbase";
+    resetDefaultBtcProviderCache();
+
     fetchMock.mockImplementation(() =>
       Promise.resolve({
         ok: true,

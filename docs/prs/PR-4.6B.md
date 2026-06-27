@@ -24,9 +24,9 @@ Single-provider modes skip the composite:
 
 | `BTC_PROVIDER` | Resolved provider |
 |----------------|-------------------|
-| `coinbase` (default) | `createRegisteredBtcProvider("coinbase")` |
+| unset / `auto` (default) | Composite chain above |
+| `coinbase` | `createRegisteredBtcProvider("coinbase")` |
 | `kraken` | `createRegisteredBtcProvider("kraken")` |
-| `auto` | Composite chain above |
 
 ## Kraken endpoints used
 
@@ -95,10 +95,10 @@ Open circuits are skipped until cooldown expires (half-open probe allowed). `fal
 ## Configuration
 
 ```bash
-# .env.local (optional)
-BTC_PROVIDER=coinbase   # default
-BTC_PROVIDER=kraken
-BTC_PROVIDER=auto       # Coinbase → Kraken → fallback
+# .env.local (optional — chain is default when unset)
+BTC_PROVIDER=auto        # Coinbase → Kraken → fallback (default)
+BTC_PROVIDER=coinbase      # Coinbase only
+BTC_PROVIDER=kraken        # Kraken only
 ```
 
 ## Remaining limitations
@@ -118,6 +118,7 @@ npm run build  # ✓
 
 ## Test plan
 
+- [ ] Default (no `BTC_PROVIDER`) — composite chain serves dashboard
 - [ ] `BTC_PROVIDER=coinbase` — live Coinbase price/candles on dashboard
 - [ ] `BTC_PROVIDER=kraken` — Kraken-only path
 - [ ] `BTC_PROVIDER=auto` — simulate Coinbase 503; confirm Kraken or fallback serves BFF

@@ -33,9 +33,9 @@ btc-feed/
   index.ts
 ```
 
-## Provider chain (auto mode)
+## Provider chain (default)
 
-When `BTC_PROVIDER=auto` (or unset for single-provider modes), server routes resolve:
+When `BTC_PROVIDER` is unset or `auto`, server routes resolve:
 
 ```text
 btcServer → getDefaultBtcProvider()
@@ -53,9 +53,9 @@ UI hooks are unchanged: `btcClient` → `/api/btc/*` → `btcServer` → provide
 
 | `BTC_PROVIDER` | Behavior |
 |----------------|----------|
-| `coinbase` (default) | Coinbase only |
+| unset / `auto` (default) | Coinbase → Kraken → fallback |
+| `coinbase` | Coinbase only |
 | `kraken` | Kraken only |
-| `auto` | Coinbase → Kraken → fallback |
 
 Selection is centralized in `resolveBtcProvider()` (`providers/index.ts`).
 
