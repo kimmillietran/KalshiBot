@@ -12,16 +12,20 @@ import {
 import { formatFeedTime, formatSignedDistance } from "@/features/btc-feed/utils";
 import {
   MarketStatusBadge,
-  FALLBACK_MARKET_TICKER,
   useActiveBtcMarket,
 } from "@/features/market-data";
-import { formatMarketContractQuestion } from "@/features/trading-dashboard/utils";
+import {
+  formatMarketContractIdTooltip,
+  formatMarketContractQuestion,
+  formatMarketSubtitle,
+} from "@/features/trading-dashboard/utils";
 import {
   iconSize,
   labelClass,
   panelGap,
   panelPadding,
   surfaces,
+  textCaption,
   textCommandPrice,
   textMonoValue,
   textSectionValue,
@@ -41,6 +45,12 @@ export function CommandBar() {
     market.expirationFormatted,
     { noMarket: market.noMarket },
   );
+
+  const marketSubtitle = formatMarketSubtitle(market.ticker, {
+    noMarket: market.noMarket,
+  });
+
+  const contractIdTooltip = formatMarketContractIdTooltip(market.ticker);
 
   return (
     <GlassPanel
@@ -83,9 +93,12 @@ export function CommandBar() {
         <div>
           <p className={labelClass()}>Contract</p>
           <p className={textSectionValue}>{marketQuestion}</p>
-          {!market.noMarket && market.ticker !== FALLBACK_MARKET_TICKER ? (
-            <p className="text-muted-foreground text-xs">{market.ticker}</p>
-          ) : null}
+          <p
+            className={cn(textCaption, "mt-0.5")}
+            title={contractIdTooltip}
+          >
+            {marketSubtitle}
+          </p>
         </div>
 
         <div className={cn("hidden h-8 sm:block", surfaces.verticalDivider)} />

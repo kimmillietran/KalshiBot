@@ -79,7 +79,7 @@ export function evaluate(
     phase: "guard",
     summary: "Active market required",
     outcome: "pass",
-    detail: market.ticker,
+    detail: "active contract resolved",
   });
 
   if (!isActiveLifecycle(market.lifecycle)) {

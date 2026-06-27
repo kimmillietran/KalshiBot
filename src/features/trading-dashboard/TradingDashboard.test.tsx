@@ -6,6 +6,8 @@ import {
   DECISION_ENGINE_PENDING_MESSAGE,
   MODEL_NOT_LIVE_LABEL,
 } from "@/features/trading-dashboard/constants";
+import { findRawTickerLeaksInContainer } from "@/features/trading-dashboard/tickerVisibility";
+import { liveMarket } from "@/test/test-utils";
 import { renderWithDashboard } from "@/test/test-utils";
 
 describe("TradingDashboard", () => {
@@ -29,6 +31,10 @@ describe("TradingDashboard", () => {
     await waitFor(() => {
       expect(screen.getByText(/Will BTC settle above \$59,990\.31 at/i)).toBeInTheDocument();
     });
+
+    expect(screen.getByText(/BTC 15m · Live Kalshi contract/i)).toBeInTheDocument();
+    expect(screen.queryByText(liveMarket.ticker)).not.toBeInTheDocument();
+    expect(findRawTickerLeaksInContainer(document.body)).toEqual([]);
 
     await waitFor(() => {
       expect(screen.getAllByText(/LIVE|FALLBACK|Loading BTC|ACTIVE|KALSHI|Above target|Below target/i).length).toBeGreaterThan(0);
