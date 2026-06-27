@@ -2,7 +2,7 @@
 
 AI-powered trading assistant for Kalshi BTC markets. Built in milestones.
 
-**Current:** Live BTC/USD feed (Milestone 3) + live Kalshi market discovery (Milestone 4A) + mock trading cockpit for odds/recommendations, design system, and test suite.
+**Current:** Live BTC/USD feed (M3) + Kalshi market discovery (4A) + TanStack Query server-state (4.5) + live Kalshi contract pricing (4B). Recommendation/edge cards remain mocked until Milestone 5.
 
 ## Engineering Standards
 
@@ -65,8 +65,11 @@ docs/
 | 2.5–2.6 | Design system + UI polish |
 | 3 | Live BTC price feed (Binance BFF, polling) |
 | 4A | Live Kalshi market discovery (metadata, target, countdown) |
-| 4B+ | Kalshi contract pricing, dynamic recommendations, auth, db, journal, analytics |
+| 4.5 | TanStack Query server-state foundation |
+| 4B | Live Kalshi contract pricing (YES/NO bid/ask, volume) |
+| 4.6 | BTC provider hardening (multi-provider, geo-restriction fix) |
+| 5+ | Dynamic recommendations, auth, db, journal, analytics |
 
 ## Intentionally deferred
 
-Kalshi contract pricing (YES/NO, bid/ask), dynamic AI recommendations, trade execution, auth, database, journal, analytics, WebSockets beyond current polling, TanStack Query, Zustand, Drizzle, Auth.js, Vercel AI SDK, Playwright e2e.
+Dynamic AI recommendations, trade execution, auth, database, journal, analytics, WebSockets beyond current polling, Zustand, Drizzle, Auth.js, Vercel AI SDK, Playwright e2e. See [technical debt](docs/technical-debt.md).
