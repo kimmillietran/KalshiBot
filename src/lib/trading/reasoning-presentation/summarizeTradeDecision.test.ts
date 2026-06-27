@@ -225,7 +225,18 @@ describe("summarizeTradeDecision", () => {
       "model-probability",
       "model-expected-value",
       "decision-policy",
+      "model-position-sizing",
     ]);
+  });
+
+  it("uses HOLD headline for hold decisions", () => {
+    const decision = buyUpDecision();
+    const holdDecision = { ...decision, action: "HOLD" as const };
+    const presentation = summarizeTradeDecision(holdDecision);
+
+    expect(presentation.headline).toBe(
+      DEFAULT_REASONING_PRESENTATION_CONFIG.headlineHold,
+    );
   });
 
   it("is deterministic for identical inputs", () => {
@@ -244,6 +255,20 @@ describe("summarizeTradeDecision", () => {
     expect(trace.find((step) => step.id === "model-probability")?.label).toBe(
       "Probability model",
     );
+  });
+
+  it("falls back to step summary for unknown trace step ids", () => {
+    const trace = formatReasoningTrace([
+      {
+        id: "custom-unknown-step",
+        phase: "model",
+        summary: "Custom summary label",
+        outcome: "pass",
+        detail: "detail",
+      },
+    ]);
+
+    expect(trace[0]?.label).toBe("Custom summary label");
   });
 
   it("does not invent unavailable model values", () => {

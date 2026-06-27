@@ -44,3 +44,11 @@ const presentation = summarizeTradeDecision(decision);
 ```
 
 Replace or augment raw `decision.reasoning` rendering in `AIReasoningPanel` when milestone lands.
+
+## Quality gates
+
+```bash
+npm run lint
+npm run test
+npm run build
+```
