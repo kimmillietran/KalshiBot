@@ -68,7 +68,7 @@ docs/
 | 4.5 | TanStack Query server-state foundation |
 | 4B | Live Kalshi contract pricing (YES/NO bid/ask, volume) |
 | 4.6 | BTC provider abstraction (Coinbase default, typed BFF errors) — **complete** |
-| 4.6B | Provider chain, Kraken failover, health/metrics — **complete** (pending merge) |
+| 4.6B | Provider chain, Kraken failover, health/metrics — **complete** |
 | 5+ | Dynamic recommendations, auth, db, journal, analytics |
 
 ## Intentionally deferred
