@@ -2,6 +2,10 @@ import { describe, expect, it } from "vitest";
 
 import { DEFAULT_ENGINE_CONFIG } from "@/lib/trading/config/defaults";
 import { hashConfig } from "@/lib/trading/config/hashConfig";
+import {
+  estimateExpectedValue,
+  EXPECTED_VALUE_MODEL_VERSION,
+} from "@/lib/trading/expected-value";
 import { evaluate } from "@/lib/trading/evaluate";
 import { GUARD_STEP_ORDER } from "@/lib/trading/guards/evaluationGuards";
 import {
@@ -10,6 +14,8 @@ import {
 } from "@/lib/trading/probability";
 import { MarketLifecycle } from "@/lib/trading/snapshot/types";
 import { ENGINE_VERSION } from "@/lib/trading/versioning";
+import type { MarketFeatureVector } from "@/lib/features/types";
+import type { ProbabilityEstimate } from "@/lib/trading/probability/types";
 import type { EvaluationSnapshot } from "@/types/domain/trading";
 
 const EVALUATED_AT = "2026-06-26T12:00:00.000Z";
@@ -54,21 +60,50 @@ function createValidSnapshot(
   };
 }
 
+function expectedValueInput(
+  snapshot: EvaluationSnapshot,
+  features: MarketFeatureVector,
+  probability: ProbabilityEstimate,
+) {
+  const pricing = snapshot.pricing!;
+  return {
+    probability,
+    features,
+    pricing: {
+      yesBidCents: pricing.yesBidCents,
+      yesAskCents: pricing.yesAskCents,
+      noBidCents: pricing.noBidCents,
+      noAskCents: pricing.noAskCents,
+    },
+  };
+}
+
 describe("evaluate", () => {
-  it("returns NO TRADE with features and probability when guards pass", () => {
-    const decision = evaluate(createValidSnapshot(), DEFAULT_ENGINE_CONFIG);
+  it("returns NO TRADE with features, probability, and expectedValue when guards pass", () => {
+    const snapshot = createValidSnapshot();
+    const decision = evaluate(snapshot, DEFAULT_ENGINE_CONFIG);
     expect(decision.action).toBe("NO TRADE");
     expect(decision.features).not.toBeNull();
     expect(decision.probability).not.toBeNull();
+    expect(decision.expectedValue).not.toBeNull();
     expect(decision.probability).toEqual(
       estimateProbability(decision.features!),
     );
+    expect(decision.expectedValue).toEqual(
+      estimateExpectedValue(
+        expectedValueInput(snapshot, decision.features!, decision.probability!),
+      ),
+    );
     expect(decision.probability?.modelVersion).toBe(PROBABILITY_MODEL_VERSION);
+    expect(decision.expectedValue?.modelVersion).toBe(
+      EXPECTED_VALUE_MODEL_VERSION,
+    );
     expect(decision.gatesTriggered).toBeUndefined();
     expect(decision.reasoning.steps.map((s) => s.id)).toEqual([
       ...GUARD_STEP_ORDER,
       "feature-extraction",
       "model-probability",
+      "model-expected-value",
       "decision-stub",
     ]);
     const probabilityStep = decision.reasoning.steps.find(
@@ -76,20 +111,33 @@ describe("evaluate", () => {
     );
     expect(probabilityStep?.outcome).toBe("pass");
     expect(probabilityStep?.detail).toContain("p(up)=");
+    const expectedValueStep = decision.reasoning.steps.find(
+      (step) => step.id === "model-expected-value",
+    );
+    expect(expectedValueStep?.outcome).toBe("pass");
+    expect(expectedValueStep?.detail).toBe(decision.expectedValue?.reasoning.summary);
+    expect(expectedValueStep?.detail).toContain("Expected value");
+    const decisionStub = decision.reasoning.steps.find(
+      (step) => step.id === "decision-stub",
+    );
+    expect(decisionStub?.outcome).toBe("skip");
   });
 
-  it("returns gatesTriggered and null probability on failure", () => {
+  it("returns gatesTriggered and null model outputs on failure", () => {
     const decision = evaluate(createValidSnapshot({ market: null }), DEFAULT_ENGINE_CONFIG);
     expect(decision.gatesTriggered).toEqual(["guard-market-present"]);
     expect(decision.features).toBeNull();
     expect(decision.probability).toBeNull();
+    expect(decision.expectedValue).toBeNull();
   });
 
-  it("maps the same snapshot to the same probability on repeat evaluation", () => {
+  it("maps the same snapshot to the same probability and expectedValue on repeat evaluation", () => {
     const snapshot = createValidSnapshot();
     const first = evaluate(snapshot, DEFAULT_ENGINE_CONFIG);
     const second = evaluate(snapshot, DEFAULT_ENGINE_CONFIG);
     expect(second.probability).toEqual(first.probability);
+    expect(second.expectedValue).toEqual(first.expectedValue);
+    expect(second).toEqual(first);
   });
 
   it("includes engine metadata", () => {
@@ -165,5 +213,8 @@ describe("evaluate", () => {
     const decision = evaluate(createValidSnapshot(overrides), DEFAULT_ENGINE_CONFIG);
     expect(decision.action).toBe("NO TRADE");
     expect(decision.gatesTriggered).toEqual([gateId]);
+    expect(decision.features).toBeNull();
+    expect(decision.probability).toBeNull();
+    expect(decision.expectedValue).toBeNull();
   });
 });

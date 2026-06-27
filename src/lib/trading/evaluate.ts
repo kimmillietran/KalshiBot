@@ -1,4 +1,6 @@
 import { hashConfig } from "@/lib/trading/config/hashConfig";
+import { estimateExpectedValue } from "@/lib/trading/expected-value";
+import type { ExpectedValueEstimate } from "@/lib/trading/expected-value/types";
 import { extractFeaturesFromSnapshot } from "@/lib/trading/features/extractFeatures";
 import {
   runEvaluationGuards,
@@ -10,6 +12,7 @@ import { ENGINE_VERSION } from "@/lib/trading/versioning";
 import type { MarketFeatureVector } from "@/lib/features/types";
 import type {
   EngineConfig,
+  EvaluationPricingSnapshot,
   EvaluationSnapshot,
   ReasoningStep,
   TradeDecision,
@@ -23,10 +26,16 @@ function buildDecision(
   options: {
     features?: MarketFeatureVector | null;
     probability?: ProbabilityEstimate | null;
+    expectedValue?: ExpectedValueEstimate | null;
     gatesTriggered?: readonly GuardStepId[];
   } = {},
 ): TradeDecision {
-  const { features = null, probability = null, gatesTriggered } = options;
+  const {
+    features = null,
+    probability = null,
+    expectedValue = null,
+    gatesTriggered,
+  } = options;
 
   return {
     action: "NO TRADE",
@@ -36,6 +45,7 @@ function buildDecision(
     evaluatedAt: snapshot.evaluatedAt,
     features,
     probability,
+    expectedValue,
     ...(gatesTriggered ? { gatesTriggered } : {}),
   };
 }
@@ -60,7 +70,16 @@ function formatProbabilitySummary(estimate: ProbabilityEstimate): string {
   ].join(" ");
 }
 
-/** Pure engine: guards + features + probability estimate + NO TRADE stub. */
+function toExpectedValuePricing(pricing: EvaluationPricingSnapshot) {
+  return {
+    yesBidCents: pricing.yesBidCents,
+    yesAskCents: pricing.yesAskCents,
+    noBidCents: pricing.noBidCents,
+    noAskCents: pricing.noAskCents,
+  };
+}
+
+/** Pure engine: guards + features + probability + expected value + NO TRADE stub. */
 export function evaluate(
   snapshot: EvaluationSnapshot,
   config: EngineConfig,
@@ -97,6 +116,21 @@ export function evaluate(
     outcome: "pass",
     detail: formatProbabilitySummary(probability),
   });
+
+  const pricing = snapshot.pricing!;
+  const expectedValue = estimateExpectedValue({
+    probability,
+    features,
+    pricing: toExpectedValuePricing(pricing),
+  });
+
+  steps.push({
+    id: "model-expected-value",
+    phase: "model",
+    summary: "Expected value",
+    outcome: "pass",
+    detail: expectedValue.reasoning.summary,
+  });
   steps.push({
     id: "decision-stub",
     phase: "execution",
@@ -109,7 +143,7 @@ export function evaluate(
     snapshot,
     config,
     steps,
-    "Guards passed — features extracted — probability estimated — engine returns NO TRADE",
-    { features, probability },
+    "Guards passed — features extracted — probability and EV estimated — engine returns NO TRADE",
+    { features, probability, expectedValue },
   );
 }
