@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import {
+  BtcProviderChainError,
   BtcProviderMalformedResponseError,
   BtcProviderNetworkError,
   BtcProviderRateLimitError,
@@ -32,6 +33,11 @@ function mapBtcErrorToResponse(err: unknown) {
   if (err instanceof BtcProviderNetworkError) {
     console.error("[btc] network error:", err.message);
     return NextResponse.json({ error: err.message }, { status: 500 });
+  }
+
+  if (err instanceof BtcProviderChainError) {
+    console.error("[btc] all providers failed:", err.message);
+    return NextResponse.json({ error: err.message }, { status: 502 });
   }
 
   const message = err instanceof Error ? err.message : "Failed to fetch BTC price";

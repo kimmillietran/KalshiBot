@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { fetchBtcCandleHistory } from "@/features/btc-feed/api/btcServer";
-import { COINBASE_EXCHANGE_API_BASE } from "@/features/btc-feed/providers";
+import { COINBASE_EXCHANGE_API_BASE, resetDefaultBtcProviderCache } from "@/features/btc-feed/providers";
 import { coinbaseCandlesFixture } from "@/features/btc-feed/providers/fixtures/coinbaseCandles.fixture";
 
 import { GET } from "./route";
@@ -17,11 +17,15 @@ describe("GET /api/btc/candles integration", () => {
   let fetchMock: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
+    resetDefaultBtcProviderCache();
+    delete process.env.BTC_PROVIDER;
     fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
   });
 
   afterEach(() => {
+    resetDefaultBtcProviderCache();
+    delete process.env.BTC_PROVIDER;
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
   });

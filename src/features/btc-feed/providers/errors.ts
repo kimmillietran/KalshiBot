@@ -40,3 +40,26 @@ export class BtcProviderNetworkError extends Error {
     this.name = "BtcProviderNetworkError";
   }
 }
+
+/** Every provider in a composite chain failed. */
+export class BtcProviderChainError extends Error {
+  readonly failures: ReadonlyArray<{ providerId: string; error: unknown }>;
+
+  constructor(failures: Array<{ providerId: string; error: unknown }>) {
+    const summary = failures
+      .map(({ providerId, error }) => {
+        const message =
+          error instanceof Error ? error.message : String(error);
+        return `${providerId}: ${message}`;
+      })
+      .join("; ");
+
+    super(
+      failures.length === 0
+        ? "All BTC providers failed"
+        : `All BTC providers failed: ${summary}`,
+    );
+    this.name = "BtcProviderChainError";
+    this.failures = failures;
+  }
+}

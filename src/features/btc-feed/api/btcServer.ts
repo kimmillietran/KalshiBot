@@ -1,6 +1,7 @@
 import { BTC_CANDLES_LIMIT } from "../constants";
 import type { BtcCandlesResponse, BtcPriceResponse } from "../types";
 import {
+  BtcProviderChainError,
   BtcProviderMalformedResponseError,
   BtcProviderNetworkError,
   BtcProviderRateLimitError,
@@ -11,6 +12,7 @@ import {
 } from "../providers";
 
 export {
+  BtcProviderChainError,
   BtcProviderMalformedResponseError,
   BtcProviderNetworkError,
   BtcProviderRateLimitError,
