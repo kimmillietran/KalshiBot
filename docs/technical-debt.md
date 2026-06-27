@@ -131,12 +131,27 @@ Tracked intentionally — not silent accumulation. Review at each milestone clos
 | No Kelly position sizing module | `estimatePositionSize()` in `src/lib/trading/position-sizing/` — fractional Kelly, confidence dampening, min/max gates |
 | No `PositionSizeEstimate` type | `recommendedFraction`, `recommendedDollars`, `rawKellyFraction`, reasoning metadata |
 
-## Outstanding (5.7B+)
+## Resolved in 5.7B
+
+| Issue | Resolution |
+|-------|------------|
+| Position sizing not wired into engine | `evaluate()` calls `estimatePositionSize()` after decision policy |
+| `TradeDecision` missing position size | `positionSize: PositionSizeEstimate \| null` on domain type |
+| Engine version stale | `ENGINE_VERSION` → `5.7.0` |
+
+## Resolved in 5.8A
+
+| Issue | Resolution |
+|-------|------------|
+| No reasoning presentation module | `summarizeTradeDecision()` in `src/lib/trading/reasoning-presentation/` |
+| Raw trace not UI-ready | `ReasoningPresentation` with headline, summary, risk notes, technical trace |
+
+## Outstanding (5.8B+)
 
 | Issue | Priority | Reason | Suggested fix | Milestone |
 |-------|----------|--------|---------------|-----------|
-| **Position sizing engine wiring** | Medium | `evaluate()` does not attach sizing | Wire after decision policy | **5.7B** |
-| **Dashboard position sizing display** | Medium | No sizing UI | Wire `TradeDecision.positionSize` to panels | **5.7C+** |
+| **Dashboard reasoning integration** | Medium | UI still uses raw `reasoning.steps` | Wire `summarizeTradeDecision()` to `AIReasoningPanel` | **5.8B** |
+| **Bankroll source/config** | Medium | `recommendedDollars` null without bankroll input | User config or settings milestone | **Backlog** |
 
 ## Minor follow-ups (5.3A)
 
@@ -213,6 +228,13 @@ Tracked intentionally — not silent accumulation. Review at each milestone clos
 | Edge-at-threshold documentation | Low | Covered in PR-5.7A; optional inline comment |
 | Future portfolio exposure limits | Low | Multi-contract cap deferred to backlog |
 
+## Minor follow-ups (5.8A)
+
+| Issue | Priority | Suggested fix |
+|-------|----------|---------------|
+| Invalid bankroll test | Low | Assert zero/negative bankroll in position-sizing tests |
+| Edge-at-threshold inline doc | Low | PR-5.7A covers; optional comment in module |
+
 ## Other outstanding
 
 | Issue | Priority | Reason | Suggested fix | Milestone |
@@ -227,4 +249,4 @@ Tracked intentionally — not silent accumulation. Review at each milestone clos
 
 ## Health impact
 
-After Milestone 5.7A → **Technical Debt: Low** (Kelly sizing module complete; engine wiring and dashboard display remain for 5.7B+).
+After Milestone 5.8A → **Technical Debt: Low** (full engine through position sizing + reasoning presentation module; dashboard integration remains for 5.8B).
