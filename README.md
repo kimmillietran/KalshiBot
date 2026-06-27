@@ -2,7 +2,7 @@
 
 AI-powered trading assistant for Kalshi BTC markets. Built in milestones.
 
-**Current:** Live BTC/Kalshi feeds (4.6B) + trading engine (5.0–5.1) + feature builder (5.2) + feature-vector integration (5.3A) + guard layer (5.3B). Fifteen evaluation guards with loading/error/stale/fallback protection; `gatesTriggered` on guard failures; decisions remain `NO TRADE` until probability model (5.4+).
+**Current:** Live BTC/Kalshi feeds (4.6B) + trading engine (5.0–5.1) + feature builder (5.2) + feature-vector integration (5.3A) + guard layer (5.3B) + probability model (5.4A) + engine wiring (5.4B). `evaluate()` runs guards → features → `estimateProbability()`; `TradeDecision.probability` populated on success; decisions remain `NO TRADE` until EV/policy (5.5+).
 
 ## Engineering Standards
 
@@ -76,7 +76,9 @@ docs/
 | 5.1 | Engine snapshot wiring + dashboard integration — **complete** |
 | 5.3A | Feature vector integration (`TradeDecision.features`) — **complete** |
 | 5.3B | Engine guard layer (`runEvaluationGuards`, 15 guards, `gatesTriggered`) — **complete** |
-| 5.4+ | Probability model, EV, Kelly, policy, auth, db, journal |
+| 5.4A | Deterministic probability model (`estimateProbability`) — **complete** |
+| 5.4B | Engine probability wiring (`TradeDecision.probability`, `ENGINE_VERSION` 5.4.0) — **complete** |
+| 5.5+ | Expected value, decision policy, Kelly, dashboard probability UI, auth, db, journal |
 
 ## Intentionally deferred
 

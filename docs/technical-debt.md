@@ -67,14 +67,29 @@ Tracked intentionally — not silent accumulation. Review at each milestone clos
 | Settlement / spread / liquidity not config-enforced | `guard-settlement-window`, `guard-spread-maximum`, `guard-liquidity-minimum` |
 | `gatesTriggered` for programmatic consumers | `TradeDecision.gatesTriggered?: readonly GuardStepId[]` |
 
-## Outstanding (5.4+)
+## Resolved in 5.4A
+
+| Issue | Resolution |
+|-------|------------|
+| No deterministic probability model | `estimateProbability()` in `src/lib/trading/probability/` — distance, momentum, volatility, trend, time decay |
+| No `ProbabilityEstimate` type | `probabilityUp` / `probabilityDown` / `confidence` / `modelVersion` in `probability/types.ts` |
+
+## Resolved in 5.4B
+
+| Issue | Resolution |
+|-------|------------|
+| Probability not wired into engine | `evaluate()` calls `estimateProbability(features)` after feature extraction |
+| `TradeDecision` missing probability | `probability: ProbabilityEstimate \| null` on domain type |
+| Engine version stale | `ENGINE_VERSION` → `5.4.0` |
+
+## Outstanding (5.5+)
 
 | Issue | Priority | Reason | Suggested fix | Milestone |
 |-------|----------|--------|---------------|-----------|
-| **Probability model** | High | No fair-value / implied probability; decisions still `NO TRADE` | Deterministic model in `src/lib/trading/` | **5.4** |
-| **EV calculation** | Medium | No expected-value from model vs market prices | Add after probability model | **5.4+** |
-| **Kelly sizing** | Medium | No position sizing from edge | Add after EV | **5.4+** |
-| **Recommendation policy** | Medium | No BUY UP/DOWN selection from edge | Add after Kelly | **5.4+** |
+| **Expected Value calculation** | High | No EV from model probability vs market prices | `calculateExpectedValue()` in `src/lib/trading/` | **5.5** |
+| **Decision policy** | Medium | No BUY UP/DOWN selection from edge | Add after EV | **5.6** |
+| **Kelly sizing** | Medium | No position sizing from edge | Add after policy | **5.7** |
+| **Dashboard probability rendering** | Medium | UI still placeholder; engine carries probability | Wire `TradeDecision.probability` to panels | **5.5+** |
 
 ## Minor follow-ups (5.3A)
 
@@ -93,6 +108,14 @@ Tracked intentionally — not silent accumulation. Review at each milestone clos
 | Zero-spread explicit regression test | Low | Optional coverage in `guards/pricing.test.ts` |
 | `GuardStepId` in trading types | Low | Optional relocation to `src/types/domain/` |
 
+## Minor follow-ups (5.4B)
+
+| Issue | Priority | Suggested fix |
+|-------|----------|---------------|
+| Explicit `decision-stub` outcome assertion | Low | Assert `outcome: "skip"` in `evaluate.test.ts` |
+| `ProbabilityEstimate` layering cleanup | Low | Consider re-export via domain types barrel |
+| `ProbabilityModelConfig` on `EngineConfig` | Low | Wire config when model tuning is needed |
+
 ## Other outstanding
 
 | Issue | Priority | Reason | Suggested fix | Milestone |
@@ -107,4 +130,4 @@ Tracked intentionally — not silent accumulation. Review at each milestone clos
 
 ## Health impact
 
-After Milestone 5.3B → **Technical Debt: Low** (guard layer complete; probability stack remains for 5.4+).
+After Milestone 5.4B → **Technical Debt: Low** (probability model wired; EV/policy stack remains for 5.5+).
