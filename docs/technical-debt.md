@@ -146,11 +146,26 @@ Tracked intentionally — not silent accumulation. Review at each milestone clos
 | No reasoning presentation module | `summarizeTradeDecision()` in `src/lib/trading/reasoning-presentation/` |
 | Raw trace not UI-ready | `ReasoningPresentation` with headline, summary, risk notes, technical trace |
 
-## Outstanding (5.8B+)
+## Resolved in 5.7C
+
+| Issue | Resolution |
+|-------|------------|
+| Dashboard position sizing placeholder | `PositionSizeSummary` + `TradeManagementPanel` render `TradeDecision.positionSize` |
+| Kelly math in React | `positionSizingDisplay.ts` formatters only — no sizing calculations in UI |
+| Unavailable vs zero sizing conflated | Distinct copy for guard failure, bankroll unavailable, and policy zero allocation |
+
+## Resolved in 5.8B
+
+| Issue | Resolution |
+|-------|------------|
+| Dashboard reasoning integration | `AIReasoningPanel` calls `summarizeTradeDecision()` — headline, summary, risk notes |
+| Raw trace only in UI | Expandable `TechnicalTraceList` for full engine reasoning steps |
+| `AIReasoningPanel` untested | Dedicated tests for BUY UP/DOWN, NO TRADE, guard failure, snapshot coverage |
+
+## Outstanding (post-5.8B)
 
 | Issue | Priority | Reason | Suggested fix | Milestone |
 |-------|----------|--------|---------------|-----------|
-| **Dashboard reasoning integration** | Medium | UI still uses raw `reasoning.steps` | Wire `summarizeTradeDecision()` to `AIReasoningPanel` | **5.8B** |
 | **Bankroll source/config** | Medium | `recommendedDollars` null without bankroll input | User config or settings milestone | **Backlog** |
 
 ## Minor follow-ups (5.3A)
@@ -228,6 +243,20 @@ Tracked intentionally — not silent accumulation. Review at each milestone clos
 | Edge-at-threshold documentation | Low | Covered in PR-5.7A; optional inline comment |
 | Future portfolio exposure limits | Low | Multi-contract cap deferred to backlog |
 
+## Minor follow-ups (5.7C)
+
+| Issue | Priority | Suggested fix |
+|-------|----------|---------------|
+| BUY with zero allocation vs policy NO TRADE wording | Low | Clarify guidance copy in `positionSizingDisplay.ts` |
+| "Kelly Fraction" label precision | Low | Consider "Capped Fraction" label for capped Kelly output |
+
+## Minor follow-ups (5.8B)
+
+| Issue | Priority | Suggested fix |
+|-------|----------|---------------|
+| `MarketStructurePanel` dedicated test | Low | Assert feature rows from `engineDecisions` fixture |
+| BUY UP dashboard smoke test | Low | Extend `TradingDashboard.test.tsx` for bullish action |
+
 ## Minor follow-ups (5.8A)
 
 | Issue | Priority | Suggested fix |
@@ -249,4 +278,4 @@ Tracked intentionally — not silent accumulation. Review at each milestone clos
 
 ## Health impact
 
-After Milestone 5.8A → **Technical Debt: Low** (full engine through position sizing + reasoning presentation module; dashboard integration remains for 5.8B).
+After Milestone 5.8B → **Technical Debt: Low** (full engine pipeline + complete dashboard integration; bankroll config and execution remain backlog).

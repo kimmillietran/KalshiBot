@@ -13,11 +13,12 @@ trading-dashboard/
     MarketOddsPanel.tsx    # live Kalshi odds (4B)
     ProbabilityEdgePanel.tsx # probability + expected value from engine
     MarketStructurePanel.tsx # feature vector from engine
-    TradeManagementPanel.tsx # preview rows (no execution)
-    AIReasoningPanel.tsx   # reasoning trace from engine
+    TradeManagementPanel.tsx # position sizing preview (no execution)
+    AIReasoningPanel.tsx   # summarizeTradeDecision() presentation
     decision/              # presentation-only decision subcomponents
   formatting/
     decisionDisplay.ts     # action tones, formatters (no business logic)
+    positionSizingDisplay.ts # Kelly fraction / dollars formatters (no math)
   hooks/
     useTradeDecision.ts    # build snapshot → evaluate()
   mapping/
@@ -32,8 +33,9 @@ trading-dashboard/
 
 **Live:** `btc-feed`, `market-data` (CommandBar, chart, MarketOddsPanel).
 
-**Engine-connected (5.6C):** Dashboard renders live `TradeDecision` output — `action`,
-`probability`, `expectedValue`, `features`, and `reasoning`. React components are
-presentation-only; all trading logic stays in `src/lib/trading/`.
+**Engine-connected (5.6C–5.8B):** Dashboard renders live `TradeDecision` output —
+`action`, `probability`, `expectedValue`, `positionSize`, `features`, and
+`summarizeTradeDecision()` reasoning (headline, summary, risk notes, technical trace).
+React components are presentation-only; all trading logic stays in `src/lib/trading/`.
 
-**Still deferred:** Kelly sizing, position sizing UI, trade execution, LLM narrative.
+**Still deferred:** Trade execution, bankroll config, LLM narrative.
