@@ -1,0 +1,22 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`AIReasoningPanel > matches snapshot for BUY UP presentation structure 1`] = `
+{
+  "headline": "Bullish outlook — BUY UP",
+  "primaryReason": "action=BUY_UP side=yes reason=BUY_UP · confidence=72% (min 50%) · edge YES +16.02% · edge NO -11.50% (min 5.00%) · net EV YES 7.21¢ · net EV NO -6.21¢ · qualifies YES=true NO=false",
+  "riskNoteCount": 1,
+  "sectionTitles": [
+    "Headline",
+    "Bullish outlook — BUY UP",
+    "Summary",
+    "Guards passed — features extracted — probability, EV, policy, and sizing complete — policy returns BUY UP",
+    "Primary Reason",
+    "action=BUY_UP side=yes reason=BUY_UP · confidence=72% (min 50%) · edge YES +16.02% · edge NO -11.50% (min 5.00%) · net EV YES 7.21¢ · net EV NO -6.21¢ · qualifies YES=true NO=false",
+    "Supporting Reasons",
+    "Risk Notes",
+  ],
+  "summary": "Guards passed — features extracted — probability, EV, policy, and sizing complete — policy returns BUY UP",
+  "supportingReasonCount": 5,
+  "traceStepCount": 20,
+}
+`;
