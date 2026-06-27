@@ -45,6 +45,7 @@ export {
   REASONING_PRESENTATION_MODEL_VERSION,
   REASONING_STEP_LABELS,
 } from "@/lib/trading/reasoning-presentation";
+export { resolveBankroll, BANKROLL_MODEL_VERSION } from "@/lib/trading/bankroll";
 
 export type {
   EstimateExpectedValueInput,
@@ -79,6 +80,8 @@ export type {
   ReasoningTraceItem,
   SummarizeTradeDecisionInput,
 } from "@/lib/trading/reasoning-presentation";
+
+export type { BankrollConfig, ResolvedBankroll } from "@/lib/trading/bankroll";
 
 export type {
   BtcFeedStatus,
