@@ -1,4 +1,4 @@
-import type { ExpectedValueEstimate } from "./types";
+import type { ExpectedValueEstimate } from "../types";
 
 /** Golden fixture for regression — P(up)=0.74 vs 63¢ YES ask. */
 export const goldenExpectedValueEstimate: ExpectedValueEstimate = {

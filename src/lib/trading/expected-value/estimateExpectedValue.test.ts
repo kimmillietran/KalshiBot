@@ -277,14 +277,15 @@ describe("estimateExpectedValue", () => {
   });
 
   it("breaks equal non-zero EV ties in favor of YES", () => {
+    // p = (100 + yesAsk - noAsk) / 200 => equal gross EV on both sides (12.5¢ at 50/25 asks).
     const estimate = estimateExpectedValue({
-      probability: mockProbability({ probabilityUp: 0.74, probabilityDown: 0.26 }),
+      probability: mockProbability({ probabilityUp: 0.625, probabilityDown: 0.375 }),
       features: buildMarketFeatureVector(createFeatureInput()),
-      pricing: { yesBidCents: 62, yesAskCents: 63, noBidCents: 14, noAskCents: 15 },
+      pricing: { yesBidCents: 48, yesAskCents: 50, noBidCents: 23, noAskCents: 25 },
     });
 
-    expect(estimate.netEvYesCents).toBeCloseTo(estimate.netEvNoCents, 10);
-    expect(estimate.netEvYesCents).toBeCloseTo(11, 10);
+    expect(estimate.netEvYesCents).toBe(12.5);
+    expect(estimate.netEvNoCents).toBe(12.5);
     expect(estimate.bestSide).toBe("yes");
   });
 
