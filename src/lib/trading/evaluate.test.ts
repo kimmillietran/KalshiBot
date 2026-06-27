@@ -24,9 +24,16 @@ function createValidSnapshot(
     btc: {
       price: 64_100,
       change24hPercent: 1.2,
+      feedStatus: "live",
+      providerSource: "upstream",
+      candles: [{ timestamp: 1, close: 64_100 }],
     },
     pricing: {
+      yesBidCents: 62,
+      yesAskCents: 64,
       yesMidCents: 63,
+      noBidCents: 37,
+      noAskCents: 39,
       noMidCents: 38,
       liquidityQuality: "Good",
     },
@@ -120,6 +127,8 @@ describe("evaluate", () => {
       "guard-market-present",
       "guard-market-lifecycle",
       "guard-strike-present",
+      "guard-btc-present",
+      "guard-pricing-present",
       "model-probability",
       "decision-stub",
     ]);
@@ -153,5 +162,74 @@ describe("evaluate", () => {
       id: "guard-config-enabled",
       outcome: "fail",
     });
+  });
+
+  it("returns NO TRADE when BTC spot is missing", () => {
+    const decision = evaluate(
+      createValidSnapshot({ btc: null }),
+      DEFAULT_ENGINE_CONFIG,
+    );
+    expect(decision.action).toBe("NO TRADE");
+    expect(decision.reasoning.summary).toContain("Missing BTC spot");
+  });
+
+  it("returns NO TRADE when contract pricing is missing", () => {
+    const decision = evaluate(
+      createValidSnapshot({ pricing: null }),
+      DEFAULT_ENGINE_CONFIG,
+    );
+    expect(decision.action).toBe("NO TRADE");
+    expect(decision.reasoning.summary).toContain("Missing contract pricing");
+  });
+
+  it("returns NO TRADE when strike is zero", () => {
+    const decision = evaluate(
+      createValidSnapshot({
+        market: {
+          ticker: "KXBTC-26JUN26-T64225",
+          lifecycle: MarketLifecycle.ACTIVE,
+          strikePrice: 0,
+          timeRemainingMs: 600_000,
+          closeTime: "2026-06-26T12:15:00.000Z",
+        },
+      }),
+      DEFAULT_ENGINE_CONFIG,
+    );
+    expect(decision.action).toBe("NO TRADE");
+    expect(decision.reasoning.summary).toContain("Missing strike");
+  });
+
+  it("returns NO TRADE when lifecycle is UPCOMING", () => {
+    const decision = evaluate(
+      createValidSnapshot({
+        market: {
+          ticker: "KXBTC-26JUN26-T64225",
+          lifecycle: MarketLifecycle.UPCOMING,
+          strikePrice: 64_225,
+          timeRemainingMs: 600_000,
+          closeTime: "2026-06-26T12:15:00.000Z",
+        },
+      }),
+      DEFAULT_ENGINE_CONFIG,
+    );
+    expect(decision.action).toBe("NO TRADE");
+    expect(decision.reasoning.summary).toContain("Inactive market lifecycle");
+  });
+
+  it("returns NO TRADE when lifecycle is SETTLED", () => {
+    const decision = evaluate(
+      createValidSnapshot({
+        market: {
+          ticker: "KXBTC-26JUN26-T64225",
+          lifecycle: MarketLifecycle.SETTLED,
+          strikePrice: 64_225,
+          timeRemainingMs: 0,
+          closeTime: "2026-06-26T12:15:00.000Z",
+        },
+      }),
+      DEFAULT_ENGINE_CONFIG,
+    );
+    expect(decision.action).toBe("NO TRADE");
+    expect(decision.reasoning.summary).toContain("Inactive market lifecycle");
   });
 });

@@ -1,10 +1,12 @@
-/** Shown on panels that still use static mock data until Milestone 5. */
+/** Shown on panels wired to the engine but awaiting probability model. */
 export const MODEL_NOT_LIVE_LABEL = "Model not live yet";
 
-/** Copy for recommendation / reasoning placeholders. */
-export const DECISION_ENGINE_PENDING_MESSAGE =
-  "Decision engine pending Milestone 5.";
+/** Copy when the decision engine is connected to live feeds. */
+export const DECISION_ENGINE_CONNECTED_MESSAGE = "Decision engine connected";
+
+/** @deprecated Use DECISION_ENGINE_CONNECTED_MESSAGE */
+export const DECISION_ENGINE_PENDING_MESSAGE = DECISION_ENGINE_CONNECTED_MESSAGE;
 
 /** Copy for probability / edge placeholder panel. */
 export const PROBABILITY_MODEL_PENDING_MESSAGE =
-  "Fair-value and edge estimates will appear here once the Milestone 5 engine is integrated. Use Kalshi Market Odds for live contract pricing.";
+  "Fair-value and edge estimates will appear once the probability model ships. Use Kalshi Market Odds for live contract pricing.";

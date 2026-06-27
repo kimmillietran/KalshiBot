@@ -27,13 +27,33 @@ export type EvaluationMarketSnapshot = {
   closeTime: string | null;
 };
 
+export type BtcFeedStatus =
+  | "loading"
+  | "live"
+  | "stale"
+  | "error"
+  | "fallback";
+
+export type EvaluationCandleSnapshot = {
+  timestamp: number;
+  close: number;
+};
+
 export type EvaluationBtcSnapshot = {
   price: number;
   change24hPercent: number | null;
+  feedStatus: BtcFeedStatus;
+  /** `fallback` when demo price is used; `upstream` when live BFF data is active. */
+  providerSource: "fallback" | "upstream" | "unknown";
+  candles: readonly EvaluationCandleSnapshot[];
 };
 
 export type EvaluationPricingSnapshot = {
+  yesBidCents: number | null;
+  yesAskCents: number | null;
   yesMidCents: number | null;
+  noBidCents: number | null;
+  noAskCents: number | null;
   noMidCents: number | null;
   liquidityQuality: LiquidityQuality;
 };

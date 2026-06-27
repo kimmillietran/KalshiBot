@@ -1,5 +1,7 @@
 import { hashConfig } from "@/lib/trading/config/hashConfig";
 import {
+  hasBtcSpot,
+  hasContractPricing,
   hasMarket,
   hasStrike,
   isActiveLifecycle,
@@ -131,6 +133,57 @@ export function evaluate(
     summary: "Strike price required",
     outcome: "pass",
     detail: String(market.strikePrice),
+  });
+
+  if (!hasBtcSpot(snapshot)) {
+    steps.push({
+      id: "guard-btc-present",
+      phase: "guard",
+      summary: "BTC spot price required",
+      outcome: "fail",
+      detail: snapshot.btc === null ? "snapshot.btc is null" : "invalid price",
+    });
+    return buildDecision(
+      snapshot,
+      config,
+      steps,
+      "Missing BTC spot — no trade",
+    );
+  }
+
+  steps.push({
+    id: "guard-btc-present",
+    phase: "guard",
+    summary: "BTC spot price required",
+    outcome: "pass",
+    detail: String(snapshot.btc.price),
+  });
+
+  if (!hasContractPricing(snapshot)) {
+    steps.push({
+      id: "guard-pricing-present",
+      phase: "guard",
+      summary: "Contract pricing required",
+      outcome: "fail",
+      detail:
+        snapshot.pricing === null
+          ? "snapshot.pricing is null"
+          : "no usable YES/NO quotes",
+    });
+    return buildDecision(
+      snapshot,
+      config,
+      steps,
+      "Missing contract pricing — no trade",
+    );
+  }
+
+  steps.push({
+    id: "guard-pricing-present",
+    phase: "guard",
+    summary: "Contract pricing required",
+    outcome: "pass",
+    detail: "YES/NO quotes available",
   });
 
   steps.push({

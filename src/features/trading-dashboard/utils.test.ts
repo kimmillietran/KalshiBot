@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { formatMarketContractQuestion } from "./utils";
+import {
+  formatMarketContractQuestion,
+  formatMarketDisplayName,
+  formatMarketSubtitle,
+  isRawKalshiTicker,
+} from "./utils";
 
 describe("formatMarketContractQuestion", () => {
   it("formats live contract question with target and expiration", () => {
@@ -19,5 +24,29 @@ describe("formatMarketContractQuestion", () => {
     expect(
       formatMarketContractQuestion(64_225, "12:45 PM", { noMarket: true }),
     ).toBe("No active Kalshi BTC contract");
+  });
+});
+
+describe("formatMarketSubtitle", () => {
+  it("returns a friendly subtitle instead of the raw ticker", () => {
+    expect(formatMarketSubtitle("KXBTC15M-26JUN270030-30")).toBe(
+      "BTC 15m · Live Kalshi contract",
+    );
+    expect(formatMarketDisplayName("KXBTC15M-26JUN270030-30")).toBe(
+      "BTC 15m · Live Kalshi contract",
+    );
+  });
+
+  it("handles no active market", () => {
+    expect(formatMarketSubtitle(null, { noMarket: true })).toBe(
+      "BTC 15m · No active contract",
+    );
+  });
+});
+
+describe("isRawKalshiTicker", () => {
+  it("detects Kalshi technical tickers", () => {
+    expect(isRawKalshiTicker("KXBTC15M-26JUN270030-30")).toBe(true);
+    expect(isRawKalshiTicker("Will BTC settle above $64,225?")).toBe(false);
   });
 });

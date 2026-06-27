@@ -33,19 +33,21 @@ Tracked intentionally — not silent accumulation. Review at each milestone clos
 | No deterministic trading engine | Pure `evaluate()` in `src/lib/trading/` with guard rails and reasoning trace |
 | No domain types for engine I/O | `src/types/domain/trading.ts` — snapshot, config, decision types |
 
-## Outstanding (5.1 follow-ups)
+## Resolved in 5.1
+
+| Issue | Resolution |
+|-------|------------|
+| Engine orchestrator / dashboard wiring | `buildEvaluationSnapshot()` + `useTradeDecision()` wire live feeds to `evaluate()` |
+| BTC/pricing presence guards | `guard-btc-present` and `guard-pricing-present` in `evaluate()` |
+| Invalid strike / lifecycle tests | Regression coverage in `evaluate.test.ts` |
+| `types/domain` README | `src/types/domain/README.md` |
+| MarketOddsPanel footer truthfulness | Fake Combined / Best Edge rows removed; deferred copy added |
+
+## Outstanding
 
 | Issue | Priority | Reason | Suggested fix | Milestone |
 |-------|----------|--------|---------------|-----------|
-| **Engine orchestrator / dashboard wiring** | High | Engine not connected to live feeds or UI panels | Map BTC/Kalshi into `EvaluationSnapshot`; wire recommendation panels | **5.1** |
-| **BTC/pricing presence guards** | Medium | Guards cover market/strike; missing explicit BTC spot + contract pricing presence checks | Extend snapshot guards in `evaluate()` | **5.1** |
-| **Invalid strike tests** | Low | Edge cases for zero/negative strike not fully covered | Add regression tests in `evaluate.test.ts` | **5.1** |
-| **UPCOMING / SETTLED lifecycle tests** | Low | Only ACTIVE guard path tested explicitly | Add lifecycle regression tests | **5.1** |
-| **`types/domain` README** | Low | Domain folder lacks orientation doc | Add `src/types/domain/README.md` | **5.1** |
-| **Optional `gatesTriggered` field** | Low | Reviewer suggestion for explicit guard output on decision | Add to `TradeDecision` if orchestrator needs it | **5.1** |
-| **MarketOddsPanel footer truthfulness** | Medium | Static "Combined / overround" and "Best Edge Side" rows look like model output | Remove, placeholder-label, or replace with engine output | **5.1** |
-
-## Other outstanding
+| **Optional `gatesTriggered` field** | Low | Reviewer suggestion for explicit guard output on decision | Add to `TradeDecision` if orchestrator needs it | Backlog |
 
 | Issue | Priority | Reason | Suggested fix | Milestone |
 |-------|----------|--------|---------------|-----------|
@@ -61,4 +63,4 @@ Tracked intentionally — not silent accumulation. Review at each milestone clos
 
 ## Health impact
 
-After Milestone 5.0 → **Technical Debt: Low–Medium** (engine foundation complete; wiring, guard hardening, and UI truthfulness remain for 5.1).
+After Milestone 5.1 → **Technical Debt: Low** (engine wired to dashboard; probability model and execution remain deferred).

@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  hasBtcSpot,
+  hasContractPricing,
   hasMarket,
   hasStrike,
   isActiveLifecycle,
@@ -18,8 +20,22 @@ describe("snapshot guards", () => {
       timeRemainingMs: 300_000,
       closeTime: null,
     },
-    btc: null,
-    pricing: null,
+    btc: {
+      price: 64_000,
+      change24hPercent: 1,
+      feedStatus: "live",
+      providerSource: "upstream",
+      candles: [],
+    },
+    pricing: {
+      yesBidCents: 60,
+      yesAskCents: 62,
+      yesMidCents: 61,
+      noBidCents: 38,
+      noAskCents: 40,
+      noMidCents: 39,
+      liquidityQuality: "Good",
+    },
   };
 
   it("hasMarket narrows when market is present", () => {
@@ -40,5 +56,21 @@ describe("snapshot guards", () => {
     expect(hasStrike({ ...baseSnapshot.market!, strikePrice: 0 })).toBe(
       false,
     );
+  });
+
+  it("hasBtcSpot requires a positive finite price", () => {
+    expect(hasBtcSpot(baseSnapshot)).toBe(true);
+    expect(hasBtcSpot({ ...baseSnapshot, btc: null })).toBe(false);
+    expect(
+      hasBtcSpot({
+        ...baseSnapshot,
+        btc: { ...baseSnapshot.btc!, price: 0 },
+      }),
+    ).toBe(false);
+  });
+
+  it("hasContractPricing accepts mid or bid/ask quotes", () => {
+    expect(hasContractPricing(baseSnapshot)).toBe(true);
+    expect(hasContractPricing({ ...baseSnapshot, pricing: null })).toBe(false);
   });
 });

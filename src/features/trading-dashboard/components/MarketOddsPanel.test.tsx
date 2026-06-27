@@ -20,6 +20,8 @@ describe("MarketOddsPanel", () => {
 
     expect(screen.getAllByText("85¢").length).toBeGreaterThan(0);
     expect(screen.getByText(/Liquidity: Good/i)).toBeInTheDocument();
+    expect(screen.queryByText("Best Edge Side")).not.toBeInTheDocument();
+    expect(screen.queryByText(/63¢ vs 74¢ fair/i)).not.toBeInTheDocument();
   });
 
   it("falls back to static odds when Kalshi is unavailable", async () => {

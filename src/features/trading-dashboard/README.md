@@ -1,26 +1,33 @@
 # Feature: trading-dashboard
 
-Main dashboard experience — live BTC and Kalshi data with Milestone 5 placeholders
-for recommendations, probability/edge, and AI reasoning.
+Main dashboard experience — live BTC and Kalshi data wired to the Milestone 5.0
+trading engine via snapshot mapping and `useTradeDecision()`.
 
 ```
 trading-dashboard/
   components/
-    TradingDashboard.tsx   # grid layout orchestrator
+    TradingDashboard.tsx   # grid layout + engine orchestration
     CommandBar.tsx         # live BTC + contract question header
     BtcChartPanel.tsx      # live chart + settlement target
-    RecommendationPanel.tsx
+    RecommendationPanel.tsx  # engine decision (NO TRADE stub)
     MarketOddsPanel.tsx    # live Kalshi odds (4B)
-    ProbabilityEdgePanel.tsx
+    ProbabilityEdgePanel.tsx # guard trace from engine
     MarketStructurePanel.tsx
     TradeManagementPanel.tsx
-    AIReasoningPanel.tsx
-  constants.ts             # placeholder copy
-  utils.ts                 # contract question formatter
+    AIReasoningPanel.tsx   # reasoning trace skeleton
+  hooks/
+    useTradeDecision.ts    # build snapshot → evaluate()
+  mapping/
+    buildEvaluationSnapshot.ts
+    mapLifecycle.ts
+  constants.ts
+  utils.ts                 # contract question + market subtitle formatters
   index.ts
 ```
 
-**Live:** `btc-feed`, `market-data` (via hooks in CommandBar, chart, MarketOddsPanel).
+**Live:** `btc-feed`, `market-data` (CommandBar, chart, MarketOddsPanel).
 
-**Placeholder (Milestone 5):** Recommendation, AI reasoning, probability/edge panels
-show "Model not live yet" — static mock advice is not presented as active.
+**Engine-connected (5.1):** Recommendation, AI reasoning, probability/edge guard
+trace, trade management placeholder — all driven by `evaluate()` output.
+
+**Still deferred:** Probability model, fair value, EV, LLM narrative, execution.

@@ -72,7 +72,8 @@ docs/
 | 4.6B | Provider chain, Kraken failover, health/metrics — **complete** |
 | 4.7 | Dashboard truthfulness, chart target clarity — **complete** |
 | 5.0 | Pure trading engine foundation (`evaluate`, guards, reasoning trace) — **complete** |
-| 5.1+ | Engine orchestrator, dashboard wiring, probability model, auth, db, journal |
+| 5.1 | Engine snapshot wiring + dashboard truthfulness — **complete** |
+| 5.2+ | Probability model, auth, db, journal |
 
 ## Intentionally deferred
 

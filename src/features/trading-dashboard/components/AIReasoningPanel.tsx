@@ -4,36 +4,62 @@ import {
   PanelHeader,
 } from "@/components/common/GlassPanel";
 import { StatusBadge } from "@/components/common/StatusBadge";
-import { panelGap, surfaces, textCaption } from "@/lib/design-system";
+import { labelClass, panelGap, surfaces, textCaption } from "@/lib/design-system";
+import type { TradeDecision } from "@/types/domain/trading";
 import { cn } from "@/lib/utils";
 
 import {
-  DECISION_ENGINE_PENDING_MESSAGE,
+  DECISION_ENGINE_CONNECTED_MESSAGE,
   MODEL_NOT_LIVE_LABEL,
 } from "../constants";
 
-export function AIReasoningPanel() {
+type AIReasoningPanelProps = {
+  decision: TradeDecision;
+};
+
+export function AIReasoningPanel({ decision }: AIReasoningPanelProps) {
   return (
     <GlassPanel className="h-full">
       <PanelHeader
         title="AI Reasoning & Playbook"
-        subtitle={MODEL_NOT_LIVE_LABEL}
+        subtitle={DECISION_ENGINE_CONNECTED_MESSAGE}
         action={
           <StatusBadge variant="neutral" emphasis>
-            Milestone 5
+            {MODEL_NOT_LIVE_LABEL}
           </StatusBadge>
         }
       />
-      <PanelBody className={cn("flex flex-col justify-center", panelGap)}>
-        <div className={cn(surfaces.dashedEmpty, "px-4 py-8 text-center")}>
-          <p className="text-muted-foreground text-sm leading-relaxed">
-            {DECISION_ENGINE_PENDING_MESSAGE}
-          </p>
-          <p className={cn(textCaption, "mt-3")}>
-            Narrative reasoning and playbook checks will populate here after the
-            recommendation engine is integrated.
-          </p>
+      <PanelBody className={cn("flex flex-col", panelGap)}>
+        <p className={cn(textCaption)}>{decision.reasoning.summary}</p>
+
+        <div className={cn(surfaces.inset, "space-y-3 px-3 py-3")}>
+          {decision.reasoning.steps.map((step) => (
+            <div key={step.id} className="space-y-1">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-sm font-medium">{step.summary}</p>
+                <StatusBadge
+                  variant={
+                    step.outcome === "pass"
+                      ? "success"
+                      : step.outcome === "fail"
+                        ? "danger"
+                        : "neutral"
+                  }
+                >
+                  {step.phase} · {step.outcome}
+                </StatusBadge>
+              </div>
+              {step.detail ? (
+                <p className={cn(labelClass(), "normal-case")}>{step.detail}</p>
+              ) : null}
+            </div>
+          ))}
         </div>
+
+        <p className={cn(textCaption)}>
+          Narrative reasoning and playbook checks will populate here after the
+          probability model and LLM milestones ship.
+        </p>
       </PanelBody>
     </GlassPanel>
   );

@@ -1,7 +1,6 @@
 import { ArrowRight } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { MetricCard } from "@/components/common/MetricCard";
 import {
   GlassPanel,
   PanelBody,
@@ -12,69 +11,41 @@ import {
   iconSize,
   labelClass,
   panelGap,
-  statGap,
   surfaces,
   textCaption,
 } from "@/lib/design-system";
-import type { TradingMockData } from "@/features/mock-data";
+import type { TradeDecision } from "@/types/domain/trading";
 import { cn } from "@/lib/utils";
 
-import { MODEL_NOT_LIVE_LABEL } from "../constants";
+import {
+  DECISION_ENGINE_CONNECTED_MESSAGE,
+  MODEL_NOT_LIVE_LABEL,
+} from "../constants";
 
 type TradeManagementPanelProps = {
-  data: TradingMockData["tradeManagement"];
+  decision: TradeDecision;
 };
 
-export function TradeManagementPanel({ data }: TradeManagementPanelProps) {
+export function TradeManagementPanel({ decision }: TradeManagementPanelProps) {
   return (
     <GlassPanel className="h-full">
       <PanelHeader
         title="Trade Management"
-        subtitle={MODEL_NOT_LIVE_LABEL}
+        subtitle={DECISION_ENGINE_CONNECTED_MESSAGE}
         action={
           <StatusBadge variant="neutral">
-            {data.hasActiveTrade ? "Active" : "No active trade"}
+            {decision.action}
           </StatusBadge>
         }
       />
       <PanelBody className={cn("flex flex-col", panelGap)}>
-        <div className={cn(surfaces.dashedEmpty, "px-3 py-2 text-center")}>
-          <p className={cn(textCaption)}>
-            Entry, exit, and sizing guidance is preview-only until Milestone 5.
+        <div className={cn(surfaces.dashedEmpty, "px-4 py-6 text-center")}>
+          <p className="text-muted-foreground text-sm">No active trade</p>
+          <p className={cn(textCaption, "mt-2")}>
+            {MODEL_NOT_LIVE_LABEL} — entry, exit, and sizing guidance will
+            appear when the engine issues a directional signal.
           </p>
-        </div>
-
-        {!data.hasActiveTrade ? (
-          <div className={cn(surfaces.dashedEmpty, "px-4 py-6 text-center")}>
-            <p className="text-muted-foreground text-sm">No active trade</p>
-            <p className={cn(textCaption, "mt-1")}>
-              Guidance below shows the intended workflow when a setup triggers.
-            </p>
-          </div>
-        ) : null}
-
-        <div className={cn("grid grid-cols-1 sm:grid-cols-2", statGap)}>
-          <MetricCard label="Suggested Entry" value={data.suggestedEntry} />
-          <MetricCard
-            label="Take Profit"
-            value={data.takeProfit}
-            tone="bullish"
-          />
-          <MetricCard
-            label="Cut Loss"
-            value={data.cutLoss}
-            tone="bearish"
-          />
-          <MetricCard
-            label="Do Not Chase Above"
-            value={data.doNotChaseAbove}
-            tone="caution"
-          />
-        </div>
-
-        <div className={cn(surfaces.inset, "px-3 py-2")}>
-          <p className={labelClass()}>Hold Into Expiration</p>
-          <p className="mt-0.5 text-sm font-medium">{data.holdIntoExpiration}</p>
+          <p className={cn(textCaption, "mt-2")}>{decision.reasoning.summary}</p>
         </div>
 
         <Button className={cn("w-full", surfaces.primaryButton)} disabled>
@@ -82,7 +53,7 @@ export function TradeManagementPanel({ data }: TradeManagementPanelProps) {
           <ArrowRight className={iconSize.md} />
         </Button>
         <p className={cn(labelClass(), "text-center normal-case")}>
-          Execution disabled in demo mode
+          Execution disabled until trade signals ship
         </p>
       </PanelBody>
     </GlassPanel>

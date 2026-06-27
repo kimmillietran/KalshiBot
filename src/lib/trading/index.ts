@@ -10,8 +10,10 @@ export {
 export { ENGINE_VERSION } from "@/lib/trading/versioning";
 
 export type {
+  BtcFeedStatus,
   EngineConfig,
   EvaluationBtcSnapshot,
+  EvaluationCandleSnapshot,
   EvaluationMarketSnapshot,
   EvaluationPricingSnapshot,
   EvaluationSnapshot,

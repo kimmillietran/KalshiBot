@@ -1,6 +1,5 @@
 "use client";
 
-import { MetricCard } from "@/components/common/MetricCard";
 import {
   GlassPanel,
   PanelBody,
@@ -113,15 +112,10 @@ export function MarketOddsPanel() {
       <PanelBody className={cn("space-y-3")}>
         <ContractCard contract={contractOdds.up} tone="up" />
         <ContractCard contract={contractOdds.down} tone="down" />
-        <div className={cn("grid grid-cols-2 pt-1", statGap)}>
-          <MetricCard label="Combined" value="101¢" subValue="overround ~1%" />
-          <MetricCard
-            label="Best Edge Side"
-            value="UP"
-            subValue="63¢ vs 74¢ fair"
-            tone="bullish"
-          />
-        </div>
+        <p className={cn(labelClass(), "pt-1 text-center normal-case")}>
+          Combined overround and edge analysis — deferred until probability
+          model ships. Live bid/ask/spread above are from Kalshi.
+        </p>
       </PanelBody>
     </GlassPanel>
   );

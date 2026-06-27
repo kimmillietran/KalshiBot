@@ -1,7 +1,10 @@
-import { tradingMockData } from "@/features/mock-data";
+"use client";
 
+import { tradingMockData } from "@/features/mock-data";
 import { dashboardBottomPadding, dashboardSectionGap, gridGap } from "@/lib/design-system";
 import { cn } from "@/lib/utils";
+
+import { useTradeDecision } from "../hooks/useTradeDecision";
 
 import { AIReasoningPanel } from "./AIReasoningPanel";
 import { BtcChartPanel } from "./BtcChartPanel";
@@ -13,6 +16,7 @@ import { RecommendationPanel } from "./RecommendationPanel";
 import { TradeManagementPanel } from "./TradeManagementPanel";
 
 export function TradingDashboard() {
+  const { decision } = useTradeDecision();
   const data = tradingMockData;
 
   return (
@@ -24,7 +28,7 @@ export function TradingDashboard() {
           <BtcChartPanel />
         </div>
         <div className="min-h-[420px]">
-          <RecommendationPanel />
+          <RecommendationPanel decision={decision} />
         </div>
       </div>
 
@@ -36,13 +40,13 @@ export function TradingDashboard() {
         )}
       >
         <MarketOddsPanel />
-        <ProbabilityEdgePanel />
+        <ProbabilityEdgePanel decision={decision} />
         <MarketStructurePanel data={data.structure} />
       </div>
 
       <div className={cn("grid grid-cols-1 lg:grid-cols-2", gridGap, "items-stretch")}>
-        <TradeManagementPanel data={data.tradeManagement} />
-        <AIReasoningPanel />
+        <TradeManagementPanel decision={decision} />
+        <AIReasoningPanel decision={decision} />
       </div>
     </div>
   );
