@@ -4,6 +4,7 @@ import { dashboardBottomPadding, dashboardSectionGap, gridGap } from "@/lib/desi
 import { cn } from "@/lib/utils";
 
 import { useTradeDecision } from "../hooks/useTradeDecision";
+import { useTradingSettingsForm } from "../hooks/useTradingSettingsForm";
 
 import { AIReasoningPanel } from "./AIReasoningPanel";
 import { BtcChartPanel } from "./BtcChartPanel";
@@ -12,14 +13,22 @@ import { MarketOddsPanel } from "./MarketOddsPanel";
 import { MarketStructurePanel } from "./MarketStructurePanel";
 import { ProbabilityEdgePanel } from "./ProbabilityEdgePanel";
 import { RecommendationPanel } from "./RecommendationPanel";
+import { TradingSettingsCard } from "./settings/TradingSettingsCard";
 import { TradeManagementPanel } from "./TradeManagementPanel";
 
 export function TradingDashboard() {
-  const { decision } = useTradeDecision();
+  const { form, resolved, setField } = useTradingSettingsForm();
+  const { decision } = useTradeDecision(resolved);
 
   return (
     <div className={cn(dashboardSectionGap, dashboardBottomPadding)}>
       <CommandBar />
+
+      <TradingSettingsCard
+        form={form}
+        resolved={resolved}
+        onFieldChange={setField}
+      />
 
       <div className={cn("grid grid-cols-1 xl:grid-cols-3", gridGap, "items-stretch")}>
         <div className="xl:col-span-2">

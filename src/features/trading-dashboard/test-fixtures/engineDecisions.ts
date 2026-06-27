@@ -59,7 +59,7 @@ function baseSnapshot(
   };
 }
 
-function buyUpSnapshot(): EvaluationSnapshot {
+export function buyUpSnapshot(): EvaluationSnapshot {
   return baseSnapshot({
     market: {
       ticker: "KXBTC",

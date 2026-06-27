@@ -460,6 +460,34 @@ describe("evaluate", () => {
     },
   );
 
+  it("applies Kelly fraction override from engine config", () => {
+    const snapshot = createBuyUpSnapshot();
+    const baseline = evaluate(snapshot, DEFAULT_ENGINE_CONFIG);
+    const lowKelly = evaluate(snapshot, {
+      ...DEFAULT_ENGINE_CONFIG,
+      kellyFraction: 0.1,
+    });
+    const highKelly = evaluate(snapshot, {
+      ...DEFAULT_ENGINE_CONFIG,
+      kellyFraction: 0.5,
+    });
+
+    expect(highKelly.positionSize?.recommendedPercent ?? 0).toBeGreaterThan(
+      lowKelly.positionSize?.recommendedPercent ?? 0,
+    );
+    expect(baseline.positionSize?.recommendedFraction).toBeGreaterThan(0);
+  });
+
+  it("applies max position cap override from engine config", () => {
+    const decision = evaluate(createBuyUpSnapshot(), {
+      ...DEFAULT_ENGINE_CONFIG,
+      kellyFraction: 1,
+      maxPositionFraction: 0.02,
+    });
+
+    expect(decision.positionSize?.recommendedFraction).toBeLessThanOrEqual(0.02);
+  });
+
   it("includes engine metadata", () => {
     const decision = evaluate(createValidSnapshot(), DEFAULT_ENGINE_CONFIG);
     expect(decision.engineVersion).toBe(ENGINE_VERSION);

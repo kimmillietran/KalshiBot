@@ -7,9 +7,13 @@ import {
   MarketDataProvider,
   useActiveBtcMarket,
 } from "@/features/market-data";
+import { DEFAULT_ENGINE_CONFIG } from "@/lib/trading/config/defaults";
+import { hashConfig } from "@/lib/trading/config/hashConfig";
 import { mockDashboardApiFetch } from "@/test/test-utils";
 import { QueryTestProvider } from "@/test/query-test-utils";
 
+import { resolvedSettingsFromInput } from "../test-fixtures/tradingSettings";
+import { buildEngineConfigFromSettings } from "../utils/buildEngineConfigFromSettings";
 import { useTradeDecision } from "./useTradeDecision";
 
 function BtcFeedWithMarketTarget({ children }: { children: ReactNode }) {
@@ -36,7 +40,10 @@ describe("useTradeDecision", () => {
   it("returns NO TRADE from live feeds via renderHook", async () => {
     mockDashboardApiFetch();
 
-    const { result } = renderHook(() => useTradeDecision(), { wrapper });
+    const { result } = renderHook(
+      () => useTradeDecision(resolvedSettingsFromInput()),
+      { wrapper },
+    );
 
     await waitFor(() => {
       expect(result.current.decision.action).toBe("NO TRADE");
@@ -51,7 +58,10 @@ describe("useTradeDecision", () => {
   it("maps candle timestamps from chart points when available", async () => {
     mockDashboardApiFetch();
 
-    const { result } = renderHook(() => useTradeDecision(), { wrapper });
+    const { result } = renderHook(
+      () => useTradeDecision(resolvedSettingsFromInput()),
+      { wrapper },
+    );
 
     await waitFor(() => {
       expect(result.current.snapshot.btc?.candles.length).toBeGreaterThan(0);
@@ -60,5 +70,20 @@ describe("useTradeDecision", () => {
     for (const candle of result.current.snapshot.btc?.candles ?? []) {
       expect(candle.timestamp).toBeGreaterThan(0);
     }
+  });
+
+  it("passes resolved min edge threshold into the engine config", async () => {
+    mockDashboardApiFetch();
+    const resolved = resolvedSettingsFromInput({ minEdgePercent: 9 });
+
+    const { result } = renderHook(() => useTradeDecision(resolved), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.decision.configHash).toBe(
+        hashConfig(buildEngineConfigFromSettings(resolved)),
+      );
+    });
+
+    expect(DEFAULT_ENGINE_CONFIG.minEdgePercent).not.toBe(9);
   });
 });

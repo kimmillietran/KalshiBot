@@ -4,13 +4,12 @@ import { useMemo } from "react";
 
 import { useBtcFeedContext } from "@/features/btc-feed/BtcFeedProvider";
 import { useActiveBtcMarket } from "@/features/market-data";
-import {
-  DEFAULT_ENGINE_CONFIG,
-  evaluate,
-} from "@/lib/trading";
+import { evaluate } from "@/lib/trading";
+import type { ResolvedTradingSettings } from "@/lib/trading/settings";
 import type { EvaluationSnapshot, TradeDecision } from "@/types/domain/trading";
 
 import { buildEvaluationSnapshot } from "../mapping/buildEvaluationSnapshot";
+import { buildEngineConfigFromSettings } from "../utils/buildEngineConfigFromSettings";
 
 export type TradeDecisionState = {
   snapshot: EvaluationSnapshot;
@@ -33,9 +32,16 @@ function resolveEvaluatedAt(
 }
 
 /** Builds an `EvaluationSnapshot` from live feeds and runs the pure engine. */
-export function useTradeDecision(): TradeDecisionState {
+export function useTradeDecision(
+  resolvedSettings: ResolvedTradingSettings,
+): TradeDecisionState {
   const btc = useBtcFeedContext();
   const market = useActiveBtcMarket();
+
+  const engineConfig = useMemo(
+    () => buildEngineConfigFromSettings(resolvedSettings),
+    [resolvedSettings],
+  );
 
   return useMemo(() => {
     const evaluatedAt = resolveEvaluatedAt(
@@ -58,7 +64,7 @@ export function useTradeDecision(): TradeDecisionState {
       },
     });
 
-    const decision = evaluate(snapshot, DEFAULT_ENGINE_CONFIG);
+    const decision = evaluate(snapshot, engineConfig);
 
     return {
       snapshot,
@@ -72,6 +78,7 @@ export function useTradeDecision(): TradeDecisionState {
     btc.lastUpdated,
     btc.price,
     btc.status,
+    engineConfig,
     market.market,
     market.noMarket,
     market.pricing,

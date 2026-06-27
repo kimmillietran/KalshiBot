@@ -89,6 +89,10 @@ export type EngineConfig = {
   minimumCandles: number;
   /** Optional caller bankroll for Kelly dollar sizing (no engine default). */
   bankrollDollars?: number;
+  /** Optional fractional Kelly override from resolved settings. */
+  kellyFraction?: number;
+  /** Optional max position cap override from resolved settings. */
+  maxPositionFraction?: number;
 };
 
 export type ReasoningPhase = "guard" | "model" | "execution";

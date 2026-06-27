@@ -35,3 +35,32 @@ export const POSITION_SIZING_ZERO_ALLOCATION_MESSAGE =
 
 export const POSITION_SIZING_RECOMMENDED_ALLOCATION_MESSAGE =
   "Recommended position";
+
+/** Trading settings panel — presentation copy only. */
+export const TRADING_SETTINGS_PANEL_TITLE = "Trading Settings";
+
+export const TRADING_SETTINGS_PANEL_SUBTITLE =
+  "Session-only configuration — changes apply immediately to the live engine.";
+
+export const TRADING_SETTINGS_FIELD_COPY = {
+  bankrollDollars: {
+    label: "Bankroll ($)",
+    helper: "Optional. Required for Kelly dollar recommendations.",
+  },
+  minEdgePercent: {
+    label: "Minimum Edge %",
+    helper: "Minimum modeled edge required before a trade qualifies.",
+  },
+  maxSpreadPercent: {
+    label: "Maximum Spread %",
+    helper: "Guard threshold for acceptable bid-ask spread.",
+  },
+  kellyFraction: {
+    label: "Kelly Fraction",
+    helper: "Fractional Kelly multiplier applied to full Kelly sizing.",
+  },
+  maxPositionFraction: {
+    label: "Maximum Position %",
+    helper: "Hard cap on recommended bankroll allocation (0–1).",
+  },
+} as const;

@@ -9,7 +9,11 @@ import {
   runEvaluationGuards,
   type GuardStepId,
 } from "@/lib/trading/guards/evaluationGuards";
-import { estimatePositionSize } from "@/lib/trading/position-sizing";
+import {
+  DEFAULT_POSITION_SIZING_CONFIG,
+  estimatePositionSize,
+} from "@/lib/trading/position-sizing";
+import type { PositionSizingConfig } from "@/lib/trading/position-sizing/config";
 import type { PositionSizeEstimate } from "@/lib/trading/position-sizing/types";
 import { estimateProbability } from "@/lib/trading/probability";
 import type { ProbabilityEstimate } from "@/lib/trading/probability/types";
@@ -118,6 +122,18 @@ function buildSuccessSummary(action: TradeAction): string {
   return `${base} — policy returns ${action}`;
 }
 
+function resolvePositionSizingConfig(config: EngineConfig): PositionSizingConfig {
+  return {
+    ...DEFAULT_POSITION_SIZING_CONFIG,
+    ...(config.kellyFraction !== undefined
+      ? { kellyFraction: config.kellyFraction }
+      : {}),
+    ...(config.maxPositionFraction !== undefined
+      ? { maxFraction: config.maxPositionFraction }
+      : {}),
+  };
+}
+
 /** Pure engine: guards + features + probability + EV + policy + bankroll + position sizing. */
 export function evaluate(
   snapshot: EvaluationSnapshot,
@@ -197,13 +213,16 @@ export function evaluate(
     detail: bankroll.reasoning.join(" · "),
   });
 
-  const positionSize = estimatePositionSize({
-    action,
-    probability,
-    expectedValue,
-    engineConfig: config,
-    bankrollDollars: bankroll.bankrollDollars,
-  });
+  const positionSize = estimatePositionSize(
+    {
+      action,
+      probability,
+      expectedValue,
+      engineConfig: config,
+      bankrollDollars: bankroll.bankrollDollars,
+    },
+    resolvePositionSizingConfig(config),
+  );
 
   steps.push({
     id: "model-position-sizing",
