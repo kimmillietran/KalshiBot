@@ -4,6 +4,8 @@ import {
   runEvaluationGuards,
   type GuardStepId,
 } from "@/lib/trading/guards/evaluationGuards";
+import { estimateProbability } from "@/lib/trading/probability";
+import type { ProbabilityEstimate } from "@/lib/trading/probability/types";
 import { ENGINE_VERSION } from "@/lib/trading/versioning";
 import type { MarketFeatureVector } from "@/lib/features/types";
 import type {
@@ -20,10 +22,11 @@ function buildDecision(
   summary: string,
   options: {
     features?: MarketFeatureVector | null;
+    probability?: ProbabilityEstimate | null;
     gatesTriggered?: readonly GuardStepId[];
   } = {},
 ): TradeDecision {
-  const { features = null, gatesTriggered } = options;
+  const { features = null, probability = null, gatesTriggered } = options;
 
   return {
     action: "NO TRADE",
@@ -32,6 +35,7 @@ function buildDecision(
     reasoning: { steps, summary },
     evaluatedAt: snapshot.evaluatedAt,
     features,
+    probability,
     ...(gatesTriggered ? { gatesTriggered } : {}),
   };
 }
@@ -47,7 +51,16 @@ function formatFeatureSummary(features: MarketFeatureVector): string {
   ].join(", ");
 }
 
-/** Pure engine: expanded guards (5.3B) + feature extraction + NO TRADE stub. */
+function formatProbabilitySummary(estimate: ProbabilityEstimate): string {
+  return [
+    `p(up)=${(estimate.probabilityUp * 100).toFixed(2)}%`,
+    `p(down)=${(estimate.probabilityDown * 100).toFixed(2)}%`,
+    `confidence=${(estimate.confidence * 100).toFixed(0)}%`,
+    `model=${estimate.modelVersion}`,
+  ].join(" ");
+}
+
+/** Pure engine: guards + features + probability estimate + NO TRADE stub. */
 export function evaluate(
   snapshot: EvaluationSnapshot,
   config: EngineConfig,
@@ -74,26 +87,29 @@ export function evaluate(
     outcome: "pass",
     detail: formatFeatureSummary(features),
   });
+
+  const probability = estimateProbability(features);
+
   steps.push({
     id: "model-probability",
     phase: "model",
     summary: "Probability model",
-    outcome: "skip",
-    detail: "Deferred ? probability model not implemented",
+    outcome: "pass",
+    detail: formatProbabilitySummary(probability),
   });
   steps.push({
     id: "decision-stub",
     phase: "execution",
     summary: "Trade decision",
     outcome: "skip",
-    detail: "Engine returns NO TRADE until probability model is implemented",
+    detail: "Engine returns NO TRADE until trade policy is implemented",
   });
 
   return buildDecision(
     snapshot,
     config,
     steps,
-    "Guards passed ? features extracted ? engine returns NO TRADE",
-    { features },
+    "Guards passed — features extracted — probability estimated — engine returns NO TRADE",
+    { features, probability },
   );
 }

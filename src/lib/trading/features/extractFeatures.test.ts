@@ -82,23 +82,28 @@ describe("evaluate feature integration", () => {
     expect(second).toEqual(first);
   });
 
-  it("attaches a feature vector when guards pass", () => {
+  it("attaches a feature vector and probability when guards pass", () => {
     const decision = evaluate(createValidSnapshot(), DEFAULT_ENGINE_CONFIG);
     expect(decision.action).toBe("NO TRADE");
     expect(decision.features).not.toBeNull();
+    expect(decision.probability).not.toBeNull();
     expect(decision.features?.distanceToTarget.signed).toBe(-125);
     expect(decision.features?.liquidity.quality).toBe("Good");
     expect(decision.reasoning.steps.map((step) => step.id)).toContain(
       "feature-extraction",
     );
+    expect(decision.reasoning.steps.map((step) => step.id)).toContain(
+      "model-probability",
+    );
   });
 
-  it("leaves features null when guards fail early", () => {
+  it("leaves features and probability null when guards fail early", () => {
     const decision = evaluate(
       createValidSnapshot({ market: null }),
       DEFAULT_ENGINE_CONFIG,
     );
     expect(decision.features).toBeNull();
+    expect(decision.probability).toBeNull();
     expect(
       decision.reasoning.steps.some((step) => step.id === "feature-extraction"),
     ).toBe(false);

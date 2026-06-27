@@ -4,6 +4,10 @@ import { DEFAULT_ENGINE_CONFIG } from "@/lib/trading/config/defaults";
 import { hashConfig } from "@/lib/trading/config/hashConfig";
 import { evaluate } from "@/lib/trading/evaluate";
 import { GUARD_STEP_ORDER } from "@/lib/trading/guards/evaluationGuards";
+import {
+  estimateProbability,
+  PROBABILITY_MODEL_VERSION,
+} from "@/lib/trading/probability";
 import { MarketLifecycle } from "@/lib/trading/snapshot/types";
 import { ENGINE_VERSION } from "@/lib/trading/versioning";
 import type { EvaluationSnapshot } from "@/types/domain/trading";
@@ -51,10 +55,15 @@ function createValidSnapshot(
 }
 
 describe("evaluate", () => {
-  it("returns NO TRADE with features when guards pass", () => {
+  it("returns NO TRADE with features and probability when guards pass", () => {
     const decision = evaluate(createValidSnapshot(), DEFAULT_ENGINE_CONFIG);
     expect(decision.action).toBe("NO TRADE");
     expect(decision.features).not.toBeNull();
+    expect(decision.probability).not.toBeNull();
+    expect(decision.probability).toEqual(
+      estimateProbability(decision.features!),
+    );
+    expect(decision.probability?.modelVersion).toBe(PROBABILITY_MODEL_VERSION);
     expect(decision.gatesTriggered).toBeUndefined();
     expect(decision.reasoning.steps.map((s) => s.id)).toEqual([
       ...GUARD_STEP_ORDER,
@@ -62,12 +71,25 @@ describe("evaluate", () => {
       "model-probability",
       "decision-stub",
     ]);
+    const probabilityStep = decision.reasoning.steps.find(
+      (step) => step.id === "model-probability",
+    );
+    expect(probabilityStep?.outcome).toBe("pass");
+    expect(probabilityStep?.detail).toContain("p(up)=");
   });
 
-  it("returns gatesTriggered on failure", () => {
+  it("returns gatesTriggered and null probability on failure", () => {
     const decision = evaluate(createValidSnapshot({ market: null }), DEFAULT_ENGINE_CONFIG);
     expect(decision.gatesTriggered).toEqual(["guard-market-present"]);
     expect(decision.features).toBeNull();
+    expect(decision.probability).toBeNull();
+  });
+
+  it("maps the same snapshot to the same probability on repeat evaluation", () => {
+    const snapshot = createValidSnapshot();
+    const first = evaluate(snapshot, DEFAULT_ENGINE_CONFIG);
+    const second = evaluate(snapshot, DEFAULT_ENGINE_CONFIG);
+    expect(second.probability).toEqual(first.probability);
   });
 
   it("includes engine metadata", () => {
