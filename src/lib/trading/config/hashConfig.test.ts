@@ -44,8 +44,14 @@ describe("hashConfig", () => {
       enabled: true,
       minEdgePercent: 5,
       minLiquidityQuality: "Fair",
+      maxSpreadPercent: 15,
+      minimumTimeRemaining: 60_000,
+      minimumCandles: 2,
     };
     const reordered: EngineConfig = {
+      minimumCandles: 2,
+      maxSpreadPercent: 15,
+      minimumTimeRemaining: 60_000,
       minLiquidityQuality: "Fair",
       enabled: true,
       minEdgePercent: 5,

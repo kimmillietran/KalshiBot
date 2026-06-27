@@ -77,12 +77,12 @@ export type EvaluationSnapshot = {
 };
 
 export type EngineConfig = {
-  /** Master switch — when false the engine always returns NO TRADE. */
   enabled: boolean;
-  /** Minimum modeled edge (percent) required before a directional trade. */
   minEdgePercent: number;
-  /** Minimum contract liquidity quality to consider trading. */
   minLiquidityQuality: LiquidityQuality;
+  maxSpreadPercent: number;
+  minimumTimeRemaining: number;
+  minimumCandles: number;
 };
 
 export type ReasoningPhase = "guard" | "model" | "execution";
@@ -114,4 +114,5 @@ export type TradeDecision = {
    * `null` when evaluation exits before feature extraction (guard failure).
    */
   features: MarketFeatureVector | null;
+  gatesTriggered?: readonly string[];
 };
