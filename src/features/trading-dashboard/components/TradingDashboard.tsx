@@ -1,6 +1,5 @@
 "use client";
 
-import { tradingMockData } from "@/features/mock-data";
 import { dashboardBottomPadding, dashboardSectionGap, gridGap } from "@/lib/design-system";
 import { cn } from "@/lib/utils";
 
@@ -17,7 +16,6 @@ import { TradeManagementPanel } from "./TradeManagementPanel";
 
 export function TradingDashboard() {
   const { decision } = useTradeDecision();
-  const data = tradingMockData;
 
   return (
     <div className={cn(dashboardSectionGap, dashboardBottomPadding)}>
@@ -41,7 +39,7 @@ export function TradingDashboard() {
       >
         <MarketOddsPanel />
         <ProbabilityEdgePanel decision={decision} />
-        <MarketStructurePanel data={data.structure} />
+        <MarketStructurePanel features={decision.features} />
       </div>
 
       <div className={cn("grid grid-cols-1 lg:grid-cols-2", gridGap, "items-stretch")}>

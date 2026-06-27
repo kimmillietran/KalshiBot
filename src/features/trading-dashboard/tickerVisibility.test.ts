@@ -26,7 +26,7 @@ describe("tickerVisibility", () => {
       "Will BTC settle above $59,990.31 at 12:45 AM?",
       "BTC 15m · Live Kalshi contract",
       "NO TRADE",
-      "Decision engine connected",
+      "Live engine evaluation",
     ].join(" ");
 
     expect(findRawTickerLeaksInText(friendly)).toEqual([]);

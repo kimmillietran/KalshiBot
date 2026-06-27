@@ -113,8 +113,7 @@ export function MarketOddsPanel() {
         <ContractCard contract={contractOdds.up} tone="up" />
         <ContractCard contract={contractOdds.down} tone="down" />
         <p className={cn(labelClass(), "pt-1 text-center normal-case")}>
-          Combined overround and edge analysis — deferred until probability
-          model ships. Live bid/ask/spread above are from Kalshi.
+          Live bid/ask/spread from Kalshi. Model edge appears in Probability &amp; Edge.
         </p>
       </PanelBody>
     </GlassPanel>

@@ -19,6 +19,8 @@ describe("TradingDashboard", () => {
     expect(screen.queryByText("BUY UP")).not.toBeInTheDocument();
     expect(screen.queryByText("Best Edge Side")).not.toBeInTheDocument();
     expect(screen.queryByText(/63¢ vs 74¢ fair/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/model deferred/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/probability model ships/i)).not.toBeInTheDocument();
     expect(screen.queryByText(liveMarket.ticker)).not.toBeInTheDocument();
 
     await waitFor(() => {

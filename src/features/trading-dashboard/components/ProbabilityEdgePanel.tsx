@@ -4,21 +4,24 @@ import {
   PanelHeader,
 } from "@/components/common/GlassPanel";
 import { StatusBadge } from "@/components/common/StatusBadge";
-import { labelClass, panelGap, surfaces } from "@/lib/design-system";
+import { panelGap } from "@/lib/design-system";
 import type { TradeDecision } from "@/types/domain/trading";
 import { cn } from "@/lib/utils";
 
-import {
-  DECISION_ENGINE_CONNECTED_MESSAGE,
-  MODEL_NOT_LIVE_LABEL,
-  PROBABILITY_MODEL_PENDING_MESSAGE,
-} from "../constants";
+import { DECISION_ENGINE_CONNECTED_MESSAGE } from "../constants";
+import { isGuardFailure } from "../formatting/decisionDisplay";
+
+import { ExpectedValueSummary } from "./decision/ExpectedValueSummary";
+import { GuardFailureBanner } from "./decision/GuardFailureBanner";
+import { ProbabilitySummary } from "./decision/ProbabilitySummary";
+import { ReasoningTraceList } from "./decision/ReasoningTraceList";
 
 type ProbabilityEdgePanelProps = {
   decision: TradeDecision;
 };
 
 export function ProbabilityEdgePanel({ decision }: ProbabilityEdgePanelProps) {
+  const guardFailed = isGuardFailure(decision);
   const guardSteps = decision.reasoning.steps.filter(
     (step) => step.phase === "guard",
   );
@@ -27,42 +30,25 @@ export function ProbabilityEdgePanel({ decision }: ProbabilityEdgePanelProps) {
     <GlassPanel className="h-full">
       <PanelHeader
         title="Probability & Edge"
-        subtitle={MODEL_NOT_LIVE_LABEL}
+        subtitle={DECISION_ENGINE_CONNECTED_MESSAGE}
         action={
           <StatusBadge variant="neutral" emphasis>
-            {DECISION_ENGINE_CONNECTED_MESSAGE}
+            {decision.action}
           </StatusBadge>
         }
       />
       <PanelBody className={cn("flex flex-col", panelGap)}>
-        <div className={cn(surfaces.dashedEmpty, "px-4 py-6 text-center")}>
-          <p className="text-muted-foreground text-sm leading-relaxed">
-            {PROBABILITY_MODEL_PENDING_MESSAGE}
-          </p>
-        </div>
-
-        <div className={cn(surfaces.inset, "space-y-2 px-3 py-3")}>
-          <p className={labelClass()}>Engine guard trace</p>
-          {guardSteps.map((step) => (
-            <div
-              key={step.id}
-              className="flex items-start justify-between gap-2 text-xs"
-            >
-              <span className="text-muted-foreground">{step.summary}</span>
-              <StatusBadge
-                variant={
-                  step.outcome === "pass"
-                    ? "success"
-                    : step.outcome === "fail"
-                      ? "danger"
-                      : "neutral"
-                }
-              >
-                {step.outcome}
-              </StatusBadge>
-            </div>
-          ))}
-        </div>
+        {guardFailed ? (
+          <>
+            <GuardFailureBanner decision={decision} />
+            <ReasoningTraceList steps={guardSteps} title="Guard trace" />
+          </>
+        ) : (
+          <>
+            <ProbabilitySummary probability={decision.probability} />
+            <ExpectedValueSummary expectedValue={decision.expectedValue} />
+          </>
+        )}
       </PanelBody>
     </GlassPanel>
   );

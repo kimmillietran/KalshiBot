@@ -1,12 +1,20 @@
-/** Shown on panels wired to the engine but awaiting probability model. */
-export const MODEL_NOT_LIVE_LABEL = "Model not live yet";
-
 /** Copy when the decision engine is connected to live feeds. */
-export const DECISION_ENGINE_CONNECTED_MESSAGE = "Decision engine connected";
+export const DECISION_ENGINE_CONNECTED_MESSAGE = "Live engine evaluation";
 
 /** @deprecated Use DECISION_ENGINE_CONNECTED_MESSAGE */
 export const DECISION_ENGINE_PENDING_MESSAGE = DECISION_ENGINE_CONNECTED_MESSAGE;
 
-/** Copy for probability / edge placeholder panel. */
-export const PROBABILITY_MODEL_PENDING_MESSAGE =
-  "Fair-value and edge estimates will appear once the probability model ships. Use Kalshi Market Odds for live contract pricing.";
+export const PROBABILITY_UNAVAILABLE_MESSAGE =
+  "Probability estimate unavailable — evaluation stopped before the model step.";
+
+export const EXPECTED_VALUE_UNAVAILABLE_MESSAGE =
+  "Expected value unavailable — evaluation stopped before the EV step.";
+
+export const EXECUTION_DISABLED_MESSAGE =
+  "Trade execution is not enabled in this dashboard.";
+
+export const REASONING_ENGINE_ONLY_MESSAGE =
+  "Reasoning trace from the deterministic engine pipeline (guards → features → probability → EV → policy).";
+
+export const FEATURES_UNAVAILABLE_MESSAGE =
+  "Feature vector unavailable — evaluation stopped before feature extraction.";

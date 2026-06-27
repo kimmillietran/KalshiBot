@@ -4,14 +4,16 @@ import {
   PanelHeader,
 } from "@/components/common/GlassPanel";
 import { StatusBadge } from "@/components/common/StatusBadge";
-import { surfaces, textCaption } from "@/lib/design-system";
-import type { TradingMockData } from "@/features/mock-data";
+import { surfaces } from "@/lib/design-system";
+import type { MarketFeatureVector } from "@/lib/features/types";
 import { cn } from "@/lib/utils";
 
-import { MODEL_NOT_LIVE_LABEL } from "../constants";
+import { DECISION_ENGINE_CONNECTED_MESSAGE, FEATURES_UNAVAILABLE_MESSAGE } from "../constants";
+
+import { UnavailableMetric } from "./decision/UnavailableMetric";
 
 type MarketStructurePanelProps = {
-  data: TradingMockData["structure"];
+  features: MarketFeatureVector | null;
 };
 
 type StructureRowProps = {
@@ -40,54 +42,69 @@ function StructureRow({
   );
 }
 
-export function MarketStructurePanel({ data }: MarketStructurePanelProps) {
+function trendVariant(
+  direction: MarketFeatureVector["trend"]["direction"],
+): StructureRowProps["variant"] {
+  if (direction === "bullish") return "success";
+  if (direction === "bearish") return "danger";
+  return "neutral";
+}
+
+function momentumVariant(changePercent: number): StructureRowProps["variant"] {
+  if (changePercent > 0) return "success";
+  if (changePercent < 0) return "danger";
+  return "neutral";
+}
+
+export function MarketStructurePanel({ features }: MarketStructurePanelProps) {
   return (
     <GlassPanel className="h-full">
       <PanelHeader
         title="Market Structure"
-        subtitle={MODEL_NOT_LIVE_LABEL}
+        subtitle={DECISION_ENGINE_CONNECTED_MESSAGE}
         action={
           <StatusBadge variant="neutral" emphasis>
-            Preview
+            {features ? "live features" : "unavailable"}
           </StatusBadge>
         }
       />
       <PanelBody>
-        <div className={cn(surfaces.dashedEmpty, "mb-3 px-3 py-2 text-center")}>
-          <p className={cn(textCaption)}>
-            Technical structure labels below are static demo data — not a live read.
-          </p>
-        </div>
-        <StructureRow label="Trend" value={data.trend} variant="success" />
-        <StructureRow
-          label="Momentum"
-          value={data.momentum}
-          variant="success"
-        />
-        <StructureRow
-          label="Structure"
-          value={data.structure}
-          variant="info"
-        />
-        <StructureRow
-          label="Volatility"
-          value={data.volatility}
-          variant="warning"
-        />
-        <StructureRow
-          label="Target Behavior"
-          value={data.targetBehavior}
-          variant="success"
-        />
-        <StructureRow
-          label="Pattern"
-          value={data.patternDetected}
-          variant="info"
-        />
-        <div className={cn(surfaces.warning, "mt-3 px-3 py-2")}>
-          <p className="text-label text-warning">Risk Warning</p>
-          <p className={cn(textCaption, "mt-1")}>{data.riskWarning}</p>
-        </div>
+        {!features ? (
+          <UnavailableMetric message={FEATURES_UNAVAILABLE_MESSAGE} />
+        ) : (
+          <>
+            <StructureRow
+              label="Trend"
+              value={features.trend.direction}
+              variant={trendVariant(features.trend.direction)}
+            />
+            <StructureRow
+              label="Momentum"
+              value={`${features.momentum.changePercent.toFixed(2)}%`}
+              variant={momentumVariant(features.momentum.changePercent)}
+            />
+            <StructureRow
+              label="Distance to target"
+              value={`${features.distanceToTarget.signed.toFixed(2)} USD`}
+              variant={features.distanceToTarget.isAboveTarget ? "success" : "danger"}
+            />
+            <StructureRow
+              label="Volatility"
+              value={`σ ${features.volatility.stdDev.toFixed(2)}`}
+              variant="warning"
+            />
+            <StructureRow
+              label="Liquidity"
+              value={features.liquidity.quality}
+              variant="info"
+            />
+            <StructureRow
+              label="Time remaining"
+              value={`${features.timeRemaining.minutes.toFixed(1)} min`}
+              variant="neutral"
+            />
+          </>
+        )}
       </PanelBody>
     </GlassPanel>
   );
