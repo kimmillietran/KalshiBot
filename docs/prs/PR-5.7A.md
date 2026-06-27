@@ -22,6 +22,8 @@ Ask `c` is derived from EV outputs: `c = fairCents / (1 + edgePercent/100)`.
 
 Gates (zero size when any fail): `NO TRADE` / `HOLD`, invalid inputs, `netEv ≤ 0`, `edge < minEdgePercent`, `f* ≤ 0`, `f < minFraction`.
 
+**Edge threshold:** sizing uses strict `<` against `minEdgePercent` — edge **equal to** the threshold passes the gate.
+
 ## Config defaults
 
 | Parameter | Default | Source |
@@ -64,3 +66,11 @@ const positionSize = estimatePositionSize({
 ```
 
 Attach to `TradeDecision` (field TBD) and add `model-position-sizing` reasoning step.
+
+## Quality gates
+
+```bash
+npm run lint
+npm run test
+npm run build
+```

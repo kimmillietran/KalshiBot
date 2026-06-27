@@ -78,6 +78,15 @@ describe("estimatePositionSize", () => {
     expect(estimate.modelVersion).toBe(POSITION_SIZING_MODEL_VERSION);
   });
 
+  it("returns zero size for HOLD", () => {
+    const estimate = estimatePositionSize(sizingInput("HOLD"));
+
+    expect(estimate.recommendedFraction).toBe(0);
+    expect(estimate.recommendedPercent).toBe(0);
+    expect(estimate.recommendedDollars).toBeNull();
+    expect(estimate.side).toBeNull();
+  });
+
   it("returns positive Kelly size for BUY UP", () => {
     const estimate = estimatePositionSize(sizingInput("BUY UP"));
 
@@ -130,6 +139,47 @@ describe("estimatePositionSize", () => {
 
     expect(lowEdge.recommendedFraction).toBe(0);
     expect(negativeKelly.recommendedFraction).toBe(0);
+  });
+
+  it("returns zero when capped fraction is below minFraction floor", () => {
+    const estimate = estimatePositionSize(
+      sizingInput("BUY UP", {
+        probability: {
+          probabilityUp: 0.58,
+          probabilityDown: 0.42,
+          confidence: 0.5,
+        },
+        expectedValue: {
+          fairYesCents: 58,
+          edgeYesPercent: 6,
+          netEvYesCents: 2,
+          confidence: 0.5,
+        },
+      }),
+      {
+        ...DEFAULT_POSITION_SIZING_CONFIG,
+        kellyFraction: 0.01,
+        maxFraction: 1,
+        minFraction: 0.005,
+      },
+    );
+
+    expect(estimate.cappedFraction).toBeGreaterThan(0);
+    expect(estimate.cappedFraction).toBeLessThan(0.005);
+    expect(estimate.recommendedFraction).toBe(0);
+  });
+
+  it("accepts edge exactly at minEdgePercent threshold", () => {
+    const estimate = estimatePositionSize(
+      sizingInput("BUY UP", {
+        expectedValue: {
+          edgeYesPercent: DEFAULT_ENGINE_CONFIG.minEdgePercent,
+          netEvYesCents: 5,
+        },
+      }),
+    );
+
+    expect(estimate.recommendedFraction).toBeGreaterThan(0);
   });
 
   it("dampens size by combined confidence", () => {
