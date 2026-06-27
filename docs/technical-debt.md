@@ -90,14 +90,22 @@ Tracked intentionally — not silent accumulation. Review at each milestone clos
 | Duplicate probability stub on branch | Removed — imports use approved `@/lib/trading/probability` |
 | No `ExpectedValueEstimate` type | `evUp` / `evDown` / `edgeUpPercent` / `edgeDownPercent` / `bestSide` / `modelVersion` |
 
-## Outstanding (5.5B+)
+## Resolved in 5.5B
+
+| Issue | Resolution |
+|-------|------------|
+| EV not wired into engine | `evaluate()` calls `estimateExpectedValue()` after probability step |
+| `TradeDecision` missing expected value | `expectedValue: ExpectedValueEstimate \| null` on domain type |
+| Temporary EV stub on branch | Removed — consumes merged 5.5A module from `main` |
+| Engine version stale | `ENGINE_VERSION` → `5.5.0` |
+
+## Outstanding (5.6+)
 
 | Issue | Priority | Reason | Suggested fix | Milestone |
 |-------|----------|--------|---------------|-----------|
-| **EV engine wiring** | High | `evaluate()` does not yet attach `ExpectedValueEstimate` | Wire after probability step | **5.5B** |
-| **Decision policy** | Medium | No BUY UP/DOWN selection from edge | Add after EV wiring | **5.6** |
+| **Decision policy** | Medium | No BUY UP/DOWN selection from EV/edge | `selectTradeAction()` after EV step | **5.6** |
 | **Kelly sizing** | Medium | No position sizing from edge | Add after policy | **5.7** |
-| **Dashboard EV/probability rendering** | Medium | UI still placeholder | Wire `TradeDecision` model outputs | **5.5B+** |
+| **Dashboard EV/probability rendering** | Medium | UI still placeholder | Wire `TradeDecision` model outputs | **5.9** |
 
 ## Minor follow-ups (5.3A)
 
@@ -132,6 +140,14 @@ Tracked intentionally — not silent accumulation. Review at each milestone clos
 | Fee/clamp boundary tests | Low | Expand edge cases for `feeCentsPerContract` and `maxEvMagnitude` |
 | YES tie-break documentation | Low | Already in PR-5.5A; optional inline comment in `estimateExpectedValue.ts` |
 
+## Minor follow-ups (5.5B)
+
+| Issue | Priority | Suggested fix |
+|-------|----------|---------------|
+| Domain re-export for `ExpectedValueEstimate` | Low | Re-export via `src/types/domain/` barrel |
+| Type narrowing after pricing guards | Low | Optional non-null assertion cleanup in `evaluate()` |
+| `EngineConfig` policy thresholds | Low | Wire `minEdgePercent` when decision policy lands (5.6) |
+
 ## Other outstanding
 
 | Issue | Priority | Reason | Suggested fix | Milestone |
@@ -146,4 +162,4 @@ Tracked intentionally — not silent accumulation. Review at each milestone clos
 
 ## Health impact
 
-After Milestone 5.5A → **Technical Debt: Low** (EV model complete; engine wiring and policy remain for 5.5B+).
+After Milestone 5.5B → **Technical Debt: Low** (full model pipeline wired; decision policy and dashboard remain for 5.6+).
