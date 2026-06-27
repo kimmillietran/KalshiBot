@@ -115,12 +115,21 @@ Tracked intentionally — not silent accumulation. Review at each milestone clos
 | `TradeDecision.action` always `NO TRADE` | Mapped from `DecisionPolicyAction` via `toTradeAction()` |
 | Engine version stale | `ENGINE_VERSION` → `5.6.0` |
 
-## Outstanding (5.6C+)
+## Resolved in 5.6C
+
+| Issue | Resolution |
+|-------|------------|
+| Dashboard placeholder / deferred model copy | Panels render live `TradeDecision` — action, probability, EV, features, reasoning |
+| Fake recommendation / model edge UI | Removed; `RecommendationPanel`, `ProbabilityEdgePanel` use engine output |
+| Guard failures hidden in UI | `GuardFailureBanner` + `UnavailableMetric` show truthful unavailable states |
+| Business logic in React | Presentation-only `decision/` components + `decisionDisplay` formatters |
+
+## Outstanding (5.7+)
 
 | Issue | Priority | Reason | Suggested fix | Milestone |
 |-------|----------|--------|---------------|-----------|
-| **Kelly sizing** | Medium | No position sizing from edge | Kelly module after policy | **5.7** |
-| **Dashboard decision rendering** | Medium | UI still placeholder | Wire `TradeDecision.action` to panels | **5.9** |
+| **Kelly sizing** | Medium | No position sizing from edge | Kelly module in `src/lib/trading/` | **5.7** |
+| **Dashboard Kelly/position sizing UI** | Medium | No sizing display | Wire after Kelly module | **5.7+** |
 
 ## Minor follow-ups (5.3A)
 
@@ -180,6 +189,15 @@ Tracked intentionally — not silent accumulation. Review at each milestone clos
 | Document pass/skip semantics in PR-5.6B | Low | Clarify reasoning step outcomes in PR doc |
 | Domain/lib type-coupling polish | Low | Consider `DecisionPolicyAction` re-export via domain types |
 
+## Minor follow-ups (5.6C)
+
+| Issue | Priority | Suggested fix |
+|-------|----------|---------------|
+| `AIReasoningPanel` dedicated test | Low | Smoke test with `ReasoningTraceList` fixture |
+| `MarketStructurePanel` dedicated test | Low | Assert feature rows from `engineDecisions` fixture |
+| BUY UP dashboard smoke test | Low | Extend `TradingDashboard.test.tsx` for bullish action |
+| README/docs upkeep | Low | Keep feature README aligned with panel changes |
+
 ## Other outstanding
 
 | Issue | Priority | Reason | Suggested fix | Milestone |
@@ -194,4 +212,4 @@ Tracked intentionally — not silent accumulation. Review at each milestone clos
 
 ## Health impact
 
-After Milestone 5.6B → **Technical Debt: Low** (full evaluation pipeline through decision policy; Kelly and dashboard remain for 5.7+).
+After Milestone 5.6C → **Technical Debt: Low** (end-to-end live decision rendering; Kelly and execution remain for 5.7+).
