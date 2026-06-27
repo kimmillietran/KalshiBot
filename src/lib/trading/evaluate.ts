@@ -1,4 +1,6 @@
 import { hashConfig } from "@/lib/trading/config/hashConfig";
+import { evaluateDecisionPolicy } from "@/lib/trading/decision-policy";
+import type { DecisionPolicyAction } from "@/lib/trading/decision-policy/types";
 import { estimateExpectedValue } from "@/lib/trading/expected-value";
 import type { ExpectedValueEstimate } from "@/lib/trading/expected-value/types";
 import { extractFeaturesFromSnapshot } from "@/lib/trading/features/extractFeatures";
@@ -15,6 +17,7 @@ import type {
   EvaluationPricingSnapshot,
   EvaluationSnapshot,
   ReasoningStep,
+  TradeAction,
   TradeDecision,
 } from "@/types/domain/trading";
 
@@ -24,6 +27,7 @@ function buildDecision(
   steps: ReasoningStep[],
   summary: string,
   options: {
+    action?: TradeAction;
     features?: MarketFeatureVector | null;
     probability?: ProbabilityEstimate | null;
     expectedValue?: ExpectedValueEstimate | null;
@@ -31,6 +35,7 @@ function buildDecision(
   } = {},
 ): TradeDecision {
   const {
+    action = "NO TRADE",
     features = null,
     probability = null,
     expectedValue = null,
@@ -38,7 +43,7 @@ function buildDecision(
   } = options;
 
   return {
-    action: "NO TRADE",
+    action,
     engineVersion: ENGINE_VERSION,
     configHash: hashConfig(config),
     reasoning: { steps, summary },
@@ -48,6 +53,17 @@ function buildDecision(
     expectedValue,
     ...(gatesTriggered ? { gatesTriggered } : {}),
   };
+}
+
+function toTradeAction(policyAction: DecisionPolicyAction): TradeAction {
+  switch (policyAction) {
+    case "BUY_UP":
+      return "BUY UP";
+    case "BUY_DOWN":
+      return "BUY DOWN";
+    case "NO_TRADE":
+      return "NO TRADE";
+  }
 }
 
 function formatFeatureSummary(features: MarketFeatureVector): string {
@@ -79,7 +95,18 @@ function toExpectedValuePricing(pricing: EvaluationPricingSnapshot) {
   };
 }
 
-/** Pure engine: guards + features + probability + expected value + NO TRADE stub. */
+function formatPolicyDetail(reasoning: readonly string[]): string {
+  return reasoning.join(" · ");
+}
+
+function buildSuccessSummary(action: TradeAction): string {
+  if (action === "NO TRADE") {
+    return "Guards passed — features extracted — probability and EV estimated — policy returns NO TRADE";
+  }
+  return `Guards passed — features extracted — probability and EV estimated — policy returns ${action}`;
+}
+
+/** Pure engine: guards + features + probability + expected value + decision policy. */
 export function evaluate(
   snapshot: EvaluationSnapshot,
   config: EngineConfig,
@@ -131,19 +158,33 @@ export function evaluate(
     outcome: "pass",
     detail: expectedValue.reasoning.summary,
   });
+
+  const policyResult = evaluateDecisionPolicy({
+    expectedValue,
+    probability,
+    features,
+    engineConfig: config,
+  });
+  const action = toTradeAction(policyResult.action);
+
   steps.push({
-    id: "decision-stub",
+    id: "decision-policy",
     phase: "execution",
-    summary: "Trade decision",
-    outcome: "skip",
-    detail: "Engine returns NO TRADE until trade policy is implemented",
+    summary: "Decision policy",
+    outcome: policyResult.action === "NO_TRADE" ? "skip" : "pass",
+    detail: formatPolicyDetail(policyResult.reasoning),
   });
 
   return buildDecision(
     snapshot,
     config,
     steps,
-    "Guards passed — features extracted — probability and EV estimated — engine returns NO TRADE",
-    { features, probability, expectedValue },
+    buildSuccessSummary(action),
+    {
+      action,
+      features,
+      probability,
+      expectedValue,
+    },
   );
 }

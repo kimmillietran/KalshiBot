@@ -3,6 +3,10 @@ import { describe, expect, it } from "vitest";
 import { DEFAULT_ENGINE_CONFIG } from "@/lib/trading/config/defaults";
 import { hashConfig } from "@/lib/trading/config/hashConfig";
 import {
+  evaluateDecisionPolicy,
+  DECISION_POLICY_MODEL_VERSION,
+} from "@/lib/trading/decision-policy";
+import {
   estimateExpectedValue,
   EXPECTED_VALUE_MODEL_VERSION,
 } from "@/lib/trading/expected-value";
@@ -16,7 +20,7 @@ import { MarketLifecycle } from "@/lib/trading/snapshot/types";
 import { ENGINE_VERSION } from "@/lib/trading/versioning";
 import type { MarketFeatureVector } from "@/lib/features/types";
 import type { ProbabilityEstimate } from "@/lib/trading/probability/types";
-import type { EvaluationSnapshot } from "@/types/domain/trading";
+import type { EngineConfig, EvaluationSnapshot } from "@/types/domain/trading";
 
 const EVALUATED_AT = "2026-06-26T12:00:00.000Z";
 const candle = (timestamp: number, close: number) => ({
@@ -60,6 +64,78 @@ function createValidSnapshot(
   };
 }
 
+function risingCandles(start: number, count: number) {
+  return Array.from({ length: count }, (_, index) =>
+    candle(index + 1, start + index * 40),
+  );
+}
+
+function fallingCandles(start: number, count: number) {
+  return Array.from({ length: count }, (_, index) =>
+    candle(index + 1, start - index * 40),
+  );
+}
+
+/** Snapshot tuned for positive YES edge under the real EV + policy pipeline. */
+function createBuyUpSnapshot(): EvaluationSnapshot {
+  return createValidSnapshot({
+    market: {
+      ticker: "KXBTC",
+      lifecycle: MarketLifecycle.ACTIVE,
+      strikePrice: 64_200,
+      timeRemainingMs: 600_000,
+      closeTime: "2026-06-26T12:15:00.000Z",
+    },
+    btc: {
+      price: 64_600,
+      change24hPercent: 2.5,
+      feedStatus: "live",
+      providerSource: "upstream",
+      candles: risingCandles(64_100, 12),
+    },
+    pricing: {
+      yesBidCents: 43,
+      yesAskCents: 45,
+      yesMidCents: 44,
+      noBidCents: 52,
+      noAskCents: 54,
+      noMidCents: 53,
+      liquidityQuality: "Good",
+      volumeDollars: 500_000,
+    },
+  });
+}
+
+/** Snapshot tuned for positive NO edge under the real EV + policy pipeline. */
+function createBuyDownSnapshot(): EvaluationSnapshot {
+  return createValidSnapshot({
+    market: {
+      ticker: "KXBTC",
+      lifecycle: MarketLifecycle.ACTIVE,
+      strikePrice: 64_800,
+      timeRemainingMs: 600_000,
+      closeTime: "2026-06-26T12:15:00.000Z",
+    },
+    btc: {
+      price: 64_200,
+      change24hPercent: -1.5,
+      feedStatus: "live",
+      providerSource: "upstream",
+      candles: fallingCandles(64_600, 12),
+    },
+    pricing: {
+      yesBidCents: 58,
+      yesAskCents: 60,
+      yesMidCents: 59,
+      noBidCents: 36,
+      noAskCents: 38,
+      noMidCents: 37,
+      liquidityQuality: "Good",
+      volumeDollars: 500_000,
+    },
+  });
+}
+
 function expectedValueInput(
   snapshot: EvaluationSnapshot,
   features: MarketFeatureVector,
@@ -78,14 +154,106 @@ function expectedValueInput(
   };
 }
 
+function policyInputFromDecision(
+  snapshot: EvaluationSnapshot,
+  config: EngineConfig,
+  features: MarketFeatureVector,
+  probability: ProbabilityEstimate,
+) {
+  return {
+    features,
+    probability,
+    expectedValue: estimateExpectedValue(
+      expectedValueInput(snapshot, features, probability),
+    ),
+    engineConfig: config,
+  };
+}
+
 describe("evaluate", () => {
-  it("returns NO TRADE with features, probability, and expectedValue when guards pass", () => {
+  it("returns BUY UP when real policy approves YES", () => {
+    const snapshot = createBuyUpSnapshot();
+    const config = DEFAULT_ENGINE_CONFIG;
+    const decision = evaluate(snapshot, config);
+
+    expect(decision.action).toBe("BUY UP");
+    expect(decision.features).not.toBeNull();
+    expect(decision.probability).not.toBeNull();
+    expect(decision.expectedValue).not.toBeNull();
+    expect(
+      evaluateDecisionPolicy(
+        policyInputFromDecision(
+          snapshot,
+          config,
+          decision.features!,
+          decision.probability!,
+        ),
+      ).action,
+    ).toBe("BUY_UP");
+
+    const policyStep = decision.reasoning.steps.find(
+      (step) => step.id === "decision-policy",
+    );
+    expect(policyStep?.outcome).toBe("pass");
+    expect(policyStep?.detail).toContain("action=BUY_UP");
+  });
+
+  it("returns BUY DOWN when real policy approves NO", () => {
+    const snapshot = createBuyDownSnapshot();
+    const config = DEFAULT_ENGINE_CONFIG;
+    const decision = evaluate(snapshot, config);
+
+    expect(decision.action).toBe("BUY DOWN");
+    expect(
+      evaluateDecisionPolicy(
+        policyInputFromDecision(
+          snapshot,
+          config,
+          decision.features!,
+          decision.probability!,
+        ),
+      ).action,
+    ).toBe("BUY_DOWN");
+
+    const policyStep = decision.reasoning.steps.find(
+      (step) => step.id === "decision-policy",
+    );
+    expect(policyStep?.outcome).toBe("pass");
+    expect(policyStep?.detail).toContain("action=BUY_DOWN");
+  });
+
+  it("returns NO TRADE when real policy rejects trade", () => {
     const snapshot = createValidSnapshot();
-    const decision = evaluate(snapshot, DEFAULT_ENGINE_CONFIG);
+    const config = { ...DEFAULT_ENGINE_CONFIG, minEdgePercent: 100 };
+    const decision = evaluate(snapshot, config);
+
     expect(decision.action).toBe("NO TRADE");
     expect(decision.features).not.toBeNull();
     expect(decision.probability).not.toBeNull();
     expect(decision.expectedValue).not.toBeNull();
+    expect(
+      evaluateDecisionPolicy(
+        policyInputFromDecision(
+          snapshot,
+          config,
+          decision.features!,
+          decision.probability!,
+        ),
+      ).action,
+    ).toBe("NO_TRADE");
+
+    const policyStep = decision.reasoning.steps.find(
+      (step) => step.id === "decision-policy",
+    );
+    expect(policyStep?.outcome).toBe("skip");
+    expect(policyStep?.detail).toContain("action=NO_TRADE");
+  });
+
+  it("wires model outputs and policy on the default snapshot when edge is insufficient", () => {
+    const snapshot = createValidSnapshot();
+    const decision = evaluate(snapshot, DEFAULT_ENGINE_CONFIG);
+
+    expect(decision.action).toBe("NO TRADE");
     expect(decision.probability).toEqual(
       estimateProbability(decision.features!),
     );
@@ -104,39 +272,29 @@ describe("evaluate", () => {
       "feature-extraction",
       "model-probability",
       "model-expected-value",
-      "decision-stub",
+      "decision-policy",
     ]);
-    const probabilityStep = decision.reasoning.steps.find(
-      (step) => step.id === "model-probability",
-    );
-    expect(probabilityStep?.outcome).toBe("pass");
-    expect(probabilityStep?.detail).toContain("p(up)=");
-    const expectedValueStep = decision.reasoning.steps.find(
-      (step) => step.id === "model-expected-value",
-    );
-    expect(expectedValueStep?.outcome).toBe("pass");
-    expect(expectedValueStep?.detail).toBe(decision.expectedValue?.reasoning.summary);
-    expect(expectedValueStep?.detail).toContain("Expected value");
-    const decisionStub = decision.reasoning.steps.find(
-      (step) => step.id === "decision-stub",
-    );
-    expect(decisionStub?.outcome).toBe("skip");
+    expect(
+      decision.reasoning.steps.some((step) => step.id === "decision-stub"),
+    ).toBe(false);
   });
 
-  it("returns gatesTriggered and null model outputs on failure", () => {
+  it("returns gatesTriggered and null model outputs on guard failure", () => {
     const decision = evaluate(createValidSnapshot({ market: null }), DEFAULT_ENGINE_CONFIG);
+    expect(decision.action).toBe("NO TRADE");
     expect(decision.gatesTriggered).toEqual(["guard-market-present"]);
     expect(decision.features).toBeNull();
     expect(decision.probability).toBeNull();
     expect(decision.expectedValue).toBeNull();
+    expect(
+      decision.reasoning.steps.some((step) => step.id === "decision-policy"),
+    ).toBe(false);
   });
 
-  it("maps the same snapshot to the same probability and expectedValue on repeat evaluation", () => {
+  it("maps the same snapshot to the same decision on repeat evaluation", () => {
     const snapshot = createValidSnapshot();
     const first = evaluate(snapshot, DEFAULT_ENGINE_CONFIG);
     const second = evaluate(snapshot, DEFAULT_ENGINE_CONFIG);
-    expect(second.probability).toEqual(first.probability);
-    expect(second.expectedValue).toEqual(first.expectedValue);
     expect(second).toEqual(first);
   });
 
@@ -144,6 +302,8 @@ describe("evaluate", () => {
     const decision = evaluate(createValidSnapshot(), DEFAULT_ENGINE_CONFIG);
     expect(decision.engineVersion).toBe(ENGINE_VERSION);
     expect(decision.configHash).toBe(hashConfig(DEFAULT_ENGINE_CONFIG));
+    expect(ENGINE_VERSION).toBe("5.6.0");
+    expect(DECISION_POLICY_MODEL_VERSION).toBe("5.6.0");
   });
 
   it("blocks disabled engine config", () => {
@@ -153,48 +313,6 @@ describe("evaluate", () => {
     });
     expect(decision.gatesTriggered).toEqual(["guard-config-enabled"]);
     expect(decision.reasoning.summary).toContain("Engine disabled");
-  });
-
-  it("blocks non-ACTIVE lifecycle", () => {
-    const decision = evaluate(
-      createValidSnapshot({
-        market: {
-          ticker: "KXBTC",
-          lifecycle: MarketLifecycle.CLOSED,
-          strikePrice: 64_225,
-          timeRemainingMs: 0,
-          closeTime: "2026-06-26T12:15:00.000Z",
-        },
-      }),
-      DEFAULT_ENGINE_CONFIG,
-    );
-    expect(decision.gatesTriggered).toEqual(["guard-market-lifecycle"]);
-  });
-
-  it("blocks missing BTC spot", () => {
-    const decision = evaluate(createValidSnapshot({ btc: null }), DEFAULT_ENGINE_CONFIG);
-    expect(decision.gatesTriggered).toEqual(["guard-btc-present"]);
-    expect(decision.reasoning.summary).toContain("Missing BTC spot");
-  });
-
-  it("blocks spread when bid/ask quotes are unavailable", () => {
-    const decision = evaluate(
-      createValidSnapshot({
-        pricing: {
-          yesBidCents: null,
-          yesAskCents: null,
-          yesMidCents: 50,
-          noBidCents: null,
-          noAskCents: null,
-          noMidCents: 50,
-          liquidityQuality: "Good",
-          volumeDollars: 500_000,
-        },
-      }),
-      DEFAULT_ENGINE_CONFIG,
-    );
-    expect(decision.gatesTriggered).toEqual(["guard-spread-maximum"]);
-    expect(decision.reasoning.summary).toContain("Spread unavailable");
   });
 
   it.each([

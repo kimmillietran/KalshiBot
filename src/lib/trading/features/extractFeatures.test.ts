@@ -99,6 +99,12 @@ describe("evaluate feature integration", () => {
     expect(decision.reasoning.steps.map((step) => step.id)).toContain(
       "model-expected-value",
     );
+    expect(decision.reasoning.steps.map((step) => step.id)).toContain(
+      "decision-policy",
+    );
+    expect(
+      decision.reasoning.steps.some((step) => step.id === "decision-stub"),
+    ).toBe(false);
   });
 
   it("leaves model outputs null when guards fail early", () => {
