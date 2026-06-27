@@ -2,7 +2,7 @@
 
 AI-powered trading assistant for Kalshi BTC markets. Built in milestones.
 
-**Current:** Live BTC/USD feed via provider chain (4.6B: Coinbase → Kraken failover) + Kalshi market discovery (4A) + TanStack Query (4.5) + live contract pricing (4B). Recommendation/edge cards remain mocked until Milestone 5.
+**Current:** Live BTC/Kalshi feeds with provider-chain failover (4.6B) + dashboard truthfulness pass (4.7). Recommendation/edge panels are labeled placeholders until Milestone 5.
 
 ## Engineering Standards
 
@@ -69,6 +69,7 @@ docs/
 | 4B | Live Kalshi contract pricing (YES/NO bid/ask, volume) |
 | 4.6 | BTC provider abstraction (Coinbase default, typed BFF errors) — **complete** |
 | 4.6B | Provider chain, Kraken failover, health/metrics — **complete** |
+| 4.7 | Dashboard truthfulness, chart target clarity — **complete** (pending merge) |
 | 5+ | Dynamic recommendations, auth, db, journal, analytics |
 
 ## Intentionally deferred

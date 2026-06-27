@@ -19,17 +19,15 @@ export function TradingDashboard() {
     <div className={cn(dashboardSectionGap, dashboardBottomPadding)}>
       <CommandBar />
 
-      {/* Main row: chart 2/3, recommendation 1/3 */}
       <div className={cn("grid grid-cols-1 xl:grid-cols-3", gridGap, "items-stretch")}>
         <div className="xl:col-span-2">
           <BtcChartPanel />
         </div>
         <div className="min-h-[420px]">
-          <RecommendationPanel data={data.recommendation} />
+          <RecommendationPanel />
         </div>
       </div>
 
-      {/* Odds, probability, structure */}
       <div
         className={cn(
           "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3",
@@ -38,17 +36,13 @@ export function TradingDashboard() {
         )}
       >
         <MarketOddsPanel />
-        <ProbabilityEdgePanel
-          contracts={data.contracts}
-          model={data.model}
-        />
+        <ProbabilityEdgePanel />
         <MarketStructurePanel data={data.structure} />
       </div>
 
-      {/* Trade management + reasoning */}
       <div className={cn("grid grid-cols-1 lg:grid-cols-2", gridGap, "items-stretch")}>
         <TradeManagementPanel data={data.tradeManagement} />
-        <AIReasoningPanel data={data.reasoning} />
+        <AIReasoningPanel />
       </div>
     </div>
   );

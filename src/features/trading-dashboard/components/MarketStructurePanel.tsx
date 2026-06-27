@@ -8,6 +8,8 @@ import { surfaces, textCaption } from "@/lib/design-system";
 import type { TradingMockData } from "@/features/mock-data";
 import { cn } from "@/lib/utils";
 
+import { MODEL_NOT_LIVE_LABEL } from "../constants";
+
 type MarketStructurePanelProps = {
   data: TradingMockData["structure"];
 };
@@ -43,9 +45,19 @@ export function MarketStructurePanel({ data }: MarketStructurePanelProps) {
     <GlassPanel className="h-full">
       <PanelHeader
         title="Market Structure"
-        subtitle="Technical read on the 15m window"
+        subtitle={MODEL_NOT_LIVE_LABEL}
+        action={
+          <StatusBadge variant="neutral" emphasis>
+            Preview
+          </StatusBadge>
+        }
       />
       <PanelBody>
+        <div className={cn(surfaces.dashedEmpty, "mb-3 px-3 py-2 text-center")}>
+          <p className={cn(textCaption)}>
+            Technical structure labels below are static demo data — not a live read.
+          </p>
+        </div>
         <StructureRow label="Trend" value={data.trend} variant="success" />
         <StructureRow
           label="Momentum"
