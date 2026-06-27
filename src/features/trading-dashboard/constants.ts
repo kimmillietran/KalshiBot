@@ -26,7 +26,7 @@ export const POSITION_SIZING_UNAVAILABLE_MESSAGE =
 export const POSITION_SIZING_ZERO_REASON = "No qualifying trade";
 
 export const POSITION_SIZING_DOLLARS_UNAVAILABLE_LABEL =
-  "Not available (bankroll not configured)";
+  "Bankroll not configured";
 
 export const POSITION_SIZING_RECOMMENDED_POSITION_LABEL = "Recommended Position";
 

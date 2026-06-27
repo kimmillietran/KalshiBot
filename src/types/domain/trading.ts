@@ -87,6 +87,8 @@ export type EngineConfig = {
   maxSpreadPercent: number;
   minimumTimeRemaining: number;
   minimumCandles: number;
+  /** Optional caller bankroll for Kelly dollar sizing (no engine default). */
+  bankrollDollars?: number;
 };
 
 export type ReasoningPhase = "guard" | "model" | "execution";

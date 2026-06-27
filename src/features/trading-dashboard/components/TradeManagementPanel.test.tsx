@@ -68,14 +68,16 @@ describe("TradeManagementPanel", () => {
     expect(view.queryByText(/Sizing unavailable/i)).not.toBeInTheDocument();
   });
 
-  it("shows bankroll dollars when present in fixture", () => {
-    const { container } = render(<TradeManagementPanel decision={buyUpWithDollarsDecision()} />);
+  it("shows bankroll dollars when configured via engine bankroll", () => {
+    const decision = buyUpWithDollarsDecision();
+    const { container } = render(<TradeManagementPanel decision={decision} />);
     const view = within(container);
 
-    expect(view.getByText("$50.00")).toBeInTheDocument();
+    expect(decision.positionSize?.recommendedDollars).toBeCloseTo(250, 2);
+    expect(view.getByText("$250.00")).toBeInTheDocument();
   });
 
-  it("shows dollars unavailable label when recommendedDollars is null", () => {
+  it("shows bankroll not configured when recommendedDollars is null", () => {
     const decision = buyUpDecision();
     const { container } = render(<TradeManagementPanel decision={decision} />);
     const view = within(container);

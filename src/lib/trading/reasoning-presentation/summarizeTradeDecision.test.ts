@@ -225,6 +225,7 @@ describe("summarizeTradeDecision", () => {
       "model-probability",
       "model-expected-value",
       "decision-policy",
+      "model-bankroll",
       "model-position-sizing",
     ]);
   });

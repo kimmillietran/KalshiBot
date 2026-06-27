@@ -17,6 +17,6 @@ exports[`AIReasoningPanel > matches snapshot for BUY UP presentation structure 1
   ],
   "summary": "Guards passed — features extracted — probability, EV, policy, and sizing complete — policy returns BUY UP",
   "supportingReasonCount": 5,
-  "traceStepCount": 20,
+  "traceStepCount": 21,
 }
 `;

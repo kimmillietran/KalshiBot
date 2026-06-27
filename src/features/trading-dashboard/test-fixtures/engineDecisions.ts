@@ -59,36 +59,48 @@ function baseSnapshot(
   };
 }
 
+function buyUpSnapshot(): EvaluationSnapshot {
+  return baseSnapshot({
+    market: {
+      ticker: "KXBTC",
+      lifecycle: MarketLifecycle.ACTIVE,
+      strikePrice: 64_200,
+      timeRemainingMs: 600_000,
+      closeTime: "2026-06-26T12:15:00.000Z",
+    },
+    btc: {
+      price: 64_600,
+      change24hPercent: 2.5,
+      feedStatus: "live",
+      providerSource: "upstream",
+      candles: risingCandles(64_100, 12),
+    },
+    pricing: {
+      yesBidCents: 43,
+      yesAskCents: 45,
+      yesMidCents: 44,
+      noBidCents: 52,
+      noAskCents: 54,
+      noMidCents: 53,
+      liquidityQuality: "Good",
+      volumeDollars: 500_000,
+    },
+  });
+}
+
 export function buyUpDecision(): TradeDecision {
-  return evaluate(
-    baseSnapshot({
-      market: {
-        ticker: "KXBTC",
-        lifecycle: MarketLifecycle.ACTIVE,
-        strikePrice: 64_200,
-        timeRemainingMs: 600_000,
-        closeTime: "2026-06-26T12:15:00.000Z",
-      },
-      btc: {
-        price: 64_600,
-        change24hPercent: 2.5,
-        feedStatus: "live",
-        providerSource: "upstream",
-        candles: risingCandles(64_100, 12),
-      },
-      pricing: {
-        yesBidCents: 43,
-        yesAskCents: 45,
-        yesMidCents: 44,
-        noBidCents: 52,
-        noAskCents: 54,
-        noMidCents: 53,
-        liquidityQuality: "Good",
-        volumeDollars: 500_000,
-      },
-    }),
-    DEFAULT_ENGINE_CONFIG,
-  );
+  return evaluate(buyUpSnapshot(), DEFAULT_ENGINE_CONFIG);
+}
+
+export function buyUpWithBankrollDecision(
+  targetRecommendedDollars = 250,
+): TradeDecision {
+  const baseline = buyUpDecision();
+  const fraction = baseline.positionSize?.recommendedFraction ?? 0;
+  return evaluate(buyUpSnapshot(), {
+    ...DEFAULT_ENGINE_CONFIG,
+    bankrollDollars: targetRecommendedDollars / fraction,
+  });
 }
 
 export function buyDownDecision(): TradeDecision {

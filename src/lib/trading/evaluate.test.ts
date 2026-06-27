@@ -10,6 +10,7 @@ import {
   estimateExpectedValue,
   EXPECTED_VALUE_MODEL_VERSION,
 } from "@/lib/trading/expected-value";
+import { resolveBankroll } from "@/lib/trading/bankroll";
 import { evaluate } from "@/lib/trading/evaluate";
 import { GUARD_STEP_ORDER } from "@/lib/trading/guards/evaluationGuards";
 import * as positionSizing from "@/lib/trading/position-sizing";
@@ -187,7 +188,7 @@ function positionSizeInputFromDecision(
     probability,
     expectedValue,
     engineConfig: config,
-    bankrollDollars: undefined,
+    bankrollDollars: resolveBankroll(config).bankrollDollars ?? undefined,
   };
 }
 
@@ -346,6 +347,7 @@ describe("evaluate", () => {
       "model-probability",
       "model-expected-value",
       "decision-policy",
+      "model-bankroll",
       "model-position-sizing",
     ]);
     expect(
@@ -376,11 +378,57 @@ describe("evaluate", () => {
     expect(second).toEqual(first);
   });
 
+
+  it("omits recommended dollars when bankroll is not configured", () => {
+    const decision = evaluate(createBuyUpSnapshot(), DEFAULT_ENGINE_CONFIG);
+
+    expect(decision.positionSize?.recommendedDollars).toBeNull();
+    const bankrollStep = decision.reasoning.steps.find(
+      (step) => step.id === "model-bankroll",
+    );
+    expect(bankrollStep?.outcome).toBe("skip");
+  });
+
+  it("populates recommended dollars when bankroll is configured", () => {
+    const snapshot = createBuyUpSnapshot();
+    const baseline = evaluate(snapshot, DEFAULT_ENGINE_CONFIG);
+    const fraction = baseline.positionSize?.recommendedFraction ?? 0;
+    expect(fraction).toBeGreaterThan(0);
+
+    const decision = evaluate(snapshot, {
+      ...DEFAULT_ENGINE_CONFIG,
+      bankrollDollars: 250 / fraction,
+    });
+
+    expect(decision.positionSize?.recommendedDollars).toBeCloseTo(250, 2);
+    const bankrollStep = decision.reasoning.steps.find(
+      (step) => step.id === "model-bankroll",
+    );
+    expect(bankrollStep?.outcome).toBe("pass");
+  });
+
+  it("keeps sizing percentages unchanged when bankroll is configured", () => {
+    const snapshot = createBuyUpSnapshot();
+    const withoutBankroll = evaluate(snapshot, DEFAULT_ENGINE_CONFIG);
+    const fraction = withoutBankroll.positionSize?.recommendedFraction ?? 0;
+
+    const withBankroll = evaluate(snapshot, {
+      ...DEFAULT_ENGINE_CONFIG,
+      bankrollDollars: 250 / fraction,
+    });
+
+    expect(withBankroll.positionSize?.recommendedFraction).toBe(
+      withoutBankroll.positionSize?.recommendedFraction,
+    );
+    expect(withBankroll.positionSize?.recommendedPercent).toBe(
+      withoutBankroll.positionSize?.recommendedPercent,
+    );
+  });
   it("includes engine metadata", () => {
     const decision = evaluate(createValidSnapshot(), DEFAULT_ENGINE_CONFIG);
     expect(decision.engineVersion).toBe(ENGINE_VERSION);
     expect(decision.configHash).toBe(hashConfig(DEFAULT_ENGINE_CONFIG));
-    expect(ENGINE_VERSION).toBe("5.7.0");
+    expect(ENGINE_VERSION).toBe("5.9.0");
     expect(DECISION_POLICY_MODEL_VERSION).toBe("5.6.0");
   });
 

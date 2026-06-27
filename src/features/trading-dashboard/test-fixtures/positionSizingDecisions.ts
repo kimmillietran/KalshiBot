@@ -4,6 +4,7 @@ import type { TradeDecision } from "@/types/domain/trading";
 import {
   buyDownDecision,
   buyUpDecision,
+  buyUpWithBankrollDecision,
   guardFailureDecision,
   noTradePolicyDecision,
 } from "./engineDecisions";
@@ -38,15 +39,7 @@ export function decisionWithPositionSize(
 }
 
 export function buyUpWithDollarsDecision(): TradeDecision {
-  const base = buyUpDecision();
-  return decisionWithPositionSize(base, {
-    ...mockPositionSize({
-      recommendedFraction: base.positionSize?.recommendedFraction ?? 0.05,
-      recommendedPercent: base.positionSize?.recommendedPercent ?? 5,
-      recommendedDollars: 50,
-      side: "yes",
-    }),
-  });
+  return buyUpWithBankrollDecision(250);
 }
 
 export function zeroPositionSizeDecision(): TradeDecision {

@@ -1,3 +1,4 @@
+import { resolveBankroll } from "@/lib/trading/bankroll";
 import { hashConfig } from "@/lib/trading/config/hashConfig";
 import { evaluateDecisionPolicy } from "@/lib/trading/decision-policy";
 import type { DecisionPolicyAction } from "@/lib/trading/decision-policy/types";
@@ -117,7 +118,7 @@ function buildSuccessSummary(action: TradeAction): string {
   return `${base} — policy returns ${action}`;
 }
 
-/** Pure engine: guards + features + probability + EV + policy + position sizing. */
+/** Pure engine: guards + features + probability + EV + policy + bankroll + position sizing. */
 export function evaluate(
   snapshot: EvaluationSnapshot,
   config: EngineConfig,
@@ -186,12 +187,22 @@ export function evaluate(
     detail: formatPolicyDetail(policyResult.reasoning),
   });
 
+  const bankroll = resolveBankroll(config);
+
+  steps.push({
+    id: "model-bankroll",
+    phase: "model",
+    summary: "Bankroll resolution",
+    outcome: bankroll.configured ? "pass" : "skip",
+    detail: bankroll.reasoning.join(" · "),
+  });
+
   const positionSize = estimatePositionSize({
     action,
     probability,
     expectedValue,
     engineConfig: config,
-    bankrollDollars: undefined,
+    bankrollDollars: bankroll.bankrollDollars,
   });
 
   steps.push({

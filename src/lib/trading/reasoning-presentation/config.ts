@@ -39,5 +39,6 @@ export const REASONING_STEP_LABELS: Record<string, string> = {
   "model-probability": "Probability model",
   "model-expected-value": "Expected value",
   "decision-policy": "Decision policy",
+  "model-bankroll": "Bankroll resolution",
   "model-position-sizing": "Position sizing",
 };
