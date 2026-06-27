@@ -13,12 +13,14 @@ import {
 import { fetchActiveBtcMarket } from "./api/kalshiClient";
 import {
   COUNTDOWN_TICK_MS,
-  FALLBACK_MARKET_STATUS,
-  FALLBACK_MARKET_TITLE,
-  FALLBACK_TARGET_PRICE,
   MARKET_POLL_MS,
   MARKET_STALE_THRESHOLD_MS,
 } from "./constants";
+import {
+  FALLBACK_MARKET_TICKER,
+  FALLBACK_MARKET_TITLE,
+  FALLBACK_TARGET_PRICE,
+} from "./fallback";
 import type {
   ActiveBtcMarket,
   MarketDataState,
@@ -28,14 +30,12 @@ import {
   computeTimeRemainingMs,
   formatCountdown,
   formatExpirationTime,
-  formatMarketStatus,
   isMarketFeedStale,
 } from "./utils";
 
 type MarketDataContextValue = MarketDataState & {
   ticker: string;
   title: string;
-  statusLabel: string;
   timeRemainingFormatted: string;
   expirationFormatted: string;
 };
@@ -177,17 +177,10 @@ export function MarketDataProvider({ children }: { children: React.ReactNode }) 
     return FALLBACK_TARGET_PRICE;
   }, [market?.targetPrice]);
 
-  const ticker = market?.ticker ?? "—";
+  const ticker = market?.ticker ?? FALLBACK_MARKET_TICKER;
   const title = noMarket
     ? "No Active Market"
     : market?.title ?? FALLBACK_MARKET_TITLE;
-
-  const statusLabel = useMemo(() => {
-    if (noMarket) return "NO MARKET";
-    if (isFallback) return FALLBACK_MARKET_STATUS;
-    if (market?.status) return formatMarketStatus(market.status);
-    return FALLBACK_MARKET_STATUS;
-  }, [isFallback, market?.status, noMarket]);
 
   const value = useMemo<MarketDataContextValue>(
     () => ({
@@ -201,7 +194,6 @@ export function MarketDataProvider({ children }: { children: React.ReactNode }) 
       lastFetchedAt,
       ticker,
       title,
-      statusLabel,
       timeRemainingFormatted: formatCountdown(timeRemainingMs),
       expirationFormatted: formatExpirationTime(market?.closeTime ?? null),
     }),
@@ -216,7 +208,6 @@ export function MarketDataProvider({ children }: { children: React.ReactNode }) 
       lastFetchedAt,
       ticker,
       title,
-      statusLabel,
     ],
   );
 

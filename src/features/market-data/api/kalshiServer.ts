@@ -12,6 +12,7 @@ import {
   selectUnopenedMarket,
 } from "../utils";
 import type { ActiveBtcMarket } from "../types";
+import { fetchWithTimeout, KalshiRequestTimeoutError } from "./fetchWithTimeout";
 
 export type DiscoverActiveMarketResult =
   | { kind: "market"; market: ActiveBtcMarket }
@@ -33,10 +34,21 @@ export async function fetchKalshiMarkets({
   url.searchParams.set("status", status);
   url.searchParams.set("limit", String(limit));
 
-  const res = await fetchImpl(url.toString(), {
-    headers: { Accept: "application/json" },
-    cache: "no-store",
-  });
+  let res: Response;
+
+  try {
+    res = await fetchWithTimeout(url.toString(), {
+      headers: { Accept: "application/json" },
+      cache: "no-store",
+      fetchImpl,
+    });
+  } catch (err) {
+    if (err instanceof KalshiRequestTimeoutError) {
+      console.error(`[kalshi] markets/${status} request timed out`);
+      throw err;
+    }
+    throw err;
+  }
 
   if (res.status === 429) {
     throw new Error("Kalshi rate limit exceeded");
@@ -92,3 +104,5 @@ export async function discoverActiveBtcMarket(
     message: "No active BTC 15m market",
   };
 }
+
+export { KalshiRequestTimeoutError };

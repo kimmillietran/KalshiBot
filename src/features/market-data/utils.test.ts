@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import type { KalshiMarket } from "./schemas";
+import { MarketLifecycle } from "./types";
 import {
   computeTimeRemainingMs,
   formatCountdown,
   formatExpirationTime,
+  formatLifecycleLabel,
   mapKalshiMarketToActiveBtc,
   selectOpenMarket,
   selectUnopenedMarket,
@@ -48,9 +50,16 @@ describe("formatExpirationTime", () => {
   });
 });
 
+describe("formatLifecycleLabel", () => {
+  it("returns the lifecycle enum value for display", () => {
+    expect(formatLifecycleLabel(MarketLifecycle.ACTIVE)).toBe("ACTIVE");
+  });
+});
+
 describe("selectOpenMarket", () => {
-  it("returns the only open market", () => {
-    expect(selectOpenMarket([baseMarket])).toEqual(baseMarket);
+  it("returns the only non-expired open market", () => {
+    const now = Date.parse("2026-06-26T23:20:00Z");
+    expect(selectOpenMarket([baseMarket], now)).toEqual(baseMarket);
   });
 
   it("chooses the nearest upcoming close_time", () => {
@@ -67,6 +76,11 @@ describe("selectOpenMarket", () => {
     const now = Date.parse("2026-06-26T23:20:00Z");
 
     expect(selectOpenMarket([later, sooner], now)).toEqual(sooner);
+  });
+
+  it("returns null when every open market has expired", () => {
+    const now = Date.parse("2026-06-26T23:35:00Z");
+    expect(selectOpenMarket([baseMarket], now)).toBeNull();
   });
 });
 
@@ -88,7 +102,7 @@ describe("selectUnopenedMarket", () => {
 });
 
 describe("mapKalshiMarketToActiveBtc", () => {
-  it("maps vendor fields into the domain model", () => {
+  it("maps vendor fields into the domain model with lifecycle", () => {
     const now = new Date("2026-06-26T23:20:00Z");
     const mapped = mapKalshiMarketToActiveBtc(baseMarket, now);
 
@@ -96,7 +110,7 @@ describe("mapKalshiMarketToActiveBtc", () => {
       ticker: baseMarket.ticker,
       title: baseMarket.title,
       targetPrice: 59990.31,
-      status: "active",
+      lifecycle: MarketLifecycle.ACTIVE,
       source: "kalshi",
       isFallback: false,
       timeRemainingMs: 600_000,

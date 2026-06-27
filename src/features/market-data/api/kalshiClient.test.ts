@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { MarketLifecycle } from "../types";
 import { fetchActiveBtcMarket } from "./kalshiClient";
 
 describe("fetchActiveBtcMarket", () => {
@@ -14,7 +15,7 @@ describe("fetchActiveBtcMarket", () => {
         ticker: "KXBTC15M-26JUN261930-30",
         title: "BTC price up in next 15 mins?",
         targetPrice: 59990.31,
-        status: "active",
+        lifecycle: MarketLifecycle.ACTIVE,
         openTime: "2026-06-26T23:15:00Z",
         closeTime: "2026-06-26T23:30:00Z",
         timeRemainingMs: 600_000,

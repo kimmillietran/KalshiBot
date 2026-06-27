@@ -1,8 +1,16 @@
+export enum MarketLifecycle {
+  UPCOMING = "UPCOMING",
+  ACTIVE = "ACTIVE",
+  CLOSED = "CLOSED",
+  SETTLED = "SETTLED",
+  UNKNOWN = "UNKNOWN",
+}
+
 export type ActiveBtcMarket = {
   ticker: string;
   title: string;
   targetPrice: number | null;
-  status: string;
+  lifecycle: MarketLifecycle;
   openTime: string | null;
   closeTime: string | null;
   timeRemainingMs: number;

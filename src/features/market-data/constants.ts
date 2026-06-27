@@ -1,5 +1,3 @@
-import { tradingMockData } from "@/features/mock-data";
-
 /** Kalshi production REST base (server-side only). */
 export const KALSHI_API_BASE =
   "https://external-api.kalshi.com/trade-api/v2";
@@ -16,11 +14,5 @@ export const COUNTDOWN_TICK_MS = 1_000;
 /** Mark market feed stale after 30s without a successful BFF response. */
 export const MARKET_STALE_THRESHOLD_MS = 30_000;
 
-/** Fallback target when Kalshi is unavailable (existing mock). */
-export const FALLBACK_TARGET_PRICE = tradingMockData.market.targetPrice;
-
-/** Fallback market label when Kalshi is unavailable. */
-export const FALLBACK_MARKET_TITLE = tradingMockData.commandBar.currentMarket;
-
-/** Fallback market status label when Kalshi is unavailable. */
-export const FALLBACK_MARKET_STATUS = "FALLBACK";
+/** Upstream Kalshi HTTP request timeout (AbortSignal). */
+export const MARKET_API_TIMEOUT_MS = 5_000;

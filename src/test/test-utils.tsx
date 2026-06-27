@@ -4,12 +4,13 @@ import { render } from "@testing-library/react";
 import { vi } from "vitest";
 
 import { DashboardProviders } from "@/providers/DashboardProviders";
+import { MarketLifecycle } from "@/features/market-data/types";
 
 const liveMarket = {
   ticker: "KXBTC15M-26JUN261930-30",
   title: "BTC price up in next 15 mins?",
   targetPrice: 59990.31,
-  status: "active",
+  lifecycle: MarketLifecycle.ACTIVE,
   openTime: "2026-06-26T23:15:00Z",
   closeTime: "2026-06-26T23:30:00Z",
   timeRemainingMs: 600_000,

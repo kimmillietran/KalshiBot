@@ -1,4 +1,5 @@
-import type { ActiveBtcMarket } from "./types";
+import { mapKalshiStatusToLifecycle } from "./api/lifecycle";
+import type { ActiveBtcMarket, MarketLifecycle } from "./types";
 import type { KalshiMarket } from "./schemas";
 
 export function computeTimeRemainingMs(
@@ -38,40 +39,32 @@ export function formatExpirationTime(closeTime: string | null): string {
   });
 }
 
-export function formatMarketStatus(status: string): string {
-  return status.replace(/_/g, " ").toUpperCase();
+export function formatLifecycleLabel(lifecycle: MarketLifecycle): string {
+  return lifecycle;
 }
 
 /**
  * Pick the open market with the nearest upcoming close_time.
- * Ties break on lexicographically earliest ticker for determinism.
+ * Returns null when every candidate has already expired.
  */
 export function selectOpenMarket(
   markets: KalshiMarket[],
   nowMs: number = Date.now(),
 ): KalshiMarket | null {
   if (markets.length === 0) return null;
-  if (markets.length === 1) return markets[0];
 
   const upcoming = markets
     .map((market) => ({
       market,
       closeMs: Date.parse(market.close_time),
     }))
-    .filter(({ closeMs }) => !Number.isNaN(closeMs) && closeMs >= nowMs)
+    .filter(({ closeMs }) => !Number.isNaN(closeMs) && closeMs > nowMs)
     .sort((a, b) => {
       if (a.closeMs !== b.closeMs) return a.closeMs - b.closeMs;
       return a.market.ticker.localeCompare(b.market.ticker);
     });
 
-  if (upcoming.length > 0) return upcoming[0].market;
-
-  return [...markets].sort((a, b) => {
-    const aClose = Date.parse(a.close_time);
-    const bClose = Date.parse(b.close_time);
-    if (aClose !== bClose) return aClose - bClose;
-    return a.ticker.localeCompare(b.ticker);
-  })[0];
+  return upcoming[0]?.market ?? null;
 }
 
 /**
@@ -94,15 +87,21 @@ export function mapKalshiMarketToActiveBtc(
   now: Date = new Date(),
 ): ActiveBtcMarket {
   const closeTime = market.close_time;
+  const nowMs = now.getTime();
 
   return {
     ticker: market.ticker,
     title: market.title,
     targetPrice: market.floor_strike ?? null,
-    status: market.status,
+    lifecycle: mapKalshiStatusToLifecycle({
+      vendorStatus: market.status,
+      openTime: market.open_time,
+      closeTime: market.close_time,
+      nowMs,
+    }),
     openTime: market.open_time,
     closeTime,
-    timeRemainingMs: computeTimeRemainingMs(closeTime, now.getTime()),
+    timeRemainingMs: computeTimeRemainingMs(closeTime, nowMs),
     updatedAt: now.toISOString(),
     source: "kalshi",
     isFallback: false,

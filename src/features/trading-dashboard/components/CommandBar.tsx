@@ -12,6 +12,7 @@ import {
 import { formatFeedTime, formatSignedDistance } from "@/features/btc-feed/utils";
 import {
   MarketStatusBadge,
+  FALLBACK_MARKET_TICKER,
   useActiveBtcMarket,
 } from "@/features/market-data";
 import {
@@ -67,7 +68,7 @@ export function CommandBar() {
 
         <MarketStatusBadge
           status={market.feedStatus}
-          marketStatus={market.statusLabel}
+          lifecycle={market.lifecycle}
         />
       </div>
 
@@ -75,7 +76,7 @@ export function CommandBar() {
         <div>
           <p className={labelClass()}>Market</p>
           <p className={textSectionValue}>{market.title}</p>
-          {!market.noMarket && market.ticker !== "—" ? (
+          {!market.noMarket && market.ticker !== FALLBACK_MARKET_TICKER ? (
             <p className="text-muted-foreground text-xs">{market.ticker}</p>
           ) : null}
         </div>

@@ -1,5 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { MarketLifecycle } from "@/features/market-data/types";
+import { KalshiRequestTimeoutError } from "@/features/market-data/api/fetchWithTimeout";
+
 import { GET } from "./route";
 
 vi.mock("@/features/market-data/api/kalshiServer", () => ({
@@ -22,7 +25,7 @@ describe("GET /api/kalshi/markets/active", () => {
         ticker: "KXBTC15M-26JUN261930-30",
         title: "BTC price up in next 15 mins?",
         targetPrice: 59990.31,
-        status: "active",
+        lifecycle: MarketLifecycle.ACTIVE,
         openTime: "2026-06-26T23:15:00Z",
         closeTime: "2026-06-26T23:30:00Z",
         timeRemainingMs: 600_000,
@@ -72,5 +75,15 @@ describe("GET /api/kalshi/markets/active", () => {
 
     const res = await GET();
     expect(res.status).toBe(429);
+  });
+
+  it("maps upstream timeouts to 504", async () => {
+    mockedDiscover.mockRejectedValue(new KalshiRequestTimeoutError());
+
+    const res = await GET();
+    const body = await res.json();
+
+    expect(res.status).toBe(504);
+    expect(body.error).toContain("timed out");
   });
 });

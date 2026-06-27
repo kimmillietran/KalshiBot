@@ -15,13 +15,13 @@ export function useActiveBtcMarket() {
     lastFetchedAt,
     ticker,
     title,
-    statusLabel,
     timeRemainingFormatted,
     expirationFormatted,
   } = useMarketDataContext();
 
   return {
     market,
+    lifecycle: market?.lifecycle,
     noMarket,
     feedStatus,
     errorMessage,
@@ -31,7 +31,6 @@ export function useActiveBtcMarket() {
     lastFetchedAt,
     ticker,
     title,
-    statusLabel,
     timeRemainingFormatted,
     expirationFormatted,
     isLoading: feedStatus === "loading",

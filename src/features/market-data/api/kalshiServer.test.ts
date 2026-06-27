@@ -1,8 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 
+import { MARKET_API_TIMEOUT_MS } from "../constants";
+import { MarketLifecycle } from "../types";
 import {
   discoverActiveBtcMarket,
   fetchKalshiMarkets,
+  KalshiRequestTimeoutError,
 } from "./kalshiServer";
 
 const openMarket = {
@@ -16,9 +19,14 @@ const openMarket = {
 
 function mockFetchSequence(responses: Array<{ status: number; body: unknown }>) {
   let call = 0;
-  return vi.fn(async () => {
+  return vi.fn(async (_url, init?: RequestInit) => {
     const next = responses[call] ?? responses[responses.length - 1];
     call += 1;
+
+    if (init?.signal) {
+      init.signal.throwIfAborted?.();
+    }
+
     return {
       ok: next.status >= 200 && next.status < 300,
       status: next.status,
@@ -47,6 +55,29 @@ describe("fetchKalshiMarkets", () => {
       fetchKalshiMarkets({ status: "open", fetchImpl }),
     ).rejects.toThrow("rate limit");
   });
+
+  it("throws KalshiRequestTimeoutError on upstream timeout", async () => {
+    vi.useFakeTimers();
+
+    const fetchImpl = vi.fn(
+      (_url, init?: RequestInit) =>
+        new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener("abort", () => {
+            const err = new Error("The operation was aborted");
+            err.name = "AbortError";
+            reject(err);
+          });
+        }),
+    );
+
+    const pending = fetchKalshiMarkets({ status: "open", fetchImpl, limit: 1 });
+    const assertion = expect(pending).rejects.toBeInstanceOf(KalshiRequestTimeoutError);
+
+    await vi.advanceTimersByTimeAsync(MARKET_API_TIMEOUT_MS + 1);
+    await assertion;
+
+    vi.useRealTimers();
+  });
 });
 
 describe("discoverActiveBtcMarket", () => {
@@ -65,6 +96,7 @@ describe("discoverActiveBtcMarket", () => {
       market: {
         ticker: openMarket.ticker,
         targetPrice: 59990.31,
+        lifecycle: MarketLifecycle.ACTIVE,
       },
     });
   });
@@ -86,6 +118,35 @@ describe("discoverActiveBtcMarket", () => {
     const result = await discoverActiveBtcMarket(
       fetchImpl,
       new Date("2026-06-26T23:20:00Z"),
+    );
+
+    expect(result).toMatchObject({
+      kind: "market",
+      market: {
+        ticker: unopened.ticker,
+        lifecycle: MarketLifecycle.UPCOMING,
+      },
+    });
+  });
+
+  it("falls back to unopened markets when every open market is expired", async () => {
+    const expiredOpen = { ...openMarket };
+    const unopened = {
+      ...openMarket,
+      ticker: "KXBTC15M-NEXT",
+      status: "initialized",
+      open_time: "2026-06-26T23:30:00Z",
+      close_time: "2026-06-26T23:45:00Z",
+    };
+
+    const fetchImpl = mockFetchSequence([
+      { status: 200, body: { markets: [expiredOpen], cursor: "" } },
+      { status: 200, body: { markets: [unopened], cursor: "" } },
+    ]);
+
+    const result = await discoverActiveBtcMarket(
+      fetchImpl,
+      new Date("2026-06-26T23:35:00Z"),
     );
 
     expect(result).toMatchObject({

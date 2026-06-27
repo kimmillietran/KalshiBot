@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { MarketLifecycle } from "./types";
+
 /** Minimal Kalshi market fields required for discovery and normalization. */
 export const kalshiMarketSchema = z.object({
   ticker: z.string().min(1),
@@ -24,7 +26,7 @@ export const activeBtcMarketSchema = z.object({
   ticker: z.string(),
   title: z.string(),
   targetPrice: z.number().nullable(),
-  status: z.string(),
+  lifecycle: z.nativeEnum(MarketLifecycle),
   openTime: z.string().nullable(),
   closeTime: z.string().nullable(),
   timeRemainingMs: z.number(),
