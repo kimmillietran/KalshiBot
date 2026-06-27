@@ -54,8 +54,20 @@ describe("buildEvaluationSnapshot", () => {
         status: "live",
         isUsingFallback: false,
         candles: [
-          { timestamp: 1_700_000_000_000, close: 64_180 },
-          { timestamp: 1_700_000_060_000, close: 64_250.32 },
+          {
+            timestamp: 1_700_000_000_000,
+            open: 64_175,
+            high: 64_185,
+            low: 64_170,
+            close: 64_180,
+          },
+          {
+            timestamp: 1_700_000_060_000,
+            open: 64_245,
+            high: 64_255,
+            low: 64_240,
+            close: 64_250.32,
+          },
         ],
       },
     });
@@ -74,8 +86,20 @@ describe("buildEvaluationSnapshot", () => {
       feedStatus: "live",
       providerSource: "upstream",
       candles: [
-        { timestamp: 1_700_000_000_000, close: 64_180 },
-        { timestamp: 1_700_000_060_000, close: 64_250.32 },
+        {
+          timestamp: 1_700_000_000_000,
+          open: 64_175,
+          high: 64_185,
+          low: 64_170,
+          close: 64_180,
+        },
+        {
+          timestamp: 1_700_000_060_000,
+          open: 64_245,
+          high: 64_255,
+          low: 64_240,
+          close: 64_250.32,
+        },
       ],
     });
     expect(snapshot.pricing).toEqual({
@@ -86,6 +110,7 @@ describe("buildEvaluationSnapshot", () => {
       noAskCents: 85,
       noMidCents: 85,
       liquidityQuality: "Good",
+      volumeDollars: 503_000,
     });
   });
 

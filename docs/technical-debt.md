@@ -49,12 +49,18 @@ Tracked intentionally — not silent accumulation. Review at each milestone clos
 | Raw ticker in CommandBar | Friendly subtitle + tooltip-only contract ID (preserved from bugfix) |
 | Synthetic candle timestamps | Chart points carry upstream `timestamp`; snapshot maps real ms values |
 
-## Outstanding (5.3+)
+## Resolved in 5.3A (branch — pending merge)
+
+| Issue | Resolution |
+|-------|------------|
+| Feature consumption by engine | `extractFeaturesFromSnapshot()` + `evaluate()` pipeline; `TradeDecision.features` metadata |
+| Duplicate distance calculation in BTC feed | `calculateDistanceFromTarget()` delegates to feature builder |
+
+## Outstanding (5.3B+)
 
 | Issue | Priority | Reason | Suggested fix | Milestone |
 |-------|----------|--------|---------------|-----------|
-| **Feature consumption by engine** | High | `MarketFeatureVector` not passed into `evaluate()` | Orchestrator maps feeds → features → snapshot | **5.3** |
-| **Probability model** | High | No fair-value / implied probability calculation | Deterministic model in `src/lib/trading/` | **5.3+** |
+| **Probability model** | High | No fair-value / implied probability calculation | Deterministic model in `src/lib/trading/` | **5.3B+** |
 | **EV calculation** | Medium | No expected-value from model vs market prices | Add after probability model | **5.3+** |
 | **Kelly sizing** | Medium | No position sizing from edge | Add after EV | **5.3+** |
 | **BTC fallback/stale feed guard** | Low | Feed status captured but not guarded in `evaluate()` | Optional guard when `providerSource=fallback` | **5.3** |

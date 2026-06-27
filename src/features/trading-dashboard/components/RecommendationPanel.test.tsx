@@ -25,7 +25,22 @@ const stubSnapshot: EvaluationSnapshot = {
     change24hPercent: 1.2,
     feedStatus: "live",
     providerSource: "upstream",
-    candles: [{ timestamp: 1, close: 64_250 }],
+    candles: [
+      {
+        timestamp: 1,
+        open: 64_245,
+        high: 64_255,
+        low: 64_240,
+        close: 64_250,
+      },
+      {
+        timestamp: 2,
+        open: 64_250,
+        high: 64_260,
+        low: 64_245,
+        close: 64_255,
+      },
+    ],
   },
   pricing: {
     yesBidCents: 62,
@@ -35,6 +50,7 @@ const stubSnapshot: EvaluationSnapshot = {
     noAskCents: 39,
     noMidCents: 38,
     liquidityQuality: "Good",
+    volumeDollars: null,
   },
 };
 

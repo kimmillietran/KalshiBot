@@ -3,6 +3,7 @@ import type {
   ActiveBtcMarket,
   MarketContractPricing,
 } from "@/features/market-data/types";
+import { parseVolumeLabelDollars } from "@/lib/trading/snapshot/parseVolumeDollars";
 import type {
   BtcFeedStatus as DomainBtcFeedStatus,
   EvaluationSnapshot,
@@ -20,7 +21,13 @@ export type BuildEvaluationSnapshotInput = {
     change24hPercent: number;
     status: BtcFeedStatus;
     isUsingFallback: boolean;
-    candles: readonly { timestamp: number; close: number }[];
+    candles: readonly {
+      timestamp: number;
+      open: number;
+      high: number;
+      low: number;
+      close: number;
+    }[];
   } | null;
 };
 
@@ -84,6 +91,9 @@ export function buildEvaluationSnapshot(
           providerSource: mapProviderSource(btc.status, btc.isUsingFallback),
           candles: btc.candles.map((candle) => ({
             timestamp: candle.timestamp,
+            open: candle.open,
+            high: candle.high,
+            low: candle.low,
             close: candle.close,
           })),
         };
@@ -99,6 +109,7 @@ export function buildEvaluationSnapshot(
           noAskCents: pricing.no.askCents,
           noMidCents: pricing.no.midCents,
           liquidityQuality: pricing.liquidityQuality,
+          volumeDollars: parseVolumeLabelDollars(pricing.volumeLabel),
         };
 
   return {

@@ -22,7 +22,7 @@ import {
   MOCK_TARGET_PRICE,
   PRICE_FLASH_MS,
 } from "./constants";
-import type { BtcFeedState, BtcFeedStatus, PriceDirection } from "./types";
+import type { BtcCandle, BtcFeedState, BtcFeedStatus, PriceDirection } from "./types";
 import {
   calculateDistanceFromTarget,
   calculatePriceChangeDirection,
@@ -63,6 +63,7 @@ export function BtcFeedProvider({
   const [chartPoints, setChartPoints] = useState<
     { time: string; price: number }[]
   >([]);
+  const [candles, setCandles] = useState<readonly BtcCandle[]>([]);
   const [status, setStatus] = useState<BtcFeedStatus>("loading");
   const [direction, setDirection] = useState<PriceDirection>("flat");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -153,6 +154,7 @@ export function BtcFeedProvider({
     }
 
     const points = candlesToChartPoints(candlesQuery.data.candles);
+    setCandles(candlesQuery.data.candles);
     setChartPoints((prev) => {
       const livePrice =
         prev.length > 0 ? prev[prev.length - 1].price : points.at(-1)?.price;
@@ -192,6 +194,7 @@ export function BtcFeedProvider({
       change24hPercent,
       lastUpdated,
       chartPoints,
+      candles,
       status,
       direction,
       errorMessage,
@@ -205,6 +208,7 @@ export function BtcFeedProvider({
       change24hPercent,
       lastUpdated,
       chartPoints,
+      candles,
       status,
       direction,
       errorMessage,

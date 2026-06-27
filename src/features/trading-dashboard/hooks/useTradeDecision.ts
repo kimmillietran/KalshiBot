@@ -3,7 +3,6 @@
 import { useMemo } from "react";
 
 import { useBtcFeedContext } from "@/features/btc-feed/BtcFeedProvider";
-import type { BtcChartPoint } from "@/features/btc-feed/types";
 import { useActiveBtcMarket } from "@/features/market-data";
 import {
   DEFAULT_ENGINE_CONFIG,
@@ -33,20 +32,6 @@ function resolveEvaluatedAt(
   return candidates[0] ?? new Date(0).toISOString();
 }
 
-function mapChartPointsToSnapshotCandles(
-  points: readonly BtcChartPoint[],
-): { timestamp: number; close: number }[] {
-  return points
-    .filter(
-      (point): point is BtcChartPoint & { timestamp: number } =>
-        point.timestamp != null && point.timestamp > 0,
-    )
-    .map((point) => ({
-      timestamp: point.timestamp,
-      close: point.price,
-    }));
-}
-
 /** Builds an `EvaluationSnapshot` from live feeds and runs the pure engine. */
 export function useTradeDecision(): TradeDecisionState {
   const btc = useBtcFeedContext();
@@ -69,7 +54,7 @@ export function useTradeDecision(): TradeDecisionState {
         change24hPercent: btc.change24hPercent,
         status: btc.status,
         isUsingFallback: btc.isUsingFallback,
-        candles: mapChartPointsToSnapshotCandles(btc.chartPoints),
+        candles: btc.candles,
       },
     });
 
@@ -81,7 +66,7 @@ export function useTradeDecision(): TradeDecisionState {
       isConnected: true,
     };
   }, [
-    btc.chartPoints,
+    btc.candles,
     btc.change24hPercent,
     btc.isUsingFallback,
     btc.lastUpdated,

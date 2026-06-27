@@ -1,4 +1,5 @@
 import { hashConfig } from "@/lib/trading/config/hashConfig";
+import { extractFeaturesFromSnapshot } from "@/lib/trading/features/extractFeatures";
 import {
   hasBtcSpot,
   hasContractPricing,
@@ -7,6 +8,7 @@ import {
   isActiveLifecycle,
 } from "@/lib/trading/snapshot/types";
 import { ENGINE_VERSION } from "@/lib/trading/versioning";
+import type { MarketFeatureVector } from "@/lib/features/types";
 import type {
   EngineConfig,
   EvaluationSnapshot,
@@ -19,6 +21,7 @@ function buildDecision(
   config: EngineConfig,
   steps: ReasoningStep[],
   summary: string,
+  features: MarketFeatureVector | null = null,
 ): TradeDecision {
   return {
     action: "NO TRADE",
@@ -29,12 +32,24 @@ function buildDecision(
       summary,
     },
     evaluatedAt: snapshot.evaluatedAt,
+    features,
   };
+}
+
+function formatFeatureSummary(features: MarketFeatureVector): string {
+  return [
+    `distance=${features.distanceToTarget.signed.toFixed(2)}`,
+    `trend=${features.trend.direction}`,
+    `momentum=${features.momentum.changePercent.toFixed(2)}%`,
+    `vol=${features.volatility.stdDev.toFixed(2)}`,
+    `liquidity=${features.liquidity.quality}`,
+    `timeRemaining=${features.timeRemaining.minutes.toFixed(1)}m`,
+  ].join(", ");
 }
 
 /**
  * Pure, deterministic trading engine entry point.
- * Milestone 5.0: guard rails + NO TRADE stub — no model or execution logic yet.
+ * Milestone 5.3A: guard rails + feature extraction + NO TRADE stub.
  */
 export function evaluate(
   snapshot: EvaluationSnapshot,
@@ -186,12 +201,22 @@ export function evaluate(
     detail: "YES/NO quotes available",
   });
 
+  const features = extractFeaturesFromSnapshot(snapshot);
+
+  steps.push({
+    id: "feature-extraction",
+    phase: "model",
+    summary: "Market feature vector",
+    outcome: "pass",
+    detail: formatFeatureSummary(features),
+  });
+
   steps.push({
     id: "model-probability",
     phase: "model",
     summary: "Probability model",
     outcome: "skip",
-    detail: "Deferred — milestone 5.0 stub",
+    detail: "Deferred — probability model not implemented",
   });
 
   steps.push({
@@ -199,13 +224,14 @@ export function evaluate(
     phase: "execution",
     summary: "Trade decision",
     outcome: "skip",
-    detail: "Engine foundation returns NO TRADE until model is implemented",
+    detail: "Engine returns NO TRADE until probability model is implemented",
   });
 
   return buildDecision(
     snapshot,
     config,
     steps,
-    "Guards passed — engine stub returns NO TRADE",
+    "Guards passed — features extracted — engine returns NO TRADE",
+    features,
   );
 }

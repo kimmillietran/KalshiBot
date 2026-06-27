@@ -42,6 +42,8 @@ export type BtcFeedState = {
   change24hPercent: number;
   lastUpdated: Date | null;
   chartPoints: BtcChartPoint[];
+  /** Upstream OHLC candles for engine snapshot mapping. */
+  candles: readonly BtcCandle[];
   status: BtcFeedStatus;
   direction: PriceDirection;
   errorMessage: string | null;

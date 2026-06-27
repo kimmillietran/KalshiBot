@@ -9,6 +9,16 @@ import type { EvaluationSnapshot } from "@/types/domain/trading";
 
 const EVALUATED_AT = "2026-06-26T12:00:00.000Z";
 
+function candle(timestamp: number, close: number) {
+  return {
+    timestamp,
+    open: close - 5,
+    high: close + 5,
+    low: close - 10,
+    close,
+  };
+}
+
 function createValidSnapshot(
   overrides: Partial<EvaluationSnapshot> = {},
 ): EvaluationSnapshot {
@@ -26,7 +36,7 @@ function createValidSnapshot(
       change24hPercent: 1.2,
       feedStatus: "live",
       providerSource: "upstream",
-      candles: [{ timestamp: 1, close: 64_100 }],
+      candles: [candle(1_700_000_000_000, 64_100)],
     },
     pricing: {
       yesBidCents: 62,
@@ -36,6 +46,7 @@ function createValidSnapshot(
       noAskCents: 39,
       noMidCents: 38,
       liquidityQuality: "Good",
+      volumeDollars: 503_000,
     },
     ...overrides,
   };
@@ -129,9 +140,11 @@ describe("evaluate", () => {
       "guard-strike-present",
       "guard-btc-present",
       "guard-pricing-present",
+      "feature-extraction",
       "model-probability",
       "decision-stub",
     ]);
+    expect(decision.features).not.toBeNull();
     expect(decision.reasoning.steps.at(-1)).toMatchObject({
       phase: "execution",
       outcome: "skip",

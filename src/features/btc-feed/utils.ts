@@ -1,15 +1,18 @@
 import type { BtcCandle, BtcChartPoint, PriceDirection } from "./types";
 import { BTC_STALE_THRESHOLD_MS } from "./constants";
+import { distanceToTarget, percentToTarget } from "@/lib/features/targetDistance";
 
 export function calculateDistanceFromTarget(
   livePrice: number,
   targetPrice: number,
 ): { distance: number; percent: number } {
-  const distance = livePrice - targetPrice;
-  const percent = targetPrice !== 0 ? (distance / targetPrice) * 100 : 0;
-  return { distance, percent };
+  const distance = distanceToTarget(livePrice, targetPrice);
+  const percent = percentToTarget(livePrice, targetPrice);
+  return {
+    distance: distance.signed,
+    percent: percent.percent,
+  };
 }
-
 export function calculatePriceChangeDirection(
   previous: number | null,
   next: number,

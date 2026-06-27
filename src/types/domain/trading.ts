@@ -1,3 +1,5 @@
+import type { MarketFeatureVector } from "@/lib/features/types";
+
 /**
  * Domain vocabulary for the deterministic trading engine.
  * Vendor/feature shapes are mapped into these types before evaluation.
@@ -36,6 +38,9 @@ export type BtcFeedStatus =
 
 export type EvaluationCandleSnapshot = {
   timestamp: number;
+  open: number;
+  high: number;
+  low: number;
   close: number;
 };
 
@@ -56,6 +61,8 @@ export type EvaluationPricingSnapshot = {
   noAskCents: number | null;
   noMidCents: number | null;
   liquidityQuality: LiquidityQuality;
+  /** Parsed contract volume in USD when available from Kalshi metadata. */
+  volumeDollars: number | null;
 };
 
 /**
@@ -102,4 +109,9 @@ export type TradeDecision = {
   reasoning: ReasoningTrace;
   /** Echo of `snapshot.evaluatedAt` for audit alignment. */
   evaluatedAt: string;
+  /**
+   * Deterministic feature vector from `buildMarketFeatureVector()`.
+   * `null` when evaluation exits before feature extraction (guard failure).
+   */
+  features: MarketFeatureVector | null;
 };
