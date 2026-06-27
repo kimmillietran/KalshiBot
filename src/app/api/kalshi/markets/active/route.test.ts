@@ -5,6 +5,28 @@ import { KalshiRequestTimeoutError } from "@/features/market-data/api/fetchWithT
 
 import { GET } from "./route";
 
+const samplePricing = {
+  yes: {
+    bidCents: 15,
+    askCents: 16,
+    midCents: 16,
+    lastCents: 16,
+    spreadCents: 1,
+  },
+  no: {
+    bidCents: 84,
+    askCents: 85,
+    midCents: 85,
+    lastCents: null,
+    spreadCents: 1,
+  },
+  volumeLabel: "$503K",
+  liquidityQuality: "Good" as const,
+  updatedAt: "2026-06-26T23:20:00.000Z",
+  isFallback: false,
+  source: "kalshi" as const,
+};
+
 vi.mock("@/features/market-data/api/kalshiServer", () => ({
   discoverActiveBtcMarket: vi.fn(),
 }));
@@ -33,6 +55,7 @@ describe("GET /api/kalshi/markets/active", () => {
         source: "kalshi",
         isFallback: false,
       },
+      pricing: samplePricing,
     });
 
     const res = await GET();
@@ -41,6 +64,7 @@ describe("GET /api/kalshi/markets/active", () => {
     expect(res.status).toBe(200);
     expect(body.noMarket).toBe(false);
     expect(body.market.ticker).toBe("KXBTC15M-26JUN261930-30");
+    expect(body.pricing.yes.midCents).toBe(16);
   });
 
   it("returns no-market response when discovery is empty", async () => {
@@ -55,6 +79,7 @@ describe("GET /api/kalshi/markets/active", () => {
     expect(res.status).toBe(200);
     expect(body).toEqual({
       market: null,
+      pricing: null,
       noMarket: true,
       message: "No active BTC 15m market",
     });

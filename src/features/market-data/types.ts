@@ -6,6 +6,26 @@ export enum MarketLifecycle {
   UNKNOWN = "UNKNOWN",
 }
 
+export type LiquidityQuality = "Poor" | "Fair" | "Good" | "Excellent";
+
+export type ContractSidePricing = {
+  bidCents: number | null;
+  askCents: number | null;
+  midCents: number | null;
+  lastCents: number | null;
+  spreadCents: number | null;
+};
+
+export type MarketContractPricing = {
+  yes: ContractSidePricing;
+  no: ContractSidePricing;
+  volumeLabel: string;
+  liquidityQuality: LiquidityQuality;
+  updatedAt: string;
+  isFallback: boolean;
+  source: "kalshi";
+};
+
 export type ActiveBtcMarket = {
   ticker: string;
   title: string;
@@ -21,6 +41,7 @@ export type ActiveBtcMarket = {
 
 export type ActiveBtcMarketApiResponse = {
   market: ActiveBtcMarket | null;
+  pricing: MarketContractPricing | null;
   noMarket: boolean;
   message?: string;
 };
@@ -34,6 +55,7 @@ export type MarketDataStatus =
 
 export type MarketDataState = {
   market: ActiveBtcMarket | null;
+  pricing: MarketContractPricing | null;
   noMarket: boolean;
   feedStatus: MarketDataStatus;
   errorMessage: string | null;

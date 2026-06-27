@@ -12,6 +12,13 @@ export const kalshiMarketSchema = z.object({
   floor_strike: z.number().nullable().optional(),
   event_ticker: z.string().optional(),
   yes_sub_title: z.string().optional(),
+  yes_bid_dollars: z.string().optional(),
+  yes_ask_dollars: z.string().optional(),
+  no_bid_dollars: z.string().optional(),
+  no_ask_dollars: z.string().optional(),
+  last_price_dollars: z.string().optional(),
+  volume_fp: z.string().optional(),
+  liquidity_dollars: z.string().optional(),
 });
 
 export const kalshiMarketsResponseSchema = z.object({
@@ -35,8 +42,27 @@ export const activeBtcMarketSchema = z.object({
   isFallback: z.boolean(),
 });
 
+export const contractSidePricingSchema = z.object({
+  bidCents: z.number().nullable(),
+  askCents: z.number().nullable(),
+  midCents: z.number().nullable(),
+  lastCents: z.number().nullable(),
+  spreadCents: z.number().nullable(),
+});
+
+export const marketContractPricingSchema = z.object({
+  yes: contractSidePricingSchema,
+  no: contractSidePricingSchema,
+  volumeLabel: z.string(),
+  liquidityQuality: z.enum(["Poor", "Fair", "Good", "Excellent"]),
+  updatedAt: z.string(),
+  isFallback: z.boolean(),
+  source: z.literal("kalshi"),
+});
+
 export const activeBtcMarketApiResponseSchema = z.object({
   market: activeBtcMarketSchema.nullable(),
+  pricing: marketContractPricingSchema.nullable(),
   noMarket: z.boolean(),
   message: z.string().optional(),
 });

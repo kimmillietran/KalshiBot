@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  FALLBACK_CONTRACT_PRICING,
   FALLBACK_MARKET_STATUS,
   FALLBACK_MARKET_TICKER,
   FALLBACK_MARKET_TITLE,
@@ -13,5 +14,7 @@ describe("market-data fallback constants", () => {
     expect(FALLBACK_MARKET_TITLE).toBe("BTC 15m");
     expect(FALLBACK_MARKET_TICKER).toBe("—");
     expect(FALLBACK_MARKET_STATUS).toBe("FALLBACK");
+    expect(FALLBACK_CONTRACT_PRICING.isFallback).toBe(true);
+    expect(FALLBACK_CONTRACT_PRICING.yes.midCents).toBe(63);
   });
 });

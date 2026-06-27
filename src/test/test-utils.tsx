@@ -11,6 +11,28 @@ import {
 import { MarketLifecycle } from "@/features/market-data/types";
 import { QueryTestProvider } from "@/test/query-test-utils";
 
+const livePricing = {
+  yes: {
+    bidCents: 15,
+    askCents: 16,
+    midCents: 16,
+    lastCents: 16,
+    spreadCents: 1,
+  },
+  no: {
+    bidCents: 84,
+    askCents: 85,
+    midCents: 85,
+    lastCents: null,
+    spreadCents: 1,
+  },
+  volumeLabel: "$503K",
+  liquidityQuality: "Good" as const,
+  updatedAt: "2026-06-26T23:20:00.000Z",
+  isFallback: false,
+  source: "kalshi" as const,
+};
+
 const liveMarket = {
   ticker: "KXBTC15M-26JUN261930-30",
   title: "BTC price up in next 15 mins?",
@@ -90,6 +112,7 @@ export function mockDashboardApiFetch(options?: {
           ok: true,
           json: async () => ({
             market: null,
+            pricing: null,
             noMarket: true,
             message: "No active BTC 15m market",
           }),
@@ -100,6 +123,7 @@ export function mockDashboardApiFetch(options?: {
         ok: true,
         json: async () => ({
           market: liveMarket,
+          pricing: livePricing,
           noMarket: false,
         }),
       } as Response);
@@ -134,4 +158,4 @@ export function renderWithBtcFeed(ui: ReactElement) {
   return renderWithDashboard(ui);
 }
 
-export { liveMarket };
+export { liveMarket, livePricing };

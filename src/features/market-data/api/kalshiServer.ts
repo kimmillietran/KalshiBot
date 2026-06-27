@@ -2,20 +2,21 @@ import {
   BTC_15M_SERIES_TICKER,
   KALSHI_API_BASE,
 } from "../constants";
+import { mapKalshiMarketToContractPricing } from "../pricing";
 import {
   kalshiMarketsResponseSchema,
   type KalshiMarket,
 } from "../schemas";
+import type { ActiveBtcMarket, MarketContractPricing } from "../types";
 import {
   mapKalshiMarketToActiveBtc,
   selectOpenMarket,
   selectUnopenedMarket,
 } from "../utils";
-import type { ActiveBtcMarket } from "../types";
 import { fetchWithTimeout, KalshiRequestTimeoutError } from "./fetchWithTimeout";
 
 export type DiscoverActiveMarketResult =
-  | { kind: "market"; market: ActiveBtcMarket }
+  | { kind: "market"; market: ActiveBtcMarket; pricing: MarketContractPricing | null }
   | { kind: "no-market"; message: string };
 
 type FetchKalshiMarketsOptions = {
@@ -83,6 +84,7 @@ export async function discoverActiveBtcMarket(
     return {
       kind: "market",
       market: mapKalshiMarketToActiveBtc(selectedOpen, now),
+      pricing: mapKalshiMarketToContractPricing(selectedOpen, now),
     };
   }
 
@@ -96,6 +98,7 @@ export async function discoverActiveBtcMarket(
     return {
       kind: "market",
       market: mapKalshiMarketToActiveBtc(selectedUnopened, now),
+      pricing: mapKalshiMarketToContractPricing(selectedUnopened, now),
     };
   }
 

@@ -15,6 +15,13 @@ const openMarket = {
   open_time: "2026-06-26T23:15:00Z",
   close_time: "2026-06-26T23:30:00Z",
   floor_strike: 59990.31,
+  yes_bid_dollars: "0.1500",
+  yes_ask_dollars: "0.1600",
+  no_bid_dollars: "0.8400",
+  no_ask_dollars: "0.8500",
+  last_price_dollars: "0.1600",
+  volume_fp: "503000",
+  liquidity_dollars: "75000.00",
 };
 
 function mockFetchSequence(responses: Array<{ status: number; body: unknown }>) {
@@ -97,6 +104,11 @@ describe("discoverActiveBtcMarket", () => {
         ticker: openMarket.ticker,
         targetPrice: 59990.31,
         lifecycle: MarketLifecycle.ACTIVE,
+      },
+      pricing: {
+        yes: { bidCents: 15, askCents: 16, midCents: 16 },
+        volumeLabel: "$503K",
+        liquidityQuality: "Good",
       },
     });
   });

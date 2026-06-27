@@ -3,6 +3,7 @@ export { useActiveBtcMarket } from "./hooks/useActiveBtcMarket";
 export { MarketStatusBadge } from "./components/MarketStatusBadge";
 export { fetchActiveBtcMarket } from "./api/kalshiClient";
 export {
+  FALLBACK_CONTRACT_PRICING,
   FALLBACK_MARKET_STATUS,
   FALLBACK_MARKET_TICKER,
   FALLBACK_MARKET_TITLE,
@@ -16,6 +17,15 @@ export {
 export { mapKalshiStatusToLifecycle } from "./api/lifecycle";
 export { fetchWithTimeout, KalshiRequestTimeoutError } from "./api/fetchWithTimeout";
 export {
+  assessLiquidityQuality,
+  computeMidCents,
+  computeSpreadCents,
+  formatContractVolume,
+  mapKalshiMarketToContractPricing,
+  mapPricingToOddsViews,
+  parseKalshiDollarToCents,
+} from "./pricing";
+export {
   computeTimeRemainingMs,
   formatCountdown,
   formatExpirationTime,
@@ -28,5 +38,8 @@ export { MarketLifecycle } from "./types";
 export type {
   ActiveBtcMarket,
   ActiveBtcMarketApiResponse,
+  ContractSidePricing,
+  LiquidityQuality,
+  MarketContractPricing,
   MarketDataStatus,
 } from "./types";

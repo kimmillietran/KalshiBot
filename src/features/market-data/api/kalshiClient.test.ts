@@ -23,6 +23,27 @@ describe("fetchActiveBtcMarket", () => {
         source: "kalshi" as const,
         isFallback: false,
       },
+      pricing: {
+        yes: {
+          bidCents: 15,
+          askCents: 16,
+          midCents: 16,
+          lastCents: 16,
+          spreadCents: 1,
+        },
+        no: {
+          bidCents: 84,
+          askCents: 85,
+          midCents: 85,
+          lastCents: null,
+          spreadCents: 1,
+        },
+        volumeLabel: "$503K",
+        liquidityQuality: "Good" as const,
+        updatedAt: "2026-06-26T23:20:00.000Z",
+        isFallback: false,
+        source: "kalshi" as const,
+      },
       noMarket: false,
     };
 
@@ -45,7 +66,7 @@ describe("fetchActiveBtcMarket", () => {
       vi.fn(() =>
         Promise.resolve({
           ok: true,
-          json: async () => ({ market: null, noMarket: "yes" }),
+          json: async () => ({ market: null, pricing: null, noMarket: "yes" }),
         } as Response),
       ),
     );

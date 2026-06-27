@@ -1,3 +1,5 @@
+"use client";
+
 import { MetricCard } from "@/components/common/MetricCard";
 import {
   GlassPanel,
@@ -5,6 +7,9 @@ import {
   PanelHeader,
 } from "@/components/common/GlassPanel";
 import { StatusBadge } from "@/components/common/StatusBadge";
+import { useActiveBtcMarket } from "@/features/market-data";
+import { FALLBACK_MARKET_STATUS } from "@/features/market-data/fallback";
+import type { ContractOdds } from "@/features/mock-data/types";
 import {
   labelClass,
   statGap,
@@ -13,14 +18,7 @@ import {
   toneClasses,
 } from "@/lib/design-system";
 import { formatCents } from "@/lib/utils/format";
-import type { ContractOdds } from "@/features/mock-data";
 import { cn } from "@/lib/utils";
-
-type MarketOddsPanelProps = {
-  up: ContractOdds;
-  down: ContractOdds;
-  liquidityQuality: string;
-};
 
 function ContractCard({
   contract,
@@ -70,25 +68,51 @@ function ContractCard({
   );
 }
 
-export function MarketOddsPanel({
-  up,
-  down,
-  liquidityQuality,
-}: MarketOddsPanelProps) {
+export function MarketOddsPanel() {
+  const {
+    contractOdds,
+    pricing,
+    isFallback,
+    pricingIsStale,
+    isLoading,
+    noMarket,
+  } = useActiveBtcMarket();
+
+  if (isLoading || noMarket || !contractOdds || !pricing) {
+    return (
+      <GlassPanel className="h-full">
+        <PanelHeader title="Kalshi Market Odds" subtitle="BTC 15m · above/below target" />
+        <PanelBody>
+          <p className="text-muted-foreground text-sm">
+            {isLoading ? "Loading contract pricing…" : "No active market odds available."}
+          </p>
+        </PanelBody>
+      </GlassPanel>
+    );
+  }
+
+  const liquidityLabel = isFallback
+    ? `${FALLBACK_MARKET_STATUS} · ${pricing.liquidityQuality}`
+    : pricingIsStale
+      ? `STALE · ${pricing.liquidityQuality}`
+      : `Liquidity: ${pricing.liquidityQuality}`;
+
+  const badgeVariant = isFallback ? "warning" : pricingIsStale ? "warning" : "success";
+
   return (
     <GlassPanel className="h-full">
       <PanelHeader
         title="Kalshi Market Odds"
         subtitle="BTC 15m · above/below target"
         action={
-          <StatusBadge variant="success" dot>
-            Liquidity: {liquidityQuality}
+          <StatusBadge variant={badgeVariant} dot>
+            {liquidityLabel}
           </StatusBadge>
         }
       />
       <PanelBody className={cn("space-y-3")}>
-        <ContractCard contract={up} tone="up" />
-        <ContractCard contract={down} tone="down" />
+        <ContractCard contract={contractOdds.up} tone="up" />
+        <ContractCard contract={contractOdds.down} tone="down" />
         <div className={cn("grid grid-cols-2 pt-1", statGap)}>
           <MetricCard label="Combined" value="101¢" subValue="overround ~1%" />
           <MetricCard

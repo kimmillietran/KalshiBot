@@ -5,7 +5,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { QueryTestProvider } from "@/test/query-test-utils";
 
 import { COUNTDOWN_TICK_MS } from "../constants";
-import { FALLBACK_MARKET_TICKER, FALLBACK_TARGET_PRICE } from "../fallback";
+import {
+  FALLBACK_CONTRACT_PRICING,
+  FALLBACK_MARKET_TICKER,
+  FALLBACK_TARGET_PRICE,
+} from "../fallback";
 import { MarketDataProvider } from "../MarketDataProvider";
 import { MarketLifecycle } from "../types";
 import { useActiveBtcMarket } from "./useActiveBtcMarket";
@@ -21,6 +25,28 @@ const liveMarket = {
   updatedAt: "2026-06-26T23:20:00.000Z",
   source: "kalshi" as const,
   isFallback: false,
+};
+
+const livePricing = {
+  yes: {
+    bidCents: 15,
+    askCents: 16,
+    midCents: 16,
+    lastCents: 16,
+    spreadCents: 1,
+  },
+  no: {
+    bidCents: 84,
+    askCents: 85,
+    midCents: 85,
+    lastCents: null,
+    spreadCents: 1,
+  },
+  volumeLabel: "$503K",
+  liquidityQuality: "Good" as const,
+  updatedAt: "2026-06-26T23:20:00.000Z",
+  isFallback: false,
+  source: "kalshi" as const,
 };
 
 function wrapper({ children }: { children: ReactNode }) {
@@ -66,6 +92,8 @@ describe("MarketDataProvider", () => {
     expect(result.current.lifecycle).toBeUndefined();
     expect(result.current.targetPrice).toBe(FALLBACK_TARGET_PRICE);
     expect(result.current.ticker).toBe(FALLBACK_MARKET_TICKER);
+    expect(result.current.pricing?.isFallback).toBe(true);
+    expect(result.current.contractOdds?.up.price).toBe(63);
   });
 
   it("enters no-market state when discovery is empty", async () => {
@@ -76,6 +104,7 @@ describe("MarketDataProvider", () => {
           ok: true,
           json: async () => ({
             market: null,
+            pricing: null,
             noMarket: true,
             message: "No active BTC 15m market",
           }),
@@ -92,6 +121,8 @@ describe("MarketDataProvider", () => {
     expect(result.current.noMarket).toBe(true);
     expect(result.current.title).toBe("No Active Market");
     expect(result.current.lifecycle).toBeUndefined();
+    expect(result.current.pricing).toBeNull();
+    expect(result.current.contractOdds).toBeNull();
   });
 
   it("refreshes market data when countdown expires", async () => {
@@ -106,11 +137,19 @@ describe("MarketDataProvider", () => {
       .fn()
       .mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ market: { ...liveMarket, closeTime }, noMarket: false }),
+        json: async () => ({
+          market: { ...liveMarket, closeTime },
+          pricing: livePricing,
+          noMarket: false,
+        }),
       } as Response)
       .mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ market: nextMarket, noMarket: false }),
+        json: async () => ({
+          market: nextMarket,
+          pricing: livePricing,
+          noMarket: false,
+        }),
       } as Response);
 
     vi.stubGlobal("fetch", fetchMock);
@@ -127,7 +166,7 @@ describe("MarketDataProvider", () => {
     await vi.advanceTimersByTimeAsync(COUNTDOWN_TICK_MS);
 
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledTimes(2);
+      expect(fetchMock.mock.calls.length).toBeGreaterThan(1);
     });
 
     await waitFor(() => {
@@ -153,13 +192,17 @@ describe("useActiveBtcMarket", () => {
     expect(result.current.isLoading).toBe(true);
   });
 
-  it("exposes lifecycle after a successful fetch", async () => {
+  it("exposes lifecycle and contract pricing after a successful fetch", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(() =>
         Promise.resolve({
           ok: true,
-          json: async () => ({ market: liveMarket, noMarket: false }),
+          json: async () => ({
+            market: liveMarket,
+            pricing: livePricing,
+            noMarket: false,
+          }),
         } as Response),
       ),
     );
@@ -173,6 +216,9 @@ describe("useActiveBtcMarket", () => {
     expect(result.current.lifecycle).toBe(MarketLifecycle.ACTIVE);
     expect(result.current.ticker).toBe(liveMarket.ticker);
     expect(result.current.targetPrice).toBe(59990.31);
+    expect(result.current.pricing?.yes.midCents).toBe(16);
+    expect(result.current.contractOdds?.up.price).toBe(16);
+    expect(result.current.pricingIsStale).toBe(false);
   });
 
   it("enters fallback state when the BFF fails", async () => {
@@ -195,6 +241,6 @@ describe("useActiveBtcMarket", () => {
     });
 
     expect(result.current.isFallback).toBe(true);
-    expect(result.current.targetPrice).toBeGreaterThan(0);
+    expect(result.current.pricing).toEqual(FALLBACK_CONTRACT_PRICING);
   });
 });

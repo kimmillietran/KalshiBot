@@ -12,6 +12,7 @@ export async function GET() {
     if (result.kind === "no-market") {
       return NextResponse.json({
         market: null,
+        pricing: null,
         noMarket: true,
         message: result.message,
       });
@@ -19,6 +20,7 @@ export async function GET() {
 
     return NextResponse.json({
       market: result.market,
+      pricing: result.pricing,
       noMarket: false,
     });
   } catch (err) {

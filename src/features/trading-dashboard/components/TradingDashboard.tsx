@@ -37,11 +37,7 @@ export function TradingDashboard() {
           "items-stretch",
         )}
       >
-        <MarketOddsPanel
-          up={data.contracts.up}
-          down={data.contracts.down}
-          liquidityQuality="Good"
-        />
+        <MarketOddsPanel />
         <ProbabilityEdgePanel
           contracts={data.contracts}
           model={data.model}

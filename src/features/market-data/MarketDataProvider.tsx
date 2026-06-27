@@ -1,9 +1,8 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import {
   createContext,
-  useCallback,
   useContext,
   useEffect,
   useMemo,
@@ -20,12 +19,15 @@ import {
   MARKET_STALE_THRESHOLD_MS,
 } from "./constants";
 import {
+  FALLBACK_CONTRACT_PRICING,
   FALLBACK_MARKET_TICKER,
   FALLBACK_MARKET_TITLE,
   FALLBACK_TARGET_PRICE,
 } from "./fallback";
 import type {
   ActiveBtcMarket,
+  ActiveBtcMarketApiResponse,
+  MarketContractPricing,
   MarketDataState,
   MarketDataStatus,
 } from "./types";
@@ -41,23 +43,104 @@ type MarketDataContextValue = MarketDataState & {
   title: string;
   timeRemainingFormatted: string;
   expirationFormatted: string;
+  pricingIsStale: boolean;
 };
 
 const MarketDataContext = createContext<MarketDataContextValue | null>(null);
 
-export function MarketDataProvider({ children }: { children: React.ReactNode }) {
-  const [market, setMarket] = useState<ActiveBtcMarket | null>(null);
-  const [noMarket, setNoMarket] = useState(false);
-  const [feedStatus, setFeedStatus] = useState<MarketDataStatus>("loading");
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [isFallback, setIsFallback] = useState(false);
-  const [timeRemainingMs, setTimeRemainingMs] = useState(0);
-  const [lastFetchedAt, setLastFetchedAt] = useState<Date | null>(null);
+type DerivedSnapshot = {
+  market: ActiveBtcMarket | null;
+  pricing: MarketContractPricing | null;
+  noMarket: boolean;
+  feedStatus: MarketDataStatus;
+  errorMessage: string | null;
+  isFallback: boolean;
+  lastFetchedAt: Date | null;
+  closeTime: string | null;
+};
 
-  const hasLiveDataRef = useRef(false);
-  const closeTimeRef = useRef<string | null>(null);
-  const lastFetchedAtRef = useRef<Date | null>(null);
-  const isFallbackRef = useRef(false);
+function loadingSnapshot(): DerivedSnapshot {
+  return {
+    market: null,
+    pricing: null,
+    noMarket: false,
+    feedStatus: "loading",
+    errorMessage: null,
+    isFallback: false,
+    lastFetchedAt: null,
+    closeTime: null,
+  };
+}
+
+function deriveSnapshot(
+  nowMs: number,
+  data: ActiveBtcMarketApiResponse | undefined,
+  dataUpdatedAt: number,
+  isError: boolean,
+  error: unknown,
+  isPending: boolean,
+): DerivedSnapshot {
+  if (isError && error) {
+    const hadPriorData = Boolean(data?.market && !data.noMarket);
+    const message =
+      error instanceof Error ? error.message : "Kalshi market unavailable";
+
+    return {
+      market: null,
+      pricing: FALLBACK_CONTRACT_PRICING,
+      noMarket: false,
+      feedStatus: hadPriorData ? "stale" : "fallback",
+      errorMessage: message,
+      isFallback: true,
+      lastFetchedAt: null,
+      closeTime: null,
+    };
+  }
+
+  if (data) {
+    const lastFetchedAt = new Date(dataUpdatedAt);
+
+    if (data.noMarket || !data.market) {
+      return {
+        market: null,
+        pricing: null,
+        noMarket: true,
+        feedStatus: "no-market",
+        errorMessage: data.message ?? null,
+        isFallback: false,
+        lastFetchedAt,
+        closeTime: null,
+      };
+    }
+
+    let feedStatus: MarketDataStatus = "live";
+    if (
+      isMarketFeedStale(lastFetchedAt, nowMs, MARKET_STALE_THRESHOLD_MS)
+    ) {
+      feedStatus = "stale";
+    }
+
+    return {
+      market: data.market,
+      pricing: data.pricing,
+      noMarket: false,
+      feedStatus,
+      errorMessage: null,
+      isFallback: false,
+      lastFetchedAt,
+      closeTime: data.market.closeTime,
+    };
+  }
+
+  if (isPending) {
+    return loadingSnapshot();
+  }
+
+  return loadingSnapshot();
+}
+
+export function MarketDataProvider({ children }: { children: React.ReactNode }) {
+  const [nowMs, setNowMs] = useState(() => Date.now());
   const refreshRequestedRef = useRef(false);
 
   const marketQuery = useQuery({
@@ -65,160 +148,84 @@ export function MarketDataProvider({ children }: { children: React.ReactNode }) 
     queryFn: fetchActiveBtcMarket,
     refetchInterval: MARKET_POLL_MS,
     staleTime: MARKET_POLL_MS / 2,
+    placeholderData: keepPreviousData,
   });
 
   const { refetch: refetchMarket } = marketQuery;
 
-  const applyFallback = useCallback((message: string) => {
-    setErrorMessage(message);
-    setIsFallback(true);
-    isFallbackRef.current = true;
-    setNoMarket(false);
-    setMarket(null);
-    closeTimeRef.current = null;
-    setTimeRemainingMs(0);
-
-    if (!hasLiveDataRef.current) {
-      setFeedStatus("fallback");
-      return;
-    }
-
-    setFeedStatus("stale");
-  }, []);
-
-  const applyMarket = useCallback((next: ActiveBtcMarket) => {
-    setMarket(next);
-    setNoMarket(false);
-    setIsFallback(false);
-    isFallbackRef.current = false;
-    setErrorMessage(null);
-    hasLiveDataRef.current = true;
-    setFeedStatus("live");
-    const fetchedAt = new Date();
-    setLastFetchedAt(fetchedAt);
-    lastFetchedAtRef.current = fetchedAt;
-    closeTimeRef.current = next.closeTime;
-    setTimeRemainingMs(computeTimeRemainingMs(next.closeTime));
-  }, []);
-
-  const applyNoMarket = useCallback((message?: string) => {
-    setMarket(null);
-    setNoMarket(true);
-    setIsFallback(false);
-    isFallbackRef.current = false;
-    setErrorMessage(message ?? null);
-    closeTimeRef.current = null;
-    setTimeRemainingMs(0);
-    hasLiveDataRef.current = true;
-    setFeedStatus("no-market");
-    const fetchedAt = new Date();
-    setLastFetchedAt(fetchedAt);
-    lastFetchedAtRef.current = fetchedAt;
-  }, []);
-
-  // Bridge TanStack Query results into context state for stable public hooks.
-  /* eslint-disable react-hooks/set-state-in-effect -- preserves useActiveBtcMarket API during migration */
   useEffect(() => {
-    if (marketQuery.isSuccess && marketQuery.data) {
-      if (marketQuery.data.noMarket || !marketQuery.data.market) {
-        applyNoMarket(marketQuery.data.message);
-      } else {
-        applyMarket(marketQuery.data.market);
-      }
-      refreshRequestedRef.current = false;
-      return;
-    }
+    const interval = setInterval(() => {
+      setNowMs(Date.now());
+    }, COUNTDOWN_TICK_MS);
 
-    if (marketQuery.isError && marketQuery.error) {
-      const message =
-        marketQuery.error instanceof Error
-          ? marketQuery.error.message
-          : "Kalshi market unavailable";
-      applyFallback(message);
-      refreshRequestedRef.current = false;
+    return () => clearInterval(interval);
+  }, []);
+
+  const closeTime = marketQuery.data?.market?.closeTime ?? null;
+
+  useEffect(() => {
+    if (!closeTime) return;
+
+    if (
+      computeTimeRemainingMs(closeTime) <= 0 &&
+      !refreshRequestedRef.current
+    ) {
+      refreshRequestedRef.current = true;
+      void refetchMarket().finally(() => {
+        refreshRequestedRef.current = false;
+      });
     }
-  }, [
-    applyFallback,
-    applyMarket,
-    applyNoMarket,
+  }, [closeTime, nowMs, refetchMarket]);
+
+  const snapshot = deriveSnapshot(
+    nowMs,
     marketQuery.data,
-    marketQuery.error,
+    marketQuery.dataUpdatedAt,
     marketQuery.isError,
-    marketQuery.isSuccess,
-  ]);
-  /* eslint-enable react-hooks/set-state-in-effect */
-
-  useEffect(() => {
-    const countdownInterval = setInterval(() => {
-      const closeTime = closeTimeRef.current;
-      if (!closeTime) return;
-
-      const remaining = computeTimeRemainingMs(closeTime);
-      setTimeRemainingMs(remaining);
-
-      if (remaining <= 0 && !refreshRequestedRef.current) {
-        refreshRequestedRef.current = true;
-        void refetchMarket();
-      }
-    }, COUNTDOWN_TICK_MS);
-
-    const staleInterval = setInterval(() => {
-      if (!lastFetchedAtRef.current || !hasLiveDataRef.current || isFallbackRef.current) {
-        return;
-      }
-      if (
-        isMarketFeedStale(
-          lastFetchedAtRef.current,
-          Date.now(),
-          MARKET_STALE_THRESHOLD_MS,
-        )
-      ) {
-        setFeedStatus((current) => (current === "live" ? "stale" : current));
-      }
-    }, COUNTDOWN_TICK_MS);
-
-    return () => {
-      clearInterval(countdownInterval);
-      clearInterval(staleInterval);
-    };
-  }, [refetchMarket]);
+    marketQuery.error,
+    marketQuery.isPending,
+  );
 
   const targetPrice = useMemo(() => {
-    if (market?.targetPrice != null) return market.targetPrice;
+    if (snapshot.market?.targetPrice != null) return snapshot.market.targetPrice;
     return FALLBACK_TARGET_PRICE;
-  }, [market?.targetPrice]);
+  }, [snapshot.market?.targetPrice]);
 
-  const ticker = market?.ticker ?? FALLBACK_MARKET_TICKER;
-  const title = noMarket
+  const ticker = snapshot.market?.ticker ?? FALLBACK_MARKET_TICKER;
+  const title = snapshot.noMarket
     ? "No Active Market"
-    : market?.title ?? FALLBACK_MARKET_TITLE;
+    : snapshot.market?.title ?? FALLBACK_MARKET_TITLE;
+
+  const timeRemainingMs = snapshot.closeTime
+    ? computeTimeRemainingMs(snapshot.closeTime)
+    : 0;
+
+  const pricingIsStale = snapshot.feedStatus === "stale";
 
   const value = useMemo<MarketDataContextValue>(
     () => ({
-      market,
-      noMarket,
-      feedStatus,
-      errorMessage,
-      isFallback,
+      market: snapshot.market,
+      pricing: snapshot.pricing,
+      noMarket: snapshot.noMarket,
+      feedStatus: snapshot.feedStatus,
+      errorMessage: snapshot.errorMessage,
+      isFallback: snapshot.isFallback,
       targetPrice,
       timeRemainingMs,
-      lastFetchedAt,
+      lastFetchedAt: snapshot.lastFetchedAt,
       ticker,
       title,
+      pricingIsStale,
       timeRemainingFormatted: formatCountdown(timeRemainingMs),
-      expirationFormatted: formatExpirationTime(market?.closeTime ?? null),
+      expirationFormatted: formatExpirationTime(snapshot.market?.closeTime ?? null),
     }),
     [
-      market,
-      noMarket,
-      feedStatus,
-      errorMessage,
-      isFallback,
+      snapshot,
       targetPrice,
       timeRemainingMs,
-      lastFetchedAt,
       ticker,
       title,
+      pricingIsStale,
     ],
   );
 
