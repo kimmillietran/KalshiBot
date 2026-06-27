@@ -2,7 +2,7 @@
 
 AI-powered trading assistant for Kalshi BTC markets. Built in milestones.
 
-**Current:** Live BTC/Kalshi feeds (4.6B) + dashboard truthfulness (4.7) + pure trading engine foundation in `src/lib/trading/` (5.0). Dashboard UI not yet wired to the engine; recommendation panels remain placeholders until 5.1+.
+**Current:** Live BTC/Kalshi feeds (4.6B) + dashboard truthfulness (4.7) + trading engine (5.0) + feature builder (5.2). Engine snapshot wiring and dashboard integration in review on `feature/m51-engine-snapshot-wiring`.
 
 ## Engineering Standards
 
@@ -49,7 +49,7 @@ src/
   app/                    # thin routes + BFF (api/btc, api/kalshi)
   components/             # shared UI + layout shell
   features/               # business modules (btc-feed, trading-dashboard, …)
-  lib/                    # design-system, trading engine, utils, infrastructure
+  lib/                    # design-system, trading engine, feature builder, utils
   types/domain/           # shared domain types (trading engine I/O)
   test/                   # shared test helpers
 docs/
@@ -72,8 +72,9 @@ docs/
 | 4.6B | Provider chain, Kraken failover, health/metrics — **complete** |
 | 4.7 | Dashboard truthfulness, chart target clarity — **complete** |
 | 5.0 | Pure trading engine foundation (`evaluate`, guards, reasoning trace) — **complete** |
-| 5.1 | Engine snapshot wiring + dashboard truthfulness — **complete** |
-| 5.2+ | Probability model, auth, db, journal |
+| 5.2 | Feature builder foundation (`buildMarketFeatureVector`) — **complete** |
+| 5.1 | Engine snapshot wiring + dashboard integration — **in review** |
+| 5.3+ | Feature consumption by engine, probability model, auth, db, journal |
 
 ## Intentionally deferred
 

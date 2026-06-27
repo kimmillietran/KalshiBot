@@ -12,13 +12,12 @@ import {
 import { formatFeedTime, formatSignedDistance } from "@/features/btc-feed/utils";
 import {
   MarketStatusBadge,
-  FALLBACK_MARKET_TICKER,
   useActiveBtcMarket,
 } from "@/features/market-data";
 import {
+  formatMarketContractIdTooltip,
   formatMarketContractQuestion,
   formatMarketSubtitle,
-  isRawKalshiTicker,
 } from "@/features/trading-dashboard/utils";
 import {
   iconSize,
@@ -51,10 +50,7 @@ export function CommandBar() {
     noMarket: market.noMarket,
   });
 
-  const showTickerDetails =
-    !market.noMarket &&
-    market.ticker !== FALLBACK_MARKET_TICKER &&
-    isRawKalshiTicker(market.ticker);
+  const contractIdTooltip = formatMarketContractIdTooltip(market.ticker);
 
   return (
     <GlassPanel
@@ -99,11 +95,7 @@ export function CommandBar() {
           <p className={textSectionValue}>{marketQuestion}</p>
           <p
             className={cn(textCaption, "mt-0.5")}
-            title={
-              showTickerDetails
-                ? `Contract ID: ${market.ticker}`
-                : undefined
-            }
+            title={contractIdTooltip}
           >
             {marketSubtitle}
           </p>

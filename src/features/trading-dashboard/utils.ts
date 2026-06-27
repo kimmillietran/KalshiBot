@@ -1,7 +1,6 @@
 import { formatUsd } from "@/lib/utils/format";
 
-/** Kalshi technical tickers begin with KXBTC — hide from prominent UI. */
-const RAW_KALSHI_TICKER_PATTERN = /^KXBTC/i;
+import { isRawKalshiTicker } from "./tickerVisibility";
 
 type FormatMarketContractQuestionOptions = {
   noMarket?: boolean;
@@ -36,7 +35,7 @@ export function formatMarketSubtitle(
   _ticker: string | null | undefined,
   options: FormatMarketSubtitleOptions = {},
 ): string {
-  if (options.noMarket || !_ticker) {
+  if (options.noMarket || !_ticker || _ticker === "—") {
     return "BTC 15m · No active contract";
   }
 
@@ -51,10 +50,15 @@ export function formatMarketDisplayName(
   return formatMarketSubtitle(ticker, options);
 }
 
-export function isRawKalshiTicker(ticker: string | null | undefined): boolean {
-  if (!ticker) {
-    return false;
+/** Tooltip-only contract ID for debugging — not for visible UI copy. */
+export function formatMarketContractIdTooltip(
+  ticker: string | null | undefined,
+): string | undefined {
+  if (!ticker || ticker === "—" || !isRawKalshiTicker(ticker)) {
+    return undefined;
   }
 
-  return RAW_KALSHI_TICKER_PATTERN.test(ticker);
+  return `Contract ID: ${ticker}`;
 }
+
+export { isRawKalshiTicker };

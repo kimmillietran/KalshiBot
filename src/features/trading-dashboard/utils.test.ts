@@ -28,25 +28,19 @@ describe("formatMarketContractQuestion", () => {
 });
 
 describe("formatMarketSubtitle", () => {
-  it("returns a friendly subtitle instead of the raw ticker", () => {
-    expect(formatMarketSubtitle("KXBTC15M-26JUN270030-30")).toBe(
+  it("returns friendly subtitle instead of raw ticker", () => {
+    expect(formatMarketSubtitle("KXBTC15M-26JUN270115-15")).toBe(
       "BTC 15m · Live Kalshi contract",
     );
-    expect(formatMarketDisplayName("KXBTC15M-26JUN270030-30")).toBe(
+    expect(formatMarketDisplayName("KXBTC15M-26JUN270115-15")).toBe(
       "BTC 15m · Live Kalshi contract",
     );
+    expect(isRawKalshiTicker("KXBTC15M-26JUN270115-15")).toBe(true);
   });
 
   it("handles no active market", () => {
     expect(formatMarketSubtitle(null, { noMarket: true })).toBe(
       "BTC 15m · No active contract",
     );
-  });
-});
-
-describe("isRawKalshiTicker", () => {
-  it("detects Kalshi technical tickers", () => {
-    expect(isRawKalshiTicker("KXBTC15M-26JUN270030-30")).toBe(true);
-    expect(isRawKalshiTicker("Will BTC settle above $64,225?")).toBe(false);
   });
 });

@@ -54,8 +54,8 @@ describe("buildEvaluationSnapshot", () => {
         status: "live",
         isUsingFallback: false,
         candles: [
-          { timestamp: 1, close: 64_180 },
-          { timestamp: 2, close: 64_250.32 },
+          { timestamp: 1_700_000_000_000, close: 64_180 },
+          { timestamp: 1_700_000_060_000, close: 64_250.32 },
         ],
       },
     });
@@ -74,8 +74,8 @@ describe("buildEvaluationSnapshot", () => {
       feedStatus: "live",
       providerSource: "upstream",
       candles: [
-        { timestamp: 1, close: 64_180 },
-        { timestamp: 2, close: 64_250.32 },
+        { timestamp: 1_700_000_000_000, close: 64_180 },
+        { timestamp: 1_700_000_060_000, close: 64_250.32 },
       ],
     });
     expect(snapshot.pricing).toEqual({

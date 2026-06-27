@@ -4,6 +4,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { liveMarket } from "@/test/test-utils";
 import { renderWithDashboard } from "@/test/test-utils";
 
+import { findRawTickerLeaksInContainer } from "../tickerVisibility";
+
 import { CommandBar } from "./CommandBar";
 
 describe("CommandBar", () => {
@@ -12,14 +14,26 @@ describe("CommandBar", () => {
     vi.restoreAllMocks();
   });
 
-  it("does not render the raw Kalshi ticker prominently", async () => {
+  it("never renders raw Kalshi ticker in visible text after live market loads", async () => {
+    const { container } = renderWithDashboard(<CommandBar />);
+
+    await waitFor(() => {
+      expect(screen.getAllByText(/\$59,990\.31/).length).toBeGreaterThan(0);
+    });
+
+    expect(screen.getByText(/BTC 15m · Live Kalshi contract/i)).toBeInTheDocument();
+    expect(screen.queryByText(liveMarket.ticker)).not.toBeInTheDocument();
+    expect(findRawTickerLeaksInContainer(container)).toEqual([]);
+  });
+
+  it("keeps contract ID in tooltip only, not visible copy", async () => {
     renderWithDashboard(<CommandBar />);
 
     await waitFor(() => {
-      expect(screen.getByText(/BTC 15m · Live Kalshi contract/i)).toBeInTheDocument();
+      expect(screen.getAllByText(/\$59,990\.31/).length).toBeGreaterThan(0);
     });
 
-    expect(screen.queryByText(liveMarket.ticker)).not.toBeInTheDocument();
-    expect(screen.queryByText(/KXBTC15M-/i)).not.toBeInTheDocument();
+    const subtitle = screen.getByText(/BTC 15m · Live Kalshi contract/i);
+    expect(subtitle).toHaveAttribute("title", `Contract ID: ${liveMarket.ticker}`);
   });
 });

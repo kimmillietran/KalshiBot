@@ -38,7 +38,11 @@ export function formatCandleTime(timestampMs: number): string {
 }
 
 export function candlesToChartPoints(candles: BtcCandle[]): BtcChartPoint[] {
-  return candles.map((c) => ({ time: c.time, price: c.close }));
+  return candles.map((c) => ({
+    time: c.time,
+    price: c.close,
+    timestamp: c.timestamp,
+  }));
 }
 
 /** Merge a live tick into the most recent candle or append a new point. */
@@ -52,18 +56,23 @@ export function mergeLivePriceIntoChart(
       {
         time: formatCandleTime(now.getTime()),
         price: livePrice,
+        timestamp: now.getTime(),
       },
     ];
   }
 
   const timeStr = formatCandleTime(now.getTime());
+  const nowMs = now.getTime();
   const last = points[points.length - 1];
 
   if (last.time === timeStr) {
-    return [...points.slice(0, -1), { time: timeStr, price: livePrice }];
+    return [
+      ...points.slice(0, -1),
+      { time: timeStr, price: livePrice, timestamp: nowMs },
+    ];
   }
 
-  const next = [...points, { time: timeStr, price: livePrice }];
+  const next = [...points, { time: timeStr, price: livePrice, timestamp: nowMs }];
   return next.length > 60 ? next.slice(-60) : next;
 }
 

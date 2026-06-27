@@ -4,6 +4,7 @@ import { BTC_STALE_THRESHOLD_MS } from "./constants";
 import {
   calculateDistanceFromTarget,
   calculatePriceChangeDirection,
+  candlesToChartPoints,
   formatSignedDistance,
   isFeedStale,
   mergeLivePriceIntoChart,
@@ -55,6 +56,33 @@ describe("isFeedStale", () => {
     const now = Date.now();
     const last = new Date(now - BTC_STALE_THRESHOLD_MS - 1);
     expect(isFeedStale(last, now)).toBe(true);
+  });
+});
+
+describe("candlesToChartPoints", () => {
+  it("preserves upstream candle timestamps on chart points", () => {
+    const points = candlesToChartPoints([
+      {
+        timestamp: 1_700_000_000_000,
+        time: "12:00",
+        open: 64_000,
+        high: 64_100,
+        low: 63_900,
+        close: 64_050,
+      },
+      {
+        timestamp: 1_700_000_060_000,
+        time: "12:01",
+        open: 64_050,
+        high: 64_200,
+        low: 64_000,
+        close: 64_180,
+      },
+    ]);
+
+    expect(points).toHaveLength(2);
+    expect(points[0].timestamp).toBe(1_700_000_000_000);
+    expect(points[1].timestamp).toBe(1_700_000_060_000);
   });
 });
 

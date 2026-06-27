@@ -21,6 +21,8 @@ export type BtcCandle = {
 export type BtcChartPoint = {
   time: string;
   price: number;
+  /** Unix ms from upstream candle when available — used by engine snapshot mapping. */
+  timestamp?: number;
 };
 
 export type BtcPriceResponse = {
