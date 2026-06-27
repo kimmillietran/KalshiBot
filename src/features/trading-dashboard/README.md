@@ -33,9 +33,10 @@ trading-dashboard/
 
 **Live:** `btc-feed`, `market-data` (CommandBar, chart, MarketOddsPanel).
 
-**Engine-connected (5.6C–5.8B):** Dashboard renders live `TradeDecision` output —
-`action`, `probability`, `expectedValue`, `positionSize`, `features`, and
-`summarizeTradeDecision()` reasoning (headline, summary, risk notes, technical trace).
-React components are presentation-only; all trading logic stays in `src/lib/trading/`.
+**Engine-connected (5.6C–5.9B):** Dashboard renders live `TradeDecision` output —
+`action`, `probability`, `expectedValue`, `positionSize` (fraction + dollars when bankroll
+configured), `features`, and `summarizeTradeDecision()` reasoning (headline, summary, risk
+notes, technical trace). React components are presentation-only; all trading logic stays in
+`src/lib/trading/`.
 
-**Still deferred:** Trade execution, bankroll config, LLM narrative.
+**Still deferred:** Trade execution, settings UI for bankroll input, persistence, LLM narrative.

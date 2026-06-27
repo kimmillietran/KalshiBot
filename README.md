@@ -2,7 +2,7 @@
 
 AI-powered trading assistant for Kalshi BTC markets. Built in milestones.
 
-**Current:** Live BTC/Kalshi feeds (4.6B) + full trading engine through position sizing (5.0–5.7B) + complete dashboard integration (5.6C–5.8B). `evaluate()` runs through Kelly sizing; dashboard renders action, probability, EV, position size, and `summarizeTradeDecision()` reasoning. Trade execution deferred.
+**Current:** Live BTC/Kalshi feeds (4.6B) + full trading engine through bankroll wiring (5.0–5.9B) + complete dashboard integration (5.6C–5.8B). `evaluate()` resolves optional bankroll via `resolveBankroll()` and passes validated dollars to Kelly sizing; dashboard renders action, probability, EV, position size, and `summarizeTradeDecision()` reasoning. Trade execution deferred.
 
 ## Engineering Standards
 
@@ -88,6 +88,8 @@ docs/
 | 5.7C | Dashboard position sizing display (`PositionSizeSummary`, `TradeManagementPanel`) — **complete** |
 | 5.8A | Reasoning presentation module (`summarizeTradeDecision`) — **complete** |
 | 5.8B | Dashboard reasoning integration (`AIReasoningPanel`, `TechnicalTraceList`) — **complete** |
+| 5.9A | Bankroll configuration core (`resolveBankroll`) — **complete** |
+| 5.9B | Bankroll engine wiring (`model-bankroll`, Kelly dollar sizing, `ENGINE_VERSION` 5.9.0) — **complete** |
 
 ## Intentionally deferred
 

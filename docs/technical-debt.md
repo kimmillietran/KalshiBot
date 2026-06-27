@@ -162,11 +162,30 @@ Tracked intentionally — not silent accumulation. Review at each milestone clos
 | Raw trace only in UI | Expandable `TechnicalTraceList` for full engine reasoning steps |
 | `AIReasoningPanel` untested | Dedicated tests for BUY UP/DOWN, NO TRADE, guard failure, snapshot coverage |
 
-## Outstanding (post-5.8B)
+## Resolved in 5.9A
+
+| Issue | Resolution |
+|-------|------------|
+| No bankroll validation module | `resolveBankroll()` in `src/lib/trading/bankroll/` |
+| Engine inventing default bankroll | Validation only — `configured: false` when absent or invalid |
+| No `ResolvedBankroll` type | `bankrollDollars`, `configured`, `reasoning`, `modelVersion` |
+
+## Resolved in 5.9B
+
+| Issue | Resolution |
+|-------|------------|
+| Bankroll not wired into engine | `evaluate()` calls `resolveBankroll(config)` after decision policy |
+| Kelly dollar sizing always null | `estimatePositionSize()` receives resolved `bankrollDollars` |
+| No bankroll reasoning step | `model-bankroll` step in engine trace |
+| Dashboard bankroll messaging | Shows dollars when configured; "Bankroll not configured" when absent |
+| Engine version stale | `ENGINE_VERSION` → `5.9.0` |
+
+## Outstanding (post-5.9B)
 
 | Issue | Priority | Reason | Suggested fix | Milestone |
 |-------|----------|--------|---------------|-----------|
-| **Bankroll source/config** | Medium | `recommendedDollars` null without bankroll input | User config or settings milestone | **Backlog** |
+| **Bankroll settings/config UI** | Medium | Bankroll only via `EngineConfig.bankrollDollars` caller input | Settings panel for user-supplied bankroll | **5.10B** |
+| **Settings persistence** | Medium | No localStorage/db for user preferences | Persistence layer when settings UI lands | **Backlog** |
 
 ## Minor follow-ups (5.3A)
 
@@ -278,4 +297,4 @@ Tracked intentionally — not silent accumulation. Review at each milestone clos
 
 ## Health impact
 
-After Milestone 5.8B → **Technical Debt: Low** (full engine pipeline + complete dashboard integration; bankroll config and execution remain backlog).
+After Milestone 5.9B → **Technical Debt: Low** (full engine pipeline through bankroll wiring; settings UI and persistence remain backlog).
