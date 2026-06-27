@@ -1,5 +1,6 @@
 import type { MarketFeatureVector } from "@/lib/features/types";
 import type { ExpectedValueEstimate } from "@/lib/trading/expected-value/types";
+import type { PositionSizeEstimate } from "@/lib/trading/position-sizing/types";
 import type { ProbabilityEstimate } from "@/lib/trading/probability/types";
 import type { GuardStepId } from "@/lib/trading/guards/evaluationGuards";
 
@@ -127,5 +128,10 @@ export type TradeDecision = {
    * `null` when evaluation exits before EV estimation (guard failure).
    */
   expectedValue: ExpectedValueEstimate | null;
+  /**
+   * Position size from `estimatePositionSize()`.
+   * `null` when evaluation exits before sizing (guard failure).
+   */
+  positionSize: PositionSizeEstimate | null;
   gatesTriggered?: readonly GuardStepId[];
 };

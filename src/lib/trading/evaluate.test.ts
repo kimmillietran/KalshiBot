@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { DEFAULT_ENGINE_CONFIG } from "@/lib/trading/config/defaults";
 import { hashConfig } from "@/lib/trading/config/hashConfig";
@@ -12,6 +12,8 @@ import {
 } from "@/lib/trading/expected-value";
 import { evaluate } from "@/lib/trading/evaluate";
 import { GUARD_STEP_ORDER } from "@/lib/trading/guards/evaluationGuards";
+import * as positionSizing from "@/lib/trading/position-sizing";
+import { estimatePositionSize } from "@/lib/trading/position-sizing";
 import {
   estimateProbability,
   PROBABILITY_MODEL_VERSION,
@@ -170,8 +172,31 @@ function policyInputFromDecision(
   };
 }
 
+function positionSizeInputFromDecision(
+  snapshot: EvaluationSnapshot,
+  config: EngineConfig,
+  features: MarketFeatureVector,
+  probability: ProbabilityEstimate,
+  action: "BUY UP" | "BUY DOWN" | "NO TRADE",
+) {
+  const expectedValue = estimateExpectedValue(
+    expectedValueInput(snapshot, features, probability),
+  );
+  return {
+    action,
+    probability,
+    expectedValue,
+    engineConfig: config,
+    bankrollDollars: undefined,
+  };
+}
+
 describe("evaluate", () => {
-  it("returns BUY UP when real policy approves YES", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("returns BUY UP with positive position size when policy approves YES", () => {
     const snapshot = createBuyUpSnapshot();
     const config = DEFAULT_ENGINE_CONFIG;
     const decision = evaluate(snapshot, config);
@@ -180,6 +205,19 @@ describe("evaluate", () => {
     expect(decision.features).not.toBeNull();
     expect(decision.probability).not.toBeNull();
     expect(decision.expectedValue).not.toBeNull();
+    expect(decision.positionSize).not.toBeNull();
+    expect(decision.positionSize?.recommendedFraction).toBeGreaterThan(0);
+    expect(decision.positionSize).toEqual(
+      estimatePositionSize(
+        positionSizeInputFromDecision(
+          snapshot,
+          config,
+          decision.features!,
+          decision.probability!,
+          "BUY UP",
+        ),
+      ),
+    );
     expect(
       evaluateDecisionPolicy(
         policyInputFromDecision(
@@ -196,14 +234,20 @@ describe("evaluate", () => {
     );
     expect(policyStep?.outcome).toBe("pass");
     expect(policyStep?.detail).toContain("action=BUY_UP");
+    const sizingStep = decision.reasoning.steps.find(
+      (step) => step.id === "model-position-sizing",
+    );
+    expect(sizingStep?.outcome).toBe("pass");
   });
 
-  it("returns BUY DOWN when real policy approves NO", () => {
+  it("returns BUY DOWN with positive position size when policy approves NO", () => {
     const snapshot = createBuyDownSnapshot();
     const config = DEFAULT_ENGINE_CONFIG;
     const decision = evaluate(snapshot, config);
 
     expect(decision.action).toBe("BUY DOWN");
+    expect(decision.positionSize).not.toBeNull();
+    expect(decision.positionSize?.recommendedFraction).toBeGreaterThan(0);
     expect(
       evaluateDecisionPolicy(
         policyInputFromDecision(
@@ -220,9 +264,12 @@ describe("evaluate", () => {
     );
     expect(policyStep?.outcome).toBe("pass");
     expect(policyStep?.detail).toContain("action=BUY_DOWN");
+    expect(
+      decision.reasoning.steps.some((step) => step.id === "model-position-sizing"),
+    ).toBe(true);
   });
 
-  it("returns NO TRADE when real policy rejects trade", () => {
+  it("returns NO TRADE with zero position size when policy rejects trade", () => {
     const snapshot = createValidSnapshot();
     const config = { ...DEFAULT_ENGINE_CONFIG, minEdgePercent: 100 };
     const decision = evaluate(snapshot, config);
@@ -231,6 +278,9 @@ describe("evaluate", () => {
     expect(decision.features).not.toBeNull();
     expect(decision.probability).not.toBeNull();
     expect(decision.expectedValue).not.toBeNull();
+    expect(decision.positionSize).not.toBeNull();
+    expect(decision.positionSize?.recommendedFraction).toBe(0);
+    expect(decision.positionSize?.recommendedPercent).toBe(0);
     expect(
       evaluateDecisionPolicy(
         policyInputFromDecision(
@@ -247,9 +297,30 @@ describe("evaluate", () => {
     );
     expect(policyStep?.outcome).toBe("skip");
     expect(policyStep?.detail).toContain("action=NO_TRADE");
+    const sizingStep = decision.reasoning.steps.find(
+      (step) => step.id === "model-position-sizing",
+    );
+    expect(sizingStep?.outcome).toBe("skip");
   });
 
-  it("wires model outputs and policy on the default snapshot when edge is insufficient", () => {
+  it("does not change action when position sizing returns a placeholder", () => {
+    vi.spyOn(positionSizing, "estimatePositionSize").mockReturnValue({
+      modelVersion: "test",
+      side: "yes",
+      recommendedFraction: 0.99,
+      recommendedPercent: 99,
+      recommendedDollars: null,
+      cappedFraction: 0.99,
+      rawKellyFraction: 0.99,
+      reasoning: ["test sizing"],
+    });
+
+    const decision = evaluate(createBuyUpSnapshot(), DEFAULT_ENGINE_CONFIG);
+    expect(decision.action).toBe("BUY UP");
+    expect(decision.positionSize?.recommendedFraction).toBe(0.99);
+  });
+
+  it("wires model outputs, policy, and sizing on the default snapshot when edge is insufficient", () => {
     const snapshot = createValidSnapshot();
     const decision = evaluate(snapshot, DEFAULT_ENGINE_CONFIG);
 
@@ -266,6 +337,8 @@ describe("evaluate", () => {
     expect(decision.expectedValue?.modelVersion).toBe(
       EXPECTED_VALUE_MODEL_VERSION,
     );
+    expect(decision.positionSize).not.toBeNull();
+    expect(decision.positionSize?.recommendedFraction).toBe(0);
     expect(decision.gatesTriggered).toBeUndefined();
     expect(decision.reasoning.steps.map((s) => s.id)).toEqual([
       ...GUARD_STEP_ORDER,
@@ -273,6 +346,7 @@ describe("evaluate", () => {
       "model-probability",
       "model-expected-value",
       "decision-policy",
+      "model-position-sizing",
     ]);
     expect(
       decision.reasoning.steps.some((step) => step.id === "decision-stub"),
@@ -286,8 +360,12 @@ describe("evaluate", () => {
     expect(decision.features).toBeNull();
     expect(decision.probability).toBeNull();
     expect(decision.expectedValue).toBeNull();
+    expect(decision.positionSize).toBeNull();
     expect(
       decision.reasoning.steps.some((step) => step.id === "decision-policy"),
+    ).toBe(false);
+    expect(
+      decision.reasoning.steps.some((step) => step.id === "model-position-sizing"),
     ).toBe(false);
   });
 
@@ -302,7 +380,7 @@ describe("evaluate", () => {
     const decision = evaluate(createValidSnapshot(), DEFAULT_ENGINE_CONFIG);
     expect(decision.engineVersion).toBe(ENGINE_VERSION);
     expect(decision.configHash).toBe(hashConfig(DEFAULT_ENGINE_CONFIG));
-    expect(ENGINE_VERSION).toBe("5.6.0");
+    expect(ENGINE_VERSION).toBe("5.7.0");
     expect(DECISION_POLICY_MODEL_VERSION).toBe("5.6.0");
   });
 
@@ -334,5 +412,6 @@ describe("evaluate", () => {
     expect(decision.features).toBeNull();
     expect(decision.probability).toBeNull();
     expect(decision.expectedValue).toBeNull();
+    expect(decision.positionSize).toBeNull();
   });
 });

@@ -8,6 +8,8 @@ import {
   runEvaluationGuards,
   type GuardStepId,
 } from "@/lib/trading/guards/evaluationGuards";
+import { estimatePositionSize } from "@/lib/trading/position-sizing";
+import type { PositionSizeEstimate } from "@/lib/trading/position-sizing/types";
 import { estimateProbability } from "@/lib/trading/probability";
 import type { ProbabilityEstimate } from "@/lib/trading/probability/types";
 import { ENGINE_VERSION } from "@/lib/trading/versioning";
@@ -31,6 +33,7 @@ function buildDecision(
     features?: MarketFeatureVector | null;
     probability?: ProbabilityEstimate | null;
     expectedValue?: ExpectedValueEstimate | null;
+    positionSize?: PositionSizeEstimate | null;
     gatesTriggered?: readonly GuardStepId[];
   } = {},
 ): TradeDecision {
@@ -39,6 +42,7 @@ function buildDecision(
     features = null,
     probability = null,
     expectedValue = null,
+    positionSize = null,
     gatesTriggered,
   } = options;
 
@@ -51,6 +55,7 @@ function buildDecision(
     features,
     probability,
     expectedValue,
+    positionSize,
     ...(gatesTriggered ? { gatesTriggered } : {}),
   };
 }
@@ -99,14 +104,20 @@ function formatPolicyDetail(reasoning: readonly string[]): string {
   return reasoning.join(" · ");
 }
 
-function buildSuccessSummary(action: TradeAction): string {
-  if (action === "NO TRADE") {
-    return "Guards passed — features extracted — probability and EV estimated — policy returns NO TRADE";
-  }
-  return `Guards passed — features extracted — probability and EV estimated — policy returns ${action}`;
+function formatPositionSizingDetail(reasoning: readonly string[]): string {
+  return reasoning.join(" · ");
 }
 
-/** Pure engine: guards + features + probability + expected value + decision policy. */
+function buildSuccessSummary(action: TradeAction): string {
+  const base =
+    "Guards passed — features extracted — probability, EV, policy, and sizing complete";
+  if (action === "NO TRADE") {
+    return `${base} — policy returns NO TRADE`;
+  }
+  return `${base} — policy returns ${action}`;
+}
+
+/** Pure engine: guards + features + probability + EV + policy + position sizing. */
 export function evaluate(
   snapshot: EvaluationSnapshot,
   config: EngineConfig,
@@ -175,6 +186,22 @@ export function evaluate(
     detail: formatPolicyDetail(policyResult.reasoning),
   });
 
+  const positionSize = estimatePositionSize({
+    action,
+    probability,
+    expectedValue,
+    engineConfig: config,
+    bankrollDollars: undefined,
+  });
+
+  steps.push({
+    id: "model-position-sizing",
+    phase: "model",
+    summary: "Position sizing",
+    outcome: positionSize.recommendedFraction > 0 ? "pass" : "skip",
+    detail: formatPositionSizingDetail(positionSize.reasoning),
+  });
+
   return buildDecision(
     snapshot,
     config,
@@ -185,6 +212,7 @@ export function evaluate(
       features,
       probability,
       expectedValue,
+      positionSize,
     },
   );
 }

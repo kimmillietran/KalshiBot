@@ -102,6 +102,10 @@ describe("evaluate feature integration", () => {
     expect(decision.reasoning.steps.map((step) => step.id)).toContain(
       "decision-policy",
     );
+    expect(decision.reasoning.steps.map((step) => step.id)).toContain(
+      "model-position-sizing",
+    );
+    expect(decision.positionSize).not.toBeNull();
     expect(
       decision.reasoning.steps.some((step) => step.id === "decision-stub"),
     ).toBe(false);
@@ -115,6 +119,7 @@ describe("evaluate feature integration", () => {
     expect(decision.features).toBeNull();
     expect(decision.probability).toBeNull();
     expect(decision.expectedValue).toBeNull();
+    expect(decision.positionSize).toBeNull();
     expect(
       decision.reasoning.steps.some((step) => step.id === "feature-extraction"),
     ).toBe(false);
