@@ -124,12 +124,19 @@ Tracked intentionally — not silent accumulation. Review at each milestone clos
 | Guard failures hidden in UI | `GuardFailureBanner` + `UnavailableMetric` show truthful unavailable states |
 | Business logic in React | Presentation-only `decision/` components + `decisionDisplay` formatters |
 
-## Outstanding (5.7+)
+## Resolved in 5.7A
+
+| Issue | Resolution |
+|-------|------------|
+| No Kelly position sizing module | `estimatePositionSize()` in `src/lib/trading/position-sizing/` — fractional Kelly, confidence dampening, min/max gates |
+| No `PositionSizeEstimate` type | `recommendedFraction`, `recommendedDollars`, `rawKellyFraction`, reasoning metadata |
+
+## Outstanding (5.7B+)
 
 | Issue | Priority | Reason | Suggested fix | Milestone |
 |-------|----------|--------|---------------|-----------|
-| **Kelly sizing** | Medium | No position sizing from edge | Kelly module in `src/lib/trading/` | **5.7** |
-| **Dashboard Kelly/position sizing UI** | Medium | No sizing display | Wire after Kelly module | **5.7+** |
+| **Position sizing engine wiring** | Medium | `evaluate()` does not attach sizing | Wire after decision policy | **5.7B** |
+| **Dashboard position sizing display** | Medium | No sizing UI | Wire `TradeDecision.positionSize` to panels | **5.7C+** |
 
 ## Minor follow-ups (5.3A)
 
@@ -198,6 +205,14 @@ Tracked intentionally — not silent accumulation. Review at each milestone clos
 | BUY UP dashboard smoke test | Low | Extend `TradingDashboard.test.tsx` for bullish action |
 | README/docs upkeep | Low | Keep feature README aligned with panel changes |
 
+## Minor follow-ups (5.7A)
+
+| Issue | Priority | Suggested fix |
+|-------|----------|---------------|
+| Invalid bankroll test | Low | Assert zero/negative bankroll handling |
+| Edge-at-threshold documentation | Low | Covered in PR-5.7A; optional inline comment |
+| Future portfolio exposure limits | Low | Multi-contract cap deferred to backlog |
+
 ## Other outstanding
 
 | Issue | Priority | Reason | Suggested fix | Milestone |
@@ -212,4 +227,4 @@ Tracked intentionally — not silent accumulation. Review at each milestone clos
 
 ## Health impact
 
-After Milestone 5.6C → **Technical Debt: Low** (end-to-end live decision rendering; Kelly and execution remain for 5.7+).
+After Milestone 5.7A → **Technical Debt: Low** (Kelly sizing module complete; engine wiring and dashboard display remain for 5.7B+).

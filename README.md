@@ -2,7 +2,7 @@
 
 AI-powered trading assistant for Kalshi BTC markets. Built in milestones.
 
-**Current:** Live BTC/Kalshi feeds (4.6B) + full trading engine (5.0–5.6B) + decision dashboard (5.6C). Live data → `evaluate()` → `TradeDecision` → presentation-only dashboard panels render `action`, `probability`, `expectedValue`, `features`, and `reasoning`. Kelly sizing and trade execution deferred (5.7+).
+**Current:** Live BTC/Kalshi feeds (4.6B) + full trading engine (5.0–5.6B) + decision dashboard (5.6C) + Kelly position sizing module (5.7A). `estimatePositionSize()` available; **not yet wired into `evaluate()`** — Builder #2 integrates in 5.7B; dashboard position sizing display deferred.
 
 ## Engineering Standards
 
@@ -83,7 +83,9 @@ docs/
 | 5.6A | Decision policy module (`evaluateDecisionPolicy`) — **complete** |
 | 5.6B | Engine decision policy wiring (`TradeDecision.action`, `ENGINE_VERSION` 5.6.0) — **complete** |
 | 5.6C | Decision dashboard integration (live `TradeDecision` rendering) — **complete** |
-| 5.7+ | Kelly sizing, position sizing UI, auth, db, journal |
+| 5.7A | Kelly position sizing module (`estimatePositionSize`) — **complete** |
+| 5.7B | Engine position sizing wiring — in progress (Builder #2) |
+| 5.7C+ | Dashboard position sizing display, auth, db, journal |
 
 ## Intentionally deferred
 
