@@ -56,6 +56,21 @@ describe("resolveTradingSettings", () => {
     );
   });
 
+  it("treats undefined bankroll as missing and null bankroll as invalid", () => {
+    const missing = resolveTradingSettings({});
+    const invalid = resolveTradingSettings({ bankrollDollars: null });
+
+    expect(missing.bankrollDollars).toBeNull();
+    expect(missing.valid).toBe(true);
+    expect(missing.warnings).toEqual([]);
+
+    expect(invalid.bankrollDollars).toBeNull();
+    expect(invalid.valid).toBe(false);
+    expect(invalid.warnings).toContain(
+      "Invalid bankrollDollars — dollar sizing will be omitted.",
+    );
+  });
+
   it("accepts valid bankroll", () => {
     const resolved = resolveTradingSettings({ bankrollDollars: 1_000 });
 
@@ -95,6 +110,64 @@ describe("resolveTradingSettings", () => {
     );
     expect(resolved.valid).toBe(false);
     expect(resolved.warnings[0]).toContain("maxPositionFraction");
+  });
+
+  it.each([
+    ["minEdgePercent", 0, "minEdgePercent"],
+    ["minEdgePercent", 100, "minEdgePercent"],
+    ["maxSpreadPercent", 0, "maxSpreadPercent"],
+    ["maxSpreadPercent", 100, "maxSpreadPercent"],
+  ] as const)(
+    "accepts boundary %s = %s",
+    (field, value, expectedField) => {
+      const resolved = resolveTradingSettings({ [field]: value });
+
+      expect(resolved[field]).toBe(value);
+      expect(resolved.valid).toBe(true);
+      expect(resolved.warnings).toEqual([]);
+      expect(expectedField).toBe(field);
+    },
+  );
+
+  it.each([
+    ["kellyFraction", 1],
+    ["maxPositionFraction", 1],
+  ] as const)("accepts boundary %s = 1", (field, value) => {
+    const resolved = resolveTradingSettings({ [field]: value });
+
+    expect(resolved[field]).toBe(value);
+    expect(resolved.valid).toBe(true);
+    expect(resolved.warnings).toEqual([]);
+  });
+
+  it.each([
+    ["kellyFraction", 1.001],
+    ["maxPositionFraction", 1.001],
+  ] as const)("rejects %s above 1", (field, value) => {
+    const resolved = resolveTradingSettings({ [field]: value });
+
+    expect(resolved[field]).toBe(DEFAULT_TRADING_SETTINGS[field]);
+    expect(resolved.valid).toBe(false);
+    expect(resolved.warnings[0]).toContain(field);
+  });
+
+  it("preserves warning order for multi-field invalid input", () => {
+    const resolved = resolveTradingSettings({
+      bankrollDollars: null,
+      minEdgePercent: -1,
+      maxSpreadPercent: Number.NaN,
+      kellyFraction: 0,
+      maxPositionFraction: 2,
+    });
+
+    expect(resolved.warnings).toEqual([
+      "Invalid bankrollDollars — dollar sizing will be omitted.",
+      `Invalid minEdgePercent — using default ${DEFAULT_TRADING_SETTINGS.minEdgePercent}.`,
+      `Invalid maxSpreadPercent — using default ${DEFAULT_TRADING_SETTINGS.maxSpreadPercent}.`,
+      `Invalid kellyFraction — using default ${DEFAULT_TRADING_SETTINGS.kellyFraction}.`,
+      `Invalid maxPositionFraction — using default ${DEFAULT_TRADING_SETTINGS.maxPositionFraction}.`,
+    ]);
+    expect(resolved.valid).toBe(false);
   });
 
   it("is deterministic for identical inputs", () => {

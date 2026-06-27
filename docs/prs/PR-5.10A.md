@@ -39,7 +39,7 @@ type ResolvedTradingSettings = {
 
 | Field | Missing | Invalid | Default source |
 |---|---|---|---|
-| `bankrollDollars` | `null` | `null` + warning | **None** — never invented |
+| `bankrollDollars` | `undefined` → `null`, no warning | `null` or invalid number → `null` + warning | **None** — never invented |
 | `minEdgePercent` | default | default + warning | `DEFAULT_ENGINE_CONFIG` (5%) |
 | `maxSpreadPercent` | default | default + warning | `DEFAULT_ENGINE_CONFIG` (15%) |
 | `kellyFraction` | default | default + warning | `DEFAULT_POSITION_SIZING_CONFIG` (0.25) |
@@ -49,7 +49,7 @@ type ResolvedTradingSettings = {
 
 **`valid`:** `false` when any user-supplied field fails validation; `true` when all provided fields pass (missing fields OK).
 
-Bankroll validation delegates to `resolveBankroll()` from 5.9A.
+Bankroll validation delegates to `resolveBankroll()` from 5.9A. For bankroll only: **`undefined` = missing** (no warning); **`null` = explicitly invalid** (warning emitted).
 
 ## Rationale
 
