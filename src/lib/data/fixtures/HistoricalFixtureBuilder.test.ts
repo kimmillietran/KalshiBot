@@ -262,6 +262,122 @@ describe("buildHistoricalResearchFixture", () => {
     expect(serializeHistoricalResearchFixture(fixture)).toContain("export-fixture-6.12a");
   });
 
+  it("rejects unknown strategy ids", () => {
+    const bronzeRecords = completeMarketRecords(
+      "KXBTC15M-FIXTURE-UNKNOWN",
+      "2026-06-26T23:15:00.000Z",
+      "2026-06-26T23:30:00.000Z",
+      "fixture-unknown",
+    );
+
+    expect(() =>
+      buildHistoricalResearchFixture({
+        ...createInput(bronzeRecords),
+        strategyId: "custom-strategy" as "noop",
+      }),
+    ).toThrow(HistoricalFixtureError);
+
+    try {
+      buildHistoricalResearchFixture({
+        ...createInput(bronzeRecords),
+        strategyId: "custom-strategy" as "noop",
+      });
+    } catch (error) {
+      expect((error as HistoricalFixtureError).code).toBe(
+        HistoricalFixtureErrorCode.INVALID_STRATEGY_ID,
+      );
+    }
+  });
+
+  it("rejects invalid fixture config", () => {
+    const bronzeRecords = completeMarketRecords(
+      "KXBTC15M-FIXTURE-INVALID",
+      "2026-06-26T23:15:00.000Z",
+      "2026-06-26T23:30:00.000Z",
+      "fixture-invalid",
+    );
+    const base = createInput(bronzeRecords);
+
+    expect(() => buildHistoricalResearchFixture(null as never)).toThrow(
+      HistoricalFixtureError,
+    );
+
+    expect(() =>
+      buildHistoricalResearchFixture({ ...base, runId: "  " }),
+    ).toThrow(HistoricalFixtureError);
+
+    expect(() =>
+      buildHistoricalResearchFixture({ ...base, initialCashCents: -1 }),
+    ).toThrow(HistoricalFixtureError);
+
+    expect(() =>
+      buildHistoricalResearchFixture({ ...base, durationMs: Number.NaN }),
+    ).toThrow(HistoricalFixtureError);
+  });
+
+  it("passes fillConfig and metricsConfig through unchanged", () => {
+    const metricsConfig = {
+      periodsPerYear: 252,
+      riskFreeRatePerPeriod: 0.02,
+    };
+    const fillConfig = {
+      ...DEFAULT_BACKTEST_FILL_SIMULATION_CONFIG,
+      feeCentsPerContract: 2,
+    };
+
+    const fixture = buildHistoricalResearchFixture({
+      ...createInput(
+        completeMarketRecords(
+          "KXBTC15M-FIXTURE-CONFIG",
+          "2026-06-26T23:15:00.000Z",
+          "2026-06-26T23:30:00.000Z",
+          "fixture-config",
+        ),
+      ),
+      fillConfig,
+      metricsConfig,
+    });
+
+    expect(fixture.fillConfig).toEqual(fillConfig);
+    expect(fixture.metricsConfig).toEqual(metricsConfig);
+    expect(serializeHistoricalResearchFixture(fixture)).toContain('"feeCentsPerContract":2');
+    expect(serializeHistoricalResearchFixture(fixture)).toContain('"periodsPerYear":252');
+  });
+
+  it("round-trips serialized fixtures through JSON.parse when exportConfig is present", () => {
+    const exportConfig = {
+      exportId: "export-roundtrip-6.12a",
+      generated: {
+        generatedAt: "2026-06-28T00:00:00.000Z",
+        label: "roundtrip",
+      },
+    };
+
+    const fixture = buildHistoricalResearchFixture({
+      ...createInput(
+        completeMarketRecords(
+          "KXBTC15M-FIXTURE-ROUNDTRIP",
+          "2026-06-26T23:15:00.000Z",
+          "2026-06-26T23:30:00.000Z",
+          "fixture-roundtrip",
+        ),
+        { exportConfig },
+      ),
+      metricsConfig: {
+        periodsPerYear: 252,
+        riskFreeRatePerPeriod: 0.02,
+      },
+    });
+
+    const parsed = JSON.parse(serializeHistoricalResearchFixture(fixture));
+
+    expect(parsed.runId).toBe(fixture.runId);
+    expect(parsed.strategyId).toBe(fixture.strategyId);
+    expect(parsed.bronzeRecords).toHaveLength(fixture.bronzeRecords.length);
+    expect(parsed.engineConfig).toEqual(fixture.engineConfig);
+    expect(parsed.exportConfig).toEqual(exportConfig);
+  });
+
   it("does not mutate input bronze records", () => {
     const bronzeRecords = completeMarketRecords(
       "KXBTC15M-FIXTURE-UNCHANGED",
