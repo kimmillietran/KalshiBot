@@ -310,6 +310,120 @@ describe("buildHistoricalDataset", () => {
     }
   });
 
+  it("rejects conflicting duplicate settlements for the same ticker", () => {
+    const ticker = "KXBTC15M-DUP-SETTLEMENT";
+
+    const records = [
+      marketBronze(
+        ticker,
+        "settlement-market",
+        "2026-06-26T23:15:00.000Z",
+        "2026-06-26T23:30:00.000Z",
+      ),
+      candleBronze(
+        ticker,
+        "settlement-candle",
+        "2026-06-26T23:15:00.000Z",
+        "2026-06-26T23:16:00.000Z",
+      ),
+      btcBronze(
+        ticker,
+        "settlement-btc",
+        "2026-06-26T23:15:00.000Z",
+        "2026-06-26T23:16:00.000Z",
+      ),
+      settlementBronze(
+        ticker,
+        "settlement-a",
+        "2026-06-26T23:15:00.000Z",
+        "2026-06-26T23:30:00.000Z",
+      ),
+      settlementBronze(
+        ticker,
+        "settlement-b",
+        "2026-06-26T23:30:00.000Z",
+        "2026-06-26T23:45:00.000Z",
+      ),
+    ];
+
+    expect(() => buildHistoricalDataset(records)).toThrow(HistoricalDatasetBuildError);
+
+    try {
+      buildHistoricalDataset(records);
+    } catch (error) {
+      expect(error).toMatchObject({
+        code: HistoricalDatasetBuildErrorCode.DUPLICATE_SETTLEMENT,
+        ticker,
+      });
+    }
+  });
+
+  it("rejects snapshot groups missing BTC bars", () => {
+    const ticker = "KXBTC15M-MISSING-BTC";
+    const records = [
+      marketBronze(
+        ticker,
+        "missing-btc-market",
+        "2026-06-26T23:15:00.000Z",
+        "2026-06-26T23:30:00.000Z",
+      ),
+      candleBronze(
+        ticker,
+        "missing-btc-candle",
+        "2026-06-26T23:15:00.000Z",
+        "2026-06-26T23:16:00.000Z",
+      ),
+    ];
+
+    expect(() => buildHistoricalDataset(records)).toThrow(HistoricalDatasetBuildError);
+
+    try {
+      buildHistoricalDataset(records);
+    } catch (error) {
+      expect(error).toMatchObject({
+        code: HistoricalDatasetBuildErrorCode.INCOMPLETE_SNAPSHOT_GROUP,
+        ticker,
+      });
+    }
+  });
+
+  it("rejects unsupported bronze content types", () => {
+    const ticker = "KXBTC15M-UNSUPPORTED";
+
+    expect(() =>
+      buildHistoricalDataset([
+        baseBronze(
+          "kalshi.historical.unknown",
+          { value: 1 },
+          {
+            recordId: "unsupported-record",
+            ticker,
+            eventTime: "2026-06-26T23:15:00.000Z",
+          },
+        ),
+      ]),
+    ).toThrow(HistoricalDatasetBuildError);
+
+    try {
+      buildHistoricalDataset([
+        baseBronze(
+          "kalshi.historical.unknown",
+          { value: 1 },
+          {
+            recordId: "unsupported-record",
+            ticker,
+            eventTime: "2026-06-26T23:15:00.000Z",
+          },
+        ),
+      ]);
+    } catch (error) {
+      expect(error).toMatchObject({
+        code: HistoricalDatasetBuildErrorCode.UNSUPPORTED_BRONZE_CONTENT_TYPE,
+        recordId: "unsupported-record",
+      });
+    }
+  });
+
   it("returns deeply frozen immutable outputs", () => {
     const ticker = "KXBTC15M-IMMUTABLE";
     const dataset = buildHistoricalDataset(

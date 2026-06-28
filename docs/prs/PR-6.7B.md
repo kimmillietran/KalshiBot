@@ -25,7 +25,7 @@ HistoricalDataset
 | Step | Behavior |
 |---|---|
 | Group by market | Bronze records grouped by `ticker` |
-| Normalize | Kalshi market/candle/settlement via `SilverNormalizer`; BTC klines via `normalizeBtcKlineBronze` |
+| Normalize | Kalshi market/candle/settlement via `SilverNormalizer`; BTC klines via `normalizeBtcKlineBronze` in this module |
 | Assemble | One `HistoricalTradingSnapshot` per complete market group |
 | Order | Deterministic ordering via `orderReplaySnapshots` |
 | Reject | Incomplete groups, duplicate record ids, duplicate market/settlement per ticker |
@@ -39,6 +39,14 @@ HistoricalDataset
 | `kalshi.historical.candlestick` | Kalshi 1m candles |
 | `binance.historical.kline` | BTC 1m bars |
 | `kalshi.historical.settlement` | Optional settlement |
+
+## BTC kline normalization placement
+
+Binance BTC 1m klines use `normalizeBtcKlineBronze()` in `HistoricalDatasetBuilder.ts` because `SilverNormalizer` currently covers Kalshi bronze content types only. The helper reuses silver shared utilities (`parsePayloadObject`, `btcBar1mSchema`, quality flags) for consistent validation. **Future:** move BTC kline normalization into `SilverNormalizer` when Binance bronze import lands.
+
+## Fail-fast behavior
+
+`buildHistoricalDataset()` fails on the first deterministic validation error — duplicate record ids, duplicate market/settlement per ticker, unsupported content types, or incomplete market groups. It does not emit partial datasets or skip bad tickers. Callers receive a typed `HistoricalDatasetBuildError` with a stable `code` and contextual fields (`ticker`, `recordId`).
 
 ## API
 
