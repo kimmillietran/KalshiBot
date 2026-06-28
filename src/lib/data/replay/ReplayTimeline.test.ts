@@ -157,7 +157,7 @@ describe("orderReplaySnapshots", () => {
     expect(ordered[1]).toBe(second);
   });
 
-  it("breaks ticker ties using deterministic serialization when timestamps match", () => {
+  it("orders snapshots with matching timestamps by ticker", () => {
     const lowerStrike = createSnapshot({
       ticker: "KXBTC15M-TIE-B",
       eventTime: "2026-06-26T23:15:00.000Z",
@@ -177,6 +177,26 @@ describe("orderReplaySnapshots", () => {
       "KXBTC15M-TIE-A",
       "KXBTC15M-TIE-B",
     ]);
+  });
+
+  it("breaks ties with identical timestamps and ticker using serialization", () => {
+    const lowerStrike = createSnapshot({
+      ticker: "KXBTC15M-SERIAL-TIE",
+      eventTime: "2026-06-26T23:15:00.000Z",
+      collectionTime: "2026-06-27T01:00:00.000Z",
+      strikePriceUsd: 59_000,
+    });
+    const higherStrike = createSnapshot({
+      ticker: "KXBTC15M-SERIAL-TIE",
+      eventTime: "2026-06-26T23:15:00.000Z",
+      collectionTime: "2026-06-27T01:00:00.000Z",
+      strikePriceUsd: 60_000,
+    });
+
+    const ordered = orderReplaySnapshots([higherStrike, lowerStrike]);
+
+    expect(ordered[0]?.marketWindow.strikePriceUsd).toBe(59_000);
+    expect(ordered[1]?.marketWindow.strikePriceUsd).toBe(60_000);
   });
 });
 
@@ -274,5 +294,45 @@ describe("ReplayTimeline", () => {
 
     expect([...timeline.iterateAll()]).toEqual([first, second]);
     expect(timeline.getOrderedSnapshots()).toEqual([first, second]);
+  });
+
+  it("iterateAll is independent of cursor position", () => {
+    const first = createSnapshot({
+      ticker: "KXBTC15M-CURSOR-1",
+      eventTime: "2026-06-26T23:15:00.000Z",
+      collectionTime: "2026-06-27T01:00:00.000Z",
+    });
+    const second = createSnapshot({
+      ticker: "KXBTC15M-CURSOR-2",
+      eventTime: "2026-06-26T23:30:00.000Z",
+      collectionTime: "2026-06-27T01:00:00.000Z",
+    });
+    const ordered = [first, second];
+
+    const timeline = ReplayTimeline.create({ snapshots: [second, first] });
+    const advanced = timeline.stepNext();
+
+    expect([...timeline.iterateAll()]).toEqual(ordered);
+    expect([...advanced.iterateAll()]).toEqual(ordered);
+  });
+
+  it("completes a single-snapshot timeline after one stepNext", () => {
+    const snapshot = createSnapshot({
+      ticker: "KXBTC15M-SINGLE",
+      eventTime: "2026-06-26T23:15:00.000Z",
+      collectionTime: "2026-06-27T01:00:00.000Z",
+    });
+    const timeline = ReplayTimeline.create({ snapshots: [snapshot] });
+
+    expect(timeline.getState().current).toBe(snapshot);
+    expect(timeline.getState().hasNext).toBe(false);
+    expect(timeline.getState().isComplete).toBe(false);
+
+    const complete = timeline.stepNext();
+
+    expect(complete.getState().current).toBeNull();
+    expect(complete.getState().isComplete).toBe(true);
+    expect(complete.getState().cursor).toEqual({ index: 1, totalSteps: 1 });
+    expect(complete.stepNext()).toBe(complete);
   });
 });

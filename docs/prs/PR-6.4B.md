@@ -46,6 +46,8 @@ for (const snapshot of timeline.iterateAll()) {
 
 `stepNext()` returns a **new** `ReplayTimeline` instance; prior timelines remain unchanged.
 
+`iterateAll()` always yields the full ordered snapshot sequence from the start — it does not advance or reflect the current cursor index.
+
 ## Out of scope
 
 - Trading engine / `evaluate()`
