@@ -341,3 +341,18 @@ export type {
   ResearchExportTableColumn,
   ResearchExportTableRow,
 } from "./research/export";
+
+export {
+  StrategyRegistry,
+  noopStrategyDefinition,
+  buyFirstAskStrategyDefinition,
+  BUILTIN_STRATEGY_IDS,
+  StrategyRegistryError,
+  StrategyRegistryErrorCode,
+} from "./strategies";
+export type {
+  BuiltinStrategyId,
+  CreateStrategyRegistryInput,
+  StrategyDefinition,
+  StrategyRegistrySnapshot,
+} from "./strategies";
