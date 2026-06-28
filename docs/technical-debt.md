@@ -238,15 +238,39 @@ Tracked intentionally — not silent accumulation. Review at each milestone clos
 | No deterministic bronze keys/serialization | `bronzeKeys.ts`, `serializeBronzeRecord.ts` with stable JSON + clone helpers |
 | Duplicate append semantics undefined | Idempotent identical append; `BronzeDuplicateConflictError` on content conflict |
 
-## Outstanding (post-6.2A)
+## Resolved in 6.2B
+
+| Issue | Resolution |
+|-------|------------|
+| No production HTTP adapter | `KalshiHistoricalHttpAdapter` implements `KalshiHistoricalHttpClient` |
+| Raw Kalshi payloads not bronze-mapped | `kalshiToBronzeRecord.ts` maps wire JSON to `RawHistoricalRecord` |
+
+## Resolved in 6.3A
+
+| Issue | Resolution |
+|-------|------------|
+| No Silver normalization pipeline | `SilverNormalizer` + content-type dispatch under `src/lib/data/silver/` |
+| Bronze → Silver contract gap | `normalizeMarketWindow`, `normalizeKalshiCandle`, `normalizeSettlement` validate against 6.1A schemas |
+| Malformed bronze payloads untyped | Stable `SilverNormalizationError` codes (`SilverMalformedPayloadError`, etc.) |
+
+## Resolved in 6.3B
+
+| Issue | Resolution |
+|-------|------------|
+| No historical snapshot contract | `HistoricalTradingSnapshot` + `SnapshotAssemblyInput` under `src/lib/data/snapshots/` |
+| Silver records not assembled for replay | `assembleHistoricalTradingSnapshot()` combines market window, Kalshi candles, BTC bars, optional settlement |
+| Snapshot provenance lost | Per-record provenance preserved on output envelope |
+| Caller input mutated by freeze | Assembly clones inputs before `deepFreeze`; caller envelopes remain mutable |
+
+## Outstanding (post-6.3B)
 
 | Issue | Priority | Reason | Suggested fix | Milestone |
 |-------|----------|--------|---------------|-----------|
-| **Filesystem/DB bronze persistence** | Medium | In-memory store only | Production bronze writers | **6.2B+** |
-| **Production HTTP adapter** | Medium | Importer uses injectable client; no live fetch wiring | Production Kalshi Historical HTTP adapter + bronze import job | **6.2B** |
-| **Silver normalization** | Medium | Bronze only — no silver pipeline | Silver normalization core | **6.3A** |
+| **Filesystem/DB bronze persistence** | Medium | In-memory store only | Production bronze writers | **Backlog** |
+| **Bronze import job** | Medium | HTTP adapter exists; no scheduled import pipeline | Wire importer + store append job | **Backlog** |
 | **Market dateRange query** | Medium | `listHistoricalMarkets()` defers date filters | Wire when Kalshi API documents supported params | **Backlog** |
-| **SnapshotAssembler** | Medium | No replay pipeline yet | Assemble silver snapshots from bronze | **Backlog** |
+| **Replay engine** | Medium | Snapshots assembled; no replay runner | Replay engine over `HistoricalTradingSnapshot` | **6.4** |
+| **snapshotVersion field** | Medium | Deferred from 6.3B assembler | Add with replay contract versioning | **6.4** |
 | **Export uses raw TradeDecision** | Medium | 5.11B ships pre-5.11A serializer path | Swap to `summarizeEngineSnapshot()` for compact payload | **Backlog** |
 | **Settings persistence** | Medium | Session-only form state — lost on refresh | localStorage or account-backed settings | **Backlog** |
 | **Account/bankroll source** | Medium | Manual bankroll entry only | Future brokerage/account integration | **Backlog** |
@@ -258,6 +282,21 @@ Tracked intentionally — not silent accumulation. Review at each milestone clos
 | `stableStringify` location | Low | Relocate to shared util outside `trading/config` when low-risk |
 | Filter semantics documentation | Low | Keep inclusivity + canonical identity rules tested and documented |
 | `BronzeDuplicateConflictError` metadata | Low | Optional structured diff on conflict |
+
+## Minor follow-ups (6.3A)
+
+| Issue | Priority | Suggested fix |
+|-------|----------|---------------|
+| `quality_flags` error wrapping consistency | Medium | Keep invalid flags wrapped in `SilverMalformedPayloadError` across normalizers |
+| `seriesTicker` derivation alignment | Medium | Keep documented derivation order aligned with bronze mapper |
+| Additional Silver boundary tests | Low | Expand malformed-payload and content-type edge cases |
+
+## Minor follow-ups (6.3B)
+
+| Issue | Priority | Suggested fix |
+|-------|----------|---------------|
+| `snapshotVersion` on snapshots | Medium | Add with replay contract in 6.4 |
+| Additional assembly boundary tests | Low | Expand temporal/provenance edge cases |
 
 ## Minor follow-ups (6.1)
 
@@ -376,4 +415,4 @@ Tracked intentionally — not silent accumulation. Review at each milestone clos
 
 ## Health impact
 
-After Milestone 5.11A → **Technical Debt: Low** (snapshot presentation module complete; dashboard export wiring and persistence remain backlog).
+After Milestone 6.3B → **Technical Debt: Low** (Silver normalization + historical snapshot assembly complete; replay engine and persistence remain backlog).

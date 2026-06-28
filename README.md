@@ -2,7 +2,7 @@
 
 AI-powered trading assistant for Kalshi BTC markets. Built in milestones.
 
-**Current:** Live BTC/Kalshi feeds (4.6B) + full trading engine through settings UI (5.0–5.11B) + historical data layer (6.1A–6.2A). `src/lib/data/` defines Bronze/Silver schemas; `InMemoryBronzeStore` provides append-only bronze storage with deterministic ordering; `KalshiHistoricalImporter` provides injectable HTTP wiring. Dashboard copies raw `TradeDecision` JSON via Engine Reasoning panel. Replay, filesystem persistence, and trade execution deferred.
+**Current:** Live BTC/Kalshi feeds (4.6B) + full trading engine through settings UI (5.0–5.11B) + historical data layer (6.1A–6.3B). `src/lib/data/` defines Bronze/Silver schemas; `InMemoryBronzeStore` provides append-only bronze storage; `KalshiHistoricalHttpAdapter` maps live Kalshi payloads to bronze; `SilverNormalizer` converts bronze to validated Silver records; `assembleHistoricalTradingSnapshot()` builds immutable replay-ready snapshots from Silver envelopes. Dashboard copies raw `TradeDecision` JSON via Engine Reasoning panel. Replay engine, filesystem persistence, and trade execution deferred.
 
 ## Engineering Standards
 
@@ -97,6 +97,9 @@ docs/
 | 6.1A | Historical data contracts (`src/lib/data/`, Bronze/Silver schemas, UTC timestamps) — **complete** |
 | 6.1B | Kalshi Historical API importer spike (`KalshiHistoricalImporter`, injectable HTTP) — **complete** |
 | 6.2A | Bronze storage core (`BronzeStore`, `InMemoryBronzeStore`, stable serialization) — **complete** |
+| 6.2B | Kalshi historical HTTP adapter + bronze mapping (`KalshiHistoricalHttpAdapter`) — **complete** |
+| 6.3A | Silver normalization core (`SilverNormalizer`, content-type dispatch, schema-validated outputs) — **complete** |
+| 6.3B | Historical snapshot assembler (`assembleHistoricalTradingSnapshot`, provenance preservation) — **complete** |
 
 ## Intentionally deferred
 
