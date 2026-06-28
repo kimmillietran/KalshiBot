@@ -266,3 +266,22 @@ export type {
   HistoricalDatasetMetadata,
   HistoricalDatasetProvenanceSummary,
 } from "./datasets";
+
+export {
+  compareResearchExperiments,
+  serializeResearchComparison,
+  COMPARISON_METRIC_ORDER,
+  ComparisonMetricId,
+  ResearchComparisonError,
+  ResearchComparisonErrorCode,
+} from "./research/comparison";
+export type {
+  ComparisonMetricTableRow,
+  ComparisonMetricValues,
+  ComparisonSummary,
+  ComparisonTieGroup,
+  MetricDominanceEntry,
+  RankedExperiment,
+  ResearchComparison,
+  ResearchExperimentResultWithMetrics,
+} from "./research/comparison";
