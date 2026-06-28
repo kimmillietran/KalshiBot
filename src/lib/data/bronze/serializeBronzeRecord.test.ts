@@ -99,4 +99,11 @@ describe("serializeBronzeRecord", () => {
     expect(cloned.payload).not.toBe(record.payload);
     expect(cloned.provenance).not.toBe(record.provenance);
   });
+
+  it("rejects malformed serialized bronze records", () => {
+    expect(() => parseSerializedBronzeRecord("not-json")).toThrow();
+    expect(() =>
+      parseSerializedBronzeRecord(JSON.stringify({ recordId: "incomplete" })),
+    ).toThrow();
+  });
 });

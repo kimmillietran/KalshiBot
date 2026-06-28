@@ -29,9 +29,11 @@ type BronzeStore = {
 
 - **Append-only:** records are never updated in place
 - **Idempotent duplicates:** identical `recordId` + identical canonical content is a no-op
-- **Conflict detection:** same `recordId` with different content throws `BronzeDuplicateConflictError`
+- **Conflict detection:** same `recordId` with different content throws `BronzeDuplicateConflictError` (includes `recordId`)
+- **Canonical identity:** two records are identical when their stable JSON serialization matches (key order normalized via `stableStringify`)
 - **Immutability:** stored and returned records are deep-cloned via stable serialization
 - **Deterministic list order:** `eventTime`, then `collectionTime`, then `recordId`
+- **Filter inclusivity:** `eventTimeFrom` / `eventTimeTo` and `collectionTimeFrom` / `collectionTimeTo` are **inclusive** at boundaries (`>=` / `<=`)
 
 ## Out of scope
 
