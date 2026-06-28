@@ -23,6 +23,7 @@ import {
   REASONING_ENGINE_ONLY_MESSAGE,
 } from "../constants";
 
+import { DecisionExportButton } from "./decision/DecisionExportButton";
 import { TechnicalTraceList } from "./decision/TechnicalTraceList";
 
 type AIReasoningPanelProps = {
@@ -53,9 +54,12 @@ export function AIReasoningPanel({ decision }: AIReasoningPanelProps) {
         title="Engine Reasoning"
         subtitle={DECISION_ENGINE_CONNECTED_MESSAGE}
         action={
-          <StatusBadge variant="neutral" emphasis>
-            {presentation.modelVersion}
-          </StatusBadge>
+          <div className="flex items-start gap-2">
+            <DecisionExportButton decision={decision} />
+            <StatusBadge variant="neutral" emphasis>
+              {presentation.modelVersion}
+            </StatusBadge>
+          </div>
         }
       />
       <PanelBody className={cn("flex flex-col", panelGap)}>

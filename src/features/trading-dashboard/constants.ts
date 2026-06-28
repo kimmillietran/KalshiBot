@@ -16,6 +16,13 @@ export const EXECUTION_DISABLED_MESSAGE =
 export const REASONING_ENGINE_ONLY_MESSAGE =
   "Reasoning trace from the deterministic engine pipeline (guards → features → probability → EV → policy).";
 
+/** Decision JSON export — presentation copy only. */
+export const DECISION_EXPORT_BUTTON_LABEL = "Copy Decision JSON";
+
+export const DECISION_EXPORT_COPIED_LABEL = "Copied";
+
+export const DECISION_EXPORT_ERROR_LABEL = "Copy failed";
+
 export const FEATURES_UNAVAILABLE_MESSAGE =
   "Feature vector unavailable — evaluation stopped before feature extraction.";
 

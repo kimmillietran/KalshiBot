@@ -13,7 +13,10 @@ import {
   guardFailureDecision,
   noTradePolicyDecision,
 } from "../test-fixtures/engineDecisions";
-import { POSITION_SIZING_UNAVAILABLE_MESSAGE } from "../constants";
+import {
+  DECISION_EXPORT_BUTTON_LABEL,
+  POSITION_SIZING_UNAVAILABLE_MESSAGE,
+} from "../constants";
 
 function renderPanel(decision: ReturnType<typeof buyUpDecision>) {
   const presentation = summarizeTradeDecision(decision);
@@ -158,5 +161,12 @@ describe("AIReasoningPanel", () => {
         (node) => node.textContent,
       ),
     }).toMatchSnapshot();
+  });
+
+  it("renders decision export control in the panel header", () => {
+    const { container } = renderPanel(buyUpDecision());
+    const view = within(container);
+
+    expect(view.getByRole("button", { name: DECISION_EXPORT_BUTTON_LABEL })).toBeInTheDocument();
   });
 });
