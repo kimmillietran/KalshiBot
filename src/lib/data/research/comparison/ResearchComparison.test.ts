@@ -226,4 +226,79 @@ describe("compareResearchExperiments", () => {
       });
     }
   });
+
+  it("rejects duplicate experiment ids", () => {
+    expect(() =>
+      compareResearchExperiments([
+        experiment("exp-a"),
+        experiment("exp-a", { endEquityCents: 105_000 }),
+      ]),
+    ).toThrow(ResearchComparisonError);
+
+    try {
+      compareResearchExperiments([
+        experiment("exp-a"),
+        experiment("exp-a", { endEquityCents: 105_000 }),
+      ]);
+    } catch (error) {
+      expect(error).toMatchObject({
+        code: ResearchComparisonErrorCode.DUPLICATE_EXPERIMENT_ID,
+        experimentId: "exp-a",
+      });
+    }
+  });
+
+  it("rejects non-completed experiment status", () => {
+    const incomplete = {
+      ...experiment("exp-a"),
+      status: "pending" as "completed",
+    };
+
+    expect(() => compareResearchExperiments([incomplete])).toThrow(
+      ResearchComparisonError,
+    );
+
+    try {
+      compareResearchExperiments([incomplete]);
+    } catch (error) {
+      expect(error).toMatchObject({
+        code: ResearchComparisonErrorCode.INVALID_EXPERIMENT_STATUS,
+        experimentId: "exp-a",
+      });
+    }
+  });
+
+  it("ranks null optional metrics as worst-in-class and reports dominance", () => {
+    const comparison = compareResearchExperiments([
+      experiment("exp-null", {
+        endEquityCents: 110_000,
+        sharpeRatio: null,
+        annualizedReturnPct: null,
+        profitFactor: null,
+      }),
+      experiment("exp-values", {
+        endEquityCents: 110_000,
+        sharpeRatio: 1.4,
+        annualizedReturnPct: 15,
+        profitFactor: 2.1,
+      }),
+    ]);
+
+    expect(comparison.rankings[0]?.experimentId).toBe("exp-values");
+    expect(comparison.rankings[1]?.experimentId).toBe("exp-null");
+
+    const sharpeDominance = comparison.dominance.find(
+      (entry) => entry.metricId === ComparisonMetricId.SHARPE,
+    );
+    const cagrDominance = comparison.dominance.find(
+      (entry) => entry.metricId === ComparisonMetricId.CAGR,
+    );
+    const profitFactorDominance = comparison.dominance.find(
+      (entry) => entry.metricId === ComparisonMetricId.PROFIT_FACTOR,
+    );
+
+    expect(sharpeDominance?.leaderExperimentIds).toEqual(["exp-values"]);
+    expect(cagrDominance?.leaderExperimentIds).toEqual(["exp-values"]);
+    expect(profitFactorDominance?.leaderExperimentIds).toEqual(["exp-values"]);
+  });
 });

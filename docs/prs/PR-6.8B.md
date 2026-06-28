@@ -32,7 +32,7 @@ ResearchComparison
 | Profit Factor | `metrics.profitFactor` | Higher is better |
 | Win Rate | `metrics.winRatePct` | Higher is better |
 | Expectancy | `metrics.expectancyCents` | Higher is better |
-| Trade Count | `metrics.tradeCount` | Higher is better |
+| Trade Count | `metrics.tradeCount` | Higher is better (more round trips; not a quality signal on its own) |
 
 Null Sharpe, CAGR, and profit factor values sort as worst-in-class for dominance and tie-break comparisons.
 
@@ -44,6 +44,14 @@ Null Sharpe, CAGR, and profit factor values sort as worst-in-class for dominance
 4. Experiment id (lexicographic)
 
 Input array order is never used for ranking.
+
+### Tied winner experiment id
+
+When multiple experiments share rank 1 on all overall tie-break metrics, `winner.experimentId` and `summary.winnerExperimentId` use the lexicographically smallest id among the tied group. `tiedWinnerExperimentIds` and `winner.tiedExperimentIds` list all tied ids sorted lexicographically.
+
+### Trade-count dominance
+
+Per-metric dominance treats equal trade counts as ties — all experiments sharing the maximum trade count appear in `leaderExperimentIds`. Higher trade count wins when values differ; this reflects activity volume, not strategy quality.
 
 ## API
 
