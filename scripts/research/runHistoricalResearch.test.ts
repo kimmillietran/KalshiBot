@@ -216,6 +216,15 @@ describe("parseFormatFromArgv", () => {
       parseFormatFromArgv(["--format", "csv", "--input", "input.json"]),
     ).toThrow('Unsupported --format value "csv"');
   });
+
+  it("rejects missing format values", () => {
+    expect(() => parseFormatFromArgv(["--format", "--input", "input.json"])).toThrow(
+      "Missing value for --format <raw|export|export-summary>",
+    );
+    expect(() => parseFormatFromArgv(["--input", "input.json", "--format"])).toThrow(
+      "Missing value for --format <raw|export|export-summary>",
+    );
+  });
 });
 
 describe("runHistoricalResearchCommand", () => {
@@ -264,8 +273,29 @@ describe("runHistoricalResearchCommand", () => {
     const parsed = JSON.parse(stdout[0]!);
     expect(parsed.exportType).toBe("research-run");
     expect(parsed.exportId).toBe("export-noop");
+    expect(parsed.generated.generatedAt).toBe("2026-06-27T12:00:00.000Z");
+    expect(parsed.generated.generatedBy).toBe("cli-test");
+    expect(parsed.generated.label).toBe("historical-export");
     expect(parsed.summary.finalEquityCents).toBeTypeOf("number");
     expect(stderr).toEqual([]);
+  });
+
+  it("writes identical export stdout for repeated runs", () => {
+    const json = JSON.stringify(createExportInputDocument("noop"));
+    const firstRun = createIo(json);
+    const secondRun = createIo(json);
+
+    runHistoricalResearchCommand(
+      ["--input", "noop.json", "--format", "export"],
+      firstRun.io,
+    );
+    runHistoricalResearchCommand(
+      ["--input", "noop.json", "--format", "export"],
+      secondRun.io,
+    );
+
+    expect(firstRun.stdout).toEqual(secondRun.stdout);
+    expect(firstRun.stdout[0]).toBe(formatStdoutOutput(firstRun.stdout[0]!.trimEnd()));
   });
 
   it("writes export summary JSON when --format export-summary is requested", () => {

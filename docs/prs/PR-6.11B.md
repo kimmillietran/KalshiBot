@@ -51,6 +51,7 @@ stdout
 ## Rules
 
 - stdout on success, stderr on failure
+- Success stdout ends with exactly one trailing newline (`formatStdoutOutput()`)
 - No filesystem writes
 - Deterministic compact JSON (no pretty indent in CLI)
 - Input documents are never mutated
