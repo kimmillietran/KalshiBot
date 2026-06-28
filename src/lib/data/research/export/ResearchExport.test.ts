@@ -271,4 +271,104 @@ describe("research export immutability and validation", () => {
       }),
     ).toThrow(ResearchExportError);
   });
+
+  it("rejects invalid comparison input", () => {
+    expect(() =>
+      buildResearchComparisonExport({
+        exportId: "invalid-comparison",
+        generated: GENERATED,
+        comparison: {
+          comparisonId: "cmp-empty",
+          winner: {
+            rank: 1,
+            experimentId: "exp-a",
+            sweepId: "sweep",
+            parameters: {},
+            metrics: {
+              finalEquityCents: 100_000,
+              totalReturnPct: 0,
+              cagrPct: null,
+              sharpeRatio: null,
+              maxDrawdownPct: 0,
+              profitFactor: null,
+              winRatePct: 0,
+              expectancyCents: 0,
+              tradeCount: 0,
+            },
+            tiedExperimentIds: ["exp-a"],
+          },
+          rankings: [],
+          summary: {
+            experimentCount: 0,
+            winnerExperimentId: "exp-a",
+            tiedWinnerExperimentIds: ["exp-a"],
+            metricLeaders: [],
+          },
+          metricTable: [],
+          dominance: [],
+          ties: [],
+        },
+      }),
+    ).toThrow(ResearchExportError);
+
+    try {
+      buildResearchComparisonExport({
+        exportId: "invalid-comparison",
+        generated: GENERATED,
+        comparison: {
+          comparisonId: "cmp-empty",
+          winner: {
+            rank: 1,
+            experimentId: "exp-a",
+            sweepId: "sweep",
+            parameters: {},
+            metrics: {
+              finalEquityCents: 100_000,
+              totalReturnPct: 0,
+              cagrPct: null,
+              sharpeRatio: null,
+              maxDrawdownPct: 0,
+              profitFactor: null,
+              winRatePct: 0,
+              expectancyCents: 0,
+              tradeCount: 0,
+            },
+            tiedExperimentIds: ["exp-a"],
+          },
+          rankings: [],
+          summary: {
+            experimentCount: 0,
+            winnerExperimentId: "exp-a",
+            tiedWinnerExperimentIds: ["exp-a"],
+            metricLeaders: [],
+          },
+          metricTable: [],
+          dominance: [],
+          ties: [],
+        },
+      });
+    } catch (error) {
+      expect(error).toMatchObject({
+        code: ResearchExportErrorCode.INVALID_COMPARISON,
+      });
+    }
+  });
+
+  it("returns deeply frozen comparison export documents", () => {
+    const comparison = compareResearchExperiments([
+      experiment("exp-b", { endEquityCents: 105_000, totalReturnPct: 5 }),
+      experiment("exp-a", { endEquityCents: 120_000, totalReturnPct: 20 }),
+    ]);
+
+    const document = buildResearchComparisonExport({
+      exportId: "export-comparison-frozen",
+      generated: GENERATED,
+      comparison,
+    });
+
+    expect(Object.isFrozen(document)).toBe(true);
+    expect(Object.isFrozen(document.rankings)).toBe(true);
+    expect(Object.isFrozen(document.rankings?.[0])).toBe(true);
+    expect(Object.isFrozen(document.rankings?.[0]?.metrics)).toBe(true);
+  });
 });

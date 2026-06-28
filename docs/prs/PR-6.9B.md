@@ -31,6 +31,10 @@ serializeResearchExportDocument()
 | `rankings` | `null` | Ordered ranking rows |
 | `tableRows` | Single row keyed by `runId` | Rows keyed by `experimentId` |
 
+Comparison exports use the comparison winner metrics for `summary` (aligned with `comparison.summary.winnerExperimentId`). Ranking rows preserve comparison order; `tableRows` are sorted lexicographically by `rowKey` (`experimentId`). The export document does not duplicate `comparisonId` or `winnerExperimentId` at the root — consumers can correlate via `exportId` or retain the source `ResearchComparison`.
+
+Blank `exportId` values are rejected by validation; the `buildDocumentExportId` digest fallback exists for internal reuse only and is unreachable through the public builders.
+
 ## Summary metrics
 
 | Metric | Source |
