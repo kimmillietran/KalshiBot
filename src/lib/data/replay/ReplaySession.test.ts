@@ -166,6 +166,17 @@ describe("ReplaySession", () => {
     expect(complete.getState().isComplete).toBe(true);
   });
 
+  it("stepAll completes only the remaining steps after a partial step()", () => {
+    const session = ReplaySession.create([snapshotA, snapshotB]);
+    const { session: afterFirst, result: firstResult } = session.step();
+    const { session: complete, results: remaining } = afterFirst.stepAll();
+
+    expect(firstResult?.stepIndex).toBe(0);
+    expect(remaining).toHaveLength(1);
+    expect(remaining[0]?.stepIndex).toBe(1);
+    expect(complete.getState().isComplete).toBe(true);
+  });
+
   it("reset returns a new session at the initial cursor", () => {
     const session = ReplaySession.create([snapshotA, snapshotB]);
     const { session: advanced } = session.stepAll();
@@ -178,6 +189,40 @@ describe("ReplaySession", () => {
     expect(serializeReplayStepResults(rerun.results)).toBe(
       serializeReplayStepResults(session.stepAll().results),
     );
+  });
+
+  it("reset restores the initial cursor after a partial step()", () => {
+    const session = ReplaySession.create([snapshotA, snapshotB]);
+    const { session: afterFirst } = session.step();
+    const reset = afterFirst.reset();
+
+    expect(reset.getState()).toEqual(session.getState());
+    expect(reset.getState().canStep).toBe(true);
+
+    const rerun = reset.stepAll();
+    expect(rerun.results).toHaveLength(2);
+  });
+
+  it("leaves prior session instances unchanged after step()", () => {
+    const session = ReplaySession.create([snapshotA, snapshotB]);
+    const initialState = session.getState();
+    const { session: advanced } = session.step();
+
+    expect(session.getState()).toEqual(initialState);
+    expect(advanced.getState().stepIndex).toBe(1);
+    expect(advanced).not.toBe(session);
+  });
+
+  it("freezes engine config at session creation", () => {
+    const config = structuredClone(DEFAULT_ENGINE_CONFIG);
+    const session = ReplaySession.create([snapshotA], config);
+
+    config.minimumCandles = 999;
+
+    expect(session.getEngineConfig().minimumCandles).toBe(
+      DEFAULT_ENGINE_CONFIG.minimumCandles,
+    );
+    expect(Object.isFrozen(session.getEngineConfig())).toBe(true);
   });
 
   it("returns null when stepping after completion", () => {

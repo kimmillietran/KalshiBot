@@ -66,7 +66,7 @@ export class ReplaySession {
   ): ReplaySession {
     return new ReplaySession(
       ReplayTimeline.create({ snapshots }),
-      engineConfig,
+      deepFreeze(structuredClone(engineConfig)),
     );
   }
 
@@ -124,18 +124,17 @@ export class ReplaySession {
   }
 
   stepAll(): ReplayStepAllOutput {
-    const output = this.step();
-    if (!output.result) {
-      return {
-        session: output.session,
-        results: Object.freeze([]),
-      };
+    const results: ReplayStepResult[] = [];
+    let output = this.step();
+
+    while (output.result) {
+      results.push(output.result);
+      output = output.session.step();
     }
 
-    const rest = output.session.stepAll();
     return {
-      session: rest.session,
-      results: Object.freeze([output.result, ...rest.results]),
+      session: output.session,
+      results: Object.freeze(results),
     };
   }
 
