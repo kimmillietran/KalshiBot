@@ -402,6 +402,7 @@ export {
   serializeBtcBronzeRecords,
   sortBtcBronzeRecords,
   validateBtcHistoricalBar,
+  runConfiguredHistoricalBronzeImport,
 } from "./importJobs";
 export type {
   BtcHistoricalBar,
@@ -418,6 +419,7 @@ export type {
   KalshiHistoricalBronzeProviderContext,
   KalshiHistoricalBronzeProviderMethodInput,
   MapBtcHistoricalBarToBronzeRecordInput,
+  RunConfiguredHistoricalBronzeImportInput,
   RunHistoricalBronzeImportJobInput,
 } from "./importJobs";
 

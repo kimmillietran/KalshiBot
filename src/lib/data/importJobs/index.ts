@@ -38,3 +38,6 @@ export type {
   CreateInMemoryBtcHistoricalBronzeProviderInput,
   MapBtcHistoricalBarToBronzeRecordInput,
 } from "./providers/btc";
+
+export { runConfiguredHistoricalBronzeImport } from "./harness";
+export type { RunConfiguredHistoricalBronzeImportInput } from "./harness";
