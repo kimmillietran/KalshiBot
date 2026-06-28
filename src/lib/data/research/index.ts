@@ -27,9 +27,18 @@ export {
 } from "./ParameterSweep";
 
 export {
+  generateWalkForwardWindows,
+  runWalkForwardValidation,
+  runWalkForwardResearchExperiment,
+  serializeWalkForwardResult,
+  validateWalkForwardConfig,
+} from "./WalkForwardValidator";
+export {
   ParameterSweepError,
   ParameterSweepErrorCode,
   ParameterSweepExperimentFactoryError,
+  WalkForwardValidationError,
+  WalkForwardErrorCode,
 } from "./errors";
 
 export type {
@@ -42,3 +51,13 @@ export type {
   RunParameterSweepOptions,
   SweepParameter,
 } from "./parameterSweepTypes";
+export type {
+  RunWalkForwardExperimentFn,
+  RunWalkForwardValidationInput,
+  RunWalkForwardValidationOptions,
+  WalkForwardConfig,
+  WalkForwardPhase,
+  WalkForwardResult,
+  WalkForwardRunResult,
+  WalkForwardWindow,
+} from "./walkForwardTypes";

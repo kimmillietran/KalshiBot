@@ -208,6 +208,12 @@ export {
   ParameterSweepError,
   ParameterSweepErrorCode,
   ParameterSweepExperimentFactoryError,
+  generateWalkForwardWindows,
+  runWalkForwardValidation,
+  runWalkForwardResearchExperiment,
+  serializeWalkForwardResult,
+  WalkForwardValidationError,
+  WalkForwardErrorCode,
 } from "./research";
 
 export type {
@@ -225,4 +231,12 @@ export type {
   RunParameterSweepExperimentFn,
   RunParameterSweepOptions,
   SweepParameter,
+  RunWalkForwardExperimentFn,
+  RunWalkForwardValidationInput,
+  RunWalkForwardValidationOptions,
+  WalkForwardConfig,
+  WalkForwardPhase,
+  WalkForwardResult,
+  WalkForwardRunResult,
+  WalkForwardWindow,
 } from "./research";
