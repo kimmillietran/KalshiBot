@@ -264,6 +264,8 @@ export {
   validateHistoricalBronzeDataset,
   serializeHistoricalBronzeValidation,
   HistoricalBronzeValidationErrorCode,
+  buildHistoricalBronzeValidationReport,
+  serializeHistoricalBronzeValidationReport,
 } from "./datasets";
 export type {
   DatasetBronzeContentType,
@@ -277,6 +279,12 @@ export type {
   BuildHistoricalDatasetManifestInput,
   HistoricalDatasetManifest,
   HistoricalDatasetManifestGeneratedMetadata,
+  BuildHistoricalBronzeValidationReportInput,
+  HistoricalBronzeValidationIssuesByCodeEntry,
+  HistoricalBronzeValidationIssuesByTickerEntry,
+  HistoricalBronzeValidationReport,
+  HistoricalBronzeValidationReportMetadata,
+  HistoricalBronzeValidationReportSummary,
 } from "./datasets";
 
 export {

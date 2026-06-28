@@ -21,12 +21,20 @@ export {
   HistoricalBronzeValidationErrorCode,
   serializeHistoricalBronzeValidation,
   validateHistoricalBronzeDataset,
+  buildHistoricalBronzeValidationReport,
+  serializeHistoricalBronzeValidationReport,
 } from "./validation";
 export type {
   HistoricalBronzeValidationIssue,
   HistoricalBronzeValidationResult,
   HistoricalBronzeValidationSeverity,
   HistoricalBronzeValidationStatistics,
+  BuildHistoricalBronzeValidationReportInput,
+  HistoricalBronzeValidationIssuesByCodeEntry,
+  HistoricalBronzeValidationIssuesByTickerEntry,
+  HistoricalBronzeValidationReport,
+  HistoricalBronzeValidationReportMetadata,
+  HistoricalBronzeValidationReportSummary,
 } from "./validation";
 
 export {
