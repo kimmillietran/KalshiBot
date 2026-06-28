@@ -55,6 +55,25 @@ type HistoricalBacktestResult = {
 
 `deriveBacktestMetricsInput()` maps replay output + ledger fills into `ComputeBacktestMetricsInput` (equity curve + closed trades). Both `runHistoricalBacktest()` and `runResearchExperiment()` consume this public helper — no duplicated summary math.
 
+### Accounting policy
+
+- **Equity curve:** replays ledger fills step-by-step, then marks open positions using each step's `engineInput.pricing` mids (fallback to bid/ask mid when mids are absent).
+- **Closed trades:** weighted-average cost basis per ticker/side; one `ClosedTradeSummary` per sell fill. Entry fees affect cash in the ledger but not cost basis (consistent with 6.5A).
+- **Adapter tradeoff:** the adapter rebuilds a transient ledger while walking replay steps to produce the equity curve. This avoids duplicating mark-price logic but re-applies fills already recorded on the strategy-run ledger. A future refactor may read ledger snapshots directly once step-aligned balances are exposed.
+
+### HistoricalBacktest vs ResearchExperiment
+
+| Entrypoint | Use when |
+|---|---|
+| `runHistoricalBacktest()` | Single deterministic backtest with explicit `engineConfig`, fill config, and metrics config; returns full replay + strategy-run artifacts |
+| `runResearchExperiment()` | Research workflow with experiment metadata, serializable `strategyConfig`, and frozen experiment configuration on the result |
+
+Both share `deriveBacktestMetricsInput()` for metrics input — choose based on configuration and result shape needs, not metrics math.
+
+### Future extraction
+
+`compareFills` ordering (`occurredAt` → `sourceStepIndex` → `fillId`) is duplicated with ledger fill ordering conventions. Extract to a shared backtesting utility when a third consumer appears.
+
 ## Rules
 
 - Consumes public APIs only (`ReplaySession`, `BacktestStrategyRunner`, `deriveBacktestMetricsInput`, `computeBacktestMetrics`)
