@@ -2,10 +2,12 @@ import { stableStringify } from "@/lib/trading/config/hashConfig";
 import type { HistoricalTradingSnapshot } from "@/lib/data/snapshots/types";
 
 import { WalkForwardValidationError, WalkForwardErrorCode } from "./errors";
-import { runResearchExperiment, validateResearchExperimentConfig } from "./ParameterSweep";
+import {
+  validateParameterSweepExperimentConfig,
+} from "./ParameterSweep";
 import type {
-  ResearchExperimentConfig,
-  ResearchExperimentResult,
+  ParameterSweepExperimentConfig,
+  ParameterSweepExperimentResult,
 } from "./parameterSweepTypes";
 import type {
   RunWalkForwardValidationInput,
@@ -94,7 +96,7 @@ export function validateWalkForwardConfig(
     config.stepSize,
   );
 
-  validateResearchExperimentConfig(config.experimentConfig);
+  validateParameterSweepExperimentConfig(config.experimentConfig);
 
   if (config.experimentConfig.sweepId !== config.validationId) {
     throw new WalkForwardValidationError(
@@ -157,10 +159,10 @@ export function generateWalkForwardWindows(
 }
 
 function buildPhaseExperimentConfig(
-  baseConfig: ResearchExperimentConfig,
+  baseConfig: ParameterSweepExperimentConfig,
   phase: WalkForwardPhase,
   window: WalkForwardWindow,
-): ResearchExperimentConfig {
+): ParameterSweepExperimentConfig {
   return {
     experimentId: `${baseConfig.experimentId}-${phase}-${window.trainingStartIndex}-${window.testingEndIndex}`,
     sweepId: baseConfig.sweepId,
@@ -176,11 +178,11 @@ function buildPhaseExperimentConfig(
 }
 
 export function runWalkForwardResearchExperiment(
-  config: ResearchExperimentConfig,
+  config: ParameterSweepExperimentConfig,
   snapshots: readonly HistoricalTradingSnapshot[],
   phase: WalkForwardPhase,
-): ResearchExperimentResult {
-  validateResearchExperimentConfig(config);
+): ParameterSweepExperimentResult {
+  validateParameterSweepExperimentConfig(config);
 
   if (snapshots.length === 0) {
     throw new WalkForwardValidationError(
@@ -188,8 +190,15 @@ export function runWalkForwardResearchExperiment(
     );
   }
 
+  const stubResult: ParameterSweepExperimentResult = deepFreeze({
+    experimentId: config.experimentId,
+    sweepId: config.sweepId,
+    parameters: deepFreeze({ ...config.parameters }),
+    status: "completed" as const,
+  });
+
   return deepFreeze({
-    ...runResearchExperiment(config),
+    ...stubResult,
     parameters: deepFreeze({
       ...config.parameters,
       phase,

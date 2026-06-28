@@ -10,7 +10,7 @@ import type {
 import { DATA_CONTRACT_VERSION } from "@/lib/data/versioning";
 
 import { WalkForwardValidationError, WalkForwardErrorCode } from "./errors";
-import type { ResearchExperimentConfig } from "./parameterSweepTypes";
+import type { ParameterSweepExperimentConfig } from "./parameterSweepTypes";
 import {
   generateWalkForwardWindows,
   runWalkForwardValidation,
@@ -182,7 +182,7 @@ describe("runWalkForwardValidation", () => {
 
   it("executes training and testing experiments once per window", () => {
     const runExperiment = vi.fn(
-      (config: ResearchExperimentConfig) => ({
+      (config: ParameterSweepExperimentConfig) => ({
         experimentId: config.experimentId,
         sweepId: config.sweepId,
         parameters: config.parameters,

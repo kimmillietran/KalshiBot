@@ -1,8 +1,8 @@
 import type { HistoricalTradingSnapshot } from "@/lib/data/snapshots/types";
 
 import type {
-  ResearchExperimentConfig,
-  ResearchExperimentResult,
+  ParameterSweepExperimentConfig,
+  ParameterSweepExperimentResult,
 } from "./parameterSweepTypes";
 
 export type WalkForwardPhase = "training" | "testing";
@@ -12,7 +12,7 @@ export type WalkForwardConfig = {
   trainingWindowSize: number;
   testingWindowSize: number;
   stepSize: number;
-  experimentConfig: ResearchExperimentConfig;
+  experimentConfig: ParameterSweepExperimentConfig;
 };
 
 export type WalkForwardWindow = {
@@ -26,8 +26,8 @@ export type WalkForwardWindow = {
 
 export type WalkForwardRunResult = {
   window: WalkForwardWindow;
-  trainingResult: ResearchExperimentResult;
-  testingResult: ResearchExperimentResult;
+  trainingResult: ParameterSweepExperimentResult;
+  testingResult: ParameterSweepExperimentResult;
 };
 
 export type WalkForwardResult = {
@@ -37,10 +37,10 @@ export type WalkForwardResult = {
 };
 
 export type RunWalkForwardExperimentFn = (
-  config: ResearchExperimentConfig,
+  config: ParameterSweepExperimentConfig,
   snapshots: readonly HistoricalTradingSnapshot[],
   phase: WalkForwardPhase,
-) => ResearchExperimentResult;
+) => ParameterSweepExperimentResult;
 
 export type RunWalkForwardValidationInput = {
   snapshots: readonly HistoricalTradingSnapshot[];
