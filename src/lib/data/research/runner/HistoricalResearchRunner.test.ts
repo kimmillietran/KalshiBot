@@ -216,9 +216,56 @@ describe("runHistoricalResearchFromBronze", () => {
     expect(Object.isFrozen(result)).toBe(true);
     expect(Object.isFrozen(result.dataset)).toBe(true);
     expect(Object.isFrozen(result.metadata)).toBe(true);
+    expect(Object.isFrozen(result.researchRun)).toBe(true);
+    expect(Object.isFrozen(result.researchRun.config)).toBe(true);
     expect(() => {
       (result as { serialized: string }).serialized = "";
     }).toThrow();
+  });
+
+  it("rejects invalid runner config before pipeline execution", () => {
+    const bronzeRecords = completeMarketRecords(
+      "KXBTC15M-RUNNER-INVALID",
+      "2026-06-26T23:15:00.000Z",
+      "2026-06-26T23:30:00.000Z",
+      "runner-invalid",
+    );
+
+    expect(() =>
+      runHistoricalResearchFromBronze(null as never),
+    ).toThrow(HistoricalResearchRunnerError);
+
+    try {
+      runHistoricalResearchFromBronze(null as never);
+    } catch (error) {
+      expect((error as HistoricalResearchRunnerError).code).toBe(
+        HistoricalResearchRunnerErrorCode.INVALID_CONFIG,
+      );
+    }
+
+    expect(() =>
+      runHistoricalResearchFromBronze(
+        createInput(bronzeRecords, { durationMs: Number.NaN }),
+      ),
+    ).toThrow(HistoricalResearchRunnerError);
+
+    try {
+      runHistoricalResearchFromBronze(
+        createInput(bronzeRecords, { durationMs: Number.NaN }),
+      );
+    } catch (error) {
+      expect((error as HistoricalResearchRunnerError).code).toBe(
+        HistoricalResearchRunnerErrorCode.INVALID_DURATION_MS,
+      );
+    }
+
+    expect(() =>
+      runHistoricalResearchFromBronze(
+        createInput(bronzeRecords, {
+          strategy: { strategyId: "  ", decide: () => [] },
+        }),
+      ),
+    ).toThrow(HistoricalResearchRunnerError);
   });
 
   it("does not mutate input bronze records", () => {

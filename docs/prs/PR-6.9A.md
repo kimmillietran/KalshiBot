@@ -65,6 +65,15 @@ type HistoricalResearchRunnerResult = {
 | Dataset builder | Errors propagate unchanged (`HistoricalDatasetBuildError`) |
 | Research CLI | Errors propagate unchanged (`HistoricalResearchCliError`) |
 
+## Entrypoints
+
+| API | When to use |
+|---|---|
+| `HistoricalResearchCli.run()` | Caller already has a `HistoricalDataset` |
+| `runHistoricalResearchFromBronze()` | Caller has `RawHistoricalRecord[]` and wants dataset build + research run in one call |
+
+The runner validates bronze input shape and config fields before calling `buildHistoricalDataset()` and `HistoricalResearchCli.run()`. Config validation intentionally overlaps with the CLI layer so invalid requests fail before dataset construction.
+
 ## Deterministic guarantees
 
 - No `Date.now()` or `Math.random()`

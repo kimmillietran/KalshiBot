@@ -287,6 +287,19 @@ export type {
 } from "./research/comparison";
 
 export {
+  runHistoricalResearchFromBronze,
+  serializeHistoricalResearchRunnerResult,
+  HistoricalResearchRunnerError,
+  HistoricalResearchRunnerErrorCode,
+} from "./research/runner";
+export type {
+  HistoricalResearchRunnerCoreResult,
+  HistoricalResearchRunnerMetadata,
+  HistoricalResearchRunnerResult,
+  RunHistoricalResearchFromBronzeInput,
+} from "./research/runner";
+
+export {
   HistoricalResearchCli,
   serializeHistoricalResearchRun,
   HistoricalResearchCliError,
