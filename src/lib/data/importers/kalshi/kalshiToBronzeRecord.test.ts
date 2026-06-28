@@ -129,4 +129,14 @@ describe("kalshiToBronzeRecord", () => {
 
     expect(second.recordId).not.toBe(first.recordId);
   });
+
+  it("falls back to close_time when settlement_ts is null", () => {
+    const wire = {
+      ...marketWire,
+      settlement_ts: null,
+      close_time: "2026-06-27T01:15:00.000Z",
+    };
+
+    expect(eventTimeFromMarketWire(wire)).toBe("2026-06-27T01:15:00.000Z");
+  });
 });

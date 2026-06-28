@@ -28,7 +28,7 @@ No disk persistence, scheduled jobs, replay, dashboard, engine, or execution cha
 
 Each record includes: `recordId`, `ticker`, `contentType`, `payload` (raw, unmodified), `eventTime`, `collectionTime`, `observedAt`, `provenance`.
 
-Record IDs are deterministic via `fnv1a32(stableStringify(...))`.
+Record IDs are deterministic via `fnv1a32(stableStringify(...))` from `@/lib/trading/config/hashConfig` (cross-layer debt — move to shared util in a later milestone).
 
 ## Wiring example
 

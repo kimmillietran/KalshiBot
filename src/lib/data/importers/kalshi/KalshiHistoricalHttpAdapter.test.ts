@@ -70,6 +70,34 @@ describe("KalshiHistoricalHttpAdapter", () => {
     });
   });
 
+  it("returns null body for empty responses", async () => {
+    const fetchImpl = vi.fn(async () => mockResponse(200, ""));
+
+    const result = await createAdapter(fetchImpl).get("https://example.test/historical/cutoff");
+
+    expect(result.status).toBe(200);
+    expect(result.body).toBeNull();
+  });
+
+  it("merges defaultHeaders with JSON accept header", async () => {
+    const fetchImpl = vi.fn(async () => mockResponse(200, "{}"));
+    const adapter = new KalshiHistoricalHttpAdapter({
+      fetchImpl,
+      defaultHeaders: { Authorization: "Bearer test-token" },
+    });
+
+    await adapter.get("https://example.test/historical/cutoff");
+
+    expect(fetchImpl).toHaveBeenCalledWith("https://example.test/historical/cutoff", {
+      method: "GET",
+      headers: {
+        Accept: "application/json",
+        Authorization: "Bearer test-token",
+      },
+      cache: "no-store",
+    });
+  });
+
   it("does not call global fetch in tests", async () => {
     const globalFetch = vi.spyOn(globalThis, "fetch");
     const fetchImpl = vi.fn(async () => mockResponse(200, "{}"));
