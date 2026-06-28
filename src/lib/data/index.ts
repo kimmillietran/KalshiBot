@@ -62,3 +62,22 @@ export type {
   BronzeRecordKey,
   BronzeStore,
 } from "./bronze";
+
+export {
+  SilverNormalizer,
+  normalizeRecord,
+  normalizeMarketWindow,
+  normalizeKalshiCandle,
+  normalizeSettlement,
+  SILVER_BRONZE_CONTENT_TYPE,
+  SilverNormalizationError,
+  SilverUnsupportedContentTypeError,
+  SilverMalformedPayloadError,
+  SilverInvalidBronzeRecordError,
+} from "./silver";
+
+export type {
+  SilverBronzeContentType,
+  SilverNormalizationOutput,
+  SilverNormalizationResult,
+} from "./silver";
