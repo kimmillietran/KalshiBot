@@ -230,17 +230,34 @@ Tracked intentionally — not silent accumulation. Review at each milestone clos
 | Endpoint wiring untested | `historicalEndpoints.ts` builders + unit tests |
 | Real network in tests | Fake `KalshiHistoricalHttpClient` only; no global `fetch` in importer tests |
 
-## Outstanding (post-6.1B)
+## Resolved in 6.2A
+
+| Issue | Resolution |
+|-------|------------|
+| No bronze storage abstraction | `BronzeStore` + `InMemoryBronzeStore` under `src/lib/data/bronze/` |
+| No deterministic bronze keys/serialization | `bronzeKeys.ts`, `serializeBronzeRecord.ts` with stable JSON + clone helpers |
+| Duplicate append semantics undefined | Idempotent identical append; `BronzeDuplicateConflictError` on content conflict |
+
+## Outstanding (post-6.2A)
 
 | Issue | Priority | Reason | Suggested fix | Milestone |
 |-------|----------|--------|---------------|-----------|
-| **Bronze/Silver persistence** | Medium | Contracts + importer only — no storage | Bronze storage writers | **6.2A** |
-| **Production HTTP adapter** | Medium | Importer uses injectable client; no live fetch wiring | Production Kalshi Historical HTTP adapter + import job | **6.2B** |
+| **Filesystem/DB bronze persistence** | Medium | In-memory store only | Production bronze writers | **6.2B+** |
+| **Production HTTP adapter** | Medium | Importer uses injectable client; no live fetch wiring | Production Kalshi Historical HTTP adapter + bronze import job | **6.2B** |
+| **Silver normalization** | Medium | Bronze only — no silver pipeline | Silver normalization core | **6.3A** |
 | **Market dateRange query** | Medium | `listHistoricalMarkets()` defers date filters | Wire when Kalshi API documents supported params | **Backlog** |
 | **SnapshotAssembler** | Medium | No replay pipeline yet | Assemble silver snapshots from bronze | **Backlog** |
 | **Export uses raw TradeDecision** | Medium | 5.11B ships pre-5.11A serializer path | Swap to `summarizeEngineSnapshot()` for compact payload | **Backlog** |
 | **Settings persistence** | Medium | Session-only form state — lost on refresh | localStorage or account-backed settings | **Backlog** |
 | **Account/bankroll source** | Medium | Manual bankroll entry only | Future brokerage/account integration | **Backlog** |
+
+## Minor follow-ups (6.2A)
+
+| Issue | Priority | Suggested fix |
+|-------|----------|---------------|
+| `stableStringify` location | Low | Relocate to shared util outside `trading/config` when low-risk |
+| Filter semantics documentation | Low | Keep inclusivity + canonical identity rules tested and documented |
+| `BronzeDuplicateConflictError` metadata | Low | Optional structured diff on conflict |
 
 ## Minor follow-ups (6.1)
 

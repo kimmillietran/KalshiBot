@@ -2,7 +2,7 @@
 
 AI-powered trading assistant for Kalshi BTC markets. Built in milestones.
 
-**Current:** Live BTC/Kalshi feeds (4.6B) + full trading engine through settings UI (5.0–5.11B) + historical data contracts and Kalshi Historical API importer spike (6.1A–6.1B). `src/lib/data/` defines Bronze/Silver schemas with UTC-only timestamps; `KalshiHistoricalImporter` provides injectable HTTP wiring for historical market/trade/candlestick fetch. Dashboard copies raw `TradeDecision` JSON via Engine Reasoning panel. Settings flow through `resolveTradingSettings()` into `evaluate()`. Replay, storage, and trade execution deferred.
+**Current:** Live BTC/Kalshi feeds (4.6B) + full trading engine through settings UI (5.0–5.11B) + historical data layer (6.1A–6.2A). `src/lib/data/` defines Bronze/Silver schemas; `InMemoryBronzeStore` provides append-only bronze storage with deterministic ordering; `KalshiHistoricalImporter` provides injectable HTTP wiring. Dashboard copies raw `TradeDecision` JSON via Engine Reasoning panel. Replay, filesystem persistence, and trade execution deferred.
 
 ## Engineering Standards
 
@@ -96,7 +96,8 @@ docs/
 | 5.11B | Dashboard TradeDecision JSON export (`DecisionExportButton`, clipboard helper) — **complete** |
 | 6.1A | Historical data contracts (`src/lib/data/`, Bronze/Silver schemas, UTC timestamps) — **complete** |
 | 6.1B | Kalshi Historical API importer spike (`KalshiHistoricalImporter`, injectable HTTP) — **complete** |
+| 6.2A | Bronze storage core (`BronzeStore`, `InMemoryBronzeStore`, stable serialization) — **complete** |
 
 ## Intentionally deferred
 
-Dynamic AI recommendations, trade execution, auth, database, journal, analytics, WebSockets beyond current polling, historical replay/backtesting, Bronze/Silver persistence, Zustand, Drizzle, Auth.js, Vercel AI SDK, Playwright e2e. See [technical debt](docs/technical-debt.md).
+Dynamic AI recommendations, trade execution, auth, database, journal, analytics, WebSockets beyond current polling, historical replay/backtesting, filesystem/DB bronze persistence, Zustand, Drizzle, Auth.js, Vercel AI SDK, Playwright e2e. See [technical debt](docs/technical-debt.md).
