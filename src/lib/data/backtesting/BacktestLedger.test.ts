@@ -163,6 +163,37 @@ describe("BacktestLedger", () => {
     );
   });
 
+  it("computes weighted-average cost on additional buys", () => {
+    const ledger = BacktestLedger.create(10_000)
+      .recordFill(buyFill({ quantity: 10, priceCents: 40 }))
+      .recordFill(
+        buyFill({
+          quantity: 10,
+          priceCents: 50,
+          sourceStepIndex: 1,
+          occurredAt: T1,
+        }),
+      );
+
+    expect(ledger.snapshot().openPositions[0]?.averageCostCents).toBe(45);
+    expect(ledger.snapshot().openPositions[0]?.quantity).toBe(20);
+  });
+
+  it("retains fractional cent averages without rounding", () => {
+    const ledger = BacktestLedger.create(10_000)
+      .recordFill(buyFill({ quantity: 3, priceCents: 40 }))
+      .recordFill(
+        buyFill({
+          quantity: 2,
+          priceCents: 41,
+          sourceStepIndex: 1,
+          occurredAt: T1,
+        }),
+      );
+
+    expect(ledger.snapshot().openPositions[0]?.averageCostCents).toBe(40.4);
+  });
+
   it("computes unrealized P/L from supplied marks", () => {
     const ledger = BacktestLedger.create(10_000).recordFill(
       buyFill({ quantity: 10, priceCents: 40 }),
@@ -173,6 +204,40 @@ describe("BacktestLedger", () => {
     ]);
 
     expect(result.unrealizedPnLCents).toBe((46 - 40) * 10);
+  });
+
+  it("rejects missing mark prices for open positions", () => {
+    const ledger = BacktestLedger.create(10_000)
+      .recordFill(buyFill({ quantity: 5 }))
+      .recordFill(
+        buyFill({
+          ticker: TICKER_B,
+          side: "no",
+          quantity: 3,
+          priceCents: 35,
+          sourceStepIndex: 1,
+        }),
+      );
+
+    expect(() =>
+      ledger.computeUnrealizedPnL([{ ticker: TICKER_A, side: "yes", priceCents: 50 }]),
+    ).toThrow(BacktestLedgerError);
+
+    try {
+      ledger.computeUnrealizedPnL([{ ticker: TICKER_A, side: "yes", priceCents: 50 }]);
+    } catch (error) {
+      expect((error as BacktestLedgerError).code).toBe(
+        BacktestLedgerErrorCode.MISSING_MARK_PRICE,
+      );
+    }
+  });
+
+  it("rejects invalid mark prices", () => {
+    const ledger = BacktestLedger.create(10_000).recordFill(buyFill());
+
+    expect(() =>
+      ledger.computeUnrealizedPnL([{ ticker: TICKER_A, side: "yes", priceCents: 101 }]),
+    ).toThrow(BacktestLedgerError);
   });
 
   it("produces deterministic results for repeated sequences", () => {
@@ -207,6 +272,17 @@ describe("BacktestLedger", () => {
     expect(initial.snapshot()).toEqual(before);
   });
 
+  it("isolates snapshot clones from ledger state", () => {
+    const ledger = BacktestLedger.create(10_000).recordFill(buyFill());
+    const snapshot = ledger.snapshot();
+
+    (snapshot as { cashCents: number }).cashCents = 0;
+    snapshot.openPositions[0]!.quantity = 999;
+
+    expect(ledger.snapshot().cashCents).toBe(10_000 - 10 * 48 - 5);
+    expect(ledger.snapshot().openPositions[0]?.quantity).toBe(10);
+  });
+
   it("orders fills deterministically by time, step, and fill id", () => {
     const ledger = BacktestLedger.create(10_000)
       .recordFill(
@@ -231,5 +307,30 @@ describe("BacktestLedger", () => {
     expect(Date.parse(ledger.snapshot().fills[0]!.occurredAt)).toBeLessThan(
       Date.parse(ledger.snapshot().fills[1]!.occurredAt),
     );
+  });
+
+  it("breaks fill ordering ties with fillId when time and step match", () => {
+    const ledger = BacktestLedger.create(20_000)
+      .recordFill(
+        buyFill({
+          occurredAt: T0,
+          sourceStepIndex: 1,
+          quantity: 1,
+          priceCents: 40,
+        }),
+      )
+      .recordFill(
+        buyFill({
+          occurredAt: T0,
+          sourceStepIndex: 1,
+          quantity: 1,
+          priceCents: 41,
+        }),
+      );
+
+    expect(ledger.snapshot().fills.map((fill) => fill.fillId)).toEqual([
+      "fill-000001",
+      "fill-000002",
+    ]);
   });
 });

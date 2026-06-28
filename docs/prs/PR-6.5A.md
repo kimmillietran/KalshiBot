@@ -33,7 +33,9 @@ All monetary values are integer **cents**.
 
 - **Buy:** `cash -= quantity * priceCents + feeCents`; position quantity increases with weighted average cost
 - **Sell:** requires open position; `cash += quantity * priceCents - feeCents`; realized P/L += `(sellPrice - avgCost) * quantity - feeCents`
-- **Average cost:** weighted by quantity on additional buys; entry fees affect cash only (not cost basis)
+- **Average cost:** weighted by quantity on additional buys; fractional cent averages are retained (not rounded) for deterministic replay math
+- **Entry fees:** debited from `cashCents` only — they do **not** increase `averageCostCents`; downstream metrics (6.5B) should treat entry fees as cash drag, not cost-basis inflation
+- **Exit fees:** reduce proceeds and are included in `realizedPnLCents`
 - **Unrealized P/L:** `(markPriceCents - averageCostCents) * quantity` for each open position; caller must supply marks for all open positions
 - **No hidden clock:** `occurredAt` and `sourceStepIndex` are caller-provided
 
@@ -57,8 +59,13 @@ type TradeFill = {
 
 - `BacktestLedger.create()` and `recordFill()` return new instances; prior `snapshot()` values are unchanged
 - Fill ids are monotonic `fill-000001`, `fill-000002`, …
-- Fills are sorted deterministically after each record
+- Fills are sorted deterministically after each record (`occurredAt` → `sourceStepIndex` → `fillId`)
 - Identical fill sequences produce identical ledger snapshots
+- `snapshot()` returns a deep clone — mutating the returned object does not affect the ledger
+
+## Handoff to 6.5B
+
+`BacktestLedger.snapshot()` supplies cash, realized P/L, and open positions for metrics modules. Entry fees are already reflected in `cashCents`; metrics should not double-count them against cost basis.
 
 ## Quality gates
 
