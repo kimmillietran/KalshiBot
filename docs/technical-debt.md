@@ -410,6 +410,15 @@ Tracked intentionally — not silent accumulation. Review at each milestone clos
 | Runner step/rejection artifacts on result | Medium | Attach `BacktestStrategyRunResult` step outputs and `rejectedIntents` |
 | Metrics adapter accounting reconstruction | Medium | Document or simplify closed-trade derivation vs ledger realized P/L |
 
+## Minor follow-ups (6.6B)
+
+| Issue | Priority | Suggested fix |
+|-------|----------|---------------|
+| Default sweep stub vs 6.6A integration | Medium | Wire `experimentFactory` to produce full `ResearchExperimentConfig` and inject 6.6A `runResearchExperiment` |
+| Injected `runExperiment` path test coverage | Medium | Expand beyond basic call-count assertion |
+| Shared research contract extraction | Medium | Unify sweep-layer and 6.6A experiment types when sweep factories mature |
+| Large Cartesian sweep guardrails | Medium | Add max-combination limit or warning before sweep execution |
+
 ## Other outstanding
 
 | Issue | Priority | Reason | Suggested fix | Milestone |
