@@ -246,6 +246,81 @@ describe("runMonteCarloAnalysis", () => {
       expected.endingEquityCents,
     );
   });
+
+  it("supports simulationCount of 1", () => {
+    const summary = runMonteCarloAnalysis({
+      closedTrades: sampleTrades,
+      config: {
+        simulationCount: 1,
+        resampleMode: ResampleMode.BOOTSTRAP,
+        startingEquityCents: 100_000,
+        seed: 42,
+      },
+    });
+
+    expect(summary.simulations).toHaveLength(1);
+    expect(summary.percentile50).toBe(summary.medianEndingEquity);
+    expect(summary.percentile5).toBe(summary.percentile95);
+  });
+
+  it("produces different output for different seeds", () => {
+    const baseConfig = {
+      simulationCount: 5,
+      resampleMode: ResampleMode.BOOTSTRAP,
+      startingEquityCents: 100_000,
+    } as const;
+
+    const seedA = serializeMonteCarloSummary(
+      runMonteCarloAnalysis({
+        closedTrades: sampleTrades,
+        config: { ...baseConfig, seed: 1 },
+      }),
+    );
+    const seedB = serializeMonteCarloSummary(
+      runMonteCarloAnalysis({
+        closedTrades: sampleTrades,
+        config: { ...baseConfig, seed: 2 },
+      }),
+    );
+
+    expect(seedA).not.toBe(seedB);
+  });
+
+  it("allows bootstrap duplicate sampling", () => {
+    const summary = runMonteCarloAnalysis({
+      closedTrades: sampleTrades,
+      config: {
+        simulationCount: 1,
+        resampleMode: ResampleMode.BOOTSTRAP,
+        startingEquityCents: 100_000,
+        seed: 99,
+      },
+      indexGenerator: () => 0,
+    });
+
+    const expectedEnding = 100_000 + sampleTrades[0]!.realizedPnlCents * sampleTrades.length;
+    expect(summary.simulations[0]?.endingEquityCents).toBe(expectedEnding);
+  });
+
+  it("returns frozen summary and simulation objects", () => {
+    const summary = runMonteCarloAnalysis({
+      closedTrades: sampleTrades,
+      config: {
+        simulationCount: 2,
+        resampleMode: ResampleMode.PERMUTATION,
+        startingEquityCents: 100_000,
+        seed: 4,
+      },
+    });
+
+    expect(Object.isFrozen(summary)).toBe(true);
+    expect(Object.isFrozen(summary.simulations)).toBe(true);
+    expect(Object.isFrozen(summary.simulations[0])).toBe(true);
+
+    expect(() => {
+      (summary as { meanEndingEquity: number }).meanEndingEquity = 0;
+    }).toThrow();
+  });
 });
 
 describe("deterministic resamplers", () => {

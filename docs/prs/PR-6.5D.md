@@ -23,6 +23,7 @@ MonteCarloSummary statistics
 - **No** `Math.random()`, crypto, UUID, or `Date.now()`
 - Caller supplies `seed` in `MonteCarloConfig`
 - Default index generator: `fnv1a32("mc:{seed}:{simulationIndex}:{drawIndex}") % upperBound`
+- **Modulo bias:** `% upperBound` introduces slight bias when `upperBound` does not divide the 32-bit hash space evenly; acceptable for robustness analysis at this milestone. Inject a custom `DeterministicIndexGenerator` for uniform sampling if required.
 - Optional injected `DeterministicIndexGenerator` for tests and future frameworks
 - Repeated runs with identical inputs produce byte-identical `serializeMonteCarloSummary()` output
 
@@ -41,6 +42,8 @@ Each simulation:
 2. Apply `realizedPnlCents` sequentially to `startingEquityCents`
 3. Track running peak and max drawdown %
 4. Record ending equity and total return %
+
+**Negative equity:** simulations do not clamp equity at zero. Large cumulative losses can produce negative `endingEquityCents`; drawdown % is computed against the running peak only when peak > 0.
 
 ## Statistical outputs
 
