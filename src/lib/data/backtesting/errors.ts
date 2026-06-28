@@ -1,3 +1,37 @@
+export const BacktestStrategyRunnerErrorCode = {
+  INVALID_FILL_CONFIG: "invalid-fill-config",
+  UNSUPPORTED_PARTIAL_FILLS: "unsupported-partial-fills",
+  UNSUPPORTED_PRICE_SOURCE: "unsupported-price-source",
+} as const;
+
+export type BacktestStrategyRunnerErrorCode =
+  (typeof BacktestStrategyRunnerErrorCode)[keyof typeof BacktestStrategyRunnerErrorCode];
+
+export class BacktestStrategyRunnerError extends Error {
+  readonly code: BacktestStrategyRunnerErrorCode;
+
+  constructor(message: string, code: BacktestStrategyRunnerErrorCode) {
+    super(message);
+    this.name = "BacktestStrategyRunnerError";
+    this.code = code;
+  }
+}
+
+export const BacktestIntentRejectionCode = {
+  INVALID_TICKER: "invalid-ticker",
+  INVALID_QUANTITY: "invalid-quantity",
+  INVALID_LIMIT_PRICE: "invalid-limit-price",
+  TICKER_NOT_IN_STEP: "ticker-not-in-step",
+  MISSING_PRICING: "missing-pricing",
+  MISSING_EXECUTION_PRICE: "missing-execution-price",
+  LIMIT_PRICE_NOT_MET: "limit-price-not-met",
+  INSUFFICIENT_CASH: "insufficient-cash",
+  INSUFFICIENT_POSITION: "insufficient-position",
+} as const;
+
+export type BacktestIntentRejectionCode =
+  (typeof BacktestIntentRejectionCode)[keyof typeof BacktestIntentRejectionCode];
+
 export const BacktestLedgerErrorCode = {
   INVALID_INITIAL_CASH: "invalid-initial-cash",
   INVALID_TICKER: "invalid-ticker",

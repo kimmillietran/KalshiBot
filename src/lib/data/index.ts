@@ -145,12 +145,17 @@ export type {
 
 export {
   BacktestLedger,
+  BacktestStrategyRunner,
   BacktestLedgerError,
   BacktestLedgerErrorCode,
   computeBacktestMetrics,
   serializeBacktestMetrics,
   BacktestMetricsError,
   BacktestMetricsErrorCode,
+  BacktestIntentRejectionCode,
+  BacktestStrategyRunnerError,
+  BacktestStrategyRunnerErrorCode,
+  DEFAULT_BACKTEST_FILL_SIMULATION_CONFIG,
   positionKey,
 } from "./backtesting";
 
@@ -167,4 +172,13 @@ export type {
   TradeFillInput,
   TradeSide,
   UnrealizedPnLResult,
+  BacktestFillSimulationConfig,
+  BacktestStepRunnerResult,
+  BacktestStrategy,
+  BacktestStrategyContext,
+  BacktestStrategyRunInput,
+  BacktestStrategyRunResult,
+  RejectedTradeIntent,
+  SimulatedFill,
+  TradeIntent,
 } from "./backtesting";

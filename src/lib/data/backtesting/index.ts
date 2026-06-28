@@ -3,11 +3,15 @@ export {
   computeBacktestMetrics,
   serializeBacktestMetrics,
 } from "./BacktestMetrics";
+export { BacktestStrategyRunner } from "./BacktestStrategyRunner";
 export {
   BacktestLedgerError,
   BacktestLedgerErrorCode,
   BacktestMetricsError,
   BacktestMetricsErrorCode,
+  BacktestIntentRejectionCode,
+  BacktestStrategyRunnerError,
+  BacktestStrategyRunnerErrorCode,
 } from "./errors";
 export type {
   LedgerSnapshot,
@@ -26,3 +30,17 @@ export type {
   ClosedTradeSummary,
   ComputeBacktestMetricsInput,
 } from "./metricsTypes";
+export {
+  DEFAULT_BACKTEST_FILL_SIMULATION_CONFIG,
+} from "./strategyTypes";
+export type {
+  BacktestFillSimulationConfig,
+  BacktestStepRunnerResult,
+  BacktestStrategy,
+  BacktestStrategyContext,
+  BacktestStrategyRunInput,
+  BacktestStrategyRunResult,
+  RejectedTradeIntent,
+  SimulatedFill,
+  TradeIntent,
+} from "./strategyTypes";
