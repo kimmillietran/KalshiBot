@@ -18,6 +18,7 @@ import {
   MARKET_POLL_MS,
   MARKET_STALE_THRESHOLD_MS,
 } from "./constants";
+import { useOrderbookFeed } from "./hooks/useOrderbookFeed";
 import {
   FALLBACK_CONTRACT_PRICING,
   FALLBACK_MARKET_TICKER,
@@ -186,6 +187,14 @@ export function MarketDataProvider({ children }: { children: React.ReactNode }) 
     marketQuery.isPending,
   );
 
+  const orderbookFeed = useOrderbookFeed(snapshot.market?.ticker ?? null);
+
+  const effectivePricing = orderbookFeed.pricing ?? snapshot.pricing;
+  const pricingIsStale =
+    orderbookFeed.status === "stale" ||
+    orderbookFeed.status === "error" ||
+    snapshot.feedStatus === "stale";
+
   const targetPrice = useMemo(() => {
     if (snapshot.market?.targetPrice != null) return snapshot.market.targetPrice;
     return FALLBACK_TARGET_PRICE;
@@ -200,15 +209,13 @@ export function MarketDataProvider({ children }: { children: React.ReactNode }) 
     ? computeTimeRemainingMs(snapshot.closeTime)
     : 0;
 
-  const pricingIsStale = snapshot.feedStatus === "stale";
-
   const value = useMemo<MarketDataContextValue>(
     () => ({
       market: snapshot.market,
-      pricing: snapshot.pricing,
+      pricing: effectivePricing,
       noMarket: snapshot.noMarket,
       feedStatus: snapshot.feedStatus,
-      errorMessage: snapshot.errorMessage,
+      errorMessage: snapshot.errorMessage ?? orderbookFeed.errorMessage,
       isFallback: snapshot.isFallback,
       targetPrice,
       timeRemainingMs,
@@ -221,6 +228,8 @@ export function MarketDataProvider({ children }: { children: React.ReactNode }) 
     }),
     [
       snapshot,
+      effectivePricing,
+      orderbookFeed.errorMessage,
       targetPrice,
       timeRemainingMs,
       ticker,

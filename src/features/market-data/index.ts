@@ -1,7 +1,16 @@
 export { MarketDataProvider, useMarketDataContext } from "./MarketDataProvider";
 export { useActiveBtcMarket } from "./hooks/useActiveBtcMarket";
+export { useOrderbookFeed } from "./hooks/useOrderbookFeed";
+export {
+  OrderbookFeedController,
+  extractTopOfBook,
+  mapTopOfBookToContractPricing,
+  KALSHI_WS_URL,
+} from "./orderbook";
 export { MarketStatusBadge } from "./components/MarketStatusBadge";
 export { fetchActiveBtcMarket } from "./api/kalshiClient";
+export { fetchKalshiOrderbook } from "./api/kalshiOrderbookClient";
+export { fetchKalshiOrderbook as fetchKalshiOrderbookServer } from "./api/kalshiServer";
 export {
   FALLBACK_CONTRACT_PRICING,
   FALLBACK_MARKET_STATUS,

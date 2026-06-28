@@ -5,6 +5,7 @@ import { MarketLifecycle } from "../types";
 import {
   discoverActiveBtcMarket,
   fetchKalshiMarkets,
+  fetchKalshiOrderbook,
   KalshiRequestTimeoutError,
 } from "./kalshiServer";
 
@@ -43,6 +44,29 @@ function mockFetchSequence(responses: Array<{ status: number; body: unknown }>) 
     } as Response;
   });
 }
+
+describe("fetchKalshiOrderbook", () => {
+  it("parses a valid orderbook response", async () => {
+    const fetchImpl = mockFetchSequence([
+      {
+        status: 200,
+        body: {
+          orderbook_fp: {
+            yes_dollars: [["0.4800", "100.00"]],
+            no_dollars: [["0.5200", "80.00"]],
+          },
+        },
+      },
+    ]);
+
+    await expect(
+      fetchKalshiOrderbook("KXBTC15M-26JUN261930-30", fetchImpl),
+    ).resolves.toEqual({
+      yesLevels: [["0.4800", "100.00"]],
+      noLevels: [["0.5200", "80.00"]],
+    });
+  });
+});
 
 describe("fetchKalshiMarkets", () => {
   it("parses a valid markets response", async () => {

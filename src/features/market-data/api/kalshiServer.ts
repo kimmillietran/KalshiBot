@@ -7,6 +7,8 @@ import {
   kalshiMarketsResponseSchema,
   type KalshiMarket,
 } from "../schemas";
+import { kalshiRestOrderbookSchema } from "../orderbook/schemas";
+import type { OrderbookLevel } from "../orderbook/types";
 import type { ActiveBtcMarket, MarketContractPricing } from "../types";
 import {
   mapKalshiMarketToActiveBtc,
@@ -70,6 +72,58 @@ export async function fetchKalshiMarkets({
   }
 
   return parsed.data.markets;
+}
+
+export type KalshiOrderbookSnapshot = {
+  yesLevels: OrderbookLevel[];
+  noLevels: OrderbookLevel[];
+};
+
+/** Server-side REST orderbook snapshot for initial state / resync / fallback. */
+export async function fetchKalshiOrderbook(
+  ticker: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<KalshiOrderbookSnapshot> {
+  const url = `${KALSHI_API_BASE}/markets/${encodeURIComponent(ticker)}/orderbook`;
+
+  let res: Response;
+
+  try {
+    res = await fetchWithTimeout(url.toString(), {
+      headers: { Accept: "application/json" },
+      cache: "no-store",
+      fetchImpl,
+    });
+  } catch (err) {
+    if (err instanceof KalshiRequestTimeoutError) {
+      console.error(`[kalshi] orderbook/${ticker} request timed out`);
+      throw err;
+    }
+    throw err;
+  }
+
+  if (res.status === 429) {
+    throw new Error("Kalshi rate limit exceeded");
+  }
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(
+      `Kalshi orderbook unavailable (${res.status}): ${text || res.statusText}`,
+    );
+  }
+
+  const json: unknown = await res.json();
+  const parsed = kalshiRestOrderbookSchema.safeParse(json);
+
+  if (!parsed.success) {
+    throw new Error("Invalid Kalshi orderbook response");
+  }
+
+  return {
+    yesLevels: parsed.data.orderbook_fp.yes_dollars,
+    noLevels: parsed.data.orderbook_fp.no_dollars,
+  };
 }
 
 /** Server-side discovery: open market first, then earliest unopened slot. */

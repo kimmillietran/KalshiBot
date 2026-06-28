@@ -14,6 +14,18 @@ import { MarketDataProvider } from "../MarketDataProvider";
 import { MarketLifecycle } from "../types";
 import { useActiveBtcMarket } from "./useActiveBtcMarket";
 
+vi.mock("./useOrderbookFeed", () => ({
+  useOrderbookFeed: () => ({
+    ticker: null,
+    status: "idle" as const,
+    pricing: null,
+    topOfBook: null,
+    lastSeq: null,
+    lastUpdateAt: null,
+    errorMessage: null,
+  }),
+}));
+
 const liveMarket = {
   ticker: "KXBTC15M-26JUN261930-30",
   title: "BTC price up in next 15 mins?",
