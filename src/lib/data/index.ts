@@ -256,6 +256,8 @@ export {
   buildHistoricalDataset,
   normalizeBtcKlineBronze,
   serializeHistoricalDataset,
+  buildHistoricalDatasetManifest,
+  serializeHistoricalDatasetManifest,
   DATASET_BRONZE_CONTENT_TYPE,
   HistoricalDatasetBuildError,
   HistoricalDatasetBuildErrorCode,
@@ -272,6 +274,9 @@ export type {
   HistoricalBronzeValidationResult,
   HistoricalBronzeValidationSeverity,
   HistoricalBronzeValidationStatistics,
+  BuildHistoricalDatasetManifestInput,
+  HistoricalDatasetManifest,
+  HistoricalDatasetManifestGeneratedMetadata,
 } from "./datasets";
 
 export {

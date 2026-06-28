@@ -28,3 +28,13 @@ export type {
   HistoricalBronzeValidationSeverity,
   HistoricalBronzeValidationStatistics,
 } from "./validation";
+
+export {
+  buildHistoricalDatasetManifest,
+  serializeHistoricalDatasetManifest,
+} from "./manifest";
+export type {
+  BuildHistoricalDatasetManifestInput,
+  HistoricalDatasetManifest,
+  HistoricalDatasetManifestGeneratedMetadata,
+} from "./manifest";
