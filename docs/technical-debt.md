@@ -198,10 +198,19 @@ Tracked intentionally — not silent accumulation. Review at each milestone clos
 | Bankroll dollars from UI | Valid bankroll populates `EngineConfig.bankrollDollars`; invalid omits field |
 | Settings module duplicated | Dashboard delegates to `resolveTradingSettings()` — no duplicate rules |
 
-## Outstanding (post-5.10B)
+## Resolved in 5.11A
+
+| Issue | Resolution |
+|-------|------------|
+| No serializable engine snapshot contract | `summarizeEngineSnapshot()` in `src/lib/trading/engine-snapshot/` |
+| Raw `TradeDecision` not export-ready | `EngineSnapshotPresentation` with formatted sections + metadata |
+| Unavailable values invented in UI | Sections use `null` + `available: false`; no placeholder strings |
+
+## Outstanding (post-5.11A)
 
 | Issue | Priority | Reason | Suggested fix | Milestone |
 |-------|----------|--------|---------------|-----------|
+| **Dashboard snapshot export** | Medium | Snapshot module not wired to UI | Export/copy/debug panel using `summarizeEngineSnapshot()` | **5.11B** |
 | **Settings persistence** | Medium | Session-only form state — lost on refresh | localStorage or account-backed settings | **Backlog** |
 | **Account/bankroll source** | Medium | Manual bankroll entry only | Future brokerage/account integration | **Backlog** |
 
@@ -315,4 +324,4 @@ Tracked intentionally — not silent accumulation. Review at each milestone clos
 
 ## Health impact
 
-After Milestone 5.10B → **Technical Debt: Low** (settings UI wired session-only; persistence and account bankroll source remain backlog).
+After Milestone 5.11A → **Technical Debt: Low** (snapshot presentation module complete; dashboard export wiring and persistence remain backlog).
