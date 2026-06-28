@@ -95,3 +95,13 @@ export type {
   SnapshotAssemblyInput,
   SnapshotTemporalMetadata,
 } from "./snapshots";
+
+export {
+  adaptHistoricalSnapshot,
+  ReplayAdaptationError,
+  ReplayAdaptationErrorCode,
+  REPLAY_BTC_FEED_STATUS,
+  REPLAY_BTC_PROVIDER_SOURCE,
+} from "./replay";
+
+export type { HistoricalReplayAdaptation } from "./replay";
