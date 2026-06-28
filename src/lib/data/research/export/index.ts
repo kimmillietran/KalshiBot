@@ -22,3 +22,15 @@ export {
   buildResearchRunExport,
   serializeResearchExportDocument,
 } from "./ResearchExport";
+
+export {
+  DEFAULT_RESEARCH_EXPORT_JSON_FORMAT_OPTIONS,
+  ResearchExportJsonError,
+  ResearchExportJsonErrorCode,
+  formatResearchExportJson,
+  formatResearchExportSummaryJson,
+} from "./ResearchExportJson";
+export type {
+  ResearchExportJsonFormatOptions,
+  ResearchExportSummaryJsonPayload,
+} from "./ResearchExportJson";
