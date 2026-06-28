@@ -81,3 +81,17 @@ export type {
   SilverNormalizationOutput,
   SilverNormalizationResult,
 } from "./silver";
+
+export {
+  assembleHistoricalTradingSnapshot,
+  serializeHistoricalTradingSnapshot,
+  HistoricalSnapshotAssemblyError,
+  SnapshotAssemblyErrorCode,
+} from "./snapshots";
+export type {
+  HistoricalSnapshotProvenance,
+  HistoricalTradingSnapshot,
+  SilverRecordEnvelope,
+  SnapshotAssemblyInput,
+  SnapshotTemporalMetadata,
+} from "./snapshots";
