@@ -63,16 +63,31 @@ Issues are sorted by:
 {
   valid: boolean;
   errors: HistoricalBronzeValidationIssue[];
-  warnings: HistoricalBronzeValidationIssue[];
+  warnings: HistoricalBronzeValidationIssue[]; // reserved — always empty in 6.12B
   statistics: {
     totalRecords;
     marketCount;
     btcBarCount;
     settlementCount;
-    duplicateCount;
+    duplicateCount; // count of duplicate-class error issues emitted
   };
 }
 ```
+
+### `duplicateCount` semantics
+
+`statistics.duplicateCount` is the number of validation **issues** whose `errorCode` is one of:
+
+- `duplicate-record-id`
+- `duplicate-market-window`
+- `duplicate-settlement`
+- `duplicate-btc-bar`
+
+A conflicting duplicate `recordId` (same id, different payload) emits **two** `duplicate-record-id` issues and increments `duplicateCount` by 2.
+
+### Warnings channel
+
+`warnings` is reserved for future non-fatal findings. Milestone 6.12B emits errors only; `warnings` is always an empty frozen array.
 
 ## Deterministic guarantees
 

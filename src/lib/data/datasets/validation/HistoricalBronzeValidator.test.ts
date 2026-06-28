@@ -153,6 +153,18 @@ function completeMarketRecords(
 }
 
 describe("validateHistoricalBronzeDataset", () => {
+  it("rejects an empty dataset", () => {
+    const result = validateHistoricalBronzeDataset([]);
+
+    expect(result.valid).toBe(false);
+    expect(result.errors).toHaveLength(1);
+    expect(result.errors[0]?.errorCode).toBe(
+      HistoricalBronzeValidationErrorCode.EMPTY_DATASET,
+    );
+    expect(result.warnings).toEqual([]);
+    expect(result.statistics.duplicateCount).toBe(0);
+  });
+
   it("accepts a valid complete market dataset", () => {
     const records = completeMarketRecords(
       "KXBTC15M-VALID",
@@ -187,6 +199,81 @@ describe("validateHistoricalBronzeDataset", () => {
       (issue) => issue.errorCode === HistoricalBronzeValidationErrorCode.DUPLICATE_RECORD_ID,
     )).toBe(true);
     expect(result.statistics.duplicateCount).toBeGreaterThan(0);
+  });
+
+  it("detects conflicting duplicate record ids with different payloads", () => {
+    const records = completeMarketRecords(
+      "KXBTC15M-CONFLICT-ID",
+      "2026-06-26T23:15:00.000Z",
+      "2026-06-26T23:30:00.000Z",
+      "conflict-id",
+    );
+    const duplicate = {
+      ...records[1]!,
+      payload: {
+        ...records[1]!.payload,
+        yes_ask_cents: 99,
+      },
+    };
+
+    records.push(duplicate);
+
+    const result = validateHistoricalBronzeDataset(records);
+
+    expect(result.valid).toBe(false);
+    expect(
+      result.errors.filter(
+        (issue) => issue.errorCode === HistoricalBronzeValidationErrorCode.DUPLICATE_RECORD_ID,
+      ),
+    ).toHaveLength(2);
+    expect(
+      result.errors.some((issue) => issue.message.includes("Conflicting duplicate")),
+    ).toBe(true);
+    expect(result.statistics.duplicateCount).toBe(2);
+  });
+
+  it("detects duplicate market windows for the same ticker", () => {
+    const ticker = "KXBTC15M-DUP-MARKET";
+    const eventTime = "2026-06-26T23:15:00.000Z";
+    const windowClose = "2026-06-26T23:30:00.000Z";
+    const records = completeMarketRecords(ticker, eventTime, windowClose, "dup-market");
+    records.push(marketBronze(ticker, "dup-market-market-2", eventTime, windowClose));
+
+    const result = validateHistoricalBronzeDataset(records);
+
+    expect(result.valid).toBe(false);
+    expect(result.errors.some(
+      (issue) =>
+        issue.errorCode === HistoricalBronzeValidationErrorCode.DUPLICATE_MARKET_WINDOW,
+    )).toBe(true);
+    expect(result.statistics.duplicateCount).toBeGreaterThan(0);
+  });
+
+  it("rejects non-UTC timestamp formats", () => {
+    const records = [
+      baseBronze(
+        SILVER_BRONZE_CONTENT_TYPE.MARKET,
+        {
+          open_time: "2026-06-26T23:15:00.000Z",
+          close_time: "2026-06-26T23:30:00.000Z",
+          floor_strike: 59_990.31,
+          event_ticker: "KXBTC15M-EVENT",
+          status: "closed",
+        },
+        {
+          recordId: "bad-timestamp-market",
+          ticker: "KXBTC15M-BAD-TIMESTAMP",
+          eventTime: "06/26/2026 23:15",
+        },
+      ),
+    ];
+
+    const result = validateHistoricalBronzeDataset(records);
+
+    expect(result.valid).toBe(false);
+    expect(result.errors.some(
+      (issue) => issue.errorCode === HistoricalBronzeValidationErrorCode.MISSING_TIMESTAMP,
+    )).toBe(true);
   });
 
   it("detects duplicate settlements for the same ticker", () => {
