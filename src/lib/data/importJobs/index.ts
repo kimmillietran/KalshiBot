@@ -5,6 +5,11 @@ export {
 
 export { createKalshiHistoricalBronzeProvider } from "./providers/kalshi";
 
+export {
+  createPrefetchedKalshiHistoricalBronzeProvider,
+  prefetchKalshiHistoricalBronzeImporter,
+} from "./providers/kalshi";
+
 export type {
   BtcHistoricalBronzeProvider,
   HistoricalBronzeImportJobCoreResult,
@@ -17,9 +22,12 @@ export type {
 
 export type {
   CreateKalshiHistoricalBronzeProviderInput,
+  CreatePrefetchedKalshiHistoricalBronzeProviderInput,
   KalshiHistoricalBronzeImporter,
   KalshiHistoricalBronzeProviderContext,
   KalshiHistoricalBronzeProviderMethodInput,
+  PrefetchKalshiHistoricalBronzeImporterInput,
+  PrefetchedKalshiHistoricalBronzeState,
 } from "./providers/kalshi";
 
 export {
