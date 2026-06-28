@@ -285,3 +285,18 @@ export type {
   ResearchComparison,
   ResearchExperimentResultWithMetrics,
 } from "./research/comparison";
+
+export {
+  HistoricalResearchCli,
+  serializeHistoricalResearchRun,
+  HistoricalResearchCliError,
+  HistoricalResearchCliErrorCode,
+  HistoricalResearchProgressEventType,
+} from "./cli";
+export type {
+  HistoricalResearchProgressEvent,
+  HistoricalResearchRun,
+  HistoricalResearchRunConfig,
+  RunAllHistoricalResearchInput,
+  RunHistoricalResearchInput,
+} from "./cli";
