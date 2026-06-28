@@ -9,6 +9,7 @@ import {
 import type { RawHistoricalRecord } from "@/lib/data/types";
 
 import {
+  SilverInvalidBronzeRecordError,
   SilverMalformedPayloadError,
   SilverUnsupportedContentTypeError,
 } from "./errors";
@@ -142,5 +143,80 @@ describe("SilverNormalizer", () => {
     const first = JSON.stringify(normalizer.normalize(bronze));
     const second = JSON.stringify(normalizer.normalize(bronze));
     expect(first).toBe(second);
+  });
+
+  it("rejects invalid bronze records with SilverInvalidBronzeRecordError", () => {
+    expect(() =>
+      normalizer.normalize({
+        ...baseBronze(SILVER_BRONZE_CONTENT_TYPE.MARKET, {}, "bad-bronze", OBSERVED_AT),
+        ticker: "",
+      }),
+    ).toThrow(SilverInvalidBronzeRecordError);
+  });
+
+  it("wraps invalid quality_flags in SilverMalformedPayloadError", () => {
+    expect(() =>
+      normalizer.normalize(
+        baseBronze(
+          SILVER_BRONZE_CONTENT_TYPE.MARKET,
+          {
+            open_time: "2026-06-27T01:00:00.000Z",
+            close_time: "2026-06-27T01:15:00.000Z",
+            floor_strike: 59_990.31,
+            event_ticker: "KXBTC15M-26JUN270115",
+            status: "closed",
+            quality_flags: ["not-a-real-flag"],
+          },
+          "market-bad-flags",
+          "2026-06-27T01:15:00.000Z",
+        ),
+      ),
+    ).toThrow(SilverMalformedPayloadError);
+  });
+
+  it("exposes stable error codes", () => {
+    try {
+      normalizer.normalize(
+        baseBronze("application/unknown", {}, "unknown-code", OBSERVED_AT),
+      );
+    } catch (error) {
+      expect(error).toMatchObject({
+        name: "SilverUnsupportedContentTypeError",
+        code: "unsupported-content-type",
+        recordId: "unknown-code",
+      });
+    }
+
+    try {
+      normalizer.normalize({
+        ...baseBronze(SILVER_BRONZE_CONTENT_TYPE.MARKET, {}, "invalid-bronze", OBSERVED_AT),
+        ticker: "",
+      });
+    } catch (error) {
+      expect(error).toMatchObject({
+        name: "SilverInvalidBronzeRecordError",
+        code: "invalid-bronze-record",
+      });
+    }
+  });
+
+  it("does not mutate bronze input during normalization", () => {
+    const bronze = baseBronze(
+      SILVER_BRONZE_CONTENT_TYPE.MARKET,
+      {
+        open_time: "2026-06-27T01:00:00.000Z",
+        close_time: "2026-06-27T01:15:00.000Z",
+        floor_strike: 59_990.31,
+        event_ticker: "KXBTC15M-26JUN270115",
+        status: "closed",
+      },
+      "market-mutate",
+      "2026-06-27T01:15:00.000Z",
+    );
+    const snapshot = JSON.stringify(bronze);
+
+    normalizer.normalize(bronze);
+
+    expect(JSON.stringify(bronze)).toBe(snapshot);
   });
 });

@@ -101,6 +101,7 @@ export function normalizeMarketWindow(
     strikePriceUsd: parsedPayload.data.floor_strike,
     status,
     qualityFlags: normalizeQualityFlags(
+      record.recordId,
       payload.quality_flags ?? payload.qualityFlags,
     ),
     datasetVersion: datasetVersion(),

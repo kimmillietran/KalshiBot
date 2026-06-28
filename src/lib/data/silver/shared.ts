@@ -74,12 +74,20 @@ export function readNumber(
   return undefined;
 }
 
-export function normalizeQualityFlags(value: unknown): z.infer<typeof dataQualityFlagSchema>[] {
+export function normalizeQualityFlags(
+  recordId: string,
+  value: unknown,
+): z.infer<typeof dataQualityFlagSchema>[] {
   if (value === undefined || value === null) {
     return [];
   }
-  const parsed = z.array(dataQualityFlagSchema).parse(value);
-  return [...parsed].sort();
+
+  const parsed = z.array(dataQualityFlagSchema).safeParse(value);
+  if (!parsed.success) {
+    throw new SilverMalformedPayloadError(recordId, formatZodIssues(parsed.error));
+  }
+
+  return [...parsed.data].sort();
 }
 
 export function parseBronzeRecord(record: RawHistoricalRecord): RawHistoricalRecord {

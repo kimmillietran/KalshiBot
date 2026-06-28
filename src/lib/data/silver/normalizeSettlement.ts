@@ -88,7 +88,7 @@ export function normalizeSettlement(
     ),
     result: parsedBody.data.result,
     settledAt: parsedBody.data.settlement_ts,
-    qualityFlags: normalizeQualityFlags(parsedBody.data.quality_flags),
+    qualityFlags: normalizeQualityFlags(record.recordId, parsedBody.data.quality_flags),
     datasetVersion: datasetVersion(),
   };
 

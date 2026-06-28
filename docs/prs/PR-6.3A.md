@@ -28,6 +28,7 @@ Content-type dispatch:
 - Maps snake_case Kalshi wire fields to silver camelCase contracts
 - Re-validates output with 6.1A silver schemas
 - Preserves `eventTime`, `collectionTime`, `observedAt`, and `provenance`
+- **`seriesTicker` derivation:** `series_ticker` when present, else first segment of `event_ticker` before `-`, else first segment of bronze `ticker` before `-`
 - Never invents missing quote, strike, or interval fields
 - Rejects incomplete Kalshi candle wire payloads lacking bid/ask cents
 - Identical inputs produce deterministic normalized output

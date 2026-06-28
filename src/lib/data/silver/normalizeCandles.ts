@@ -86,7 +86,7 @@ export function normalizeKalshiCandle(
     noBidCents: parsedPayload.data.no_bid_cents,
     noAskCents: parsedPayload.data.no_ask_cents,
     volumeContracts: parsedPayload.data.volume_contracts ?? null,
-    qualityFlags: normalizeQualityFlags(parsedPayload.data.quality_flags),
+    qualityFlags: normalizeQualityFlags(record.recordId, parsedPayload.data.quality_flags),
     datasetVersion: datasetVersion(),
   };
 
