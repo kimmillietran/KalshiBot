@@ -389,3 +389,17 @@ export type {
   HistoricalResearchFixtureExportConfig,
   HistoricalResearchInput,
 } from "./fixtures";
+
+export {
+  runHistoricalBronzeImportJob,
+  serializeHistoricalBronzeImportResult,
+} from "./importJobs";
+export type {
+  BtcHistoricalBronzeProvider,
+  HistoricalBronzeImportJobCoreResult,
+  HistoricalBronzeImportJobMetadata,
+  HistoricalBronzeImportJobResult,
+  HistoricalBronzeProviderImportInput,
+  KalshiHistoricalBronzeProvider,
+  RunHistoricalBronzeImportJobInput,
+} from "./importJobs";
