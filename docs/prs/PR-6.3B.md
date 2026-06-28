@@ -22,8 +22,9 @@ No replay, indicators, probabilities, EV, Kelly, bronze collection, dashboard, e
 - Missing required components → deterministic `HistoricalSnapshotAssemblyError`
 - No calculations, interpolation, or inferred timestamps
 - Input ordering preserved for candles and bars
-- Output deeply frozen (`Object.freeze` recursive)
+- Output deeply frozen (`Object.freeze` recursive) on cloned records — caller inputs are not mutated
 - Serializable via `serializeHistoricalTradingSnapshot()` (`stableStringify`)
+- **`snapshotVersion`:** deferred — add with replay contract in a future milestone
 
 ## API
 

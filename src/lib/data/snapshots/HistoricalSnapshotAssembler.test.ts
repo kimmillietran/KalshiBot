@@ -207,9 +207,33 @@ describe("assembleHistoricalTradingSnapshot", () => {
     }
   });
 
+  it("throws a deterministic error when BTC bars are missing", () => {
+    expect(() =>
+      assembleHistoricalTradingSnapshot(createValidInput({ btcBars: [] })),
+    ).toThrow(HistoricalSnapshotAssemblyError);
+
+    try {
+      assembleHistoricalTradingSnapshot(createValidInput({ btcBars: null }));
+    } catch (error) {
+      expect(error).toBeInstanceOf(HistoricalSnapshotAssemblyError);
+      expect((error as HistoricalSnapshotAssemblyError).code).toBe(
+        SnapshotAssemblyErrorCode.MISSING_BTC_BARS,
+      );
+    }
+  });
+
   it("allows settlement to be omitted", () => {
     const snapshot = assembleHistoricalTradingSnapshot(
       createValidInput({ settlement: undefined }),
+    );
+
+    expect(snapshot.settlement).toBeNull();
+    expect(snapshot.provenance.settlement).toBeNull();
+  });
+
+  it("treats explicit null settlement as absent", () => {
+    const snapshot = assembleHistoricalTradingSnapshot(
+      createValidInput({ settlement: null }),
     );
 
     expect(snapshot.settlement).toBeNull();
@@ -269,9 +293,19 @@ describe("assembleHistoricalTradingSnapshot", () => {
     expect(Object.isFrozen(snapshot.temporal)).toBe(true);
     expect(Object.isFrozen(snapshot.provenance)).toBe(true);
     expect(Object.isFrozen(snapshot.provenance.kalshiCandles)).toBe(true);
+    expect(Object.isFrozen(snapshot.kalshiCandles[0]?.qualityFlags)).toBe(true);
 
     expect(() => {
       (snapshot as { ticker: string }).ticker = "mutated";
     }).toThrow();
+  });
+
+  it("does not freeze caller input envelopes", () => {
+    const input = createValidInput();
+    assembleHistoricalTradingSnapshot(input);
+
+    expect(Object.isFrozen(input.marketWindow!.record)).toBe(false);
+    expect(Object.isFrozen(input.kalshiCandles![0]!.record)).toBe(false);
+    expect(Object.isFrozen(input.btcBars![0]!.record)).toBe(false);
   });
 });

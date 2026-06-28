@@ -9,6 +9,10 @@ import type {
   SnapshotAssemblyInput,
 } from "./types";
 
+function cloneValue<T>(value: T): T {
+  return structuredClone(value);
+}
+
 function deepFreeze<T>(value: T): T {
   if (value === null || typeof value !== "object") {
     return value;
@@ -56,16 +60,20 @@ export function assembleHistoricalTradingSnapshot(
 
   const { record: marketWindow, provenance: marketProvenance } =
     input.marketWindow;
-  const kalshiCandles = input.kalshiCandles.map((entry) => entry.record);
-  const kalshiProvenance = input.kalshiCandles.map((entry) => entry.provenance);
-  const btcBars = input.btcBars.map((entry) => entry.record);
-  const btcProvenance = input.btcBars.map((entry) => entry.provenance);
-  const settlement = input.settlement?.record ?? null;
-  const settlementProvenance = input.settlement?.provenance ?? null;
+  const kalshiCandles = input.kalshiCandles.map((entry) => cloneValue(entry.record));
+  const kalshiProvenance = input.kalshiCandles.map((entry) =>
+    cloneValue(entry.provenance),
+  );
+  const btcBars = input.btcBars.map((entry) => cloneValue(entry.record));
+  const btcProvenance = input.btcBars.map((entry) => cloneValue(entry.provenance));
+  const settlement = input.settlement ? cloneValue(input.settlement.record) : null;
+  const settlementProvenance = input.settlement
+    ? cloneValue(input.settlement.provenance)
+    : null;
 
   return deepFreeze({
     ticker: marketWindow.ticker,
-    marketWindow,
+    marketWindow: cloneValue(marketWindow),
     kalshiCandles,
     btcBars,
     settlement,
