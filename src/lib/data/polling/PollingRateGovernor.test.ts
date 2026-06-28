@@ -45,6 +45,27 @@ describe("PollingRateGovernor", () => {
         maxIntervalMs: 20_000,
       }),
     ).toThrow(PollingRateGovernorConfigError);
+
+    expect(() =>
+      validatePollingRateGovernorConfig({
+        ...BASE_CONFIG,
+        tokensPerPoll: 0,
+      }),
+    ).toThrow(PollingRateGovernorConfigError);
+
+    expect(() =>
+      validatePollingRateGovernorConfig({
+        ...BASE_CONFIG,
+        backoffMultiplier: 0.5,
+      }),
+    ).toThrow(PollingRateGovernorConfigError);
+
+    expect(() =>
+      validatePollingRateGovernorConfig({
+        ...BASE_CONFIG,
+        maxBackoffExponent: -1,
+      }),
+    ).toThrow(PollingRateGovernorConfigError);
   });
 
   it("assesses poll readiness and schedules the next poll", () => {
@@ -85,6 +106,22 @@ describe("PollingRateGovernor", () => {
 
     const secondBackoff = governor.computeIntervalDecision(state, 0.5);
     expect(secondBackoff.baseIntervalMs).toBe(60_000);
+  });
+
+  it("saturates backoff at maxBackoffExponent", () => {
+    const governor = new PollingRateGovernor({
+      ...BASE_CONFIG,
+      tokenBudget: 20,
+      maxBackoffExponent: 2,
+    });
+    let state = governor.createMarketState("MKT-A", "normal", 0);
+
+    state = governor.recordRateLimited(state, 0, 0.5);
+    state = governor.recordRateLimited(state, 30_000, 0.5);
+    state = governor.recordRateLimited(state, 90_000, 0.5);
+
+    expect(state.consecutive429Count).toBe(3);
+    expect(governor.computeIntervalDecision(state, 0.5).baseIntervalMs).toBe(60_000);
   });
 
   it("resets backoff after a successful poll", () => {
@@ -132,6 +169,12 @@ describe("PollingRateGovernor", () => {
       thresholdMs: 30_000,
     });
 
+    expect(governor.detectStaleQuote(nowMs - 30_000, nowMs)).toEqual({
+      isStale: false,
+      ageMs: 30_000,
+      thresholdMs: 30_000,
+    });
+
     expect(governor.detectStaleQuote(nowMs - 45_000, nowMs)).toEqual({
       isStale: true,
       ageMs: 45_000,
@@ -153,6 +196,36 @@ describe("PollingRateGovernor", () => {
       "MKT-CRITICAL",
     );
     expect(governor.selectNextMarket([waiting], 0)).toBeNull();
+  });
+
+  it("breaks same-priority ties by due time then marketId", () => {
+    const governor = new PollingRateGovernor(BASE_CONFIG);
+    const dueLater = governor.createMarketState("MKT-ZZZ", "high", 0);
+    dueLater.nextPollDueAtMs = 5_000;
+    const dueEarlier = governor.createMarketState("MKT-AAA", "high", 0);
+    dueEarlier.nextPollDueAtMs = 0;
+
+    expect(
+      governor.selectNextMarket([dueLater, dueEarlier], 5_000)?.marketId,
+    ).toBe("MKT-AAA");
+
+    const first = governor.createMarketState("MKT-BBB", "normal", 0);
+    const second = governor.createMarketState("MKT-AAA", "normal", 0);
+    expect(governor.selectNextMarket([first, second], 0)?.marketId).toBe(
+      "MKT-AAA",
+    );
+  });
+
+  it("aligns token-window reset between assessPollReadiness and computeIntervalDecision", () => {
+    const governor = new PollingRateGovernor(BASE_CONFIG);
+    let state = governor.createMarketState("MKT-A", "critical", 0);
+    state = governor.recordPollAttempt(state, 0, 0.5);
+    state = governor.recordPollAttempt(state, 0, 0.5);
+
+    expect(governor.assessPollReadiness(state, 60_001).allowed).toBe(true);
+    expect(
+      governor.computeIntervalDecision(state, 0.5, 60_001).throttledByBudget,
+    ).toBe(false);
   });
 
   it("resets token budget after the window expires", () => {

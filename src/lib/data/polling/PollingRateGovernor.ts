@@ -80,6 +80,25 @@ function validateConfig(config: PollingRateGovernorConfig): void {
       "jitterFraction must be between 0 and 1",
     );
   }
+
+  const tokensPerPoll = config.tokensPerPoll ?? 1;
+  if (tokensPerPoll <= 0) {
+    throw new PollingRateGovernorConfigError("tokensPerPoll must be positive");
+  }
+
+  const backoffMultiplier = config.backoffMultiplier ?? 2;
+  if (backoffMultiplier < 1) {
+    throw new PollingRateGovernorConfigError(
+      "backoffMultiplier must be greater than or equal to 1",
+    );
+  }
+
+  const maxBackoffExponent = config.maxBackoffExponent ?? 5;
+  if (maxBackoffExponent < 0) {
+    throw new PollingRateGovernorConfigError(
+      "maxBackoffExponent must be greater than or equal to 0",
+    );
+  }
 }
 
 function clampInterval(
@@ -167,22 +186,28 @@ export class PollingRateGovernor {
   computeIntervalDecision(
     state: MarketPollState,
     jitterSample: JitterSample = 0.5,
+    nowMs?: number,
   ): PollIntervalDecision {
+    const current =
+      nowMs === undefined
+        ? state
+        : resetTokenWindowIfExpired(state, this.config, nowMs);
+
     const priorityIntervalMs = intervalMsForPriority(
-      state.priority,
+      current.priority,
       this.config.minIntervalMs,
       this.config.maxIntervalMs,
     );
 
     const backoffExponent = Math.min(
-      state.consecutive429Count,
+      current.consecutive429Count,
       this.config.maxBackoffExponent,
     );
     const backoffActive = backoffExponent > 0;
     const backoffIntervalMs = Math.round(
       priorityIntervalMs * this.config.backoffMultiplier ** backoffExponent,
     );
-    const throttledByBudget = !hasTokenBudget(state, this.config);
+    const throttledByBudget = !hasTokenBudget(current, this.config);
     const budgetPenaltyMs = throttledByBudget ? this.config.maxIntervalMs : 0;
     const baseIntervalMs = clampInterval(
       backoffIntervalMs + budgetPenaltyMs,
@@ -202,7 +227,7 @@ export class PollingRateGovernor {
       intervalMs,
       backoffActive,
       throttledByBudget,
-      priority: state.priority,
+      priority: current.priority,
     };
   }
 
@@ -242,7 +267,7 @@ export class PollingRateGovernor {
     jitterSample: JitterSample = 0.5,
   ): MarketPollState {
     const current = resetTokenWindowIfExpired(state, this.config, nowMs);
-    const decision = this.computeIntervalDecision(current, jitterSample);
+    const decision = this.computeIntervalDecision(current, jitterSample, nowMs);
 
     return {
       ...current,

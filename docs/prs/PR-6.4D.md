@@ -11,11 +11,19 @@ No trading engine, strategy, dashboard, persistence, or network wiring changes.
 | Capability | Behavior |
 |---|---|
 | Min/max interval | Priority maps to interval between configured bounds |
-| Per-market priority | `critical` → `high` → `normal` → `low` weighting |
-| Token budget | Sliding-window token consumption throttles excess polls |
+| Per-market priority | `critical` → `high` → `normal` → `low` weighting (`normal` is the mid-tier label — not `medium`) |
+| Token budget | **Per-market** sliding-window token consumption throttles excess polls (not a fleet-wide shared pool) |
 | 429 backoff | Exponential multiplier capped by `maxBackoffExponent` |
 | Jitter | Deterministic ±`jitterFraction` via injected sample |
-| Stale quotes | Age check against `staleQuoteThresholdMs` |
+| Stale quotes | Age check against `staleQuoteThresholdMs` (exact threshold age is not stale) |
+
+## Market selection
+
+`selectNextMarket()` tie-break order among ready markets:
+
+1. Higher priority weight (`critical` > `high` > `normal` > `low`)
+2. Earlier `nextPollDueAtMs`
+3. Lexicographic `marketId`
 
 ## API
 
