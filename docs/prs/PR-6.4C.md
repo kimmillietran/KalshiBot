@@ -22,13 +22,21 @@ No trading decisions, execution, or engine changes.
 
 ## Feed policy
 
-1. **Start / ticker change:** REST snapshot via BFF → in-memory book
+1. **Start / ticker change:** REST snapshot via BFF → in-memory book; sequence tracker cleared
 2. **Live updates:** WebSocket `orderbook_snapshot` + `orderbook_delta`
-3. **Sequence gap or stale threshold (30s):** REST resync + optional WS `get_snapshot`
-4. **Socket close / error:** exponential reconnect with REST rehydrate on resume
-5. **Dashboard pricing:** `orderbookFeed.pricing ?? pollPricing` in `MarketDataProvider`
+3. **Sequence semantics:**
+   - After REST resync: tracker cleared — first delta establishes a new baseline (`seq` accepted unconditionally)
+   - After WS snapshot: tracker reset to snapshot `seq` — next delta must be exactly `seq + 1` or triggers gap resync
+4. **Sequence gap or stale threshold (30s):** REST resync + optional WS `get_snapshot`
+5. **Socket close / error:** exponential reconnect; each attempt **REST rehydrates** before resubscribing (does not rely on server snapshot alone)
+6. **Dashboard pricing:** `orderbookFeed.pricing ?? pollPricing` in `MarketDataProvider`
 
 Market metadata discovery remains on the existing 12s BFF poll; only odds pricing moves to the orderbook stream.
+
+## Pricing model notes
+
+- YES/NO ask prices use binary-complement derivation from opposing-side bids in `topOfBook.ts`
+- Live orderbook pricing takes precedence over polled REST odds when the feed is active
 
 ## Out of scope
 

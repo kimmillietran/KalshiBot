@@ -14,8 +14,8 @@ import { MarketDataProvider } from "../MarketDataProvider";
 import { MarketLifecycle } from "../types";
 import { useActiveBtcMarket } from "./useActiveBtcMarket";
 
-vi.mock("./useOrderbookFeed", () => ({
-  useOrderbookFeed: () => ({
+const mockOrderbookFeed = vi.hoisted(() =>
+  vi.fn(() => ({
     ticker: null,
     status: "idle" as const,
     pricing: null,
@@ -23,7 +23,11 @@ vi.mock("./useOrderbookFeed", () => ({
     lastSeq: null,
     lastUpdateAt: null,
     errorMessage: null,
-  }),
+  })),
+);
+
+vi.mock("./useOrderbookFeed", () => ({
+  useOrderbookFeed: mockOrderbookFeed,
 }));
 
 const liveMarket = {
@@ -71,6 +75,15 @@ function wrapper({ children }: { children: ReactNode }) {
 
 describe("MarketDataProvider", () => {
   beforeEach(() => {
+    mockOrderbookFeed.mockReturnValue({
+      ticker: null,
+      status: "idle",
+      pricing: null,
+      topOfBook: null,
+      lastSeq: null,
+      lastUpdateAt: null,
+      errorMessage: null,
+    });
     vi.useFakeTimers({ shouldAdvanceTime: true });
     vi.setSystemTime(new Date("2026-06-26T23:20:00Z"));
   });
@@ -184,6 +197,53 @@ describe("MarketDataProvider", () => {
     await waitFor(() => {
       expect(result.current.ticker).toBe(nextMarket.ticker);
     });
+  });
+
+  it("prefers live orderbook pricing over polled REST pricing", async () => {
+    const orderbookPricing = {
+      ...livePricing,
+      yes: {
+        bidCents: 55,
+        askCents: 56,
+        midCents: 56,
+        lastCents: null,
+        spreadCents: 1,
+      },
+      source: "kalshi" as const,
+    };
+
+    mockOrderbookFeed.mockReturnValue({
+      ticker: liveMarket.ticker,
+      status: "live",
+      pricing: orderbookPricing,
+      topOfBook: null,
+      lastSeq: 1,
+      lastUpdateAt: "2026-06-26T23:20:01.000Z",
+      errorMessage: null,
+    });
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() =>
+        Promise.resolve({
+          ok: true,
+          json: async () => ({
+            market: liveMarket,
+            pricing: livePricing,
+            noMarket: false,
+          }),
+        } as Response),
+      ),
+    );
+
+    const { result } = renderHook(() => useActiveBtcMarket(), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.feedStatus).toBe("live");
+    });
+
+    expect(result.current.pricing?.yes.bidCents).toBe(55);
+    expect(result.current.contractOdds?.up.price).toBe(56);
   });
 });
 

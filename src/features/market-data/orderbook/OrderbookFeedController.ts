@@ -327,8 +327,31 @@ export class OrderbookFeedController {
       if (!this.activeTicker) {
         return;
       }
-      void this.openTransportAndSubscribe(this.activeTicker);
+      void this.resumeAfterDisconnect(this.activeTicker);
     });
+  }
+
+  private async resumeAfterDisconnect(ticker: string): Promise<void> {
+    this.publish({
+      ...this.snapshot,
+      status: "connecting",
+      errorMessage: null,
+    });
+
+    try {
+      await this.resyncFromRest(ticker);
+      await this.openTransportAndSubscribe(ticker);
+      this.resetStaleTimer();
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Orderbook reconnect failed";
+      this.publish({
+        ...this.snapshot,
+        status: "error",
+        errorMessage: message,
+      });
+      this.scheduleReconnectAttempt();
+    }
   }
 
   private resetStaleTimer(): void {
