@@ -202,6 +202,12 @@ export {
   serializeResearchExperimentResult,
   ResearchExperimentError,
   ResearchExperimentErrorCode,
+  generateParameterCombinations,
+  runParameterSweep,
+  serializeParameterSweepResult,
+  ParameterSweepError,
+  ParameterSweepErrorCode,
+  ParameterSweepExperimentFactoryError,
 } from "./research";
 
 export type {
@@ -211,4 +217,12 @@ export type {
   ResearchExperimentResult,
   ResearchStrategyConfig,
   RunResearchExperimentInput,
+  ParameterCombination,
+  ParameterSweepConfig,
+  ParameterSweepExperimentConfig,
+  ParameterSweepExperimentResult,
+  ParameterSweepResult,
+  RunParameterSweepExperimentFn,
+  RunParameterSweepOptions,
+  SweepParameter,
 } from "./research";

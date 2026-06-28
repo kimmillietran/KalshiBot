@@ -16,3 +16,29 @@ export type {
   ResearchStrategyConfig,
   RunResearchExperimentInput,
 } from "./experimentTypes";
+
+export {
+  generateParameterCombinations,
+  runParameterSweep,
+  serializeParameterSweepResult,
+  validateParameterSweepConfig,
+  validateParameterSweepExperimentConfig,
+  validateSweepParameters,
+} from "./ParameterSweep";
+
+export {
+  ParameterSweepError,
+  ParameterSweepErrorCode,
+  ParameterSweepExperimentFactoryError,
+} from "./errors";
+
+export type {
+  ParameterCombination,
+  ParameterSweepConfig,
+  ParameterSweepExperimentConfig,
+  ParameterSweepExperimentResult,
+  ParameterSweepResult,
+  RunParameterSweepExperimentFn,
+  RunParameterSweepOptions,
+  SweepParameter,
+} from "./parameterSweepTypes";
