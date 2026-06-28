@@ -1,15 +1,26 @@
 import { readFileSync } from "node:fs";
 
+import type { HistoricalResearchRun } from "@/lib/data/cli";
+import {
+  buildResearchRunExport,
+  formatResearchExportJson,
+  formatResearchExportSummaryJson,
+} from "@/lib/data/research/export";
+import type { HistoricalResearchRun as ExportHistoricalResearchRun } from "@/lib/data/research/export";
+import type { HistoricalResearchRunnerResult } from "@/lib/data/research/runner";
 import { runHistoricalResearchFromBronze } from "@/lib/data/research/runner";
 
 import {
   HistoricalResearchCommandError,
   historicalResearchCliInputSchema,
+  parseFormatFromArgv,
   resolveBuiltinStrategy,
+  validateExportOutputRequirements,
 } from "./types";
 import type {
   HistoricalResearchCliInputDocument,
   HistoricalResearchCommandIo,
+  ResearchOutputFormat,
 } from "./types";
 
 export function parseInputPathFromArgv(argv: readonly string[]): string {
@@ -57,6 +68,54 @@ export function formatStdoutOutput(serialized: string): string {
   return serialized.endsWith("\n") ? serialized : `${serialized}\n`;
 }
 
+function toExportResearchRun(
+  researchRun: HistoricalResearchRun,
+): ExportHistoricalResearchRun {
+  return {
+    datasetMetadata: researchRun.datasetMetadata,
+    backtestResult: researchRun.backtestResult,
+    durationMs: researchRun.durationMs,
+    config: {
+      runId: researchRun.config.runId,
+      initialCashCents: researchRun.config.initialCashCents,
+    },
+  };
+}
+
+export function serializeCommandOutput(
+  result: HistoricalResearchRunnerResult,
+  format: ResearchOutputFormat,
+  document: HistoricalResearchCliInputDocument,
+): string {
+  if (format === "raw") {
+    return result.serialized;
+  }
+
+  const exportDocument = buildResearchRunExport({
+    exportId: document.exportId!,
+    generated: {
+      generatedAt: document.generatedAt!,
+      ...(document.generatedBy !== undefined
+        ? { generatedBy: document.generatedBy }
+        : {}),
+      ...(document.label !== undefined ? { label: document.label } : {}),
+    },
+    run: toExportResearchRun(result.researchRun),
+  });
+
+  if (format === "export") {
+    return formatResearchExportJson(exportDocument, {
+      pretty: false,
+      trailingNewline: false,
+    });
+  }
+
+  return formatResearchExportSummaryJson(exportDocument, {
+    pretty: false,
+    trailingNewline: false,
+  });
+}
+
 export function runHistoricalResearchCommand(
   argv: readonly string[],
   io: HistoricalResearchCommandIo = {
@@ -71,7 +130,9 @@ export function runHistoricalResearchCommand(
 ): number {
   try {
     const inputPath = parseInputPathFromArgv(argv);
+    const format = parseFormatFromArgv(argv);
     const document = parseHistoricalResearchInputJson(io.readFile(inputPath));
+    validateExportOutputRequirements(document, format);
     const strategy = resolveBuiltinStrategy(document.strategyId);
 
     const result = runHistoricalResearchFromBronze({
@@ -85,7 +146,9 @@ export function runHistoricalResearchCommand(
       metricsConfig: document.metricsConfig,
     });
 
-    io.writeStdout(formatStdoutOutput(result.serialized));
+    io.writeStdout(
+      formatStdoutOutput(serializeCommandOutput(result, format, document)),
+    );
     return 0;
   } catch (error) {
     const message =

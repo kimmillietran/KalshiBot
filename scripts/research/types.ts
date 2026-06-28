@@ -36,6 +36,17 @@ const metricsConfigSchema = z.object({
   riskFreeRatePerPeriod: z.number().finite().optional(),
 });
 
+export const RESEARCH_OUTPUT_FORMATS = [
+  "raw",
+  "export",
+  "export-summary",
+] as const;
+
+export type ResearchOutputFormat =
+  (typeof RESEARCH_OUTPUT_FORMATS)[number];
+
+export const DEFAULT_RESEARCH_OUTPUT_FORMAT: ResearchOutputFormat = "raw";
+
 export const historicalResearchCliInputSchema = z.object({
   runId: z.string().trim().min(1, "runId is required"),
   durationMs: z.number().finite().nonnegative(),
@@ -47,6 +58,14 @@ export const historicalResearchCliInputSchema = z.object({
   engineConfig: engineConfigSchema,
   fillConfig: fillConfigSchema.optional(),
   metricsConfig: metricsConfigSchema.optional(),
+  exportId: z.string().trim().min(1, "exportId must be non-empty").optional(),
+  generatedAt: z
+    .string()
+    .trim()
+    .min(1, "generatedAt must be non-empty")
+    .optional(),
+  generatedBy: z.string().trim().min(1).optional(),
+  label: z.string().trim().min(1).optional(),
 });
 
 export type HistoricalResearchCliInputDocument = z.infer<
@@ -110,5 +129,52 @@ export function resolveBuiltinStrategy(strategyId: BuiltinStrategyId): BacktestS
         `Unsupported built-in strategy: ${String(exhaustive)}`,
       );
     }
+  }
+}
+
+export function parseFormatFromArgv(
+  argv: readonly string[],
+): ResearchOutputFormat {
+  for (let index = 0; index < argv.length; index += 1) {
+    const token = argv[index];
+    if (token === "--format") {
+      const next = argv[index + 1];
+      if (!next || next.startsWith("-")) {
+        throw new HistoricalResearchCommandError(
+          "Missing value for --format <raw|export|export-summary>",
+        );
+      }
+
+      if (!RESEARCH_OUTPUT_FORMATS.includes(next as ResearchOutputFormat)) {
+        throw new HistoricalResearchCommandError(
+          `Unsupported --format value "${next}"`,
+        );
+      }
+
+      return next as ResearchOutputFormat;
+    }
+  }
+
+  return DEFAULT_RESEARCH_OUTPUT_FORMAT;
+}
+
+export function validateExportOutputRequirements(
+  document: HistoricalResearchCliInputDocument,
+  format: ResearchOutputFormat,
+): void {
+  if (format === DEFAULT_RESEARCH_OUTPUT_FORMAT) {
+    return;
+  }
+
+  if (!document.exportId?.trim()) {
+    throw new HistoricalResearchCommandError(
+      "exportId is required for export output formats",
+    );
+  }
+
+  if (!document.generatedAt?.trim()) {
+    throw new HistoricalResearchCommandError(
+      "generatedAt is required for export output formats",
+    );
   }
 }

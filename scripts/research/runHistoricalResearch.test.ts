@@ -12,7 +12,10 @@ import {
   parseInputPathFromArgv,
   runHistoricalResearchCommand,
 } from "./runHistoricalResearch";
-import { HistoricalResearchCommandError } from "./types";
+import {
+  HistoricalResearchCommandError,
+  parseFormatFromArgv,
+} from "./types";
 
 const COLLECTION_TIME = "2026-06-27T01:00:00.000Z";
 const OBSERVED_AT = "2026-06-27T01:00:05.000Z";
@@ -123,6 +126,16 @@ function createInputDocument(strategyId: "noop" | "buy-first-ask") {
   };
 }
 
+function createExportInputDocument(strategyId: "noop" | "buy-first-ask" = "noop") {
+  return {
+    ...createInputDocument(strategyId),
+    exportId: `export-${strategyId}`,
+    generatedAt: "2026-06-27T12:00:00.000Z",
+    generatedBy: "cli-test",
+    label: "historical-export",
+  };
+}
+
 function createIo(readJson: string) {
   const stdout: string[] = [];
   const stderr: string[] = [];
@@ -184,6 +197,27 @@ describe("parseHistoricalResearchInputJson", () => {
   });
 });
 
+describe("parseFormatFromArgv", () => {
+  it("defaults to raw output format", () => {
+    expect(parseFormatFromArgv(["--input", "input.json"])).toBe("raw");
+  });
+
+  it("parses explicit format flags", () => {
+    expect(parseFormatFromArgv(["--input", "input.json", "--format", "export"])).toBe(
+      "export",
+    );
+    expect(
+      parseFormatFromArgv(["--format", "export-summary", "--input", "input.json"]),
+    ).toBe("export-summary");
+  });
+
+  it("rejects invalid format values", () => {
+    expect(() =>
+      parseFormatFromArgv(["--format", "csv", "--input", "input.json"]),
+    ).toThrow('Unsupported --format value "csv"');
+  });
+});
+
 describe("runHistoricalResearchCommand", () => {
   it("writes deterministic stdout for noop strategy input", () => {
     const json = JSON.stringify(createInputDocument("noop"));
@@ -199,6 +233,94 @@ describe("runHistoricalResearchCommand", () => {
     const parsed = JSON.parse(firstRun.stdout[0]!.trimEnd());
     expect(parsed.metadata.runId).toBe("cli-run-noop");
     expect(parsed.researchRun).toBeDefined();
+  });
+
+  it("writes raw stdout when --format raw is explicit", () => {
+    const json = JSON.stringify(createInputDocument("noop"));
+    const defaultRun = createIo(json);
+    const explicitRun = createIo(json);
+
+    runHistoricalResearchCommand(["--input", "noop.json"], defaultRun.io);
+    runHistoricalResearchCommand(
+      ["--input", "noop.json", "--format", "raw"],
+      explicitRun.io,
+    );
+
+    expect(defaultRun.stdout).toEqual(explicitRun.stdout);
+    expect(JSON.parse(defaultRun.stdout[0]!)).toHaveProperty("metadata");
+  });
+
+  it("writes export JSON when --format export is requested", () => {
+    const json = JSON.stringify(createExportInputDocument("noop"));
+    const { io, stdout, stderr } = createIo(json);
+
+    expect(
+      runHistoricalResearchCommand(
+        ["--input", "noop.json", "--format", "export"],
+        io,
+      ),
+    ).toBe(0);
+
+    const parsed = JSON.parse(stdout[0]!);
+    expect(parsed.exportType).toBe("research-run");
+    expect(parsed.exportId).toBe("export-noop");
+    expect(parsed.summary.finalEquityCents).toBeTypeOf("number");
+    expect(stderr).toEqual([]);
+  });
+
+  it("writes export summary JSON when --format export-summary is requested", () => {
+    const json = JSON.stringify(createExportInputDocument("noop"));
+    const { io, stdout } = createIo(json);
+
+    expect(
+      runHistoricalResearchCommand(
+        ["--input", "noop.json", "--format", "export-summary"],
+        io,
+      ),
+    ).toBe(0);
+
+    const parsed = JSON.parse(stdout[0]!);
+    expect(parsed.exportId).toBe("export-noop");
+    expect(parsed.summary).toBeDefined();
+    expect(parsed.tableRows).toBeUndefined();
+  });
+
+  it("rejects export modes without exportId", () => {
+    const document = createInputDocument("noop");
+    const { io, stdout, stderr } = createIo(
+      JSON.stringify({
+        ...document,
+        generatedAt: "2026-06-27T12:00:00.000Z",
+      }),
+    );
+
+    expect(
+      runHistoricalResearchCommand(
+        ["--input", "noop.json", "--format", "export"],
+        io,
+      ),
+    ).toBe(1);
+    expect(stdout).toEqual([]);
+    expect(stderr[0]).toContain("exportId is required for export output formats");
+  });
+
+  it("rejects export modes without generatedAt", () => {
+    const document = createInputDocument("noop");
+    const { io, stdout, stderr } = createIo(
+      JSON.stringify({
+        ...document,
+        exportId: "export-no-generated-at",
+      }),
+    );
+
+    expect(
+      runHistoricalResearchCommand(
+        ["--input", "noop.json", "--format", "export-summary"],
+        io,
+      ),
+    ).toBe(1);
+    expect(stdout).toEqual([]);
+    expect(stderr[0]).toContain("generatedAt is required for export output formats");
   });
 
   it("writes deterministic stdout for buy-first-ask strategy input", () => {
@@ -250,6 +372,35 @@ describe("runHistoricalResearchCommand", () => {
     runHistoricalResearchCommand(["--input", "noop.json"], io);
 
     expect(writeFile).not.toHaveBeenCalled();
+  });
+
+  it("rejects invalid format flags on stderr", () => {
+    const { io, stdout, stderr } = createIo(
+      JSON.stringify(createExportInputDocument("noop")),
+    );
+
+    expect(
+      runHistoricalResearchCommand(
+        ["--input", "noop.json", "--format", "pretty"],
+        io,
+      ),
+    ).toBe(1);
+    expect(stdout).toEqual([]);
+    expect(stderr[0]).toContain('Unsupported --format value "pretty"');
+  });
+});
+
+describe("serializeCommandOutput", () => {
+  it("returns identical raw output for repeated runs", () => {
+    const document = createInputDocument("noop");
+    const json = JSON.stringify(document);
+    const first = createIo(json);
+    const second = createIo(json);
+
+    runHistoricalResearchCommand(["--input", "noop.json"], first.io);
+    runHistoricalResearchCommand(["--input", "noop.json"], second.io);
+
+    expect(first.stdout[0]).toBe(second.stdout[0]);
   });
 });
 
