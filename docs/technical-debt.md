@@ -214,13 +214,40 @@ Tracked intentionally — not silent accumulation. Review at each milestone clos
 | Clipboard failures blocking UI | Injectable `copyTextToClipboard()` + non-blocking error feedback |
 | Null vs zero position sizing lost on export | `serializeTradeDecision()` preserves `positionSize: null` vs zero object |
 
-## Outstanding (post-5.11B)
+## Resolved in 6.1A
+
+| Issue | Resolution |
+|-------|------------|
+| No historical data contract layer | `src/lib/data/` with Bronze/Silver Zod schemas |
+| Ambiguous timestamp handling | UTC-only ISO-8601 with `Z` suffix; `eventTime` / `collectionTime` / `observedAt` |
+| No provenance model | `FetchProvenance` + `DataSource` literals on bronze records |
+
+## Resolved in 6.1B
+
+| Issue | Resolution |
+|-------|------------|
+| No Kalshi Historical API abstraction | `HistoricalImporter` + `KalshiHistoricalImporter` with injectable HTTP client |
+| Endpoint wiring untested | `historicalEndpoints.ts` builders + unit tests |
+| Real network in tests | Fake `KalshiHistoricalHttpClient` only; no global `fetch` in importer tests |
+
+## Outstanding (post-6.1B)
 
 | Issue | Priority | Reason | Suggested fix | Milestone |
 |-------|----------|--------|---------------|-----------|
+| **Bronze/Silver persistence** | Medium | Contracts + importer only — no storage | Bronze storage writers | **6.2A** |
+| **Production HTTP adapter** | Medium | Importer uses injectable client; no live fetch wiring | Production Kalshi Historical HTTP adapter + import job | **6.2B** |
+| **Market dateRange query** | Medium | `listHistoricalMarkets()` defers date filters | Wire when Kalshi API documents supported params | **Backlog** |
+| **SnapshotAssembler** | Medium | No replay pipeline yet | Assemble silver snapshots from bronze | **Backlog** |
 | **Export uses raw TradeDecision** | Medium | 5.11B ships pre-5.11A serializer path | Swap to `summarizeEngineSnapshot()` for compact payload | **Backlog** |
 | **Settings persistence** | Medium | Session-only form state — lost on refresh | localStorage or account-backed settings | **Backlog** |
 | **Account/bankroll source** | Medium | Manual bankroll entry only | Future brokerage/account integration | **Backlog** |
+
+## Minor follow-ups (6.1)
+
+| Issue | Priority | Suggested fix |
+|-------|----------|---------------|
+| Importer ↔ contract type alignment | Low | Replace local `kalshiHistoricalTypes` with shared contracts where safe |
+| Additional wire validation | Low | Deeper API response shape guards in importer |
 
 ## Minor follow-ups (5.3A)
 
