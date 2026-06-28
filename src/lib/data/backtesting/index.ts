@@ -1,5 +1,14 @@
 export { BacktestLedger } from "./BacktestLedger";
-export { BacktestLedgerError, BacktestLedgerErrorCode } from "./errors";
+export {
+  computeBacktestMetrics,
+  serializeBacktestMetrics,
+} from "./BacktestMetrics";
+export {
+  BacktestLedgerError,
+  BacktestLedgerErrorCode,
+  BacktestMetricsError,
+  BacktestMetricsErrorCode,
+} from "./errors";
 export type {
   LedgerSnapshot,
   MarkPrice,
@@ -11,3 +20,9 @@ export type {
   UnrealizedPnLResult,
 } from "./ledgerTypes";
 export { positionKey } from "./ledgerTypes";
+export type {
+  BacktestEquityPoint,
+  BacktestMetricsSummary,
+  ClosedTradeSummary,
+  ComputeBacktestMetricsInput,
+} from "./metricsTypes";

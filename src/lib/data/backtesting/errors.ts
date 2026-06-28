@@ -23,3 +23,37 @@ export class BacktestLedgerError extends Error {
     this.code = code;
   }
 }
+
+export const BacktestMetricsErrorCode = {
+  EMPTY_EQUITY_CURVE: "empty-equity-curve",
+  NEGATIVE_EQUITY: "negative-equity",
+  ZERO_START_EQUITY: "zero-start-equity",
+  INVALID_PERIODS_PER_YEAR: "invalid-periods-per-year",
+  INVALID_RISK_FREE_RATE: "invalid-risk-free-rate",
+} as const;
+
+export type BacktestMetricsErrorCode =
+  (typeof BacktestMetricsErrorCode)[keyof typeof BacktestMetricsErrorCode];
+
+const ERROR_MESSAGES: Record<BacktestMetricsErrorCode, string> = {
+  [BacktestMetricsErrorCode.EMPTY_EQUITY_CURVE]:
+    "Backtest metrics require at least one equity curve point",
+  [BacktestMetricsErrorCode.NEGATIVE_EQUITY]:
+    "Equity values must be non-negative",
+  [BacktestMetricsErrorCode.ZERO_START_EQUITY]:
+    "Starting equity must be greater than zero",
+  [BacktestMetricsErrorCode.INVALID_PERIODS_PER_YEAR]:
+    "periodsPerYear must be a positive finite number",
+  [BacktestMetricsErrorCode.INVALID_RISK_FREE_RATE]:
+    "riskFreeRatePerPeriod must be a finite number",
+};
+
+export class BacktestMetricsError extends Error {
+  readonly code: BacktestMetricsErrorCode;
+
+  constructor(code: BacktestMetricsErrorCode) {
+    super(ERROR_MESSAGES[code]);
+    this.name = "BacktestMetricsError";
+    this.code = code;
+  }
+}

@@ -147,10 +147,18 @@ export {
   BacktestLedger,
   BacktestLedgerError,
   BacktestLedgerErrorCode,
+  computeBacktestMetrics,
+  serializeBacktestMetrics,
+  BacktestMetricsError,
+  BacktestMetricsErrorCode,
   positionKey,
 } from "./backtesting";
 
 export type {
+  BacktestEquityPoint,
+  BacktestMetricsSummary,
+  ClosedTradeSummary,
+  ComputeBacktestMetricsInput,
   LedgerSnapshot,
   MarkPrice,
   OpenPosition,
