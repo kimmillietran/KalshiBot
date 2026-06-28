@@ -64,7 +64,17 @@ const custom = StrategyRegistry.create()
 
 ## CLI integration (future)
 
-`scripts/research/types.ts` still resolves built-in fixture strategies locally. A follow-up milestone can replace `resolveBuiltinStrategy()` with `StrategyRegistry.createBuiltIn().resolve()` without changing registry contracts.
+`scripts/research/types.ts` still resolves built-in fixture strategies locally via `resolveBuiltinStrategy()`.
+
+**Migration path (6.12A or follow-up):**
+
+```typescript
+import { StrategyRegistry } from "@/lib/data/strategies";
+
+const strategy = StrategyRegistry.createBuiltIn().resolve(document.strategyId);
+```
+
+No CLI input schema changes are required — only replace the local fixture resolver with the shared registry.
 
 ## Tests
 

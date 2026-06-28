@@ -110,6 +110,63 @@ describe("StrategyRegistry", () => {
     ]);
   });
 
+  it("rejects blank strategy ids on resolve", () => {
+    const registry = StrategyRegistry.createBuiltIn();
+
+    expect(() => registry.resolve("  ")).toThrow(StrategyRegistryError);
+    try {
+      registry.resolve("  ");
+    } catch (error) {
+      expect((error as StrategyRegistryError).code).toBe(
+        StrategyRegistryErrorCode.INVALID_STRATEGY_ID,
+      );
+    }
+  });
+
+  it("rejects strategy id mismatches on register", () => {
+    const registry = StrategyRegistry.create();
+
+    expect(() =>
+      registry.register({
+        strategyId: "mismatched-id",
+        description: "Mismatch",
+        strategy: {
+          strategyId: "other-id",
+          decide: () => [],
+        },
+      }),
+    ).toThrow(StrategyRegistryError);
+
+    try {
+      registry.register({
+        strategyId: "mismatched-id",
+        description: "Mismatch",
+        strategy: {
+          strategyId: "other-id",
+          decide: () => [],
+        },
+      });
+    } catch (error) {
+      expect((error as StrategyRegistryError).code).toBe(
+        StrategyRegistryErrorCode.STRATEGY_ID_MISMATCH,
+      );
+    }
+  });
+
+  it("returns no intents for buy-first-ask when pricing is missing", () => {
+    const registry = StrategyRegistry.createBuiltIn();
+    const strategy = registry.resolve("buy-first-ask");
+    const stepWithoutPricing: ReplayStepResult = {
+      ...STEP,
+      engineInput: {
+        ...STEP.engineInput,
+        pricing: null,
+      },
+    };
+
+    expect(strategy.decide(stepWithoutPricing, CONTEXT)).toEqual([]);
+  });
+
   it("rejects unknown strategy ids", () => {
     const registry = StrategyRegistry.createBuiltIn();
 
