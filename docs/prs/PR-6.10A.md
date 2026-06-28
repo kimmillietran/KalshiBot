@@ -51,7 +51,7 @@ Any other `strategyId` fails validation. Custom `decide()` functions cannot be s
 
 ## Output format
 
-Without 6.9B merged, the CLI writes `result.serialized` from `runHistoricalResearchFromBronze()` — a `stableStringify` document combining dataset, research run, and metadata serializations.
+Successful runs write **exactly one JSON document** to stdout (plus a trailing newline). The payload is `result.serialized` from `runHistoricalResearchFromBronze()` — a `stableStringify` document combining dataset, research run, and metadata serializations. Parse stdout as a single JSON value; do not expect NDJSON or multiple documents per run.
 
 When 6.9B `ResearchExportDocument` is available on main, a follow-up can optionally wrap stdout in the export model without changing the core pipeline.
 

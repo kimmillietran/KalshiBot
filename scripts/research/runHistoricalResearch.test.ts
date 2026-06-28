@@ -173,6 +173,15 @@ describe("parseHistoricalResearchInputJson", () => {
       "At least one bronze record is required",
     );
   });
+
+  it("rejects unsupported strategy ids", () => {
+    const document = {
+      ...createInputDocument("noop"),
+      strategyId: "custom-strategy",
+    };
+
+    expect(() => parseHistoricalResearchInputJson(JSON.stringify(document))).toThrow();
+  });
 });
 
 describe("runHistoricalResearchCommand", () => {
@@ -186,6 +195,10 @@ describe("runHistoricalResearchCommand", () => {
     expect(firstRun.stdout).toEqual(secondRun.stdout);
     expect(firstRun.stdout[0]).toBe(formatStdoutOutput(firstRun.stdout[0]!.trimEnd()));
     expect(firstRun.stderr).toEqual([]);
+
+    const parsed = JSON.parse(firstRun.stdout[0]!.trimEnd());
+    expect(parsed.metadata.runId).toBe("cli-run-noop");
+    expect(parsed.researchRun).toBeDefined();
   });
 
   it("writes deterministic stdout for buy-first-ask strategy input", () => {
@@ -214,11 +227,39 @@ describe("runHistoricalResearchCommand", () => {
     expect(stderr[0]).toContain("Missing required --input <path>");
   });
 
+  it("reports unreadable input files on stderr", () => {
+    const { stdout, stderr } = createIo("{}");
+    const io = {
+      readFile: () => {
+        throw new Error("ENOENT: no such file or directory");
+      },
+      writeStdout: () => undefined,
+      writeStderr: (text: string) => {
+        stderr.push(text);
+      },
+    };
+
+    expect(runHistoricalResearchCommand(["--input", "missing.json"], io)).toBe(1);
+    expect(stdout).toEqual([]);
+    expect(stderr[0]).toContain("ENOENT");
+  });
+
   it("does not write output files", () => {
     const { io, writeFile } = createIo(JSON.stringify(createInputDocument("noop")));
 
     runHistoricalResearchCommand(["--input", "noop.json"], io);
 
     expect(writeFile).not.toHaveBeenCalled();
+  });
+});
+
+describe("research:historical npm script", () => {
+  it("is wired with tsx available", async () => {
+    const pkg = await import("../../package.json");
+
+    expect(pkg.scripts["research:historical"]).toContain(
+      "tsx scripts/research/runHistoricalResearch.ts",
+    );
+    expect(pkg.devDependencies.tsx).toBeDefined();
   });
 });
