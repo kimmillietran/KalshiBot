@@ -25,7 +25,10 @@ export type {
 export {
   BtcHistoricalBronzeProviderError,
   BtcHistoricalBronzeProviderErrorCode,
+  BtcImporterBronzeProviderAdapterError,
+  BtcImporterBronzeProviderAdapterErrorCode,
   compareBtcBronzeRecords,
+  createBtcHistoricalBronzeProviderFromImporter,
   createInMemoryBtcHistoricalBronzeProvider,
   mapBtcHistoricalBarToBronzeRecord,
   serializeBtcBronzeRecords,
@@ -35,6 +38,7 @@ export {
 export type {
   BtcHistoricalBar,
   BtcHistoricalBronzeProviderImportInput,
+  CreateBtcHistoricalBronzeProviderFromImporterInput,
   CreateInMemoryBtcHistoricalBronzeProviderInput,
   MapBtcHistoricalBarToBronzeRecordInput,
 } from "./providers/btc";

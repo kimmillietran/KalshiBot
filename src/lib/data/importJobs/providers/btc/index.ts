@@ -19,3 +19,12 @@ export {
 } from "./BtcKlineBronzeMapper";
 
 export { createInMemoryBtcHistoricalBronzeProvider } from "./InMemoryBtcHistoricalBronzeProvider";
+
+export {
+  BtcImporterBronzeProviderAdapterError,
+  BtcImporterBronzeProviderAdapterErrorCode,
+  createBtcHistoricalBronzeProviderFromImporter,
+} from "./adapter";
+export type {
+  CreateBtcHistoricalBronzeProviderFromImporterInput,
+} from "./adapter";
