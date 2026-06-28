@@ -59,6 +59,8 @@ const summaryJson = formatResearchExportSummaryJson(document, {
 - `summary` metrics
 - `winnerExperimentId`, `rankingCount` (comparison exports)
 
+`winnerExperimentId` is taken from the first ranking row in the export document (the comparison winner). Tied winners are not expanded in summary JSON — use the full export document or source `ResearchComparison` for tie metadata.
+
 Full `tableRows` and ranking details are omitted.
 
 ## Error codes

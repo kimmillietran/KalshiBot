@@ -194,6 +194,28 @@ describe("formatResearchExportJson", () => {
     expect(first).toBe(second);
   });
 
+  it("round-trips compact JSON with JSON.parse", () => {
+    const document = runExportDocument();
+    const json = formatResearchExportJson(document, {
+      pretty: false,
+      trailingNewline: false,
+    });
+
+    const parsed = JSON.parse(json) as { exportId: string };
+    expect(parsed.exportId).toBe("export-run-json");
+  });
+
+  it("round-trips pretty JSON with JSON.parse", () => {
+    const document = comparisonExportDocument();
+    const json = formatResearchExportJson(document, {
+      pretty: true,
+      trailingNewline: false,
+    });
+
+    const parsed = JSON.parse(json) as { exportType: string };
+    expect(parsed.exportType).toBe("research-comparison");
+  });
+
   it("does not mutate the input document", () => {
     const document = runExportDocument();
     const before = serializeResearchExportDocument(document);
@@ -232,6 +254,22 @@ describe("formatResearchExportSummaryJson", () => {
     expect(json).toContain('"datasetId":"dataset-run-json"');
     expect(json).toContain('"strategyId":"baseline-strategy"');
     expect(json).not.toContain('"tableRows"');
+  });
+
+  it("uses null winner and ranking fields for run exports", () => {
+    const document = runExportDocument();
+    const parsed = JSON.parse(
+      formatResearchExportSummaryJson(document, {
+        pretty: false,
+        trailingNewline: false,
+      }),
+    ) as {
+      winnerExperimentId: string | null;
+      rankingCount: number | null;
+    };
+
+    expect(parsed.winnerExperimentId).toBeNull();
+    expect(parsed.rankingCount).toBeNull();
   });
 
   it("formats a pretty comparison summary payload", () => {
