@@ -15,12 +15,20 @@ trading-dashboard/
     MarketStructurePanel.tsx # feature vector from engine
     TradeManagementPanel.tsx # position sizing preview (no execution)
     AIReasoningPanel.tsx   # summarizeTradeDecision() presentation
+    settings/              # TradingSettingsPanel (session-only form)
     decision/              # presentation-only decision subcomponents
   formatting/
     decisionDisplay.ts     # action tones, formatters (no business logic)
     positionSizingDisplay.ts # Kelly fraction / dollars formatters (no math)
   hooks/
-    useTradeDecision.ts    # build snapshot → evaluate()
+    useTradeDecision.ts    # build snapshot → evaluate(resolvedSettings)
+    useTradingSettingsForm.ts # session form state → resolveTradingSettings()
+  utils/
+    parseSettingsFormInput.ts      # string coercion only (no validation)
+    buildEngineConfigFromSettings.ts # map resolved settings → EngineConfig
+    settingsFieldWarnings.ts
+  types/
+    tradingSettingsForm.ts
   mapping/
     buildEvaluationSnapshot.ts
     mapLifecycle.ts
@@ -33,10 +41,11 @@ trading-dashboard/
 
 **Live:** `btc-feed`, `market-data` (CommandBar, chart, MarketOddsPanel).
 
-**Engine-connected (5.6C–5.9B):** Dashboard renders live `TradeDecision` output —
+**Engine-connected (5.6C–5.10B):** Dashboard renders live `TradeDecision` output —
 `action`, `probability`, `expectedValue`, `positionSize` (fraction + dollars when bankroll
-configured), `features`, and `summarizeTradeDecision()` reasoning (headline, summary, risk
-notes, technical trace). React components are presentation-only; all trading logic stays in
-`src/lib/trading/`.
+configured), `features`, and `summarizeTradeDecision()` reasoning. Session-only Trading
+Settings panel feeds `resolveTradingSettings()` → `buildEngineConfigFromSettings()` →
+`evaluate()`. React components are presentation-only; validation stays in
+`src/lib/trading/settings/`.
 
-**Still deferred:** Trade execution, settings UI for bankroll input, persistence, LLM narrative.
+**Still deferred:** Trade execution, settings persistence, account bankroll source, LLM narrative.

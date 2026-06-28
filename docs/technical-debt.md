@@ -178,7 +178,7 @@ Tracked intentionally — not silent accumulation. Review at each milestone clos
 | Kelly dollar sizing always null | `estimatePositionSize()` receives resolved `bankrollDollars` |
 | No bankroll reasoning step | `model-bankroll` step in engine trace |
 | Dashboard bankroll messaging | Shows dollars when configured; "Bankroll not configured" when absent |
-| Engine version stale | `ENGINE_VERSION` → `5.9.0` |
+| Engine version stale | `ENGINE_VERSION` → `5.9.0` (later → `5.10.0` with settings config surface in 5.10B) |
 
 ## Resolved in 5.10A
 
@@ -188,12 +188,22 @@ Tracked intentionally — not silent accumulation. Review at each milestone clos
 | Scattered threshold defaults | Defaults sourced from `DEFAULT_ENGINE_CONFIG` and `DEFAULT_POSITION_SIZING_CONFIG` |
 | Bankroll in settings without invention | Delegates to `resolveBankroll()` — optional, never defaulted |
 
-## Outstanding (post-5.10A)
+## Resolved in 5.10B
+
+| Issue | Resolution |
+|-------|------------|
+| Settings UI not connected to engine | `TradingSettingsPanel` + `useTradingSettingsForm` → `resolveTradingSettings()` → `evaluate()` |
+| Raw form validation in React | `parseSettingsFormInput` coercion only; resolver owns validation |
+| No live settings re-evaluation | `useTradeDecision(resolvedSettings)` rebuilds `EngineConfig` on change |
+| Bankroll dollars from UI | Valid bankroll populates `EngineConfig.bankrollDollars`; invalid omits field |
+| Settings module duplicated | Dashboard delegates to `resolveTradingSettings()` — no duplicate rules |
+
+## Outstanding (post-5.10B)
 
 | Issue | Priority | Reason | Suggested fix | Milestone |
 |-------|----------|--------|---------------|-----------|
-| **Settings UI wiring** | Medium | Settings module not connected to dashboard/engine | Wire form → `resolveTradingSettings()` → `evaluate()` | **5.10B** |
-| **Settings persistence** | Medium | No localStorage/db for user preferences | Persistence layer when settings UI lands | **Backlog** |
+| **Settings persistence** | Medium | Session-only form state — lost on refresh | localStorage or account-backed settings | **Backlog** |
+| **Account/bankroll source** | Medium | Manual bankroll entry only | Future brokerage/account integration | **Backlog** |
 
 ## Minor follow-ups (5.3A)
 
@@ -305,4 +315,4 @@ Tracked intentionally — not silent accumulation. Review at each milestone clos
 
 ## Health impact
 
-After Milestone 5.10A → **Technical Debt: Low** (settings normalization module complete; UI wiring and persistence remain backlog).
+After Milestone 5.10B → **Technical Debt: Low** (settings UI wired session-only; persistence and account bankroll source remain backlog).
