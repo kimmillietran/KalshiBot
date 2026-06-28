@@ -419,6 +419,14 @@ Tracked intentionally — not silent accumulation. Review at each milestone clos
 | Shared research contract extraction | Medium | Unify sweep-layer and 6.6A experiment types when sweep factories mature |
 | Large Cartesian sweep guardrails | Medium | Add max-combination limit or warning before sweep execution |
 
+## Minor follow-ups (6.6C)
+
+| Issue | Priority | Suggested fix |
+|-------|----------|---------------|
+| Default walk-forward runner uses sweep stub | Medium | Inject `runExperiment` wired to 6.6A `runResearchExperiment` for real backtests |
+| `deepFreeze` shares caller snapshot references | Low | Document or clone snapshots before freezing windows |
+| Additional validation-path tests | Low | Cover `validationId`, `stepSize`, sweepId mismatch, injected-runner failures |
+
 ## Other outstanding
 
 | Issue | Priority | Reason | Suggested fix | Milestone |
