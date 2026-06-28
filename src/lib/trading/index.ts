@@ -52,6 +52,14 @@ export {
   TRADING_SETTINGS_BOUNDS,
   TRADING_SETTINGS_MODEL_VERSION,
 } from "@/lib/trading/settings";
+export {
+  summarizeEngineSnapshot,
+  formatExpectedValueSection,
+  formatPositionSizingSection,
+  formatProbabilitySection,
+  formatSnapshotSteps,
+  ENGINE_SNAPSHOT_MODEL_VERSION,
+} from "@/lib/trading/engine-snapshot";
 
 export type {
   EstimateExpectedValueInput,
@@ -93,6 +101,18 @@ export type {
   ResolvedTradingSettings,
   TradingSettingsInput,
 } from "@/lib/trading/settings";
+
+export type {
+  EngineSnapshotPresentation,
+  EngineSnapshotDecisionSection,
+  EngineSnapshotExpectedValueSection,
+  EngineSnapshotMetadataSection,
+  EngineSnapshotPositionSizingSection,
+  EngineSnapshotProbabilitySection,
+  EngineSnapshotReasoningSection,
+  EngineSnapshotTechnicalSection,
+  SnapshotStepItem,
+} from "@/lib/trading/engine-snapshot";
 
 export type {
   BtcFeedStatus,
