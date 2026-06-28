@@ -162,6 +162,11 @@ export {
   MonteCarloErrorCode,
   ResampleMode,
   DEFAULT_BACKTEST_FILL_SIMULATION_CONFIG,
+  deriveBacktestMetricsInput,
+  runHistoricalBacktest,
+  serializeHistoricalBacktestResult,
+  HistoricalBacktestError,
+  HistoricalBacktestErrorCode,
   positionKey,
 } from "./backtesting";
 
@@ -195,6 +200,12 @@ export type {
   ResampleModeType,
   ResampledTradeSequence,
   RunMonteCarloAnalysisInput,
+  DeriveBacktestMetricsInputArgs,
+  HistoricalBacktestMetadata,
+  HistoricalBacktestMetricsConfig,
+  HistoricalBacktestReplayResult,
+  HistoricalBacktestResult,
+  RunHistoricalBacktestInput,
 } from "./backtesting";
 
 export {

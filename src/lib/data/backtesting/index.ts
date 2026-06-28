@@ -3,6 +3,11 @@ export {
   computeBacktestMetrics,
   serializeBacktestMetrics,
 } from "./BacktestMetrics";
+export { deriveBacktestMetricsInput } from "./deriveBacktestMetricsInput";
+export {
+  runHistoricalBacktest,
+  serializeHistoricalBacktestResult,
+} from "./HistoricalBacktest";
 export {
   runMonteCarloAnalysis,
   serializeMonteCarloSummary,
@@ -64,3 +69,17 @@ export type {
   SimulatedFill,
   TradeIntent,
 } from "./strategyTypes";
+export {
+  HistoricalBacktestError,
+  HistoricalBacktestErrorCode,
+} from "./historicalBacktestTypes";
+export type {
+  DeriveBacktestMetricsInputArgs,
+} from "./deriveBacktestMetricsInput";
+export type {
+  HistoricalBacktestMetadata,
+  HistoricalBacktestMetricsConfig,
+  HistoricalBacktestReplayResult,
+  HistoricalBacktestResult,
+  RunHistoricalBacktestInput,
+} from "./historicalBacktestTypes";
