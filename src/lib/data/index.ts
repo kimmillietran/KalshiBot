@@ -113,3 +113,23 @@ export type {
   ReplayTimelineSnapshotSequence,
   ReplayTimelineState,
 } from "./replay";
+
+export {
+  DEFAULT_POLLING_RATE_GOVERNOR_CONFIG,
+  PollingRateGovernor,
+  applyPollIntervalJitter,
+  validatePollingRateGovernorConfig,
+  MARKET_POLL_PRIORITY_WEIGHT,
+  intervalMsForPriority,
+  PollingRateGovernorConfigError,
+} from "./polling";
+export type {
+  JitterSample,
+  MarketPollPriority,
+  MarketPollState,
+  PollIntervalDecision,
+  PollReadiness,
+  PollThrottleReason,
+  PollingRateGovernorConfig,
+  StaleQuoteStatus,
+} from "./polling";
