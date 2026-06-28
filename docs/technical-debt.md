@@ -401,6 +401,15 @@ Tracked intentionally — not silent accumulation. Review at each milestone clos
 | Invalid bankroll test | Low | Assert zero/negative bankroll in position-sizing tests |
 | Edge-at-threshold inline doc | Low | PR-5.7A covers; optional comment in module |
 
+## Minor follow-ups (6.6A)
+
+| Issue | Priority | Suggested fix |
+|-------|----------|---------------|
+| Metrics adapter extraction | Medium | Move `buildEquityCurve` / `buildClosedTrades` into standalone module |
+| Optional `engineConfig` on experiment config | Medium | Expose replay engine overrides without duplicating replay logic |
+| Runner step/rejection artifacts on result | Medium | Attach `BacktestStrategyRunResult` step outputs and `rejectedIntents` |
+| Metrics adapter accounting reconstruction | Medium | Document or simplify closed-trade derivation vs ledger realized P/L |
+
 ## Other outstanding
 
 | Issue | Priority | Reason | Suggested fix | Milestone |

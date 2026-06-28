@@ -69,7 +69,7 @@ type ResearchExperimentResult = {
 6.6A maps ledger output into 6.5B metrics input without modifying either module:
 
 - **Equity curve:** one point per replay step — cash plus marked open-position value using that step's `engineInput.pricing` mids
-- **Closed trades:** FIFO round-trip summaries derived from ledger fills (one summary per sell fill)
+- **Closed trades:** weighted-average cost round-trip summaries derived from ledger fills (one summary per sell fill)
 
 ## Deterministic guarantees
 

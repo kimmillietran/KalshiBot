@@ -196,3 +196,19 @@ export type {
   ResampledTradeSequence,
   RunMonteCarloAnalysisInput,
 } from "./backtesting";
+
+export {
+  runResearchExperiment,
+  serializeResearchExperimentResult,
+  ResearchExperimentError,
+  ResearchExperimentErrorCode,
+} from "./research";
+
+export type {
+  ResearchExperimentConfig,
+  ResearchExperimentConfiguration,
+  ResearchExperimentInput,
+  ResearchExperimentResult,
+  ResearchStrategyConfig,
+  RunResearchExperimentInput,
+} from "./research";
