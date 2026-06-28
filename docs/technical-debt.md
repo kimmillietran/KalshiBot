@@ -180,11 +180,19 @@ Tracked intentionally — not silent accumulation. Review at each milestone clos
 | Dashboard bankroll messaging | Shows dollars when configured; "Bankroll not configured" when absent |
 | Engine version stale | `ENGINE_VERSION` → `5.9.0` |
 
-## Outstanding (post-5.9B)
+## Resolved in 5.10A
+
+| Issue | Resolution |
+|-------|------------|
+| No settings normalization module | `resolveTradingSettings()` in `src/lib/trading/settings/` |
+| Scattered threshold defaults | Defaults sourced from `DEFAULT_ENGINE_CONFIG` and `DEFAULT_POSITION_SIZING_CONFIG` |
+| Bankroll in settings without invention | Delegates to `resolveBankroll()` — optional, never defaulted |
+
+## Outstanding (post-5.10A)
 
 | Issue | Priority | Reason | Suggested fix | Milestone |
 |-------|----------|--------|---------------|-----------|
-| **Bankroll settings/config UI** | Medium | Bankroll only via `EngineConfig.bankrollDollars` caller input | Settings panel for user-supplied bankroll | **5.10B** |
+| **Settings UI wiring** | Medium | Settings module not connected to dashboard/engine | Wire form → `resolveTradingSettings()` → `evaluate()` | **5.10B** |
 | **Settings persistence** | Medium | No localStorage/db for user preferences | Persistence layer when settings UI lands | **Backlog** |
 
 ## Minor follow-ups (5.3A)
@@ -297,4 +305,4 @@ Tracked intentionally — not silent accumulation. Review at each milestone clos
 
 ## Health impact
 
-After Milestone 5.9B → **Technical Debt: Low** (full engine pipeline through bankroll wiring; settings UI and persistence remain backlog).
+After Milestone 5.10A → **Technical Debt: Low** (settings normalization module complete; UI wiring and persistence remain backlog).
