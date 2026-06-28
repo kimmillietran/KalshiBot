@@ -259,12 +259,19 @@ export {
   DATASET_BRONZE_CONTENT_TYPE,
   HistoricalDatasetBuildError,
   HistoricalDatasetBuildErrorCode,
+  validateHistoricalBronzeDataset,
+  serializeHistoricalBronzeValidation,
+  HistoricalBronzeValidationErrorCode,
 } from "./datasets";
 export type {
   DatasetBronzeContentType,
   HistoricalDataset,
   HistoricalDatasetMetadata,
   HistoricalDatasetProvenanceSummary,
+  HistoricalBronzeValidationIssue,
+  HistoricalBronzeValidationResult,
+  HistoricalBronzeValidationSeverity,
+  HistoricalBronzeValidationStatistics,
 } from "./datasets";
 
 export {

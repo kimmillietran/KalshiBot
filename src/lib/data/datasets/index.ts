@@ -16,3 +16,15 @@ export {
   normalizeBtcKlineBronze,
   serializeHistoricalDataset,
 } from "./HistoricalDatasetBuilder";
+
+export {
+  HistoricalBronzeValidationErrorCode,
+  serializeHistoricalBronzeValidation,
+  validateHistoricalBronzeDataset,
+} from "./validation";
+export type {
+  HistoricalBronzeValidationIssue,
+  HistoricalBronzeValidationResult,
+  HistoricalBronzeValidationSeverity,
+  HistoricalBronzeValidationStatistics,
+} from "./validation";
