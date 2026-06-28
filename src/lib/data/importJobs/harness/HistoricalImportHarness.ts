@@ -25,3 +25,8 @@ export function runConfiguredHistoricalBronzeImport(
     btcProvider,
   });
 }
+
+export type {
+  HistoricalBronzeImportJobResult,
+  RunConfiguredHistoricalBronzeImportInput,
+} from "./historicalImportHarnessTypes";

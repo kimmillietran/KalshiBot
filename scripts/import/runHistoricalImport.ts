@@ -1,5 +1,7 @@
 import { readFileSync } from "node:fs";
 
+import { runConfiguredHistoricalBronzeImport } from "@/lib/data/importJobs";
+
 import {
   buildHistoricalBronzeImportPlan,
   HistoricalImportCommandError,
@@ -7,7 +9,10 @@ import {
   parseHistoricalImportInputJson,
   serializeHistoricalBronzeImportPlan,
 } from "./types";
-import type { HistoricalImportCommandIo } from "./types";
+import type {
+  HistoricalImportCommandDeps,
+  HistoricalImportCommandIo,
+} from "./types";
 
 export function parseInputPathFromArgv(argv: readonly string[]): string {
   for (let index = 0; index < argv.length; index += 1) {
@@ -43,16 +48,34 @@ export function runHistoricalImportCommand(
       process.stderr.write(text);
     },
   },
+  deps?: HistoricalImportCommandDeps,
 ): number {
   try {
     const inputPath = parseInputPathFromArgv(argv);
-    const dryRun = parseDryRunFromArgv(argv) || true;
+    const dryRun = parseDryRunFromArgv(argv);
     const config = parseHistoricalImportInputJson(io.readFile(inputPath));
-    const plan = buildHistoricalBronzeImportPlan(config, { dryRun });
 
-    io.writeStdout(
-      formatStdoutOutput(serializeHistoricalBronzeImportPlan(plan)),
-    );
+    if (dryRun) {
+      const plan = buildHistoricalBronzeImportPlan(config, { dryRun: true });
+      io.writeStdout(
+        formatStdoutOutput(serializeHistoricalBronzeImportPlan(plan)),
+      );
+      return 0;
+    }
+
+    if (!deps) {
+      throw new HistoricalImportCommandError(
+        "Historical import execution requires injected providers",
+      );
+    }
+
+    const result = runConfiguredHistoricalBronzeImport({
+      config,
+      kalshiProvider: deps.kalshiProvider,
+      btcProvider: deps.btcProvider,
+    });
+
+    io.writeStdout(formatStdoutOutput(result.serialized));
     return 0;
   } catch (error) {
     const message =
