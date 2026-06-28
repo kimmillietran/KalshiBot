@@ -74,3 +74,24 @@ export type {
   HistoricalResearchRunnerResult,
   RunHistoricalResearchFromBronzeInput,
 } from "./runner";
+
+export {
+  buildResearchComparisonExport,
+  buildResearchRunExport,
+  serializeResearchExportDocument,
+  RESEARCH_EXPORT_TABLE_COLUMNS,
+  ResearchExportError,
+  ResearchExportErrorCode,
+  ResearchExportType,
+  summaryMetricsFromBacktest,
+} from "./export";
+export type {
+  BuildResearchComparisonExportInput,
+  BuildResearchRunExportInput,
+  ResearchExportDocument,
+  ResearchExportGeneratedMetadata,
+  ResearchExportRankingRow,
+  ResearchExportSummaryMetrics,
+  ResearchExportTableColumn,
+  ResearchExportTableRow,
+} from "./export";

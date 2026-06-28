@@ -313,3 +313,24 @@ export type {
   RunAllHistoricalResearchInput,
   RunHistoricalResearchInput,
 } from "./cli";
+
+export {
+  buildResearchComparisonExport,
+  buildResearchRunExport,
+  serializeResearchExportDocument,
+  RESEARCH_EXPORT_TABLE_COLUMNS,
+  ResearchExportError,
+  ResearchExportErrorCode,
+  ResearchExportType,
+  summaryMetricsFromBacktest,
+} from "./research/export";
+export type {
+  BuildResearchComparisonExportInput,
+  BuildResearchRunExportInput,
+  ResearchExportDocument,
+  ResearchExportGeneratedMetadata,
+  ResearchExportRankingRow,
+  ResearchExportSummaryMetrics,
+  ResearchExportTableColumn,
+  ResearchExportTableRow,
+} from "./research/export";
