@@ -21,3 +21,20 @@ export type {
   KalshiHistoricalBronzeProviderContext,
   KalshiHistoricalBronzeProviderMethodInput,
 } from "./providers/kalshi";
+
+export {
+  BtcHistoricalBronzeProviderError,
+  BtcHistoricalBronzeProviderErrorCode,
+  compareBtcBronzeRecords,
+  createInMemoryBtcHistoricalBronzeProvider,
+  mapBtcHistoricalBarToBronzeRecord,
+  serializeBtcBronzeRecords,
+  sortBtcBronzeRecords,
+  validateBtcHistoricalBar,
+} from "./providers/btc";
+export type {
+  BtcHistoricalBar,
+  BtcHistoricalBronzeProviderImportInput,
+  CreateInMemoryBtcHistoricalBronzeProviderInput,
+  MapBtcHistoricalBarToBronzeRecordInput,
+} from "./providers/btc";

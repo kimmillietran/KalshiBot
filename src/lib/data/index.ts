@@ -394,9 +394,20 @@ export {
   runHistoricalBronzeImportJob,
   serializeHistoricalBronzeImportResult,
   createKalshiHistoricalBronzeProvider,
+  BtcHistoricalBronzeProviderError,
+  BtcHistoricalBronzeProviderErrorCode,
+  compareBtcBronzeRecords,
+  createInMemoryBtcHistoricalBronzeProvider,
+  mapBtcHistoricalBarToBronzeRecord,
+  serializeBtcBronzeRecords,
+  sortBtcBronzeRecords,
+  validateBtcHistoricalBar,
 } from "./importJobs";
 export type {
+  BtcHistoricalBar,
   BtcHistoricalBronzeProvider,
+  BtcHistoricalBronzeProviderImportInput,
+  CreateInMemoryBtcHistoricalBronzeProviderInput,
   CreateKalshiHistoricalBronzeProviderInput,
   HistoricalBronzeImportJobCoreResult,
   HistoricalBronzeImportJobMetadata,
@@ -406,6 +417,7 @@ export type {
   KalshiHistoricalBronzeProvider,
   KalshiHistoricalBronzeProviderContext,
   KalshiHistoricalBronzeProviderMethodInput,
+  MapBtcHistoricalBarToBronzeRecordInput,
   RunHistoricalBronzeImportJobInput,
 } from "./importJobs";
 
