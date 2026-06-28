@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { DataSource } from "@/lib/data/provenance";
+import { DataQualityFlag } from "@/lib/data/schemas";
 import { assembleHistoricalTradingSnapshot } from "@/lib/data/snapshots";
 import type {
   HistoricalTradingSnapshot,
@@ -249,5 +250,131 @@ describe("adaptHistoricalSnapshot", () => {
     expect(JSON.stringify(first.engineInput)).toBe(
       JSON.stringify(second.engineInput),
     );
+  });
+
+  it("uses the last kalshi candle and btc bar for pricing and spot price", () => {
+    const btcBarB = {
+      ...btcBarA,
+      openTime: OPEN_TIME_B,
+      closeTime: CLOSE_TIME_B,
+      closeUsd: 60_100.0,
+    };
+    const btcProvenanceB = {
+      ...btcProvenanceA,
+      fetchId: "fetch-btc-b",
+    };
+
+    const snapshot = createValidSnapshot({
+      kalshiCandles: [
+        envelope(kalshiCandleA, candleProvenanceA),
+        envelope(kalshiCandleB, candleProvenanceB),
+      ],
+      btcBars: [
+        envelope(btcBarA, btcProvenanceA),
+        envelope(btcBarB, btcProvenanceB),
+      ],
+    });
+    const result = adaptHistoricalSnapshot(snapshot);
+
+    expect(result.engineInput.btc.price).toBe(60_100.0);
+    expect(result.engineInput.pricing.yesBidCents).toBe(55);
+    expect(result.engineInput.pricing.noAskCents).toBe(44);
+  });
+
+  it("maps market window status to engine lifecycle", () => {
+    const closedSnapshot = createValidSnapshot({
+      marketWindow: envelope(
+        { ...marketWindow, status: "closed" as const },
+        marketProvenance,
+      ),
+    });
+    const settledSnapshot = createValidSnapshot({
+      marketWindow: envelope(
+        { ...marketWindow, status: "settled" as const },
+        marketProvenance,
+      ),
+    });
+
+    expect(
+      adaptHistoricalSnapshot(closedSnapshot).engineInput.market.lifecycle,
+    ).toBe(MarketLifecycle.CLOSED);
+    expect(
+      adaptHistoricalSnapshot(settledSnapshot).engineInput.market.lifecycle,
+    ).toBe(MarketLifecycle.SETTLED);
+  });
+
+  it("derives liquidity quality from merged quality flags", () => {
+    const poorSnapshot = createValidSnapshot({
+      marketWindow: envelope(
+        {
+          ...marketWindow,
+          qualityFlags: [DataQualityFlag.MISSING_BID_ASK],
+        },
+        marketProvenance,
+      ),
+    });
+    const fairSnapshot = createValidSnapshot({
+      kalshiCandles: [
+        envelope(
+          {
+            ...kalshiCandleB,
+            qualityFlags: [DataQualityFlag.PARTIAL_WINDOW],
+          },
+          candleProvenanceB,
+        ),
+      ],
+    });
+    const goodSnapshot = createValidSnapshot();
+
+    expect(
+      adaptHistoricalSnapshot(poorSnapshot).engineInput.pricing.liquidityQuality,
+    ).toBe("Poor");
+    expect(
+      adaptHistoricalSnapshot(fairSnapshot).engineInput.pricing.liquidityQuality,
+    ).toBe("Fair");
+    expect(
+      adaptHistoricalSnapshot(goodSnapshot).engineInput.pricing.liquidityQuality,
+    ).toBe("Good");
+  });
+
+  it("allows negative timeRemainingMs when observedAt is after market close", () => {
+    const snapshot = createValidSnapshot({
+      marketWindow: envelope(
+        {
+          ...marketWindow,
+          closeTime: "2026-06-27T00:30:00.000Z",
+        },
+        marketProvenance,
+      ),
+    });
+    const result = adaptHistoricalSnapshot(snapshot);
+
+    expect(result.engineInput.market.timeRemainingMs).toBeLessThan(0);
+  });
+
+  it("does not map settlement into engine input", () => {
+    const settlementRecord = {
+      ...temporalFields,
+      ticker: TICKER,
+      strikePriceUsd: 59_990.31,
+      settledAt: "2026-06-27T00:30:00.000Z",
+      result: "yes" as const,
+      settlementPriceUsd: 60_000,
+      qualityFlags: [],
+      datasetVersion: DATA_CONTRACT_VERSION,
+    };
+    const snapshot = createValidSnapshot({
+      settlement: envelope(settlementRecord, {
+        source: DataSource.KALSHI_REST,
+        collectionTime: COLLECTION_TIME,
+        observedAt: OBSERVED_AT,
+        fetchId: "fetch-settlement-1",
+      }),
+    });
+    const result = adaptHistoricalSnapshot(snapshot);
+
+    expect(snapshot.settlement).not.toBeNull();
+    expect(result.provenance.settlement).not.toBeNull();
+    expect(result.engineInput).not.toHaveProperty("settlement");
   });
 });
