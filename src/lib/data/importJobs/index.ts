@@ -3,6 +3,8 @@ export {
   serializeHistoricalBronzeImportResult,
 } from "./HistoricalBronzeImportJob";
 
+export { createKalshiHistoricalBronzeProvider } from "./providers/kalshi";
+
 export type {
   BtcHistoricalBronzeProvider,
   HistoricalBronzeImportJobCoreResult,
@@ -12,3 +14,10 @@ export type {
   KalshiHistoricalBronzeProvider,
   RunHistoricalBronzeImportJobInput,
 } from "./historicalBronzeImportJobTypes";
+
+export type {
+  CreateKalshiHistoricalBronzeProviderInput,
+  KalshiHistoricalBronzeImporter,
+  KalshiHistoricalBronzeProviderContext,
+  KalshiHistoricalBronzeProviderMethodInput,
+} from "./providers/kalshi";

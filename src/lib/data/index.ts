@@ -393,14 +393,19 @@ export type {
 export {
   runHistoricalBronzeImportJob,
   serializeHistoricalBronzeImportResult,
+  createKalshiHistoricalBronzeProvider,
 } from "./importJobs";
 export type {
   BtcHistoricalBronzeProvider,
+  CreateKalshiHistoricalBronzeProviderInput,
   HistoricalBronzeImportJobCoreResult,
   HistoricalBronzeImportJobMetadata,
   HistoricalBronzeImportJobResult,
   HistoricalBronzeProviderImportInput,
+  KalshiHistoricalBronzeImporter,
   KalshiHistoricalBronzeProvider,
+  KalshiHistoricalBronzeProviderContext,
+  KalshiHistoricalBronzeProviderMethodInput,
   RunHistoricalBronzeImportJobInput,
 } from "./importJobs";
 
