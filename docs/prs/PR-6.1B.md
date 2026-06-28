@@ -30,6 +30,8 @@ Implementation: `KalshiHistoricalImporter` with injectable `KalshiHistoricalHttp
 | `getHistoricalTrades()` | `GET /historical/trades` |
 | `getSettlementResult()` | `GET /historical/markets/{ticker}` |
 
+**Markets dateRange:** `HistoricalDateRange` is accepted on `listHistoricalMarkets()` for forward compatibility but query params are **deferred** until Kalshi documents supported filters — the builder currently ignores `dateRange` and only emits `series_ticker` + pagination.
+
 ## Design notes
 
 - **Dependency injection:** `KalshiHistoricalHttpClient.get(url)` — tests use fake handlers; no real network.

@@ -277,4 +277,18 @@ describe("KalshiHistoricalImporter", () => {
     ).rejects.toThrow(/requires ticker/i);
     expect(client.get).not.toHaveBeenCalled();
   });
+
+  it("throws KalshiHistoricalImporterError on invalid 200 response body", async () => {
+    const client = createFakeClient(() => ({
+      status: 200,
+      body: "not-json-object",
+    }));
+    const importer = createImporter(client);
+
+    await expect(importer.getHistoricalCutoff()).rejects.toMatchObject({
+      name: "KalshiHistoricalImporterError",
+      status: 200,
+      message: /Invalid cutoff response/i,
+    });
+  });
 });

@@ -49,4 +49,34 @@ describe("historicalEndpoints", () => {
     );
     expect(DEFAULT_KALSHI_HISTORICAL_API_BASE).toContain("/trade-api/v2");
   });
+
+  it("URL-encodes tickers with reserved characters", () => {
+    expect(buildHistoricalMarketPath("KX/BTC+15")).toBe(
+      "/historical/markets/KX%2FBTC%2B15",
+    );
+    expect(
+      buildHistoricalCandlesticksPath("KX/BTC+15", 1, {
+        startTs: 1,
+        endTs: 2,
+      }),
+    ).toBe(
+      "/historical/markets/KX%2FBTC%2B15/candlesticks?period_interval=1&start_ts=1&end_ts=2",
+    );
+  });
+
+  it("throws when candlesticks date range is incomplete", () => {
+    expect(() =>
+      buildHistoricalCandlesticksPath("KXBTC-OLD", 1, {}),
+    ).toThrow(/require dateRange.startTs and dateRange.endTs/i);
+
+    expect(() =>
+      buildHistoricalCandlesticksPath("KXBTC-OLD", 1, { startTs: 100 }),
+    ).toThrow(/require dateRange.startTs and dateRange.endTs/i);
+  });
+
+  it("defers markets dateRange query params until API support is confirmed", () => {
+    expect(
+      buildHistoricalMarketsPath("KXBTC15M", { startTs: 1, endTs: 2 }),
+    ).toBe("/historical/markets?series_ticker=KXBTC15M");
+  });
 });
