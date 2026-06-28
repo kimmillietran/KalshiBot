@@ -10,7 +10,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "research:historical": "tsx scripts/research/runHistoricalResearch.ts"
+    "research:historical": "tsx scripts/research/runHistoricalResearch.ts",
+    "import:historical": "tsx scripts/import/runHistoricalImport.ts"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.101.1",
