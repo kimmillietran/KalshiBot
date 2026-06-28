@@ -104,6 +104,10 @@ export {
   REPLAY_BTC_PROVIDER_SOURCE,
   ReplayTimeline,
   orderReplaySnapshots,
+  ReplaySession,
+  serializeReplaySessionState,
+  serializeReplayStepResult,
+  serializeReplayStepResults,
 } from "./replay";
 
 export type {
@@ -112,6 +116,11 @@ export type {
   ReplayTimelineCursor,
   ReplayTimelineSnapshotSequence,
   ReplayTimelineState,
+  CreateReplaySessionInput,
+  ReplaySessionState,
+  ReplayStepAllOutput,
+  ReplayStepOutput,
+  ReplayStepResult,
 } from "./replay";
 
 export {
