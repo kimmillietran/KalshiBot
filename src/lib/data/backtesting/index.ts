@@ -3,6 +3,15 @@ export {
   computeBacktestMetrics,
   serializeBacktestMetrics,
 } from "./BacktestMetrics";
+export {
+  runMonteCarloAnalysis,
+  serializeMonteCarloSummary,
+  DEFAULT_DETERMINISTIC_INDEX_GENERATOR,
+  createBootstrapSequence,
+  createPermutationSequence,
+  resampleTrades,
+  simulateEquityCurve,
+} from "./MonteCarloAnalyzer";
 export { BacktestStrategyRunner } from "./BacktestStrategyRunner";
 export {
   BacktestLedgerError,
@@ -12,6 +21,8 @@ export {
   BacktestIntentRejectionCode,
   BacktestStrategyRunnerError,
   BacktestStrategyRunnerErrorCode,
+  MonteCarloAnalysisError,
+  MonteCarloErrorCode,
 } from "./errors";
 export type {
   LedgerSnapshot,
@@ -30,9 +41,18 @@ export type {
   ClosedTradeSummary,
   ComputeBacktestMetricsInput,
 } from "./metricsTypes";
-export {
-  DEFAULT_BACKTEST_FILL_SIMULATION_CONFIG,
-} from "./strategyTypes";
+export { ResampleMode } from "./monteCarloTypes";
+export type {
+  DeterministicIndexContext,
+  DeterministicIndexGenerator,
+  MonteCarloConfig,
+  MonteCarloRun,
+  MonteCarloSummary,
+  ResampleMode as ResampleModeType,
+  ResampledTradeSequence,
+  RunMonteCarloAnalysisInput,
+} from "./monteCarloTypes";
+export { DEFAULT_BACKTEST_FILL_SIMULATION_CONFIG } from "./strategyTypes";
 export type {
   BacktestFillSimulationConfig,
   BacktestStepRunnerResult,

@@ -91,3 +91,40 @@ export class BacktestMetricsError extends Error {
     this.code = code;
   }
 }
+
+export const MonteCarloErrorCode = {
+  EMPTY_TRADE_LIST: "empty-trade-list",
+  ZERO_SIMULATIONS: "zero-simulations",
+  INVALID_STARTING_EQUITY: "invalid-starting-equity",
+  INVALID_SEED: "invalid-seed",
+  INVALID_TRADE_VALUE: "invalid-trade-value",
+  UNSUPPORTED_RESAMPLE_MODE: "unsupported-resample-mode",
+} as const;
+
+export type MonteCarloErrorCode =
+  (typeof MonteCarloErrorCode)[keyof typeof MonteCarloErrorCode];
+
+const MONTE_CARLO_ERROR_MESSAGES: Record<MonteCarloErrorCode, string> = {
+  [MonteCarloErrorCode.EMPTY_TRADE_LIST]:
+    "Monte Carlo analysis requires at least one closed trade",
+  [MonteCarloErrorCode.ZERO_SIMULATIONS]:
+    "simulationCount must be greater than zero",
+  [MonteCarloErrorCode.INVALID_STARTING_EQUITY]:
+    "startingEquityCents must be a positive finite number",
+  [MonteCarloErrorCode.INVALID_SEED]:
+    "seed must be a finite number",
+  [MonteCarloErrorCode.INVALID_TRADE_VALUE]:
+    "Closed trade values must be finite numbers",
+  [MonteCarloErrorCode.UNSUPPORTED_RESAMPLE_MODE]:
+    "resampleMode must be bootstrap or permutation",
+};
+
+export class MonteCarloAnalysisError extends Error {
+  readonly code: MonteCarloErrorCode;
+
+  constructor(code: MonteCarloErrorCode) {
+    super(MONTE_CARLO_ERROR_MESSAGES[code]);
+    this.name = "MonteCarloAnalysisError";
+    this.code = code;
+  }
+}
