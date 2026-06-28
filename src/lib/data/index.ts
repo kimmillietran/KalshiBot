@@ -251,3 +251,18 @@ export type {
   WalkForwardRunResult,
   WalkForwardWindow,
 } from "./research";
+
+export {
+  buildHistoricalDataset,
+  normalizeBtcKlineBronze,
+  serializeHistoricalDataset,
+  DATASET_BRONZE_CONTENT_TYPE,
+  HistoricalDatasetBuildError,
+  HistoricalDatasetBuildErrorCode,
+} from "./datasets";
+export type {
+  DatasetBronzeContentType,
+  HistoricalDataset,
+  HistoricalDatasetMetadata,
+  HistoricalDatasetProvenanceSummary,
+} from "./datasets";
