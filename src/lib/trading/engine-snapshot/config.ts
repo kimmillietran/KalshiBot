@@ -2,8 +2,6 @@ import { DECISION_POLICY_MODEL_VERSION } from "@/lib/trading/decision-policy/con
 
 export const ENGINE_SNAPSHOT_MODEL_VERSION = "5.11.0";
 
-export const SNAPSHOT_UNAVAILABLE_LABEL = "unavailable";
-
 /** Stable headline labels keyed by engine action. */
 export const SNAPSHOT_HEADLINES: Record<string, string> = {
   "BUY UP": "Engine snapshot — BUY UP",

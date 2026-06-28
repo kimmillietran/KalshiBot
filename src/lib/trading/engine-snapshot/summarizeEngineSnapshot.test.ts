@@ -11,6 +11,8 @@ import { ENGINE_VERSION } from "@/lib/trading/versioning";
 import type { EvaluationSnapshot } from "@/types/domain/trading";
 
 import { ENGINE_SNAPSHOT_MODEL_VERSION, summarizeEngineSnapshot } from "./summarizeEngineSnapshot";
+import { formatExpectedValueSection } from "./formatSnapshotSections";
+import type { TradeDecision } from "@/types/domain/trading";
 
 const EVALUATED_AT = "2026-06-26T12:00:00.000Z";
 
@@ -183,6 +185,7 @@ describe("summarizeEngineSnapshot", () => {
     expect(snapshot.expectedValue.available).toBe(false);
     expect(snapshot.positionSizing.available).toBe(false);
     expect(snapshot.metadata.probabilityVersion).toBeNull();
+    expect(snapshot.metadata.expectedValueVersion).toBeNull();
     expect(snapshot.metadata.policyVersion).toBeNull();
     expect(snapshot.metadata.positionSizingVersion).toBeNull();
     expect(snapshot.technical.steps.some((step) => step.outcome === "fail")).toBe(true);
@@ -208,6 +211,60 @@ describe("summarizeEngineSnapshot", () => {
     expect(decision.positionSize?.recommendedDollars).toBeNull();
     expect(summarizeEngineSnapshot(decision).positionSizing.recommendedDollars).toBeNull();
     expect(summarizeEngineSnapshot(decision).positionSizing.available).toBe(true);
+  });
+
+  it("formats recommendedDollars when bankroll is configured", () => {
+    const baseline = evaluate(buyUpSnapshot(), DEFAULT_ENGINE_CONFIG);
+    const fraction = baseline.positionSize?.recommendedFraction ?? 0;
+    expect(fraction).toBeGreaterThan(0);
+
+    const decision = evaluate(buyUpSnapshot(), {
+      ...DEFAULT_ENGINE_CONFIG,
+      bankrollDollars: 500 / fraction,
+    });
+    const snapshot = summarizeEngineSnapshot(decision);
+
+    expect(decision.positionSize?.recommendedDollars).toBeCloseTo(500, 2);
+    expect(snapshot.positionSizing.recommendedDollars).toBe("$500.00");
+    expect(snapshot.positionSizing.available).toBe(true);
+  });
+
+  it("uses HOLD headline label when action is HOLD", () => {
+    const decision: TradeDecision = {
+      action: "HOLD",
+      engineVersion: ENGINE_VERSION,
+      configHash: "test",
+      reasoning: { steps: [], summary: "Hold" },
+      evaluatedAt: EVALUATED_AT,
+      features: null,
+      probability: null,
+      expectedValue: null,
+      positionSize: null,
+    };
+
+    expect(summarizeEngineSnapshot(decision).headline).toBe("Engine snapshot — HOLD");
+  });
+
+  it("uses max edge percent when expected value bestSide is null", () => {
+    const section = formatExpectedValueSection({
+      modelVersion: EXPECTED_VALUE_MODEL_VERSION,
+      evYesCents: 0.1,
+      evNoCents: 0.05,
+      netEvYesCents: 0.1,
+      netEvNoCents: 0.05,
+      fairYesCents: 50,
+      fairNoCents: 50,
+      edgeYesPercent: 2.5,
+      edgeNoPercent: 4.0,
+      bestSide: null,
+      bestEvCents: 4,
+      confidence: 0.8,
+      reasoning: { summary: "test", lines: [] },
+    });
+
+    expect(section.bestSide).toBeNull();
+    expect(section.edgePercent).toBe("+4.00%");
+    expect(section.available).toBe(true);
   });
 
   it("is deterministic for identical inputs", () => {

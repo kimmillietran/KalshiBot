@@ -8,7 +8,6 @@ export {
   SNAPSHOT_HEADLINES,
   SNAPSHOT_POLICY_VERSION,
   SNAPSHOT_STEP_LABELS,
-  SNAPSHOT_UNAVAILABLE_LABEL,
 } from "./summarizeEngineSnapshot";
 
 export type {

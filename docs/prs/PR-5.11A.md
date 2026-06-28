@@ -24,6 +24,10 @@ summarizeEngineSnapshot(decision) → EngineSnapshotPresentation
 | `technical.steps` | `decision.reasoning.steps` | never (may include fail steps) |
 | `metadata.*` | engine + model versions | per-model `null` when absent |
 
+`metadata.policyVersion` is set only when a `decision-policy` reasoning step is present (guard failures omit it).
+
+Unavailable section fields use `null` with `available: false` — not placeholder strings.
+
 `positionSizing.recommendedDollars` is `null` when bankroll was not configured — section remains `available: true`.
 
 ## Rules

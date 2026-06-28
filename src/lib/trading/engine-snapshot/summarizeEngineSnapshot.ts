@@ -17,6 +17,13 @@ function snapshotHeadline(action: TradeDecision["action"]): string {
   return SNAPSHOT_HEADLINES[action] ?? `Engine snapshot — ${action}`;
 }
 
+function resolvePolicyVersion(decision: TradeDecision): string | null {
+  const policyStepRan = decision.reasoning.steps.some(
+    (step) => step.id === "decision-policy",
+  );
+  return policyStepRan ? SNAPSHOT_POLICY_VERSION : null;
+}
+
 /**
  * Builds a compact, serializable presentation from an engine TradeDecision.
  * Formatting only — no model math or policy logic.
@@ -44,7 +51,7 @@ export function summarizeEngineSnapshot(
       engineVersion: decision.engineVersion,
       probabilityVersion: decision.probability?.modelVersion ?? null,
       expectedValueVersion: decision.expectedValue?.modelVersion ?? null,
-      policyVersion: decision.probability ? SNAPSHOT_POLICY_VERSION : null,
+      policyVersion: resolvePolicyVersion(decision),
       positionSizingVersion: decision.positionSize?.modelVersion ?? null,
     },
   };
@@ -55,7 +62,6 @@ export {
   SNAPSHOT_HEADLINES,
   SNAPSHOT_POLICY_VERSION,
   SNAPSHOT_STEP_LABELS,
-  SNAPSHOT_UNAVAILABLE_LABEL,
 } from "./config";
 
 export {
