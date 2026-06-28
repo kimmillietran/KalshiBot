@@ -142,3 +142,21 @@ export type {
   PollingRateGovernorConfig,
   StaleQuoteStatus,
 } from "./polling";
+
+export {
+  BacktestLedger,
+  BacktestLedgerError,
+  BacktestLedgerErrorCode,
+  positionKey,
+} from "./backtesting";
+
+export type {
+  LedgerSnapshot,
+  MarkPrice,
+  OpenPosition,
+  TradeAction,
+  TradeFill,
+  TradeFillInput,
+  TradeSide,
+  UnrealizedPnLResult,
+} from "./backtesting";
