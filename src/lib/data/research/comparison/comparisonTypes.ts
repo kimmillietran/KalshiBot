@@ -1,12 +1,13 @@
 import type { BacktestMetricsSummary } from "@/lib/data/backtesting/metricsTypes";
 
-import type { ResearchExperimentResult } from "../parameterSweepTypes";
-
-/** Completed experiment result with backtest metrics required for comparison. */
-export type ResearchExperimentResultWithMetrics = ResearchExperimentResult & {
+/** Sweep-layer experiment result with backtest metrics required for comparison. */
+export type ResearchExperimentResultWithMetrics = {
+  experimentId: string;
+  sweepId: string;
+  parameters: Readonly<Record<string, unknown>>;
+  status: string;
   metrics: BacktestMetricsSummary;
 };
-
 export const ComparisonMetricId = {
   FINAL_EQUITY: "final-equity",
   TOTAL_RETURN: "total-return",
