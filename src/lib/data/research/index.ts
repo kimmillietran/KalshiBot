@@ -61,3 +61,16 @@ export type {
   WalkForwardRunResult,
   WalkForwardWindow,
 } from "./walkForwardTypes";
+
+export {
+  runHistoricalResearchFromBronze,
+  serializeHistoricalResearchRunnerResult,
+  HistoricalResearchRunnerError,
+  HistoricalResearchRunnerErrorCode,
+} from "./runner";
+export type {
+  HistoricalResearchRunnerCoreResult,
+  HistoricalResearchRunnerMetadata,
+  HistoricalResearchRunnerResult,
+  RunHistoricalResearchFromBronzeInput,
+} from "./runner";
