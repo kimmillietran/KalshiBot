@@ -21,10 +21,11 @@ All instants are **UTC ISO-8601 with `Z` suffix** — local timezone offsets are
 | Field | Meaning |
 |---|---|
 | `eventTime` | When the market event or bar interval occurred |
+| `openTime` / `closeTime` | Bar or window interval bounds (also validated as UTC `EventTime`) |
 | `collectionTime` | When the record was fetched or collected |
 | `observedAt` | Knowledge time — when the observation became known |
 
-Silver and bronze records require all three fields explicitly.
+Silver and bronze records require `eventTime`, `collectionTime`, and `observedAt` explicitly. Interval fields (`openTime`/`closeTime`) describe the quoted or OHLC window and must satisfy `openTime < closeTime`; they may equal `eventTime` for point-in-time records but are not interchangeable — `eventTime` is the canonical event anchor for lineage.
 
 ## Validation highlights
 

@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { DataSource } from "./provenance";
+import { DataSource, fetchProvenanceSchema } from "./provenance";
 import {
   btcBar1mSchema,
   kalshiCandle1mSchema,
   marketWindowSchema,
+  rawHistoricalRecordSchema,
   settlementRecordSchema,
 } from "./schemas";
 import { DATA_CONTRACT_VERSION } from "./versioning";
@@ -187,5 +188,76 @@ describe("historical data schemas", () => {
   it("documents bronze provenance source literals", () => {
     expect(DataSource.KALSHI_REST).toBe("kalshi-rest");
     expect(DataSource.BINANCE_SPOT).toBe("binance-spot");
+  });
+
+  it("accepts a valid bronze raw historical record with fetch provenance", () => {
+    const result = rawHistoricalRecordSchema.safeParse({
+      ...temporalFields,
+      recordId: "bronze-001",
+      ticker: TICKER,
+      contentType: "application/json",
+      payload: { raw: true },
+      provenance: {
+        source: DataSource.KALSHI_REST,
+        collectionTime: COLLECTION_TIME,
+        observedAt: OBSERVED_AT,
+        fetchId: "fetch-abc",
+        apiVersion: "v2",
+      },
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects bronze records with invalid fetch provenance", () => {
+    const missingSource = rawHistoricalRecordSchema.safeParse({
+      ...temporalFields,
+      recordId: "bronze-001",
+      ticker: TICKER,
+      contentType: "application/json",
+      payload: {},
+      provenance: {
+        collectionTime: COLLECTION_TIME,
+        observedAt: OBSERVED_AT,
+      },
+    });
+    expect(missingSource.success).toBe(false);
+
+    const invalidCollectionTime = fetchProvenanceSchema.safeParse({
+      source: DataSource.KALSHI_CANDLES,
+      collectionTime: "not-a-timestamp",
+      observedAt: OBSERVED_AT,
+    });
+    expect(invalidCollectionTime.success).toBe(false);
+  });
+
+  it("rejects inverted openTime/closeTime interval ordering on silver records", () => {
+    const marketWindow = marketWindowSchema.safeParse({
+      ...validMarketWindow,
+      openTime: WINDOW_CLOSE,
+      closeTime: OPEN_TIME,
+    });
+    expect(marketWindow.success).toBe(false);
+
+    const kalshiCandle = kalshiCandle1mSchema.safeParse({
+      ...validKalshiCandle,
+      openTime: CLOSE_TIME,
+      closeTime: OPEN_TIME,
+    });
+    expect(kalshiCandle.success).toBe(false);
+
+    const btcBar = btcBar1mSchema.safeParse({
+      ...validBtcBar,
+      openTime: CLOSE_TIME,
+      closeTime: OPEN_TIME,
+    });
+    expect(btcBar.success).toBe(false);
+  });
+
+  it("rejects mismatched datasetVersion", () => {
+    const result = marketWindowSchema.safeParse({
+      ...validMarketWindow,
+      datasetVersion: "6.0.0",
+    });
+    expect(result.success).toBe(false);
   });
 });
