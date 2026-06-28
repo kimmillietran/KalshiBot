@@ -14,9 +14,9 @@ trading-dashboard/
     ProbabilityEdgePanel.tsx # probability + expected value from engine
     MarketStructurePanel.tsx # feature vector from engine
     TradeManagementPanel.tsx # position sizing preview (no execution)
-    AIReasoningPanel.tsx   # summarizeTradeDecision() presentation
+    AIReasoningPanel.tsx   # summarizeTradeDecision() + Copy Decision JSON export
     settings/              # TradingSettingsPanel (session-only form)
-    decision/              # presentation-only decision subcomponents
+    decision/              # DecisionExportButton (presentation-only export)
   formatting/
     decisionDisplay.ts     # action tones, formatters (no business logic)
     positionSizingDisplay.ts # Kelly fraction / dollars formatters (no math)
@@ -26,6 +26,8 @@ trading-dashboard/
   utils/
     parseSettingsFormInput.ts      # string coercion only (no validation)
     buildEngineConfigFromSettings.ts # map resolved settings → EngineConfig
+    serializeTradeDecision.ts    # stable TradeDecision JSON for clipboard export
+    copyTextToClipboard.ts       # injectable clipboard helper (failure-safe)
     settingsFieldWarnings.ts
   types/
     tradingSettingsForm.ts
@@ -41,11 +43,13 @@ trading-dashboard/
 
 **Live:** `btc-feed`, `market-data` (CommandBar, chart, MarketOddsPanel).
 
-**Engine-connected (5.6C–5.10B):** Dashboard renders live `TradeDecision` output —
+**Engine-connected (5.6C–5.11B):** Dashboard renders live `TradeDecision` output —
 `action`, `probability`, `expectedValue`, `positionSize` (fraction + dollars when bankroll
-configured), `features`, and `summarizeTradeDecision()` reasoning. Session-only Trading
-Settings panel feeds `resolveTradingSettings()` → `buildEngineConfigFromSettings()` →
+configured), `features`, and `summarizeTradeDecision()` reasoning. **Copy Decision JSON**
+in Engine Reasoning exports stable decision JSON (no persistence, no network). Session-only
+Trading Settings panel feeds `resolveTradingSettings()` → `buildEngineConfigFromSettings()` →
 `evaluate()`. React components are presentation-only; validation stays in
 `src/lib/trading/settings/`.
 
-**Still deferred:** Trade execution, settings persistence, account bankroll source, LLM narrative.
+**Still deferred:** Trade execution, settings persistence, account bankroll source, LLM narrative,
+export swap to `summarizeEngineSnapshot()`.

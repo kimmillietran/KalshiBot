@@ -2,7 +2,7 @@
 
 AI-powered trading assistant for Kalshi BTC markets. Built in milestones.
 
-**Current:** Live BTC/Kalshi feeds (4.6B) + full trading engine through settings UI (5.0–5.10B) + engine snapshot presentation core (5.11A) + complete dashboard integration (5.6C–5.8B). `summarizeEngineSnapshot()` provides serializable engine output for future export/debug; dashboard settings flow through `resolveTradingSettings()` into `evaluate()`. Trade execution deferred.
+**Current:** Live BTC/Kalshi feeds (4.6B) + full trading engine through settings UI (5.0–5.10B) + engine snapshot presentation core (5.11A) + dashboard TradeDecision JSON export (5.11B) + complete dashboard integration (5.6C–5.8B). `summarizeEngineSnapshot()` provides serializable engine output; dashboard copies raw `TradeDecision` JSON via Engine Reasoning panel. Settings flow through `resolveTradingSettings()` into `evaluate()`. Trade execution deferred.
 
 ## Engineering Standards
 
@@ -93,6 +93,7 @@ docs/
 | 5.10A | Settings configuration core (`resolveTradingSettings`) — **complete** |
 | 5.10B | Dashboard settings UI (`TradingSettingsPanel`, session-only form → engine) — **complete** |
 | 5.11A | Engine snapshot presentation core (`summarizeEngineSnapshot`) — **complete** |
+| 5.11B | Dashboard TradeDecision JSON export (`DecisionExportButton`, clipboard helper) — **complete** |
 
 ## Intentionally deferred
 

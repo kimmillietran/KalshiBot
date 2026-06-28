@@ -206,11 +206,19 @@ Tracked intentionally — not silent accumulation. Review at each milestone clos
 | Raw `TradeDecision` not export-ready | `EngineSnapshotPresentation` with formatted sections + metadata |
 | Unavailable values invented in UI | Sections use `null` + `available: false`; no placeholder strings |
 
-## Outstanding (post-5.11A)
+## Resolved in 5.11B
+
+| Issue | Resolution |
+|-------|------------|
+| Dashboard snapshot export not wired | `DecisionExportButton` in `AIReasoningPanel` copies stable `TradeDecision` JSON |
+| Clipboard failures blocking UI | Injectable `copyTextToClipboard()` + non-blocking error feedback |
+| Null vs zero position sizing lost on export | `serializeTradeDecision()` preserves `positionSize: null` vs zero object |
+
+## Outstanding (post-5.11B)
 
 | Issue | Priority | Reason | Suggested fix | Milestone |
 |-------|----------|--------|---------------|-----------|
-| **Dashboard snapshot export** | Medium | Snapshot module not wired to UI | Export/copy/debug panel using `summarizeEngineSnapshot()` | **5.11B** |
+| **Export uses raw TradeDecision** | Medium | 5.11B ships pre-5.11A serializer path | Swap to `summarizeEngineSnapshot()` for compact payload | **Backlog** |
 | **Settings persistence** | Medium | Session-only form state — lost on refresh | localStorage or account-backed settings | **Backlog** |
 | **Account/bankroll source** | Medium | Manual bankroll entry only | Future brokerage/account integration | **Backlog** |
 
