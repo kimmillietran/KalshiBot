@@ -19,9 +19,9 @@ export type ClosedTradeSummary = {
 export type ComputeBacktestMetricsInput = {
   equityCurve: readonly BacktestEquityPoint[];
   closedTrades: readonly ClosedTradeSummary[];
-  /** Required for annualized return and volatility annualization. */
+  /** Required for annualized return and volatility. Sharpe also requires this. */
   periodsPerYear?: number;
-  /** Decimal per-period risk-free rate for Sharpe (e.g. 0.001). */
+  /** Decimal per-period risk-free rate. Sharpe requires this plus periodsPerYear and at least two equity points with non-zero return volatility. */
   riskFreeRatePerPeriod?: number;
 };
 
@@ -46,5 +46,6 @@ export type BacktestMetricsSummary = {
   troughEquityCents: number;
   annualizedReturnPct: number | null;
   sharpeRatio: number | null;
+  /** Sample std-dev of per-period equity returns (not annualized), scaled to percent. */
   returnVolatilityPct: number | null;
 };

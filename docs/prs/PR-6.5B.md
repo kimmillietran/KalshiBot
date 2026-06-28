@@ -53,14 +53,47 @@ type ClosedTradeSummary = {
 | `profitFactor` | `grossProfit / abs(grossLoss)`; `null` if no losses with profit; `0` if no profit |
 | `expectancyCents` | `sum(realizedPnl) / tradeCount` (0 if no trades) |
 | `annualizedReturnPct` | `(end/start)^(periodsPerYear/periods) - 1` when `periodsPerYear` supplied |
-| `returnVolatilityPct` | Sample std-dev of period returns × 100 |
-| `sharpeRatio` | `(mean(excessReturns) / std(returns)) × sqrt(periodsPerYear)` when inputs supplied |
+| `returnVolatilityPct` | Sample std-dev of per-period equity returns (not annualized), × 100 |
+| `sharpeRatio` | `(mean(excessReturns) / std(returns)) × sqrt(periodsPerYear)` when `periodsPerYear` and `riskFreeRatePerPeriod` supplied and return volatility > 0 |
+
+## Optional metric inputs
+
+| Field | Required for | Notes |
+|---|---|---|
+| `periodsPerYear` | `annualizedReturnPct`, `returnVolatilityPct`, `sharpeRatio` | Positive finite number |
+| `riskFreeRatePerPeriod` | `sharpeRatio` only | Finite decimal per period; also requires `periodsPerYear` and non-zero return volatility |
+
+When optional inputs are omitted, the corresponding summary fields are `null`. A single equity point still computes total return and drawdown; period-return metrics require at least two points.
+
+## Ledger → metrics handoff (6.5A → 6.5B)
+
+6.5B does not import `BacktestLedger`. Callers map ledger output into metrics input:
+
+```typescript
+const snapshot = ledger.snapshot();
+const marks = /* caller-supplied mark prices */;
+const unrealized = ledger.computeUnrealizedPnL(marks);
+
+const equityCurve: BacktestEquityPoint[] = steps.map((step) => ({
+  stepIndex: step.index,
+  timestamp: step.timestamp,
+  equityCents: snapshot.cashCents + unrealized.totalUnrealizedPnLCents,
+}));
+
+const closedTrades: ClosedTradeSummary[] = /* derived from round-trip fills */;
+
+const metrics = computeBacktestMetrics({ equityCurve, closedTrades });
+```
+
+Entry fees affect cash only in 6.5A; equity curves should include cash plus marked position value. Closed-trade P/L uses realized amounts from completed round trips.
 
 ## Edge-case behavior
 
-- Empty equity curve → error
-- Negative equity → error
-- Zero starting equity → error
+- Empty equity curve → `EMPTY_EQUITY_CURVE`
+- Negative equity → `NEGATIVE_EQUITY`
+- Zero starting equity → `ZERO_START_EQUITY`
+- Invalid `periodsPerYear` or `riskFreeRatePerPeriod` → configuration errors
+- Flat period returns → `returnVolatilityPct = 0`, `sharpeRatio = null`
 - Empty trades → zero rates/counts; `profitFactor = null`
 - Flat equity → zero drawdown and zero return
 - All wins → `profitFactor = null` (no gross loss denominator)

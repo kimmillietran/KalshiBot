@@ -166,6 +166,26 @@ describe("computeBacktestMetrics", () => {
     expect(metrics.expectancyCents).toBe(2_500);
   });
 
+  it("rejects an empty equity curve", () => {
+    expect(() =>
+      computeBacktestMetrics({
+        equityCurve: [],
+        closedTrades: [],
+      }),
+    ).toThrow(BacktestMetricsError);
+
+    try {
+      computeBacktestMetrics({
+        equityCurve: [],
+        closedTrades: [],
+      });
+    } catch (error) {
+      expect((error as BacktestMetricsError).code).toBe(
+        BacktestMetricsErrorCode.EMPTY_EQUITY_CURVE,
+      );
+    }
+  });
+
   it("rejects negative equity values", () => {
     expect(() =>
       computeBacktestMetrics({
@@ -243,5 +263,43 @@ describe("computeBacktestMetrics", () => {
     expect(metrics.annualizedReturnPct).not.toBeNull();
     expect(metrics.returnVolatilityPct).toBeGreaterThan(0);
     expect(metrics.sharpeRatio).not.toBeNull();
+  });
+
+  it("returns null Sharpe when period-return volatility is zero", () => {
+    const metrics = computeBacktestMetrics({
+      equityCurve: [
+        point(0, START_TS, 100_000),
+        point(1, MID_TS, 100_000),
+        point(2, END_TS, 100_000),
+      ],
+      closedTrades: [],
+      periodsPerYear: 365,
+      riskFreeRatePerPeriod: 0,
+    });
+
+    expect(metrics.returnVolatilityPct).toBe(0);
+    expect(metrics.sharpeRatio).toBeNull();
+  });
+
+  it("rejects invalid optional configuration", () => {
+    const baseInput = {
+      equityCurve: [point(0, START_TS, 100_000), point(1, END_TS, 110_000)],
+      closedTrades: [] as ClosedTradeSummary[],
+    };
+
+    expect(() =>
+      computeBacktestMetrics({ ...baseInput, periodsPerYear: 0 }),
+    ).toThrow(BacktestMetricsError);
+
+    expect(() =>
+      computeBacktestMetrics({ ...baseInput, periodsPerYear: Number.NaN }),
+    ).toThrow(BacktestMetricsError);
+
+    expect(() =>
+      computeBacktestMetrics({
+        ...baseInput,
+        riskFreeRatePerPeriod: Number.POSITIVE_INFINITY,
+      }),
+    ).toThrow(BacktestMetricsError);
   });
 });
