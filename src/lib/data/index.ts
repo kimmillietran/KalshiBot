@@ -102,6 +102,14 @@ export {
   ReplayAdaptationErrorCode,
   REPLAY_BTC_FEED_STATUS,
   REPLAY_BTC_PROVIDER_SOURCE,
+  ReplayTimeline,
+  orderReplaySnapshots,
 } from "./replay";
 
-export type { HistoricalReplayAdaptation } from "./replay";
+export type {
+  HistoricalReplayAdaptation,
+  CreateReplayTimelineInput,
+  ReplayTimelineCursor,
+  ReplayTimelineSnapshotSequence,
+  ReplayTimelineState,
+} from "./replay";
