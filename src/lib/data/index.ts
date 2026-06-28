@@ -356,3 +356,16 @@ export type {
   StrategyDefinition,
   StrategyRegistrySnapshot,
 } from "./strategies";
+
+export {
+  buildHistoricalResearchFixture,
+  serializeHistoricalResearchFixture,
+  HistoricalFixtureError,
+  HistoricalFixtureErrorCode,
+} from "./fixtures";
+export type {
+  BuildHistoricalResearchFixtureInput,
+  HistoricalResearchCliInput,
+  HistoricalResearchFixtureExportConfig,
+  HistoricalResearchInput,
+} from "./fixtures";
