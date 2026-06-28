@@ -492,7 +492,7 @@ describe("evaluate", () => {
     const decision = evaluate(createValidSnapshot(), DEFAULT_ENGINE_CONFIG);
     expect(decision.engineVersion).toBe(ENGINE_VERSION);
     expect(decision.configHash).toBe(hashConfig(DEFAULT_ENGINE_CONFIG));
-    expect(ENGINE_VERSION).toBe("5.9.0");
+    expect(ENGINE_VERSION).toBe("5.10.0");
     expect(BANKROLL_MODEL_VERSION).toBe("5.9.0");
     expect(DECISION_POLICY_MODEL_VERSION).toBe("5.6.0");
   });

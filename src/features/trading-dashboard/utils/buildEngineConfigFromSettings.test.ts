@@ -9,7 +9,10 @@ import {
   buyUpSnapshot,
   buyUpWithBankrollDecision,
 } from "../test-fixtures/engineDecisions";
-import { resolvedSettingsFromInput } from "../test-fixtures/tradingSettings";
+import {
+  resolvedSettingsFromForm,
+  resolvedSettingsFromInput,
+} from "../test-fixtures/tradingSettings";
 import { buildEngineConfigFromSettings } from "./buildEngineConfigFromSettings";
 
 describe("buildEngineConfigFromSettings", () => {
@@ -34,6 +37,13 @@ describe("buildEngineConfigFromSettings", () => {
   it("omits bankroll when unresolved", () => {
     const resolved = resolvedSettingsFromInput({ bankrollDollars: -1 });
 
+    expect(buildEngineConfigFromSettings(resolved).bankrollDollars).toBeUndefined();
+  });
+
+  it("omits bankroll when form input is invalid", () => {
+    const resolved = resolvedSettingsFromForm({ bankrollDollars: "-50" });
+
+    expect(resolved.valid).toBe(false);
     expect(buildEngineConfigFromSettings(resolved).bankrollDollars).toBeUndefined();
   });
 });
@@ -125,5 +135,42 @@ describe("settings engine wiring", () => {
     expect(wired.positionSize?.recommendedFraction).toBe(
       fixture.positionSize?.recommendedFraction,
     );
+  });
+
+  it("forces NO TRADE when resolved minEdgePercent is very high", () => {
+    const baseline = evaluate(
+      buyUpSnapshot(),
+      buildEngineConfigFromSettings(resolvedSettingsFromInput()),
+    );
+    expect(baseline.action).toBe("BUY UP");
+
+    const strict = resolvedSettingsFromInput({ minEdgePercent: 100 });
+    const decision = evaluate(
+      buyUpSnapshot(),
+      buildEngineConfigFromSettings(strict),
+    );
+
+    expect(decision.action).toBe("NO TRADE");
+  });
+
+  it("triggers spread guard when resolved maxSpreadPercent is strict", () => {
+    const snapshot = {
+      ...buyUpSnapshot(),
+      pricing: {
+        yesBidCents: 10,
+        yesAskCents: 50,
+        yesMidCents: 30,
+        noBidCents: 37,
+        noAskCents: 39,
+        noMidCents: 38,
+        liquidityQuality: "Good" as const,
+        volumeDollars: 500_000,
+      },
+    };
+    const resolved = resolvedSettingsFromInput({ maxSpreadPercent: 5 });
+    const decision = evaluate(snapshot, buildEngineConfigFromSettings(resolved));
+
+    expect(decision.gatesTriggered).toEqual(["guard-spread-maximum"]);
+    expect(decision.action).toBe("NO TRADE");
   });
 });
