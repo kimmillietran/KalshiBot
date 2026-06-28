@@ -441,3 +441,24 @@ export type {
   HistoricalBronzeImportKalshiConfig,
   HistoricalBronzeImportOutputConfig,
 } from "./importJobs/config";
+
+export {
+  BtcHistoricalHttpAdapter,
+  BtcHistoricalHttpAdapterError,
+  BtcHistoricalImporterError,
+  BtcHistoricalImporterErrorCode,
+  BtcHistoricalInterval,
+  DEFAULT_BINANCE_SPOT_KLINES_BASE,
+  buildBinanceKlinesUrl,
+  createBtcHistoricalImporter,
+} from "./importers/btc";
+export type {
+  BtcHistoricalHttpAdapterOptions,
+  BtcHistoricalHttpClient,
+  BtcHistoricalHttpFetchKlinesInput,
+  BtcHistoricalImporter,
+  BtcHistoricalImporterBar,
+  CreateBtcHistoricalImporterInput,
+  FetchLike as BtcHistoricalFetchLike,
+  GetHistoricalBarsInput,
+} from "./importers/btc";
