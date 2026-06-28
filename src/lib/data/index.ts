@@ -403,3 +403,22 @@ export type {
   KalshiHistoricalBronzeProvider,
   RunHistoricalBronzeImportJobInput,
 } from "./importJobs";
+
+export {
+  buildHistoricalBronzeImportConfig,
+  serializeHistoricalBronzeImportConfig,
+  HistoricalBronzeImportBtcInterval,
+  HistoricalBronzeImportBtcProvider,
+  HistoricalBronzeImportConfigError,
+  HistoricalBronzeImportConfigErrorCode,
+  HistoricalBronzeImportKalshiSource,
+  HistoricalBronzeImportOutputFormat,
+} from "./importJobs/config";
+export type {
+  BuildHistoricalBronzeImportConfigInput,
+  HistoricalBronzeImportBtcConfig,
+  HistoricalBronzeImportConfig,
+  HistoricalBronzeImportConfigMetadata,
+  HistoricalBronzeImportKalshiConfig,
+  HistoricalBronzeImportOutputConfig,
+} from "./importJobs/config";
