@@ -1,5 +1,5 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   DECISION_EXPORT_BUTTON_LABEL,
@@ -10,6 +10,10 @@ import { buyUpDecision } from "@/features/trading-dashboard/test-fixtures/engine
 import { DecisionExportButton } from "./DecisionExportButton";
 
 describe("DecisionExportButton", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
   it("calls the injectable copy helper with serialized decision JSON", async () => {
     const copyText = vi.fn().mockResolvedValue({ ok: true as const });
     const decision = buyUpDecision();
@@ -56,6 +60,25 @@ describe("DecisionExportButton", () => {
     await waitFor(() => {
       expect(screen.getByText("Clipboard unavailable")).toBeInTheDocument();
     });
+  });
+
+  it("resets copied state after the feedback timer", async () => {
+    const copyText = vi.fn().mockResolvedValue({ ok: true as const });
+
+    render(<DecisionExportButton decision={buyUpDecision()} copyText={copyText} />);
+
+    fireEvent.click(screen.getByRole("button", { name: DECISION_EXPORT_BUTTON_LABEL }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: DECISION_EXPORT_COPIED_LABEL })).toBeInTheDocument();
+    });
+
+    await waitFor(
+      () => {
+        expect(screen.getByRole("button", { name: DECISION_EXPORT_BUTTON_LABEL })).toBeInTheDocument();
+      },
+      { timeout: 2_500 },
+    );
   });
 
   it("does not use localStorage or network APIs", () => {

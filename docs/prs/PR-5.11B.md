@@ -4,7 +4,9 @@
 
 Milestone 5.11B adds dashboard-side export plumbing to copy the current engine `TradeDecision` as stable JSON. This is presentation/export only — no engine, provider, BFF, or execution changes.
 
-Uses `TradeDecision` directly today. After 5.11A merges, the serializer can switch to `summarizeEngineSnapshot()` without duplicating Builder #1’s engine-snapshot module.
+Uses `TradeDecision` directly today. After 5.11A (merged on `main`), the serializer can switch to `summarizeEngineSnapshot()` without duplicating the engine-snapshot module.
+
+Developed in the `kalshi-builder2` worktree on branch `feature/m5.11b-dashboard-snapshot-export`.
 
 ## Export payload
 
@@ -47,7 +49,4 @@ npm run build
 
 ## Future (post-5.11A)
 
-```typescript
-// swap serializer input when 5.11A lands:
-// serializeEngineSnapshot(summarizeEngineSnapshot(decision))
-```
+5.11A is on `main`. Optional follow-up: swap serializer input to `summarizeEngineSnapshot(decision)` for compact export payload.

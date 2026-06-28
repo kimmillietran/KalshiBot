@@ -17,4 +17,12 @@ describe("copyTextToClipboard", () => {
 
     expect(result).toEqual({ ok: false, error: "Clipboard unavailable" });
   });
+
+  it("returns an error when writeText rejects", async () => {
+    const writeText = vi.fn().mockRejectedValue(new Error("Permission denied"));
+
+    const result = await copyTextToClipboard("payload", { writeText });
+
+    expect(result).toEqual({ ok: false, error: "Permission denied" });
+  });
 });

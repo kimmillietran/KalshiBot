@@ -169,4 +169,14 @@ describe("AIReasoningPanel", () => {
 
     expect(view.getByRole("button", { name: DECISION_EXPORT_BUTTON_LABEL })).toBeInTheDocument();
   });
+
+  it("shows model version badge alongside export control", () => {
+    const decision = buyUpDecision();
+    const presentation = summarizeTradeDecision(decision);
+    const { container } = renderPanel(decision);
+    const view = within(container);
+
+    expect(view.getByText(presentation.modelVersion)).toBeInTheDocument();
+    expect(view.getByRole("button", { name: DECISION_EXPORT_BUTTON_LABEL })).toBeInTheDocument();
+  });
 });
