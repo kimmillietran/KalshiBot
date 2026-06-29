@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { DataQualityFlag } from "@/lib/data/schemas";
 import { DataSource } from "@/lib/data/provenance";
 import { settlementRecordSchema } from "@/lib/data/schemas";
 import type { RawHistoricalRecord } from "@/lib/data/types";
@@ -94,5 +95,67 @@ describe("normalizeSettlement", () => {
   it("is deterministic for identical bronze inputs", () => {
     const bronze = createSettlementBronze({ market: settlementBody });
     expect(normalizeSettlement(bronze)).toEqual(normalizeSettlement(bronze));
+  });
+
+  it("normalizes live settlement payload with microsecond settlement_ts", () => {
+    const result = normalizeSettlement(
+      createSettlementBronze({
+        market: {
+          ticker: "KXBTC15M-26APR281945-45",
+          event_ticker: "KXBTC15M",
+          status: "finalized",
+          result: "yes",
+          open_time: "2026-04-28T23:45:09.271822Z",
+          close_time: "2026-04-28T23:45:09.271822Z",
+          settlement_ts: "2026-04-28T23:45:09.271822Z",
+          settlement_value_dollars: "1.0000",
+          expiration_value: "76282.84",
+          floor_strike: null,
+        },
+      }),
+    );
+
+    expect(settlementRecordSchema.safeParse(result.record).success).toBe(true);
+    expect(result.record.settledAt).toBe("2026-04-28T23:45:09.271Z");
+    expect(result.record.settlementPriceUsd).toBe(76_282.84);
+    expect(result.record.result).toBe("yes");
+  });
+
+  it("does not fail when floor_strike is null but settlement fields are present", () => {
+    const result = normalizeSettlement(
+      createSettlementBronze({
+        market: {
+          ...settlementBody,
+          floor_strike: null,
+          settlement_ts: "2026-04-28T23:45:09.271822Z",
+          expiration_value: "76282.84",
+          settlement_value_dollars: "1.0000",
+        },
+      }),
+    );
+
+    expect(result.record.strikePriceUsd).toBe(76_282.84);
+    expect(result.record.qualityFlags).toContain(DataQualityFlag.PARTIAL_WINDOW);
+  });
+
+  it("rejects deterministically when settlement value fields are missing", () => {
+    const bronze = createSettlementBronze({
+      market: {
+        floor_strike: null,
+        result: "yes",
+        settlement_ts: "2026-04-28T23:45:09.271822Z",
+      },
+    });
+
+    expect(() => normalizeSettlement(bronze)).toThrow(SilverMalformedPayloadError);
+
+    try {
+      normalizeSettlement(bronze);
+    } catch (error) {
+      expect(error).toBeInstanceOf(SilverMalformedPayloadError);
+      expect((error as SilverMalformedPayloadError).details.join(" ")).toMatch(
+        /expiration_value or settlement_value_dollars/i,
+      );
+    }
   });
 });
