@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
@@ -12,9 +13,10 @@ import { DEFAULT_ENGINE_CONFIG } from "@/lib/trading/config/defaults";
 
 const RUN_ID = "import-result-fixture-bridge";
 const DURATION_MS = 4_000;
+const FIXTURE_DIR = dirname(fileURLToPath(import.meta.url));
 
 function loadImportResultFixture(): HistoricalBronzeImportResult {
-  const fixturePath = resolve(process.cwd(), "import-result.json");
+  const fixturePath = resolve(FIXTURE_DIR, "fixtures/importResult.fixture.json");
   const raw = readFileSync(fixturePath, "utf8").replace(/^\uFEFF/, "");
   const parsed = JSON.parse(raw) as {
     jobId: string;

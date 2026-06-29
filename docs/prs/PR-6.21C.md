@@ -17,7 +17,7 @@ Live Kalshi settlement bronze records failed silver normalization during fixture
 |---|---|
 | `normalizeSettlement.ts` | Normalize `settlement_ts` via `new Date().toISOString()`; accept live `{ market: wire }` shape; resolve `settlementPriceUsd` from `expiration_value` or `settlement_value_dollars`; allow null `floor_strike` when settlement fields complete (flag `partial-window` when strike inferred) |
 | `normalizeSettlement.test.ts` | Live-shaped settlement cases + missing-value rejection |
-| `importResultFixtureBridge.test.ts` | Regression using repo `import-result.json` |
+| `importResultFixtureBridge.test.ts` | Regression using committed `fixtures/importResult.fixture.json` |
 
 ## Before / after
 
