@@ -31,6 +31,7 @@ const SAMPLE_MARKET: HistoricalMarketRecord = {
   eventTicker: "KXBTC15M-26JUN270115",
   status: "finalized",
   result: "yes",
+  openTime: "2026-06-27T01:00:00.000Z",
   closeTime: "2026-06-27T01:15:00.000Z",
   settlementTs: "2026-06-27T01:20:00.000Z",
   settlementValueDollars: "1.0000",
@@ -97,6 +98,7 @@ function createImporter(
 ): HistoricalImporter {
   return {
     listHistoricalMarkets: vi.fn(async () => SAMPLE_MARKETS_PAGE),
+    getHistoricalMarket: vi.fn(async () => SAMPLE_MARKET),
     getMarketCandlesticks: vi.fn(async () => SAMPLE_CANDLESTICKS),
     getHistoricalTrades: vi.fn(async () => ({
       trades: [],
@@ -119,11 +121,8 @@ describe("prefetchKalshiHistoricalBronzeImporter", () => {
     const importer = createImporter();
     await prefetchKalshiHistoricalBronzeImporter(prefetchInput({ importer }));
 
-    expect(importer.listHistoricalMarkets).toHaveBeenCalledTimes(1);
-    expect(importer.listHistoricalMarkets).toHaveBeenCalledWith(
-      "KXBTC15M",
-      EXPECTED_DATE_RANGE,
-    );
+    expect(importer.getHistoricalMarket).toHaveBeenCalledTimes(1);
+    expect(importer.getHistoricalMarket).toHaveBeenCalledWith(MARKET_TICKER);
     expect(importer.getMarketCandlesticks).toHaveBeenCalledTimes(1);
     expect(importer.getMarketCandlesticks).toHaveBeenCalledWith(
       MARKET_TICKER,
@@ -194,14 +193,11 @@ describe("prefetchKalshiHistoricalBronzeImporter", () => {
     ).rejects.toThrow(importerError);
   });
 
-  it("returns null when the markets page has no matching ticker", async () => {
+  it("returns null when historical market is unavailable", async () => {
     const syncImporter = await prefetchKalshiHistoricalBronzeImporter(
       prefetchInput({
         importer: createImporter({
-          listHistoricalMarkets: vi.fn(async () => ({
-            ...SAMPLE_MARKETS_PAGE,
-            markets: [],
-          })),
+          getHistoricalMarket: vi.fn(async () => null),
         }),
       }),
     );

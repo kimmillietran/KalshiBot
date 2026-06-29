@@ -2,8 +2,6 @@ import type {
   HistoricalCandlestickInterval,
   HistoricalCandlesticksResult,
   HistoricalDateRange,
-  HistoricalMarketRecord,
-  HistoricalMarketsPage,
   HistoricalSettlementResult,
 } from "@/lib/data/importers/kalshi/kalshiHistoricalTypes";
 
@@ -45,22 +43,6 @@ function toHistoricalDateRange(
     startTs: Math.floor(Date.parse(startTime) / 1000),
     endTs: Math.floor(Date.parse(endTime) / 1000),
   };
-}
-
-function deriveSeriesTicker(marketTicker: string): string {
-  const dashIndex = marketTicker.indexOf("-");
-  if (dashIndex <= 0) {
-    return marketTicker;
-  }
-
-  return marketTicker.slice(0, dashIndex);
-}
-
-function findMarketByTicker(
-  page: HistoricalMarketsPage,
-  ticker: string,
-): HistoricalMarketRecord | null {
-  return page.markets.find((market) => market.ticker === ticker) ?? null;
 }
 
 function normalizeSettlement(
@@ -127,10 +109,9 @@ export async function prefetchKalshiHistoricalBronzeImporter(
 ): Promise<KalshiHistoricalBronzeImporter> {
   const { importer, marketTicker, startTime, endTime } = input;
   const dateRange = toHistoricalDateRange(startTime, endTime);
-  const seriesTicker = deriveSeriesTicker(marketTicker);
 
-  const [marketsPage, candlesticks, settlementResult] = await Promise.all([
-    importer.listHistoricalMarkets(seriesTicker, dateRange),
+  const [market, candlesticks, settlementResult] = await Promise.all([
+    importer.getHistoricalMarket(marketTicker),
     importer.getMarketCandlesticks(marketTicker, CANDLESTICK_INTERVAL, dateRange),
     importer.getSettlementResult(marketTicker),
   ]);
@@ -138,7 +119,7 @@ export async function prefetchKalshiHistoricalBronzeImporter(
   const state: PrefetchedKalshiHistoricalBronzeState = deepFreeze({
     marketTicker,
     dateRange,
-    market: findMarketByTicker(marketsPage, marketTicker),
+    market,
     candlesticks,
     settlement: normalizeSettlement(settlementResult),
   });

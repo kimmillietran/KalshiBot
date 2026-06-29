@@ -26,6 +26,7 @@ export type HistoricalMarketRecord = {
   eventTicker: string;
   status: string;
   result: string;
+  openTime: string;
   closeTime: string;
   settlementTs: string | null;
   settlementValueDollars: string | null;

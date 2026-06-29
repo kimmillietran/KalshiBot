@@ -13,6 +13,7 @@ const sampleMarketWire = {
   event_ticker: "KXBTC15M-26JUN270115",
   status: "finalized",
   result: "yes",
+  open_time: "2026-06-27T01:00:00Z",
   close_time: "2026-06-27T01:15:00Z",
   settlement_ts: "2026-06-27T01:20:00Z",
   settlement_value_dollars: "1.0000",
@@ -62,6 +63,7 @@ describe("KalshiHistoricalImporter", () => {
         eventTicker: "KXBTC15M-26JUN270115",
         status: "finalized",
         result: "yes",
+        openTime: "2026-06-27T01:00:00Z",
         closeTime: "2026-06-27T01:15:00Z",
         settlementTs: "2026-06-27T01:20:00Z",
         settlementValueDollars: "1.0000",
@@ -167,6 +169,45 @@ describe("KalshiHistoricalImporter", () => {
 
     expect(cutoff.marketSettledTs).toBe("2026-03-27T00:00:00Z");
     expect(cutoff.provenance.source).toBe("kalshi-historical-api");
+  });
+
+  it("returns full market record from historical market endpoint", async () => {
+    const client = createFakeClient((url) => {
+      expect(url).toBe(
+        "https://example.test/trade-api/v2/historical/markets/KXBTC15M-26JUN270115-15",
+      );
+      return {
+        status: 200,
+        body: { market: sampleMarketWire },
+      };
+    });
+
+    const importer = createImporter(client);
+    const market = await importer.getHistoricalMarket("KXBTC15M-26JUN270115-15");
+
+    expect(market).toEqual({
+      ticker: "KXBTC15M-26JUN270115-15",
+      eventTicker: "KXBTC15M-26JUN270115",
+      status: "finalized",
+      result: "yes",
+      openTime: "2026-06-27T01:00:00Z",
+      closeTime: "2026-06-27T01:15:00Z",
+      settlementTs: "2026-06-27T01:20:00Z",
+      settlementValueDollars: "1.0000",
+      expirationValue: "60010.25",
+      floorStrike: 59990.31,
+    });
+  });
+
+  it("returns null when historical market endpoint responds with 404", async () => {
+    const client = createFakeClient(() => ({
+      status: 404,
+      body: { code: "not_found", message: "market not found" },
+    }));
+
+    const importer = createImporter(client);
+
+    await expect(importer.getHistoricalMarket("KXBTC-MISSING")).resolves.toBeNull();
   });
 
   it("returns settlement result from historical market endpoint", async () => {

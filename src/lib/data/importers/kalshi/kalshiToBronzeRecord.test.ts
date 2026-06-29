@@ -21,6 +21,7 @@ const marketWire = {
   event_ticker: "KXBTC15M-26JUN270115",
   status: "finalized",
   result: "yes",
+  open_time: "2026-06-27T01:00:00.000Z",
   close_time: "2026-06-27T01:15:00.000Z",
   settlement_ts: "2026-06-27T01:20:00.000Z",
   settlement_value_dollars: "1.0000",
@@ -138,5 +139,68 @@ describe("kalshiToBronzeRecord", () => {
     };
 
     expect(eventTimeFromMarketWire(wire)).toBe("2026-06-27T01:15:00.000Z");
+  });
+
+  it("normalizes settlement_ts with microsecond precision to millisecond EventTime", () => {
+    const wire = {
+      ...marketWire,
+      settlement_ts: "2026-04-28T23:45:09.271822Z",
+      close_time: "2026-06-27T01:15:00Z",
+    };
+
+    expect(eventTimeFromMarketWire(wire)).toBe("2026-04-28T23:45:09.271Z");
+  });
+
+  it("normalizes close_time without fractional seconds to .000Z", () => {
+    const wire = {
+      ...marketWire,
+      settlement_ts: null,
+      close_time: "2026-06-27T01:15:00Z",
+    };
+
+    expect(eventTimeFromMarketWire(wire)).toBe("2026-06-27T01:15:00.000Z");
+  });
+
+  it("throws deterministically for invalid market wire timestamps", () => {
+    expect(() =>
+      eventTimeFromMarketWire({
+        settlement_ts: null,
+        close_time: "not-a-timestamp",
+      }),
+    ).toThrow("Kalshi market wire close_time is invalid");
+
+    expect(() =>
+      eventTimeFromMarketWire({
+        settlement_ts: "also-invalid",
+        close_time: "2026-06-27T01:15:00.000Z",
+      }),
+    ).toThrow("Kalshi market wire settlement_ts is invalid");
+  });
+
+  it("accepts a live-shaped market wire mapped through rawHistoricalRecordSchema", () => {
+    const liveMarketWire = {
+      ticker: TICKER,
+      event_ticker: "KXBTC15M-26JUN270115",
+      status: "finalized",
+      result: "yes",
+      open_time: "2026-04-28T23:30:00Z",
+      close_time: "2026-04-28T23:45:00Z",
+      settlement_ts: "2026-04-28T23:45:09.271822Z",
+      settlement_value_dollars: "1.0000",
+      expiration_value: "60010.25",
+      floor_strike: 59_990.31,
+    };
+
+    const record = mapKalshiMarketPayloadToBronzeRecord({
+      ...baseInput,
+      rawPayload: liveMarketWire,
+      eventTime: eventTimeFromMarketWire(liveMarketWire),
+    });
+
+    expect(record.eventTime).toBe("2026-04-28T23:45:09.271Z");
+    expect((record.payload as typeof liveMarketWire).open_time).toBe("2026-04-28T23:30:00Z");
+    expect((record.payload as typeof liveMarketWire).close_time).toBe("2026-04-28T23:45:00Z");
+    expect((record.payload as typeof liveMarketWire).floor_strike).toBe(59_990.31);
+    expect(rawHistoricalRecordSchema.safeParse(record).success).toBe(true);
   });
 });

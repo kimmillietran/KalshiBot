@@ -43,6 +43,7 @@ const SAMPLE_MARKET_WIRE = {
   event_ticker: "KXBTC15M-26JUN262315",
   status: "finalized",
   result: "yes",
+  open_time: "2026-06-27T01:00:00.000Z",
   close_time: "2026-06-27T01:15:00.000Z",
   settlement_ts: "2026-06-27T01:20:00.000Z",
   settlement_value_dollars: "1.0000",
@@ -385,7 +386,7 @@ describe("unsupported provider config", () => {
 describe("KalshiHistoricalImporter wiring", () => {
   it("uses collectionTime for importer provenance timestamps", async () => {
     const fetchImpl = createBootstrapFetchImpl();
-    const importerSpy = vi.spyOn(KalshiHistoricalImporter.prototype, "listHistoricalMarkets");
+    const importerSpy = vi.spyOn(KalshiHistoricalImporter.prototype, "getHistoricalMarket");
     const config = buildHistoricalBronzeImportConfig(validConfigInput());
 
     await createHistoricalImportProvidersFromConfig({ config, fetchImpl });

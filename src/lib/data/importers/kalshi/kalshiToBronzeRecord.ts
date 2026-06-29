@@ -1,5 +1,6 @@
 import { fnv1a32, stableStringify } from "@/lib/trading/config/hashConfig";
 import { DataSource, type FetchProvenance } from "@/lib/data/provenance";
+import { isUtcIsoTimestamp } from "@/lib/data/timestamps";
 import type {
   CollectionTime,
   EventTime,
@@ -108,10 +109,34 @@ export function kalshiUnixSecondsToEventTime(unixSeconds: number): EventTime {
   return new Date(unixSeconds * 1000).toISOString() as EventTime;
 }
 
+/** Normalizes a Kalshi market wire timestamp to canonical UTC EventTime. */
+function normalizeMarketWireTimestamp(raw: string, label: string): EventTime {
+  const trimmed = raw.trim();
+  if (!trimmed) {
+    throw new Error(`Kalshi market wire ${label} is missing`);
+  }
+
+  const parsedMs = Date.parse(trimmed);
+  if (!Number.isFinite(parsedMs)) {
+    throw new Error(`Kalshi market wire ${label} is invalid`);
+  }
+
+  const normalized = new Date(parsedMs).toISOString();
+  if (!isUtcIsoTimestamp(normalized)) {
+    throw new Error(`Kalshi market wire ${label} could not be normalized to UTC ISO`);
+  }
+
+  return normalized as EventTime;
+}
+
 /** Derives event time from a market wire payload without mutating it. */
 export function eventTimeFromMarketWire(market: {
   settlement_ts?: string | null;
   close_time: string;
 }): EventTime {
-  return (market.settlement_ts ?? market.close_time) as EventTime;
+  if (market.settlement_ts !== null && market.settlement_ts !== undefined) {
+    return normalizeMarketWireTimestamp(market.settlement_ts, "settlement_ts");
+  }
+
+  return normalizeMarketWireTimestamp(market.close_time, "close_time");
 }

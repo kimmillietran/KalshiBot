@@ -12,6 +12,8 @@ import {
   kalshiUnixSecondsToEventTime,
   KALSHI_BRONZE_CONTENT_TYPE,
 } from "@/lib/data/importers/kalshi";
+import { DATASET_BRONZE_CONTENT_TYPE } from "@/lib/data/datasets/datasetTypes";
+import { validateHistoricalBronzeDataset } from "@/lib/data/datasets/validation";
 
 import { createKalshiHistoricalBronzeProvider } from "./KalshiHistoricalBronzeProvider";
 import type {
@@ -30,6 +32,7 @@ const SAMPLE_MARKET: HistoricalMarketRecord = {
   eventTicker: "KXBTC15M-26JUN270115",
   status: "finalized",
   result: "yes",
+  openTime: "2026-06-27T01:00:00.000Z",
   closeTime: "2026-06-27T01:15:00.000Z",
   settlementTs: "2026-06-27T01:20:00.000Z",
   settlementValueDollars: "1.0000",
@@ -73,6 +76,21 @@ const SAMPLE_SETTLEMENT: HistoricalSettlementResult = {
     fetchedAt: COLLECTION_TIME,
     requestPath: `/historical/markets/${MARKET_TICKER}`,
   },
+};
+
+const LIVE_MARKET_TICKER = "KXBTC15M-26APR281945-45";
+
+const LIVE_MARKET: HistoricalMarketRecord = {
+  ticker: LIVE_MARKET_TICKER,
+  eventTicker: "KXBTC15M-26APR281945",
+  status: "finalized",
+  result: "yes",
+  openTime: "2026-04-28T23:30:00Z",
+  closeTime: "2026-04-28T23:45:00Z",
+  settlementTs: "2026-04-28T23:45:09.271822Z",
+  settlementValueDollars: "1.0000",
+  expirationValue: "76282.84",
+  floorStrike: 76_266.61,
 };
 
 function providerInput(
@@ -282,5 +300,79 @@ describe("createKalshiHistoricalBronzeProvider", () => {
         close_time: string;
       })),
     );
+  });
+
+  it("preserves live-shaped market payload fields required by bronze validation", () => {
+    const provider = createProvider(
+      createImporter({
+        getMarketByTicker: vi.fn(() => LIVE_MARKET),
+      }),
+    );
+    const records = provider.importKalshiMarketRecords(
+      providerInput({ marketTicker: LIVE_MARKET_TICKER }),
+    );
+
+    expect(records).toHaveLength(1);
+    expect(records[0]?.contentType).toBe(KALSHI_BRONZE_CONTENT_TYPE.market);
+    expect(records[0]?.ticker).toBe(LIVE_MARKET_TICKER);
+    expect(records[0]?.eventTime).toBe("2026-04-28T23:45:09.271Z");
+    expect(rawHistoricalRecordSchema.safeParse(records[0]).success).toBe(true);
+
+    const payload = records[0]?.payload as Record<string, unknown>;
+    expect(payload.open_time).toBe("2026-04-28T23:30:00Z");
+    expect(payload.close_time).toBe("2026-04-28T23:45:00Z");
+    expect(payload.floor_strike).toBe(76_266.61);
+  });
+
+  it("passes validateHistoricalBronzeDataset for a complete live-shaped import set", () => {
+    const provider = createProvider(
+      createImporter({
+        getMarketByTicker: vi.fn(() => LIVE_MARKET),
+      }),
+    );
+    const input = providerInput({ marketTicker: LIVE_MARKET_TICKER });
+    const marketRecords = provider.importKalshiMarketRecords(input);
+    const candleRecords = provider.importKalshiCandleRecords(input);
+    const settlementRecords = provider.importKalshiSettlementRecords(input);
+
+    const btcBar = {
+      recordId: "live-btc",
+      ticker: LIVE_MARKET_TICKER,
+      contentType: DATASET_BRONZE_CONTENT_TYPE.BTC_KLINE,
+      eventTime: START_TIME,
+      collectionTime: COLLECTION_TIME,
+      observedAt: OBSERVED_AT,
+      payload: {
+        open_time: START_TIME,
+        close_time: END_TIME,
+        open_usd: 76_250.5,
+        high_usd: 76_290.25,
+        low_usd: 76_240.0,
+        close_usd: 76_282.84,
+        volume_btc: 8.5,
+      },
+      provenance: {
+        source: DataSource.COINBASE_SPOT,
+        collectionTime: COLLECTION_TIME,
+        observedAt: OBSERVED_AT,
+        fetchId: "coinbase-candles",
+      },
+    };
+
+    const validationResult = validateHistoricalBronzeDataset([
+      ...marketRecords,
+      ...candleRecords,
+      ...settlementRecords,
+      btcBar,
+    ]);
+
+    expect(
+      validationResult.errors.some(
+        (issue) =>
+          issue.message ===
+          "market payload requires open_time, close_time, and floor_strike",
+      ),
+    ).toBe(false);
+    expect(validationResult.valid).toBe(true);
   });
 });

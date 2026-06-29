@@ -33,6 +33,7 @@ type KalshiMarketWire = {
   event_ticker: string;
   status: string;
   result: string;
+  open_time: string;
   close_time: string;
   settlement_ts?: string | null;
   settlement_value_dollars?: string | null;
@@ -102,7 +103,12 @@ function requireFiniteTimestamp(label: string, value: string): number {
 }
 
 function marketRecordToWire(market: HistoricalMarketRecord): KalshiMarketWire {
-  if (!market.ticker.trim() || !market.closeTime.trim() || !market.expirationValue.trim()) {
+  if (
+    !market.ticker.trim()
+    || !market.openTime.trim()
+    || !market.closeTime.trim()
+    || !market.expirationValue.trim()
+  ) {
     throw new Error("Kalshi historical market response is missing required fields");
   }
 
@@ -111,6 +117,7 @@ function marketRecordToWire(market: HistoricalMarketRecord): KalshiMarketWire {
     event_ticker: market.eventTicker,
     status: market.status,
     result: market.result,
+    open_time: market.openTime,
     close_time: market.closeTime,
     settlement_ts: market.settlementTs,
     settlement_value_dollars: market.settlementValueDollars,
@@ -130,12 +137,15 @@ function settlementResultToWire(
     throw new Error("Kalshi historical settlement response is missing required fields");
   }
 
+  const settlementTime = settlement.settlementTs ?? "";
+
   return {
     ticker: settlement.ticker,
     event_ticker: settlement.ticker.split("-")[0] ?? settlement.ticker,
     status: settlement.status,
     result: settlement.result,
-    close_time: settlement.settlementTs,
+    open_time: settlementTime,
+    close_time: settlementTime,
     settlement_ts: settlement.settlementTs,
     settlement_value_dollars: settlement.settlementValueDollars,
     expiration_value: settlement.expirationValue,

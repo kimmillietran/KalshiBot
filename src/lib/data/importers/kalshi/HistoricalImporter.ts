@@ -3,6 +3,7 @@ import type {
   HistoricalCandlesticksResult,
   HistoricalCutoffTimestamps,
   HistoricalDateRange,
+  HistoricalMarketRecord,
   HistoricalMarketsPage,
   HistoricalPaginationOptions,
   HistoricalSettlementResult,
@@ -31,6 +32,8 @@ export interface HistoricalImporter {
   ): Promise<HistoricalTradesPage>;
 
   getHistoricalCutoff(): Promise<HistoricalCutoffTimestamps>;
+
+  getHistoricalMarket(ticker: string): Promise<HistoricalMarketRecord | null>;
 
   getSettlementResult(ticker: string): Promise<HistoricalSettlementResult>;
 }

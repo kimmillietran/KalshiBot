@@ -55,6 +55,7 @@ type KalshiMarketWire = {
   event_ticker: string;
   status: string;
   result: string;
+  open_time: string;
   close_time: string;
   settlement_ts?: string | null;
   settlement_value_dollars?: string | null;
@@ -158,6 +159,7 @@ function parseMarketRecord(market: KalshiMarketWire): HistoricalMarketRecord {
     eventTicker: market.event_ticker,
     status: market.status,
     result: market.result,
+    openTime: market.open_time,
     closeTime: market.close_time,
     settlementTs: market.settlement_ts ?? null,
     settlementValueDollars: market.settlement_value_dollars ?? null,
@@ -264,6 +266,21 @@ export class KalshiHistoricalImporter implements HistoricalImporter {
       ordersUpdatedTs: body.orders_updated_ts,
       provenance: buildProvenance(requestPath, fetchedAt),
     };
+  }
+
+  async getHistoricalMarket(ticker: string): Promise<HistoricalMarketRecord | null> {
+    const requestPath = buildHistoricalMarketPath(ticker);
+
+    try {
+      const body = await this.request<KalshiMarketResponseWire>(requestPath, "market");
+      return parseMarketRecord(body.market);
+    } catch (error) {
+      if (error instanceof KalshiHistoricalImporterError && error.status === 404) {
+        return null;
+      }
+
+      throw error;
+    }
   }
 
   async getSettlementResult(ticker: string): Promise<HistoricalSettlementResult> {
