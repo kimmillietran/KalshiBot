@@ -1,6 +1,10 @@
 import { readFileSync } from "node:fs";
 
-import { runConfiguredHistoricalBronzeImport } from "@/lib/data/importJobs";
+import {
+  runConfiguredHistoricalBronzeImport,
+  runHistoricalImportFromConfig,
+} from "@/lib/data/importJobs";
+import type { HistoricalImportFetchLike } from "@/lib/data/importJobs";
 
 import {
   buildHistoricalBronzeImportPlan,
@@ -13,6 +17,25 @@ import type {
   HistoricalImportCommandDeps,
   HistoricalImportCommandIo,
 } from "./types";
+
+export type RunHistoricalImportCommandOptions = {
+  deps?: HistoricalImportCommandDeps;
+  fetchImpl?: HistoricalImportFetchLike;
+};
+
+function normalizeCommandOptions(
+  options?: HistoricalImportCommandDeps | RunHistoricalImportCommandOptions,
+): RunHistoricalImportCommandOptions {
+  if (!options) {
+    return {};
+  }
+
+  if ("kalshiProvider" in options) {
+    return { deps: options };
+  }
+
+  return options;
+}
 
 export function parseInputPathFromArgv(argv: readonly string[]): string {
   for (let index = 0; index < argv.length; index += 1) {
@@ -48,8 +71,8 @@ export function runHistoricalImportCommand(
       process.stderr.write(text);
     },
   },
-  deps?: HistoricalImportCommandDeps,
-): number {
+  options?: HistoricalImportCommandDeps | RunHistoricalImportCommandOptions,
+): number | Promise<number> {
   try {
     const inputPath = parseInputPathFromArgv(argv);
     const dryRun = parseDryRunFromArgv(argv);
@@ -63,20 +86,31 @@ export function runHistoricalImportCommand(
       return 0;
     }
 
-    if (!deps) {
-      throw new HistoricalImportCommandError(
-        "Historical import execution requires injected providers",
-      );
+    const { deps, fetchImpl } = normalizeCommandOptions(options);
+
+    if (deps) {
+      const result = runConfiguredHistoricalBronzeImport({
+        config,
+        kalshiProvider: deps.kalshiProvider,
+        btcProvider: deps.btcProvider,
+      });
+
+      io.writeStdout(formatStdoutOutput(result.serialized));
+      return 0;
     }
 
-    const result = runConfiguredHistoricalBronzeImport({
-      config,
-      kalshiProvider: deps.kalshiProvider,
-      btcProvider: deps.btcProvider,
-    });
-
-    io.writeStdout(formatStdoutOutput(result.serialized));
-    return 0;
+    return runHistoricalImportFromConfig({ config, fetchImpl }).then(
+      (result) => {
+        io.writeStdout(formatStdoutOutput(result.serialized));
+        return 0;
+      },
+      (error: unknown) => {
+        const message =
+          error instanceof Error ? error.message : "Historical import command failed";
+        io.writeStderr(message.endsWith("\n") ? message : `${message}\n`);
+        return 1;
+      },
+    );
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Historical import command failed";
@@ -86,7 +120,8 @@ export function runHistoricalImportCommand(
 }
 
 export async function main(argv: readonly string[] = process.argv.slice(2)): Promise<number> {
-  return runHistoricalImportCommand(argv);
+  const result = runHistoricalImportCommand(argv);
+  return result instanceof Promise ? result : result;
 }
 
 if (process.env.VITEST !== "true") {

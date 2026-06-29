@@ -1,6 +1,6 @@
 import type {
-  BtcHistoricalBronzeProvider,
-  KalshiHistoricalBronzeProvider,
+  HistoricalImportFetchLike,
+  HistoricalImportProviders,
 } from "@/lib/data/importJobs";
 import {
   buildHistoricalBronzeImportConfig,
@@ -37,10 +37,9 @@ export class HistoricalImportCommandError extends Error {
   }
 }
 
-export type HistoricalImportCommandDeps = {
-  kalshiProvider: KalshiHistoricalBronzeProvider;
-  btcProvider: BtcHistoricalBronzeProvider;
-};
+export type HistoricalImportCommandDeps = HistoricalImportProviders;
+
+export type { HistoricalImportFetchLike };
 
 export type HistoricalImportCommandIo = {
   readFile: (path: string) => string;

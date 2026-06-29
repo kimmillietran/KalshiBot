@@ -53,3 +53,16 @@ export type {
 
 export { runConfiguredHistoricalBronzeImport } from "./harness";
 export type { RunConfiguredHistoricalBronzeImportInput } from "./harness";
+
+export {
+  createHistoricalImportProvidersFromConfig,
+  runHistoricalImportFromConfig,
+  HistoricalImportBootstrapError,
+  HistoricalImportBootstrapErrorCode,
+} from "./bootstrap";
+export type {
+  CreateHistoricalImportProvidersFromConfigInput,
+  HistoricalImportFetchLike,
+  HistoricalImportProviders,
+  RunHistoricalImportFromConfigInput,
+} from "./bootstrap";

@@ -26,7 +26,19 @@ import {
   parseHistoricalImportInputJson,
   serializeHistoricalBronzeImportPlan,
 } from "./types";
-import type { HistoricalImportCommandDeps } from "./types";
+import type { HistoricalImportCommandDeps, HistoricalImportFetchLike } from "./types";
+
+async function runCommand(
+  argv: readonly string[],
+  io: ReturnType<typeof createIo>["io"],
+  options?: HistoricalImportCommandDeps | {
+    deps?: HistoricalImportCommandDeps;
+    fetchImpl?: HistoricalImportFetchLike;
+  },
+): Promise<number> {
+  const result = runHistoricalImportCommand(argv, io, options);
+  return result instanceof Promise ? result : result;
+}
 
 const START_TIME = "2026-06-26T23:15:00.000Z";
 const END_TIME = "2026-06-26T23:30:00.000Z";
@@ -34,6 +46,72 @@ const WINDOW_CLOSE = "2026-06-26T23:30:00.000Z";
 const COLLECTION_TIME = "2026-06-27T01:00:00.000Z";
 const OBSERVED_AT = "2026-06-27T01:00:05.000Z";
 const MARKET_TICKER = "KXBTC15M-26JUN262315-15";
+
+const SAMPLE_MARKET_WIRE = {
+  ticker: MARKET_TICKER,
+  event_ticker: "KXBTC15M-26JUN262315",
+  status: "finalized",
+  result: "yes",
+  close_time: "2026-06-27T01:15:00.000Z",
+  settlement_ts: "2026-06-27T01:20:00.000Z",
+  settlement_value_dollars: "1.0000",
+  expiration_value: "60010.25",
+  floor_strike: 59_990.31,
+};
+
+function jsonResponse(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+function createBootstrapFetchImpl(): HistoricalImportFetchLike {
+  return vi.fn(async (url: string) => {
+    if (url.includes("/historical/markets?")) {
+      return jsonResponse({
+        markets: [SAMPLE_MARKET_WIRE],
+        cursor: "",
+      });
+    }
+
+    if (url.includes("/candlesticks")) {
+      return jsonResponse({
+        ticker: MARKET_TICKER,
+        candlesticks: [
+          {
+            end_period_ts: Math.floor(Date.parse(START_TIME) / 1000) + 60,
+            volume: "12.00",
+            open_interest: "45.00",
+            price: { close: "0.5200" },
+          },
+        ],
+      });
+    }
+
+    if (url.includes(`/historical/markets/${MARKET_TICKER}`)) {
+      return jsonResponse({ market: SAMPLE_MARKET_WIRE });
+    }
+
+    if (url.includes("/api/v3/klines")) {
+      const openTimeMs = Date.parse(START_TIME);
+      const closeTimeMs = Date.parse(START_TIME) + 59_999;
+      return jsonResponse([
+        [
+          openTimeMs,
+          "59980.50",
+          "60010.25",
+          "59960.00",
+          "59995.75",
+          "12.5",
+          closeTimeMs,
+        ],
+      ]);
+    }
+
+    throw new Error(`Unexpected fetch URL: ${url}`);
+  });
+}
 
 function validInputDocument(
   overrides: Partial<BuildHistoricalBronzeImportConfigInput> = {},
@@ -302,11 +380,11 @@ describe("runHistoricalImportCommand dry-run", () => {
 });
 
 describe("runHistoricalImportCommand execute mode", () => {
-  it("runs the configured import harness and prints job result JSON", () => {
+  it("runs the configured import harness and prints job result JSON", async () => {
     const deps = createCommandDeps();
     const { io, stdout } = createIo(JSON.stringify(validInputDocument()));
 
-    expect(runHistoricalImportCommand(["--input", "config.json"], io, deps)).toBe(0);
+    expect(await runCommand(["--input", "config.json"], io, deps)).toBe(0);
 
     const parsed = JSON.parse(stdout[0]!.trimEnd());
     expect(parsed.jobId).toBe("import-job-6.16a");
@@ -316,11 +394,11 @@ describe("runHistoricalImportCommand execute mode", () => {
     expect(parsed.metadata.valid).toBe(true);
   });
 
-  it("calls each injected provider once", () => {
+  it("calls each injected provider once", async () => {
     const deps = createCommandDeps();
     const { io } = createIo(JSON.stringify(validInputDocument()));
 
-    runHistoricalImportCommand(["--input", "config.json"], io, deps);
+    await runCommand(["--input", "config.json"], io, deps);
 
     const expectedProviderInput = {
       marketTicker: MARKET_TICKER,
@@ -342,14 +420,14 @@ describe("runHistoricalImportCommand execute mode", () => {
     );
   });
 
-  it("writes deterministic execute stdout for repeated runs", () => {
+  it("writes deterministic execute stdout for repeated runs", async () => {
     const json = JSON.stringify(validInputDocument());
     const firstRun = createIo(json);
     const secondRun = createIo(json);
     const deps = createCommandDeps();
 
-    runHistoricalImportCommand(["--input", "config.json"], firstRun.io, deps);
-    runHistoricalImportCommand(["--input", "config.json"], secondRun.io, deps);
+    await runCommand(["--input", "config.json"], firstRun.io, deps);
+    await runCommand(["--input", "config.json"], secondRun.io, deps);
 
     expect(firstRun.stdout).toEqual(secondRun.stdout);
   });
@@ -369,7 +447,7 @@ describe("runHistoricalImportCommand execute mode", () => {
     expect(Object.isFrozen(result.metadata)).toBe(true);
   });
 
-  it("propagates provider errors to stderr", () => {
+  it("propagates provider errors to stderr", async () => {
     const deps = createCommandDeps();
     const providerError = new Error("provider import failed");
     (
@@ -379,24 +457,66 @@ describe("runHistoricalImportCommand execute mode", () => {
     });
     const { io, stdout, stderr } = createIo(JSON.stringify(validInputDocument()));
 
-    expect(runHistoricalImportCommand(["--input", "config.json"], io, deps)).toBe(1);
+    expect(await runCommand(["--input", "config.json"], io, deps)).toBe(1);
     expect(stdout).toEqual([]);
     expect(stderr).toEqual(["provider import failed\n"]);
   });
 
-  it("requires injected providers for execute mode", () => {
-    const { io, stdout, stderr } = createIo(JSON.stringify(validInputDocument()));
+  it("constructs providers and executes import when deps are omitted", async () => {
+    const fetchImpl = createBootstrapFetchImpl();
+    const { io, stdout } = createIo(JSON.stringify(validInputDocument()));
 
-    expect(runHistoricalImportCommand(["--input", "config.json"], io)).toBe(1);
-    expect(stdout).toEqual([]);
-    expect(stderr[0]).toContain("requires injected providers");
+    expect(
+      await runCommand(["--input", "config.json"], io, { fetchImpl }),
+    ).toBe(0);
+
+    const parsed = JSON.parse(stdout[0]!.trimEnd());
+    expect(parsed.jobId).toBe("import-job-6.16a");
+    expect(parsed.bronzeRecords.length).toBeGreaterThan(0);
+    expect(fetchImpl).toHaveBeenCalled();
   });
 
-  it("does not write output files in execute mode", () => {
+  it("writes deterministic bootstrap execute stdout from mocked fetch responses", async () => {
+    const json = JSON.stringify(validInputDocument());
+    const firstRun = createIo(json);
+    const secondRun = createIo(json);
+    const fetchImpl = createBootstrapFetchImpl();
+
+    await runCommand(["--input", "config.json"], firstRun.io, { fetchImpl });
+    await runCommand(["--input", "config.json"], secondRun.io, { fetchImpl });
+
+    expect(firstRun.stdout).toEqual(secondRun.stdout);
+    expect(() => JSON.parse(firstRun.stdout[0]!.trimEnd())).not.toThrow();
+  });
+
+  it("uses injected fetchImpl without calling global fetch", async () => {
+    const fetchImpl = createBootstrapFetchImpl();
+    const globalFetchSpy = vi.spyOn(globalThis, "fetch");
+    const { io } = createIo(JSON.stringify(validInputDocument()));
+
+    await runCommand(["--input", "config.json"], io, { fetchImpl });
+
+    expect(fetchImpl).toHaveBeenCalled();
+    expect(globalFetchSpy).not.toHaveBeenCalled();
+    globalFetchSpy.mockRestore();
+  });
+
+  it("propagates bootstrap errors to stderr", async () => {
+    const fetchImpl = vi.fn(async () =>
+      jsonResponse({ code: "bad_request", message: "bootstrap fetch failed" }, 400),
+    );
+    const { io, stdout, stderr } = createIo(JSON.stringify(validInputDocument()));
+
+    expect(await runCommand(["--input", "config.json"], io, { fetchImpl })).toBe(1);
+    expect(stdout).toEqual([]);
+    expect(stderr[0]).toMatch(/failed|Kalshi historical API error/i);
+  });
+
+  it("does not write output files in execute mode", async () => {
     const deps = createCommandDeps();
     const { io, writeFile } = createIo(JSON.stringify(validInputDocument()));
 
-    runHistoricalImportCommand(["--input", "config.json"], io, deps);
+    await runCommand(["--input", "config.json"], io, deps);
 
     expect(writeFile).not.toHaveBeenCalled();
   });

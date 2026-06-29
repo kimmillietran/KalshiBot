@@ -408,6 +408,10 @@ export {
   sortBtcBronzeRecords,
   validateBtcHistoricalBar,
   runConfiguredHistoricalBronzeImport,
+  createHistoricalImportProvidersFromConfig,
+  runHistoricalImportFromConfig,
+  HistoricalImportBootstrapError,
+  HistoricalImportBootstrapErrorCode,
 } from "./importJobs";
 export type {
   BtcHistoricalBar,
@@ -430,6 +434,10 @@ export type {
   MapBtcHistoricalBarToBronzeRecordInput,
   RunConfiguredHistoricalBronzeImportInput,
   RunHistoricalBronzeImportJobInput,
+  CreateHistoricalImportProvidersFromConfigInput,
+  HistoricalImportFetchLike,
+  HistoricalImportProviders,
+  RunHistoricalImportFromConfigInput,
 } from "./importJobs";
 
 export {
