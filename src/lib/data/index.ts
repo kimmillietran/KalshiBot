@@ -473,6 +473,13 @@ export {
   DEFAULT_BINANCE_SPOT_KLINES_BASE,
   buildBinanceKlinesUrl,
   createBtcHistoricalImporter,
+  CoinbaseHistoricalHttpAdapter,
+  CoinbaseHistoricalHttpAdapterError,
+  COINBASE_HISTORICAL_PRODUCT_ID,
+  COINBASE_MAX_CANDLES_PER_REQUEST,
+  DEFAULT_COINBASE_EXCHANGE_API_BASE,
+  buildCoinbaseCandlesUrl,
+  createCoinbaseHistoricalImporter,
 } from "./importers/btc";
 export type {
   BtcHistoricalHttpAdapterOptions,
@@ -483,4 +490,9 @@ export type {
   CreateBtcHistoricalImporterInput,
   FetchLike as BtcHistoricalFetchLike,
   GetHistoricalBarsInput,
+  CoinbaseHistoricalHttpAdapterOptions,
+  CoinbaseHistoricalHttpClient,
+  CoinbaseHistoricalHttpFetchCandlesInput,
+  CreateCoinbaseHistoricalImporterInput,
+  FetchLike as CoinbaseHistoricalFetchLike,
 } from "./importers/btc";
