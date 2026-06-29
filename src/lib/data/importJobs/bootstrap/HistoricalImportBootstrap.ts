@@ -2,7 +2,9 @@ import { DataSource } from "@/lib/data/provenance";
 import {
   BtcHistoricalHttpAdapter,
   BtcHistoricalInterval,
+  CoinbaseHistoricalHttpAdapter,
   createBtcHistoricalImporter,
+  createCoinbaseHistoricalImporter,
 } from "@/lib/data/importers/btc";
 import type {
   BtcHistoricalImporter,
@@ -69,15 +71,23 @@ function resolveFetchImpl(fetchImpl?: HistoricalImportFetchLike): HistoricalImpo
   return globalThis.fetch.bind(globalThis);
 }
 
-function mapBtcProviderSource(
-  provider: HistoricalBronzeImportConfig["btc"]["provider"],
-): (typeof DataSource)[keyof typeof DataSource] {
-  if (provider === HistoricalBronzeImportBtcProvider.BINANCE_SPOT) {
-    return DataSource.BINANCE_SPOT;
+function createBtcImporterFromConfig(
+  config: HistoricalBronzeImportConfig,
+  fetchImpl: HistoricalImportFetchLike,
+): BtcHistoricalImporter {
+  if (config.btc.provider === HistoricalBronzeImportBtcProvider.BINANCE_SPOT) {
+    const httpAdapter = new BtcHistoricalHttpAdapter({ fetchImpl });
+    return createBtcHistoricalImporter({
+      httpClient: httpAdapter,
+      source: DataSource.BINANCE_SPOT,
+    });
   }
 
-  if (provider === HistoricalBronzeImportBtcProvider.COINBASE_SPOT) {
-    return DataSource.COINBASE_SPOT;
+  if (config.btc.provider === HistoricalBronzeImportBtcProvider.COINBASE_SPOT) {
+    const httpAdapter = new CoinbaseHistoricalHttpAdapter({ fetchImpl });
+    return createCoinbaseHistoricalImporter({
+      httpClient: httpAdapter,
+    });
   }
 
   throw new HistoricalImportBootstrapError(
@@ -133,11 +143,7 @@ async function createBtcProviderFromConfig(
   config: HistoricalBronzeImportConfig,
   fetchImpl: HistoricalImportFetchLike,
 ) {
-  const httpAdapter = new BtcHistoricalHttpAdapter({ fetchImpl });
-  const importer = createBtcHistoricalImporter({
-    httpClient: httpAdapter,
-    source: mapBtcProviderSource(config.btc.provider),
-  });
+  const importer = createBtcImporterFromConfig(config, fetchImpl);
   const interval = mapBtcInterval(config.btc.interval);
   const bars = await importer.getHistoricalBars({
     symbol: config.btc.symbol,

@@ -109,6 +109,13 @@ function createBootstrapFetchImpl(): HistoricalImportFetchLike {
       ]);
     }
 
+    if (url.includes("/products/") && url.includes("/candles")) {
+      const openTimeSec = Math.floor(Date.parse(START_TIME) / 1000);
+      return jsonResponse([
+        [openTimeSec, 59_960, 60_010.25, 59_980.5, 59_995.75, 12.5],
+      ]);
+    }
+
     throw new Error(`Unexpected fetch URL: ${url}`);
   });
 }
@@ -474,6 +481,34 @@ describe("runHistoricalImportCommand execute mode", () => {
     expect(parsed.jobId).toBe("import-job-6.16a");
     expect(parsed.bronzeRecords.length).toBeGreaterThan(0);
     expect(fetchImpl).toHaveBeenCalled();
+  });
+
+  it("constructs Coinbase providers and executes import when deps are omitted", async () => {
+    const fetchImpl = createBootstrapFetchImpl();
+    const { io, stdout } = createIo(
+      JSON.stringify(
+        validInputDocument({
+          btc: {
+            provider: HistoricalBronzeImportBtcProvider.COINBASE_SPOT,
+            symbol: "BTC-USD",
+            interval: HistoricalBronzeImportBtcInterval.ONE_MINUTE,
+          },
+        }),
+      ),
+    );
+
+    expect(
+      await runCommand(["--input", "config.json"], io, { fetchImpl }),
+    ).toBe(0);
+
+    const parsed = JSON.parse(stdout[0]!.trimEnd());
+    expect(parsed.jobId).toBe("import-job-6.16a");
+    expect(parsed.bronzeRecords.length).toBeGreaterThan(0);
+    expect(
+      (fetchImpl as ReturnType<typeof vi.fn>).mock.calls.some(([url]) =>
+        String(url).includes("/products/") && String(url).includes("/candles"),
+      ),
+    ).toBe(true);
   });
 
   it("writes deterministic bootstrap execute stdout from mocked fetch responses", async () => {

@@ -8,9 +8,14 @@ import {
   HistoricalBronzeImportKalshiSource,
   HistoricalBronzeImportOutputFormat,
 } from "@/lib/data/importJobs/config";
-import type { BuildHistoricalBronzeImportConfigInput } from "@/lib/data/importJobs/config";
+import type {
+  BuildHistoricalBronzeImportConfigInput,
+  HistoricalBronzeImportConfig,
+} from "@/lib/data/importJobs/config";
+import * as btcImporters from "@/lib/data/importers/btc";
 import {
   BtcHistoricalHttpAdapter,
+  CoinbaseHistoricalHttpAdapter,
 } from "@/lib/data/importers/btc";
 import {
   KalshiHistoricalHttpAdapter,
@@ -21,6 +26,10 @@ import {
   createHistoricalImportProvidersFromConfig,
   runHistoricalImportFromConfig,
 } from "./HistoricalImportBootstrap";
+import {
+  HistoricalImportBootstrapError,
+  HistoricalImportBootstrapErrorCode,
+} from "./historicalImportBootstrapTypes";
 import type { HistoricalImportFetchLike } from "./historicalImportBootstrapTypes";
 
 const START_TIME = "2026-06-26T23:15:00.000Z";
@@ -123,6 +132,13 @@ function createBootstrapFetchImpl(): HistoricalImportFetchLike {
       ]);
     }
 
+    if (url.includes("/products/") && url.includes("/candles")) {
+      const openTimeSec = Math.floor(Date.parse(START_TIME) / 1000);
+      return jsonResponse([
+        [openTimeSec, 59_960, 60_010.25, 59_980.5, 59_995.75, 12.5],
+      ]);
+    }
+
     throw new Error(`Unexpected fetch URL: ${url}`);
   });
 }
@@ -161,6 +177,68 @@ describe("createHistoricalImportProvidersFromConfig", () => {
     ).toBe(true);
 
     btcFetchSpy.mockRestore();
+  });
+
+  it("selects the Binance BTC importer for BINANCE_SPOT", async () => {
+    const createBinanceSpy = vi.spyOn(btcImporters, "createBtcHistoricalImporter");
+    const createCoinbaseSpy = vi.spyOn(btcImporters, "createCoinbaseHistoricalImporter");
+    const config = buildHistoricalBronzeImportConfig(validConfigInput());
+
+    await createHistoricalImportProvidersFromConfig({
+      config,
+      fetchImpl: createBootstrapFetchImpl(),
+    });
+
+    expect(createBinanceSpy).toHaveBeenCalledOnce();
+    expect(createCoinbaseSpy).not.toHaveBeenCalled();
+
+    createBinanceSpy.mockRestore();
+    createCoinbaseSpy.mockRestore();
+  });
+
+  it("selects the Coinbase BTC importer for COINBASE_SPOT", async () => {
+    const createBinanceSpy = vi.spyOn(btcImporters, "createBtcHistoricalImporter");
+    const createCoinbaseSpy = vi.spyOn(btcImporters, "createCoinbaseHistoricalImporter");
+    const coinbaseFetchSpy = vi.spyOn(
+      CoinbaseHistoricalHttpAdapter.prototype,
+      "fetchCandles",
+    );
+    const config = buildHistoricalBronzeImportConfig(
+      validConfigInput({
+        btc: {
+          provider: HistoricalBronzeImportBtcProvider.COINBASE_SPOT,
+          symbol: "BTC-USD",
+          interval: HistoricalBronzeImportBtcInterval.ONE_MINUTE,
+        },
+      }),
+    );
+
+    await createHistoricalImportProvidersFromConfig({
+      config,
+      fetchImpl: createBootstrapFetchImpl(),
+    });
+
+    expect(createCoinbaseSpy).toHaveBeenCalledOnce();
+    expect(createBinanceSpy).not.toHaveBeenCalled();
+    expect(coinbaseFetchSpy).toHaveBeenCalled();
+
+    const { btcProvider } = await createHistoricalImportProvidersFromConfig({
+      config,
+      fetchImpl: createBootstrapFetchImpl(),
+    });
+    const btcRecords = btcProvider.importBtcKlineRecords({
+      marketTicker: MARKET_TICKER,
+      startTime: START_TIME,
+      endTime: END_TIME,
+      collectionTime: COLLECTION_TIME,
+      observedAt: OBSERVED_AT,
+    });
+    expect(btcRecords).toHaveLength(1);
+    expect(btcRecords[0]!.provenance.source).toBe("coinbase-spot");
+
+    createBinanceSpy.mockRestore();
+    createCoinbaseSpy.mockRestore();
+    coinbaseFetchSpy.mockRestore();
   });
 
   it("uses injected fetchImpl and does not call global fetch", async () => {
@@ -230,6 +308,36 @@ describe("runHistoricalImportFromConfig", () => {
     expect(first.jobId).toBe("import-job-bootstrap");
     expect(first.bronzeRecords.length).toBeGreaterThan(0);
   });
+
+  it("returns identical bootstrap output for repeated identical config", async () => {
+    const config = buildHistoricalBronzeImportConfig(
+      validConfigInput({
+        btc: {
+          provider: HistoricalBronzeImportBtcProvider.COINBASE_SPOT,
+          symbol: "BTC-USD",
+          interval: HistoricalBronzeImportBtcInterval.ONE_MINUTE,
+        },
+      }),
+    );
+    const fetchImpl = createBootstrapFetchImpl();
+
+    const first = await runHistoricalImportFromConfig({ config, fetchImpl });
+    const second = await runHistoricalImportFromConfig({ config, fetchImpl });
+
+    expect(first.serialized).toBe(second.serialized);
+  });
+
+  it("does not call writeFile during bootstrap execution", async () => {
+    const writeFile = vi.fn();
+    const config = buildHistoricalBronzeImportConfig(validConfigInput());
+
+    await runHistoricalImportFromConfig({
+      config,
+      fetchImpl: createBootstrapFetchImpl(),
+    });
+
+    expect(writeFile).not.toHaveBeenCalled();
+  });
 });
 
 describe("unsupported provider config", () => {
@@ -245,6 +353,32 @@ describe("unsupported provider config", () => {
         }),
       ),
     ).toThrow(HistoricalBronzeImportConfigError);
+  });
+
+  it("is rejected by bootstrap when an unsupported provider bypasses validation", async () => {
+    const validConfig = buildHistoricalBronzeImportConfig(validConfigInput());
+    const unsupportedConfig = {
+      ...validConfig,
+      btc: {
+        ...validConfig.btc,
+        provider: "kraken-spot" as HistoricalBronzeImportBtcProvider,
+      },
+    } as HistoricalBronzeImportConfig;
+
+    await expect(
+      createHistoricalImportProvidersFromConfig({
+        config: unsupportedConfig,
+        fetchImpl: createBootstrapFetchImpl(),
+      }),
+    ).rejects.toMatchObject({
+      code: HistoricalImportBootstrapErrorCode.UNSUPPORTED_BTC_PROVIDER,
+    });
+    await expect(
+      createHistoricalImportProvidersFromConfig({
+        config: unsupportedConfig,
+        fetchImpl: createBootstrapFetchImpl(),
+      }),
+    ).rejects.toThrow(HistoricalImportBootstrapError);
   });
 });
 
