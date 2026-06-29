@@ -412,6 +412,10 @@ export {
   runHistoricalImportFromConfig,
   HistoricalImportBootstrapError,
   HistoricalImportBootstrapErrorCode,
+  ImportFixtureBridgeError,
+  ImportFixtureBridgeErrorCode,
+  buildHistoricalResearchFixtureFromImportResult,
+  serializeHistoricalResearchFixtureFromImportResult,
 } from "./importJobs";
 export type {
   BtcHistoricalBar,
@@ -438,6 +442,7 @@ export type {
   HistoricalImportFetchLike,
   HistoricalImportProviders,
   RunHistoricalImportFromConfigInput,
+  BuildHistoricalResearchFixtureFromImportResultInput,
 } from "./importJobs";
 
 export {

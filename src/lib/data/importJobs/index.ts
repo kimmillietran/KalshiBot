@@ -66,3 +66,11 @@ export type {
   HistoricalImportProviders,
   RunHistoricalImportFromConfigInput,
 } from "./bootstrap";
+
+export {
+  ImportFixtureBridgeError,
+  ImportFixtureBridgeErrorCode,
+  buildHistoricalResearchFixtureFromImportResult,
+  serializeHistoricalResearchFixtureFromImportResult,
+} from "./fixtureBridge";
+export type { BuildHistoricalResearchFixtureFromImportResultInput } from "./fixtureBridge";
