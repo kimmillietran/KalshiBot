@@ -20,7 +20,13 @@ export class StrategyRegistryError extends Error {
   }
 }
 
-export const BUILTIN_STRATEGY_IDS = ["noop", "buy-first-ask"] as const;
+export const BUILTIN_STRATEGY_IDS = [
+  "noop",
+  "buy-first-ask",
+  "buy-below-probability",
+  "simple-momentum",
+  "simple-mean-reversion",
+] as const;
 
 export type BuiltinStrategyId = (typeof BUILTIN_STRATEGY_IDS)[number];
 

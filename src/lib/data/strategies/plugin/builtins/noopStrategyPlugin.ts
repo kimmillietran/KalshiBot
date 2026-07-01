@@ -2,12 +2,14 @@ import { z } from "zod";
 
 import type { StrategyPlugin, StrategyPluginConfig } from "../strategyPluginTypes";
 
-const noopConfigSchema: z.ZodType<StrategyPluginConfig> = z.object({}).strict();
+const noopConfigSchema = z.object({}).strict();
 
-export const noopStrategyPlugin: StrategyPlugin<StrategyPluginConfig> = {
+export type NoopStrategyPluginConfig = z.infer<typeof noopConfigSchema>;
+
+export const noopStrategyPlugin: StrategyPlugin = {
   strategyId: "noop",
   description: "Never emits trade intents",
-  configSchema: noopConfigSchema,
+  configSchema: noopConfigSchema as z.ZodType<StrategyPluginConfig>,
   createInitialState: () => ({}),
   decide: () => ({
     intents: [],

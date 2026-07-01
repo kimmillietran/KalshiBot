@@ -1,5 +1,6 @@
 import type { BacktestStrategy } from "@/lib/data/backtesting/strategyTypes";
 
+import { createBuiltInStrategyPluginRegistry } from "./baseline/baselineStrategyPack";
 import { buyFirstAskIntent } from "./builtins/buyFirstAskIntent";
 import {
   StrategyRegistryError,
@@ -31,13 +32,22 @@ function deepFreeze<T>(value: T): T {
   return value;
 }
 
+function buildBuiltInDefinitions(): StrategyDefinition[] {
+  const registry = createBuiltInStrategyPluginRegistry();
+  return registry.listStrategyIds().map((strategyId) => {
+    const plugin = registry.getPlugin(strategyId);
+    return deepFreeze({
+      strategyId,
+      description: plugin.description,
+      strategy: registry.resolveBacktestStrategy(strategyId),
+    });
+  });
+}
+
 export const noopStrategyDefinition: StrategyDefinition = deepFreeze({
   strategyId: "noop",
   description: "Never emits trade intents",
-  strategy: {
-    strategyId: "noop",
-    decide: () => [],
-  },
+  strategy: createBuiltInStrategyPluginRegistry().resolveBacktestStrategy("noop"),
 });
 
 export const buyFirstAskStrategyDefinition: StrategyDefinition = deepFreeze({
@@ -116,7 +126,7 @@ export class StrategyRegistry {
 
   static createBuiltIn(): StrategyRegistry {
     return StrategyRegistry.create({
-      definitions: [noopStrategyDefinition, buyFirstAskStrategyDefinition],
+      definitions: buildBuiltInDefinitions(),
     });
   }
 

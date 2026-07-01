@@ -7,7 +7,6 @@ import {
   StrategyRegistry,
   StrategyRegistryError,
   StrategyRegistryErrorCode,
-  buyFirstAskStrategyDefinition,
   noopStrategyDefinition,
 } from "./StrategyRegistry";
 import type { StrategyDefinition } from "./strategyRegistryTypes";
@@ -204,12 +203,22 @@ describe("StrategyRegistry", () => {
   });
 
   it("lists strategy ids in deterministic lexicographic order", () => {
-    const registry = StrategyRegistry.create({
-      definitions: [buyFirstAskStrategyDefinition, noopStrategyDefinition],
-    });
+    const registry = StrategyRegistry.createBuiltIn();
 
-    expect(registry.listStrategyIds()).toEqual(["buy-first-ask", "noop"]);
-    expect(registry.snapshot().strategyIds).toEqual(["buy-first-ask", "noop"]);
+    expect(registry.listStrategyIds()).toEqual([
+      "buy-below-probability",
+      "buy-first-ask",
+      "noop",
+      "simple-mean-reversion",
+      "simple-momentum",
+    ]);
+    expect(registry.snapshot().strategyIds).toEqual([
+      "buy-below-probability",
+      "buy-first-ask",
+      "noop",
+      "simple-mean-reversion",
+      "simple-momentum",
+    ]);
   });
 
   it("returns an immutable registry snapshot", () => {

@@ -6,8 +6,8 @@ export {
 export { adaptStrategyPluginToBacktestStrategy } from "./adaptStrategyPlugin";
 export {
   resolveResearchStrategy,
-  createBuiltInStrategyPluginRegistry,
 } from "./resolveResearchStrategy";
+export { createBuiltInStrategyPluginRegistry } from "../baseline/baselineStrategyPack";
 export {
   StrategyPluginError,
   StrategyPluginErrorCode,

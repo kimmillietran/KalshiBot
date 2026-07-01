@@ -39,9 +39,15 @@ export type HistoricalResearchCommandIo = {
 
 export function resolveBuiltinStrategy(
   strategyId: BuiltinStrategyId,
-  strategyConfig?: Record<string, unknown>,
+  strategyConfig: unknown = {},
 ): BacktestStrategy {
-  return resolveResearchStrategy({ strategyId, strategyConfig });
+  try {
+    return resolveResearchStrategy({ strategyId, strategyConfig });
+  } catch (error) {
+    throw new HistoricalResearchCommandError(
+      error instanceof Error ? error.message : "Failed to resolve strategy",
+    );
+  }
 }
 
 export function parseFormatFromArgv(

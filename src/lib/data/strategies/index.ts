@@ -1,4 +1,13 @@
 export {
+  ALL_BASELINE_STRATEGY_PLUGINS,
+  BASELINE_STRATEGY_IDS,
+  createBaselineStrategyPluginRegistry,
+  createBuiltInStrategyPluginRegistry,
+  getBaselineStrategyPlugin,
+} from "./baseline/baselineStrategyPack";
+export type { BaselineStrategyId } from "./baseline/baselineStrategyPlugins";
+
+export {
   StrategyRegistry,
   noopStrategyDefinition,
   buyFirstAskStrategyDefinition,
@@ -18,7 +27,6 @@ export {
   StrategyPluginRegistry,
   adaptStrategyPluginToBacktestStrategy,
   resolveResearchStrategy,
-  createBuiltInStrategyPluginRegistry,
   noopStrategyPlugin,
   buyFirstAskStrategyPlugin,
   StrategyPluginError,

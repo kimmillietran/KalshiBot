@@ -50,6 +50,7 @@ export const historicalResearchCliInputSchema = z.object({
     .array(rawHistoricalRecordSchema)
     .min(1, "At least one bronze record is required"),
   strategyId: z.enum(BUILTIN_STRATEGY_IDS),
+  strategyConfig: z.record(z.string(), z.unknown()).optional(),
   engineConfig: engineConfigSchema,
   fillConfig: fillConfigSchema.optional(),
   metricsConfig: metricsConfigSchema.optional(),

@@ -1,3 +1,4 @@
+import { ALL_BASELINE_STRATEGY_PLUGINS } from "../baseline/baselineStrategyPlugins";
 import { adaptStrategyPluginToBacktestStrategy } from "./adaptStrategyPlugin";
 import { buyFirstAskStrategyPlugin } from "./builtins/buyFirstAskStrategyPlugin";
 import { noopStrategyPlugin } from "./builtins/noopStrategyPlugin";
@@ -53,10 +54,7 @@ function sortStrategyIds(strategyIds: Iterable<string>): string[] {
   return [...strategyIds].sort((left, right) => left.localeCompare(right));
 }
 
-const BUILTIN_PLUGINS: StrategyPlugin[] = [
-  noopStrategyPlugin,
-  buyFirstAskStrategyPlugin,
-];
+const BUILTIN_PLUGINS: StrategyPlugin[] = [...ALL_BASELINE_STRATEGY_PLUGINS];
 
 export class StrategyPluginRegistry {
   private readonly plugins: ReadonlyMap<string, StrategyPlugin>;

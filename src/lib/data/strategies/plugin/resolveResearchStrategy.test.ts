@@ -100,10 +100,16 @@ function counterStrategyPlugin(): StrategyPlugin<CounterConfig> {
 }
 
 describe("StrategyPluginRegistry", () => {
-  it("resolves built-in noop and buy-first-ask plugins", () => {
+  it("resolves built-in baseline strategy plugins", () => {
     const registry = StrategyPluginRegistry.createBuiltIn();
 
-    expect(registry.listStrategyIds()).toEqual(["buy-first-ask", "noop"]);
+    expect(registry.listStrategyIds()).toEqual([
+      "buy-below-probability",
+      "buy-first-ask",
+      "noop",
+      "simple-mean-reversion",
+      "simple-momentum",
+    ]);
     expect(registry.resolveBacktestStrategy("noop").decide(STEP, CONTEXT)).toEqual([]);
     expect(registry.resolveBacktestStrategy("buy-first-ask").decide(STEP, CONTEXT)).toEqual([
       {

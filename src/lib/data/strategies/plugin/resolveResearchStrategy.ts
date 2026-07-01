@@ -1,6 +1,7 @@
 import type { BacktestStrategy } from "@/lib/data/backtesting/strategyTypes";
 
-import { StrategyPluginRegistry } from "./StrategyPluginRegistry";
+import { createBuiltInStrategyPluginRegistry } from "../baseline/baselineStrategyPack";
+import type { StrategyPluginRegistry } from "./StrategyPluginRegistry";
 import type { ResolveResearchStrategyInput } from "./strategyPluginTypes";
 
 export type ResolveResearchStrategyOptions = ResolveResearchStrategyInput & {
@@ -11,10 +12,8 @@ export type ResolveResearchStrategyOptions = ResolveResearchStrategyInput & {
 export function resolveResearchStrategy(
   input: ResolveResearchStrategyOptions,
 ): BacktestStrategy {
-  const registry = input.registry ?? StrategyPluginRegistry.createBuiltIn();
+  const registry = input.registry ?? createBuiltInStrategyPluginRegistry();
   return registry.resolveBacktestStrategy(input.strategyId, input.strategyConfig);
 }
 
-export function createBuiltInStrategyPluginRegistry(): StrategyPluginRegistry {
-  return StrategyPluginRegistry.createBuiltIn();
-}
+export { createBuiltInStrategyPluginRegistry } from "../baseline/baselineStrategyPack";
