@@ -11,3 +11,8 @@ export type {
   HistoricalResearchFixtureExportConfig,
   HistoricalResearchInput,
 } from "./historicalFixtureTypes";
+
+export {
+  historicalResearchCliInputSchema,
+} from "./researchFixtureSchema";
+export type { HistoricalResearchCliInputDocument } from "./researchFixtureSchema";

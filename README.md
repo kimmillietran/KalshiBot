@@ -106,6 +106,7 @@ docs/
 | 6.22C | Batch historical import runner (`import:batch`, `batch-import-summary.json`) — **complete** |
 | 6.22D | Organized dataset storage (`datasets:build`, `dataset-manifest.json`) — **complete** |
 | 6.23A | Batch fixture bridge (`fixtures:batch`, `import-result.json` → `fixture.json`) — **complete** |
+| 6.23B | Research dataset registry (`research:registry`, replay-ready fixture indexing) — **complete** |
 
 ## Intentionally deferred
 

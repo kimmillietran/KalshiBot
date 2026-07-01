@@ -95,3 +95,23 @@ export type {
   ResearchExportTableColumn,
   ResearchExportTableRow,
 } from "./export";
+
+export {
+  buildResearchDatasetRegistries,
+  buildResearchDatasetRegistryFromDirectories,
+  buildResearchDatasetRegistryOutputPaths,
+  buildResearchFixtureSummary,
+  parseLinkedImportMetadataJson,
+  parseResearchFixtureJson,
+  ResearchDatasetRegistryError,
+  ResearchDatasetRegistryErrorCode,
+  scanResearchFixtures,
+  serializeResearchDatasetSeriesRegistry,
+} from "./registry";
+export type {
+  BuildResearchDatasetRegistryInput,
+  ResearchDatasetRegistryEntry,
+  ResearchDatasetRegistryIo,
+  ResearchDatasetSeriesRegistry,
+  ScannedResearchFixture,
+} from "./registry";
