@@ -76,6 +76,33 @@ export type {
 } from "./runner";
 
 export {
+  BATCH_RESEARCH_OUTPUT_FILENAME,
+  BatchResearchRunnerError,
+  BatchResearchRunnerErrorCode,
+  DATASET_REGISTRY_FILENAME,
+  DEFAULT_BATCH_RESEARCH_OUTPUT_DIR,
+  DEFAULT_BATCH_RESEARCH_REGISTRY_DIR,
+  DEFAULT_BATCH_RESEARCH_SUMMARY_FILENAME,
+  buildBatchResearchOutputPath,
+  createNodeBatchResearchFilesystem,
+  discoverResearchDatasetRegistryPaths,
+  parseResearchDatasetSeriesRegistryJson,
+  resolveBatchResearchSummaryPath,
+  runBatchResearch,
+  serializeBatchResearchSummary,
+} from "./batchResearch";
+export type {
+  BatchResearchFilesystem,
+  BatchResearchMarketResult,
+  BatchResearchMarketStatus,
+  BatchResearchRunnerDeps,
+  BatchResearchSummary,
+  RunBatchResearchInput,
+  RunSingleBatchResearchFn,
+  RunSingleBatchResearchInput,
+} from "./batchResearch";
+
+export {
   buildResearchComparisonExport,
   buildResearchRunExport,
   serializeResearchExportDocument,

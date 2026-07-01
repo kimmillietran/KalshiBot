@@ -12,6 +12,7 @@
     "test:coverage": "vitest run --coverage",
     "research:historical": "tsx scripts/research/runHistoricalResearch.ts",
     "research:registry": "tsx scripts/research/buildResearchDatasetRegistry.ts",
+    "research:batch": "tsx scripts/research/runBatchResearch.ts",
     "import:historical": "tsx scripts/import/runHistoricalImport.ts",
     "import:batch": "tsx scripts/import/runBatchHistoricalImport.ts",
     "fixtures:batch": "tsx scripts/fixtures/runBatchFixtureBridge.ts",
