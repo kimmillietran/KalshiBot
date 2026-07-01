@@ -103,6 +103,7 @@ docs/
 | 6.3B | Historical snapshot assembler (`assembleHistoricalTradingSnapshot`, provenance preservation) — **complete** |
 | 6.22A | Historical Kalshi market discovery CLI (`discovery:markets`, `discovery-result.json`) — **complete** |
 | 6.22B | Batch import config generator (`discovery:import-configs`, per-market `config.json`) — **complete** |
+| 6.22C | Batch historical import runner (`import:batch`, `batch-import-summary.json`) — **complete** |
 
 ## Intentionally deferred
 

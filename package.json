@@ -12,6 +12,7 @@
     "test:coverage": "vitest run --coverage",
     "research:historical": "tsx scripts/research/runHistoricalResearch.ts",
     "import:historical": "tsx scripts/import/runHistoricalImport.ts",
+    "import:batch": "tsx scripts/import/runBatchHistoricalImport.ts",
     "discovery:markets": "tsx scripts/discovery/runMarketDiscovery.ts",
     "discovery:import-configs": "tsx scripts/discovery/generateImportConfigs.ts",
     "discover:markets": "tsx scripts/discovery/runMarketDiscovery.ts"
