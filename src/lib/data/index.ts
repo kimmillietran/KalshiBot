@@ -391,6 +391,28 @@ export type {
 } from "./fixtures";
 
 export {
+  DEFAULT_KXBTC15M_SERIES_TICKER,
+  MarketDiscoveryError,
+  MarketDiscoveryErrorCode,
+  discoverKalshiHistoricalMarkets,
+  serializeMarketDiscoveryResult,
+  normalizeDiscoveredMarket,
+  validateMarketDiscoveryResult,
+  createKalshiHistoricalMarketDiscoveryFromFetch,
+} from "./discovery";
+export type {
+  DiscoveredMarket,
+  MarketDiscoveryMetadata,
+  MarketDiscoveryProvenance,
+  MarketDiscoveryResult,
+  MarketDiscoveryValidationIssue,
+  MarketDiscoveryValidationResult,
+  DiscoverKalshiHistoricalMarketsInput,
+  KalshiHistoricalMarketDiscoveryOptions,
+  NormalizeDiscoveredMarketInput,
+} from "./discovery";
+
+export {
   runHistoricalBronzeImportJob,
   serializeHistoricalBronzeImportResult,
   createKalshiHistoricalBronzeProvider,

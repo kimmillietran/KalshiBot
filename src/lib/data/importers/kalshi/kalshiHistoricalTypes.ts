@@ -32,6 +32,9 @@ export type HistoricalMarketRecord = {
   settlementValueDollars: string | null;
   expirationValue: string;
   floorStrike: number | null;
+  title?: string | null;
+  subtitle?: string | null;
+  seriesTicker?: string | null;
 };
 
 export type HistoricalMarketsPage = {

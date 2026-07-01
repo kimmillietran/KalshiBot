@@ -69,6 +69,9 @@ describe("KalshiHistoricalImporter", () => {
         settlementValueDollars: "1.0000",
         expirationValue: "60010.25",
         floorStrike: 59990.31,
+        title: null,
+        subtitle: null,
+        seriesTicker: null,
       },
     ]);
     expect(page.cursor).toBe("next-page");
@@ -77,6 +80,32 @@ describe("KalshiHistoricalImporter", () => {
       fetchedAt: FIXED_NOW.toISOString(),
       requestPath: "/historical/markets?series_ticker=KXBTC15M&limit=100",
       cursor: "next-page",
+    });
+  });
+
+  it("preserves optional title and subtitle metadata from market wire", async () => {
+    const client = createFakeClient(() => ({
+      status: 200,
+      body: {
+        markets: [
+          {
+            ...sampleMarketWire,
+            title: "BTC price up in 15 minutes?",
+            yes_sub_title: "Above $59,990.31",
+            series_ticker: "KXBTC15M",
+          },
+        ],
+        cursor: "",
+      },
+    }));
+
+    const importer = createImporter(client);
+    const page = await importer.listHistoricalMarkets("KXBTC15M");
+
+    expect(page.markets[0]).toMatchObject({
+      title: "BTC price up in 15 minutes?",
+      subtitle: "Above $59,990.31",
+      seriesTicker: "KXBTC15M",
     });
   });
 
@@ -196,6 +225,9 @@ describe("KalshiHistoricalImporter", () => {
       settlementValueDollars: "1.0000",
       expirationValue: "60010.25",
       floorStrike: 59990.31,
+      title: null,
+      subtitle: null,
+      seriesTicker: null,
     });
   });
 

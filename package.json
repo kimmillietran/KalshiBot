@@ -11,7 +11,10 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "research:historical": "tsx scripts/research/runHistoricalResearch.ts",
-    "import:historical": "tsx scripts/import/runHistoricalImport.ts"
+    "import:historical": "tsx scripts/import/runHistoricalImport.ts",
+    "discovery:markets": "tsx scripts/discovery/runMarketDiscovery.ts",
+    "discovery:import-configs": "tsx scripts/discovery/generateImportConfigs.ts",
+    "discover:markets": "tsx scripts/discovery/runMarketDiscovery.ts"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.101.1",

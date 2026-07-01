@@ -61,6 +61,10 @@ type KalshiMarketWire = {
   settlement_value_dollars?: string | null;
   expiration_value: string;
   floor_strike?: number | null;
+  title?: string | null;
+  yes_sub_title?: string | null;
+  subtitle?: string | null;
+  series_ticker?: string | null;
 };
 
 type KalshiMarketsResponseWire = {
@@ -165,6 +169,9 @@ function parseMarketRecord(market: KalshiMarketWire): HistoricalMarketRecord {
     settlementValueDollars: market.settlement_value_dollars ?? null,
     expirationValue: market.expiration_value,
     floorStrike: market.floor_strike ?? null,
+    title: market.title ?? null,
+    subtitle: market.yes_sub_title ?? market.subtitle ?? null,
+    seriesTicker: market.series_ticker ?? null,
   };
 }
 
