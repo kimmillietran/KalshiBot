@@ -14,6 +14,7 @@
     "research:registry": "tsx scripts/research/buildResearchDatasetRegistry.ts",
     "research:batch": "tsx scripts/research/runBatchResearch.ts",
     "research:aggregate": "tsx scripts/research/aggregateResearchStatistics.ts",
+    "leaderboard:strategies": "tsx scripts/leaderboard/runStrategyLeaderboard.ts",
     "import:historical": "tsx scripts/import/runHistoricalImport.ts",
     "import:batch": "tsx scripts/import/runBatchHistoricalImport.ts",
     "fixtures:batch": "tsx scripts/fixtures/runBatchFixtureBridge.ts",

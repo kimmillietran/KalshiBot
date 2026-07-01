@@ -111,6 +111,7 @@ docs/
 | 6.23D | Aggregate research statistics (`research:aggregate`, batch output summaries) — **complete** |
 | 6.24A | Strategy plugin interface (`StrategyPluginRegistry`, `resolveResearchStrategy`) — **complete** |
 | 6.24B | Baseline strategy pack (noop, buy-first-ask, buy-below-probability, simple-momentum, simple-mean-reversion) — **complete** |
+| 6.24C | Strategy leaderboard (`leaderboard:strategies`, `strategy-leaderboard.json`) — **complete** |
 
 ## Intentionally deferred
 

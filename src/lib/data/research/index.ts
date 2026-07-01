@@ -166,3 +166,27 @@ export type {
   ResearchSeriesAggregateSummary,
   ScannedResearchOutput,
 } from "./aggregation";
+
+export {
+  buildStrategyLeaderboard,
+  buildStrategyLeaderboardFromDirectories,
+  discoverStrategyAggregateSummaries,
+  mergeStrategyMarkets,
+  parseAggregateSummaryJson,
+  parseStrategyLeaderboardRankMetric,
+  serializeStrategyLeaderboard,
+  StrategyLeaderboardError,
+  StrategyLeaderboardErrorCode,
+  STRATEGY_LEADERBOARD_RANK_METRICS,
+  DEFAULT_STRATEGY_LEADERBOARD_INPUT_DIR,
+  DEFAULT_STRATEGY_LEADERBOARD_OUTPUT_PATH,
+} from "./leaderboard";
+export type {
+  BuildStrategyLeaderboardInput,
+  ParsedStrategyAggregateSummary,
+  ScannedStrategyAggregateSummary,
+  StrategyLeaderboard,
+  StrategyLeaderboardEntry,
+  StrategyLeaderboardIo,
+  StrategyLeaderboardRankMetric,
+} from "./leaderboard";
