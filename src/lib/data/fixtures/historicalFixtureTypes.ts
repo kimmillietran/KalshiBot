@@ -53,6 +53,7 @@ export type HistoricalResearchCliInput = {
   initialCashCents: number;
   bronzeRecords: readonly RawHistoricalRecord[];
   strategyId: BuiltinStrategyId;
+  strategyConfig?: Record<string, unknown>;
   engineConfig: EngineConfig;
   fillConfig?: BacktestFillSimulationConfig;
   metricsConfig?: HistoricalBacktestMetricsConfig;

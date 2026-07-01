@@ -1,11 +1,13 @@
 import type { BacktestStrategy } from "@/lib/data/backtesting/strategyTypes";
-import type { TradeIntent } from "@/lib/data/backtesting/strategyTypes";
 import {
   historicalResearchCliInputSchema,
   type HistoricalResearchCliInputDocument,
 } from "@/lib/data/fixtures";
-import type { ReplayStepResult } from "@/lib/data/replay/replaySessionTypes";
-import { BUILTIN_STRATEGY_IDS, type BuiltinStrategyId } from "@/lib/data/strategies";
+import {
+  BUILTIN_STRATEGY_IDS,
+  resolveResearchStrategy,
+  type BuiltinStrategyId,
+} from "@/lib/data/strategies";
 
 export { BUILTIN_STRATEGY_IDS, historicalResearchCliInputSchema };
 export type { BuiltinStrategyId, HistoricalResearchCliInputDocument };
@@ -35,47 +37,11 @@ export type HistoricalResearchCommandIo = {
   writeFile?: (path: string, data: string) => void;
 };
 
-const noopStrategy: BacktestStrategy = {
-  strategyId: "noop",
-  decide: () => [],
-};
-
-function buyFirstAskIntent(step: ReplayStepResult): TradeIntent[] {
-  const yesAskCents = step.engineInput.pricing?.yesAskCents;
-  if (yesAskCents === null || yesAskCents === undefined) {
-    return [];
-  }
-
-  return [
-    {
-      ticker: step.sourceTicker,
-      side: "yes",
-      action: "buy",
-      quantity: 1,
-      limitPriceCents: yesAskCents,
-      reason: "buy-first-ask",
-    },
-  ];
-}
-
-const buyFirstAskStrategy: BacktestStrategy = {
-  strategyId: "buy-first-ask",
-  decide: buyFirstAskIntent,
-};
-
-export function resolveBuiltinStrategy(strategyId: BuiltinStrategyId): BacktestStrategy {
-  switch (strategyId) {
-    case "noop":
-      return noopStrategy;
-    case "buy-first-ask":
-      return buyFirstAskStrategy;
-    default: {
-      const exhaustive: never = strategyId;
-      throw new HistoricalResearchCommandError(
-        `Unsupported built-in strategy: ${String(exhaustive)}`,
-      );
-    }
-  }
+export function resolveBuiltinStrategy(
+  strategyId: BuiltinStrategyId,
+  strategyConfig?: Record<string, unknown>,
+): BacktestStrategy {
+  return resolveResearchStrategy({ strategyId, strategyConfig });
 }
 
 export function parseFormatFromArgv(

@@ -1,6 +1,6 @@
-import type { ReplayStepResult } from "@/lib/data/replay/replaySessionTypes";
-import type { BacktestStrategy, TradeIntent } from "@/lib/data/backtesting/strategyTypes";
+import type { BacktestStrategy } from "@/lib/data/backtesting/strategyTypes";
 
+import { buyFirstAskIntent } from "./builtins/buyFirstAskIntent";
 import {
   StrategyRegistryError,
   StrategyRegistryErrorCode,
@@ -29,24 +29,6 @@ function deepFreeze<T>(value: T): T {
   }
 
   return value;
-}
-
-function buyFirstAskIntent(step: ReplayStepResult): TradeIntent[] {
-  const yesAskCents = step.engineInput.pricing?.yesAskCents;
-  if (yesAskCents === null || yesAskCents === undefined) {
-    return [];
-  }
-
-  return [
-    {
-      ticker: step.sourceTicker,
-      side: "yes",
-      action: "buy",
-      quantity: 1,
-      limitPriceCents: yesAskCents,
-      reason: "buy-first-ask",
-    },
-  ];
 }
 
 export const noopStrategyDefinition: StrategyDefinition = deepFreeze({

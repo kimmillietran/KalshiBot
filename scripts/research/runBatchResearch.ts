@@ -50,7 +50,10 @@ function createProductionDeps(): BatchResearchCommandDeps {
     runResearch: ({ fixture }) => {
       const result = runHistoricalResearchFromBronze({
         bronzeRecords: fixture.bronzeRecords,
-        strategy: resolveBuiltinStrategy(fixture.strategyId),
+        strategy: resolveBuiltinStrategy(
+          fixture.strategyId,
+          fixture.strategyConfig,
+        ),
         engineConfig: fixture.engineConfig,
         initialCashCents: fixture.initialCashCents,
         runId: fixture.runId,

@@ -133,7 +133,10 @@ export function runHistoricalResearchCommand(
     const format = parseFormatFromArgv(argv);
     const document = parseHistoricalResearchInputJson(io.readFile(inputPath));
     validateExportOutputRequirements(document, format);
-    const strategy = resolveBuiltinStrategy(document.strategyId);
+    const strategy = resolveBuiltinStrategy(
+      document.strategyId,
+      document.strategyConfig,
+    );
 
     const result = runHistoricalResearchFromBronze({
       bronzeRecords: document.bronzeRecords,

@@ -369,12 +369,28 @@ export {
   BUILTIN_STRATEGY_IDS,
   StrategyRegistryError,
   StrategyRegistryErrorCode,
+  StrategyPluginRegistry,
+  adaptStrategyPluginToBacktestStrategy,
+  resolveResearchStrategy,
+  createBuiltInStrategyPluginRegistry,
+  noopStrategyPlugin,
+  buyFirstAskStrategyPlugin,
+  StrategyPluginError,
+  StrategyPluginErrorCode,
 } from "./strategies";
 export type {
   BuiltinStrategyId,
   CreateStrategyRegistryInput,
   StrategyDefinition,
   StrategyRegistrySnapshot,
+  StrategyPlugin,
+  StrategyPluginConfig,
+  StrategyPluginState,
+  StrategyPluginDecisionInput,
+  StrategyPluginDecisionResult,
+  ResolveResearchStrategyInput,
+  CreateStrategyPluginRegistryInput,
+  StrategyPluginRegistrySnapshot,
 } from "./strategies";
 
 export {

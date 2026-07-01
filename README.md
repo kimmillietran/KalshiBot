@@ -109,6 +109,7 @@ docs/
 | 6.23B | Research dataset registry (`research:registry`, replay-ready fixture indexing) — **complete** |
 | 6.23C | Batch research runner (`research:batch`, `batch-research-summary.json`) — **complete** |
 | 6.23D | Aggregate research statistics (`research:aggregate`, batch output summaries) — **complete** |
+| 6.24A | Strategy plugin interface (`StrategyPluginRegistry`, `resolveResearchStrategy`) — **complete** |
 
 ## Intentionally deferred
 
