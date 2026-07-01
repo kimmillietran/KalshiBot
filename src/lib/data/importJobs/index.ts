@@ -100,3 +100,34 @@ export type {
   RunSingleBatchImportFn,
   RunSingleBatchImportInput,
 } from "./batchImport";
+
+export {
+  BATCH_FIXTURE_IMPORT_RESULT_FILENAME,
+  BATCH_FIXTURE_OUTPUT_FILENAME,
+  BatchFixtureBridgeRunnerError,
+  BatchFixtureBridgeRunnerErrorCode,
+  DEFAULT_BATCH_FIXTURE_BRIDGE_DURATION_MS,
+  DEFAULT_BATCH_FIXTURE_BRIDGE_INITIAL_CASH_CENTS,
+  DEFAULT_BATCH_FIXTURE_INPUT_DIR,
+  DEFAULT_BATCH_FIXTURE_OUTPUT_DIR,
+  DEFAULT_BATCH_FIXTURE_SUMMARY_FILENAME,
+  buildBatchFixtureOutputPath,
+  buildDefaultBatchFixtureBridgeOptions,
+  createNodeBatchFixtureBridgeFilesystem,
+  discoverBatchFixtureImportPaths,
+  parseHistoricalBronzeImportResultJson,
+  resolveBatchFixtureSummaryPath,
+  runBatchFixtureBridge,
+  serializeBatchFixtureBridgeSummary,
+} from "./batchFixtureBridge";
+export type {
+  BatchFixtureBridgeFilesystem,
+  BatchFixtureBridgeOptions,
+  BatchFixtureBridgeRunnerDeps,
+  BatchFixtureBridgeSummary,
+  BatchFixtureMarketResult,
+  BatchFixtureMarketStatus,
+  RunBatchFixtureBridgeInput,
+  RunSingleBatchFixtureBridgeFn,
+  RunSingleBatchFixtureBridgeInput,
+} from "./batchFixtureBridge";
