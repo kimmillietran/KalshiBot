@@ -46,3 +46,30 @@ export type {
   HistoricalDatasetManifest,
   HistoricalDatasetManifestGeneratedMetadata,
 } from "./manifest";
+
+export {
+  buildDatasetManifest,
+  buildDatasetManifestFromDirectory,
+  buildImportedMarketMetadata,
+  DatasetRegistryError,
+  DatasetRegistryErrorCode,
+  ensureImportedMarketDirectory,
+  ImportedMarketDatasetStatus,
+  parseImportedMarketConfigJson,
+  parseImportedMarketMetadataJson,
+  parseImportedMarketResultJson,
+  scanImportedMarketDatasets,
+  serializeDatasetManifest,
+  serializeImportedMarketMetadata,
+} from "./registry";
+export type {
+  BuildDatasetManifestInput,
+  BuildImportedMarketMetadataInput,
+  DatasetManifest,
+  DatasetManifestEntry,
+  DatasetManifestSummary,
+  DatasetRegistryIo,
+  ImportedMarketDatasetPaths,
+  ImportedMarketMetadata,
+  ScannedImportedMarketDataset,
+} from "./registry";
