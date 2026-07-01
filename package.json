@@ -13,6 +13,7 @@
     "research:historical": "tsx scripts/research/runHistoricalResearch.ts",
     "research:registry": "tsx scripts/research/buildResearchDatasetRegistry.ts",
     "research:batch": "tsx scripts/research/runBatchResearch.ts",
+    "research:sweep": "tsx scripts/research/runStrategySweep.ts",
     "research:aggregate": "tsx scripts/research/aggregateResearchStatistics.ts",
     "leaderboard:strategies": "tsx scripts/leaderboard/runStrategyLeaderboard.ts",
     "import:historical": "tsx scripts/import/runHistoricalImport.ts",

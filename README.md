@@ -112,6 +112,7 @@ docs/
 | 6.24A | Strategy plugin interface (`StrategyPluginRegistry`, `resolveResearchStrategy`) — **complete** |
 | 6.24B | Baseline strategy pack (noop, buy-first-ask, buy-below-probability, simple-momentum, simple-mean-reversion) — **complete** |
 | 6.24C | Strategy leaderboard (`leaderboard:strategies`, `strategy-leaderboard.json`) — **complete** |
+| 6.24D | Strategy sweep runner (`research:sweep`, per-strategy research outputs) — **complete** |
 
 ## Intentionally deferred
 

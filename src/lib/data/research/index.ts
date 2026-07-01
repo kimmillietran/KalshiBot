@@ -190,3 +190,29 @@ export type {
   StrategyLeaderboardIo,
   StrategyLeaderboardRankMetric,
 } from "./leaderboard";
+
+export {
+  buildStrategySweepOutputPath,
+  createNodeStrategySweepFilesystem,
+  discoverStrategySweepRegistryPaths,
+  parseStrategySweepSeriesRegistryJson,
+  resolveStrategySweepSummaryPath,
+  runStrategySweep,
+  serializeStrategySweepSummary,
+  StrategySweepError,
+  StrategySweepErrorCode,
+  DEFAULT_STRATEGY_SWEEP_OUTPUT_DIR,
+  DEFAULT_STRATEGY_SWEEP_REGISTRY_DIR,
+  SWEEP_OUTPUT_FILENAME,
+  SWEEP_SUMMARY_FILENAME,
+} from "./sweep";
+export type {
+  RunStrategySweepInput,
+  StrategySweepFilesystem,
+  StrategySweepJob,
+  StrategySweepMarketEntry,
+  StrategySweepRunResult,
+  StrategySweepRunnerDeps,
+  StrategySweepSummary,
+  StrategySweepSeriesRegistryDocument,
+} from "./sweep";
