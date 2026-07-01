@@ -142,3 +142,27 @@ export type {
   ResearchDatasetSeriesRegistry,
   ScannedResearchFixture,
 } from "./registry";
+
+export {
+  buildResearchAggregateSummaries,
+  buildResearchAggregateSummariesFromDirectories,
+  buildResearchAggregateOutputPaths,
+  buildResearchAggregateSummary,
+  computeDurationStatistics,
+  computeMarketCounts,
+  computePerformanceStatistics,
+  parseResearchOutputJson,
+  ResearchAggregateError,
+  ResearchAggregateErrorCode,
+  scanResearchOutputs,
+  serializeResearchAggregateSummary,
+} from "./aggregation";
+export type {
+  BuildResearchAggregateSummaryInput,
+  ResearchAggregateIo,
+  ResearchAggregatePerformanceStatistics,
+  ResearchDurationStatistics,
+  ResearchMarketResultSummary,
+  ResearchSeriesAggregateSummary,
+  ScannedResearchOutput,
+} from "./aggregation";
