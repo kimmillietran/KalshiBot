@@ -15,6 +15,7 @@
     "import:batch": "tsx scripts/import/runBatchHistoricalImport.ts",
     "discovery:markets": "tsx scripts/discovery/runMarketDiscovery.ts",
     "discovery:import-configs": "tsx scripts/discovery/generateImportConfigs.ts",
+    "datasets:build": "tsx scripts/datasets/buildDatasetManifest.ts",
     "discover:markets": "tsx scripts/discovery/runMarketDiscovery.ts"
   },
   "dependencies": {

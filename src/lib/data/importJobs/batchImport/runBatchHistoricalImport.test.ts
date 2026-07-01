@@ -164,7 +164,8 @@ describe("runBatchHistoricalImport", () => {
   it("records successful imports and writes per-market output files", async () => {
     const marketTicker = "KXBTC15M-MARKET-A";
     const configPath = `data/import-configs/KXBTC15M/${marketTicker}/config.json`;
-    const outputPath = `data/imports/KXBTC15M/${marketTicker}/import-result.json`;
+    const outputDir = `data/imports/KXBTC15M/${marketTicker}`;
+    const outputPath = `${outputDir}/import-result.json`;
     const filesystem = createFilesystem({
       [configPath]: JSON.stringify(validConfigInput(marketTicker)),
     });
@@ -191,6 +192,8 @@ describe("runBatchHistoricalImport", () => {
       valid: true,
     });
     expect(filesystem.readFile(outputPath)).toContain(marketTicker);
+    expect(filesystem.readFile(`${outputDir}/config.json`)).toContain(marketTicker);
+    expect(filesystem.readFile(`${outputDir}/metadata.json`)).toContain(marketTicker);
     expect(filesystem.readFile(summary.summaryPath)).toContain('"successfulImports":1');
   });
 

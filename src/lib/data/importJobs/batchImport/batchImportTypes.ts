@@ -6,6 +6,7 @@ export const DEFAULT_BATCH_IMPORT_OUTPUT_DIR = "data/imports";
 export const BATCH_IMPORT_SUMMARY_FILENAME = "batch-import-summary.json";
 export const BATCH_IMPORT_RESULT_FILENAME = "import-result.json";
 export const BATCH_IMPORT_CONFIG_FILENAME = "config.json";
+export const BATCH_IMPORT_METADATA_FILENAME = "metadata.json";
 
 export const BatchImportRunnerErrorCode = {
   MISSING_INPUT_DIR: "missing-input-dir",

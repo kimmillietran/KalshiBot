@@ -3,11 +3,18 @@ import { posix } from "node:path";
 import {
   buildHistoricalBronzeImportConfig,
   HistoricalBronzeImportConfigError,
+  serializeHistoricalBronzeImportConfig,
 } from "@/lib/data/importJobs/config";
 import type { HistoricalBronzeImportConfig } from "@/lib/data/importJobs/config";
+import {
+  buildImportedMarketMetadata,
+  serializeImportedMarketMetadata,
+} from "@/lib/data/datasets/registry";
 
 import { buildBatchImportOutputPath } from "./buildBatchImportOutputPath";
 import {
+  BATCH_IMPORT_CONFIG_FILENAME,
+  BATCH_IMPORT_METADATA_FILENAME,
   BatchImportRunnerError,
   BatchImportRunnerErrorCode,
   type BatchHistoricalImportRunnerDeps,
@@ -199,8 +206,22 @@ async function executeJob(
       config: job.config,
     });
 
-    deps.filesystem.mkdir(posix.dirname(job.outputPath));
+    const marketDir = posix.dirname(job.outputPath);
+    deps.filesystem.mkdir(marketDir);
     deps.filesystem.writeFile(job.outputPath, importResult.serialized);
+    deps.filesystem.writeFile(
+      posix.join(marketDir, BATCH_IMPORT_CONFIG_FILENAME),
+      serializeHistoricalBronzeImportConfig(job.config),
+    );
+    deps.filesystem.writeFile(
+      posix.join(marketDir, BATCH_IMPORT_METADATA_FILENAME),
+      serializeImportedMarketMetadata(
+        buildImportedMarketMetadata({
+          config: job.config,
+          importResult,
+        }),
+      ),
+    );
 
     return toMarketResult(job, {
       status: "success",
