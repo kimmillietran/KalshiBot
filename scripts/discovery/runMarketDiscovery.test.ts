@@ -186,6 +186,48 @@ describe("runMarketDiscoveryCommand", () => {
     expect(parsed.markets).toHaveLength(1);
   });
 
+  it("honors npm-stripped positional argv for limit and output", async () => {
+    const { io, writes } = createIo();
+
+    const exitCode = await runMarketDiscoveryCommand(
+      ["KXBTC15M", "1", "discovery-result.json"],
+      io,
+      { deps: { importer: createImporter(), now: () => FIXED_NOW } },
+    );
+
+    expect(exitCode).toBe(0);
+    const parsed = JSON.parse(writes.files.get("discovery-result.json")!);
+    expect(parsed.metadata.sampling).toEqual({
+      totalDiscovered: 2,
+      afterDateFilter: 2,
+      offset: 0,
+      limit: 1,
+      finalMarketCount: 1,
+    });
+    expect(JSON.parse(writes.stdout.trim())).toMatchObject({
+      limit: 1,
+      finalMarketCount: 1,
+      outputPath: "discovery-result.json",
+    });
+  });
+
+  it("honors full npm-stripped positional argv with rate-limit options", async () => {
+    const { io, writes } = createIo();
+    const importer = createImporter();
+
+    const exitCode = await runMarketDiscoveryCommand(
+      ["KXBTC15M", "1", "1000", "5", "2000", "discovery-result.json"],
+      io,
+      { deps: { importer, now: () => FIXED_NOW, sleep: async () => undefined } },
+    );
+
+    expect(exitCode).toBe(0);
+    expect(JSON.parse(writes.stdout.trim())).toMatchObject({
+      limit: 1,
+      finalMarketCount: 1,
+    });
+  });
+
   it("does not call fetch when deps are injected", async () => {
     const fetchImpl = vi.fn() as FetchLike;
     const { io } = createIo();

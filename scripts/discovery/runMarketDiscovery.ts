@@ -16,6 +16,7 @@ import {
   parseSeriesFromArgv,
   resolveCliRateLimitOptions,
 } from "./types";
+import { normalizeDiscoveryCliArgv } from "./normalizeDiscoveryCliArgv";
 import type {
   MarketDiscoveryCommandDeps,
   MarketDiscoveryCommandIo,
@@ -42,9 +43,10 @@ export function runMarketDiscoveryCommand(
   options?: MarketDiscoveryCommandDeps | RunMarketDiscoveryCommandOptions,
 ): Promise<number> {
   try {
-    const seriesTicker = parseSeriesFromArgv(argv);
-    const outputPath = parseOutputPathFromArgv(argv);
-    const sampling = parseSamplingOptionsFromArgv(argv);
+    const normalizedArgv = normalizeDiscoveryCliArgv(argv);
+    const seriesTicker = parseSeriesFromArgv(normalizedArgv);
+    const outputPath = parseOutputPathFromArgv(normalizedArgv);
+    const sampling = parseSamplingOptionsFromArgv(normalizedArgv);
     const { deps, fetchImpl } = normalizeCommandOptions(options);
 
     const baseDiscoveryOptions =
@@ -52,7 +54,7 @@ export function runMarketDiscoveryCommand(
         resolveFetchImpl(fetchImpl),
       );
     const rateLimit = resolveCliRateLimitOptions({
-      argv,
+      argv: normalizedArgv,
       useProductionDefaults: !deps,
     });
 
@@ -152,3 +154,4 @@ export {
   parseSeriesFromArgv,
   resolveCliRateLimitOptions,
 } from "./types";
+export { normalizeDiscoveryCliArgv } from "./normalizeDiscoveryCliArgv";
