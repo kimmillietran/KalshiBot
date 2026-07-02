@@ -16,6 +16,10 @@ export const BatchImportRunnerErrorCode = {
   INVALID_REQUEST_DELAY: "invalid-request-delay",
   INVALID_MAX_RETRIES: "invalid-max-retries",
   INVALID_RETRY_BASE_DELAY: "invalid-retry-base-delay",
+  INVALID_MIN_REQUEST_DELAY: "invalid-min-request-delay",
+  INVALID_MAX_REQUEST_DELAY: "invalid-max-request-delay",
+  INVALID_THROTTLE_INCREASE_FACTOR: "invalid-throttle-increase-factor",
+  INVALID_THROTTLE_DECREASE_MS: "invalid-throttle-decrease-ms",
 } as const;
 
 export type BatchImportRunnerErrorCode =
@@ -51,6 +55,8 @@ export type BatchImportMarketResult = {
   bronzeRecordCount: number | null;
   valid: boolean | null;
   retryCount: number | null;
+  requestDelayMs: number | null;
+  rateLimited: boolean | null;
 };
 
 export type BatchImportFailureReasonCounts = Record<string, number>;
@@ -74,6 +80,14 @@ export type BatchImportSummary = {
   failedAfterRetries: number;
   failureReasonCounts: BatchImportFailureReasonCounts;
   summaryPath: string;
+  adaptiveThrottleEnabled: boolean;
+  initialRequestDelayMs: number;
+  finalRequestDelayMs: number;
+  minRequestDelayMs: number | null;
+  maxRequestDelayMs: number | null;
+  throttleAdjustmentCount: number;
+  rateLimitCount: number;
+  averageRequestDelayMs: number;
   markets: readonly BatchImportMarketResult[];
 };
 
@@ -102,6 +116,11 @@ export type RunBatchHistoricalImportInput = {
   maxRetries?: number;
   retryBaseDelayMs?: number;
   overwriteExisting?: boolean;
+  adaptiveThrottle?: boolean;
+  minRequestDelayMs?: number;
+  maxRequestDelayMs?: number;
+  throttleIncreaseFactor?: number;
+  throttleDecreaseMs?: number;
 };
 
 export type BatchHistoricalImportRunnerDeps = {
@@ -109,6 +128,7 @@ export type BatchHistoricalImportRunnerDeps = {
   runImport: RunSingleBatchImportFn;
   now?: () => Date;
   sleep?: (ms: number) => Promise<void>;
+  logProgress?: (message: string) => void;
 };
 
 export type BatchImportJob = {

@@ -16,6 +16,8 @@ const batchImportMarketResultSchema = z.object({
   bronzeRecordCount: z.number().finite().nullable(),
   valid: z.boolean().nullable(),
   retryCount: z.number().finite().int().nonnegative().nullable().optional(),
+  requestDelayMs: z.number().finite().int().nonnegative().nullable().optional(),
+  rateLimited: z.boolean().nullable().optional(),
 });
 
 const batchImportSummarySchema = z.object({
@@ -37,6 +39,14 @@ const batchImportSummarySchema = z.object({
   failedAfterRetries: z.number().finite().int().nonnegative().optional(),
   failureReasonCounts: z.record(z.string(), z.number().finite().int().nonnegative()).optional(),
   summaryPath: z.string().trim().min(1),
+  adaptiveThrottleEnabled: z.boolean().optional(),
+  initialRequestDelayMs: z.number().finite().int().nonnegative().optional(),
+  finalRequestDelayMs: z.number().finite().int().nonnegative().optional(),
+  minRequestDelayMs: z.number().finite().int().nonnegative().nullable().optional(),
+  maxRequestDelayMs: z.number().finite().int().nonnegative().nullable().optional(),
+  throttleAdjustmentCount: z.number().finite().int().nonnegative().optional(),
+  rateLimitCount: z.number().finite().int().nonnegative().optional(),
+  averageRequestDelayMs: z.number().finite().int().nonnegative().optional(),
   markets: z.array(batchImportMarketResultSchema),
 });
 
@@ -71,9 +81,22 @@ export function parseBatchImportSummaryJson(json: string): BatchImportSummary {
     recoveredImports: result.data.recoveredImports ?? 0,
     failedAfterRetries: result.data.failedAfterRetries ?? 0,
     failureReasonCounts: result.data.failureReasonCounts ?? {},
+    adaptiveThrottleEnabled: result.data.adaptiveThrottleEnabled ?? false,
+    initialRequestDelayMs:
+      result.data.initialRequestDelayMs ?? result.data.requestDelayMs ?? 0,
+    finalRequestDelayMs:
+      result.data.finalRequestDelayMs ?? result.data.requestDelayMs ?? 0,
+    minRequestDelayMs: result.data.minRequestDelayMs ?? null,
+    maxRequestDelayMs: result.data.maxRequestDelayMs ?? null,
+    throttleAdjustmentCount: result.data.throttleAdjustmentCount ?? 0,
+    rateLimitCount: result.data.rateLimitCount ?? 0,
+    averageRequestDelayMs:
+      result.data.averageRequestDelayMs ?? result.data.requestDelayMs ?? 0,
     markets: result.data.markets.map((market) => ({
       ...market,
       retryCount: market.retryCount ?? null,
+      requestDelayMs: market.requestDelayMs ?? null,
+      rateLimited: market.rateLimited ?? null,
     })),
   };
 }

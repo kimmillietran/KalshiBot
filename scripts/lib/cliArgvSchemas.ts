@@ -24,6 +24,11 @@ export const IMPORT_BATCH_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--request-delay-ms" },
   { flag: "--max-retries" },
   { flag: "--retry-base-delay-ms" },
+  { flag: "--adaptive-throttle" },
+  { flag: "--min-request-delay-ms" },
+  { flag: "--max-request-delay-ms" },
+  { flag: "--throttle-increase-factor" },
+  { flag: "--throttle-decrease-ms" },
   { flag: "--overwrite" },
 ];
 
@@ -212,12 +217,12 @@ export function normalizeImportBatchArgv(argv: readonly string[]): string[] {
   const expanded = expandEqualsStyleFlags(argv);
 
   if (hasCliFlags(expanded)) {
-    return mergeNpmBooleanFlags(expanded, ["--overwrite"]);
+    return mergeNpmBooleanFlags(expanded, ["--overwrite", "--adaptive-throttle"]);
   }
 
   return mergeNpmBooleanFlags(
     normalizeNpmScriptArgv(argv, IMPORT_BATCH_ARGV_SCHEMA),
-    ["--overwrite"],
+    ["--overwrite", "--adaptive-throttle"],
   );
 }
 

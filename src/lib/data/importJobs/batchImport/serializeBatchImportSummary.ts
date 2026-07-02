@@ -28,6 +28,14 @@ export function serializeBatchImportSummary(summary: BatchImportSummary): string
     failedAfterRetries: summary.failedAfterRetries,
     failureReasonCounts: summary.failureReasonCounts,
     summaryPath: summary.summaryPath,
+    adaptiveThrottleEnabled: summary.adaptiveThrottleEnabled,
+    initialRequestDelayMs: summary.initialRequestDelayMs,
+    finalRequestDelayMs: summary.finalRequestDelayMs,
+    minRequestDelayMs: summary.minRequestDelayMs,
+    maxRequestDelayMs: summary.maxRequestDelayMs,
+    throttleAdjustmentCount: summary.throttleAdjustmentCount,
+    rateLimitCount: summary.rateLimitCount,
+    averageRequestDelayMs: summary.averageRequestDelayMs,
     markets: [...summary.markets],
   });
 }

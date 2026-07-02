@@ -30,6 +30,21 @@ export {
 } from "./serializeBatchImportSummary";
 
 export {
+  DEFAULT_ADAPTIVE_MAX_REQUEST_DELAY_MS,
+  DEFAULT_ADAPTIVE_MIN_REQUEST_DELAY_MS,
+  DEFAULT_THROTTLE_DECREASE_MS,
+  DEFAULT_THROTTLE_INCREASE_FACTOR,
+  AdaptiveThrottleController,
+  formatBatchImportProgressLine,
+  parseBatchImportAdaptiveThrottleOptions,
+} from "./batchImportAdaptiveThrottle";
+export type {
+  AdaptiveThrottleMetrics,
+  BatchImportAdaptiveThrottleOptions,
+  ResolvedBatchImportAdaptiveThrottleConfig,
+} from "./batchImportAdaptiveThrottle";
+
+export {
   DEFAULT_BATCH_IMPORT_MAX_RETRIES,
   DEFAULT_BATCH_IMPORT_REQUEST_DELAY_MS,
   DEFAULT_BATCH_IMPORT_RETRY_BASE_DELAY_MS,

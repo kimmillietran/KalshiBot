@@ -498,4 +498,114 @@ describe("runBatchHistoricalImport", () => {
     expect(summary.successfulImports).toBe(1);
     expect(runImport).toHaveBeenCalledTimes(1);
   });
+
+  it("uses adaptive throttling and records summary metrics", async () => {
+    const markets = ["KXBTC15M-MARKET-A", "KXBTC15M-MARKET-B", "KXBTC15M-MARKET-C"];
+    const filesystem = createFilesystem(
+      Object.fromEntries(
+        markets.map((marketTicker) => [
+          `data/import-configs/KXBTC15M/${marketTicker}/config.json`,
+          JSON.stringify(validConfigInput(marketTicker)),
+        ]),
+      ),
+    );
+    const sleep = vi.fn(async () => undefined);
+    const progress: string[] = [];
+
+    const summary = await runBatchHistoricalImport(
+      {
+        inputDir: "data/import-configs",
+        outputDir: "data/imports",
+        adaptiveThrottle: true,
+        minRequestDelayMs: 100,
+        maxRequestDelayMs: 300,
+        throttleDecreaseMs: 50,
+        concurrency: 1,
+      },
+      {
+        ...createDeps(filesystem),
+        sleep,
+        logProgress: (message) => {
+          progress.push(message);
+        },
+      },
+    );
+
+    expect(summary.adaptiveThrottleEnabled).toBe(true);
+    expect(summary.initialRequestDelayMs).toBe(100);
+    expect(summary.minRequestDelayMs).toBe(100);
+    expect(summary.maxRequestDelayMs).toBe(300);
+    expect(summary.markets.every((market) => market.requestDelayMs === 100)).toBe(true);
+    expect(summary.averageRequestDelayMs).toBe(100);
+    expect(sleep).toHaveBeenCalledTimes(3);
+    expect(progress.join("")).toContain("status=success");
+    expect(progress.join("")).not.toContain("stdout");
+  });
+
+  it("increases adaptive delay after rate limits and preserves fixed delay mode", async () => {
+    const marketA = "KXBTC15M-MARKET-A";
+    const marketB = "KXBTC15M-MARKET-B";
+    const filesystem = createFilesystem({
+      [`data/import-configs/KXBTC15M/${marketA}/config.json`]: JSON.stringify(
+        validConfigInput(marketA),
+      ),
+      [`data/import-configs/KXBTC15M/${marketB}/config.json`]: JSON.stringify(
+        validConfigInput(marketB),
+      ),
+    });
+    const attempts = new Map<string, number>();
+    const runImport = vi.fn(async ({ config }) => {
+      const count = (attempts.get(config.marketTicker) ?? 0) + 1;
+      attempts.set(config.marketTicker, count);
+
+      if (config.marketTicker === marketA && count < 2) {
+        throw new KalshiHistoricalImporterError("Kalshi historical API error (429)", 429);
+      }
+
+      return createImportResult(config.marketTicker);
+    });
+    const sleep = vi.fn(async () => undefined);
+
+    const adaptiveSummary = await runBatchHistoricalImport(
+      {
+        inputDir: "data/import-configs",
+        outputDir: "data/imports",
+        adaptiveThrottle: true,
+        minRequestDelayMs: 100,
+        maxRequestDelayMs: 1000,
+        throttleIncreaseFactor: 2,
+        maxRetries: 3,
+        concurrency: 1,
+      },
+      {
+        ...createDeps(filesystem, runImport),
+        sleep,
+      },
+    );
+
+    expect(adaptiveSummary.rateLimitCount).toBe(1);
+    expect(adaptiveSummary.markets[0]?.requestDelayMs).toBe(100);
+    expect(adaptiveSummary.markets[0]?.rateLimited).toBe(true);
+    expect(adaptiveSummary.markets[1]?.requestDelayMs).toBe(200);
+    expect(adaptiveSummary.finalRequestDelayMs).toBe(150);
+
+    const fixedSleep = vi.fn(async () => undefined);
+    const fixedSummary = await runBatchHistoricalImport(
+      {
+        inputDir: "data/import-configs",
+        outputDir: "data/imports",
+        requestDelayMs: 1000,
+        concurrency: 1,
+      },
+      {
+        ...createDeps(filesystem),
+        sleep: fixedSleep,
+      },
+    );
+
+    expect(fixedSummary.adaptiveThrottleEnabled).toBe(false);
+    expect(fixedSummary.requestDelayMs).toBe(1000);
+    expect(fixedSummary.averageRequestDelayMs).toBe(1000);
+    expect(fixedSleep).toHaveBeenCalledWith(1000);
+  });
 });

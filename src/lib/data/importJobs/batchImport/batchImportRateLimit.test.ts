@@ -77,7 +77,7 @@ describe("runImportWithRateLimitRetry", () => {
       sleep,
     });
 
-    expect(result).toEqual({ result: { ok: true }, retryCount: 2 });
+    expect(result).toEqual({ result: { ok: true }, retryCount: 2, rateLimited: true });
     expect(runImport).toHaveBeenCalledTimes(3);
     expect(sleep).toHaveBeenCalledWith(1500);
   });

@@ -19,6 +19,8 @@ export type BatchImportCommandDeps = {
   filesystem: import("@/lib/data/importJobs/batchImport").BatchImportFilesystem;
   runImport: import("@/lib/data/importJobs/batchImport").RunSingleBatchImportFn;
   now?: () => Date;
+  sleep?: (ms: number) => Promise<void>;
+  logProgress?: (message: string) => void;
 };
 
 export type RunBatchHistoricalImportCommandOptions = {
@@ -134,6 +136,83 @@ export function parseRetryBaseDelayMsFromArgv(argv: readonly string[]): number |
 
 export function parseOverwriteFromArgv(argv: readonly string[]): boolean {
   return argv.includes("--overwrite");
+}
+
+function parseBooleanFlag(argv: readonly string[], flag: string): boolean {
+  return argv.includes(flag);
+}
+
+function parsePositiveNumberFlag(
+  argv: readonly string[],
+  flag: string,
+  errorMessage: string,
+  allowFloat = false,
+): number | undefined {
+  for (let index = 0; index < argv.length; index += 1) {
+    const token = argv[index];
+    if (token === flag) {
+      const next = argv[index + 1];
+      if (!next || next.startsWith("-")) {
+        throw new BatchImportCommandError(`Missing value for ${flag} <n>`);
+      }
+
+      const parsed = Number(next);
+      if (
+        !Number.isFinite(parsed)
+        || parsed < 0
+        || (!allowFloat && !Number.isInteger(parsed))
+      ) {
+        throw new BatchImportCommandError(errorMessage);
+      }
+
+      return parsed;
+    }
+  }
+
+  return undefined;
+}
+
+export function parseAdaptiveThrottleFromArgv(argv: readonly string[]): boolean {
+  return parseBooleanFlag(argv, "--adaptive-throttle");
+}
+
+export function parseMinRequestDelayMsFromArgv(argv: readonly string[]): number | undefined {
+  return parsePositiveNumberFlag(
+    argv,
+    "--min-request-delay-ms",
+    "min-request-delay-ms must be a non-negative integer",
+  );
+}
+
+export function parseMaxRequestDelayMsFromArgv(argv: readonly string[]): number | undefined {
+  return parsePositiveNumberFlag(
+    argv,
+    "--max-request-delay-ms",
+    "max-request-delay-ms must be a non-negative integer",
+  );
+}
+
+export function parseThrottleIncreaseFactorFromArgv(argv: readonly string[]): number | undefined {
+  const value = parsePositiveNumberFlag(
+    argv,
+    "--throttle-increase-factor",
+    "throttle-increase-factor must be a number >= 1",
+    true,
+  );
+
+  if (value !== undefined && value < 1) {
+    throw new BatchImportCommandError("throttle-increase-factor must be a number >= 1");
+  }
+
+  return value;
+}
+
+export function parseThrottleDecreaseMsFromArgv(argv: readonly string[]): number | undefined {
+  return parsePositiveNumberFlag(
+    argv,
+    "--throttle-decrease-ms",
+    "throttle-decrease-ms must be a non-negative integer",
+  );
 }
 
 export function formatStdoutOutput(serialized: string): string {

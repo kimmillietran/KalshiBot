@@ -83,11 +83,13 @@ export type RunImportWithRateLimitRetryInput = {
   runImport: () => Promise<unknown>;
   rateLimit: ResolvedBatchImportRateLimitConfig;
   sleep?: (ms: number) => Promise<void>;
+  onRateLimited?: () => void;
 };
 
 export type RunImportWithRateLimitRetryResult = {
   result: unknown;
   retryCount: number;
+  rateLimited: boolean;
 };
 
 export class BatchImportRetryExhaustedError extends Error {
@@ -107,17 +109,21 @@ export async function runImportWithRateLimitRetry(
 ): Promise<RunImportWithRateLimitRetryResult> {
   let retryCount = 0;
   let attempt = 0;
+  let rateLimited = false;
 
   while (true) {
     try {
       const result = await input.runImport();
-      return { result, retryCount };
+      return { result, retryCount, rateLimited };
     } catch (error) {
       if (!isBatchImportRecoverableError(error) || attempt >= input.rateLimit.maxRetries) {
         const message =
           error instanceof Error ? error.message : "Batch import failed after retries";
         throw new BatchImportRetryExhaustedError(message, retryCount, error);
       }
+
+      rateLimited = true;
+      input.onRateLimited?.();
 
       const delayMs = computeBatchImportRetryDelayMs({
         attempt,

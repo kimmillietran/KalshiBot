@@ -23,6 +23,11 @@ import {
   parseOverwriteFromArgv,
   parseRequestDelayMsFromArgv,
   parseRetryBaseDelayMsFromArgv,
+  parseAdaptiveThrottleFromArgv,
+  parseMinRequestDelayMsFromArgv,
+  parseMaxRequestDelayMsFromArgv,
+  parseThrottleIncreaseFactorFromArgv,
+  parseThrottleDecreaseMsFromArgv,
 } from "./batchTypes";
 
 const START_TIME = "2026-06-26T23:15:00.000Z";
@@ -163,6 +168,11 @@ describe("batch import argv parsing", () => {
     expect(parseRetryBaseDelayMsFromArgv(["--retry-base-delay-ms", "2000"])).toBe(2000);
     expect(parseOverwriteFromArgv(["--overwrite"])).toBe(true);
     expect(parseOverwriteFromArgv([])).toBe(false);
+    expect(parseAdaptiveThrottleFromArgv(["--adaptive-throttle"])).toBe(true);
+    expect(parseMinRequestDelayMsFromArgv(["--min-request-delay-ms", "100"])).toBe(100);
+    expect(parseMaxRequestDelayMsFromArgv(["--max-request-delay-ms", "3000"])).toBe(3000);
+    expect(parseThrottleIncreaseFactorFromArgv(["--throttle-increase-factor", "2"])).toBe(2);
+    expect(parseThrottleDecreaseMsFromArgv(["--throttle-decrease-ms", "50"])).toBe(50);
   });
 
   it("rejects invalid rate-limit flag values", () => {
@@ -303,5 +313,34 @@ describe("runBatchHistoricalImportCommand", () => {
 
     expect(exitCode).toBe(1);
     expect(stderr.join("")).toContain("Duplicate output path");
+  });
+
+  it("writes progress logs to stderr without polluting stdout JSON", async () => {
+    const marketTicker = "KXBTC15M-MARKET-A";
+    const filesystem = createFilesystem({
+      [`data/import-configs/KXBTC15M/${marketTicker}/config.json`]: JSON.stringify(
+        validConfigInput(marketTicker),
+      ),
+    });
+    const { io, stdout, stderr } = createIo();
+
+    const exitCode = await runBatchHistoricalImportCommand(
+      [
+        "--input-dir",
+        "data/import-configs",
+        "--output-dir",
+        "data/imports",
+        "--adaptive-throttle",
+        "--min-request-delay-ms",
+        "100",
+      ],
+      io,
+      { deps: { filesystem, runImport: vi.fn(async ({ config }) => createImportResult(config.marketTicker)) } },
+    );
+
+    expect(exitCode).toBe(0);
+    expect(stderr.join("")).toContain("[import] market=1/1");
+    expect(stdout.join("")).not.toContain("[import]");
+    expect(() => JSON.parse(stdout.join(""))).not.toThrow();
   });
 });

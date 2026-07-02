@@ -10,13 +10,18 @@ import { normalizeImportBatchArgv } from "../lib/cliArgvSchemas";
 
 import {
   formatStdoutOutput,
+  parseAdaptiveThrottleFromArgv,
   parseConcurrencyFromArgv,
   parseInputDirFromArgv,
+  parseMaxRequestDelayMsFromArgv,
   parseMaxRetriesFromArgv,
+  parseMinRequestDelayMsFromArgv,
   parseOutputDirFromArgv,
   parseOverwriteFromArgv,
   parseRequestDelayMsFromArgv,
   parseRetryBaseDelayMsFromArgv,
+  parseThrottleDecreaseMsFromArgv,
+  parseThrottleIncreaseFactorFromArgv,
 } from "./batchTypes";
 import type {
   BatchImportCommandDeps,
@@ -62,8 +67,18 @@ export function runBatchHistoricalImportCommand(
     const maxRetries = parseMaxRetriesFromArgv(normalizedArgv);
     const retryBaseDelayMs = parseRetryBaseDelayMsFromArgv(normalizedArgv);
     const overwriteExisting = parseOverwriteFromArgv(normalizedArgv);
+    const adaptiveThrottle = parseAdaptiveThrottleFromArgv(normalizedArgv);
+    const minRequestDelayMs = parseMinRequestDelayMsFromArgv(normalizedArgv);
+    const maxRequestDelayMs = parseMaxRequestDelayMsFromArgv(normalizedArgv);
+    const throttleIncreaseFactor = parseThrottleIncreaseFactorFromArgv(normalizedArgv);
+    const throttleDecreaseMs = parseThrottleDecreaseMsFromArgv(normalizedArgv);
     const { deps, fetchImpl } = normalizeCommandOptions(options);
     const runnerDeps = deps ?? createProductionDeps(fetchImpl);
+    if (runnerDeps.logProgress === undefined) {
+      runnerDeps.logProgress = (message) => {
+        io.writeStderr(message);
+      };
+    }
 
     return runBatchHistoricalImport(
       {
@@ -74,6 +89,11 @@ export function runBatchHistoricalImportCommand(
         maxRetries,
         retryBaseDelayMs,
         overwriteExisting,
+        adaptiveThrottle,
+        minRequestDelayMs,
+        maxRequestDelayMs,
+        throttleIncreaseFactor,
+        throttleDecreaseMs,
       },
       runnerDeps,
     ).then(

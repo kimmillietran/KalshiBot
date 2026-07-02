@@ -14,9 +14,15 @@ import type { HistoricalBronzeImportJobResult } from "@/lib/data/importJobs/hist
 
 import { buildBatchImportOutputPath } from "./buildBatchImportOutputPath";
 import {
+  AdaptiveThrottleController,
+  formatBatchImportProgressLine,
+  parseBatchImportAdaptiveThrottleOptions,
+} from "./batchImportAdaptiveThrottle";
+import {
   parseBatchImportRateLimitOptions,
   runImportWithRateLimitRetry,
   BatchImportRetryExhaustedError,
+  isBatchImportRecoverableError,
   type ResolvedBatchImportRateLimitConfig,
 } from "./batchImportRateLimit";
 import { categorizeBatchImportFailure } from "./categorizeBatchImportFailure";
@@ -183,6 +189,8 @@ function toMarketResult(
     bronzeRecordCount?: number | null;
     valid?: boolean | null;
     retryCount?: number | null;
+    requestDelayMs?: number | null;
+    rateLimited?: boolean | null;
   },
 ): BatchImportMarketResult {
   return {
@@ -195,6 +203,8 @@ function toMarketResult(
     bronzeRecordCount: result?.bronzeRecordCount ?? null,
     valid: result?.valid ?? null,
     retryCount: result?.retryCount ?? null,
+    requestDelayMs: result?.requestDelayMs ?? null,
+    rateLimited: result?.rateLimited ?? null,
   };
 }
 
@@ -226,12 +236,16 @@ async function executeJob(
   job: BatchImportJob,
   deps: BatchHistoricalImportRunnerDeps,
   rateLimit: ResolvedBatchImportRateLimitConfig,
+  throttle: AdaptiveThrottleController,
+  requestDelayMs: number,
 ): Promise<BatchImportMarketResult> {
   if (job.skipReason) {
     return toMarketResult(job, {
       status: "skipped",
       errorMessage: job.skipReason,
       retryCount: null,
+      requestDelayMs: null,
+      rateLimited: null,
     });
   }
 
@@ -240,11 +254,13 @@ async function executeJob(
       status: "failed",
       errorMessage: job.parseErrorMessage ?? "Invalid config",
       retryCount: null,
+      requestDelayMs: null,
+      rateLimited: null,
     });
   }
 
   try {
-    const { result, retryCount } = await runImportWithRateLimitRetry({
+    const { result, retryCount, rateLimited } = await runImportWithRateLimitRetry({
       runImport: () =>
         deps.runImport({
           configPath: job.configPath,
@@ -252,8 +268,15 @@ async function executeJob(
         }),
       rateLimit,
       sleep: deps.sleep,
+      onRateLimited: () => {
+        throttle.onRateLimit();
+      },
     });
     const importResult = result as HistoricalBronzeImportJobResult;
+
+    if (!rateLimited) {
+      throttle.onSuccessWithoutRateLimit();
+    }
 
     writeSuccessfulImportArtifacts(job, job.config, importResult, deps);
 
@@ -263,16 +286,23 @@ async function executeJob(
       bronzeRecordCount: importResult.metadata.bronzeRecordCount,
       valid: importResult.metadata.valid,
       retryCount,
+      requestDelayMs,
+      rateLimited,
     });
   } catch (error) {
     const retryCount =
       error instanceof BatchImportRetryExhaustedError ? error.retryCount : null;
+    const rateLimited =
+      error instanceof BatchImportRetryExhaustedError
+      && isBatchImportRecoverableError(error.causeError);
 
     return toMarketResult(job, {
       status: "failed",
       errorMessage: error instanceof Error ? error.message : "Import failed",
       jobId: job.config.jobId,
       retryCount,
+      requestDelayMs,
+      rateLimited,
     });
   }
 }
@@ -346,6 +376,19 @@ export async function runBatchHistoricalImport(
     maxRetries: input.maxRetries,
     retryBaseDelayMs: input.retryBaseDelayMs,
   });
+  const adaptiveThrottle = parseBatchImportAdaptiveThrottleOptions({
+    adaptiveThrottle: input.adaptiveThrottle,
+    minRequestDelayMs: input.minRequestDelayMs,
+    maxRequestDelayMs: input.maxRequestDelayMs,
+    throttleIncreaseFactor: input.throttleIncreaseFactor,
+    throttleDecreaseMs: input.throttleDecreaseMs,
+  });
+  const throttle = new AdaptiveThrottleController(adaptiveThrottle);
+  const sleep =
+    deps.sleep
+    ?? ((ms: number) => new Promise((resolve) => {
+      setTimeout(resolve, ms);
+    }));
   const normalizedInputDir = normalizePath(input.inputDir);
   const normalizedOutputDir = normalizePath(input.outputDir);
   const summaryPath = buildBatchImportSummaryPath(normalizedOutputDir);
@@ -353,16 +396,38 @@ export async function runBatchHistoricalImport(
   const jobs = buildJobs(input, deps);
 
   const marketResults: BatchImportMarketResult[] = [];
+  let completedMarkets = 0;
 
   await runWithConcurrency(jobs, concurrency, async (job) => {
-    const result = await executeJob(job, deps, rateLimit);
+    const requestDelayMs = adaptiveThrottle.enabled
+      ? throttle.currentDelayMs
+      : rateLimit.requestDelayMs;
+    const result = await executeJob(job, deps, rateLimit, throttle, requestDelayMs);
     marketResults.push(result);
+    completedMarkets += 1;
 
-    if (rateLimit.requestDelayMs > 0) {
-      const sleep = deps.sleep ?? ((ms: number) => new Promise((resolve) => {
-        setTimeout(resolve, ms);
-      }));
-      await sleep(rateLimit.requestDelayMs);
+    const progressStatus =
+      result.rateLimited
+        ? "rate-limited"
+        : result.status;
+    deps.logProgress?.(
+      `${formatBatchImportProgressLine({
+        marketIndex: completedMarkets,
+        totalMarkets: jobs.length,
+        marketTicker: job.marketTicker,
+        status: progressStatus,
+        delayMs: requestDelayMs,
+        retries: result.retryCount ?? 0,
+      })}\n`,
+    );
+
+    const interRequestDelayMs = adaptiveThrottle.enabled
+      ? throttle.currentDelayMs
+      : rateLimit.requestDelayMs;
+
+    if (interRequestDelayMs > 0) {
+      throttle.recordAppliedDelay(interRequestDelayMs);
+      await sleep(interRequestDelayMs);
     }
   });
 
@@ -373,12 +438,15 @@ export async function runBatchHistoricalImport(
   const skippedImports = marketResults.filter((market) => market.status === "skipped").length;
   const completedAt = now().toISOString();
   const retryMetrics = summarizeRetryMetrics(marketResults, rateLimit);
+  const throttleMetrics = throttle.getMetrics();
 
   const summary: BatchImportSummary = {
     inputDir: normalizedInputDir,
     outputDir: normalizedOutputDir,
     concurrency,
-    requestDelayMs: rateLimit.requestDelayMs,
+    requestDelayMs: adaptiveThrottle.enabled
+      ? throttleMetrics.finalRequestDelayMs
+      : rateLimit.requestDelayMs,
     maxRetries: rateLimit.maxRetries,
     retryBaseDelayMs: rateLimit.retryBaseDelayMs,
     startedAt,
@@ -391,6 +459,26 @@ export async function runBatchHistoricalImport(
     ...retryMetrics,
     failureReasonCounts: buildFailureReasonCounts(marketResults),
     summaryPath,
+    adaptiveThrottleEnabled: adaptiveThrottle.enabled,
+    initialRequestDelayMs: adaptiveThrottle.enabled
+      ? throttleMetrics.initialRequestDelayMs
+      : rateLimit.requestDelayMs,
+    finalRequestDelayMs: adaptiveThrottle.enabled
+      ? throttleMetrics.finalRequestDelayMs
+      : rateLimit.requestDelayMs,
+    minRequestDelayMs: adaptiveThrottle.enabled
+      ? adaptiveThrottle.minRequestDelayMs
+      : null,
+    maxRequestDelayMs: adaptiveThrottle.enabled
+      ? adaptiveThrottle.maxRequestDelayMs
+      : null,
+    throttleAdjustmentCount: adaptiveThrottle.enabled
+      ? throttleMetrics.throttleAdjustmentCount
+      : 0,
+    rateLimitCount: adaptiveThrottle.enabled ? throttleMetrics.rateLimitCount : 0,
+    averageRequestDelayMs: adaptiveThrottle.enabled
+      ? throttleMetrics.averageRequestDelayMs
+      : rateLimit.requestDelayMs,
     markets: marketResults,
   };
 
