@@ -118,4 +118,39 @@ describe("discoverKalshiHistoricalMarkets", () => {
     expect(first).toBe(second);
     expect(first).toContain("KXBTC15M-26JUN270115-15");
   });
+
+  it("applies sampling filters after deterministic sort", async () => {
+    const importer = createImporter(async () => ({
+      markets: [MARKET_A, MARKET_B],
+      cursor: "",
+      provenance: {
+        source: "kalshi-historical-api",
+        fetchedAt: FIXED_NOW.toISOString(),
+        requestPath: "/historical/markets?series_ticker=KXBTC15M&limit=100",
+        cursor: "",
+      },
+    }));
+
+    const result = await discoverKalshiHistoricalMarkets(
+      {
+        seriesTicker: "KXBTC15M",
+        sampling: {
+          after: "2026-06-27T01:30:00Z",
+          limit: 1,
+        },
+      },
+      { importer, now: () => FIXED_NOW },
+    );
+
+    expect(result.metadata.sampling).toEqual({
+      totalDiscovered: 2,
+      afterDateFilter: 1,
+      offset: 0,
+      limit: 1,
+      finalMarketCount: 1,
+    });
+    expect(result.markets.map((market) => market.marketTicker)).toEqual([
+      "KXBTC15M-26JUN270200-15",
+    ]);
+  });
 });

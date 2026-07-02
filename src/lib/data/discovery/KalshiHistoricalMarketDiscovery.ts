@@ -5,8 +5,13 @@ import type {
 } from "@/lib/data/importers/kalshi/kalshiHistoricalTypes";
 
 import {
+  applyMarketSamplingFilters,
+  hasMarketDiscoverySamplingOptions,
+} from "./applyMarketSamplingFilters";
+import {
   MarketDiscoveryError,
   type DiscoveredMarket,
+  type DiscoverKalshiHistoricalMarketsInput,
   type MarketDiscoveryResult,
 } from "./discoveryTypes";
 import { normalizeDiscoveredMarket } from "./normalizeDiscoveredMarket";
@@ -42,9 +47,7 @@ function compareDiscoveredMarkets(
   return left.marketTicker.localeCompare(right.marketTicker);
 }
 
-export type DiscoverKalshiHistoricalMarketsInput = {
-  seriesTicker: string;
-};
+export type { DiscoverKalshiHistoricalMarketsInput } from "./discoveryTypes";
 
 export type KalshiHistoricalMarketDiscoveryOptions = {
   importer: HistoricalImporter;
@@ -112,7 +115,7 @@ export async function discoverKalshiHistoricalMarkets(
     options,
   );
 
-  const normalizedMarkets = markets
+  const sortedMarkets = markets
     .map(({ market, provenance }) =>
       normalizeDiscoveredMarket({
         seriesTicker,
@@ -122,6 +125,8 @@ export async function discoverKalshiHistoricalMarkets(
     )
     .sort(compareDiscoveredMarkets);
 
+  const samplingResult = applyMarketSamplingFilters(sortedMarkets, input.sampling);
+  const normalizedMarkets = samplingResult.markets;
   const validation = validateMarketDiscoveryResult(normalizedMarkets);
 
   return deepFreeze({
@@ -130,6 +135,9 @@ export async function discoverKalshiHistoricalMarkets(
       discoveredAt,
       marketCount: normalizedMarkets.length,
       pageCount,
+      ...(hasMarketDiscoverySamplingOptions(input.sampling)
+        ? { sampling: samplingResult.summary }
+        : {}),
     },
     markets: normalizedMarkets,
     validation,

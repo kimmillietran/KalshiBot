@@ -8,18 +8,23 @@ export type {
   MarketDiscoveryMetadata,
   MarketDiscoveryProvenance,
   MarketDiscoveryResult,
+  MarketDiscoverySamplingOptions,
+  MarketDiscoverySamplingSummary,
   MarketDiscoveryValidationIssue,
   MarketDiscoveryValidationResult,
+  DiscoverKalshiHistoricalMarketsInput,
 } from "./discoveryTypes";
 
+export {
+  applyMarketSamplingFilters,
+  hasMarketDiscoverySamplingOptions,
+  parseMarketDiscoverySamplingOptions,
+} from "./applyMarketSamplingFilters";
 export {
   discoverKalshiHistoricalMarkets,
   serializeMarketDiscoveryResult,
 } from "./KalshiHistoricalMarketDiscovery";
-export type {
-  DiscoverKalshiHistoricalMarketsInput,
-  KalshiHistoricalMarketDiscoveryOptions,
-} from "./KalshiHistoricalMarketDiscovery";
+export type { KalshiHistoricalMarketDiscoveryOptions } from "./KalshiHistoricalMarketDiscovery";
 
 export { normalizeDiscoveredMarket } from "./normalizeDiscoveredMarket";
 export type { NormalizeDiscoveredMarketInput } from "./normalizeDiscoveredMarket";

@@ -43,6 +43,29 @@ export type MarketDiscoveryMetadata = {
   discoveredAt: string;
   marketCount: number;
   pageCount: number;
+  sampling?: MarketDiscoverySamplingSummary;
+};
+
+export type MarketDiscoverySamplingOptions = {
+  limit?: number;
+  offset?: number;
+  after?: string;
+  before?: string;
+  afterDate?: Date;
+  beforeDate?: Date;
+};
+
+export type MarketDiscoverySamplingSummary = {
+  totalDiscovered: number;
+  afterDateFilter: number;
+  offset: number;
+  limit: number | null;
+  finalMarketCount: number;
+};
+
+export type DiscoverKalshiHistoricalMarketsInput = {
+  seriesTicker: string;
+  sampling?: MarketDiscoverySamplingOptions;
 };
 
 export type MarketDiscoveryValidationResult = {

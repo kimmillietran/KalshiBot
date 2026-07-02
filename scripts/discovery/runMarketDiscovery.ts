@@ -8,9 +8,11 @@ import {
 import type { FetchLike } from "@/lib/data/importers/kalshi";
 
 import {
+  buildDiscoveryStdoutSummary,
   formatStdoutOutput,
   MarketDiscoveryCommandError,
   parseOutputPathFromArgv,
+  parseSamplingOptionsFromArgv,
   parseSeriesFromArgv,
 } from "./types";
 import type {
@@ -41,6 +43,7 @@ export function runMarketDiscoveryCommand(
   try {
     const seriesTicker = parseSeriesFromArgv(argv);
     const outputPath = parseOutputPathFromArgv(argv);
+    const sampling = parseSamplingOptionsFromArgv(argv);
     const { deps, fetchImpl } = normalizeCommandOptions(options);
 
     const discoveryOptions =
@@ -48,16 +51,23 @@ export function runMarketDiscoveryCommand(
         resolveFetchImpl(fetchImpl),
       );
 
-    return discoverKalshiHistoricalMarkets({ seriesTicker }, discoveryOptions).then(
+    return discoverKalshiHistoricalMarkets(
+      {
+        seriesTicker,
+        ...(Object.keys(sampling).length > 0 ? { sampling } : {}),
+      },
+      discoveryOptions,
+    ).then(
       (result) => {
         const serialized = serializeMarketDiscoveryResult(result);
         io.writeFile(outputPath, serialized);
         io.writeStdout(
           formatStdoutOutput(
-            JSON.stringify({
+            buildDiscoveryStdoutSummary({
               outputPath,
               marketCount: result.metadata.marketCount,
               valid: result.validation.valid,
+              sampling: result.metadata.sampling,
             }),
           ),
         );
@@ -113,8 +123,14 @@ if (process.env.VITEST !== "true") {
 }
 
 export {
+  buildDiscoveryStdoutSummary,
   formatStdoutOutput,
   MarketDiscoveryCommandError,
+  parseAfterFromArgv,
+  parseBeforeFromArgv,
+  parseLimitFromArgv,
+  parseOffsetFromArgv,
   parseOutputPathFromArgv,
+  parseSamplingOptionsFromArgv,
   parseSeriesFromArgv,
 } from "./types";

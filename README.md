@@ -40,8 +40,26 @@ npm run lint     # eslint
 npm run test     # vitest
 npm run test:watch
 npm run test:coverage
+### Historical market discovery
+
+```bash
 npm run discover:markets -- --series KXBTC15M --output discovery-result.json
+
+npm run discover:markets -- --series KXBTC15M --limit 50
+
+npm run discover:markets -- \
+  --series KXBTC15M \
+  --after 2026-01-01 \
+  --before 2026-02-01 \
+  --limit 100
+
+npm run discover:markets -- \
+  --series KXBTC15M \
+  --offset 500 \
+  --limit 250
 ```
+
+Default output: `discovery-result.json` (override with `--output`).
 
 ## Project structure
 
@@ -118,6 +136,7 @@ docs/
 | 6.25D | Kalshi fee schedule execution cost model (`zero`, `per-contract-fee`, `kalshi-fee-schedule` via `costModelConfig`) — **complete** |
 | 6.26A | Diffusion fair value strategy (`fair-value-diffusion`, realized vol + edge threshold) — **complete** |
 | 6.26B | Probability calibration reports (`research:calibration`, Brier/log-loss/ECE/reliability) — **complete** |
+| 6.26C | Historical market sampling controls (`discover:markets` `--limit`/`--offset`/`--after`/`--before`) — **complete** |
 | 6.27A | Walk-forward validation engine (`research:walk-forward`, rolling train/validation folds) — **complete** |
 | 6.27B | Experiment registry (`experiments:register`, immutable reproducibility records) — **complete** |
 | 6.27C | Walk-forward strategy sweep (`research:walk-forward-sweep`, OOS validation research) — **complete** |
