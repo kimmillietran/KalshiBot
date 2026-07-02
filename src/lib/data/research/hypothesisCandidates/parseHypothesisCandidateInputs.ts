@@ -201,8 +201,8 @@ function deriveRegimesFromSummaryCounts(summaryCounts: {
   volatility: Record<string, number>;
   trend: Record<string, number>;
   marketState: Record<string, number>;
-}): RegimeTagsDocument["regimes"] {
-  const regimes: RegimeTagsDocument["regimes"] = [];
+}): RegimeTagEntry[] {
+  const regimes: RegimeTagEntry[] = [];
 
   for (const [dimension, counts] of Object.entries(summaryCounts) as Array<
     [keyof typeof summaryCounts, Record<string, number>]
