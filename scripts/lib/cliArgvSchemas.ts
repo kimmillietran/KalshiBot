@@ -99,6 +99,12 @@ export const REGIME_TAGGING_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--output" },
 ];
 
+export const EVENT_STUDY_ARGV_SCHEMA: readonly NpmArgvField[] = [
+  { flag: "--input-dir" },
+  { flag: "--events" },
+  { flag: "--output" },
+];
+
 export const POWER_ANALYSIS_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--input-dir" },
   { flag: "--output" },
@@ -264,6 +270,10 @@ export function normalizeStatisticalSignificanceArgv(argv: readonly string[]): s
 
 export function normalizeRegimeTaggingArgv(argv: readonly string[]): string[] {
   return normalizeNpmScriptArgv(argv, REGIME_TAGGING_ARGV_SCHEMA);
+}
+
+export function normalizeEventStudyArgv(argv: readonly string[]): string[] {
+  return normalizeNpmScriptArgv(argv, EVENT_STUDY_ARGV_SCHEMA);
 }
 
 export function normalizeHypothesisCandidatesArgv(argv: readonly string[]): string[] {

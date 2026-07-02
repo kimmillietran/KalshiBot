@@ -26,6 +26,7 @@
     "research:trace-attribution": "tsx scripts/research/buildDecisionTraceAttribution.ts",
     "research:significance": "tsx scripts/research/buildStatisticalSignificance.ts",
     "research:tag-regimes": "tsx scripts/research/buildRegimeTags.ts",
+    "research:event-study": "tsx scripts/research/buildEventStudy.ts",
     "research:hypotheses": "tsx scripts/research/buildHypothesisCandidates.ts",
     "research:power-analysis": "tsx scripts/research/buildPowerAnalysis.ts",
     "research:overfitting-diagnostics": "tsx scripts/research/buildOverfittingDiagnostics.ts",
