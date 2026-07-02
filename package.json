@@ -16,6 +16,7 @@
     "research:walk-forward": "tsx scripts/research/runWalkForwardValidation.ts",
     "research:walk-forward-sweep": "tsx scripts/research/runWalkForwardStrategySweep.ts",
     "research:sweep": "tsx scripts/research/runStrategySweep.ts",
+    "research:parameter-sweep": "tsx scripts/research/runParameterSweep.ts",
     "research:calibration": "tsx scripts/research/buildProbabilityCalibrationReport.ts",
     "research:aggregate": "tsx scripts/research/aggregateResearchStatistics.ts",
     "experiments:register": "tsx scripts/experiments/registerExperiments.ts",

@@ -1,6 +1,7 @@
 export {
   buildStrategySweepOutputPath,
 } from "./buildStrategySweepOutputPath";
+export type { BuildStrategySweepOutputPathOptions } from "./buildStrategySweepOutputPath";
 
 export {
   createNodeStrategySweepFilesystem,

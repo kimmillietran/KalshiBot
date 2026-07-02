@@ -109,8 +109,10 @@ export type RunStrategySweepInput = {
   outputDir: string;
   strategyIds: readonly string[];
   strategyConfig?: unknown;
+  parameterSetId?: string;
   concurrency?: number;
   summaryPath?: string;
+  writeSummary?: boolean;
 };
 
 export type StrategySweepRunnerDeps = {

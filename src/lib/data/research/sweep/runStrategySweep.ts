@@ -177,6 +177,9 @@ function buildJobs(
         strategyId,
         entry.seriesTicker,
         entry.marketTicker,
+        input.parameterSetId
+          ? { parameterSetId: input.parameterSetId }
+          : undefined,
       );
 
       const existingEntry = seenOutputPaths.get(outputPath);
@@ -387,8 +390,10 @@ export async function runStrategySweep(
       outputDir: normalizedOutputDir,
       strategyIds,
       strategyConfig: input.strategyConfig,
+      parameterSetId: input.parameterSetId,
       summaryPath,
       concurrency,
+      writeSummary: input.writeSummary,
     },
     strategyIds,
     deps,
@@ -423,8 +428,10 @@ export async function runStrategySweep(
     runs: runResults,
   };
 
-  deps.filesystem.mkdir(posix.dirname(summaryPath));
-  deps.filesystem.writeFile(summaryPath, serializeStrategySweepSummary(summary));
+  if (input.writeSummary !== false) {
+    deps.filesystem.mkdir(posix.dirname(summaryPath));
+    deps.filesystem.writeFile(summaryPath, serializeStrategySweepSummary(summary));
+  }
 
   return summary;
 }
