@@ -154,6 +154,30 @@ export type {
 } from "./leadLag";
 
 export {
+  buildDecisionTraceAttribution,
+  buildDecisionTraceAttributionFromDirectories,
+  serializeDecisionTraceAttributionReport,
+  computeActionBuckets,
+  discoverDecisionTraces,
+  extractAttributionObservations,
+  DEFAULT_DECISION_TRACE_ATTRIBUTION_INPUT_DIR,
+  DEFAULT_DECISION_TRACE_ATTRIBUTION_OUTPUT_PATH,
+  DECISION_TRACE_ATTRIBUTION_FILENAME,
+  MIN_ATTRIBUTION_SAMPLE_SIZE,
+  DecisionTraceAttributionError,
+  DecisionTraceAttributionErrorCode,
+} from "./decisionTraceAttribution";
+export type {
+  AttributionBucketSummary,
+  AttributionObservation,
+  AttributionSampleCounts,
+  AttributionWarning,
+  DecisionTraceAttributionIo,
+  DecisionTraceAttributionReport,
+  ScannedDecisionTrace,
+} from "./decisionTraceAttribution";
+
+export {
   buildStatisticalSignificanceFromDirectories,
   buildStatisticalSignificanceReport,
   bootstrapMeanConfidenceInterval,

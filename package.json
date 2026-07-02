@@ -23,6 +23,7 @@
     "research:report": "tsx scripts/research/buildResearchReport.ts",
     "research:mispricing-atlas": "tsx scripts/research/buildMispricingAtlas.ts",
     "research:lead-lag": "tsx scripts/research/buildLeadLagAnalysis.ts",
+    "research:trace-attribution": "tsx scripts/research/buildDecisionTraceAttribution.ts",
     "research:significance": "tsx scripts/research/buildStatisticalSignificance.ts",
     "research:tag-regimes": "tsx scripts/research/buildRegimeTags.ts",
     "research:hypotheses": "tsx scripts/research/buildHypothesisCandidates.ts",
