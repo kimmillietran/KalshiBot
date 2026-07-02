@@ -113,6 +113,24 @@ export type {
 } from "./reports";
 
 export {
+  buildMispricingAtlas,
+  buildMispricingAtlasFromDirectories,
+  extractMispricingObservationsFromResearchOutput,
+  serializeMispricingAtlas,
+  DEFAULT_MISPRICING_ATLAS_INPUT_DIR,
+  DEFAULT_MISPRICING_ATLAS_OUTPUT_PATH,
+  MISPRICING_ATLAS_FILENAME,
+  MispricingAtlasError,
+  MispricingAtlasErrorCode,
+} from "./mispricingAtlas";
+export type {
+  MispricingAtlas,
+  MispricingAtlasBucketSummary,
+  MispricingAtlasWarning,
+  MispricingObservation,
+} from "./mispricingAtlas";
+
+export {
   runHistoricalResearchFromBronze,
   serializeHistoricalResearchRunnerResult,
   HistoricalResearchRunnerError,

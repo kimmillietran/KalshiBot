@@ -72,6 +72,11 @@ export const RESEARCH_REPORT_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--output" },
 ];
 
+export const MISPRICING_ATLAS_ARGV_SCHEMA: readonly NpmArgvField[] = [
+  { flag: "--input-dir" },
+  { flag: "--output" },
+];
+
 export const LEADERBOARD_STRATEGIES_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--input-dir" },
   { flag: "--output" },
@@ -186,6 +191,10 @@ export function normalizeResearchInspectArgv(argv: readonly string[]): string[] 
 
 export function normalizeResearchReportArgv(argv: readonly string[]): string[] {
   return normalizeNpmScriptArgv(argv, RESEARCH_REPORT_ARGV_SCHEMA);
+}
+
+export function normalizeMispricingAtlasArgv(argv: readonly string[]): string[] {
+  return normalizeNpmScriptArgv(argv, MISPRICING_ATLAS_ARGV_SCHEMA);
 }
 
 export function normalizeLeaderboardStrategiesArgv(argv: readonly string[]): string[] {
