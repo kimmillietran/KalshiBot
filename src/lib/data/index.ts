@@ -414,9 +414,12 @@ export {
   MarketDiscoveryError,
   MarketDiscoveryErrorCode,
   applyMarketSamplingFilters,
+  canUseDiscoveryEarlyStop,
   computeDiscoveryRetryDelayMs,
   discoverKalshiHistoricalMarkets,
   fetchDiscoveryPageWithRetry,
+  formatDiscoveryProgressMessage,
+  getDiscoveryEarlyStopTarget,
   hasMarketDiscoveryRateLimitOptions,
   hasMarketDiscoverySamplingOptions,
   isKalshiRateLimitError,
@@ -431,6 +434,7 @@ export {
 export type {
   DiscoveredMarket,
   MarketDiscoveryMetadata,
+  MarketDiscoveryProgressSummary,
   MarketDiscoveryProvenance,
   MarketDiscoveryRateLimitLogger,
   MarketDiscoveryRateLimitOptions,
@@ -441,6 +445,7 @@ export type {
   MarketDiscoveryValidationResult,
   DiscoverKalshiHistoricalMarketsInput,
   KalshiHistoricalMarketDiscoveryOptions,
+  MarketDiscoveryProgressLogger,
   NormalizeDiscoveredMarketInput,
   ResolvedMarketDiscoveryRateLimitConfig,
 } from "./discovery";

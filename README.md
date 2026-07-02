@@ -68,7 +68,7 @@ npm run discover:markets -- \
   --output discovery-result.json
 ```
 
-Default output: `discovery-result.json` (override with `--output`).
+Default output: `discovery-result.json` (override with `--output`). Progress logs stream to stderr (`[discover] ...`); stdout remains JSON summary.
 
 ## Project structure
 
@@ -150,6 +150,7 @@ docs/
 | 6.27B | Experiment registry (`experiments:register`, immutable reproducibility records) — **complete** |
 | 6.27C | Walk-forward strategy sweep (`research:walk-forward-sweep`, OOS validation research) — **complete** |
 | 6.27D | Kalshi discovery rate-limit handling (`discover:markets` throttle + 429 retry/backoff) — **complete** |
+| 6.27E | Discovery early stop + progress logging (`--limit` smoke pagination stop, stderr progress) — **complete** |
 
 ## Intentionally deferred
 

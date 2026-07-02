@@ -228,6 +228,40 @@ describe("runMarketDiscoveryCommand", () => {
     });
   });
 
+  it("writes progress metadata to stdout summary when limit is set", async () => {
+    const { io, writes } = createIo();
+
+    const exitCode = await runMarketDiscoveryCommand(
+      ["--series", "KXBTC15M", "--limit", "1"],
+      io,
+      { deps: { importer: createImporter(), now: () => FIXED_NOW } },
+    );
+
+    expect(exitCode).toBe(0);
+    expect(JSON.parse(writes.stdout.trim())).toMatchObject({
+      limit: 1,
+      finalMarketCount: 1,
+      earlyStopApplied: true,
+      pagesFetched: 1,
+      limitTarget: 1,
+      totalDiscoveredMayBePartial: true,
+    });
+  });
+
+  it("emits discovery progress logs to stderr", async () => {
+    const { io, writes } = createIo();
+
+    await runMarketDiscoveryCommand(
+      ["--series", "KXBTC15M", "--limit", "1"],
+      io,
+      { deps: { importer: createImporter(), now: () => FIXED_NOW } },
+    );
+
+    expect(writes.stderr).toContain("[discover] page=1 collected=2 limitTarget=1");
+    expect(writes.stderr).toContain("[discover] early stop:");
+    expect(writes.stdout).not.toContain("[discover]");
+  });
+
   it("does not call fetch when deps are injected", async () => {
     const fetchImpl = vi.fn() as FetchLike;
     const { io } = createIo();

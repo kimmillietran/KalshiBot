@@ -259,4 +259,188 @@ describe("discoverKalshiHistoricalMarkets", () => {
       ),
     ).rejects.toThrow(MarketDiscoveryError);
   });
+
+  it("stops pagination early when limit is set without date filters", async () => {
+    let pageFetches = 0;
+    const importer = createImporter(async (_series, _range, pagination) => {
+      pageFetches += 1;
+      return {
+        markets: Array.from({ length: 100 }, (_, index) => ({
+          ...MARKET_A,
+          ticker: `KXBTC15M-202601${String(index).padStart(2, "0")}-15`,
+          eventTicker: `KXBTC15M-202601${String(index).padStart(2, "0")}`,
+        })),
+        cursor: pagination?.cursor ? "" : "page-2",
+        provenance: {
+          source: "kalshi-historical-api",
+          fetchedAt: FIXED_NOW.toISOString(),
+          requestPath: "/historical/markets?series_ticker=KXBTC15M&limit=100",
+          cursor: pagination?.cursor ? "" : "page-2",
+        },
+      };
+    });
+
+    const result = await discoverKalshiHistoricalMarkets(
+      {
+        seriesTicker: "KXBTC15M",
+        sampling: { limit: 50 },
+      },
+      { importer, now: () => FIXED_NOW },
+    );
+
+    expect(pageFetches).toBe(1);
+    expect(result.metadata.progress).toEqual({
+      earlyStopApplied: true,
+      pagesFetched: 1,
+      limitTarget: 50,
+      totalDiscoveredMayBePartial: true,
+    });
+    expect(result.metadata.sampling).toMatchObject({
+      limit: 50,
+      finalMarketCount: 50,
+      totalDiscovered: 100,
+    });
+    expect(result.markets).toHaveLength(50);
+  });
+
+  it("stops pagination after offset + limit markets are collected", async () => {
+    let pageFetches = 0;
+    const importer = createImporter(async (_series, _range, pagination) => {
+      pageFetches += 1;
+      return {
+        markets: Array.from({ length: 100 }, (_, index) => ({
+          ...MARKET_A,
+          ticker: `KXBTC15M-202602${String(index).padStart(2, "0")}-15`,
+          eventTicker: `KXBTC15M-202602${String(index).padStart(2, "0")}`,
+        })),
+        cursor: pagination?.cursor ? "" : "page-2",
+        provenance: {
+          source: "kalshi-historical-api",
+          fetchedAt: FIXED_NOW.toISOString(),
+          requestPath: "/historical/markets?series_ticker=KXBTC15M&limit=100",
+          cursor: pagination?.cursor ? "" : "page-2",
+        },
+      };
+    });
+
+    const result = await discoverKalshiHistoricalMarkets(
+      {
+        seriesTicker: "KXBTC15M",
+        sampling: { offset: 100, limit: 50 },
+      },
+      { importer, now: () => FIXED_NOW },
+    );
+
+    expect(pageFetches).toBe(2);
+    expect(result.metadata.progress).toMatchObject({
+      earlyStopApplied: true,
+      pagesFetched: 2,
+      limitTarget: 150,
+    });
+    expect(result.markets).toHaveLength(50);
+  });
+
+  it("does not early stop when date filters require a full catalog scan", async () => {
+    let pageFetches = 0;
+    const importer = createImporter(async (_series, _range, pagination) => {
+      pageFetches += 1;
+      if (!pagination?.cursor) {
+        return {
+          markets: [MARKET_A],
+          cursor: "page-2",
+          provenance: {
+            source: "kalshi-historical-api",
+            fetchedAt: FIXED_NOW.toISOString(),
+            requestPath: "/historical/markets?series_ticker=KXBTC15M&limit=100",
+            cursor: "page-2",
+          },
+        };
+      }
+
+      return {
+        markets: [MARKET_B],
+        cursor: "",
+        provenance: {
+          source: "kalshi-historical-api",
+          fetchedAt: FIXED_NOW.toISOString(),
+          requestPath:
+            "/historical/markets?series_ticker=KXBTC15M&limit=100&cursor=page-2",
+          cursor: "",
+        },
+      };
+    });
+
+    const result = await discoverKalshiHistoricalMarkets(
+      {
+        seriesTicker: "KXBTC15M",
+        sampling: {
+          after: "2026-06-27T01:30:00Z",
+          limit: 1,
+        },
+      },
+      { importer, now: () => FIXED_NOW },
+    );
+
+    expect(pageFetches).toBe(2);
+    expect(result.metadata.progress).toEqual({
+      earlyStopApplied: false,
+      pagesFetched: 2,
+      limitTarget: 1,
+      totalDiscoveredMayBePartial: false,
+    });
+  });
+
+  it("emits progress logs while paginating", async () => {
+    const logDiscoveryProgress = vi.fn();
+    const importer = createImporter(async () => ({
+      markets: [MARKET_B],
+      cursor: "",
+      provenance: {
+        source: "kalshi-historical-api",
+        fetchedAt: FIXED_NOW.toISOString(),
+        requestPath: "/historical/markets?series_ticker=KXBTC15M&limit=100",
+        cursor: "",
+      },
+    }));
+
+    await discoverKalshiHistoricalMarkets(
+      {
+        seriesTicker: "KXBTC15M",
+        sampling: { limit: 1 },
+      },
+      {
+        importer,
+        now: () => FIXED_NOW,
+        logDiscoveryProgress,
+      },
+    );
+
+    expect(logDiscoveryProgress).toHaveBeenCalledWith(
+      "[discover] page=1 collected=1 limitTarget=1",
+    );
+    expect(logDiscoveryProgress).toHaveBeenCalledWith(
+      "[discover] early stop: collected 1 >= target 1",
+    );
+  });
+
+  it("skips pagination when limit is zero", async () => {
+    const importer = createImporter(async () => {
+      throw new Error("should not fetch pages when limit is zero");
+    });
+
+    const result = await discoverKalshiHistoricalMarkets(
+      {
+        seriesTicker: "KXBTC15M",
+        sampling: { limit: 0 },
+      },
+      { importer, now: () => FIXED_NOW },
+    );
+
+    expect(result.markets).toHaveLength(0);
+    expect(result.metadata.progress).toMatchObject({
+      earlyStopApplied: true,
+      pagesFetched: 0,
+      limitTarget: 0,
+    });
+  });
 });

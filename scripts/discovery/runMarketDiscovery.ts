@@ -64,6 +64,9 @@ export function runMarketDiscoveryCommand(
       logRateLimitWarning: (message: string) => {
         io.writeStderr(message.endsWith("\n") ? message : `${message}\n`);
       },
+      logDiscoveryProgress: (message: string) => {
+        io.writeStderr(message.endsWith("\n") ? message : `${message}\n`);
+      },
     };
 
     return discoverKalshiHistoricalMarkets(
@@ -83,6 +86,7 @@ export function runMarketDiscoveryCommand(
               marketCount: result.metadata.marketCount,
               valid: result.validation.valid,
               sampling: result.metadata.sampling,
+              progress: result.metadata.progress,
             }),
           ),
         );

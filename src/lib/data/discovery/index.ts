@@ -10,6 +10,7 @@ export type {
   MarketDiscoveryResult,
   MarketDiscoverySamplingOptions,
   MarketDiscoverySamplingSummary,
+  MarketDiscoveryProgressSummary,
   MarketDiscoveryValidationIssue,
   MarketDiscoveryValidationResult,
   DiscoverKalshiHistoricalMarketsInput,
@@ -20,6 +21,12 @@ export {
   hasMarketDiscoverySamplingOptions,
   parseMarketDiscoverySamplingOptions,
 } from "./applyMarketSamplingFilters";
+export {
+  canUseDiscoveryEarlyStop,
+  formatDiscoveryProgressMessage,
+  getDiscoveryEarlyStopTarget,
+  shouldStopDiscoveryPagination,
+} from "./discoveryEarlyStop";
 export {
   DEFAULT_DISCOVERY_MAX_RETRIES,
   DEFAULT_DISCOVERY_REQUEST_DELAY_MS,
@@ -40,7 +47,7 @@ export {
   discoverKalshiHistoricalMarkets,
   serializeMarketDiscoveryResult,
 } from "./KalshiHistoricalMarketDiscovery";
-export type { KalshiHistoricalMarketDiscoveryOptions } from "./KalshiHistoricalMarketDiscovery";
+export type { KalshiHistoricalMarketDiscoveryOptions, MarketDiscoveryProgressLogger } from "./KalshiHistoricalMarketDiscovery";
 
 export { normalizeDiscoveredMarket } from "./normalizeDiscoveredMarket";
 export type { NormalizeDiscoveredMarketInput } from "./normalizeDiscoveredMarket";

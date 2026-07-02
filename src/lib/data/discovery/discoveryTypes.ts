@@ -44,6 +44,7 @@ export type MarketDiscoveryMetadata = {
   marketCount: number;
   pageCount: number;
   sampling?: MarketDiscoverySamplingSummary;
+  progress?: MarketDiscoveryProgressSummary;
 };
 
 export type MarketDiscoverySamplingOptions = {
@@ -61,6 +62,13 @@ export type MarketDiscoverySamplingSummary = {
   offset: number;
   limit: number | null;
   finalMarketCount: number;
+};
+
+export type MarketDiscoveryProgressSummary = {
+  earlyStopApplied: boolean;
+  pagesFetched: number;
+  limitTarget: number | null;
+  totalDiscoveredMayBePartial: boolean;
 };
 
 export type DiscoverKalshiHistoricalMarketsInput = {

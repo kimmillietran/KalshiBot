@@ -9,6 +9,12 @@ import {
   hasMarketDiscoverySamplingOptions,
 } from "./applyMarketSamplingFilters";
 import {
+  canUseDiscoveryEarlyStop,
+  formatDiscoveryProgressMessage,
+  getDiscoveryEarlyStopTarget,
+  shouldStopDiscoveryPagination,
+} from "./discoveryEarlyStop";
+import {
   fetchDiscoveryPageWithRetry,
   parseMarketDiscoveryRateLimitOptions,
   sleepMs,
@@ -19,7 +25,9 @@ import {
   MarketDiscoveryError,
   type DiscoveredMarket,
   type DiscoverKalshiHistoricalMarketsInput,
+  type MarketDiscoveryProgressSummary,
   type MarketDiscoveryResult,
+  type MarketDiscoverySamplingOptions,
 } from "./discoveryTypes";
 import { normalizeDiscoveredMarket } from "./normalizeDiscoveredMarket";
 import { serializeMarketDiscoveryResult } from "./serializeMarketDiscoveryResult";
@@ -56,28 +64,46 @@ function compareDiscoveredMarkets(
 
 export type { DiscoverKalshiHistoricalMarketsInput } from "./discoveryTypes";
 
+export type MarketDiscoveryProgressLogger = (message: string) => void;
+
 export type KalshiHistoricalMarketDiscoveryOptions = {
   importer: HistoricalImporter;
   pageSize?: number;
   now?: () => Date;
   rateLimit?: MarketDiscoveryRateLimitOptions;
   logRateLimitWarning?: MarketDiscoveryRateLimitLogger;
+  logDiscoveryProgress?: MarketDiscoveryProgressLogger;
   sleep?: (ms: number) => Promise<void>;
 };
 
-async function listAllHistoricalMarkets(
-  seriesTicker: string,
-  options: KalshiHistoricalMarketDiscoveryOptions,
-): Promise<{
+type ListHistoricalMarketsResult = {
   markets: Array<{
     market: HistoricalMarketRecord;
     provenance: HistoricalImportProvenance;
   }>;
   pages: HistoricalImportProvenance[];
   pageCount: number;
-}> {
+  earlyStopApplied: boolean;
+  limitTarget: number | null;
+};
+
+function logProgress(
+  logger: MarketDiscoveryProgressLogger | undefined,
+  message: string,
+): void {
+  logger?.(formatDiscoveryProgressMessage(message));
+}
+
+async function listHistoricalMarkets(
+  seriesTicker: string,
+  options: KalshiHistoricalMarketDiscoveryOptions,
+  sampling?: MarketDiscoverySamplingOptions,
+): Promise<ListHistoricalMarketsResult> {
   const pageSize = options.pageSize ?? DEFAULT_PAGE_SIZE;
   const rateLimit = parseMarketDiscoveryRateLimitOptions(options.rateLimit);
+  const earlyStopEnabled = canUseDiscoveryEarlyStop(sampling);
+  const limitTarget =
+    earlyStopEnabled && sampling ? getDiscoveryEarlyStopTarget(sampling) : null;
   const markets: Array<{
     market: HistoricalMarketRecord;
     provenance: HistoricalImportProvenance;
@@ -85,6 +111,21 @@ async function listAllHistoricalMarkets(
   const pages: HistoricalImportProvenance[] = [];
   let cursor: string | undefined;
   let pageCount = 0;
+  let earlyStopApplied = false;
+
+  if (earlyStopEnabled && limitTarget === 0) {
+    logProgress(
+      options.logDiscoveryProgress,
+      "early stop: collected 0 >= target 0",
+    );
+    return {
+      markets,
+      pages,
+      pageCount,
+      earlyStopApplied: true,
+      limitTarget,
+    };
+  }
 
   do {
     const page = await fetchDiscoveryPageWithRetry({
@@ -106,6 +147,30 @@ async function listAllHistoricalMarkets(
         provenance: { ...page.provenance },
       });
     }
+
+    logProgress(
+      options.logDiscoveryProgress,
+      `page=${pageCount} collected=${markets.length} limitTarget=${
+        limitTarget ?? "full"
+      }`,
+    );
+
+    if (
+      earlyStopEnabled
+      && limitTarget !== null
+      && shouldStopDiscoveryPagination({
+        collectedCount: markets.length,
+        limitTarget,
+      })
+    ) {
+      earlyStopApplied = true;
+      logProgress(
+        options.logDiscoveryProgress,
+        `early stop: collected ${markets.length} >= target ${limitTarget}`,
+      );
+      break;
+    }
+
     cursor = page.cursor.trim() ? page.cursor : undefined;
 
     if (cursor && rateLimit.requestDelayMs > 0) {
@@ -113,7 +178,34 @@ async function listAllHistoricalMarkets(
     }
   } while (cursor);
 
-  return { markets, pages, pageCount };
+  return {
+    markets,
+    pages,
+    pageCount,
+    earlyStopApplied,
+    limitTarget,
+  };
+}
+
+function buildProgressSummary(input: {
+  sampling?: MarketDiscoverySamplingOptions;
+  pageCount: number;
+  earlyStopApplied: boolean;
+  limitTarget: number | null;
+}): MarketDiscoveryProgressSummary | undefined {
+  if (input.sampling?.limit === undefined) {
+    return undefined;
+  }
+
+  const limitTarget =
+    input.limitTarget ?? getDiscoveryEarlyStopTarget(input.sampling);
+
+  return {
+    earlyStopApplied: input.earlyStopApplied,
+    pagesFetched: input.pageCount,
+    limitTarget,
+    totalDiscoveredMayBePartial: input.earlyStopApplied,
+  };
 }
 
 /** Discovers and normalizes historical Kalshi markets for a configured series ticker. */
@@ -127,10 +219,13 @@ export async function discoverKalshiHistoricalMarkets(
   }
 
   const discoveredAt = (options.now ?? (() => new Date()))().toISOString();
-  const { markets, pages, pageCount } = await listAllHistoricalMarkets(
-    seriesTicker,
-    options,
-  );
+  const {
+    markets,
+    pages,
+    pageCount,
+    earlyStopApplied,
+    limitTarget,
+  } = await listHistoricalMarkets(seriesTicker, options, input.sampling);
 
   const sortedMarkets = markets
     .map(({ market, provenance }) =>
@@ -145,6 +240,12 @@ export async function discoverKalshiHistoricalMarkets(
   const samplingResult = applyMarketSamplingFilters(sortedMarkets, input.sampling);
   const normalizedMarkets = samplingResult.markets;
   const validation = validateMarketDiscoveryResult(normalizedMarkets);
+  const progress = buildProgressSummary({
+    sampling: input.sampling,
+    pageCount,
+    earlyStopApplied,
+    limitTarget,
+  });
 
   return deepFreeze({
     metadata: {
@@ -155,6 +256,7 @@ export async function discoverKalshiHistoricalMarkets(
       ...(hasMarketDiscoverySamplingOptions(input.sampling)
         ? { sampling: samplingResult.summary }
         : {}),
+      ...(progress ? { progress } : {}),
     },
     markets: normalizedMarkets,
     validation,

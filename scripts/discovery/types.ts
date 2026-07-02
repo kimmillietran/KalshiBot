@@ -204,6 +204,12 @@ export function buildDiscoveryStdoutSummary(input: {
     limit: number | null;
     finalMarketCount: number;
   };
+  progress?: {
+    earlyStopApplied: boolean;
+    pagesFetched: number;
+    limitTarget: number | null;
+    totalDiscoveredMayBePartial: boolean;
+  };
 }): string {
   const summary = input.sampling ?? {
     totalDiscovered: input.marketCount,
@@ -222,5 +228,13 @@ export function buildDiscoveryStdoutSummary(input: {
     offset: summary.offset,
     limit: summary.limit,
     finalMarketCount: summary.finalMarketCount,
+    ...(input.progress
+      ? {
+          earlyStopApplied: input.progress.earlyStopApplied,
+          pagesFetched: input.progress.pagesFetched,
+          limitTarget: input.progress.limitTarget,
+          totalDiscoveredMayBePartial: input.progress.totalDiscoveredMayBePartial,
+        }
+      : {}),
   });
 }
