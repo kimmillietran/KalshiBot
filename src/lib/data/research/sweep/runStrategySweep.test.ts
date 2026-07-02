@@ -208,6 +208,20 @@ describe("buildStrategySweepOutputPath", () => {
       "data/research-results/noop/KXBTC15M/KXBTC15M-MARKET-A/research-output.json",
     );
   });
+
+  it("includes parameterSetId when provided", () => {
+    expect(
+      buildStrategySweepOutputPath(
+        "data/research-results",
+        "fair-value-diffusion",
+        "KXBTC15M",
+        "KXBTC15M-MARKET-A",
+        { parameterSetId: "ps-0001" },
+      ),
+    ).toBe(
+      "data/research-results/fair-value-diffusion/ps-0001/KXBTC15M/KXBTC15M-MARKET-A/research-output.json",
+    );
+  });
 });
 
 describe("runStrategySweep", () => {

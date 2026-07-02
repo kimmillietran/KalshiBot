@@ -68,6 +68,14 @@ export const WALK_FORWARD_VALIDATION_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--config" },
 ];
 
+export const PARAMETER_SWEEP_ARGV_SCHEMA: readonly NpmArgvField[] = [
+  { flag: "--config" },
+  { flag: "--registry" },
+  { flag: "--output-dir" },
+  { flag: "--concurrency" },
+  { flag: "--summary" },
+];
+
 const STRATEGY_SWEEP_POSITIONAL_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--registry" },
   { flag: "--output-dir" },
@@ -155,4 +163,8 @@ export function normalizeStrategySweepArgv(argv: readonly string[]): string[] {
 
 export function normalizeWalkForwardSweepArgv(argv: readonly string[]): string[] {
   return normalizeStrategySelectionArgv(argv, WALK_FORWARD_SWEEP_POSITIONAL_SCHEMA);
+}
+
+export function normalizeParameterSweepArgv(argv: readonly string[]): string[] {
+  return normalizeNpmScriptArgv(argv, PARAMETER_SWEEP_ARGV_SCHEMA);
 }

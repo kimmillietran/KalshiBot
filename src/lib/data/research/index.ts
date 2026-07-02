@@ -218,6 +218,30 @@ export type {
 } from "./sweep";
 
 export {
+  buildParameterSweepOutputPath,
+  buildParameterSweepSetRootPath,
+  DEFAULT_PARAMETER_SWEEP_OUTPUT_DIR,
+  DEFAULT_PARAMETER_SWEEP_REGISTRY_DIR,
+  formatParameterSetId,
+  generateParameterSets,
+  PARAMETER_SWEEP_SUMMARY_FILENAME,
+  ParameterStrategySweepError,
+  ParameterStrategySweepErrorCode,
+  parseParameterSweepDefinitionJson,
+  resolveParameterStrategySweepSummaryPath,
+  runParameterStrategySweep,
+  serializeParameterStrategySweepSummary,
+  validateParameterSweepDefinition,
+} from "./parameterSweep/index";
+export type {
+  ParameterSet,
+  ParameterSetRunSummary,
+  ParameterStrategySweepSummary,
+  ParameterSweepDefinition,
+  RunParameterStrategySweepInput,
+} from "./parameterSweep/index";
+
+export {
   buildCalibrationMarketKey,
   buildCalibrationReportOutputPath,
   buildCalibrationBins,
