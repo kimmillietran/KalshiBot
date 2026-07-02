@@ -10,6 +10,7 @@ import { DEFAULT_ENGINE_CONFIG } from "@/lib/trading/config/defaults";
 import { DEFAULT_BACKTEST_FILL_SIMULATION_CONFIG } from "@/lib/data/backtesting/strategyTypes";
 import type { StrategySweepFilesystem, StrategySweepRunnerDeps } from "@/lib/data/research/sweep";
 import type { StrategySweepSeriesRegistryDocument } from "@/lib/data/research/sweep/parseDatasetRegistryJson";
+import { runHistoricalResearchFromBronze } from "@/lib/data/research/runner";
 
 import { buildParameterSweepOutputPath } from "./buildParameterSweepOutputPath";
 import { runParameterStrategySweep } from "./runParameterStrategySweep";
@@ -157,20 +158,41 @@ function createFilesystem(
   };
 }
 
+function productionResearchFn(): StrategySweepRunnerDeps["runResearch"] {
+  const strategyRegistry = StrategyPluginRegistry.createBuiltIn();
+
+  return ({ fixture, strategyId, strategyConfig }) => {
+    const result = runHistoricalResearchFromBronze({
+      bronzeRecords: fixture.bronzeRecords,
+      strategy: strategyRegistry.resolveBacktestStrategy(strategyId, strategyConfig),
+      engineConfig: fixture.engineConfig,
+      initialCashCents: fixture.initialCashCents,
+      runId: fixture.runId,
+      durationMs: fixture.durationMs,
+      fillConfig: fixture.fillConfig,
+      costModelConfig: fixture.costModelConfig,
+      metricsConfig: fixture.metricsConfig,
+    });
+
+    return {
+      researchOutput: result.serialized,
+      decisionTrace: result.serializedDecisionTrace,
+    };
+  };
+}
+
 function createDeps(
   filesystem: StrategySweepFilesystem,
-): StrategySweepRunnerDeps {
+): StrategySweepRunnerDeps & {
+  runResearch: ReturnType<typeof vi.fn<StrategySweepRunnerDeps["runResearch"]>>;
+} {
+  const runResearch = vi.fn(productionResearchFn());
+
   return {
     filesystem,
     strategyRegistry: StrategyPluginRegistry.createBuiltIn(),
     parseFixtureJson: (json) => JSON.parse(json) as HistoricalResearchCliInputDocument,
-    runResearch: vi.fn(({ strategyId, strategyConfig, fixture }) =>
-      JSON.stringify({
-        runId: fixture.runId,
-        strategyId,
-        strategyConfig,
-      }),
-    ),
+    runResearch,
     now: () => FIXED_NOW,
   };
 }
