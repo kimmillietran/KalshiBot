@@ -14,6 +14,7 @@ import {
   parseOutputPathFromArgv,
   parseSamplingOptionsFromArgv,
   parseSeriesFromArgv,
+  resolveCliRateLimitOptions,
 } from "./types";
 import type {
   MarketDiscoveryCommandDeps,
@@ -46,10 +47,22 @@ export function runMarketDiscoveryCommand(
     const sampling = parseSamplingOptionsFromArgv(argv);
     const { deps, fetchImpl } = normalizeCommandOptions(options);
 
-    const discoveryOptions =
+    const baseDiscoveryOptions =
       deps ?? createKalshiHistoricalMarketDiscoveryFromFetch(
         resolveFetchImpl(fetchImpl),
       );
+    const rateLimit = resolveCliRateLimitOptions({
+      argv,
+      useProductionDefaults: !deps,
+    });
+
+    const discoveryOptions = {
+      ...baseDiscoveryOptions,
+      ...(rateLimit ? { rateLimit } : {}),
+      logRateLimitWarning: (message: string) => {
+        io.writeStderr(message.endsWith("\n") ? message : `${message}\n`);
+      },
+    };
 
     return discoverKalshiHistoricalMarkets(
       {
@@ -129,8 +142,13 @@ export {
   parseAfterFromArgv,
   parseBeforeFromArgv,
   parseLimitFromArgv,
+  parseMaxRetriesFromArgv,
   parseOffsetFromArgv,
   parseOutputPathFromArgv,
+  parseRateLimitOptionsFromArgv,
+  parseRequestDelayMsFromArgv,
+  parseRetryBaseDelayMsFromArgv,
   parseSamplingOptionsFromArgv,
   parseSeriesFromArgv,
+  resolveCliRateLimitOptions,
 } from "./types";

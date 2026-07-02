@@ -46,6 +46,9 @@ export class KalshiHistoricalHttpAdapter implements KalshiHistoricalHttpClient {
     return {
       status: response.status,
       body,
+      headers: response.headers
+        ? Object.fromEntries(response.headers.entries())
+        : undefined,
     };
   }
 }

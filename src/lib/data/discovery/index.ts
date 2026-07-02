@@ -21,6 +21,22 @@ export {
   parseMarketDiscoverySamplingOptions,
 } from "./applyMarketSamplingFilters";
 export {
+  DEFAULT_DISCOVERY_MAX_RETRIES,
+  DEFAULT_DISCOVERY_REQUEST_DELAY_MS,
+  DEFAULT_DISCOVERY_RETRY_BASE_DELAY_MS,
+  computeDiscoveryRetryDelayMs,
+  fetchDiscoveryPageWithRetry,
+  hasMarketDiscoveryRateLimitOptions,
+  isKalshiRateLimitError,
+  parseMarketDiscoveryRateLimitOptions,
+  parseRetryAfterHeader,
+} from "./discoveryRateLimit";
+export type {
+  MarketDiscoveryRateLimitLogger,
+  MarketDiscoveryRateLimitOptions,
+  ResolvedMarketDiscoveryRateLimitConfig,
+} from "./discoveryRateLimit";
+export {
   discoverKalshiHistoricalMarkets,
   serializeMarketDiscoveryResult,
 } from "./KalshiHistoricalMarketDiscovery";

@@ -407,14 +407,23 @@ export type {
 } from "./fixtures";
 
 export {
+  DEFAULT_DISCOVERY_MAX_RETRIES,
+  DEFAULT_DISCOVERY_REQUEST_DELAY_MS,
+  DEFAULT_DISCOVERY_RETRY_BASE_DELAY_MS,
   DEFAULT_KXBTC15M_SERIES_TICKER,
   MarketDiscoveryError,
   MarketDiscoveryErrorCode,
   applyMarketSamplingFilters,
+  computeDiscoveryRetryDelayMs,
   discoverKalshiHistoricalMarkets,
+  fetchDiscoveryPageWithRetry,
+  hasMarketDiscoveryRateLimitOptions,
   hasMarketDiscoverySamplingOptions,
+  isKalshiRateLimitError,
   normalizeDiscoveredMarket,
+  parseMarketDiscoveryRateLimitOptions,
   parseMarketDiscoverySamplingOptions,
+  parseRetryAfterHeader,
   serializeMarketDiscoveryResult,
   validateMarketDiscoveryResult,
   createKalshiHistoricalMarketDiscoveryFromFetch,
@@ -423,6 +432,8 @@ export type {
   DiscoveredMarket,
   MarketDiscoveryMetadata,
   MarketDiscoveryProvenance,
+  MarketDiscoveryRateLimitLogger,
+  MarketDiscoveryRateLimitOptions,
   MarketDiscoveryResult,
   MarketDiscoverySamplingOptions,
   MarketDiscoverySamplingSummary,
@@ -431,6 +442,7 @@ export type {
   DiscoverKalshiHistoricalMarketsInput,
   KalshiHistoricalMarketDiscoveryOptions,
   NormalizeDiscoveredMarketInput,
+  ResolvedMarketDiscoveryRateLimitConfig,
 } from "./discovery";
 
 export {

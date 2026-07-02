@@ -23,7 +23,13 @@ const sampleMarketWire = {
 };
 
 function createFakeClient(
-  handler: (url: string) => { status: number; body: unknown },
+  handler: (
+    url: string,
+  ) => {
+    status: number;
+    body: unknown;
+    headers?: Readonly<Record<string, string>>;
+  },
 ): KalshiHistoricalHttpClient {
   return {
     get: vi.fn(async (url: string) => handler(url)),
@@ -81,6 +87,21 @@ describe("KalshiHistoricalImporter", () => {
       fetchedAt: FIXED_NOW.toISOString(),
       requestPath: "/historical/markets?series_ticker=KXBTC15M&limit=100",
       cursor: "next-page",
+    });
+  });
+
+  it("attaches Retry-After metadata to 429 importer errors", async () => {
+    const client = createFakeClient(() => ({
+      status: 429,
+      body: { message: "rate limited" },
+      headers: { "retry-after": "3" },
+    }));
+
+    const importer = createImporter(client);
+
+    await expect(importer.listHistoricalMarkets("KXBTC15M")).rejects.toMatchObject({
+      status: 429,
+      retryAfterMs: 3000,
     });
   });
 

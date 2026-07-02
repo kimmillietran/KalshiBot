@@ -2,11 +2,13 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { HistoricalImporter } from "@/lib/data/importers/kalshi/HistoricalImporter";
 import type { HistoricalMarketRecord } from "@/lib/data/importers/kalshi/kalshiHistoricalTypes";
+import { KalshiHistoricalImporterError } from "@/lib/data/importers/kalshi/KalshiHistoricalImporter";
 
 import {
   discoverKalshiHistoricalMarkets,
   serializeMarketDiscoveryResult,
 } from "./KalshiHistoricalMarketDiscovery";
+import { MarketDiscoveryError } from "./discoveryTypes";
 
 const FIXED_NOW = new Date("2026-06-27T12:00:00.000Z");
 
@@ -152,5 +154,109 @@ describe("discoverKalshiHistoricalMarkets", () => {
     expect(result.markets.map((market) => market.marketTicker)).toEqual([
       "KXBTC15M-26JUN270200-15",
     ]);
+  });
+
+  it("waits between paginated requests when request delay is configured", async () => {
+    const sleep = vi.fn(async () => undefined);
+    let callCount = 0;
+    const importer = createImporter(async (_series, _range, pagination) => {
+      callCount += 1;
+      if (!pagination?.cursor) {
+        return {
+          markets: [MARKET_A],
+          cursor: "page-2",
+          provenance: {
+            source: "kalshi-historical-api",
+            fetchedAt: FIXED_NOW.toISOString(),
+            requestPath: "/historical/markets?series_ticker=KXBTC15M&limit=100",
+            cursor: "page-2",
+          },
+        };
+      }
+
+      return {
+        markets: [MARKET_B],
+        cursor: "",
+        provenance: {
+          source: "kalshi-historical-api",
+          fetchedAt: FIXED_NOW.toISOString(),
+          requestPath:
+            "/historical/markets?series_ticker=KXBTC15M&limit=100&cursor=page-2",
+          cursor: "",
+        },
+      };
+    });
+
+    await discoverKalshiHistoricalMarkets(
+      { seriesTicker: "KXBTC15M" },
+      {
+        importer,
+        now: () => FIXED_NOW,
+        rateLimit: { requestDelayMs: 500 },
+        sleep,
+      },
+    );
+
+    expect(callCount).toBe(2);
+    expect(sleep).toHaveBeenCalledWith(500);
+  });
+
+  it("retries paginated discovery after a 429 response", async () => {
+    const sleep = vi.fn(async () => undefined);
+    const logRateLimitWarning = vi.fn();
+    let callCount = 0;
+    const importer = createImporter(async () => {
+      callCount += 1;
+      if (callCount === 1) {
+        throw new KalshiHistoricalImporterError("rate limited", 429, undefined, 1200);
+      }
+
+      return {
+        markets: [MARKET_B],
+        cursor: "",
+        provenance: {
+          source: "kalshi-historical-api",
+          fetchedAt: FIXED_NOW.toISOString(),
+          requestPath: "/historical/markets?series_ticker=KXBTC15M&limit=100",
+          cursor: "",
+        },
+      };
+    });
+
+    const result = await discoverKalshiHistoricalMarkets(
+      { seriesTicker: "KXBTC15M" },
+      {
+        importer,
+        now: () => FIXED_NOW,
+        rateLimit: { maxRetries: 2 },
+        sleep,
+        logRateLimitWarning,
+      },
+    );
+
+    expect(result.markets).toHaveLength(1);
+    expect(callCount).toBe(2);
+    expect(sleep).toHaveBeenCalledWith(1200);
+    expect(logRateLimitWarning).toHaveBeenCalledWith(
+      expect.stringContaining("retrying in 1200ms"),
+    );
+  });
+
+  it("fails clearly when repeated 429 responses exhaust retries", async () => {
+    const importer = createImporter(async () => {
+      throw new KalshiHistoricalImporterError("rate limited", 429);
+    });
+
+    await expect(
+      discoverKalshiHistoricalMarkets(
+        { seriesTicker: "KXBTC15M" },
+        {
+          importer,
+          now: () => FIXED_NOW,
+          rateLimit: { maxRetries: 1 },
+          sleep: async () => undefined,
+        },
+      ),
+    ).rejects.toThrow(MarketDiscoveryError);
   });
 });

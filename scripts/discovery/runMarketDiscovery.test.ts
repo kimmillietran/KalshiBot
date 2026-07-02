@@ -8,11 +8,15 @@ import { runMarketDiscoveryCommand } from "./runMarketDiscovery";
 import {
   MarketDiscoveryCommandError,
   parseLimitFromArgv,
+  parseMaxRetriesFromArgv,
   parseOffsetFromArgv,
   parseOutputPathFromArgv,
+  parseRateLimitOptionsFromArgv,
+  parseRequestDelayMsFromArgv,
   parseSamplingOptionsFromArgv,
   parseSeriesFromArgv,
 } from "./types";
+import { KalshiHistoricalImporterError } from "@/lib/data/importers/kalshi/KalshiHistoricalImporter";
 
 const FIXED_NOW = new Date("2026-06-27T12:00:00.000Z");
 
@@ -110,6 +114,29 @@ describe("market discovery argv parsing", () => {
       MarketDiscoveryCommandError,
     );
   });
+
+  it("parses rate-limit flags", () => {
+    expect(parseRequestDelayMsFromArgv(["--request-delay-ms", "500"])).toBe(500);
+    expect(parseMaxRetriesFromArgv(["--max-retries", "5"])).toBe(5);
+    expect(
+      parseRateLimitOptionsFromArgv([
+        "--request-delay-ms",
+        "500",
+        "--max-retries",
+        "5",
+        "--retry-base-delay-ms",
+        "1000",
+      ]),
+    ).toEqual({
+      requestDelayMs: 500,
+      maxRetries: 5,
+      retryBaseDelayMs: 1000,
+    });
+  });
+
+  it("rejects negative rate-limit values", () => {
+    expect(() => parseRateLimitOptionsFromArgv(["--request-delay-ms", "-1"])).toThrow();
+  });
 });
 
 describe("runMarketDiscoveryCommand", () => {
@@ -201,5 +228,57 @@ describe("runMarketDiscoveryCommand", () => {
 
     expect(exitCode).toBe(1);
     expect(writes.stderr).toContain("non-negative integer");
+  });
+
+  it("retries after 429 and writes discovery output", async () => {
+    const { io, writes } = createIo();
+    const importer = createImporter();
+    let callCount = 0;
+    vi.mocked(importer.listHistoricalMarkets).mockImplementation(async () => {
+      callCount += 1;
+      if (callCount === 1) {
+        throw new KalshiHistoricalImporterError("rate limited", 429);
+      }
+
+      return {
+        markets: [MARKET_A],
+        cursor: "",
+        provenance: {
+          source: "kalshi-historical-api",
+          fetchedAt: FIXED_NOW.toISOString(),
+          requestPath: "/historical/markets?series_ticker=KXBTC15M&limit=100",
+          cursor: "",
+        },
+      };
+    });
+
+    const exitCode = await runMarketDiscoveryCommand(
+      ["--max-retries", "2", "--retry-base-delay-ms", "10"],
+      io,
+      { deps: { importer, now: () => FIXED_NOW, sleep: async () => undefined } },
+    );
+
+    expect(exitCode).toBe(0);
+    expect(callCount).toBe(2);
+    expect(writes.files.size).toBe(1);
+    expect(writes.stderr).toContain("retrying in");
+  });
+
+  it("does not write partial output when discovery fails", async () => {
+    const { io, writes } = createIo();
+    const importer = createImporter();
+    vi.mocked(importer.listHistoricalMarkets).mockRejectedValue(
+      new KalshiHistoricalImporterError("rate limited", 429),
+    );
+
+    const exitCode = await runMarketDiscoveryCommand(
+      ["--max-retries", "0"],
+      io,
+      { deps: { importer, now: () => FIXED_NOW } },
+    );
+
+    expect(exitCode).toBe(1);
+    expect(writes.files.size).toBe(0);
+    expect(writes.stderr).toContain("persisted after 0 retries");
   });
 });

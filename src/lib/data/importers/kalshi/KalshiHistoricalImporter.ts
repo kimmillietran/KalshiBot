@@ -25,6 +25,7 @@ import type {
 export type KalshiHistoricalHttpResponse = {
   status: number;
   body: unknown;
+  headers?: Readonly<Record<string, string>>;
 };
 
 /** Injectable HTTP client — tests supply fake responses; production wires fetch. */
@@ -41,12 +42,14 @@ export type KalshiHistoricalImporterOptions = {
 export class KalshiHistoricalImporterError extends Error {
   readonly status: number;
   readonly code?: string;
+  readonly retryAfterMs?: number;
 
-  constructor(message: string, status: number, code?: string) {
+  constructor(message: string, status: number, code?: string, retryAfterMs?: number) {
     super(message);
     this.name = "KalshiHistoricalImporterError";
     this.status = status;
     this.code = code;
+    this.retryAfterMs = retryAfterMs;
   }
 }
 
@@ -118,23 +121,65 @@ function readString(record: Record<string, unknown>, key: string): string | unde
   return typeof value === "string" ? value : undefined;
 }
 
-function parseKalshiError(body: unknown, status: number): KalshiHistoricalImporterError {
+function parseKalshiError(
+  body: unknown,
+  status: number,
+  retryAfterMs?: number,
+): KalshiHistoricalImporterError {
   if (isRecord(body)) {
     const message =
       readString(body, "message") ?? `Kalshi historical API error (${status})`;
     const code = readString(body, "code");
-    return new KalshiHistoricalImporterError(message, status, code);
+    return new KalshiHistoricalImporterError(message, status, code, retryAfterMs);
   }
 
   return new KalshiHistoricalImporterError(
     `Kalshi historical API error (${status})`,
     status,
+    undefined,
+    retryAfterMs,
   );
 }
 
-function assertKalshiResponse<T>(body: unknown, status: number, label: string): T {
+function readRetryAfterMs(
+  headers?: Readonly<Record<string, string>>,
+): number | undefined {
+  if (!headers) {
+    return undefined;
+  }
+
+  const raw = headers["retry-after"] ?? headers["Retry-After"];
+  if (raw === undefined) {
+    return undefined;
+  }
+
+  const trimmed = raw.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+
+  const seconds = Number(trimmed);
+  if (Number.isFinite(seconds) && seconds >= 0) {
+    return Math.ceil(seconds * 1000);
+  }
+
+  const parsedDateMs = Date.parse(trimmed);
+  if (Number.isFinite(parsedDateMs)) {
+    return Math.max(0, parsedDateMs - Date.now());
+  }
+
+  return undefined;
+}
+
+function assertKalshiResponse<T>(
+  body: unknown,
+  status: number,
+  label: string,
+  headers?: Readonly<Record<string, string>>,
+): T {
   if (status >= 400) {
-    throw parseKalshiError(body, status);
+    const retryAfterMs = status === 429 ? readRetryAfterMs(headers) : undefined;
+    throw parseKalshiError(body, status, retryAfterMs);
   }
 
   if (!isRecord(body)) {
@@ -308,7 +353,7 @@ export class KalshiHistoricalImporter implements HistoricalImporter {
   }
 
   private async request<T>(path: string, label: string): Promise<T> {
-    const { status, body } = await this.httpClient.get(`${this.baseUrl}${path}`);
-    return assertKalshiResponse<T>(body, status, label);
+    const { status, body, headers } = await this.httpClient.get(`${this.baseUrl}${path}`);
+    return assertKalshiResponse<T>(body, status, label, headers);
   }
 }

@@ -1,8 +1,13 @@
 import type { FetchLike } from "@/lib/data/importers/kalshi";
 
 import {
+  DEFAULT_DISCOVERY_MAX_RETRIES,
+  DEFAULT_DISCOVERY_REQUEST_DELAY_MS,
+  DEFAULT_DISCOVERY_RETRY_BASE_DELAY_MS,
   DEFAULT_KXBTC15M_SERIES_TICKER,
+  parseMarketDiscoveryRateLimitOptions,
   type KalshiHistoricalMarketDiscoveryOptions,
+  type MarketDiscoveryRateLimitOptions,
   type MarketDiscoverySamplingOptions,
 } from "@/lib/data/discovery";
 
@@ -100,6 +105,63 @@ export function parseAfterFromArgv(argv: readonly string[]): string | undefined 
 
 export function parseBeforeFromArgv(argv: readonly string[]): string | undefined {
   return parseFlagValue(argv, "--before", "--before <ISO-8601 date>");
+}
+
+export function parseRequestDelayMsFromArgv(argv: readonly string[]): number | undefined {
+  return parseIntegerFlag(argv, "--request-delay-ms", "--request-delay-ms <number>");
+}
+
+export function parseMaxRetriesFromArgv(argv: readonly string[]): number | undefined {
+  return parseIntegerFlag(argv, "--max-retries", "--max-retries <number>");
+}
+
+export function parseRetryBaseDelayMsFromArgv(argv: readonly string[]): number | undefined {
+  return parseIntegerFlag(argv, "--retry-base-delay-ms", "--retry-base-delay-ms <number>");
+}
+
+export function parseRateLimitOptionsFromArgv(
+  argv: readonly string[],
+): MarketDiscoveryRateLimitOptions {
+  const requestDelayMs = parseRequestDelayMsFromArgv(argv);
+  const maxRetries = parseMaxRetriesFromArgv(argv);
+  const retryBaseDelayMs = parseRetryBaseDelayMsFromArgv(argv);
+
+  if (
+    requestDelayMs === undefined
+    && maxRetries === undefined
+    && retryBaseDelayMs === undefined
+  ) {
+    return {};
+  }
+
+  const options: MarketDiscoveryRateLimitOptions = {
+    requestDelayMs: requestDelayMs ?? DEFAULT_DISCOVERY_REQUEST_DELAY_MS,
+    maxRetries: maxRetries ?? DEFAULT_DISCOVERY_MAX_RETRIES,
+    retryBaseDelayMs: retryBaseDelayMs ?? DEFAULT_DISCOVERY_RETRY_BASE_DELAY_MS,
+  };
+
+  parseMarketDiscoveryRateLimitOptions(options);
+  return options;
+}
+
+export function resolveCliRateLimitOptions(input: {
+  argv: readonly string[];
+  useProductionDefaults: boolean;
+}): MarketDiscoveryRateLimitOptions | undefined {
+  const explicit = parseRateLimitOptionsFromArgv(input.argv);
+  if (Object.keys(explicit).length > 0) {
+    return explicit;
+  }
+
+  if (!input.useProductionDefaults) {
+    return undefined;
+  }
+
+  return {
+    requestDelayMs: DEFAULT_DISCOVERY_REQUEST_DELAY_MS,
+    maxRetries: DEFAULT_DISCOVERY_MAX_RETRIES,
+    retryBaseDelayMs: DEFAULT_DISCOVERY_RETRY_BASE_DELAY_MS,
+  };
 }
 
 export function parseSamplingOptionsFromArgv(

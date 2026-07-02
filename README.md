@@ -57,6 +57,15 @@ npm run discover:markets -- \
   --series KXBTC15M \
   --offset 500 \
   --limit 250
+
+# Safe 50-market smoke test with throttling/backoff
+npm run discover:markets -- \
+  --series KXBTC15M \
+  --limit 50 \
+  --request-delay-ms 500 \
+  --max-retries 5 \
+  --retry-base-delay-ms 1000 \
+  --output discovery-result.json
 ```
 
 Default output: `discovery-result.json` (override with `--output`).
@@ -140,6 +149,7 @@ docs/
 | 6.27A | Walk-forward validation engine (`research:walk-forward`, rolling train/validation folds) — **complete** |
 | 6.27B | Experiment registry (`experiments:register`, immutable reproducibility records) — **complete** |
 | 6.27C | Walk-forward strategy sweep (`research:walk-forward-sweep`, OOS validation research) — **complete** |
+| 6.27D | Kalshi discovery rate-limit handling (`discover:markets` throttle + 429 retry/backoff) — **complete** |
 
 ## Intentionally deferred
 

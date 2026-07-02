@@ -9,6 +9,13 @@ import {
   hasMarketDiscoverySamplingOptions,
 } from "./applyMarketSamplingFilters";
 import {
+  fetchDiscoveryPageWithRetry,
+  parseMarketDiscoveryRateLimitOptions,
+  sleepMs,
+  type MarketDiscoveryRateLimitLogger,
+  type MarketDiscoveryRateLimitOptions,
+} from "./discoveryRateLimit";
+import {
   MarketDiscoveryError,
   type DiscoveredMarket,
   type DiscoverKalshiHistoricalMarketsInput,
@@ -53,6 +60,9 @@ export type KalshiHistoricalMarketDiscoveryOptions = {
   importer: HistoricalImporter;
   pageSize?: number;
   now?: () => Date;
+  rateLimit?: MarketDiscoveryRateLimitOptions;
+  logRateLimitWarning?: MarketDiscoveryRateLimitLogger;
+  sleep?: (ms: number) => Promise<void>;
 };
 
 async function listAllHistoricalMarkets(
@@ -67,6 +77,7 @@ async function listAllHistoricalMarkets(
   pageCount: number;
 }> {
   const pageSize = options.pageSize ?? DEFAULT_PAGE_SIZE;
+  const rateLimit = parseMarketDiscoveryRateLimitOptions(options.rateLimit);
   const markets: Array<{
     market: HistoricalMarketRecord;
     provenance: HistoricalImportProvenance;
@@ -76,14 +87,16 @@ async function listAllHistoricalMarkets(
   let pageCount = 0;
 
   do {
-    const page = await options.importer.listHistoricalMarkets(
-      seriesTicker,
-      undefined,
-      {
-        limit: pageSize,
-        ...(cursor ? { cursor } : {}),
-      },
-    );
+    const page = await fetchDiscoveryPageWithRetry({
+      fetchPage: () =>
+        options.importer.listHistoricalMarkets(seriesTicker, undefined, {
+          limit: pageSize,
+          ...(cursor ? { cursor } : {}),
+        }),
+      rateLimit,
+      logWarning: options.logRateLimitWarning,
+      sleep: options.sleep,
+    });
 
     pageCount += 1;
     pages.push({ ...page.provenance });
@@ -94,6 +107,10 @@ async function listAllHistoricalMarkets(
       });
     }
     cursor = page.cursor.trim() ? page.cursor : undefined;
+
+    if (cursor && rateLimit.requestDelayMs > 0) {
+      await sleepMs(rateLimit.requestDelayMs, options.sleep);
+    }
   } while (cursor);
 
   return { markets, pages, pageCount };
