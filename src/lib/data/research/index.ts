@@ -94,6 +94,25 @@ export type {
 } from "./inspect";
 
 export {
+  buildResearchReportDocument,
+  loadResearchReportInputs,
+  parseCalibrationReportJson,
+  parseStrategyLeaderboardJson,
+  serializeResearchReportHtml,
+  DEFAULT_RESEARCH_REPORT_INPUT_DIR,
+  DEFAULT_RESEARCH_REPORT_LEADERBOARD_PATH,
+  DEFAULT_RESEARCH_REPORT_OUTPUT_PATH,
+  ResearchReportError,
+  ResearchReportErrorCode,
+} from "./reports";
+export type {
+  ResearchReportDocument,
+  ResearchReportInputs,
+  ResearchReportMarketHighlight,
+  ResearchReportStrategySection,
+} from "./reports";
+
+export {
   runHistoricalResearchFromBronze,
   serializeHistoricalResearchRunnerResult,
   HistoricalResearchRunnerError,

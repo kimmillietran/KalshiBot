@@ -62,6 +62,12 @@ export const RESEARCH_INSPECT_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--limit" },
 ];
 
+export const RESEARCH_REPORT_ARGV_SCHEMA: readonly NpmArgvField[] = [
+  { flag: "--input-dir" },
+  { flag: "--leaderboard" },
+  { flag: "--output" },
+];
+
 export const LEADERBOARD_STRATEGIES_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--input-dir" },
   { flag: "--output" },
@@ -163,6 +169,10 @@ export function normalizeResearchCalibrationArgv(argv: readonly string[]): strin
 
 export function normalizeResearchInspectArgv(argv: readonly string[]): string[] {
   return normalizeNpmScriptArgv(argv, RESEARCH_INSPECT_ARGV_SCHEMA);
+}
+
+export function normalizeResearchReportArgv(argv: readonly string[]): string[] {
+  return normalizeNpmScriptArgv(argv, RESEARCH_REPORT_ARGV_SCHEMA);
 }
 
 export function normalizeLeaderboardStrategiesArgv(argv: readonly string[]): string[] {
