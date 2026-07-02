@@ -322,3 +322,29 @@ export type {
   RegisterExperimentsResult,
   ScannedExperimentResearchOutput,
 } from "./experiment-registry";
+
+export {
+  DEFAULT_WALK_FORWARD_SWEEP_OUTPUT_DIR,
+  DEFAULT_WALK_FORWARD_SPLIT_INPUT_DIR,
+  WALK_FORWARD_SWEEP_OUTPUT_FILENAME,
+  WALK_FORWARD_SWEEP_SUMMARY_FILENAME,
+  WalkForwardSweepError,
+  WalkForwardSweepErrorCode,
+  buildWalkForwardSweepOutputPath,
+  createNodeWalkForwardSweepFilesystem,
+  discoverWalkForwardSplit,
+  parseWalkForwardFoldJson,
+  resolveWalkForwardSweepSummaryPath,
+  runWalkForwardStrategySweep,
+  serializeWalkForwardSweepSummary,
+} from "./walkForwardSweep";
+export type {
+  RunWalkForwardStrategySweepInput,
+  WalkForwardSweepDiscoveredFold,
+  WalkForwardSweepDiscoveredSplit,
+  WalkForwardSweepFilesystem,
+  WalkForwardSweepJob,
+  WalkForwardSweepRunResult,
+  WalkForwardSweepRunnerDeps,
+  WalkForwardSweepSummary,
+} from "./walkForwardSweep";

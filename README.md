@@ -120,6 +120,7 @@ docs/
 | 6.26B | Probability calibration reports (`research:calibration`, Brier/log-loss/ECE/reliability) — **complete** |
 | 6.27A | Walk-forward validation engine (`research:walk-forward`, rolling train/validation folds) — **complete** |
 | 6.27B | Experiment registry (`experiments:register`, immutable reproducibility records) — **complete** |
+| 6.27C | Walk-forward strategy sweep (`research:walk-forward-sweep`, OOS validation research) — **complete** |
 
 ## Intentionally deferred
 
