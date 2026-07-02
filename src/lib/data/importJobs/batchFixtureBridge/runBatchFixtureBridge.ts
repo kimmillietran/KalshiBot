@@ -15,6 +15,7 @@ import {
   resolveBatchFixtureSummaryPath,
   serializeBatchFixtureBridgeSummary,
 } from "./serializeBatchFixtureBridgeSummary";
+import { validateSerializedBatchFixtureJson } from "./validateSerializedBatchFixtureJson";
 
 function normalizePath(path: string): string {
   return posix.normalize(path.replace(/\\/g, "/"));
@@ -128,9 +129,19 @@ async function executeJob(
       importResult: job.importResult,
       marketTicker: job.marketTicker,
     });
+    const validation = validateSerializedBatchFixtureJson(serialized);
+
+    if (!validation.ok) {
+      return toMarketResult(job, {
+        status: "failed",
+        errorMessage: validation.errorMessage,
+        importValid: job.importResult.validationResult.valid,
+        jobId: job.importResult.jobId,
+      });
+    }
 
     deps.filesystem.mkdir(posix.dirname(job.fixturePath));
-    deps.filesystem.writeFile(job.fixturePath, serialized);
+    deps.filesystem.writeFile(job.fixturePath, validation.json);
 
     return toMarketResult(job, {
       status: "success",

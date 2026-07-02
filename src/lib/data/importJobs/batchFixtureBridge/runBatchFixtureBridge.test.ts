@@ -13,6 +13,7 @@ import type {
   RunHistoricalBronzeImportJobInput,
 } from "@/lib/data/importJobs/historicalBronzeImportJobTypes";
 import { serializeHistoricalResearchFixtureFromImportResult } from "@/lib/data/importJobs/fixtureBridge";
+import { parseResearchFixtureJson } from "@/lib/data/research/registry/parseResearchFixtureJson";
 import { DEFAULT_ENGINE_CONFIG } from "@/lib/trading/config/defaults";
 import { DEFAULT_BACKTEST_FILL_SIMULATION_CONFIG } from "@/lib/data/backtesting";
 
@@ -177,11 +178,12 @@ function invalidImportJson(marketTicker: string): string {
 function createFilesystem(
   imports: Record<string, string>,
   existingOutputs: Set<string> = new Set(),
-): BatchFixtureBridgeFilesystem {
+): BatchFixtureBridgeFilesystem & { writes: Map<string, string> } {
   const files = new Map(Object.entries(imports));
   const writes = new Map<string, string>();
 
   return {
+    writes,
     exists: (path) => existingOutputs.has(path),
     readFile: (path) => {
       const written = writes.get(path);
@@ -278,8 +280,64 @@ describe("runBatchFixtureBridge", () => {
       status: "success",
       importValid: true,
     });
-    expect(filesystem.readFile(fixturePath)).toContain(`"runId":"fixture-${marketTicker}"`);
-    expect(filesystem.readFile(fixturePath)).toContain('"strategyId":"noop"');
+    const fixtureJson = filesystem.readFile(fixturePath);
+    expect(fixtureJson).toContain(`"runId":"fixture-${marketTicker}"`);
+    expect(fixtureJson).toContain('"strategyId":"noop"');
+    expect(() => JSON.parse(fixtureJson)).not.toThrow();
+    expect(() => parseResearchFixtureJson(fixtureJson, marketTicker)).not.toThrow();
+  });
+
+  it("does not write fixture.json when bridge output is undefined", async () => {
+    const marketTicker = "KXBTC15M-MARKET-A";
+    const importPath = `data/imports/KXBTC15M/${marketTicker}/import-result.json`;
+    const fixturePath = `data/fixtures/KXBTC15M/${marketTicker}/fixture.json`;
+    const filesystem = createFilesystem({
+      [importPath]: validImportJson(marketTicker),
+    });
+    const runFixtureBridge = vi.fn(() => undefined as unknown as string);
+
+    const summary = await runBatchFixtureBridge(
+      {
+        inputDir: "data/imports",
+        outputDir: "data/fixtures",
+      },
+      createDeps(filesystem, runFixtureBridge),
+    );
+
+    expect(summary.successfulFixtures).toBe(0);
+    expect(summary.failedFixtures).toBe(1);
+    expect(summary.markets[0]).toMatchObject({
+      marketTicker,
+      status: "failed",
+      errorMessage: "Fixture bridge returned empty or non-string output",
+    });
+    expect(filesystem.writes.has(fixturePath)).toBe(false);
+  });
+
+  it("marks invalid JSON fixture output as failed without writing fixture.json", async () => {
+    const marketTicker = "KXBTC15M-MARKET-A";
+    const importPath = `data/imports/KXBTC15M/${marketTicker}/import-result.json`;
+    const fixturePath = `data/fixtures/KXBTC15M/${marketTicker}/fixture.json`;
+    const filesystem = createFilesystem({
+      [importPath]: validImportJson(marketTicker),
+    });
+    const runFixtureBridge = vi.fn(() => '{"runId":undefined}');
+
+    const summary = await runBatchFixtureBridge(
+      {
+        inputDir: "data/imports",
+        outputDir: "data/fixtures",
+      },
+      createDeps(filesystem, runFixtureBridge),
+    );
+
+    expect(summary.successfulFixtures).toBe(0);
+    expect(summary.failedFixtures).toBe(1);
+    expect(summary.markets[0]).toMatchObject({
+      status: "failed",
+      errorMessage: "Fixture bridge output is not valid JSON",
+    });
+    expect(filesystem.writes.has(fixturePath)).toBe(false);
   });
 
   it("continues after invalid import results and fixture bridge failures", async () => {

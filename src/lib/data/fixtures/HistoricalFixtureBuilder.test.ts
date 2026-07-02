@@ -171,6 +171,24 @@ describe("buildHistoricalResearchFixture", () => {
     expect(first).toBe(second);
   });
 
+  it("serializes to valid JSON when optional configs are omitted", () => {
+    const fixture = buildHistoricalResearchFixture(
+      createInput(
+        completeMarketRecords(
+          "KXBTC15M-FIXTURE-JSON",
+          "2026-06-26T23:15:00.000Z",
+          "2026-06-26T23:30:00.000Z",
+          "fixture-json",
+        ),
+      ),
+    );
+
+    const serialized = serializeHistoricalResearchFixture(fixture);
+
+    expect(() => JSON.parse(serialized)).not.toThrow();
+    expect(serialized).not.toContain("undefined");
+  });
+
   it("returns deeply frozen immutable outputs", () => {
     const fixture = buildHistoricalResearchFixture(
       createInput(

@@ -124,12 +124,12 @@ export function serializeHistoricalResearchFixture(
     bronzeRecords: [...fixture.bronzeRecords],
     strategyId: fixture.strategyId,
     engineConfig: fixture.engineConfig,
-    fillConfig: fixture.fillConfig,
+    ...(fixture.fillConfig !== undefined ? { fillConfig: fixture.fillConfig } : {}),
     ...(fixture.costModelConfig !== undefined
       ? { costModelConfig: fixture.costModelConfig }
       : {}),
-    metricsConfig: fixture.metricsConfig,
-    exportConfig: fixture.exportConfig,
+    ...(fixture.metricsConfig !== undefined ? { metricsConfig: fixture.metricsConfig } : {}),
+    ...(fixture.exportConfig !== undefined ? { exportConfig: fixture.exportConfig } : {}),
   });
 }
 

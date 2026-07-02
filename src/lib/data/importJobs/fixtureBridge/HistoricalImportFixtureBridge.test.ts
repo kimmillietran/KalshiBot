@@ -301,6 +301,8 @@ describe("buildHistoricalResearchFixtureFromImportResult", () => {
     expect(first).toBe(second);
     expect(first).toContain(`"runId":"${RUN_ID}"`);
     expect(first).toContain(`"strategyId":"noop"`);
+    expect(() => JSON.parse(first)).not.toThrow();
+    expect(first).not.toContain("undefined");
   });
 
   it("returns deeply frozen immutable output", () => {
