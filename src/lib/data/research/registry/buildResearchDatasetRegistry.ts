@@ -66,6 +66,7 @@ function buildRegistryEntry(
     btcBarCount: summary.btcBarCount,
     kalshiCandleCount: summary.kalshiCandleCount,
     validationStatus: summary.validationStatus,
+    bidAskFidelity: summary.bidAskFidelity,
     provenance: summary.provenance,
     importMetadata,
   };
@@ -88,6 +89,9 @@ function buildRegistrySummary(
     ),
     settlementMarketCount: markets.filter((market) => market.settlementPresent).length,
     validFixtureCount: markets.filter((market) => market.validationStatus.valid).length,
+    suspiciousZeroSpreadMarketCount: markets.filter(
+      (market) => market.bidAskFidelity.suspiciousZeroSpread,
+    ).length,
   };
 }
 

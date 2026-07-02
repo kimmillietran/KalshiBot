@@ -1,9 +1,11 @@
 import { validateHistoricalBronzeDataset } from "@/lib/data/datasets/validation";
+import { computeBidAskFidelityFromBronzeRecords } from "@/lib/data/datasets/validation/audit";
 import { DATASET_BRONZE_CONTENT_TYPE } from "@/lib/data/datasets/datasetTypes";
 import { SILVER_BRONZE_CONTENT_TYPE } from "@/lib/data/silver";
 import type { RawHistoricalRecord } from "@/lib/data/types";
 
 import type {
+  BidAskFidelitySummary,
   ParsedResearchFixture,
   ResearchDatasetProvenanceSummary,
   ResearchDatasetValidationStatus,
@@ -76,6 +78,7 @@ export type ResearchFixtureSummary = {
   settlementPresent: boolean;
   marketCloseTime: string | null;
   validationStatus: ResearchDatasetValidationStatus;
+  bidAskFidelity: BidAskFidelitySummary;
   provenance: ResearchDatasetProvenanceSummary;
 };
 
@@ -85,6 +88,7 @@ export function buildResearchFixtureSummary(
 ): ResearchFixtureSummary {
   const records = fixture.bronzeRecords;
   const validation = validateHistoricalBronzeDataset(records);
+  const bidAskFidelity = computeBidAskFidelityFromBronzeRecords(records);
 
   return {
     bronzeRecordCount: records.length,
@@ -100,6 +104,7 @@ export function buildResearchFixtureSummary(
       errorCount: validation.errors.length,
       warningCount: validation.warnings.length,
     },
+    bidAskFidelity,
     provenance: {
       runId: fixture.runId,
       strategyId: fixture.strategyId,

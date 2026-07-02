@@ -16,6 +16,7 @@
     "research:sweep": "tsx scripts/research/runStrategySweep.ts",
     "research:aggregate": "tsx scripts/research/aggregateResearchStatistics.ts",
     "leaderboard:strategies": "tsx scripts/leaderboard/runStrategyLeaderboard.ts",
+    "data:audit-bid-ask": "tsx scripts/data/auditBidAskFidelity.ts",
     "import:historical": "tsx scripts/import/runHistoricalImport.ts",
     "import:batch": "tsx scripts/import/runBatchHistoricalImport.ts",
     "fixtures:batch": "tsx scripts/fixtures/runBatchFixtureBridge.ts",

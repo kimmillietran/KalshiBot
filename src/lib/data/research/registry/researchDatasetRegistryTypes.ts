@@ -1,4 +1,8 @@
 import type { HistoricalResearchCliInputDocument } from "@/lib/data/fixtures";
+import type {
+  BidAskFidelityWarning,
+  BidAskSpreadStatistics,
+} from "@/lib/data/datasets/validation/audit";
 
 export const ResearchDatasetRegistryErrorCode = {
   MISSING_FIXTURES_DIRECTORY: "missing-fixtures-directory",
@@ -36,6 +40,12 @@ export type ResearchDatasetValidationStatus = {
   warningCount: number;
 };
 
+export type BidAskFidelitySummary = {
+  statistics: BidAskSpreadStatistics;
+  warnings: readonly BidAskFidelityWarning[];
+  suspiciousZeroSpread: boolean;
+};
+
 export type ResearchDatasetProvenanceSummary = {
   runId: string;
   strategyId: string;
@@ -59,6 +69,7 @@ export type ResearchDatasetRegistryEntry = {
   btcBarCount: number;
   kalshiCandleCount: number;
   validationStatus: ResearchDatasetValidationStatus;
+  bidAskFidelity: BidAskFidelitySummary;
   provenance: ResearchDatasetProvenanceSummary;
   importMetadata: LinkedImportMetadataSummary | null;
 };
@@ -71,6 +82,7 @@ export type ResearchDatasetRegistrySummary = {
   totalKalshiCandles: number;
   settlementMarketCount: number;
   validFixtureCount: number;
+  suspiciousZeroSpreadMarketCount: number;
 };
 
 export type ResearchDatasetSeriesRegistry = {

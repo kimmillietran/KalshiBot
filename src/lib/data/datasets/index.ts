@@ -23,6 +23,17 @@ export {
   validateHistoricalBronzeDataset,
   buildHistoricalBronzeValidationReport,
   serializeHistoricalBronzeValidationReport,
+  BID_ASK_FIDELITY_WARNING_CODE,
+  buildBidAskFidelityReport,
+  buildBidAskFidelityWarnings,
+  computeBidAskFidelityFromBronzeRecords,
+  computeBidAskSpreadStatistics,
+  DEFAULT_BID_ASK_AUDIT_INPUT_DIR,
+  DEFAULT_BID_ASK_AUDIT_OUTPUT_PATH,
+  DEFAULT_HIGH_ZERO_SPREAD_THRESHOLD_PERCENT,
+  extractBidAskCandleQuote,
+  scanBidAskAuditDatasets,
+  serializeBidAskFidelityReport,
 } from "./validation";
 export type {
   HistoricalBronzeValidationIssue,
@@ -35,6 +46,12 @@ export type {
   HistoricalBronzeValidationReport,
   HistoricalBronzeValidationReportMetadata,
   HistoricalBronzeValidationReportSummary,
+  BidAskFidelityMarketResult,
+  BidAskFidelityReport,
+  BidAskFidelitySeriesSummary,
+  BidAskFidelityWarning,
+  BidAskFidelityWarningCode,
+  BidAskSpreadStatistics,
 } from "./validation";
 
 export {
