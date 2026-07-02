@@ -1,5 +1,7 @@
 import { posix } from "node:path";
 
+import { parseReplayPricingDiagnosticsFromResearchOutput } from "@/lib/data/research/diagnostics";
+
 import { buildStrategySweepOutputPath } from "./buildStrategySweepOutputPath";
 import { parseStrategySweepSeriesRegistryJson } from "./parseDatasetRegistryJson";
 import { validateSerializedResearchOutputJson } from "@/lib/data/research/runner/validateSerializedResearchOutputJson";
@@ -262,6 +264,7 @@ function toRunResult(
     errorMessage?: string | null;
     runId?: string | null;
     durationMs?: number;
+    pricingDiagnostics?: StrategySweepRunResult["pricingDiagnostics"];
   },
 ): StrategySweepRunResult {
   return {
@@ -275,6 +278,9 @@ function toRunResult(
     errorMessage: result?.errorMessage ?? null,
     durationMs: result?.durationMs ?? 0,
     runId: result?.runId ?? job.fixture?.runId ?? null,
+    ...(result?.pricingDiagnostics
+      ? { pricingDiagnostics: result.pricingDiagnostics }
+      : {}),
   };
 }
 
@@ -345,6 +351,8 @@ async function executeJob(
       status: "success",
       runId: job.fixture.runId,
       durationMs: Date.now() - startedMs,
+      pricingDiagnostics:
+        parseReplayPricingDiagnosticsFromResearchOutput(serialized) ?? undefined,
     });
   } catch (error) {
     return toRunResult(job, {

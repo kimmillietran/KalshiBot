@@ -1,4 +1,5 @@
 import type { HistoricalResearchCliInputDocument } from "@/lib/data/fixtures";
+import type { ReplayPricingDiagnosticsRunSummary } from "@/lib/data/research/diagnostics";
 import type { StrategyPluginRegistry } from "@/lib/data/strategies/plugin/StrategyPluginRegistry";
 
 export const DEFAULT_STRATEGY_SWEEP_REGISTRY_DIR = "data/research-datasets";
@@ -69,6 +70,7 @@ export type StrategySweepRunResult = {
   errorMessage: string | null;
   durationMs: number;
   runId: string | null;
+  pricingDiagnostics?: ReplayPricingDiagnosticsRunSummary;
 };
 
 export type StrategySweepSummary = {

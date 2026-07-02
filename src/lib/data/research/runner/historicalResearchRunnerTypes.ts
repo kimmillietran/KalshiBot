@@ -5,6 +5,7 @@ import type { ResearchCostModelConfig } from "@/lib/data/backtesting/costModel";
 import type { BacktestFillSimulationConfig, BacktestStrategy } from "@/lib/data/backtesting/strategyTypes";
 import type { HistoricalDataset } from "@/lib/data/datasets";
 import type { HistoricalResearchRun } from "@/lib/data/cli";
+import type { ReplayPricingDiagnostics } from "@/lib/data/research/diagnostics";
 import type { RawHistoricalRecord } from "@/lib/data/types";
 import type { EngineConfig } from "@/types/domain/trading";
 
@@ -56,6 +57,7 @@ export type HistoricalResearchRunnerCoreResult = {
   dataset: HistoricalDataset;
   researchRun: HistoricalResearchRun;
   metadata: HistoricalResearchRunnerMetadata;
+  diagnostics: ReplayPricingDiagnostics;
 };
 
 export type HistoricalResearchRunnerResult = HistoricalResearchRunnerCoreResult & {

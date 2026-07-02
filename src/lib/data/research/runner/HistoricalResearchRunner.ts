@@ -10,6 +10,10 @@ import {
   serializeStrategyDecisionTrace,
 } from "@/lib/data/research/decisionTrace";
 import type { HistoricalDataset } from "@/lib/data/datasets";
+import {
+  computeReplayPricingDiagnostics,
+  serializeReplayPricingDiagnostics,
+} from "@/lib/data/research/diagnostics";
 import { stableStringify } from "@/lib/trading/config/hashConfig";
 
 import {
@@ -100,6 +104,7 @@ export function serializeHistoricalResearchRunnerResult(
     dataset: serializeHistoricalDataset(result.dataset),
     researchRun: serializeHistoricalResearchRun(result.researchRun),
     metadata: result.metadata,
+    diagnostics: serializeReplayPricingDiagnostics(result.diagnostics),
   });
 }
 
@@ -156,10 +161,16 @@ export function runHistoricalResearchFromBronze(
     bronzeRecordCount: input.bronzeRecords.length,
   };
 
+  const diagnostics = computeReplayPricingDiagnostics({
+    replaySteps: researchRun.backtestResult.replayResult.results,
+    bronzeRecords: input.bronzeRecords,
+  });
+
   const coreResult: HistoricalResearchRunnerCoreResult = {
     dataset,
     researchRun,
     metadata,
+    diagnostics,
   };
 
   return deepFreeze({

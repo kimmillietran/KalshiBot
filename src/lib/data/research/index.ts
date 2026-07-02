@@ -63,6 +63,22 @@ export type {
 } from "./walkForwardTypes";
 
 export {
+  computeReplayPricingDiagnostics,
+  parseReplayPricingDiagnosticsFromResearchOutput,
+  serializeReplayPricingDiagnostics,
+  summarizeReplayPricingDiagnostics,
+  ReplayPricingDiagnosticWarningCode,
+} from "./diagnostics";
+export type {
+  DecisionPriceSnapshot,
+  ObservedYesPriceRange,
+  ReplayPricingDiagnosticWarning,
+  ReplayPricingDiagnostics,
+  ReplayPricingDiagnosticsRunSummary,
+  SourceKalshiCandlePriceClassification,
+} from "./diagnostics";
+
+export {
   runHistoricalResearchFromBronze,
   serializeHistoricalResearchRunnerResult,
   HistoricalResearchRunnerError,

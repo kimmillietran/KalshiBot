@@ -164,11 +164,18 @@ describe("runHistoricalResearchFromBronze", () => {
     expect(result.metadata.runId).toBe(RUN_ID);
     expect(result.metadata.durationMs).toBe(DURATION_MS);
     expect(result.metadata.bronzeRecordCount).toBe(4);
+    expect(result.diagnostics.decisionCount).toBeGreaterThan(0);
+    expect(result.diagnostics.nonZeroPriceDecisionCount).toBeGreaterThan(0);
+    expect(result.diagnostics.warnings).toEqual([]);
+    expect(JSON.parse(result.serialized).diagnostics.decisionCount).toBe(
+      result.diagnostics.decisionCount,
+    );
     expect(result.serialized).toBe(
       serializeHistoricalResearchRunnerResult({
         dataset: result.dataset,
         researchRun: result.researchRun,
         metadata: result.metadata,
+        diagnostics: result.diagnostics,
       }),
     );
     expect(result.serializedDecisionTrace).toContain('"entries"');
