@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { DataQualityFlag } from "@/lib/data/schemas";
 import type { EventTime, KalshiCandle1m, RawHistoricalRecord } from "@/lib/data/types";
 import { eventTimeSchema } from "@/lib/data/timestamps";
 
@@ -140,6 +141,19 @@ function normalizeLegacyKalshiCandle(
   return finalizeKalshiCandleNormalization(record, parsedPayload);
 }
 
+function mergeLiveHistoricalCandleQualityFlags(
+  payload: Record<string, unknown>,
+): string[] {
+  const existing = payload.quality_flags ?? payload.qualityFlags;
+  const flags = Array.isArray(existing) ? [...existing] : [];
+
+  if (!flags.includes(DataQualityFlag.MISSING_BID_ASK)) {
+    flags.push(DataQualityFlag.MISSING_BID_ASK);
+  }
+
+  return flags;
+}
+
 function normalizeLiveKalshiHistoricalCandle(
   record: RawHistoricalRecord,
   payload: Record<string, unknown>,
@@ -189,7 +203,7 @@ function normalizeLiveKalshiHistoricalCandle(
       readNumber(payload, "volume_contracts", "volumeContracts")
       ?? readNumber(payload, "volume")
       ?? null,
-    quality_flags: payload.quality_flags ?? payload.qualityFlags,
+    quality_flags: mergeLiveHistoricalCandleQualityFlags(payload),
   });
 
   return finalizeKalshiCandleNormalization(record, parsedPayload);

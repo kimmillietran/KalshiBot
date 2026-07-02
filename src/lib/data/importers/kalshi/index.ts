@@ -1,3 +1,6 @@
+export {
+  KalshiHistoricalBidAskAuditFinding,
+} from "./kalshiHistoricalBidAskAudit";
 export type { HistoricalImporter } from "./HistoricalImporter";
 export {
   KalshiHistoricalImporter,

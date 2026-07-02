@@ -114,7 +114,7 @@ docs/
 | 6.24C | Strategy leaderboard (`leaderboard:strategies`, `strategy-leaderboard.json`) — **complete** |
 | 6.24D | Strategy sweep runner (`research:sweep`, per-strategy research outputs) — **complete** |
 | 6.25A | Execution cost model foundation (fees, gross/net PnL metrics, optional `costModelConfig`) — **complete** |
-| 6.25B | Bid/ask fidelity audit (`data:audit-bid-ask`, zero-spread diagnostics) — **complete** |
+| 6.25C | Historical bid/ask preservation audit (trade-close-only API; `missing-bid-ask` flag on live imports) — **complete** |
 
 ## Intentionally deferred
 

@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 
 import { buildHistoricalDataset } from "@/lib/data/datasets";
 import { buildHistoricalResearchFixtureFromImportResult } from "@/lib/data/importJobs/fixtureBridge";
+import { KalshiHistoricalBidAskAuditFinding } from "@/lib/data/importers/kalshi/kalshiHistoricalBidAskAudit";
 import { DataSource } from "@/lib/data/provenance";
-import { kalshiCandle1mSchema } from "@/lib/data/schemas";
+import { DataQualityFlag, kalshiCandle1mSchema } from "@/lib/data/schemas";
+import { stableStringify } from "@/lib/trading/config/hashConfig";
 import type { RawHistoricalRecord } from "@/lib/data/types";
 import { DEFAULT_ENGINE_CONFIG } from "@/lib/trading/config/defaults";
 
@@ -108,6 +110,47 @@ describe("normalizeKalshiCandle", () => {
     expect(result.record.yesAskCents).toBe(56);
     expect(result.record.noBidCents).toBe(44);
     expect(result.record.noAskCents).toBe(44);
+  });
+
+  it("flags live-shaped candles when bid/ask are synthesized from trade close", () => {
+    const result = normalizeKalshiCandle(createCandleBronze(LIVE_CANDLE_PAYLOAD));
+
+    expect(result.record.qualityFlags).toContain(DataQualityFlag.MISSING_BID_ASK);
+    expect(result.record.yesBidCents).toBe(result.record.yesAskCents);
+  });
+
+  it("does not add missing-bid-ask when legacy bronze already provides quotes", () => {
+    const result = normalizeKalshiCandle(createCandleBronze(validCandlePayload));
+
+    expect(result.record.qualityFlags).not.toContain(DataQualityFlag.MISSING_BID_ASK);
+    expect(result.record.yesBidCents).not.toBe(result.record.yesAskCents);
+  });
+
+  it("propagates missing-bid-ask through dataset build for live imports", () => {
+    const dataset = buildHistoricalDataset([
+      ...LIVE_KALSHI_HISTORICAL_IMPORT_BRONZE_RECORDS,
+    ]);
+    const latestCandle = dataset.snapshots[0]!.kalshiCandles.at(-1)!;
+
+    expect(latestCandle.qualityFlags).toContain(DataQualityFlag.MISSING_BID_ASK);
+    expect(latestCandle.yesBidCents).toBe(latestCandle.yesAskCents);
+  });
+
+  it("documents that the historical API lacks separate bid/ask OHLC", () => {
+    expect(KalshiHistoricalBidAskAuditFinding.HAS_YES_BID_OHLC).toBe(false);
+    expect(KalshiHistoricalBidAskAuditFinding.TRADE_PRICE_FIELD).toBe("price.close");
+  });
+
+  it("serializes live-shaped silver candles deterministically with quality flags", () => {
+    const first = stableStringify(
+      normalizeKalshiCandle(createCandleBronze(LIVE_CANDLE_PAYLOAD)).record,
+    );
+    const second = stableStringify(
+      normalizeKalshiCandle(createCandleBronze(LIVE_CANDLE_PAYLOAD)).record,
+    );
+
+    expect(first).toBe(second);
+    expect(first).toContain(DataQualityFlag.MISSING_BID_ASK);
   });
 
   it("rejects live-shaped payloads when price.close is missing", () => {

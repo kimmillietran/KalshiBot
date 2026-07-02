@@ -5,6 +5,7 @@ import {
   KalshiHistoricalImporterError,
   type KalshiHistoricalHttpClient,
 } from "./KalshiHistoricalImporter";
+import { KalshiHistoricalBidAskAuditFinding } from "./kalshiHistoricalBidAskAudit";
 
 const FIXED_NOW = new Date("2026-06-27T12:00:00.000Z");
 
@@ -178,6 +179,34 @@ describe("KalshiHistoricalImporter", () => {
       },
     ]);
     expect(result.provenance.requestPath).toContain("start_ts=1700000000");
+  });
+
+  it("documents trade-close-only candlesticks from the historical API", async () => {
+    expect(KalshiHistoricalBidAskAuditFinding.HAS_YES_BID_OHLC).toBe(false);
+    expect(KalshiHistoricalBidAskAuditFinding.HAS_YES_ASK_OHLC).toBe(false);
+
+    const client = createFakeClient(() => ({
+      status: 200,
+      body: {
+        ticker: "KXBTC-OLD",
+        candlesticks: [
+          {
+            end_period_ts: 1_700_000_060,
+            volume: "12.00",
+            open_interest: "45.00",
+            price: { close: "0.5500", open: "0.5400", high: "0.5600", low: "0.5300" },
+          },
+        ],
+      },
+    }));
+
+    const importer = createImporter(client);
+    const result = await importer.getMarketCandlesticks("KXBTC-OLD", 1, {
+      startTs: 1_700_000_000,
+      endTs: 1_700_000_120,
+    });
+
+    expect(result.candlesticks[0]?.priceClose).toBe("0.5500");
   });
 
   it("parses historical cutoff timestamps", async () => {
