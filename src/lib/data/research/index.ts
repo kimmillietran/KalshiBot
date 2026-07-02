@@ -216,6 +216,36 @@ export type {
 } from "./regimeTagging";
 
 export {
+  buildVolPremiumStudy,
+  buildVolPremiumStudyFromDirectories,
+  computeMoneynessVolPremiumBuckets,
+  computeOverallVolPremiumSummary,
+  computeVolPremium,
+  estimateImpliedVolatility,
+  estimateForwardRealizedVolatility,
+  extractVolPremiumObservationsFromResearchOutput,
+  loadOptionalRegimeTagsIndex,
+  serializeVolPremiumStudy,
+  DEFAULT_VOL_PREMIUM_INPUT_DIR,
+  DEFAULT_VOL_PREMIUM_OUTPUT_PATH,
+  DEFAULT_VOL_PREMIUM_VOLATILITY_LOOKBACK_BARS,
+  ImpliedVolatilityInversionCode,
+  VOL_PREMIUM_STUDY_FILENAME,
+  VolPremiumError,
+  VolPremiumErrorCode,
+} from "./volPremium";
+export type {
+  BuildVolPremiumStudyInput,
+  VolPremiumBucketSummary,
+  VolPremiumIo,
+  VolPremiumObservation,
+  VolPremiumOverallSummary,
+  VolPremiumSampleCounts,
+  VolPremiumStudy,
+  VolPremiumWarning,
+} from "./volPremium";
+
+export {
   runHistoricalResearchFromBronze,
   serializeHistoricalResearchRunnerResult,
   HistoricalResearchRunnerError,

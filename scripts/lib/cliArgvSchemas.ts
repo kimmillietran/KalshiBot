@@ -94,6 +94,11 @@ export const REGIME_TAGGING_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--output" },
 ];
 
+export const VOL_PREMIUM_ARGV_SCHEMA: readonly NpmArgvField[] = [
+  { flag: "--input-dir" },
+  { flag: "--output" },
+];
+
 export const LEADERBOARD_STRATEGIES_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--input-dir" },
   { flag: "--output" },
@@ -224,6 +229,10 @@ export function normalizeStatisticalSignificanceArgv(argv: readonly string[]): s
 
 export function normalizeRegimeTaggingArgv(argv: readonly string[]): string[] {
   return normalizeNpmScriptArgv(argv, REGIME_TAGGING_ARGV_SCHEMA);
+}
+
+export function normalizeVolPremiumArgv(argv: readonly string[]): string[] {
+  return normalizeNpmScriptArgv(argv, VOL_PREMIUM_ARGV_SCHEMA);
 }
 
 export function normalizeLeaderboardStrategiesArgv(argv: readonly string[]): string[] {
