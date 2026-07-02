@@ -9,6 +9,10 @@ import { positionKey } from "./ledgerTypes";
 import type { ReplayStepResult } from "@/lib/data/replay/replaySessionTypes";
 import type { EvaluationPricingSnapshot } from "@/types/domain/trading";
 
+import type { ResearchCostModelConfig } from "./costModel";
+import { resolveExecutionCostModel } from "./costModel";
+import type { BacktestFillSimulationConfig } from "./strategyTypes";
+
 type PositionState = {
   quantity: number;
   averageCostCents: number;
@@ -21,6 +25,8 @@ export type DeriveBacktestMetricsInputArgs = {
   initialCashCents: number;
   periodsPerYear?: number;
   riskFreeRatePerPeriod?: number;
+  fillConfig?: BacktestFillSimulationConfig;
+  costModelConfig?: ResearchCostModelConfig;
 };
 
 function markPriceCents(
@@ -191,11 +197,20 @@ export function deriveBacktestMetricsInput(
     args.initialCashCents,
   );
   const closedTrades = buildClosedTrades(args.fills);
+  const costModels = resolveExecutionCostModel(
+    args.fillConfig ?? {
+      feeCentsPerContract: 0,
+      allowPartialFills: false,
+      priceSource: "engine-input-pricing",
+    },
+    args.costModelConfig,
+  );
 
   return {
     equityCurve,
     closedTrades,
     fills: args.fills,
+    executionFeeModelKind: costModels.executionFeeModel.kind,
     periodsPerYear: args.periodsPerYear,
     riskFreeRatePerPeriod: args.riskFreeRatePerPeriod,
   };

@@ -106,6 +106,8 @@ export function runHistoricalBacktest(
     initialCashCents: input.initialCashCents,
     periodsPerYear: input.metricsConfig?.periodsPerYear,
     riskFreeRatePerPeriod: input.metricsConfig?.riskFreeRatePerPeriod,
+    fillConfig,
+    costModelConfig: input.costModelConfig,
   });
   const metrics = computeBacktestMetrics(metricsInput);
 

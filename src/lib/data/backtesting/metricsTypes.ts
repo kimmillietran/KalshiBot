@@ -1,4 +1,8 @@
-import type { ExecutionCostFillSource } from "./costModel";
+import type {
+  ExecutionCostFillSource,
+  ExecutionCostSummaryDetail,
+  ExecutionFeeModelKind,
+} from "./costModel";
 
 /** Single equity observation supplied by the caller. */
 export type BacktestEquityPoint = {
@@ -22,6 +26,7 @@ export type ComputeBacktestMetricsInput = {
   equityCurve: readonly BacktestEquityPoint[];
   closedTrades: readonly ClosedTradeSummary[];
   fills?: readonly ExecutionCostFillSource[];
+  executionFeeModelKind?: ExecutionFeeModelKind;
   /** Required for annualized return and volatility. Sharpe also requires this. */
   periodsPerYear?: number;
   /** Decimal per-period risk-free rate. Sharpe requires this plus periodsPerYear and at least two equity points with non-zero return volatility. */
@@ -56,4 +61,5 @@ export type BacktestMetricsSummary = {
   grossPnlCents: number;
   netPnlCents: number;
   feesAsPercentOfGrossPnl: number | null;
+  executionCostSummary: ExecutionCostSummaryDetail | null;
 };

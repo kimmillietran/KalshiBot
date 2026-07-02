@@ -31,6 +31,11 @@ const executionCostModelSchema = z.discriminatedUnion("kind", [
     kind: z.literal("per-contract-fee"),
     feeCentsPerContract: z.number().finite().nonnegative(),
   }),
+  z.object({
+    kind: z.literal("kalshi-fee-schedule"),
+    role: z.enum(["taker", "maker"]),
+    schedule: z.enum(["standard", "reduced-index"]).optional(),
+  }),
 ]);
 
 const spreadSlippageModelSchema = z.object({

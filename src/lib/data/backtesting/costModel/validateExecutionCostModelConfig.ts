@@ -28,6 +28,27 @@ function validateExecutionFeeModel(
     return;
   }
 
+  if (model.kind === "kalshi-fee-schedule") {
+    if (model.role !== "taker" && model.role !== "maker") {
+      throw new ExecutionCostModelError(
+        "Kalshi fee schedule role must be taker or maker",
+        ExecutionCostModelErrorCode.INVALID_MODEL,
+      );
+    }
+
+    if (
+      model.schedule !== undefined &&
+      model.schedule !== "standard" &&
+      model.schedule !== "reduced-index"
+    ) {
+      throw new ExecutionCostModelError(
+        "Kalshi fee schedule variant must be standard or reduced-index",
+        ExecutionCostModelErrorCode.INVALID_MODEL,
+      );
+    }
+    return;
+  }
+
   throw new ExecutionCostModelError(
     "Unsupported execution cost model kind",
     ExecutionCostModelErrorCode.INVALID_CONFIG,

@@ -402,6 +402,23 @@ describe("BacktestStrategyRunner", () => {
     expect(result.ledger.snapshot().cashCents).toBe(10_000 - 3 * 52 - 12);
   });
 
+  it("applies Kalshi fee schedule execution costs via costModelConfig", () => {
+    const result = BacktestStrategyRunner.run({
+      initialCashCents: 10_000,
+      steps: [createReplayStep({ stepIndex: 0, yesAskCents: 52 })],
+      strategy: strategy("buy-yes", () => [buyIntent({ quantity: 5 })]),
+      fillConfig: DEFAULT_FILL_CONFIG,
+      costModelConfig: {
+        executionCostModel: {
+          kind: "kalshi-fee-schedule",
+          role: "taker",
+        },
+      },
+    });
+
+    expect(result.steps[0]!.acceptedFills[0]!.feeCents).toBe(9);
+  });
+
   it("does not mutate replay step inputs", () => {
     const session = ReplaySession.create(
       [

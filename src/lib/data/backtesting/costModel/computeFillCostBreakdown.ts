@@ -1,5 +1,6 @@
 import type { TradeAction } from "../ledgerTypes";
 
+import { computeKalshiScheduleFeeCents } from "./computeKalshiScheduleFeeCents";
 import type {
   FillCostBreakdown,
   ResolvedExecutionCostModels,
@@ -16,9 +17,21 @@ export type ComputeFillCostBreakdownInput = {
 function computeFeeCents(
   models: ResolvedExecutionCostModels,
   quantity: number,
+  grossPriceCents: number,
 ): number {
-  if (models.executionFeeModel.kind === "per-contract-fee") {
-    return models.executionFeeModel.feeCentsPerContract * quantity;
+  const model = models.executionFeeModel;
+
+  if (model.kind === "per-contract-fee") {
+    return model.feeCentsPerContract * quantity;
+  }
+
+  if (model.kind === "kalshi-fee-schedule") {
+    return computeKalshiScheduleFeeCents({
+      quantity,
+      priceCents: grossPriceCents,
+      role: model.role,
+      schedule: model.schedule,
+    });
   }
 
   return 0;
@@ -34,7 +47,7 @@ export function computeFillCostBreakdown(
 ): FillCostBreakdown {
   const { action, grossPriceCents, quantity, models, averageCostCents } = input;
   const grossNotionalCents = grossPriceCents * quantity;
-  const feeCents = computeFeeCents(models, quantity);
+  const feeCents = computeFeeCents(models, quantity, grossPriceCents);
   const spreadSlippageCents = computeSpreadSlippageCents();
   const totalExecutionCostCents = feeCents + spreadSlippageCents;
 

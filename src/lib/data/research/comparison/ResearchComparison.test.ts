@@ -43,6 +43,12 @@ function metrics(
     grossPnlCents: 10_000,
     netPnlCents: 10_000,
     feesAsPercentOfGrossPnl: null,
+    executionCostSummary: {
+      modelKind: "zero",
+      fillCount: 0,
+      totalFeeCents: 0,
+      averageFeeCentsPerFill: null,
+    },
     ...overrides,
   };
 }

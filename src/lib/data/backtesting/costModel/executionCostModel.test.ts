@@ -5,6 +5,7 @@ import { DEFAULT_BACKTEST_FILL_SIMULATION_CONFIG } from "../strategyTypes";
 import { buildFillExecutionCostFields } from "./buildFillExecutionCostFields";
 import { computeExecutionCostSummary } from "./computeExecutionCostSummary";
 import { computeFillCostBreakdown } from "./computeFillCostBreakdown";
+import { computeKalshiScheduleFeeCents } from "./computeKalshiScheduleFeeCents";
 import {
   ExecutionCostModelError,
   ExecutionCostModelErrorCode,
@@ -164,6 +165,80 @@ describe("execution cost model", () => {
     expect(metrics.grossPnlCents).toBe(10_000);
     expect(metrics.netPnlCents).toBe(10_000);
     expect(metrics.feesAsPercentOfGrossPnl).toBeNull();
+    expect(metrics.executionCostSummary).toEqual({
+      modelKind: "zero",
+      fillCount: 0,
+      totalFeeCents: 0,
+      averageFeeCentsPerFill: null,
+    });
+  });
+
+  it("applies Kalshi fee schedule from costModelConfig", () => {
+    const models = resolveExecutionCostModel(DEFAULT_BACKTEST_FILL_SIMULATION_CONFIG, {
+      executionCostModel: {
+        kind: "kalshi-fee-schedule",
+        role: "taker",
+      },
+    });
+    const breakdown = computeFillCostBreakdown({
+      action: "buy",
+      grossPriceCents: 52,
+      quantity: 5,
+      models,
+    });
+
+    expect(breakdown.feeCents).toBe(9);
+  });
+
+  it("computes Kalshi schedule fees at boundary prices", () => {
+    expect(
+      computeKalshiScheduleFeeCents({
+        quantity: 1,
+        priceCents: 50,
+        role: "taker",
+      }),
+    ).toBe(2);
+    expect(
+      computeKalshiScheduleFeeCents({
+        quantity: 100,
+        priceCents: 50,
+        role: "taker",
+      }),
+    ).toBe(175);
+    expect(
+      computeKalshiScheduleFeeCents({
+        quantity: 100,
+        priceCents: 50,
+        role: "maker",
+      }),
+    ).toBe(44);
+  });
+
+  it("rejects invalid Kalshi fee schedule config", () => {
+    expect(() =>
+      validateExecutionCostModelConfig({
+        executionCostModel: {
+          kind: "kalshi-fee-schedule",
+          role: "taker",
+          schedule: "invalid" as "standard",
+        },
+      }),
+    ).toThrow(ExecutionCostModelError);
+  });
+
+  it("aggregates execution cost summary detail with model kind", () => {
+    const summary = computeExecutionCostSummary(
+      [{ action: "buy", feeCents: 2, spreadSlippageCents: 0 }],
+      100,
+      "kalshi-fee-schedule",
+    );
+
+    expect(summary.executionCostSummary).toEqual({
+      modelKind: "kalshi-fee-schedule",
+      fillCount: 1,
+      totalFeeCents: 2,
+      averageFeeCentsPerFill: 2,
+    });
   });
 
   it("zero-cost costModelConfig overrides legacy fillConfig fees", () => {

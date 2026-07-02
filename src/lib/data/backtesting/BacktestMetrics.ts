@@ -285,6 +285,7 @@ export function computeBacktestMetrics(
   const executionCostSummary = computeExecutionCostSummary(
     input.fills ?? [],
     totalPnlCents,
+    input.executionFeeModelKind ?? "zero",
   );
 
   return Object.freeze({
@@ -299,6 +300,7 @@ export function computeBacktestMetrics(
     troughEquityCents: drawdown.troughEquityCents,
     ...optionalMetrics,
     ...executionCostSummary,
+    executionCostSummary: executionCostSummary.executionCostSummary,
   });
 }
 
