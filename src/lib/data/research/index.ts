@@ -288,3 +288,37 @@ export type {
   WalkForwardSplitRunnerDeps,
   WalkForwardSplitSummary,
 } from "./walkForwardEngine";
+
+export {
+  buildExperimentDirectoryPath,
+  buildExperimentId,
+  buildExperimentIdentityHash,
+  buildExperimentRecordOutputPath,
+  hashDatasetContent,
+  hashFixtureContent,
+  parseExperimentResearchDocument,
+  registerExperiments,
+  resolveCalibrationReportPath,
+  resolveFixtureHash,
+  resolveLeaderboardSnapshot,
+  scanExperimentResearchOutputs,
+  serializeExperimentRecord,
+  DEFAULT_EXPERIMENT_FIXTURES_ROOT,
+  DEFAULT_EXPERIMENT_RESEARCH_ROOT,
+  DEFAULT_EXPERIMENTS_ROOT,
+  EXPERIMENT_ID_PREFIX,
+  EXPERIMENT_RECORD_FILENAME,
+  ExperimentRegistryError,
+  ExperimentRegistryErrorCode,
+} from "./experiment-registry";
+export type {
+  ExperimentIdentityInput,
+  ExperimentLeaderboardEntry,
+  ExperimentLeaderboardSnapshot,
+  ExperimentRecord,
+  ExperimentRegistryIo,
+  ParsedExperimentResearchDocument,
+  RegisterExperimentsInput,
+  RegisterExperimentsResult,
+  ScannedExperimentResearchOutput,
+} from "./experiment-registry";
