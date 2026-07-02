@@ -2,6 +2,7 @@ import { posix } from "node:path";
 
 import { buildStrategySweepOutputPath } from "./buildStrategySweepOutputPath";
 import { parseStrategySweepSeriesRegistryJson } from "./parseDatasetRegistryJson";
+import { validateSerializedResearchOutputJson } from "@/lib/data/research/runner/validateSerializedResearchOutputJson";
 import {
   resolveStrategySweepSummaryPath,
   serializeStrategySweepSummary,
@@ -301,9 +302,22 @@ async function executeJob(
       strategyId: job.strategyId,
       strategyConfig: job.strategyConfig,
     });
+    const validation = validateSerializedResearchOutputJson(
+      serialized,
+      job.entry.marketTicker,
+    );
+
+    if (!validation.ok) {
+      return toRunResult(job, {
+        status: "failed",
+        errorMessage: validation.errorMessage,
+        runId: job.fixture.runId,
+        durationMs: Date.now() - startedMs,
+      });
+    }
 
     deps.filesystem.mkdir(posix.dirname(job.outputPath));
-    deps.filesystem.writeFile(job.outputPath, serialized);
+    deps.filesystem.writeFile(job.outputPath, validation.json);
 
     return toRunResult(job, {
       status: "success",

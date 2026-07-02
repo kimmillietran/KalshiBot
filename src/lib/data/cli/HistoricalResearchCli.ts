@@ -221,11 +221,15 @@ export function serializeHistoricalResearchRun(run: HistoricalResearchRun): stri
       engineConfig: run.config.engineConfig,
       initialCashCents: run.config.initialCashCents,
       durationMs: run.config.durationMs,
-      fillConfig: run.config.fillConfig,
+      ...(run.config.fillConfig !== undefined
+        ? { fillConfig: run.config.fillConfig }
+        : {}),
       ...(run.config.costModelConfig !== undefined
         ? { costModelConfig: run.config.costModelConfig }
         : {}),
-      metricsConfig: run.config.metricsConfig,
+      ...(run.config.metricsConfig !== undefined
+        ? { metricsConfig: run.config.metricsConfig }
+        : {}),
     },
   });
 }

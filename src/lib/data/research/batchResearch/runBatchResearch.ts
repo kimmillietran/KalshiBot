@@ -12,6 +12,7 @@ import {
   type RunBatchResearchInput,
 } from "./batchResearchTypes";
 import { parseResearchDatasetSeriesRegistryJson } from "./parseResearchDatasetRegistryJson";
+import { validateSerializedResearchOutputJson } from "@/lib/data/research/runner/validateSerializedResearchOutputJson";
 import {
   resolveBatchResearchSummaryPath,
   serializeBatchResearchSummary,
@@ -207,9 +208,21 @@ async function executeJob(
       entry: job.entry,
       fixture: job.fixture,
     });
+    const validation = validateSerializedResearchOutputJson(
+      serialized,
+      job.entry.marketTicker,
+    );
+
+    if (!validation.ok) {
+      return toMarketResult(job, {
+        status: "failed",
+        errorMessage: validation.errorMessage,
+        runId: job.fixture.runId,
+      });
+    }
 
     deps.filesystem.mkdir(posix.dirname(job.outputPath));
-    deps.filesystem.writeFile(job.outputPath, serialized);
+    deps.filesystem.writeFile(job.outputPath, validation.json);
 
     return toMarketResult(job, {
       status: "success",

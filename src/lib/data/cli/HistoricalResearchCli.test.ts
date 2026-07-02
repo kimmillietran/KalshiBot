@@ -212,6 +212,24 @@ describe("HistoricalResearchCli", () => {
     expect(first).toBe(second);
   });
 
+  it("serializes to valid JSON when optional configs are omitted", () => {
+    const run = HistoricalResearchCli.run({
+      dataset: buildDataset("KXBTC15M-CLI-JSON", "cli-json"),
+      config: {
+        runId: RUN_ID,
+        strategy: noopStrategy(),
+        engineConfig: DEFAULT_ENGINE_CONFIG,
+        initialCashCents: 10_000,
+        durationMs: DURATION_MS,
+      },
+    });
+
+    const serialized = serializeHistoricalResearchRun(run);
+
+    expect(() => JSON.parse(serialized)).not.toThrow();
+    expect(serialized).not.toContain("undefined");
+  });
+
   it("returns deeply frozen immutable outputs", () => {
     const run = HistoricalResearchCli.run({
       dataset: buildDataset("KXBTC15M-CLI-FROZEN", "cli-frozen"),

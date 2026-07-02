@@ -6,6 +6,7 @@ import type { RawHistoricalRecord } from "@/lib/data/types";
 import { DATASET_BRONZE_CONTENT_TYPE } from "@/lib/data/datasets/datasetTypes";
 import type { HistoricalResearchCliInputDocument } from "@/lib/data/fixtures";
 import { runHistoricalResearchFromBronze } from "@/lib/data/research/runner";
+import { parseResearchOutputJson } from "@/lib/data/research/aggregation/parseResearchOutputJson";
 import { StrategyPluginRegistry } from "@/lib/data/strategies/plugin/StrategyPluginRegistry";
 import { DEFAULT_ENGINE_CONFIG } from "@/lib/trading/config/defaults";
 import { DEFAULT_BACKTEST_FILL_SIMULATION_CONFIG } from "@/lib/data/backtesting/strategyTypes";
@@ -136,7 +137,7 @@ function buildRegistry(
 function createFilesystem(
   registries: Record<string, string>,
   fixtures: Record<string, string>,
-): StrategySweepFilesystem {
+): StrategySweepFilesystem & { writes: Map<string, string> } {
   const files = new Map<string, string>([
     ...Object.entries(registries),
     ...Object.entries(fixtures),
@@ -144,6 +145,7 @@ function createFilesystem(
   const writes = new Map<string, string>();
 
   return {
+    writes,
     exists: (path) => files.has(path) || writes.has(path),
     readFile: (path) => {
       const written = writes.get(path);
@@ -294,6 +296,93 @@ describe("runStrategySweep", () => {
       runId: `fixture-${marketTicker}`,
     });
     expect(filesystem.readFile(outputPath)).toContain(`"runId":"fixture-${marketTicker}"`);
+    expect(() => parseResearchOutputJson(filesystem.readFile(outputPath), marketTicker)).not.toThrow();
+  });
+
+  it("does not write research-output.json when research output is undefined", async () => {
+    const marketTicker = "KXBTC15M-MARKET-A";
+    const fixturePath = `data/fixtures/KXBTC15M/${marketTicker}/fixture.json`;
+    const registryPath = "data/research-datasets/KXBTC15M/dataset-registry.json";
+    const outputPath = buildStrategySweepOutputPath(
+      "data/research-results",
+      "noop",
+      "KXBTC15M",
+      marketTicker,
+    );
+    const filesystem = createFilesystem(
+      {
+        [registryPath]: JSON.stringify(
+          buildRegistry([{ marketTicker, fixturePath }]),
+        ),
+      },
+      {
+        [fixturePath]: JSON.stringify(createFixtureDocument(marketTicker)),
+      },
+    );
+    const runResearch = vi.fn(() => undefined as unknown as string);
+
+    const summary = await runStrategySweep(
+      {
+        registryDir: "data/research-datasets",
+        outputDir: "data/research-results",
+        strategyIds: ["noop"],
+      },
+      createDeps(filesystem, runResearch),
+    );
+
+    expect(summary.successfulRuns).toBe(0);
+    expect(summary.failedRuns).toBe(1);
+    expect(summary.runs[0]).toMatchObject({
+      status: "failed",
+      errorMessage: "Research runner returned empty or non-string output",
+    });
+    expect(filesystem.writes.has(outputPath)).toBe(false);
+  });
+
+  it("marks invalid research output as failed without writing research-output.json", async () => {
+    const marketTicker = "KXBTC15M-MARKET-A";
+    const fixturePath = `data/fixtures/KXBTC15M/${marketTicker}/fixture.json`;
+    const registryPath = "data/research-datasets/KXBTC15M/dataset-registry.json";
+    const outputPath = buildStrategySweepOutputPath(
+      "data/research-results",
+      "noop",
+      "KXBTC15M",
+      marketTicker,
+    );
+    const filesystem = createFilesystem(
+      {
+        [registryPath]: JSON.stringify(
+          buildRegistry([{ marketTicker, fixturePath }]),
+        ),
+      },
+      {
+        [fixturePath]: JSON.stringify(createFixtureDocument(marketTicker)),
+      },
+    );
+    const runResearch = vi.fn(() =>
+      JSON.stringify({
+        dataset: JSON.stringify({ metadata: { marketTickers: [marketTicker] } }),
+        researchRun: '{"durationMs":undefined}',
+        metadata: { durationMs: 1000 },
+      }),
+    );
+
+    const summary = await runStrategySweep(
+      {
+        registryDir: "data/research-datasets",
+        outputDir: "data/research-results",
+        strategyIds: ["noop"],
+      },
+      createDeps(filesystem, runResearch),
+    );
+
+    expect(summary.successfulRuns).toBe(0);
+    expect(summary.failedRuns).toBe(1);
+    expect(summary.runs[0]).toMatchObject({
+      status: "failed",
+      errorMessage: "researchRun contains invalid JSON",
+    });
+    expect(filesystem.writes.has(outputPath)).toBe(false);
   });
 
   it("continues after partial failures and records them in the summary", async () => {
@@ -316,11 +405,13 @@ describe("runStrategySweep", () => {
         [fixtureBPath]: JSON.stringify(createFixtureDocument(marketB)),
       },
     );
-    const runResearch = vi.fn(({ fixture }) => {
+    const production = productionResearchFn();
+    const runResearch = vi.fn(({ fixture, strategyId, strategyConfig }) => {
       if (fixture.runId.includes(marketB)) {
         throw new Error("simulated failure");
       }
-      return `{"runId":"${fixture.runId}"}`;
+
+      return production({ fixture, strategyId, strategyConfig });
     });
 
     const summary = await runStrategySweep(

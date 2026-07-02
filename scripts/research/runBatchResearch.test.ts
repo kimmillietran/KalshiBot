@@ -24,6 +24,33 @@ function createRegistryJson(marketTicker: string, fixturePath: string): string {
   });
 }
 
+function minimalValidResearchOutput(marketTicker: string): string {
+  const backtestResult = JSON.stringify({
+    metrics: {
+      totalPnlCents: 0,
+      totalReturnPct: 0,
+      maxDrawdownPct: 0,
+      sharpeRatio: null,
+      winRatePct: 0,
+      lossRatePct: 0,
+      tradeCount: 0,
+      winningTradeCount: 0,
+      losingTradeCount: 0,
+    },
+  });
+  const researchRun = JSON.stringify({
+    durationMs: 1000,
+    config: { strategyId: "noop" },
+    backtestResult,
+  });
+
+  return JSON.stringify({
+    dataset: JSON.stringify({ metadata: { marketTickers: [marketTicker] } }),
+    researchRun,
+    metadata: { durationMs: 1000 },
+  });
+}
+
 function createFilesystem(
   registries: Record<string, string>,
   fixtures: Record<string, string> = {},
@@ -104,7 +131,9 @@ describe("runBatchResearchCommand", () => {
       { [registryPath]: createRegistryJson(marketTicker, fixturePath) },
       { [fixturePath]: JSON.stringify({ runId: "fixture-test", bronzeRecords: [] }) },
     );
-    const runResearch: RunSingleBatchResearchFn = vi.fn(() => '{"research":true}');
+    const runResearch: RunSingleBatchResearchFn = vi.fn(() =>
+      minimalValidResearchOutput(marketTicker),
+    );
     const { io, stdout } = createIo();
 
     const exitCode = await runBatchResearchCommand(

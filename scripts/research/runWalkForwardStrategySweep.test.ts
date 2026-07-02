@@ -17,6 +17,33 @@ const SPLIT_ID = "wf-cli";
 const SPLIT_ROOT = `data/walk-forward/${SPLIT_ID}`;
 const SUMMARY_PATH = `${SPLIT_ROOT}/walk-forward-summary.json`;
 
+function minimalValidResearchOutput(marketTicker: string): string {
+  const backtestResult = JSON.stringify({
+    metrics: {
+      totalPnlCents: 0,
+      totalReturnPct: 0,
+      maxDrawdownPct: 0,
+      sharpeRatio: null,
+      winRatePct: 0,
+      lossRatePct: 0,
+      tradeCount: 0,
+      winningTradeCount: 0,
+      losingTradeCount: 0,
+    },
+  });
+  const researchRun = JSON.stringify({
+    durationMs: 1000,
+    config: { strategyId: "noop" },
+    backtestResult,
+  });
+
+  return JSON.stringify({
+    dataset: JSON.stringify({ metadata: { marketTickers: [marketTicker] } }),
+    researchRun,
+    metadata: { durationMs: 1000 },
+  });
+}
+
 function createIo() {
   const stdout: string[] = [];
   const stderr: string[] = [];
@@ -160,8 +187,7 @@ describe("runWalkForwardStrategySweepCommand", () => {
         },
         strategyRegistry: StrategyPluginRegistry.createBuiltIn(),
         parseFixtureJson: (json) => JSON.parse(json) as HistoricalResearchCliInputDocument,
-        runResearch: ({ fixture, strategyId }) =>
-          `{"runId":"${fixture.runId}","strategyId":"${strategyId}"}`,
+        runResearch: ({ fixture }) => minimalValidResearchOutput(fixture.runId.replace("fixture-", "")),
         now: () => new Date("2026-06-27T12:00:00.000Z"),
       },
     );

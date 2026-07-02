@@ -1,8 +1,15 @@
 import { describe, expect, it, vi } from "vitest";
 
+import { DataSource } from "@/lib/data/provenance";
+import { SILVER_BRONZE_CONTENT_TYPE } from "@/lib/data/silver";
+import type { RawHistoricalRecord } from "@/lib/data/types";
+import { DATASET_BRONZE_CONTENT_TYPE } from "@/lib/data/datasets/datasetTypes";
 import { stableStringify } from "@/lib/trading/config/hashConfig";
 import type { HistoricalResearchCliInputDocument } from "@/lib/data/fixtures";
+import { runHistoricalResearchFromBronze } from "@/lib/data/research/runner";
 import { StrategyPluginRegistry } from "@/lib/data/strategies/plugin/StrategyPluginRegistry";
+import { DEFAULT_ENGINE_CONFIG } from "@/lib/trading/config/defaults";
+import { DEFAULT_BACKTEST_FILL_SIMULATION_CONFIG } from "@/lib/data/backtesting/strategyTypes";
 
 import { buildWalkForwardSweepOutputPath } from "./discoverWalkForwardSplit";
 import { runWalkForwardStrategySweep } from "./runWalkForwardStrategySweep";
@@ -17,26 +24,95 @@ const SPLIT_ID = "wf-sweep";
 const SPLIT_ROOT = `data/walk-forward/${SPLIT_ID}`;
 const SUMMARY_PATH = `${SPLIT_ROOT}/walk-forward-summary.json`;
 
+function baseBronze(
+  contentType: string,
+  payload: Record<string, unknown>,
+  options: {
+    recordId: string;
+    ticker: string;
+    eventTime: string;
+  },
+): RawHistoricalRecord {
+  return {
+    recordId: options.recordId,
+    ticker: options.ticker,
+    contentType,
+    eventTime: options.eventTime,
+    collectionTime: "2026-06-27T01:00:00.000Z",
+    observedAt: "2026-06-27T01:00:05.000Z",
+    payload,
+    provenance: {
+      source: DataSource.KALSHI_REST,
+      collectionTime: "2026-06-27T01:00:00.000Z",
+      observedAt: "2026-06-27T01:00:05.000Z",
+      fetchId: `fetch-${options.recordId}`,
+    },
+  };
+}
+
 function createFixtureDocument(marketTicker: string): HistoricalResearchCliInputDocument {
+  const eventTime = "2026-06-26T23:15:00.000Z";
+  const closeTime = "2026-06-26T23:30:00.000Z";
+
   return {
     runId: `fixture-${marketTicker}`,
-    durationMs: 1_000,
+    durationMs: 3_000,
     initialCashCents: 10_000,
     strategyId: "noop",
-    engineConfig: {
-      enabled: true,
-      minEdgePercent: 1,
-      minLiquidityQuality: "Fair",
-      maxSpreadPercent: 10,
-      minimumTimeRemaining: 60_000,
-      minimumCandles: 1,
-    },
+    engineConfig: DEFAULT_ENGINE_CONFIG,
     fillConfig: {
+      ...DEFAULT_BACKTEST_FILL_SIMULATION_CONFIG,
       feeCentsPerContract: 1,
-      allowPartialFills: false,
-      priceSource: "engine-input-pricing",
     },
-    bronzeRecords: [],
+    bronzeRecords: [
+      baseBronze(
+        SILVER_BRONZE_CONTENT_TYPE.MARKET,
+        {
+          open_time: eventTime,
+          close_time: closeTime,
+          floor_strike: 59_990.31,
+          event_ticker: "KXBTC15M-EVENT",
+          status: "closed",
+        },
+        { recordId: "market", ticker: marketTicker, eventTime },
+      ),
+      baseBronze(
+        SILVER_BRONZE_CONTENT_TYPE.CANDLESTICK,
+        {
+          open_time: eventTime,
+          close_time: closeTime,
+          yes_bid_cents: 48,
+          yes_ask_cents: 52,
+          no_bid_cents: 47,
+          no_ask_cents: 51,
+          volume_contracts: 120,
+        },
+        { recordId: "candle", ticker: marketTicker, eventTime: closeTime },
+      ),
+      baseBronze(
+        DATASET_BRONZE_CONTENT_TYPE.BTC_KLINE,
+        {
+          open_time: eventTime,
+          close_time: closeTime,
+          open_usd: 59_980.5,
+          high_usd: 60_010.25,
+          low_usd: 59_960.0,
+          close_usd: 59_995.75,
+          volume_btc: 12.5,
+        },
+        { recordId: "btc", ticker: marketTicker, eventTime: closeTime },
+      ),
+      baseBronze(
+        SILVER_BRONZE_CONTENT_TYPE.SETTLEMENT,
+        {
+          floor_strike: 59_990.31,
+          expiration_value: "60010.25",
+          result: "yes",
+          settlement_ts: closeTime,
+        },
+        { recordId: "settlement", ticker: marketTicker, eventTime },
+      ),
+    ],
   };
 }
 
@@ -141,6 +217,22 @@ function createSplitFilesystem(
   };
 }
 
+function productionResearchFn(): WalkForwardSweepRunnerDeps["runResearch"] {
+  const strategyRegistry = StrategyPluginRegistry.createBuiltIn();
+
+  return ({ fixture, strategyId, strategyConfig }) =>
+    runHistoricalResearchFromBronze({
+      bronzeRecords: fixture.bronzeRecords,
+      strategy: strategyRegistry.resolveBacktestStrategy(strategyId, strategyConfig),
+      engineConfig: fixture.engineConfig,
+      initialCashCents: fixture.initialCashCents,
+      runId: fixture.runId,
+      durationMs: fixture.durationMs,
+      fillConfig: fixture.fillConfig,
+      costModelConfig: fixture.costModelConfig,
+    }).serialized;
+}
+
 function createDeps(
   filesystem: WalkForwardSweepFilesystem,
   runResearch?: WalkForwardSweepRunnerDeps["runResearch"],
@@ -151,8 +243,7 @@ function createDeps(
     parseFixtureJson: (json) => JSON.parse(json) as HistoricalResearchCliInputDocument,
     runResearch:
       runResearch
-      ?? (({ fixture, strategyId }) =>
-        `{"runId":"${fixture.runId}","strategyId":"${strategyId}"}`),
+      ?? productionResearchFn(),
     now: () => FIXED_NOW,
   };
 }
@@ -270,11 +361,13 @@ describe("runWalkForwardStrategySweep", () => {
         [fixtureAPath]: JSON.stringify(createFixtureDocument(marketA)),
       },
     );
-    const runResearch = vi.fn(({ fixture }) => {
+    const production = productionResearchFn();
+    const runResearch = vi.fn(({ fixture, strategyId, strategyConfig }) => {
       if (fixture.runId.includes(marketB)) {
         throw new Error("simulated failure");
       }
-      return `{"runId":"${fixture.runId}"}`;
+
+      return production({ fixture, strategyId, strategyConfig });
     });
 
     const summary = await runWalkForwardStrategySweep(

@@ -12,6 +12,7 @@ import { SILVER_BRONZE_CONTENT_TYPE } from "@/lib/data/silver";
 import type { RawHistoricalRecord } from "@/lib/data/types";
 import { DEFAULT_ENGINE_CONFIG } from "@/lib/trading/config/defaults";
 
+import { parseResearchOutputJson } from "@/lib/data/research/aggregation/parseResearchOutputJson";
 import {
   HistoricalResearchRunnerError,
   HistoricalResearchRunnerErrorCode,
@@ -199,6 +200,21 @@ describe("runHistoricalResearchFromBronze", () => {
     const second = runHistoricalResearchFromBronze(input).serialized;
 
     expect(first).toBe(second);
+  });
+
+  it("serializes output that aggregation can parse when optional configs are omitted", () => {
+    const bronzeRecords = completeMarketRecords(
+      "KXBTC15M-RUNNER-PARSE",
+      "2026-06-26T23:15:00.000Z",
+      "2026-06-26T23:30:00.000Z",
+      "runner-parse",
+    );
+    const { fillConfig: _unusedFillConfig, ...inputWithoutOptionals } = createInput(bronzeRecords);
+    void _unusedFillConfig;
+    const result = runHistoricalResearchFromBronze(inputWithoutOptionals);
+
+    expect(() => parseResearchOutputJson(result.serialized, "KXBTC15M-RUNNER-PARSE")).not.toThrow();
+    expect(result.serialized).not.toContain("undefined");
   });
 
   it("returns deeply frozen immutable outputs", () => {
