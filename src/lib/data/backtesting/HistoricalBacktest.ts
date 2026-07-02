@@ -96,6 +96,7 @@ export function runHistoricalBacktest(
     steps: replayResults,
     strategy: input.strategy,
     fillConfig,
+    costModelConfig: input.costModelConfig,
   });
 
   const ledgerSnapshot = strategyRun.ledger.snapshot();
@@ -127,6 +128,9 @@ export function runHistoricalBacktest(
       snapshotCount: input.snapshots.length,
       engineConfig: structuredClone(input.engineConfig),
       fillConfig: structuredClone(fillConfig),
+      ...(input.costModelConfig !== undefined
+        ? { costModelConfig: structuredClone(input.costModelConfig) }
+        : {}),
     },
   });
 }

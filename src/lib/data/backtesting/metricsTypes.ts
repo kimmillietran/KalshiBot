@@ -1,3 +1,5 @@
+import type { ExecutionCostFillSource } from "./costModel";
+
 /** Single equity observation supplied by the caller. */
 export type BacktestEquityPoint = {
   stepIndex: number;
@@ -19,6 +21,7 @@ export type ClosedTradeSummary = {
 export type ComputeBacktestMetricsInput = {
   equityCurve: readonly BacktestEquityPoint[];
   closedTrades: readonly ClosedTradeSummary[];
+  fills?: readonly ExecutionCostFillSource[];
   /** Required for annualized return and volatility. Sharpe also requires this. */
   periodsPerYear?: number;
   /** Decimal per-period risk-free rate. Sharpe requires this plus periodsPerYear and at least two equity points with non-zero return volatility. */
@@ -48,4 +51,9 @@ export type BacktestMetricsSummary = {
   sharpeRatio: number | null;
   /** Sample std-dev of per-period equity returns (not annualized), scaled to percent. */
   returnVolatilityPct: number | null;
+  totalFeesCents: number;
+  totalSpreadCostCents: number;
+  grossPnlCents: number;
+  netPnlCents: number;
+  feesAsPercentOfGrossPnl: number | null;
 };

@@ -65,6 +65,7 @@ function createProductionDeps(): StrategySweepCommandDeps {
         runId: fixture.runId,
         durationMs: fixture.durationMs,
         fillConfig: fixture.fillConfig,
+        costModelConfig: fixture.costModelConfig,
         metricsConfig: fixture.metricsConfig,
       });
 

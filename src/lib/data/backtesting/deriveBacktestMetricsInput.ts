@@ -195,6 +195,7 @@ export function deriveBacktestMetricsInput(
   return {
     equityCurve,
     closedTrades,
+    fills: args.fills,
     periodsPerYear: args.periodsPerYear,
     riskFreeRatePerPeriod: args.riskFreeRatePerPeriod,
   };

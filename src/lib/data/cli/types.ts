@@ -2,6 +2,7 @@ import type {
   HistoricalBacktestMetricsConfig,
   HistoricalBacktestResult,
 } from "@/lib/data/backtesting";
+import type { ResearchCostModelConfig } from "@/lib/data/backtesting/costModel";
 import type { BacktestFillSimulationConfig, BacktestStrategy } from "@/lib/data/backtesting/strategyTypes";
 import type { HistoricalDataset, HistoricalDatasetMetadata } from "@/lib/data/datasets";
 import type { EngineConfig } from "@/types/domain/trading";
@@ -65,6 +66,7 @@ export type HistoricalResearchRunConfig = {
   initialCashCents: number;
   durationMs: number;
   fillConfig?: BacktestFillSimulationConfig;
+  costModelConfig?: ResearchCostModelConfig;
   metricsConfig?: HistoricalBacktestMetricsConfig;
 };
 

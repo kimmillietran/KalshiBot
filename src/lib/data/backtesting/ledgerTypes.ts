@@ -1,3 +1,5 @@
+import type { FillCostBreakdown } from "./costModel";
+
 export type TradeSide = "yes" | "no";
 
 export type TradeAction = "buy" | "sell";
@@ -10,6 +12,8 @@ export type TradeFillInput = {
   priceCents: number;
   quantity: number;
   feeCents: number;
+  spreadSlippageCents?: number;
+  executionCost?: FillCostBreakdown;
   occurredAt: string;
   sourceStepIndex: number;
 };

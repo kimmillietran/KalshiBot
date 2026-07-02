@@ -3,6 +3,11 @@ import type { EvaluationPricingSnapshot } from "@/types/domain/trading";
 
 import { BacktestLedger } from "./BacktestLedger";
 import {
+  computeFillCostBreakdown,
+  resolveExecutionCostModel,
+} from "./costModel";
+import type { ResolvedExecutionCostModels } from "./costModel";
+import {
   BacktestIntentRejectionCode,
   BacktestStrategyRunnerError,
   BacktestStrategyRunnerErrorCode,
@@ -131,7 +136,7 @@ function simulateIntent(
   intentId: string,
   fillId: string,
   context: BacktestStrategyContext,
-  fillConfig: BacktestFillSimulationConfig,
+  costModels: ResolvedExecutionCostModels,
 ): { fill: SimulatedFill } | { rejection: RejectedTradeIntent } {
   const shapeRejection = validateIntentShape(intent);
   if (shapeRejection) {
@@ -188,11 +193,25 @@ function simulateIntent(
     };
   }
 
-  const feeCents = fillConfig.feeCentsPerContract * intent.quantity;
+  const averageCostCents =
+    intent.action === "sell"
+      ? findOpenPosition(context.openPositions, intent.ticker, intent.side)
+          ?.averageCostCents
+      : undefined;
+  const executionCost = computeFillCostBreakdown({
+    action: intent.action,
+    grossPriceCents: executionPriceCents,
+    quantity: intent.quantity,
+    models: costModels,
+    averageCostCents,
+  });
+  const feeCents = executionCost.feeCents;
+  const spreadSlippageCents = executionCost.spreadSlippageCents;
   const tradeCostCents = intent.quantity * executionPriceCents;
+  const totalExecutionCostCents = feeCents + spreadSlippageCents;
 
   if (intent.action === "buy") {
-    if (context.cashCents < tradeCostCents + feeCents) {
+    if (context.cashCents < tradeCostCents + totalExecutionCostCents) {
       return {
         rejection: {
           intentId,
@@ -230,6 +249,8 @@ function simulateIntent(
       priceCents: executionPriceCents,
       quantity: intent.quantity,
       feeCents,
+      spreadSlippageCents,
+      executionCost,
       occurredAt: step.engineInput.evaluatedAt,
       sourceStepIndex: step.stepIndex,
       reason: intent.reason,
@@ -245,6 +266,8 @@ function toTradeFillInput(fill: SimulatedFill): TradeFillInput {
     priceCents: fill.priceCents,
     quantity: fill.quantity,
     feeCents: fill.feeCents,
+    spreadSlippageCents: fill.spreadSlippageCents,
+    executionCost: fill.executionCost,
     occurredAt: fill.occurredAt,
     sourceStepIndex: fill.sourceStepIndex,
   };
@@ -254,6 +277,7 @@ function toTradeFillInput(fill: SimulatedFill): TradeFillInput {
 export class BacktestStrategyRunner {
   static run(input: BacktestStrategyRunInput): BacktestStrategyRunResult {
     const fillConfig = input.fillConfig ?? DEFAULT_BACKTEST_FILL_SIMULATION_CONFIG;
+    const costModels = resolveExecutionCostModel(fillConfig, input.costModelConfig);
 
     validateFillConfig(fillConfig);
 
@@ -279,7 +303,7 @@ export class BacktestStrategyRunner {
           intentId,
           fillId,
           context,
-          fillConfig,
+          costModels,
         );
 
         if ("rejection" in simulation) {

@@ -1,6 +1,7 @@
 import type { ReplayStepResult } from "@/lib/data/replay/replaySessionTypes";
 
 import type { BacktestLedger } from "./BacktestLedger";
+import type { FillCostBreakdown, ResearchCostModelConfig } from "./costModel";
 import type { BacktestIntentRejectionCode } from "./errors";
 import type { LedgerSnapshot, OpenPosition, TradeAction, TradeSide } from "./ledgerTypes";
 
@@ -38,9 +39,12 @@ export type SimulatedFill = {
   ticker: string;
   side: TradeSide;
   action: TradeAction;
+  /** Gross execution price before fees and spread/slippage. */
   priceCents: number;
   quantity: number;
   feeCents: number;
+  spreadSlippageCents: number;
+  executionCost: FillCostBreakdown;
   occurredAt: string;
   sourceStepIndex: number;
   reason: string;
@@ -73,6 +77,7 @@ export type BacktestStrategyRunInput = {
   steps: readonly ReplayStepResult[];
   strategy: BacktestStrategy;
   fillConfig?: BacktestFillSimulationConfig;
+  costModelConfig?: ResearchCostModelConfig;
 };
 
 export type BacktestStrategyRunResult = {

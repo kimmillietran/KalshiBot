@@ -69,6 +69,14 @@ function validateFillInput(fill: TradeFillInput): void {
     );
   }
 
+  const spreadSlippageCents = fill.spreadSlippageCents ?? 0;
+  if (!Number.isFinite(spreadSlippageCents) || spreadSlippageCents < 0) {
+    throw new BacktestLedgerError(
+      "Spread/slippage cents must be a non-negative finite number",
+      BacktestLedgerErrorCode.INVALID_FEE,
+    );
+  }
+
   if (!fill.occurredAt.trim() || !Number.isFinite(Date.parse(fill.occurredAt))) {
     throw new BacktestLedgerError(
       "occurredAt must be a valid timestamp",
@@ -146,6 +154,7 @@ export class BacktestLedger {
     validateFillInput(fill);
 
     const tradeCostCents = fill.quantity * fill.priceCents;
+    const spreadSlippageCents = fill.spreadSlippageCents ?? 0;
     const positions = [...this.snapshotState.openPositions];
     const existing = findPosition(positions, fill.ticker, fill.side);
 
@@ -154,7 +163,7 @@ export class BacktestLedger {
     let nextPosition: OpenPosition | null = existing;
 
     if (fill.action === "buy") {
-      const totalDebit = tradeCostCents + fill.feeCents;
+      const totalDebit = tradeCostCents + fill.feeCents + spreadSlippageCents;
       if (cashCents < totalDebit) {
         throw new BacktestLedgerError(
           "Insufficient cash for buy fill",
@@ -191,11 +200,12 @@ export class BacktestLedger {
         );
       }
 
-      const proceedsCents = tradeCostCents - fill.feeCents;
+      const proceedsCents = tradeCostCents - fill.feeCents - spreadSlippageCents;
       cashCents += proceedsCents;
       realizedPnLCents +=
         (fill.priceCents - existing.averageCostCents) * fill.quantity -
-        fill.feeCents;
+        fill.feeCents -
+        spreadSlippageCents;
 
       const remainingQuantity = existing.quantity - fill.quantity;
       nextPosition =

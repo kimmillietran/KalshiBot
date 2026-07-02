@@ -25,6 +25,23 @@ const fillConfigSchema = z.object({
   priceSource: z.literal("engine-input-pricing"),
 });
 
+const executionCostModelSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("zero") }),
+  z.object({
+    kind: z.literal("per-contract-fee"),
+    feeCentsPerContract: z.number().finite().nonnegative(),
+  }),
+]);
+
+const spreadSlippageModelSchema = z.object({
+  kind: z.literal("none"),
+});
+
+const costModelConfigSchema = z.object({
+  executionCostModel: executionCostModelSchema.optional(),
+  spreadSlippageModel: spreadSlippageModelSchema.optional(),
+});
+
 const metricsConfigSchema = z.object({
   periodsPerYear: z.number().finite().positive().optional(),
   riskFreeRatePerPeriod: z.number().finite().optional(),
@@ -53,6 +70,7 @@ export const historicalResearchCliInputSchema = z.object({
   strategyConfig: z.record(z.string(), z.unknown()).optional(),
   engineConfig: engineConfigSchema,
   fillConfig: fillConfigSchema.optional(),
+  costModelConfig: costModelConfigSchema.optional(),
   metricsConfig: metricsConfigSchema.optional(),
   exportConfig: exportConfigSchema.optional(),
   exportId: z.string().trim().min(1, "exportId must be non-empty").optional(),

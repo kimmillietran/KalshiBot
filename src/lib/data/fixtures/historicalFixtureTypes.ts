@@ -1,4 +1,5 @@
 import type { HistoricalBacktestMetricsConfig } from "@/lib/data/backtesting";
+import type { ResearchCostModelConfig } from "@/lib/data/backtesting/costModel";
 import type { BacktestFillSimulationConfig } from "@/lib/data/backtesting/strategyTypes";
 import type { HistoricalDatasetMetadata } from "@/lib/data/datasets";
 import type { ResearchExportGeneratedMetadata } from "@/lib/data/research/export/researchExportTypes";
@@ -42,6 +43,7 @@ export type BuildHistoricalResearchFixtureInput = {
   initialCashCents: number;
   engineConfig: EngineConfig;
   fillConfig?: BacktestFillSimulationConfig;
+  costModelConfig?: ResearchCostModelConfig;
   metricsConfig?: HistoricalBacktestMetricsConfig;
   exportConfig?: HistoricalResearchFixtureExportConfig;
 };
@@ -56,6 +58,7 @@ export type HistoricalResearchCliInput = {
   strategyConfig?: Record<string, unknown>;
   engineConfig: EngineConfig;
   fillConfig?: BacktestFillSimulationConfig;
+  costModelConfig?: ResearchCostModelConfig;
   metricsConfig?: HistoricalBacktestMetricsConfig;
   exportConfig?: HistoricalResearchFixtureExportConfig;
 };

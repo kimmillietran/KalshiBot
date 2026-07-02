@@ -1,5 +1,6 @@
 import { stableStringify } from "@/lib/trading/config/hashConfig";
 
+import { computeExecutionCostSummary } from "./costModel";
 import { BacktestMetricsError, BacktestMetricsErrorCode } from "./errors";
 import type {
   BacktestEquityPoint,
@@ -281,6 +282,10 @@ export function computeBacktestMetrics(
     input.periodsPerYear,
     input.riskFreeRatePerPeriod,
   );
+  const executionCostSummary = computeExecutionCostSummary(
+    input.fills ?? [],
+    totalPnlCents,
+  );
 
   return Object.freeze({
     totalReturnPct,
@@ -293,6 +298,7 @@ export function computeBacktestMetrics(
     peakEquityCents: drawdown.peakEquityCents,
     troughEquityCents: drawdown.troughEquityCents,
     ...optionalMetrics,
+    ...executionCostSummary,
   });
 }
 

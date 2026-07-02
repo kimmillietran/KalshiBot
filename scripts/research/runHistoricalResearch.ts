@@ -146,6 +146,7 @@ export function runHistoricalResearchCommand(
       runId: document.runId,
       durationMs: document.durationMs,
       fillConfig: document.fillConfig,
+      costModelConfig: document.costModelConfig,
       metricsConfig: document.metricsConfig,
     });
 

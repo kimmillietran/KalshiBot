@@ -67,7 +67,18 @@ function readFiniteNumber(
 }
 
 function metricsFromBacktestSummary(
-  metrics: BacktestMetricsSummary,
+  metrics: Pick<
+    BacktestMetricsSummary,
+    | "totalPnlCents"
+    | "totalReturnPct"
+    | "maxDrawdownPct"
+    | "sharpeRatio"
+    | "winRatePct"
+    | "lossRatePct"
+    | "tradeCount"
+    | "winningTradeCount"
+    | "losingTradeCount"
+  >,
 ): ResearchOutputMetrics {
   return {
     totalPnlCents: metrics.totalPnlCents,
@@ -207,36 +218,17 @@ function parseRunnerFormat(
       totalPnlCents: metricsRecord.totalPnlCents as number,
       totalReturnPct: metricsRecord.totalReturnPct as number,
       maxDrawdownPct: metricsRecord.maxDrawdownPct as number,
-      maxDrawdownCents: readFiniteNumber(metricsRecord, "maxDrawdownCents") ?? 0,
       winRatePct: metricsRecord.winRatePct as number,
       lossRatePct: metricsRecord.lossRatePct as number,
-      averageWinCents: readFiniteNumber(metricsRecord, "averageWinCents") ?? 0,
-      averageLossCents: readFiniteNumber(metricsRecord, "averageLossCents") ?? 0,
-      profitFactor:
-        metricsRecord.profitFactor === null ? null : readFiniteNumber(metricsRecord, "profitFactor") ?? null,
-      expectancyCents: readFiniteNumber(metricsRecord, "expectancyCents") ?? 0,
       tradeCount: metricsRecord.tradeCount as number,
       winningTradeCount: metricsRecord.winningTradeCount as number,
       losingTradeCount: metricsRecord.losingTradeCount as number,
-      breakevenTradeCount: readFiniteNumber(metricsRecord, "breakevenTradeCount") ?? 0,
-      startEquityCents: readFiniteNumber(metricsRecord, "startEquityCents") ?? 0,
-      endEquityCents: readFiniteNumber(metricsRecord, "endEquityCents") ?? 0,
-      peakEquityCents: readFiniteNumber(metricsRecord, "peakEquityCents") ?? 0,
-      troughEquityCents: readFiniteNumber(metricsRecord, "troughEquityCents") ?? 0,
-      annualizedReturnPct:
-        metricsRecord.annualizedReturnPct === null
-          ? null
-          : readFiniteNumber(metricsRecord, "annualizedReturnPct") ?? null,
       sharpeRatio:
         sharpeRatio === null
           ? null
           : typeof sharpeRatio === "number" && Number.isFinite(sharpeRatio)
             ? sharpeRatio
             : null,
-      returnVolatilityPct:
-        metricsRecord.returnVolatilityPct === null
-          ? null
-          : readFiniteNumber(metricsRecord, "returnVolatilityPct") ?? null,
     }),
     error: null,
   };

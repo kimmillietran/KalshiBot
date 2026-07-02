@@ -38,6 +38,11 @@ function metrics(
     annualizedReturnPct: 12,
     sharpeRatio: 1.2,
     returnVolatilityPct: 8,
+    totalFeesCents: 0,
+    totalSpreadCostCents: 0,
+    grossPnlCents: 10_000,
+    netPnlCents: 10_000,
+    feesAsPercentOfGrossPnl: null,
     ...overrides,
   };
 }

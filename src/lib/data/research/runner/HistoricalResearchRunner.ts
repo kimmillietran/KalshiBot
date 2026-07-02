@@ -118,6 +118,7 @@ export function runHistoricalResearchFromBronze(
       initialCashCents: input.initialCashCents,
       durationMs: input.durationMs,
       fillConfig: input.fillConfig,
+      costModelConfig: input.costModelConfig,
       metricsConfig: input.metricsConfig,
     },
   });

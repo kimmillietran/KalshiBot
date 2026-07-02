@@ -244,7 +244,16 @@ describe("BacktestStrategyRunner", () => {
       priceCents: 52,
       quantity: 5,
       feeCents: 10,
+      spreadSlippageCents: 0,
       reason: "test-buy",
+    });
+    expect(fill.executionCost).toMatchObject({
+      grossPriceCents: 52,
+      feeCents: 10,
+      spreadSlippageCents: 0,
+      netCostCents: 270,
+      netProceedsCents: -270,
+      netPnlContributionCents: null,
     });
     expect(result.ledger.snapshot().openPositions).toEqual([
       {

@@ -2,6 +2,7 @@ import type { HistoricalTradingSnapshot } from "@/lib/data/snapshots/types";
 import type { ReplayStepResult } from "@/lib/data/replay/replaySessionTypes";
 import type { EngineConfig } from "@/types/domain/trading";
 
+import type { ResearchCostModelConfig } from "./costModel";
 import type { BacktestLedger } from "./BacktestLedger";
 import type { BacktestMetricsSummary } from "./metricsTypes";
 import type {
@@ -41,6 +42,7 @@ export type RunHistoricalBacktestInput = {
   engineConfig: EngineConfig;
   initialCashCents: number;
   fillConfig?: BacktestFillSimulationConfig;
+  costModelConfig?: ResearchCostModelConfig;
   metricsConfig?: HistoricalBacktestMetricsConfig;
 };
 
@@ -55,6 +57,7 @@ export type HistoricalBacktestMetadata = {
   snapshotCount: number;
   engineConfig: EngineConfig;
   fillConfig: BacktestFillSimulationConfig;
+  costModelConfig?: ResearchCostModelConfig;
 };
 
 export type HistoricalBacktestResult = {

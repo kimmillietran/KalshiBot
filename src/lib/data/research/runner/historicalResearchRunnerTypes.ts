@@ -1,6 +1,7 @@
 import type {
   HistoricalBacktestMetricsConfig,
 } from "@/lib/data/backtesting";
+import type { ResearchCostModelConfig } from "@/lib/data/backtesting/costModel";
 import type { BacktestFillSimulationConfig, BacktestStrategy } from "@/lib/data/backtesting/strategyTypes";
 import type { HistoricalDataset } from "@/lib/data/datasets";
 import type { HistoricalResearchRun } from "@/lib/data/cli";
@@ -38,6 +39,7 @@ export type RunHistoricalResearchFromBronzeInput = {
   runId: string;
   durationMs: number;
   fillConfig?: BacktestFillSimulationConfig;
+  costModelConfig?: ResearchCostModelConfig;
   metricsConfig?: HistoricalBacktestMetricsConfig;
 };
 

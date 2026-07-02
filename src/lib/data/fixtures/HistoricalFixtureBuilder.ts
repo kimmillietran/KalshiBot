@@ -93,6 +93,9 @@ function buildCliInput(
     strategyId: input.strategyId,
     engineConfig: structuredClone(input.engineConfig),
     fillConfig: input.fillConfig ? structuredClone(input.fillConfig) : undefined,
+    costModelConfig: input.costModelConfig
+      ? structuredClone(input.costModelConfig)
+      : undefined,
     metricsConfig: input.metricsConfig ? structuredClone(input.metricsConfig) : undefined,
     exportConfig: input.exportConfig ? structuredClone(input.exportConfig) : undefined,
   };
@@ -122,6 +125,9 @@ export function serializeHistoricalResearchFixture(
     strategyId: fixture.strategyId,
     engineConfig: fixture.engineConfig,
     fillConfig: fixture.fillConfig,
+    ...(fixture.costModelConfig !== undefined
+      ? { costModelConfig: fixture.costModelConfig }
+      : {}),
     metricsConfig: fixture.metricsConfig,
     exportConfig: fixture.exportConfig,
   });

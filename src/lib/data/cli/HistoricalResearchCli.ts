@@ -46,6 +46,9 @@ function cloneRunConfig(config: HistoricalResearchRunConfig): HistoricalResearch
     initialCashCents: config.initialCashCents,
     durationMs: config.durationMs,
     fillConfig: config.fillConfig ? structuredClone(config.fillConfig) : undefined,
+    costModelConfig: config.costModelConfig
+      ? structuredClone(config.costModelConfig)
+      : undefined,
     metricsConfig: config.metricsConfig ? structuredClone(config.metricsConfig) : undefined,
   };
 }
@@ -115,6 +118,7 @@ function executeRun(
     engineConfig: config.engineConfig,
     initialCashCents: config.initialCashCents,
     fillConfig: config.fillConfig,
+    costModelConfig: config.costModelConfig,
     metricsConfig: config.metricsConfig,
   });
 
@@ -218,6 +222,9 @@ export function serializeHistoricalResearchRun(run: HistoricalResearchRun): stri
       initialCashCents: run.config.initialCashCents,
       durationMs: run.config.durationMs,
       fillConfig: run.config.fillConfig,
+      ...(run.config.costModelConfig !== undefined
+        ? { costModelConfig: run.config.costModelConfig }
+        : {}),
       metricsConfig: run.config.metricsConfig,
     },
   });

@@ -178,6 +178,7 @@ function productionResearchFn(): StrategySweepRunnerDeps["runResearch"] {
       runId: fixture.runId,
       durationMs: fixture.durationMs,
       fillConfig: fixture.fillConfig,
+      costModelConfig: fixture.costModelConfig,
     }).serialized;
 }
 

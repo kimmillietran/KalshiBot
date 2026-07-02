@@ -1,9 +1,26 @@
 export { BacktestLedger } from "./BacktestLedger";
 export {
+  buildFillExecutionCostFields,
+  computeExecutionCostSummary,
+  computeFillCostBreakdown,
+  ExecutionCostModelError,
+  ExecutionCostModelErrorCode,
+  resolveExecutionCostModel,
+  validateExecutionCostModelConfig,
+} from "./costModel";
+export type {
+  ExecutionCostFillSource,
+  ExecutionCostSummary,
+  ExecutionFeeModel,
+  FillCostBreakdown,
+  ResearchCostModelConfig,
+  ResolvedExecutionCostModels,
+  SpreadSlippageModel,
+} from "./costModel";
+export {
   computeBacktestMetrics,
   serializeBacktestMetrics,
-} from "./BacktestMetrics";
-export { deriveBacktestMetricsInput } from "./deriveBacktestMetricsInput";
+} from "./BacktestMetrics";export { deriveBacktestMetricsInput } from "./deriveBacktestMetricsInput";
 export {
   runHistoricalBacktest,
   serializeHistoricalBacktestResult,
