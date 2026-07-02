@@ -30,6 +30,7 @@ export type {
   StrategySweepFilesystem,
   StrategySweepJob,
   StrategySweepMarketEntry,
+  StrategySweepResearchResult,
   StrategySweepRunResult,
   StrategySweepRunnerDeps,
   StrategySweepSummary,

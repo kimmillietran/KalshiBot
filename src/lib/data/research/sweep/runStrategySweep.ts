@@ -3,6 +3,7 @@ import { posix } from "node:path";
 import { buildStrategySweepOutputPath } from "./buildStrategySweepOutputPath";
 import { parseStrategySweepSeriesRegistryJson } from "./parseDatasetRegistryJson";
 import { validateSerializedResearchOutputJson } from "@/lib/data/research/runner/validateSerializedResearchOutputJson";
+import { buildStrategySweepDecisionTracePath } from "@/lib/data/research/decisionTrace";
 import {
   resolveStrategySweepSummaryPath,
   serializeStrategySweepSummary,
@@ -297,13 +298,27 @@ async function executeJob(
   }
 
   try {
-    const serialized = deps.runResearch({
+    const researchResult = deps.runResearch({
       fixture: job.fixture,
       strategyId: job.strategyId,
       strategyConfig: job.strategyConfig,
     });
+
+    if (
+      researchResult === null
+      || researchResult === undefined
+      || typeof researchResult.researchOutput !== "string"
+    ) {
+      return toRunResult(job, {
+        status: "failed",
+        errorMessage: "Research runner returned empty or non-string output",
+        runId: job.fixture.runId,
+        durationMs: Date.now() - startedMs,
+      });
+    }
+
     const validation = validateSerializedResearchOutputJson(
-      serialized,
+      researchResult.researchOutput,
       job.entry.marketTicker,
     );
 
@@ -318,6 +333,10 @@ async function executeJob(
 
     deps.filesystem.mkdir(posix.dirname(job.outputPath));
     deps.filesystem.writeFile(job.outputPath, validation.json);
+    deps.filesystem.writeFile(
+      buildStrategySweepDecisionTracePath(job.outputPath),
+      researchResult.decisionTrace,
+    );
 
     return toRunResult(job, {
       status: "success",

@@ -14,5 +14,10 @@ export const noopStrategyPlugin: StrategyPlugin = {
   decide: () => ({
     intents: [],
     nextState: {},
+    decisionTrace: {
+      action: "hold",
+      reason: "noop",
+      metadata: {},
+    },
   }),
 };

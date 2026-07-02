@@ -12,6 +12,7 @@ import { DEFAULT_ENGINE_CONFIG } from "@/lib/trading/config/defaults";
 import { DEFAULT_BACKTEST_FILL_SIMULATION_CONFIG } from "@/lib/data/backtesting/strategyTypes";
 
 import { buildStrategySweepOutputPath } from "./buildStrategySweepOutputPath";
+import { buildStrategySweepDecisionTracePath } from "@/lib/data/research/decisionTrace";
 import { runStrategySweep } from "./runStrategySweep";
 import {
   StrategySweepError,
@@ -171,8 +172,8 @@ function createFilesystem(
 function productionResearchFn(): StrategySweepRunnerDeps["runResearch"] {
   const strategyRegistry = StrategyPluginRegistry.createBuiltIn();
 
-  return ({ fixture, strategyId, strategyConfig }) =>
-    runHistoricalResearchFromBronze({
+  return ({ fixture, strategyId, strategyConfig }) => {
+    const result = runHistoricalResearchFromBronze({
       bronzeRecords: fixture.bronzeRecords,
       strategy: strategyRegistry.resolveBacktestStrategy(strategyId, strategyConfig),
       engineConfig: fixture.engineConfig,
@@ -181,7 +182,13 @@ function productionResearchFn(): StrategySweepRunnerDeps["runResearch"] {
       durationMs: fixture.durationMs,
       fillConfig: fixture.fillConfig,
       costModelConfig: fixture.costModelConfig,
-    }).serialized;
+    });
+
+    return {
+      researchOutput: result.serialized,
+      decisionTrace: result.serializedDecisionTrace,
+    };
+  };
 }
 
 function createDeps(
@@ -236,7 +243,10 @@ describe("runStrategySweep", () => {
     const runOrder: string[] = [];
     const runResearch = vi.fn(({ strategyId, fixture }) => {
       runOrder.push(`${strategyId}:${fixture.runId}`);
-      return `{"runId":"${fixture.runId}","strategyId":"${strategyId}"}`;
+      return {
+        researchOutput: `{"runId":"${fixture.runId}","strategyId":"${strategyId}"}`,
+        decisionTrace: '{"entries":[]}',
+      };
     });
 
     await runStrategySweep(
@@ -297,6 +307,9 @@ describe("runStrategySweep", () => {
     });
     expect(filesystem.readFile(outputPath)).toContain(`"runId":"fixture-${marketTicker}"`);
     expect(() => parseResearchOutputJson(filesystem.readFile(outputPath), marketTicker)).not.toThrow();
+    const decisionTracePath = buildStrategySweepDecisionTracePath(outputPath);
+    expect(filesystem.readFile(decisionTracePath)).toContain('"entries"');
+    expect(JSON.parse(filesystem.readFile(decisionTracePath)).entries.length).toBeGreaterThan(0);
   });
 
   it("does not write research-output.json when research output is undefined", async () => {
@@ -319,7 +332,9 @@ describe("runStrategySweep", () => {
         [fixturePath]: JSON.stringify(createFixtureDocument(marketTicker)),
       },
     );
-    const runResearch = vi.fn(() => undefined as unknown as string);
+    const runResearch = vi.fn(
+      () => undefined as unknown as ReturnType<StrategySweepRunnerDeps["runResearch"]>,
+    );
 
     const summary = await runStrategySweep(
       {
@@ -359,13 +374,14 @@ describe("runStrategySweep", () => {
         [fixturePath]: JSON.stringify(createFixtureDocument(marketTicker)),
       },
     );
-    const runResearch = vi.fn(() =>
-      JSON.stringify({
+    const runResearch = vi.fn(() => ({
+      researchOutput: JSON.stringify({
         dataset: JSON.stringify({ metadata: { marketTickers: [marketTicker] } }),
         researchRun: '{"durationMs":undefined}',
         metadata: { durationMs: 1000 },
       }),
-    );
+      decisionTrace: '{"entries":[]}',
+    }));
 
     const summary = await runStrategySweep(
       {

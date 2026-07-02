@@ -348,3 +348,15 @@ export type {
   WalkForwardSweepRunnerDeps,
   WalkForwardSweepSummary,
 } from "./walkForwardSweep";
+
+export {
+  STRATEGY_DECISION_TRACE_FILENAME,
+  buildStrategyDecisionTraceEntry,
+  buildStrategySweepDecisionTracePath,
+  serializeStrategyDecisionTrace,
+} from "./decisionTrace";
+export type {
+  StrategyDecisionTraceDocument,
+  StrategyDecisionTraceEntry,
+  StrategyDecisionTraceMetadata,
+} from "./decisionTrace";

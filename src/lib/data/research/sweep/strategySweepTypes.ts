@@ -5,6 +5,12 @@ export const DEFAULT_STRATEGY_SWEEP_REGISTRY_DIR = "data/research-datasets";
 export const DEFAULT_STRATEGY_SWEEP_OUTPUT_DIR = "data/research-results";
 export const SWEEP_SUMMARY_FILENAME = "sweep-summary.json";
 export const SWEEP_OUTPUT_FILENAME = "research-output.json";
+export const SWEEP_DECISION_TRACE_FILENAME = "decision-trace.json";
+
+export type StrategySweepResearchResult = {
+  researchOutput: string;
+  decisionTrace: string;
+};
 
 export const StrategySweepErrorCode = {
   MISSING_REGISTRY_DIR: "missing-registry-dir",
@@ -115,6 +121,6 @@ export type StrategySweepRunnerDeps = {
     fixture: HistoricalResearchCliInputDocument;
     strategyId: string;
     strategyConfig: Record<string, unknown>;
-  }) => string;
+  }) => StrategySweepResearchResult;
   now?: () => Date;
 };

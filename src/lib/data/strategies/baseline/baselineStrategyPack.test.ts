@@ -246,6 +246,11 @@ describe("StrategyPluginRegistry", () => {
       decide: ({ state }) => ({
         intents: [],
         nextState: { count: Number(state.count ?? 0) + 1 },
+        decisionTrace: {
+          action: "hold",
+          reason: "custom-counter",
+          metadata: {},
+        },
       }),
     };
 

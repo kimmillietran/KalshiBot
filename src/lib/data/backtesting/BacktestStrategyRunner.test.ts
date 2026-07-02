@@ -456,6 +456,11 @@ describe("BacktestStrategyRunner", () => {
     expect(result).not.toHaveProperty("metrics");
     expect(result).not.toHaveProperty("sharpe");
     expect(result).not.toHaveProperty("drawdown");
-    expect(Object.keys(result).sort()).toEqual(["ledger", "steps", "strategyId"]);
+    expect(Object.keys(result).sort()).toEqual([
+      "decisionTrace",
+      "ledger",
+      "steps",
+      "strategyId",
+    ]);
   });
 });

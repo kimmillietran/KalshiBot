@@ -1,4 +1,5 @@
 import type { ReplayStepResult } from "@/lib/data/replay/replaySessionTypes";
+import type { StrategyDecisionTraceEntry } from "@/lib/data/research/decisionTrace";
 
 import type { BacktestLedger } from "./BacktestLedger";
 import type { FillCostBreakdown, ResearchCostModelConfig } from "./costModel";
@@ -84,4 +85,5 @@ export type BacktestStrategyRunResult = {
   strategyId: string;
   ledger: BacktestLedger;
   steps: readonly BacktestStepRunnerResult[];
+  decisionTrace: readonly StrategyDecisionTraceEntry[];
 };

@@ -7,6 +7,13 @@ export function readYesAskCents(
   return yesAskCents === null || yesAskCents === undefined ? null : yesAskCents;
 }
 
+export function readYesBidCents(
+  pricing: { yesBidCents: number | null } | null | undefined,
+): number | null {
+  const yesBidCents = pricing?.yesBidCents;
+  return yesBidCents === null || yesBidCents === undefined ? null : yesBidCents;
+}
+
 export function readYesMidCents(
   pricing: { yesMidCents: number | null } | null | undefined,
 ): number | null {

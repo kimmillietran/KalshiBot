@@ -60,4 +60,5 @@ export type HistoricalResearchRunnerCoreResult = {
 
 export type HistoricalResearchRunnerResult = HistoricalResearchRunnerCoreResult & {
   serialized: string;
+  serializedDecisionTrace: string;
 };

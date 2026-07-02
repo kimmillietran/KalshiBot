@@ -5,7 +5,11 @@ import {
   evaluateFairValueDiffusion,
 } from "@/lib/data/strategies/fairValueDiffusion";
 
-import type { StrategyPlugin, StrategyPluginConfig } from "../strategyPluginTypes";
+import type {
+  StrategyPlugin,
+  StrategyPluginConfig,
+  StrategyPluginDecisionTrace,
+} from "../strategyPluginTypes";
 import {
   readNoAskCents,
   readYesAskCents,
@@ -25,6 +29,17 @@ export type FairValueDiffusionStrategyPluginConfig = z.infer<
   typeof fairValueDiffusionConfigSchema
 >;
 
+function holdTrace(
+  reason: string,
+  metadata: Record<string, unknown>,
+): StrategyPluginDecisionTrace {
+  return {
+    action: "hold",
+    reason,
+    metadata,
+  };
+}
+
 export const fairValueDiffusionStrategyPlugin: StrategyPlugin = {
   strategyId: "fair-value-diffusion",
   description:
@@ -38,6 +53,9 @@ export const fairValueDiffusionStrategyPlugin: StrategyPlugin = {
     const yesMidCents = readYesMidCents(step.engineInput.pricing);
     const yesAskCents = readYesAskCents(step.engineInput.pricing);
     const noAskCents = readNoAskCents(step.engineInput.pricing);
+    const baseMetadata = {
+      threshold: parsed.minimumEdgeThresholdCents,
+    };
 
     if (
       market === null
@@ -48,7 +66,11 @@ export const fairValueDiffusionStrategyPlugin: StrategyPlugin = {
       || !Number.isFinite(market.strikePrice)
       || market.timeRemainingMs < parsed.minimumTimeRemainingMs
     ) {
-      return { intents: [], nextState: {} };
+      return {
+        intents: [],
+        nextState: {},
+        decisionTrace: holdTrace("guard-failed", baseMetadata),
+      };
     }
 
     const evaluation = evaluateFairValueDiffusion({
@@ -60,7 +82,11 @@ export const fairValueDiffusionStrategyPlugin: StrategyPlugin = {
     });
 
     if (evaluation === null) {
-      return { intents: [], nextState: {} };
+      return {
+        intents: [],
+        nextState: {},
+        decisionTrace: holdTrace("evaluation-unavailable", baseMetadata),
+      };
     }
 
     const edge = computeEdgeCents(
@@ -68,13 +94,28 @@ export const fairValueDiffusionStrategyPlugin: StrategyPlugin = {
       yesMidCents,
     );
 
+    const evaluationMetadata = {
+      ...baseMetadata,
+      volatility: evaluation.volatility.annualizedVol,
+      fairProbability: evaluation.probability.fairYesProbability,
+      edge: edge?.edgeCents ?? null,
+    };
+
     if (edge === null) {
-      return { intents: [], nextState: {} };
+      return {
+        intents: [],
+        nextState: {},
+        decisionTrace: holdTrace("edge-unavailable", evaluationMetadata),
+      };
     }
 
     if (edge.edgeCents >= parsed.minimumEdgeThresholdCents) {
       if (yesAskCents === null) {
-        return { intents: [], nextState: {} };
+        return {
+          intents: [],
+          nextState: {},
+          decisionTrace: holdTrace("missing-yes-ask", evaluationMetadata),
+        };
       }
 
       return {
@@ -89,12 +130,21 @@ export const fairValueDiffusionStrategyPlugin: StrategyPlugin = {
           },
         ],
         nextState: {},
+        decisionTrace: {
+          action: "buy_yes",
+          reason: "fair-value-diffusion",
+          metadata: evaluationMetadata,
+        },
       };
     }
 
     if (edge.edgeCents <= -parsed.minimumEdgeThresholdCents) {
       if (noAskCents === null) {
-        return { intents: [], nextState: {} };
+        return {
+          intents: [],
+          nextState: {},
+          decisionTrace: holdTrace("missing-no-ask", evaluationMetadata),
+        };
       }
 
       return {
@@ -109,9 +159,18 @@ export const fairValueDiffusionStrategyPlugin: StrategyPlugin = {
           },
         ],
         nextState: {},
+        decisionTrace: {
+          action: "buy_no",
+          reason: "fair-value-diffusion",
+          metadata: evaluationMetadata,
+        },
       };
     }
 
-    return { intents: [], nextState: {} };
+    return {
+      intents: [],
+      nextState: {},
+      decisionTrace: holdTrace("edge-below-threshold", evaluationMetadata),
+    };
   },
 };

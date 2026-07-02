@@ -19,16 +19,35 @@ export const buyFirstAskStrategyPlugin: StrategyPlugin = {
   decide: ({ step, config }) => {
     const parsed = buyFirstAskConfigSchema.parse(config);
     const intents = buyFirstAskIntent(step);
-    if (intents.length === 0 || parsed.quantity === 1) {
-      return { intents, nextState: {} };
+
+    if (intents.length === 0) {
+      return {
+        intents: [],
+        nextState: {},
+        decisionTrace: {
+          action: "hold",
+          reason: "missing-pricing",
+          metadata: { quantity: parsed.quantity },
+        },
+      };
     }
 
+    const scaledIntents =
+      parsed.quantity === 1
+        ? intents
+        : intents.map((intent) => ({
+            ...intent,
+            quantity: parsed.quantity,
+          }));
+
     return {
-      intents: intents.map((intent) => ({
-        ...intent,
-        quantity: parsed.quantity,
-      })),
+      intents: scaledIntents,
       nextState: {},
+      decisionTrace: {
+        action: "buy_yes",
+        reason: "buy-first-ask",
+        metadata: { quantity: parsed.quantity },
+      },
     };
   },
 };

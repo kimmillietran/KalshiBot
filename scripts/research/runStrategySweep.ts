@@ -71,7 +71,10 @@ function createProductionDeps(): StrategySweepCommandDeps {
         metricsConfig: fixture.metricsConfig,
       });
 
-      return result.serialized;
+      return {
+        researchOutput: result.serialized,
+        decisionTrace: result.serializedDecisionTrace,
+      };
     },
   };
 }

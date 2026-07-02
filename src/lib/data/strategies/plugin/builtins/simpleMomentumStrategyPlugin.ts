@@ -29,13 +29,26 @@ export const simpleMomentumStrategyPlugin: StrategyPlugin = {
     const candles = step.engineInput.btc?.candles ?? [];
     const momentumPct = computeBtcMomentumPct(candles, parsed.lookbackBars);
     const yesAskCents = readYesAskCents(step.engineInput.pricing);
+    const metadata = {
+      lookbackBars: parsed.lookbackBars,
+      momentumThresholdPct: parsed.momentumThresholdPct,
+      momentumPct,
+    };
 
     if (
       momentumPct === null
       || yesAskCents === null
       || momentumPct < parsed.momentumThresholdPct
     ) {
-      return { intents: [], nextState: {} };
+      return {
+        intents: [],
+        nextState: {},
+        decisionTrace: {
+          action: "hold",
+          reason: "momentum-below-threshold",
+          metadata,
+        },
+      };
     }
 
     return {
@@ -50,6 +63,11 @@ export const simpleMomentumStrategyPlugin: StrategyPlugin = {
         },
       ],
       nextState: {},
+      decisionTrace: {
+        action: "buy_yes",
+        reason: "simple-momentum",
+        metadata,
+      },
     };
   },
 };

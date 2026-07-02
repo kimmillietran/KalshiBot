@@ -1,6 +1,7 @@
 export {
   runHistoricalResearchFromBronze,
   serializeHistoricalResearchRunnerResult,
+  serializeHistoricalResearchDecisionTrace,
   HistoricalResearchRunnerError,
   HistoricalResearchRunnerErrorCode,
 } from "./HistoricalResearchRunner";

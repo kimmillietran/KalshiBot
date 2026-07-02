@@ -1,4 +1,7 @@
+import { buildStrategyDecisionTraceEntry } from "@/lib/data/research/decisionTrace";
+import type { StrategyDecisionTraceEntry } from "@/lib/data/research/decisionTrace";
 import type { ReplayStepResult } from "@/lib/data/replay/replaySessionTypes";
+import { isBacktestStrategyWithDecisionTrace } from "@/lib/data/strategies/plugin/adaptStrategyPlugin";
 import type { EvaluationPricingSnapshot } from "@/types/domain/trading";
 
 import { BacktestLedger } from "./BacktestLedger";
@@ -283,12 +286,26 @@ export class BacktestStrategyRunner {
 
     let ledger = BacktestLedger.create(input.initialCashCents);
     const stepResults: BacktestStepRunnerResult[] = [];
+    const decisionTrace: StrategyDecisionTraceEntry[] = [];
     let nextIntentSequence = 1;
     let nextFillSequence = 1;
 
     for (const step of input.steps) {
       const context = buildContext(step.stepIndex, ledger);
       const intents = input.strategy.decide(step, context);
+
+      if (isBacktestStrategyWithDecisionTrace(input.strategy)) {
+        const pluginTrace = input.strategy.consumeLastDecisionTrace();
+        if (pluginTrace) {
+          decisionTrace.push(
+            buildStrategyDecisionTraceEntry({
+              step,
+              strategyId: input.strategy.strategyId,
+              pluginTrace,
+            }),
+          );
+        }
+      }
       const acceptedFills: SimulatedFill[] = [];
       const rejectedIntents: RejectedTradeIntent[] = [];
 
@@ -328,6 +345,7 @@ export class BacktestStrategyRunner {
       strategyId: input.strategy.strategyId,
       ledger,
       steps: stepResults,
+      decisionTrace,
     };
   }
 }

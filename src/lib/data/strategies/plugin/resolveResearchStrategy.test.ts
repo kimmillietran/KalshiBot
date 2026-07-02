@@ -94,6 +94,11 @@ function counterStrategyPlugin(): StrategyPlugin<CounterConfig> {
               ]
             : [],
         nextState: { tickCount },
+        decisionTrace: {
+          action: tickCount >= config.maxTicks ? "buy_yes" : "hold",
+          reason: "counter",
+          metadata: { tickCount, maxTicks: config.maxTicks },
+        },
       };
     },
   };

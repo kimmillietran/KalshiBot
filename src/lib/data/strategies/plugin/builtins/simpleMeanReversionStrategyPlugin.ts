@@ -33,9 +33,21 @@ export const simpleMeanReversionStrategyPlugin: StrategyPlugin = {
     const priorMids = Array.isArray(state.mids)
       ? state.mids.filter((value): value is number => Number.isFinite(value))
       : [];
+    const metadata = {
+      windowSize: parsed.windowSize,
+      deviationCents: parsed.deviationCents,
+    };
 
     if (yesMidCents === null) {
-      return { intents: [], nextState: { mids: priorMids } };
+      return {
+        intents: [],
+        nextState: { mids: priorMids },
+        decisionTrace: {
+          action: "hold",
+          reason: "missing-pricing",
+          metadata,
+        },
+      };
     }
 
     const nextMids = appendRollingWindow(
@@ -57,6 +69,15 @@ export const simpleMeanReversionStrategyPlugin: StrategyPlugin = {
       return {
         intents: [],
         nextState: { mids: nextMids },
+        decisionTrace: {
+          action: "hold",
+          reason: "mean-reversion-not-triggered",
+          metadata: {
+            ...metadata,
+            meanMid,
+            yesMidCents,
+          },
+        },
       };
     }
 
@@ -72,6 +93,15 @@ export const simpleMeanReversionStrategyPlugin: StrategyPlugin = {
         },
       ],
       nextState: { mids: nextMids },
+      decisionTrace: {
+        action: "buy_yes",
+        reason: "simple-mean-reversion",
+        metadata: {
+          ...metadata,
+          meanMid,
+          yesMidCents,
+        },
+      },
     };
   },
 };

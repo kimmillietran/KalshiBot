@@ -6,6 +6,10 @@ import {
   buildHistoricalDataset,
   serializeHistoricalDataset,
 } from "@/lib/data/datasets";
+import {
+  serializeStrategyDecisionTrace,
+} from "@/lib/data/research/decisionTrace";
+import type { HistoricalDataset } from "@/lib/data/datasets";
 import { stableStringify } from "@/lib/trading/config/hashConfig";
 
 import {
@@ -99,6 +103,26 @@ export function serializeHistoricalResearchRunnerResult(
   });
 }
 
+function resolveMarketTicker(dataset: HistoricalDataset): string {
+  const tickers = dataset.metadata.marketTickers;
+  if (Array.isArray(tickers) && typeof tickers[0] === "string" && tickers[0].trim()) {
+    return tickers[0].trim();
+  }
+
+  return dataset.snapshots[0]?.ticker ?? "";
+}
+
+export function serializeHistoricalResearchDecisionTrace(
+  result: HistoricalResearchRunnerCoreResult,
+): string {
+  return serializeStrategyDecisionTrace({
+    runId: result.metadata.runId,
+    strategyId: result.metadata.strategyId,
+    marketTicker: resolveMarketTicker(result.dataset),
+    entries: result.researchRun.backtestResult.strategyRun.decisionTrace,
+  });
+}
+
 /**
  * Builds a historical dataset from bronze records and runs the research CLI
  * pipeline end-to-end.
@@ -141,6 +165,7 @@ export function runHistoricalResearchFromBronze(
   return deepFreeze({
     ...coreResult,
     serialized: serializeHistoricalResearchRunnerResult(coreResult),
+    serializedDecisionTrace: serializeHistoricalResearchDecisionTrace(coreResult),
   });
 }
 

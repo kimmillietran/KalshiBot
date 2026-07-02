@@ -17,9 +17,16 @@ export type StrategyPluginDecisionInput<TConfig extends StrategyPluginConfig> = 
   state: Readonly<StrategyPluginState>;
 };
 
+export type StrategyPluginDecisionTrace = {
+  action: string;
+  reason: string;
+  metadata: Record<string, unknown>;
+};
+
 export type StrategyPluginDecisionResult = {
   intents: readonly TradeIntent[];
   nextState: StrategyPluginState;
+  decisionTrace: StrategyPluginDecisionTrace;
 };
 
 export type StrategyPlugin<TConfig extends StrategyPluginConfig = StrategyPluginConfig> = {

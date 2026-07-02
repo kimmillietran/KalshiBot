@@ -171,6 +171,10 @@ describe("runHistoricalResearchFromBronze", () => {
         metadata: result.metadata,
       }),
     );
+    expect(result.serializedDecisionTrace).toContain('"entries"');
+    expect(
+      JSON.parse(result.serializedDecisionTrace).entries.length,
+    ).toBe(result.researchRun.backtestResult.strategyRun.decisionTrace.length);
   });
 
   it("rejects empty bronze record input", () => {
