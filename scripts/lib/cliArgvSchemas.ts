@@ -12,6 +12,11 @@ export const DISCOVERY_IMPORT_CONFIGS_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--output-dir" },
 ];
 
+export const IMPORT_ANALYZE_FAILURES_ARGV_SCHEMA: readonly NpmArgvField[] = [
+  { flag: "--input" },
+  { flag: "--output" },
+];
+
 export const IMPORT_BATCH_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--input-dir" },
   { flag: "--output-dir" },
@@ -126,6 +131,10 @@ export function normalizeDiscoveryImportConfigsArgv(argv: readonly string[]): st
 
 export function normalizeImportBatchArgv(argv: readonly string[]): string[] {
   return normalizeNpmScriptArgv(argv, IMPORT_BATCH_ARGV_SCHEMA);
+}
+
+export function normalizeImportAnalyzeFailuresArgv(argv: readonly string[]): string[] {
+  return normalizeNpmScriptArgv(argv, IMPORT_ANALYZE_FAILURES_ARGV_SCHEMA);
 }
 
 export function normalizeDataAuditBidAskArgv(argv: readonly string[]): string[] {

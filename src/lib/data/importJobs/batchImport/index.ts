@@ -28,3 +28,24 @@ export {
   buildBatchImportSummaryPath,
   serializeBatchImportSummary,
 } from "./serializeBatchImportSummary";
+
+export {
+  BATCH_IMPORT_FAILURE_CATEGORY,
+  BatchImportFailureAnalysisError,
+  BatchImportFailureAnalysisErrorCode,
+  DEFAULT_BATCH_IMPORT_FAILURE_ANALYSIS_INPUT_PATH,
+  DEFAULT_BATCH_IMPORT_FAILURE_ANALYSIS_OUTPUT_PATH,
+  RECOVERABLE_BATCH_IMPORT_FAILURE_CATEGORIES,
+} from "./batchImportFailureAnalysisTypes";
+export type {
+  BatchImportFailureAnalysis,
+  BatchImportFailureCategory,
+  BatchImportFailureExample,
+  BatchImportFailureReasonGroup,
+  BuildBatchImportFailureAnalysisInput,
+} from "./batchImportFailureAnalysisTypes";
+
+export { buildBatchImportFailureAnalysis } from "./buildBatchImportFailureAnalysis";
+export { categorizeBatchImportFailure } from "./categorizeBatchImportFailure";
+export { parseBatchImportSummaryJson } from "./parseBatchImportSummary";
+export { serializeBatchImportFailureAnalysis } from "./serializeBatchImportFailureAnalysis";

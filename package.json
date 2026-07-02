@@ -25,6 +25,7 @@
     "data:audit-bid-ask": "tsx scripts/data/auditBidAskFidelity.ts",
     "import:historical": "tsx scripts/import/runHistoricalImport.ts",
     "import:batch": "tsx scripts/import/runBatchHistoricalImport.ts",
+    "imports:analyze-failures": "tsx scripts/import/analyzeBatchImportFailures.ts",
     "fixtures:batch": "tsx scripts/fixtures/runBatchFixtureBridge.ts",
     "discovery:markets": "tsx scripts/discovery/runMarketDiscovery.ts",
     "discovery:import-configs": "tsx scripts/discovery/generateImportConfigs.ts",
