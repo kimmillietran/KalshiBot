@@ -131,6 +131,29 @@ export type {
 } from "./mispricingAtlas";
 
 export {
+  buildLeadLagAnalysis,
+  buildLeadLagAnalysisFromDirectories,
+  computeAggregateLeadLagMetrics,
+  computeLeadLagMetricsForCandles,
+  extractLeadLagCandlesFromResearchOutput,
+  serializeLeadLagAnalysis,
+  DEFAULT_LEAD_LAG_INPUT_DIR,
+  DEFAULT_LEAD_LAG_MAX_LAG,
+  DEFAULT_LEAD_LAG_OUTPUT_PATH,
+  LEAD_LAG_ANALYSIS_FILENAME,
+  LeadLagError,
+  LeadLagErrorCode,
+} from "./leadLag";
+export type {
+  LeadLagAnalysis,
+  LeadLagCandlePoint,
+  LeadLagDirection,
+  LeadLagLagMetrics,
+  LeadLagMarketSeries,
+  LeadLagWarning,
+} from "./leadLag";
+
+export {
   runHistoricalResearchFromBronze,
   serializeHistoricalResearchRunnerResult,
   HistoricalResearchRunnerError,

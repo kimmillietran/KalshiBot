@@ -22,6 +22,7 @@
     "research:inspect": "tsx scripts/research/inspectResearchOutput.ts",
     "research:report": "tsx scripts/research/buildResearchReport.ts",
     "research:mispricing-atlas": "tsx scripts/research/buildMispricingAtlas.ts",
+    "research:lead-lag": "tsx scripts/research/buildLeadLagAnalysis.ts",
     "experiments:register": "tsx scripts/experiments/registerExperiments.ts",
     "leaderboard:strategies": "tsx scripts/leaderboard/runStrategyLeaderboard.ts",
     "data:audit-bid-ask": "tsx scripts/data/auditBidAskFidelity.ts",
