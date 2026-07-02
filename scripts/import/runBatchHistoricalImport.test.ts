@@ -18,7 +18,11 @@ import {
   BatchImportCommandError,
   parseConcurrencyFromArgv,
   parseInputDirFromArgv,
+  parseMaxRetriesFromArgv,
   parseOutputDirFromArgv,
+  parseOverwriteFromArgv,
+  parseRequestDelayMsFromArgv,
+  parseRetryBaseDelayMsFromArgv,
 } from "./batchTypes";
 
 const START_TIME = "2026-06-26T23:15:00.000Z";
@@ -149,6 +153,23 @@ describe("batch import argv parsing", () => {
       BatchImportCommandError,
     );
     expect(() => parseConcurrencyFromArgv(["--concurrency"])).toThrow(
+      BatchImportCommandError,
+    );
+  });
+
+  it("parses rate-limit and overwrite flags", () => {
+    expect(parseRequestDelayMsFromArgv(["--request-delay-ms", "1000"])).toBe(1000);
+    expect(parseMaxRetriesFromArgv(["--max-retries", "5"])).toBe(5);
+    expect(parseRetryBaseDelayMsFromArgv(["--retry-base-delay-ms", "2000"])).toBe(2000);
+    expect(parseOverwriteFromArgv(["--overwrite"])).toBe(true);
+    expect(parseOverwriteFromArgv([])).toBe(false);
+  });
+
+  it("rejects invalid rate-limit flag values", () => {
+    expect(() => parseRequestDelayMsFromArgv(["--request-delay-ms", "-1"])).toThrow(
+      BatchImportCommandError,
+    );
+    expect(() => parseMaxRetriesFromArgv(["--max-retries"])).toThrow(
       BatchImportCommandError,
     );
   });

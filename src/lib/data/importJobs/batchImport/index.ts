@@ -30,6 +30,21 @@ export {
 } from "./serializeBatchImportSummary";
 
 export {
+  DEFAULT_BATCH_IMPORT_MAX_RETRIES,
+  DEFAULT_BATCH_IMPORT_REQUEST_DELAY_MS,
+  DEFAULT_BATCH_IMPORT_RETRY_BASE_DELAY_MS,
+  BatchImportRetryExhaustedError,
+  computeBatchImportRetryDelayMs,
+  isBatchImportRecoverableError,
+  parseBatchImportRateLimitOptions,
+  runImportWithRateLimitRetry,
+} from "./batchImportRateLimit";
+export type {
+  BatchImportRateLimitOptions,
+  ResolvedBatchImportRateLimitConfig,
+} from "./batchImportRateLimit";
+
+export {
   BATCH_IMPORT_FAILURE_CATEGORY,
   BatchImportFailureAnalysisError,
   BatchImportFailureAnalysisErrorCode,

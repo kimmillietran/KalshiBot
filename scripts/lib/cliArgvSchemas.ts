@@ -21,6 +21,10 @@ export const IMPORT_BATCH_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--input-dir" },
   { flag: "--output-dir" },
   { flag: "--concurrency" },
+  { flag: "--request-delay-ms" },
+  { flag: "--max-retries" },
+  { flag: "--retry-base-delay-ms" },
+  { flag: "--overwrite" },
 ];
 
 export const DATA_AUDIT_BID_ASK_ARGV_SCHEMA: readonly NpmArgvField[] = [
@@ -136,7 +140,16 @@ export function normalizeDiscoveryImportConfigsArgv(argv: readonly string[]): st
 }
 
 export function normalizeImportBatchArgv(argv: readonly string[]): string[] {
-  return normalizeNpmScriptArgv(argv, IMPORT_BATCH_ARGV_SCHEMA);
+  const expanded = expandEqualsStyleFlags(argv);
+
+  if (hasCliFlags(expanded)) {
+    return mergeNpmBooleanFlags(expanded, ["--overwrite"]);
+  }
+
+  return mergeNpmBooleanFlags(
+    normalizeNpmScriptArgv(argv, IMPORT_BATCH_ARGV_SCHEMA),
+    ["--overwrite"],
+  );
 }
 
 export function normalizeImportAnalyzeFailuresArgv(argv: readonly string[]): string[] {

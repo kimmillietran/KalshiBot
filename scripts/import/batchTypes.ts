@@ -83,6 +83,59 @@ export function parseConcurrencyFromArgv(argv: readonly string[]): number | unde
   return undefined;
 }
 
+function parseNonNegativeIntegerFlag(
+  argv: readonly string[],
+  flag: string,
+  errorMessage: string,
+): number | undefined {
+  for (let index = 0; index < argv.length; index += 1) {
+    const token = argv[index];
+    if (token === flag) {
+      const next = argv[index + 1];
+      if (!next || next.startsWith("-")) {
+        throw new BatchImportCommandError(`Missing value for ${flag} <n>`);
+      }
+
+      const parsed = Number(next);
+      if (!Number.isInteger(parsed) || parsed < 0) {
+        throw new BatchImportCommandError(errorMessage);
+      }
+
+      return parsed;
+    }
+  }
+
+  return undefined;
+}
+
+export function parseRequestDelayMsFromArgv(argv: readonly string[]): number | undefined {
+  return parseNonNegativeIntegerFlag(
+    argv,
+    "--request-delay-ms",
+    "request-delay-ms must be a non-negative integer",
+  );
+}
+
+export function parseMaxRetriesFromArgv(argv: readonly string[]): number | undefined {
+  return parseNonNegativeIntegerFlag(
+    argv,
+    "--max-retries",
+    "max-retries must be a non-negative integer",
+  );
+}
+
+export function parseRetryBaseDelayMsFromArgv(argv: readonly string[]): number | undefined {
+  return parseNonNegativeIntegerFlag(
+    argv,
+    "--retry-base-delay-ms",
+    "retry-base-delay-ms must be a non-negative integer",
+  );
+}
+
+export function parseOverwriteFromArgv(argv: readonly string[]): boolean {
+  return argv.includes("--overwrite");
+}
+
 export function formatStdoutOutput(serialized: string): string {
   return serialized.endsWith("\n") ? serialized : `${serialized}\n`;
 }

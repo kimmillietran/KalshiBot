@@ -12,7 +12,11 @@ import {
   formatStdoutOutput,
   parseConcurrencyFromArgv,
   parseInputDirFromArgv,
+  parseMaxRetriesFromArgv,
   parseOutputDirFromArgv,
+  parseOverwriteFromArgv,
+  parseRequestDelayMsFromArgv,
+  parseRetryBaseDelayMsFromArgv,
 } from "./batchTypes";
 import type {
   BatchImportCommandDeps,
@@ -54,6 +58,10 @@ export function runBatchHistoricalImportCommand(
     const inputDir = parseInputDirFromArgv(normalizedArgv);
     const outputDir = parseOutputDirFromArgv(normalizedArgv);
     const concurrency = parseConcurrencyFromArgv(normalizedArgv);
+    const requestDelayMs = parseRequestDelayMsFromArgv(normalizedArgv);
+    const maxRetries = parseMaxRetriesFromArgv(normalizedArgv);
+    const retryBaseDelayMs = parseRetryBaseDelayMsFromArgv(normalizedArgv);
+    const overwriteExisting = parseOverwriteFromArgv(normalizedArgv);
     const { deps, fetchImpl } = normalizeCommandOptions(options);
     const runnerDeps = deps ?? createProductionDeps(fetchImpl);
 
@@ -62,6 +70,10 @@ export function runBatchHistoricalImportCommand(
         inputDir,
         outputDir,
         concurrency,
+        requestDelayMs,
+        maxRetries,
+        retryBaseDelayMs,
+        overwriteExisting,
       },
       runnerDeps,
     ).then(
@@ -74,6 +86,9 @@ export function runBatchHistoricalImportCommand(
               successfulImports: summary.successfulImports,
               failedImports: summary.failedImports,
               skippedImports: summary.skippedImports,
+              retryCount: summary.retryCount,
+              recoveredImports: summary.recoveredImports,
+              failedAfterRetries: summary.failedAfterRetries,
               durationMs: summary.durationMs,
             }),
           ),

@@ -15,12 +15,16 @@ const batchImportMarketResultSchema = z.object({
   jobId: z.string().nullable(),
   bronzeRecordCount: z.number().finite().nullable(),
   valid: z.boolean().nullable(),
+  retryCount: z.number().finite().int().nonnegative().nullable().optional(),
 });
 
 const batchImportSummarySchema = z.object({
   inputDir: z.string().trim().min(1),
   outputDir: z.string().trim().min(1),
   concurrency: z.number().finite().int().nonnegative(),
+  requestDelayMs: z.number().finite().int().nonnegative().optional(),
+  maxRetries: z.number().finite().int().nonnegative().optional(),
+  retryBaseDelayMs: z.number().finite().int().nonnegative().optional(),
   startedAt: z.string().trim().min(1),
   completedAt: z.string().trim().min(1),
   durationMs: z.number().finite().nonnegative(),
@@ -28,6 +32,10 @@ const batchImportSummarySchema = z.object({
   successfulImports: z.number().finite().int().nonnegative(),
   failedImports: z.number().finite().int().nonnegative(),
   skippedImports: z.number().finite().int().nonnegative(),
+  retryCount: z.number().finite().int().nonnegative().optional(),
+  recoveredImports: z.number().finite().int().nonnegative().optional(),
+  failedAfterRetries: z.number().finite().int().nonnegative().optional(),
+  failureReasonCounts: z.record(z.string(), z.number().finite().int().nonnegative()).optional(),
   summaryPath: z.string().trim().min(1),
   markets: z.array(batchImportMarketResultSchema),
 });
@@ -54,5 +62,18 @@ export function parseBatchImportSummaryJson(json: string): BatchImportSummary {
     );
   }
 
-  return result.data;
+  return {
+    ...result.data,
+    requestDelayMs: result.data.requestDelayMs ?? 0,
+    maxRetries: result.data.maxRetries ?? 0,
+    retryBaseDelayMs: result.data.retryBaseDelayMs ?? 0,
+    retryCount: result.data.retryCount ?? 0,
+    recoveredImports: result.data.recoveredImports ?? 0,
+    failedAfterRetries: result.data.failedAfterRetries ?? 0,
+    failureReasonCounts: result.data.failureReasonCounts ?? {},
+    markets: result.data.markets.map((market) => ({
+      ...market,
+      retryCount: market.retryCount ?? null,
+    })),
+  };
 }

@@ -10,14 +10,23 @@ import {
   buildImportedMarketMetadata,
   serializeImportedMarketMetadata,
 } from "@/lib/data/datasets/registry";
+import type { HistoricalBronzeImportJobResult } from "@/lib/data/importJobs/historicalBronzeImportJobTypes";
 
 import { buildBatchImportOutputPath } from "./buildBatchImportOutputPath";
+import {
+  parseBatchImportRateLimitOptions,
+  runImportWithRateLimitRetry,
+  BatchImportRetryExhaustedError,
+  type ResolvedBatchImportRateLimitConfig,
+} from "./batchImportRateLimit";
+import { categorizeBatchImportFailure } from "./categorizeBatchImportFailure";
 import {
   BATCH_IMPORT_CONFIG_FILENAME,
   BATCH_IMPORT_METADATA_FILENAME,
   BatchImportRunnerError,
   BatchImportRunnerErrorCode,
   type BatchHistoricalImportRunnerDeps,
+  type BatchImportFailureReasonCounts,
   type BatchImportJob,
   type BatchImportMarketResult,
   type BatchImportSummary,
@@ -93,6 +102,7 @@ function buildJobs(
   const configPaths = deps.filesystem.listConfigPaths(normalizedInputDir);
   const seenOutputPaths = new Map<string, string>();
   const jobs: BatchImportJob[] = [];
+  const overwriteExisting = input.overwriteExisting ?? false;
 
   for (const configPath of configPaths) {
     const { marketTicker, outputPath } = buildBatchImportOutputPath(
@@ -124,9 +134,10 @@ function buildJobs(
         error instanceof Error ? error.message : "Failed to read config file";
     }
 
-    const skipReason = deps.filesystem.exists(outputPath)
-      ? "Output file already exists"
-      : null;
+    const skipReason =
+      !overwriteExisting && deps.filesystem.exists(outputPath)
+        ? "Output file already exists"
+        : null;
 
     jobs.push({
       configPath,
@@ -163,13 +174,17 @@ async function runWithConcurrency<T>(
   );
 }
 
-function toMarketResult(job: BatchImportJob, result?: {
-  status: BatchImportMarketResult["status"];
-  errorMessage?: string | null;
-  jobId?: string | null;
-  bronzeRecordCount?: number | null;
-  valid?: boolean | null;
-}): BatchImportMarketResult {
+function toMarketResult(
+  job: BatchImportJob,
+  result?: {
+    status: BatchImportMarketResult["status"];
+    errorMessage?: string | null;
+    jobId?: string | null;
+    bronzeRecordCount?: number | null;
+    valid?: boolean | null;
+    retryCount?: number | null;
+  },
+): BatchImportMarketResult {
   return {
     marketTicker: job.marketTicker,
     configPath: job.configPath,
@@ -179,17 +194,44 @@ function toMarketResult(job: BatchImportJob, result?: {
     jobId: result?.jobId ?? null,
     bronzeRecordCount: result?.bronzeRecordCount ?? null,
     valid: result?.valid ?? null,
+    retryCount: result?.retryCount ?? null,
   };
+}
+
+function writeSuccessfulImportArtifacts(
+  job: BatchImportJob,
+  config: HistoricalBronzeImportConfig,
+  importResult: HistoricalBronzeImportJobResult,
+  deps: BatchHistoricalImportRunnerDeps,
+): void {
+  const marketDir = posix.dirname(job.outputPath);
+  deps.filesystem.mkdir(marketDir);
+  deps.filesystem.writeFile(job.outputPath, importResult.serialized);
+  deps.filesystem.writeFile(
+    posix.join(marketDir, BATCH_IMPORT_CONFIG_FILENAME),
+    serializeHistoricalBronzeImportConfig(config),
+  );
+  deps.filesystem.writeFile(
+    posix.join(marketDir, BATCH_IMPORT_METADATA_FILENAME),
+    serializeImportedMarketMetadata(
+      buildImportedMarketMetadata({
+        config,
+        importResult,
+      }),
+    ),
+  );
 }
 
 async function executeJob(
   job: BatchImportJob,
   deps: BatchHistoricalImportRunnerDeps,
+  rateLimit: ResolvedBatchImportRateLimitConfig,
 ): Promise<BatchImportMarketResult> {
   if (job.skipReason) {
     return toMarketResult(job, {
       status: "skipped",
       errorMessage: job.skipReason,
+      retryCount: null,
     });
   }
 
@@ -197,45 +239,97 @@ async function executeJob(
     return toMarketResult(job, {
       status: "failed",
       errorMessage: job.parseErrorMessage ?? "Invalid config",
+      retryCount: null,
     });
   }
 
   try {
-    const importResult = await deps.runImport({
-      configPath: job.configPath,
-      config: job.config,
-    });
-
-    const marketDir = posix.dirname(job.outputPath);
-    deps.filesystem.mkdir(marketDir);
-    deps.filesystem.writeFile(job.outputPath, importResult.serialized);
-    deps.filesystem.writeFile(
-      posix.join(marketDir, BATCH_IMPORT_CONFIG_FILENAME),
-      serializeHistoricalBronzeImportConfig(job.config),
-    );
-    deps.filesystem.writeFile(
-      posix.join(marketDir, BATCH_IMPORT_METADATA_FILENAME),
-      serializeImportedMarketMetadata(
-        buildImportedMarketMetadata({
-          config: job.config,
-          importResult,
+    const { result, retryCount } = await runImportWithRateLimitRetry({
+      runImport: () =>
+        deps.runImport({
+          configPath: job.configPath,
+          config: job.config!,
         }),
-      ),
-    );
+      rateLimit,
+      sleep: deps.sleep,
+    });
+    const importResult = result as HistoricalBronzeImportJobResult;
+
+    writeSuccessfulImportArtifacts(job, job.config, importResult, deps);
 
     return toMarketResult(job, {
       status: "success",
       jobId: importResult.jobId,
       bronzeRecordCount: importResult.metadata.bronzeRecordCount,
       valid: importResult.metadata.valid,
+      retryCount,
     });
   } catch (error) {
+    const retryCount =
+      error instanceof BatchImportRetryExhaustedError ? error.retryCount : null;
+
     return toMarketResult(job, {
       status: "failed",
       errorMessage: error instanceof Error ? error.message : "Import failed",
       jobId: job.config.jobId,
+      retryCount,
     });
   }
+}
+
+function buildFailureReasonCounts(
+  markets: readonly BatchImportMarketResult[],
+): BatchImportFailureReasonCounts {
+  const counts = new Map<string, number>();
+
+  for (const market of markets) {
+    if (market.status !== "failed") {
+      continue;
+    }
+
+    const code = categorizeBatchImportFailure(market.errorMessage);
+    counts.set(code, (counts.get(code) ?? 0) + 1);
+  }
+
+  return Object.fromEntries(
+    [...counts.entries()].sort(([left], [right]) => left.localeCompare(right)),
+  );
+}
+
+function summarizeRetryMetrics(
+  markets: readonly BatchImportMarketResult[],
+  rateLimit: ResolvedBatchImportRateLimitConfig,
+): Pick<
+  BatchImportSummary,
+  "retryCount" | "recoveredImports" | "failedAfterRetries"
+> {
+  let retryCount = 0;
+  let recoveredImports = 0;
+  let failedAfterRetries = 0;
+
+  for (const market of markets) {
+    const marketRetryCount = market.retryCount ?? 0;
+    retryCount += marketRetryCount;
+
+    if (market.status === "success" && marketRetryCount > 0) {
+      recoveredImports += 1;
+    }
+
+    if (
+      market.status === "failed"
+      && rateLimit.maxRetries > 0
+      && (market.retryCount ?? 0) >= rateLimit.maxRetries
+      && categorizeBatchImportFailure(market.errorMessage) === "rate-limited"
+    ) {
+      failedAfterRetries += 1;
+    }
+  }
+
+  return {
+    retryCount,
+    recoveredImports,
+    failedAfterRetries,
+  };
 }
 
 /** Runs historical imports for every discovered config under the input directory. */
@@ -247,24 +341,29 @@ export async function runBatchHistoricalImport(
   const startedAt = now().toISOString();
   const startMs = Date.now();
   const concurrency = parseConcurrency(input.concurrency);
+  const rateLimit = parseBatchImportRateLimitOptions({
+    requestDelayMs: input.requestDelayMs,
+    maxRetries: input.maxRetries,
+    retryBaseDelayMs: input.retryBaseDelayMs,
+  });
   const normalizedInputDir = normalizePath(input.inputDir);
   const normalizedOutputDir = normalizePath(input.outputDir);
   const summaryPath = buildBatchImportSummaryPath(normalizedOutputDir);
 
-  const jobs = buildJobs(
-    {
-      inputDir: normalizedInputDir,
-      outputDir: normalizedOutputDir,
-      concurrency,
-    },
-    deps,
-  );
+  const jobs = buildJobs(input, deps);
 
   const marketResults: BatchImportMarketResult[] = [];
 
   await runWithConcurrency(jobs, concurrency, async (job) => {
-    const result = await executeJob(job, deps);
+    const result = await executeJob(job, deps, rateLimit);
     marketResults.push(result);
+
+    if (rateLimit.requestDelayMs > 0) {
+      const sleep = deps.sleep ?? ((ms: number) => new Promise((resolve) => {
+        setTimeout(resolve, ms);
+      }));
+      await sleep(rateLimit.requestDelayMs);
+    }
   });
 
   marketResults.sort(compareMarketResults);
@@ -273,11 +372,15 @@ export async function runBatchHistoricalImport(
   const failedImports = marketResults.filter((market) => market.status === "failed").length;
   const skippedImports = marketResults.filter((market) => market.status === "skipped").length;
   const completedAt = now().toISOString();
+  const retryMetrics = summarizeRetryMetrics(marketResults, rateLimit);
 
   const summary: BatchImportSummary = {
     inputDir: normalizedInputDir,
     outputDir: normalizedOutputDir,
     concurrency,
+    requestDelayMs: rateLimit.requestDelayMs,
+    maxRetries: rateLimit.maxRetries,
+    retryBaseDelayMs: rateLimit.retryBaseDelayMs,
     startedAt,
     completedAt,
     durationMs: Date.now() - startMs,
@@ -285,6 +388,8 @@ export async function runBatchHistoricalImport(
     successfulImports,
     failedImports,
     skippedImports,
+    ...retryMetrics,
+    failureReasonCounts: buildFailureReasonCounts(marketResults),
     summaryPath,
     markets: marketResults,
   };

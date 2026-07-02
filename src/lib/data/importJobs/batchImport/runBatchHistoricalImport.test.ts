@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
+import { KalshiHistoricalImporterError } from "@/lib/data/importers/kalshi";
 import {
   HistoricalBronzeImportBtcInterval,
   HistoricalBronzeImportBtcProvider,
@@ -358,5 +359,143 @@ describe("runBatchHistoricalImport", () => {
     expect(serialized.indexOf('"markets"')).toBeLessThan(
       serialized.lastIndexOf(`"marketTicker":"${marketTicker}"`),
     );
+    expect(serialized).toContain('"retryCount":0');
+    expect(serialized).toContain('"failureReasonCounts":{}');
+  });
+
+  it("retries rate-limited imports and records recovered imports", async () => {
+    const marketTicker = "KXBTC15M-MARKET-A";
+    const filesystem = createFilesystem({
+      [`data/import-configs/KXBTC15M/${marketTicker}/config.json`]: JSON.stringify(
+        validConfigInput(marketTicker),
+      ),
+    });
+    const attempts = new Map<string, number>();
+    const runImport = vi.fn(async ({ config }) => {
+      const count = (attempts.get(config.marketTicker) ?? 0) + 1;
+      attempts.set(config.marketTicker, count);
+
+      if (count < 2) {
+        throw new KalshiHistoricalImporterError(
+          "Kalshi historical API error (429)",
+          429,
+          undefined,
+          500,
+        );
+      }
+
+      return createImportResult(config.marketTicker);
+    });
+    const sleep = vi.fn(async () => undefined);
+
+    const summary = await runBatchHistoricalImport(
+      {
+        inputDir: "data/import-configs",
+        outputDir: "data/imports",
+        maxRetries: 3,
+        retryBaseDelayMs: 1000,
+      },
+      {
+        ...createDeps(filesystem, runImport),
+        sleep,
+      },
+    );
+
+    expect(summary.successfulImports).toBe(1);
+    expect(summary.retryCount).toBe(1);
+    expect(summary.recoveredImports).toBe(1);
+    expect(summary.failedAfterRetries).toBe(0);
+    expect(summary.markets[0]?.retryCount).toBe(1);
+    expect(runImport).toHaveBeenCalledTimes(2);
+    expect(sleep).toHaveBeenCalledWith(500);
+  });
+
+  it("marks imports as failed after retry exhaustion", async () => {
+    const marketTicker = "KXBTC15M-MARKET-A";
+    const filesystem = createFilesystem({
+      [`data/import-configs/KXBTC15M/${marketTicker}/config.json`]: JSON.stringify(
+        validConfigInput(marketTicker),
+      ),
+    });
+    const runImport = vi.fn(async () => {
+      throw new KalshiHistoricalImporterError("Kalshi historical API error (429)", 429);
+    });
+    const sleep = vi.fn(async () => undefined);
+
+    const summary = await runBatchHistoricalImport(
+      {
+        inputDir: "data/import-configs",
+        outputDir: "data/imports",
+        maxRetries: 2,
+      },
+      {
+        ...createDeps(filesystem, runImport),
+        sleep,
+      },
+    );
+
+    expect(summary.successfulImports).toBe(0);
+    expect(summary.failedImports).toBe(1);
+    expect(summary.retryCount).toBe(2);
+    expect(summary.failedAfterRetries).toBe(1);
+    expect(summary.failureReasonCounts).toEqual({ "rate-limited": 1 });
+    expect(runImport).toHaveBeenCalledTimes(3);
+  });
+
+  it("waits requestDelayMs between market imports", async () => {
+    const marketA = "KXBTC15M-MARKET-A";
+    const marketB = "KXBTC15M-MARKET-B";
+    const filesystem = createFilesystem({
+      [`data/import-configs/KXBTC15M/${marketA}/config.json`]: JSON.stringify(
+        validConfigInput(marketA),
+      ),
+      [`data/import-configs/KXBTC15M/${marketB}/config.json`]: JSON.stringify(
+        validConfigInput(marketB),
+      ),
+    });
+    const sleep = vi.fn(async () => undefined);
+
+    await runBatchHistoricalImport(
+      {
+        inputDir: "data/import-configs",
+        outputDir: "data/imports",
+        requestDelayMs: 1000,
+        concurrency: 1,
+      },
+      {
+        ...createDeps(filesystem),
+        sleep,
+      },
+    );
+
+    expect(sleep).toHaveBeenCalledTimes(2);
+    expect(sleep).toHaveBeenCalledWith(1000);
+  });
+
+  it("re-imports existing outputs when overwriteExisting is enabled", async () => {
+    const marketTicker = "KXBTC15M-MARKET-A";
+    const outputPath = `data/imports/KXBTC15M/${marketTicker}/import-result.json`;
+    const filesystem = createFilesystem(
+      {
+        [`data/import-configs/KXBTC15M/${marketTicker}/config.json`]: JSON.stringify(
+          validConfigInput(marketTicker),
+        ),
+      },
+      new Set([outputPath]),
+    );
+    const runImport = vi.fn(async ({ config }) => createImportResult(config.marketTicker));
+
+    const summary = await runBatchHistoricalImport(
+      {
+        inputDir: "data/import-configs",
+        outputDir: "data/imports",
+        overwriteExisting: true,
+      },
+      createDeps(filesystem, runImport),
+    );
+
+    expect(summary.skippedImports).toBe(0);
+    expect(summary.successfulImports).toBe(1);
+    expect(runImport).toHaveBeenCalledTimes(1);
   });
 });

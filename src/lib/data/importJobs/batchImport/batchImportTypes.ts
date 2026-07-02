@@ -13,6 +13,9 @@ export const BatchImportRunnerErrorCode = {
   INVALID_CONFIG_PATH: "invalid-config-path",
   DUPLICATE_OUTPUT_PATH: "duplicate-output-path",
   INVALID_CONCURRENCY: "invalid-concurrency",
+  INVALID_REQUEST_DELAY: "invalid-request-delay",
+  INVALID_MAX_RETRIES: "invalid-max-retries",
+  INVALID_RETRY_BASE_DELAY: "invalid-retry-base-delay",
 } as const;
 
 export type BatchImportRunnerErrorCode =
@@ -47,12 +50,18 @@ export type BatchImportMarketResult = {
   jobId: string | null;
   bronzeRecordCount: number | null;
   valid: boolean | null;
+  retryCount: number | null;
 };
+
+export type BatchImportFailureReasonCounts = Record<string, number>;
 
 export type BatchImportSummary = {
   inputDir: string;
   outputDir: string;
   concurrency: number;
+  requestDelayMs: number;
+  maxRetries: number;
+  retryBaseDelayMs: number;
   startedAt: string;
   completedAt: string;
   durationMs: number;
@@ -60,6 +69,10 @@ export type BatchImportSummary = {
   successfulImports: number;
   failedImports: number;
   skippedImports: number;
+  retryCount: number;
+  recoveredImports: number;
+  failedAfterRetries: number;
+  failureReasonCounts: BatchImportFailureReasonCounts;
   summaryPath: string;
   markets: readonly BatchImportMarketResult[];
 };
@@ -85,12 +98,17 @@ export type RunBatchHistoricalImportInput = {
   inputDir: string;
   outputDir: string;
   concurrency?: number;
+  requestDelayMs?: number;
+  maxRetries?: number;
+  retryBaseDelayMs?: number;
+  overwriteExisting?: boolean;
 };
 
 export type BatchHistoricalImportRunnerDeps = {
   filesystem: BatchImportFilesystem;
   runImport: RunSingleBatchImportFn;
   now?: () => Date;
+  sleep?: (ms: number) => Promise<void>;
 };
 
 export type BatchImportJob = {
