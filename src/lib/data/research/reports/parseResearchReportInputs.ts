@@ -10,6 +10,14 @@ import {
   ResearchReportErrorCode,
 } from "./researchReportTypes";
 
+const confidenceIntervalSchema = z
+  .object({
+    lower: z.number().finite(),
+    upper: z.number().finite(),
+    pointEstimate: z.number().finite(),
+  })
+  .nullable();
+
 const leaderboardEntrySchema = z.object({
   rank: z.number().finite().int().positive(),
   strategyId: z.string().trim().min(1),
@@ -25,6 +33,14 @@ const leaderboardEntrySchema = z.object({
   maxDrawdownPct: z.number().finite().nonnegative(),
   sharpeRatio: z.number().finite().nullable(),
   averageDurationMs: z.number().finite().nonnegative(),
+  sampleSize: z.number().finite().int().nonnegative().optional(),
+  confidenceInterval95: z
+    .object({
+      meanPnlCents: confidenceIntervalSchema,
+      winRatePct: confidenceIntervalSchema,
+    })
+    .optional(),
+  statisticallySignificant: z.boolean().optional(),
   sourcePaths: z.array(z.string().trim().min(1)),
 });
 
@@ -132,7 +148,24 @@ function parseJsonDocument<T>(
 
 /** Parses a serialized strategy leaderboard JSON document. */
 export function parseStrategyLeaderboardJson(json: string): StrategyLeaderboard {
-  return parseJsonDocument(json, "strategy-leaderboard.json", strategyLeaderboardSchema);
+  const parsed = parseJsonDocument(
+    json,
+    "strategy-leaderboard.json",
+    strategyLeaderboardSchema,
+  );
+
+  return {
+    ...parsed,
+    strategies: parsed.strategies.map((entry) => ({
+      ...entry,
+      sampleSize: entry.sampleSize ?? entry.completedMarkets,
+      confidenceInterval95: entry.confidenceInterval95 ?? {
+        meanPnlCents: null,
+        winRatePct: null,
+      },
+      statisticallySignificant: entry.statisticallySignificant ?? false,
+    })),
+  };
 }
 
 /** Parses a serialized calibration report JSON document. */

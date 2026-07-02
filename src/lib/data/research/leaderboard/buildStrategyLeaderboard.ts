@@ -1,4 +1,8 @@
 import { normalizeRootPath } from "../aggregation/researchAggregatePaths";
+import {
+  computeStrategyStatisticalSignificance,
+  resolveStatisticalSignificanceConfig,
+} from "../statisticalSignificance";
 
 import { discoverStrategyAggregateSummaries } from "./discoverStrategyAggregateSummaries";
 import {
@@ -19,6 +23,11 @@ function toLeaderboardEntry(
   summary: ParsedStrategyAggregateSummary,
   rank: number,
 ): StrategyLeaderboardEntry {
+  const significance = computeStrategyStatisticalSignificance(
+    summary,
+    resolveStatisticalSignificanceConfig(),
+  );
+
   return {
     rank,
     strategyId: summary.strategyId,
@@ -34,6 +43,9 @@ function toLeaderboardEntry(
     maxDrawdownPct: summary.performance.maxDrawdownPct,
     sharpeRatio: summary.performance.sharpeRatio,
     averageDurationMs: summary.duration.averageDurationMs,
+    sampleSize: significance.sampleSize,
+    confidenceInterval95: significance.confidenceInterval95,
+    statisticallySignificant: significance.statisticallySignificant,
     sourcePaths: summary.sourcePaths,
   };
 }

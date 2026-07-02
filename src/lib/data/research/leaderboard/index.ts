@@ -18,6 +18,8 @@ export type {
   ParsedStrategyAggregateSummary,
   ScannedStrategyAggregateSummary,
   StrategyLeaderboard,
+  StrategyLeaderboardConfidenceInterval,
+  StrategyLeaderboardConfidenceIntervals95,
   StrategyLeaderboardEntry,
   StrategyLeaderboardIo,
   StrategyLeaderboardRankMetric,

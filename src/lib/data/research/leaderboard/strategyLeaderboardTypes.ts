@@ -56,6 +56,17 @@ export type ParsedStrategyAggregateSummary = {
   markets: readonly ResearchMarketResultSummary[];
 };
 
+export type StrategyLeaderboardConfidenceInterval = {
+  lower: number;
+  upper: number;
+  pointEstimate: number;
+};
+
+export type StrategyLeaderboardConfidenceIntervals95 = {
+  meanPnlCents: StrategyLeaderboardConfidenceInterval | null;
+  winRatePct: StrategyLeaderboardConfidenceInterval | null;
+};
+
 export type StrategyLeaderboardEntry = {
   rank: number;
   strategyId: string;
@@ -71,6 +82,9 @@ export type StrategyLeaderboardEntry = {
   maxDrawdownPct: number;
   sharpeRatio: number | null;
   averageDurationMs: number;
+  sampleSize: number;
+  confidenceInterval95: StrategyLeaderboardConfidenceIntervals95;
+  statisticallySignificant: boolean;
   sourcePaths: readonly string[];
 };
 

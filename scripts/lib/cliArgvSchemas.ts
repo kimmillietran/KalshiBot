@@ -82,6 +82,13 @@ export const LEAD_LAG_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--output" },
 ];
 
+export const STATISTICAL_SIGNIFICANCE_ARGV_SCHEMA: readonly NpmArgvField[] = [
+  { flag: "--input-dir" },
+  { flag: "--output" },
+  { flag: "--seed" },
+  { flag: "--simulations" },
+];
+
 export const LEADERBOARD_STRATEGIES_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--input-dir" },
   { flag: "--output" },
@@ -204,6 +211,10 @@ export function normalizeMispricingAtlasArgv(argv: readonly string[]): string[] 
 
 export function normalizeLeadLagArgv(argv: readonly string[]): string[] {
   return normalizeNpmScriptArgv(argv, LEAD_LAG_ARGV_SCHEMA);
+}
+
+export function normalizeStatisticalSignificanceArgv(argv: readonly string[]): string[] {
+  return normalizeNpmScriptArgv(argv, STATISTICAL_SIGNIFICANCE_ARGV_SCHEMA);
 }
 
 export function normalizeLeaderboardStrategiesArgv(argv: readonly string[]): string[] {

@@ -154,6 +154,35 @@ export type {
 } from "./leadLag";
 
 export {
+  buildStatisticalSignificanceFromDirectories,
+  buildStatisticalSignificanceReport,
+  bootstrapMeanConfidenceInterval,
+  bootstrapWinRateConfidenceInterval,
+  computeStrategyStatisticalSignificance,
+  extractCompletedMarketSamples,
+  resolveStatisticalSignificanceConfig,
+  serializeStatisticalSignificanceReport,
+  toLeaderboardSignificanceFields,
+  DEFAULT_BOOTSTRAP_SEED,
+  DEFAULT_BOOTSTRAP_SIMULATION_COUNT,
+  DEFAULT_CONFIDENCE_LEVEL,
+  DEFAULT_SIGNIFICANCE_ALPHA,
+  DEFAULT_STATISTICAL_SIGNIFICANCE_INPUT_DIR,
+  DEFAULT_STATISTICAL_SIGNIFICANCE_OUTPUT_PATH,
+  STATISTICAL_SIGNIFICANCE_FILENAME,
+} from "./statisticalSignificance";
+export type {
+  BuildStatisticalSignificanceReportInput,
+  CompletedMarketSample,
+  ConfidenceInterval,
+  StatisticalSignificanceConfig,
+  StatisticalSignificanceIo,
+  StatisticalSignificanceReport,
+  StrategyConfidenceIntervals95,
+  StrategyStatisticalSignificanceMetrics,
+} from "./statisticalSignificance";
+
+export {
   runHistoricalResearchFromBronze,
   serializeHistoricalResearchRunnerResult,
   HistoricalResearchRunnerError,
@@ -277,6 +306,8 @@ export type {
   ParsedStrategyAggregateSummary,
   ScannedStrategyAggregateSummary,
   StrategyLeaderboard,
+  StrategyLeaderboardConfidenceInterval,
+  StrategyLeaderboardConfidenceIntervals95,
   StrategyLeaderboardEntry,
   StrategyLeaderboardIo,
   StrategyLeaderboardRankMetric,
