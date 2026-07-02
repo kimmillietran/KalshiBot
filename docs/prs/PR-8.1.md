@@ -19,7 +19,7 @@ Optional regime bucketing joins `data/research-results/regime-tags.json` when pr
 Deterministic JSON with:
 
 - Overall summary (average implied/realized vol, vol premium, inversion failure counts)
-- Per-bucket stats by time remaining, moneyness, realized-vol regime, and regime tags (volatility/trend/market state)
+- Per-bucket stats by time remaining, moneyness, implied vol, realized vol, vol premium, and regime tags (volatility/trend/market state)
 - Sample counts and warnings
 
 ## Architecture

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   computeVolPremium,
+  estimateForwardRealizedVolatility,
   estimateImpliedVolatility,
   normalInv,
   probabilityFromDiffusionVol,
@@ -93,5 +94,52 @@ describe("computeVolPremium", () => {
     expect(computeVolPremium(0.5, 0.35)).toBeCloseTo(0.15, 6);
     expect(computeVolPremium(null, 0.35)).toBeNull();
     expect(computeVolPremium(0.5, null)).toBeNull();
+  });
+});
+
+describe("estimateForwardRealizedVolatility", () => {
+  it("uses candles strictly after evaluation through market close", () => {
+    const candles = Array.from({ length: 20 }, (_, index) => {
+      const close = 60_000 * (1 + 0.005 * Math.sin(index));
+      return {
+        timestamp: 1_700_000_000_000 + index * 60_000,
+        open: close,
+        high: close * 1.001,
+        low: close * 0.999,
+        close,
+      };
+    });
+
+    const evalTimestamp = candles[5]!.timestamp;
+    const closeTimestamp = candles[16]!.timestamp;
+    const estimate = estimateForwardRealizedVolatility(
+      candles,
+      evalTimestamp,
+      closeTimestamp,
+      10,
+    );
+
+    expect(estimate).not.toBeNull();
+    expect(estimate?.annualizedVol).toBeGreaterThan(0);
+    expect(Number.isFinite(estimate?.annualizedVol)).toBe(true);
+  });
+
+  it("returns null when the forward window is too short", () => {
+    const candles = Array.from({ length: 5 }, (_, index) => ({
+      timestamp: 1_700_000_000_000 + index * 60_000,
+      open: 60_000,
+      high: 60_100,
+      low: 59_900,
+      close: 60_000 + index * 10,
+    }));
+
+    expect(
+      estimateForwardRealizedVolatility(
+        candles,
+        candles[1]!.timestamp,
+        candles[4]!.timestamp,
+        10,
+      ),
+    ).toBeNull();
   });
 });

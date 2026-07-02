@@ -4,6 +4,8 @@ import { scanCalibrationResearchOutputs } from "@/lib/data/research/calibration/
 import type { ScannedCalibrationResearchOutput } from "@/lib/data/research/calibration/calibrationTypes";
 
 import {
+  computeImpliedVolatilityVolPremiumBuckets,
+  computeMarketVolPremiumSummaries,
   computeMoneynessVolPremiumBuckets,
   computeOverallVolPremiumSummary,
   computeRealizedVolatilityVolPremiumBuckets,
@@ -11,6 +13,7 @@ import {
   computeRegimeTrendVolPremiumBuckets,
   computeRegimeVolatilityVolPremiumBuckets,
   computeTimeRemainingVolPremiumBuckets,
+  computeVolPremiumAxisBuckets,
 } from "./computeVolPremiumBucketMetrics";
 import {
   buildRegimeTagsIndex,
@@ -191,9 +194,12 @@ export function buildVolPremiumStudy(input: BuildVolPremiumStudyInput): VolPremi
     regimeTagsPath: input.regimeTagsByJoinKey ? resolveRegimeTagsPath(input.inputRoot) : null,
     sampleCounts: buildSampleCounts({ observations, marketCount, warnings: allWarnings }),
     overallSummary: computeOverallVolPremiumSummary(observations),
+    markets: computeMarketVolPremiumSummaries(observations),
     timeRemainingBuckets: computeTimeRemainingVolPremiumBuckets(observations),
     moneynessBuckets: computeMoneynessVolPremiumBuckets(observations),
-    volatilityBuckets: computeRealizedVolatilityVolPremiumBuckets(observations),
+    impliedVolatilityBuckets: computeImpliedVolatilityVolPremiumBuckets(observations),
+    realizedVolatilityBuckets: computeRealizedVolatilityVolPremiumBuckets(observations),
+    volPremiumBuckets: computeVolPremiumAxisBuckets(observations),
     regimeVolatilityBuckets: computeRegimeVolatilityVolPremiumBuckets(observations),
     regimeTrendBuckets: computeRegimeTrendVolPremiumBuckets(observations),
     regimeMarketStateBuckets: computeRegimeMarketStateVolPremiumBuckets(observations),

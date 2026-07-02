@@ -5,6 +5,33 @@ import {
   valueFitsBucket,
   type NumericBucketDefinition,
 } from "@/lib/data/research/mispricingAtlas/mispricingAtlasBuckets";
+
+export const VOL_PREMIUM_BUCKET_DEFINITIONS: readonly NumericBucketDefinition[] = [
+  {
+    bucketId: "premium-under-20pct",
+    bucketLabel: "Underpriced vol (< -20pp)",
+    minInclusive: Number.NEGATIVE_INFINITY,
+    maxExclusive: -0.2,
+  },
+  {
+    bucketId: "premium-mild-under",
+    bucketLabel: "Mild underpricing (-20pp to 0)",
+    minInclusive: -0.2,
+    maxExclusive: 0,
+  },
+  {
+    bucketId: "premium-mild-over",
+    bucketLabel: "Mild overpricing (0 to +20pp)",
+    minInclusive: 0,
+    maxExclusive: 0.2,
+  },
+  {
+    bucketId: "premium-over-20pct",
+    bucketLabel: "Overpriced vol (>= +20pp)",
+    minInclusive: 0.2,
+    maxExclusive: null,
+  },
+];
 import type {
   MarketStateRegimeTag,
   TrendRegimeTag,
@@ -16,6 +43,7 @@ import {
   ImpliedVolatilityInversionCode,
   type VolPremiumBucketSummary,
   type VolPremiumInversionCounts,
+  type VolPremiumMarketSummary,
   type VolPremiumObservation,
   type VolPremiumOverallSummary,
 } from "./volPremiumTypes";
@@ -154,6 +182,16 @@ export function computeMoneynessVolPremiumBuckets(
   );
 }
 
+export function computeImpliedVolatilityVolPremiumBuckets(
+  observations: readonly VolPremiumObservation[],
+): VolPremiumBucketSummary[] {
+  return computeNumericAxisBucketSummaries(
+    observations,
+    VOLATILITY_BUCKET_DEFINITIONS,
+    (observation) => observation.impliedVolatilityAnnualized,
+  );
+}
+
 export function computeRealizedVolatilityVolPremiumBuckets(
   observations: readonly VolPremiumObservation[],
 ): VolPremiumBucketSummary[] {
@@ -162,6 +200,83 @@ export function computeRealizedVolatilityVolPremiumBuckets(
     VOLATILITY_BUCKET_DEFINITIONS,
     (observation) => observation.realizedVolatilityForwardAnnualized,
   );
+}
+
+export function computeVolPremiumAxisBuckets(
+  observations: readonly VolPremiumObservation[],
+): VolPremiumBucketSummary[] {
+  return computeNumericAxisBucketSummaries(
+    observations,
+    VOL_PREMIUM_BUCKET_DEFINITIONS,
+    (observation) => observation.volPremium,
+  );
+}
+
+function buildMarketJoinKey(observation: VolPremiumObservation): string {
+  return `${observation.strategyId}/${observation.seriesTicker}/${observation.marketTicker}`;
+}
+
+export function computeMarketVolPremiumSummaries(
+  observations: readonly VolPremiumObservation[],
+): VolPremiumMarketSummary[] {
+  const grouped = new Map<string, VolPremiumObservation[]>();
+
+  for (const observation of observations) {
+    const key = buildMarketJoinKey(observation);
+    const bucket = grouped.get(key) ?? [];
+    bucket.push(observation);
+    grouped.set(key, bucket);
+  }
+
+  return [...grouped.entries()]
+    .sort(([leftKey], [rightKey]) => leftKey.localeCompare(rightKey))
+    .map(([, marketObservations]) => {
+      const first = marketObservations[0]!;
+      const inversionCounts = createEmptyInversionCounts();
+
+      for (const observation of marketObservations) {
+        inversionCounts[observation.inversionCode] += 1;
+      }
+
+      const invertible = marketObservations.filter(
+        (observation) => observation.inversionCode === ImpliedVolatilityInversionCode.OK,
+      );
+      const premiumObservations = invertible.filter(
+        (observation) => observation.volPremium !== null,
+      );
+
+      const averageImplied = average(
+        invertible
+          .map((observation) => observation.impliedVolatilityAnnualized)
+          .filter((value): value is number => value !== null),
+      );
+      const averageRealized = average(
+        premiumObservations
+          .map((observation) => observation.realizedVolatilityForwardAnnualized)
+          .filter((value): value is number => value !== null),
+      );
+      const averagePremium = average(
+        premiumObservations
+          .map((observation) => observation.volPremium)
+          .filter((value): value is number => value !== null),
+      );
+
+      return {
+        strategyId: first.strategyId,
+        seriesTicker: first.seriesTicker,
+        marketTicker: first.marketTicker,
+        outputPath: first.outputPath,
+        observationCount: marketObservations.length,
+        invertibleObservationCount: invertible.length,
+        averageImpliedVolatility:
+          averageImplied === null ? null : roundVolMetric(averageImplied),
+        averageRealizedVolatilityForward:
+          averageRealized === null ? null : roundVolMetric(averageRealized),
+        averageVolPremium:
+          averagePremium === null ? null : roundVolMetric(averagePremium),
+        inversionCounts,
+      };
+    });
 }
 
 function computeRegimeAxisBucketSummaries<T extends string>(

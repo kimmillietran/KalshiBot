@@ -238,6 +238,7 @@ export type {
   BuildVolPremiumStudyInput,
   VolPremiumBucketSummary,
   VolPremiumIo,
+  VolPremiumMarketSummary,
   VolPremiumObservation,
   VolPremiumOverallSummary,
   VolPremiumSampleCounts,

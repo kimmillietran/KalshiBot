@@ -77,6 +77,19 @@ export type VolPremiumOverallSummary = {
   inversionCounts: VolPremiumInversionCounts;
 };
 
+export type VolPremiumMarketSummary = {
+  strategyId: string;
+  seriesTicker: string;
+  marketTicker: string;
+  outputPath: string;
+  observationCount: number;
+  invertibleObservationCount: number;
+  averageImpliedVolatility: number | null;
+  averageRealizedVolatilityForward: number | null;
+  averageVolPremium: number | null;
+  inversionCounts: VolPremiumInversionCounts;
+};
+
 export type VolPremiumSampleCounts = {
   totalObservations: number;
   marketCount: number;
@@ -104,9 +117,12 @@ export type VolPremiumStudy = {
   regimeTagsPath: string | null;
   sampleCounts: VolPremiumSampleCounts;
   overallSummary: VolPremiumOverallSummary;
+  markets: readonly VolPremiumMarketSummary[];
   timeRemainingBuckets: readonly VolPremiumBucketSummary[];
   moneynessBuckets: readonly VolPremiumBucketSummary[];
-  volatilityBuckets: readonly VolPremiumBucketSummary[];
+  impliedVolatilityBuckets: readonly VolPremiumBucketSummary[];
+  realizedVolatilityBuckets: readonly VolPremiumBucketSummary[];
+  volPremiumBuckets: readonly VolPremiumBucketSummary[];
   regimeVolatilityBuckets: readonly VolPremiumBucketSummary[];
   regimeTrendBuckets: readonly VolPremiumBucketSummary[];
   regimeMarketStateBuckets: readonly VolPremiumBucketSummary[];

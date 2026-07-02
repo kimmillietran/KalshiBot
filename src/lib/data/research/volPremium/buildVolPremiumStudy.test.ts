@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildVolPremiumStudy,
   computeMoneynessVolPremiumBuckets,
+  computeVolPremiumAxisBuckets,
   computeVolPremiumBucketSummary,
   extractVolPremiumObservationsFromResearchOutput,
   serializeVolPremiumStudy,
@@ -145,6 +146,56 @@ describe("extractVolPremiumObservationsFromResearchOutput", () => {
   });
 });
 
+describe("computeVolPremiumAxisBuckets", () => {
+  it("buckets observations by implied minus realized vol premium", () => {
+    const buckets = computeVolPremiumAxisBuckets([
+      {
+        strategyId: STRATEGY_ID,
+        seriesTicker: SERIES_TICKER,
+        marketTicker: MARKET_A,
+        outputPath: "path",
+        stepIndex: 0,
+        impliedProbability: 0.6,
+        spotPrice: 61_000,
+        strikePrice: 60_000,
+        timeRemainingMs: 600_000,
+        moneynessPercent: 1.6,
+        impliedVolatilityAnnualized: 0.5,
+        inversionCode: ImpliedVolatilityInversionCode.OK,
+        realizedVolatilityBackwardAnnualized: 0.35,
+        realizedVolatilityForwardAnnualized: 0.4,
+        volPremium: 0.25,
+        regimeTags: null,
+      },
+      {
+        strategyId: STRATEGY_ID,
+        seriesTicker: SERIES_TICKER,
+        marketTicker: MARKET_A,
+        outputPath: "path",
+        stepIndex: 1,
+        impliedProbability: 0.4,
+        spotPrice: 59_000,
+        strikePrice: 60_000,
+        timeRemainingMs: 300_000,
+        moneynessPercent: -1.6,
+        impliedVolatilityAnnualized: 0.3,
+        inversionCode: ImpliedVolatilityInversionCode.OK,
+        realizedVolatilityBackwardAnnualized: 0.25,
+        realizedVolatilityForwardAnnualized: 0.35,
+        volPremium: -0.05,
+        regimeTags: null,
+      },
+    ]);
+
+    expect(
+      buckets.find((bucket) => bucket.bucketId === "premium-over-20pct")?.observations,
+    ).toBe(1);
+    expect(
+      buckets.find((bucket) => bucket.bucketId === "premium-mild-under")?.observations,
+    ).toBe(1);
+  });
+});
+
 describe("computeVolPremiumBucketSummary", () => {
   it("aggregates average implied, realized, and premium per bucket", () => {
     const summary = computeVolPremiumBucketSummary("test", "Test bucket", [
@@ -227,7 +278,12 @@ describe("buildVolPremiumStudy", () => {
     expect(first).toBe(second);
     expect(report.sampleCounts.totalObservations).toBe(1);
     expect(report.overallSummary.observations).toBe(1);
+    expect(report.markets).toHaveLength(1);
+    expect(report.markets[0]?.marketTicker).toBe(MARKET_A);
     expect(report.moneynessBuckets.length).toBeGreaterThan(0);
+    expect(report.impliedVolatilityBuckets.length).toBeGreaterThan(0);
+    expect(report.realizedVolatilityBuckets.length).toBeGreaterThan(0);
+    expect(report.volPremiumBuckets.length).toBe(4);
   });
 
   it("returns an empty dataset report without throwing", () => {

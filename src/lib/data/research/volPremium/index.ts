@@ -6,6 +6,8 @@ export {
   serializeVolPremiumStudy,
 } from "./buildVolPremiumStudy";
 export {
+  computeImpliedVolatilityVolPremiumBuckets,
+  computeMarketVolPremiumSummaries,
   computeMoneynessVolPremiumBuckets,
   computeOverallVolPremiumSummary,
   computeRealizedVolatilityVolPremiumBuckets,
@@ -13,7 +15,9 @@ export {
   computeRegimeTrendVolPremiumBuckets,
   computeRegimeVolatilityVolPremiumBuckets,
   computeTimeRemainingVolPremiumBuckets,
+  computeVolPremiumAxisBuckets,
   computeVolPremiumBucketSummary,
+  VOL_PREMIUM_BUCKET_DEFINITIONS,
 } from "./computeVolPremiumBucketMetrics";
 export {
   buildRegimeTagsIndex,
@@ -49,6 +53,7 @@ export type {
   VolPremiumBucketSummary,
   VolPremiumInversionCounts,
   VolPremiumIo,
+  VolPremiumMarketSummary,
   VolPremiumObservation,
   VolPremiumOverallSummary,
   VolPremiumSampleCounts,
