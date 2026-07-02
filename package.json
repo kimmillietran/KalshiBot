@@ -22,7 +22,8 @@
     "discovery:markets": "tsx scripts/discovery/runMarketDiscovery.ts",
     "discovery:import-configs": "tsx scripts/discovery/generateImportConfigs.ts",
     "datasets:build": "tsx scripts/datasets/buildDatasetManifest.ts",
-    "discover:markets": "tsx scripts/discovery/runMarketDiscovery.ts"
+    "discover:markets": "tsx scripts/discovery/runMarketDiscovery.ts",
+    "worktree:assign": "bash scripts/git/assign-worktree-branch.sh"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.101.1",

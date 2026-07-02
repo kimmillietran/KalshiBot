@@ -1,0 +1,97 @@
+---
+description: Git worktree isolation — one worktree, one branch, one milestone; no merge branches
+alwaysApply: true
+---
+
+# Worktree isolation
+
+Parallel milestones conflict when agents share paths or integration branches. Worktrees isolate **checkouts**, not **overlapping files**. Follow this policy on every task.
+
+## Worktree map
+
+| Worktree | Path | Purpose | Allowed branches |
+| --- | --- | --- | --- |
+| Primary | `KalshiBot` | Dev server / read-only | `main` only — **no commits** |
+| Builder 1 | `kalshi-builder1` | Feature milestones | `feature/*` |
+| Builder 2 | `kalshi-builder2` | Feature milestones | `feature/*` |
+| Review | `kalshi-review` | PR review + bugfixes | `review/*`, `fix/*` |
+
+## Session start (required)
+
+Before any edit or git command:
+
+```bash
+cd C:/Users/Kimmillie/kalshi-builder1   # or kalshi-review for review/bugfix work
+git rev-parse --show-toplevel
+git branch --show-current
+git status --short
+npm run worktree:assign -- <branch>
+```
+
+Abort if the prompt's worktree name does not match `show-toplevel`, or if the branch does not match the task.
+
+## Branch assignment
+
+Each worktree keeps a local `.worktree-branch` file (gitignored). Pre-commit **blocks** commits when the current branch differs from that file.
+
+```bash
+# Builder milestone
+npm run worktree:assign -- feature/m6.24c-strategy-leaderboard
+
+# Review / bugfix (use kalshi-review)
+npm run worktree:assign -- fix/raw-ticker-ui-leak
+```
+
+Re-run when switching branches in the same worktree.
+
+## Review and bugfix workflow
+
+Bugfixes and PR review fixes belong in **`kalshi-review`**, not builder worktrees.
+
+```bash
+cd C:/Users/Kimmillie/kalshi-review
+git fetch origin
+git checkout -B fix/short-description origin/main
+npm run worktree:assign -- fix/short-description
+```
+
+For fixes on an open PR branch:
+
+```bash
+git checkout -B review/m6.24c-pr-fixes origin/feature/m6.24c-strategy-leaderboard
+npm run worktree:assign -- review/m6.24c-pr-fixes
+```
+
+## Forbidden
+
+- Commits from `KalshiBot` (primary worktree)
+- Bugfixes in `kalshi-builder1` / `kalshi-builder2` — use `kalshi-review`
+- `git checkout main` inside a builder worktree (`main` is checked out in the primary worktree)
+- `git merge`, `git cherry-pick`, or development on `merge/*` branches
+- Reusing another builder's branch
+- `git reset --hard` unless recovering from a confirmed mistake
+
+## Starting a milestone (builders)
+
+```bash
+cd C:/Users/Kimmillie/kalshi-builder1
+git fetch origin
+git checkout -B feature/m6.XXy-slug origin/main
+npm run worktree:assign -- feature/m6.XXy-slug
+```
+
+If the milestone depends on an unmerged branch, branch from that **named feature branch**, not a `merge/*` branch.
+
+## Overlapping milestones
+
+When parallel milestones touch the same modules:
+
+1. Merge foundation milestones to `main` before starting dependents.
+2. Rebase downstream feature branches onto updated `main`.
+3. Keep file ownership in the prompt (only paths for the current milestone).
+
+## Commit scope
+
+- One task per branch
+- Stage only files for that task
+- Do not merge — open a PR instead

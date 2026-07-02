@@ -46,3 +46,6 @@ yarn-error.log*
 
 # typescript
 *.tsbuildinfo
+
+# local worktree branch assignment (one per worktree checkout)
+.worktree-branch
