@@ -43,6 +43,8 @@ function createAggregateSummary(
       tradeCount: market.tradeCount ?? 2,
       winningTradeCount: 1,
       losingTradeCount: 1,
+      fillCount: 2,
+      contractsFilled: 2,
     },
   }));
 
@@ -63,6 +65,14 @@ function createAggregateSummary(
     performance: {
       totalTrades: marketSummaries.reduce(
         (total, market) => total + market.metrics.tradeCount,
+        0,
+      ),
+      totalFills: marketSummaries.reduce(
+        (total, market) => total + market.metrics.fillCount,
+        0,
+      ),
+      totalContractsFilled: marketSummaries.reduce(
+        (total, market) => total + market.metrics.contractsFilled,
         0,
       ),
       totalPnlCents,
@@ -96,6 +106,8 @@ function createSummary(
     marketCounts: { total: 1, completed: 1, failed: 0 },
     performance: {
       totalTrades: 2,
+      totalFills: 4,
+      totalContractsFilled: 6,
       totalPnlCents,
       averagePnlCents: totalPnlCents,
       medianPnlCents: totalPnlCents,
@@ -152,17 +164,27 @@ describe("buildStrategyLeaderboard", () => {
       generatedAt: GENERATED_AT,
       rankBy: "totalPnL",
       summaries: [
-        createSummary("buy-first-ask", 300),
-        createSummary("noop", 500),
+        createSummary("buy-first-ask", 300, { totalFills: 12, totalContractsFilled: 20 }),
+        createSummary("noop", 0, { totalTrades: 0, totalFills: 0, totalContractsFilled: 0 }),
         createSummary("alpha", 500),
       ],
     });
 
     expect(leaderboard.strategies.map((entry) => entry.strategyId)).toEqual([
       "alpha",
-      "noop",
       "buy-first-ask",
+      "noop",
     ]);
+    expect(leaderboard.strategies[1]).toMatchObject({
+      strategyId: "buy-first-ask",
+      totalFills: 12,
+      totalContractsFilled: 20,
+    });
+    expect(leaderboard.strategies[2]).toMatchObject({
+      strategyId: "noop",
+      totalTrades: 0,
+      totalFills: 0,
+    });
     expect(leaderboard.strategies.map((entry) => entry.rank)).toEqual([1, 2, 3]);
   });
 

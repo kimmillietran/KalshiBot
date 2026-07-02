@@ -126,6 +126,8 @@ describe("computePerformanceStatistics", () => {
           tradeCount: 2,
           winningTradeCount: 2,
           losingTradeCount: 0,
+          fillCount: 4,
+          contractsFilled: 8,
         },
       },
       {
@@ -144,11 +146,15 @@ describe("computePerformanceStatistics", () => {
           tradeCount: 2,
           winningTradeCount: 0,
           losingTradeCount: 2,
+          fillCount: 3,
+          contractsFilled: 5,
         },
       },
     ]);
 
     expect(performance.totalTrades).toBe(4);
+    expect(performance.totalFills).toBe(7);
+    expect(performance.totalContractsFilled).toBe(13);
     expect(performance.totalPnlCents).toBe(200);
     expect(performance.averagePnlCents).toBe(100);
     expect(performance.medianPnlCents).toBe(100);

@@ -185,6 +185,8 @@ describe("runHistoricalBacktest", () => {
     expect(result.replayResult.results).toHaveLength(2);
     expect(result.strategyRun.strategyId).toBe("buy-each-step");
     expect(result.ledger.snapshot().fills).toHaveLength(2);
+    expect(result.metrics.fillCount).toBe(2);
+    expect(result.metrics.contractsFilled).toBe(4);
     expect(result.metrics.endEquityCents).toBeGreaterThan(0);
     expect(result.metadata.snapshotCount).toBe(2);
     expect(result.metadata.completedAtStep).toBe(1);

@@ -19,6 +19,8 @@ const researchOutputMetricsSchema = z.object({
   tradeCount: z.number().finite().int().nonnegative(),
   winningTradeCount: z.number().finite().int().nonnegative().optional(),
   losingTradeCount: z.number().finite().int().nonnegative().optional(),
+  fillCount: z.number().finite().int().nonnegative().optional(),
+  contractsFilled: z.number().finite().int().nonnegative().optional(),
 });
 
 const batchResearchOutputSchema = z
@@ -66,6 +68,27 @@ function readFiniteNumber(
   return typeof value === "number" && Number.isFinite(value) ? value : undefined;
 }
 
+function readFillCount(metrics: Record<string, unknown>): number {
+  const direct = readFiniteNumber(metrics, "fillCount");
+  if (direct !== undefined) {
+    return direct;
+  }
+
+  const executionCostSummary = metrics.executionCostSummary;
+  if (isRecord(executionCostSummary)) {
+    const nested = readFiniteNumber(executionCostSummary, "fillCount");
+    if (nested !== undefined) {
+      return nested;
+    }
+  }
+
+  return 0;
+}
+
+function readContractsFilled(metrics: Record<string, unknown>): number {
+  return readFiniteNumber(metrics, "contractsFilled") ?? 0;
+}
+
 function metricsFromBacktestSummary(
   metrics: Pick<
     BacktestMetricsSummary,
@@ -78,6 +101,8 @@ function metricsFromBacktestSummary(
     | "tradeCount"
     | "winningTradeCount"
     | "losingTradeCount"
+    | "fillCount"
+    | "contractsFilled"
   >,
 ): ResearchOutputMetrics {
   return {
@@ -90,6 +115,8 @@ function metricsFromBacktestSummary(
     tradeCount: metrics.tradeCount,
     winningTradeCount: metrics.winningTradeCount,
     losingTradeCount: metrics.losingTradeCount,
+    fillCount: metrics.fillCount,
+    contractsFilled: metrics.contractsFilled,
   };
 }
 
@@ -113,6 +140,8 @@ function normalizeBatchMetrics(
     tradeCount: metrics.tradeCount,
     winningTradeCount,
     losingTradeCount,
+    fillCount: metrics.fillCount ?? 0,
+    contractsFilled: metrics.contractsFilled ?? 0,
   };
 }
 
@@ -223,6 +252,8 @@ function parseRunnerFormat(
       tradeCount: metricsRecord.tradeCount as number,
       winningTradeCount: metricsRecord.winningTradeCount as number,
       losingTradeCount: metricsRecord.losingTradeCount as number,
+      fillCount: readFillCount(metricsRecord),
+      contractsFilled: readContractsFilled(metricsRecord),
       sharpeRatio:
         sharpeRatio === null
           ? null

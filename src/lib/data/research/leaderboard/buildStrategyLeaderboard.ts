@@ -25,6 +25,8 @@ function toLeaderboardEntry(
     marketsTested: summary.marketCounts.total,
     completedMarkets: summary.marketCounts.completed,
     totalTrades: summary.performance.totalTrades,
+    totalFills: summary.performance.totalFills,
+    totalContractsFilled: summary.performance.totalContractsFilled,
     totalPnlCents: summary.performance.totalPnlCents,
     averagePnlCents: summary.performance.averagePnlCents,
     medianPnlCents: summary.performance.medianPnlCents,

@@ -39,6 +39,10 @@ export type ResearchOutputMetrics = {
   tradeCount: number;
   winningTradeCount: number;
   losingTradeCount: number;
+  /** Simulated ledger fills (buys and sells) for the run. */
+  fillCount: number;
+  /** Sum of fill quantities across all simulated fills. */
+  contractsFilled: number;
 };
 
 export type ParsedResearchOutput = {
@@ -80,7 +84,12 @@ export type ResearchDurationStatistics = {
 };
 
 export type ResearchAggregatePerformanceStatistics = {
+  /** Closed round-trip trades (including settlement closes). */
   totalTrades: number;
+  /** Simulated ledger fills summed across completed markets. */
+  totalFills: number;
+  /** Sum of fill quantities summed across completed markets. */
+  totalContractsFilled: number;
   totalPnlCents: number;
   averagePnlCents: number;
   medianPnlCents: number;

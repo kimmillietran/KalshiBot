@@ -83,6 +83,11 @@ export function computePerformanceStatistics(
   const metrics = completed.map((market) => market.metrics);
 
   const totalTrades = metrics.reduce((total, entry) => total + entry.tradeCount, 0);
+  const totalFills = metrics.reduce((total, entry) => total + entry.fillCount, 0);
+  const totalContractsFilled = metrics.reduce(
+    (total, entry) => total + entry.contractsFilled,
+    0,
+  );
   const totalWinningTrades = metrics.reduce(
     (total, entry) => total + entry.winningTradeCount,
     0,
@@ -96,6 +101,8 @@ export function computePerformanceStatistics(
 
   return {
     totalTrades,
+    totalFills,
+    totalContractsFilled,
     totalPnlCents,
     averagePnlCents: completed.length > 0 ? totalPnlCents / completed.length : 0,
     medianPnlCents: median(pnlValues),

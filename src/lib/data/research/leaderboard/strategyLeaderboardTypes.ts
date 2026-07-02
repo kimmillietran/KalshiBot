@@ -62,6 +62,8 @@ export type StrategyLeaderboardEntry = {
   marketsTested: number;
   completedMarkets: number;
   totalTrades: number;
+  totalFills: number;
+  totalContractsFilled: number;
   totalPnlCents: number;
   averagePnlCents: number;
   medianPnlCents: number;

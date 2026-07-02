@@ -1,4 +1,5 @@
 import { BacktestLedger } from "./BacktestLedger";
+import { buildSettlementCloseFills } from "./settlementCloseFills";
 import type {
   BacktestEquityPoint,
   ClosedTradeSummary,
@@ -196,7 +197,8 @@ export function deriveBacktestMetricsInput(
     args.fills,
     args.initialCashCents,
   );
-  const closedTrades = buildClosedTrades(args.fills);
+  const settlementCloseFills = buildSettlementCloseFills(args.replayResults, args.fills);
+  const closedTrades = buildClosedTrades([...args.fills, ...settlementCloseFills]);
   const costModels = resolveExecutionCostModel(
     args.fillConfig ?? {
       feeCentsPerContract: 0,

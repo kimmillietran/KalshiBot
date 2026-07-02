@@ -24,6 +24,8 @@ const marketResultSchema = z.object({
       tradeCount: z.number().finite().int().nonnegative(),
       winningTradeCount: z.number().finite().int().nonnegative(),
       losingTradeCount: z.number().finite().int().nonnegative(),
+      fillCount: z.number().finite().int().nonnegative().optional(),
+      contractsFilled: z.number().finite().int().nonnegative().optional(),
     })
     .nullable(),
 });
@@ -39,6 +41,8 @@ const aggregateSummarySchema = z.object({
   }),
   performance: z.object({
     totalTrades: z.number().finite().int().nonnegative(),
+    totalFills: z.number().finite().int().nonnegative().optional(),
+    totalContractsFilled: z.number().finite().int().nonnegative().optional(),
     totalPnlCents: z.number().finite(),
     averagePnlCents: z.number().finite(),
     medianPnlCents: z.number().finite(),
@@ -83,5 +87,23 @@ export function parseAggregateSummaryJson(
     );
   }
 
-  return result.data;
+  return {
+    ...result.data,
+    performance: {
+      ...result.data.performance,
+      totalFills: result.data.performance.totalFills ?? 0,
+      totalContractsFilled: result.data.performance.totalContractsFilled ?? 0,
+    },
+    markets: result.data.markets.map((market) => ({
+      ...market,
+      metrics:
+        market.metrics === null
+          ? null
+          : {
+              ...market.metrics,
+              fillCount: market.metrics.fillCount ?? 0,
+              contractsFilled: market.metrics.contractsFilled ?? 0,
+            },
+    })),
+  };
 }

@@ -48,6 +48,10 @@ export type BacktestMetricsSummary = {
   winningTradeCount: number;
   losingTradeCount: number;
   breakevenTradeCount: number;
+  /** Count of simulated ledger fills (buys and sells). */
+  fillCount: number;
+  /** Sum of fill quantities across all simulated fills. */
+  contractsFilled: number;
   startEquityCents: number;
   endEquityCents: number;
   peakEquityCents: number;

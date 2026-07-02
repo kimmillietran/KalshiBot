@@ -287,6 +287,12 @@ export function computeBacktestMetrics(
     totalPnlCents,
     input.executionFeeModelKind ?? "zero",
   );
+  const fillCount = input.fills?.length ?? 0;
+  const contractsFilled =
+    input.fills?.reduce(
+      (total, fill) => total + (fill.quantity ?? 0),
+      0,
+    ) ?? 0;
 
   return Object.freeze({
     totalReturnPct,
@@ -294,6 +300,8 @@ export function computeBacktestMetrics(
     maxDrawdownPct: drawdown.maxDrawdownPct,
     maxDrawdownCents: drawdown.maxDrawdownCents,
     ...tradeMetrics,
+    fillCount,
+    contractsFilled,
     startEquityCents,
     endEquityCents,
     peakEquityCents: drawdown.peakEquityCents,

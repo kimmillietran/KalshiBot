@@ -61,6 +61,7 @@ export type ExecutionCostSummary = {
 export type ExecutionCostFillSource = {
   action: TradeAction;
   feeCents: number;
+  quantity?: number;
   spreadSlippageCents?: number;
   executionCost?: FillCostBreakdown;
 };
