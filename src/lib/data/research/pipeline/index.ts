@@ -8,6 +8,15 @@ export {
   serializeResearchPipelineSummary,
 } from "./runResearchPipeline";
 export {
+  createNpmScriptRunner,
+  formatPipelineSpawnError,
+  formatPipelineStepFailureMessage,
+  PIPELINE_OUTPUT_TAIL_MAX_CHARS,
+  resolveNpmSpawnSpec,
+  spawnNpmScript,
+  tailCapturedOutput,
+} from "./spawnNpmScript";
+export {
   DEFAULT_DISCOVERY_OUTPUT_PATH,
   DEFAULT_RESEARCH_PIPELINE_CONCURRENCY,
   DEFAULT_RESEARCH_PIPELINE_LIMIT,

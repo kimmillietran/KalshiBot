@@ -4,6 +4,11 @@ import {
   buildResearchPipelineSteps,
   formatResearchPipelineCommand,
 } from "./buildResearchPipelineSteps";
+import {
+  formatPipelineSpawnError,
+  formatPipelineStepFailureMessage,
+  tailCapturedOutput,
+} from "./spawnNpmScript";
 import type {
   ResearchPipelineRunStatus,
   ResearchPipelineStepResult,
@@ -79,8 +84,8 @@ export async function runResearchPipeline(
         continue;
       }
 
-      const errorMessage =
-        outcome.stderr.trim() || `Step exited with code ${outcome.exitCode}`;
+      const stdoutTail = tailCapturedOutput(outcome.stdout);
+      const stderrTail = tailCapturedOutput(outcome.stderr);
       results.push({
         stepId: step.id,
         label: step.label,
@@ -89,7 +94,13 @@ export async function runResearchPipeline(
         status: "failed",
         exitCode: outcome.exitCode,
         durationMs,
-        errorMessage,
+        errorMessage: formatPipelineStepFailureMessage({
+          exitCode: outcome.exitCode,
+          stdout: outcome.stdout,
+          stderr: outcome.stderr,
+        }),
+        stdoutTail,
+        stderrTail,
       });
 
       if (!input.config.continueOnError) {
@@ -97,8 +108,6 @@ export async function runResearchPipeline(
       }
     } catch (error) {
       const durationMs = Date.now() - startedAt;
-      const errorMessage =
-        error instanceof Error ? error.message : "Pipeline step failed";
 
       results.push({
         stepId: step.id,
@@ -108,7 +117,7 @@ export async function runResearchPipeline(
         status: "failed",
         exitCode: null,
         durationMs,
-        errorMessage,
+        errorMessage: formatPipelineSpawnError(error, command),
       });
 
       if (!input.config.continueOnError) {

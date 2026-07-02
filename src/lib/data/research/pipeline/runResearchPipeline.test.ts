@@ -5,6 +5,9 @@ import {
 } from "./buildResearchPipelineSteps";
 import { parseResearchPipelineConfigFromArgv } from "./parseResearchPipelineArgv";
 import {
+  formatPipelineSpawnError,
+} from "./spawnNpmScript";
+import {
   runResearchPipeline,
   serializeResearchPipelineSummary,
 } from "./runResearchPipeline";
@@ -122,6 +125,7 @@ describe("runResearchPipeline", () => {
     expect(exitCode).toBe(1);
     expect(summary.status).toBe("failed");
     expect(summary.steps[0]?.status).toBe("failed");
+    expect(summary.steps[0]?.errorMessage).toBe("discover failed");
     expect(summary.steps[1]?.status).toBe("skipped");
     expect(summary.steps).toHaveLength(17);
   });
@@ -171,5 +175,43 @@ describe("runResearchPipeline", () => {
       serializeResearchPipelineSummary(second.summary),
     );
     expect(first.summary.steps[0]?.command).toContain("discover:markets");
+  });
+
+  it("records stdout and stderr tails for failed steps", async () => {
+    const runner: ResearchPipelineRunner = async () => ({
+      exitCode: 1,
+      stdout: "stdout failure details",
+      stderr: "stderr failure details",
+    });
+
+    const { summary } = await runResearchPipeline({
+      config: createConfig(),
+      generatedAt: GENERATED_AT,
+      runner,
+    });
+
+    expect(summary.steps[0]?.stdoutTail).toBe("stdout failure details");
+    expect(summary.steps[0]?.stderrTail).toBe("stderr failure details");
+    expect(summary.steps[0]?.errorMessage).toBe(
+      "stderr failure details\nstdout failure details",
+    );
+  });
+
+  it("records spawn failures with useful error messages", async () => {
+    const spawnError = Object.assign(new Error("spawn EINVAL"), { code: "EINVAL" });
+    const runner: ResearchPipelineRunner = async () => {
+      throw spawnError;
+    };
+
+    const { summary } = await runResearchPipeline({
+      config: createConfig({ series: "KXBTC15M" }),
+      generatedAt: GENERATED_AT,
+      runner,
+    });
+
+    expect(summary.steps[0]?.exitCode).toBeNull();
+    expect(summary.steps[0]?.errorMessage).toBe(
+      formatPipelineSpawnError(spawnError, summary.steps[0]!.command),
+    );
   });
 });

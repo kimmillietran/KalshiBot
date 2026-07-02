@@ -50,9 +50,11 @@ Defaults:
 
 - pipeline config
 - overall status (`succeeded` / `failed` / `partial`)
-- per-step command, exit code, duration, and error message
+- per-step command, exit code, duration, error message, and captured stdout/stderr tails on failure
 
 Progress logs are written to stdout during execution.
+
+Child npm scripts are spawned via `cmd.exe /d /s /c npm run ...` on Windows (`.cmd` shims cannot be spawned with `shell: false`) and via `npm` directly on Unix.
 
 ## Architecture
 

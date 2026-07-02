@@ -53,6 +53,8 @@ export type ResearchPipelineStepResult = {
   exitCode: number | null;
   durationMs: number;
   errorMessage?: string;
+  stdoutTail?: string;
+  stderrTail?: string;
 };
 
 export type ResearchPipelineSummary = {

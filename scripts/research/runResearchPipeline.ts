@@ -1,8 +1,8 @@
-import { spawn } from "node:child_process";
 import { dirname } from "node:path";
 import { mkdirSync, writeFileSync } from "node:fs";
 
 import {
+  createNpmScriptRunner,
   parseResearchPipelineConfigFromArgv,
   runResearchPipeline,
   serializeResearchPipelineSummary,
@@ -16,38 +16,6 @@ import {
 } from "./runResearchPipelineTypes";
 import type { ResearchPipelineCommandIo } from "./runResearchPipelineTypes";
 
-function createNpmRunner(): (
-  npmScript: string,
-  args: readonly string[],
-) => Promise<{ exitCode: number; stdout: string; stderr: string }> {
-  return (npmScript, args) =>
-    new Promise((resolve, reject) => {
-      const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
-      const child = spawn(npmCommand, ["run", npmScript, "--", ...args], {
-        shell: false,
-        stdio: ["ignore", "pipe", "pipe"],
-      });
-
-      let stdout = "";
-      let stderr = "";
-
-      child.stdout.on("data", (chunk: Buffer | string) => {
-        stdout += chunk.toString();
-      });
-      child.stderr.on("data", (chunk: Buffer | string) => {
-        stderr += chunk.toString();
-      });
-      child.on("error", reject);
-      child.on("close", (code) => {
-        resolve({
-          exitCode: code ?? 1,
-          stdout,
-          stderr,
-        });
-      });
-    });
-}
-
 export function runResearchPipelineCommand(
   argv: readonly string[],
   io: ResearchPipelineCommandIo,
@@ -58,7 +26,7 @@ export function runResearchPipelineCommand(
       const normalizedArgv = normalizeResearchPipelineArgv(argv);
       const config = parseResearchPipelineConfigFromArgv(normalizedArgv);
       const generatedAt = options?.generatedAt ?? new Date().toISOString();
-      const runner = io.runner ?? createNpmRunner();
+      const runner = io.runner ?? createNpmScriptRunner();
 
       const { summary, exitCode } = await runResearchPipeline({
         config,
