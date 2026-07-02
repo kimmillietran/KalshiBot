@@ -94,6 +94,16 @@ export const REGIME_TAGGING_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--output" },
 ];
 
+export const HYPOTHESIS_CANDIDATES_ARGV_SCHEMA: readonly NpmArgvField[] = [
+  { flag: "--output" },
+  { flag: "--mispricing-atlas" },
+  { flag: "--lead-lag" },
+  { flag: "--significance" },
+  { flag: "--regime-tags" },
+  { flag: "--leaderboard" },
+  { flag: "--min-sample" },
+];
+
 export const LEADERBOARD_STRATEGIES_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--input-dir" },
   { flag: "--output" },
@@ -224,6 +234,10 @@ export function normalizeStatisticalSignificanceArgv(argv: readonly string[]): s
 
 export function normalizeRegimeTaggingArgv(argv: readonly string[]): string[] {
   return normalizeNpmScriptArgv(argv, REGIME_TAGGING_ARGV_SCHEMA);
+}
+
+export function normalizeHypothesisCandidatesArgv(argv: readonly string[]): string[] {
+  return normalizeNpmScriptArgv(argv, HYPOTHESIS_CANDIDATES_ARGV_SCHEMA);
 }
 
 export function normalizeLeaderboardStrategiesArgv(argv: readonly string[]): string[] {

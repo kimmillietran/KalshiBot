@@ -1,0 +1,431 @@
+import { stableStringify } from "@/lib/trading/config/hashConfig";
+
+import type { MispricingAtlasBucketSummary } from "@/lib/data/research/mispricingAtlas/mispricingAtlasTypes";
+import type { LeadLagLagMetrics } from "@/lib/data/research/leadLag/leadLagTypes";
+
+import {
+  DEFAULT_HYPOTHESIS_MIN_SAMPLE_SIZE,
+  DEFAULT_MIN_CALIBRATION_ERROR,
+  DEFAULT_MIN_LEAD_LAG_CORRELATION,
+} from "./hypothesisCandidateTypes";
+import type {
+  BuildHypothesisCandidatesInput,
+  HypothesisCandidate,
+  HypothesisCandidateConfig,
+  HypothesisCandidatesReport,
+  HypothesisCandidatesSummary,
+  HypothesisConfidence,
+  ParsedHypothesisCandidateInputs,
+} from "./hypothesisCandidateTypes";
+
+type AtlasBucketGroup = {
+  groupId: "volatility" | "timeRemaining" | "moneyness" | "probability";
+  buckets: readonly MispricingAtlasBucketSummary[];
+};
+
+function resolveConfig(
+  partial?: Partial<HypothesisCandidateConfig>,
+): HypothesisCandidateConfig {
+  return {
+    minSampleSize: partial?.minSampleSize ?? DEFAULT_HYPOTHESIS_MIN_SAMPLE_SIZE,
+    minCalibrationError:
+      partial?.minCalibrationError ?? DEFAULT_MIN_CALIBRATION_ERROR,
+    minLeadLagCorrelation:
+      partial?.minLeadLagCorrelation ?? DEFAULT_MIN_LEAD_LAG_CORRELATION,
+  };
+}
+
+function formatPercent(value: number): string {
+  return `${(value * 100).toFixed(1)}%`;
+}
+
+function hasSignificanceSupport(inputs: ParsedHypothesisCandidateInputs): boolean {
+  return (
+    inputs.statisticalSignificance !== null
+    && inputs.statisticalSignificance.strategies.some(
+      (strategy) => strategy.statisticallySignificant,
+    )
+  );
+}
+
+function significanceWarnings(
+  inputs: ParsedHypothesisCandidateInputs,
+): readonly string[] {
+  if (inputs.statisticalSignificance === null) {
+    return [
+      "Statistical significance artifact is missing; confidence is capped and hypothesis remains unvalidated.",
+    ];
+  }
+
+  if (
+    inputs.statisticalSignificance.strategies.every(
+      (strategy) => !strategy.statisticallySignificant,
+    )
+  ) {
+    return [
+      "No strategy in statistical-significance.json met significance thresholds; treat as exploratory only.",
+    ];
+  }
+
+  return [];
+}
+
+function deriveAtlasConfidence(options: {
+  observations: number;
+  calibrationErrorMagnitude: number;
+  minSampleSize: number;
+  significancePresent: boolean;
+}): HypothesisConfidence {
+  if (
+    options.significancePresent
+    && options.observations >= options.minSampleSize * 2
+    && options.calibrationErrorMagnitude >= DEFAULT_MIN_CALIBRATION_ERROR * 2
+  ) {
+    return "high";
+  }
+
+  if (
+    options.observations >= options.minSampleSize
+    && options.calibrationErrorMagnitude >= DEFAULT_MIN_CALIBRATION_ERROR
+  ) {
+    return "medium";
+  }
+
+  return "low";
+}
+
+function deriveLeadLagConfidence(options: {
+  correlation: number;
+  observationCount: number;
+  minSampleSize: number;
+  significancePresent: boolean;
+}): HypothesisConfidence {
+  if (
+    options.significancePresent
+    && options.observationCount >= options.minSampleSize * 2
+    && options.correlation >= DEFAULT_MIN_LEAD_LAG_CORRELATION * 2
+  ) {
+    return "high";
+  }
+
+  if (
+    options.observationCount >= options.minSampleSize
+    && options.correlation >= DEFAULT_MIN_LEAD_LAG_CORRELATION
+  ) {
+    return "medium";
+  }
+
+  return "low";
+}
+
+function buildAtlasCandidate(options: {
+  groupId: AtlasBucketGroup["groupId"];
+  bucket: MispricingAtlasBucketSummary;
+  config: HypothesisCandidateConfig;
+  significanceWarnings: readonly string[];
+  significancePresent: boolean;
+  regimeContext: string | null;
+}): HypothesisCandidate | null {
+  const { bucket, config } = options;
+
+  if (bucket.observations < config.minSampleSize) {
+    return null;
+  }
+
+  if (bucket.calibrationError === null) {
+    return null;
+  }
+
+  const calibrationErrorMagnitude = Math.abs(bucket.calibrationError);
+  if (calibrationErrorMagnitude < config.minCalibrationError) {
+    return null;
+  }
+
+  const overconfident = bucket.calibrationError > 0;
+  const fadeSide = overconfident ? "NO" : "YES";
+  const strategyFamily = overconfident ? "calibration-no-fade" : "calibration-yes-fade";
+  const marketCondition = options.regimeContext
+    ? `${bucket.bucketLabel} (${options.regimeContext})`
+    : bucket.bucketLabel;
+
+  const hypothesis = overconfident
+    ? `${marketCondition} appears overconfident; test ${fadeSide} fade against implied probability.`
+    : `${marketCondition} appears underconfident; test ${fadeSide} fade against implied probability.`;
+
+  const warnings = [...options.significanceWarnings];
+  if (bucket.observations < config.minSampleSize * 2) {
+    warnings.push(
+      `Atlas cell sample size (${bucket.observations}) is above the minimum but still modest; widen replay coverage before trading.`,
+    );
+  }
+
+  return {
+    candidateId: `atlas-${options.groupId}-${bucket.bucketId}-${overconfident ? "over" : "under"}`,
+    sourceArtifact: "mispricing-atlas.json",
+    hypothesis,
+    rationale: `Observed calibration error of ${formatPercent(bucket.calibrationError)} across ${bucket.observations} observations (implied ${formatPercent(bucket.averageImpliedProbability ?? 0)}, realized ${formatPercent(bucket.realizedFrequency ?? 0)}).`,
+    marketCondition,
+    suggestedStrategyFamily: strategyFamily,
+    requiredData: [
+      "Kalshi implied probability (bid/ask midpoint)",
+      "Settlement outcome",
+      "Replay context for bucket dimensions (time remaining, moneyness, volatility)",
+    ],
+    proposedEntryCondition: overconfident
+      ? `Enter ${fadeSide} when replay step maps to ${bucket.bucketLabel} and implied probability exceeds realized frequency by at least ${formatPercent(config.minCalibrationError)}.`
+      : `Enter ${fadeSide} when replay step maps to ${bucket.bucketLabel} and implied probability trails realized frequency by at least ${formatPercent(config.minCalibrationError)}.`,
+    proposedExitSettlementAssumption:
+      "Hold through settlement unless a research-only stop is defined; evaluate PnL at market resolution.",
+    expectedFailureMode:
+      "Calibration gap is descriptive only and may be noise, regime-specific, or already arbitraged away in live markets.",
+    killCriterion: `Stop pursuing if out-of-sample calibration error for ${bucket.bucketLabel} falls below ${formatPercent(config.minCalibrationError / 2)} across the next ${config.minSampleSize} qualifying observations.`,
+    confidence: deriveAtlasConfidence({
+      observations: bucket.observations,
+      calibrationErrorMagnitude,
+      minSampleSize: config.minSampleSize,
+      significancePresent: options.significancePresent,
+    }),
+    warnings,
+  };
+}
+
+function collectAtlasBucketGroups(
+  atlas: NonNullable<ParsedHypothesisCandidateInputs["mispricingAtlas"]>,
+): AtlasBucketGroup[] {
+  return [
+    { groupId: "volatility", buckets: atlas.volatilityBuckets },
+    { groupId: "timeRemaining", buckets: atlas.timeRemainingBuckets },
+    { groupId: "moneyness", buckets: atlas.moneynessBuckets },
+    { groupId: "probability", buckets: atlas.probabilityBuckets },
+  ];
+}
+
+function buildAtlasCandidates(
+  inputs: ParsedHypothesisCandidateInputs,
+  config: HypothesisCandidateConfig,
+): HypothesisCandidate[] {
+  if (inputs.mispricingAtlas === null) {
+    return [];
+  }
+
+  const significanceWarningList = significanceWarnings(inputs);
+  const significancePresent = hasSignificanceSupport(inputs);
+  const highVolRegime = inputs.regimeTags?.regimes.find((regime) =>
+    regime.tags.some((tag) => /high[\s-]?vol/i.test(tag)),
+  );
+  const regimeContext = highVolRegime?.label ?? null;
+
+  const candidates: HypothesisCandidate[] = [];
+
+  for (const group of collectAtlasBucketGroups(inputs.mispricingAtlas)) {
+    for (const bucket of group.buckets) {
+      const candidate = buildAtlasCandidate({
+        groupId: group.groupId,
+        bucket,
+        config,
+        significanceWarnings: significanceWarningList,
+        significancePresent,
+        regimeContext:
+          group.groupId === "volatility" && bucket.bucketId === "vol-high"
+            ? regimeContext
+            : null,
+      });
+
+      if (candidate) {
+        candidates.push(candidate);
+      }
+    }
+  }
+
+  return candidates;
+}
+
+function selectLeadLagSignal(
+  metrics: readonly LeadLagLagMetrics[],
+  config: HypothesisCandidateConfig,
+): LeadLagLagMetrics | null {
+  const qualifying = metrics
+    .filter(
+      (metric) =>
+        metric.direction === "btc-leads-kalshi"
+        && metric.lag >= 1
+        && metric.observationCount >= config.minSampleSize
+        && metric.correlation !== null
+        && Math.abs(metric.correlation) >= config.minLeadLagCorrelation,
+    )
+    .sort((left, right) => {
+      const correlationCompare =
+        Math.abs(right.correlation ?? 0) - Math.abs(left.correlation ?? 0);
+      if (correlationCompare !== 0) {
+        return correlationCompare;
+      }
+
+      return left.lag - right.lag;
+    });
+
+  return qualifying[0] ?? null;
+}
+
+function buildLeadLagCandidate(
+  inputs: ParsedHypothesisCandidateInputs,
+  config: HypothesisCandidateConfig,
+): HypothesisCandidate | null {
+  if (inputs.leadLagAnalysis === null) {
+    return null;
+  }
+
+  const signal = selectLeadLagSignal(
+    inputs.leadLagAnalysis.aggregateLagMetrics,
+    config,
+  );
+  if (!signal || signal.correlation === null) {
+    return null;
+  }
+
+  const significanceWarningList = significanceWarnings(inputs);
+  const significancePresent = hasSignificanceSupport(inputs);
+  const highVolRegime = inputs.regimeTags?.regimes.find((regime) =>
+    regime.tags.some((tag) => /high[\s-]?vol/i.test(tag)),
+  );
+  const marketCondition = highVolRegime
+    ? `BTC return leads Kalshi probability by ${signal.lag} candle(s) in ${highVolRegime.label}`
+    : `BTC return leads Kalshi probability by ${signal.lag} candle(s)`;
+
+  const warnings = [...significanceWarningList];
+  if (signal.observationCount < config.minSampleSize * 2) {
+    warnings.push(
+      `Lead-lag alignment count (${signal.observationCount}) is modest; confirm with additional markets before testing.`,
+    );
+  }
+
+  return {
+    candidateId: `lead-lag-aggregate-lag-${signal.lag}`,
+    sourceArtifact: "lead-lag-analysis.json",
+    hypothesis: `${marketCondition}; test delayed reaction strategy.`,
+    rationale: `Aggregate lag ${signal.lag} shows ${signal.direction} with correlation ${signal.correlation.toFixed(3)} across ${signal.observationCount} aligned candle pairs.`,
+    marketCondition,
+    suggestedStrategyFamily: "delayed-reaction",
+    requiredData: [
+      "Coinbase BTC spot or replay BTC price series",
+      "Kalshi implied probability time series",
+      "Aligned candle timestamps",
+    ],
+    proposedEntryCondition: `After BTC move at candle t, enter when Kalshi implied probability at t+${signal.lag} has not yet reflected the move (directional threshold to be set in research replay).`,
+    proposedExitSettlementAssumption:
+      "Exit after probability catches up or at a fixed horizon of one candle past the lag window; compare settlement PnL separately.",
+    expectedFailureMode:
+      "Lead-lag may be a replay artifact, disappear after fees, or invert when liquidity is stressed.",
+    killCriterion: `Discard if rolling correlation at lag ${signal.lag} drops below ${(config.minLeadLagCorrelation / 2).toFixed(2)} on the next ${config.minSampleSize} aligned candles.`,
+    confidence: deriveLeadLagConfidence({
+      correlation: Math.abs(signal.correlation),
+      observationCount: signal.observationCount,
+      minSampleSize: config.minSampleSize,
+      significancePresent,
+    }),
+    warnings,
+  };
+}
+
+function sortCandidates(
+  candidates: readonly HypothesisCandidate[],
+): HypothesisCandidate[] {
+  return [...candidates].sort((left, right) =>
+    left.candidateId.localeCompare(right.candidateId),
+  );
+}
+
+function buildSummary(
+  candidates: readonly HypothesisCandidate[],
+  inputs: ParsedHypothesisCandidateInputs,
+  config: HypothesisCandidateConfig,
+): HypothesisCandidatesSummary {
+  if (candidates.length > 0) {
+    return {
+      candidateCount: candidates.length,
+      noCandidateReasons: [],
+    };
+  }
+
+  const reasons: string[] = [];
+
+  if (
+    inputs.mispricingAtlas === null
+    && inputs.leadLagAnalysis === null
+  ) {
+    reasons.push("No candidate: missing mispricing-atlas.json and lead-lag-analysis.json inputs.");
+  } else {
+  if (
+    inputs.mispricingAtlas !== null
+    && inputs.mispricingAtlas.sampleCounts.totalObservations < config.minSampleSize
+  ) {
+    reasons.push(
+      `No candidate: insufficient atlas observations (${inputs.mispricingAtlas.sampleCounts.totalObservations} < ${config.minSampleSize}).`,
+    );
+  }
+
+  if (
+    inputs.mispricingAtlas !== null
+    && inputs.mispricingAtlas.sampleCounts.totalObservations >= config.minSampleSize
+  ) {
+    reasons.push(
+      "No candidate: no statistically meaningful mispricing cells above the minimum sample threshold.",
+    );
+  }
+
+  if (inputs.leadLagAnalysis !== null) {
+    const hasLeadLagSignal = selectLeadLagSignal(
+      inputs.leadLagAnalysis.aggregateLagMetrics,
+      config,
+    );
+    if (!hasLeadLagSignal) {
+      reasons.push(
+        "No candidate: lead-lag analysis did not show a BTC-leading signal above correlation and sample thresholds.",
+      );
+    }
+  }
+  }
+
+  if (reasons.length === 0) {
+    reasons.push(
+      "No candidate: insufficient data / no statistically meaningful mispricing.",
+    );
+  }
+
+  return {
+    candidateCount: 0,
+    noCandidateReasons: reasons,
+  };
+}
+
+/** Builds deterministic, conservative strategy hypothesis candidates from research artifacts. */
+export function buildHypothesisCandidates(
+  input: BuildHypothesisCandidatesInput,
+): HypothesisCandidatesReport {
+  const config = resolveConfig(input.config);
+  const atlasCandidates = buildAtlasCandidates(input.inputs, config);
+  const leadLagCandidate = buildLeadLagCandidate(input.inputs, config);
+  const candidates = sortCandidates([
+    ...atlasCandidates,
+    ...(leadLagCandidate ? [leadLagCandidate] : []),
+  ]);
+
+  return {
+    generatedAt: input.generatedAt,
+    outputPath: input.outputPath,
+    config,
+    inputs: input.inputStatus,
+    candidates,
+    summary: buildSummary(candidates, input.inputs, config),
+  };
+}
+
+export function serializeHypothesisCandidatesReport(
+  report: HypothesisCandidatesReport,
+): string {
+  return stableStringify(report);
+}
+
+export {
+  buildAtlasCandidate,
+  selectLeadLagSignal,
+};
