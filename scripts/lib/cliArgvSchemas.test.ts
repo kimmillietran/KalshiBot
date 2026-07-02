@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   normalizeDiscoveryImportConfigsArgv,
+  normalizeEventStudyArgv,
   normalizeResearchInspectArgv,
   normalizeStrategySweepArgv,
 } from "./cliArgvSchemas";
@@ -43,6 +44,13 @@ describe("cliArgvSchemas", () => {
     ).toEqual([
       "--input",
       "data/research-results/noop/KXBTC15M/MARKET/research-output.json",
+    ]);
+  });
+
+  it("normalizes event study argv when npm forwards only the events path", () => {
+    expect(normalizeEventStudyArgv(["data/events/events.json"])).toEqual([
+      "--events",
+      "data/events/events.json",
     ]);
   });
 });

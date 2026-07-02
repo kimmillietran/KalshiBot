@@ -100,8 +100,8 @@ export const REGIME_TAGGING_ARGV_SCHEMA: readonly NpmArgvField[] = [
 ];
 
 export const EVENT_STUDY_ARGV_SCHEMA: readonly NpmArgvField[] = [
-  { flag: "--input-dir" },
   { flag: "--events" },
+  { flag: "--input-dir" },
   { flag: "--output" },
 ];
 
