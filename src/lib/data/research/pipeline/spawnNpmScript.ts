@@ -98,10 +98,12 @@ export function formatPipelineSpawnError(
 export type SpawnNpmScriptDeps = {
   platform?: NodeJS.Platform;
   spawnImpl?: typeof spawn;
+  onStderrChunk?: (chunk: string) => void;
 };
 
 function collectChildOutput(
   child: ChildProcess,
+  onStderrChunk?: (chunk: string) => void,
 ): Promise<{ exitCode: number; stdout: string; stderr: string }> {
   return new Promise((resolve, reject) => {
     let stdout = "";
@@ -111,7 +113,9 @@ function collectChildOutput(
       stdout += chunk.toString();
     });
     child.stderr?.on("data", (chunk: Buffer | string) => {
-      stderr += chunk.toString();
+      const text = chunk.toString();
+      stderr += text;
+      onStderrChunk?.(text);
     });
     child.on("error", reject);
     child.on("close", (code) => {
@@ -135,11 +139,21 @@ export async function spawnNpmScript(
   const spec = resolveNpmSpawnSpec(npmScript, scriptArgs, platform);
   const child = spawnImpl(spec.command, spec.args, spec.options);
 
-  return collectChildOutput(child);
+  return collectChildOutput(child, deps.onStderrChunk);
 }
 
 export function createNpmScriptRunner(
   deps: SpawnNpmScriptDeps = {},
 ): ResearchPipelineRunner {
-  return (npmScript, scriptArgs) => spawnNpmScript(npmScript, scriptArgs, deps);
+  const streamStderr =
+    deps.onStderrChunk
+    ?? ((chunk: string) => {
+      process.stderr.write(chunk);
+    });
+
+  return (npmScript, scriptArgs) =>
+    spawnNpmScript(npmScript, scriptArgs, {
+      ...deps,
+      onStderrChunk: streamStderr,
+    });
 }

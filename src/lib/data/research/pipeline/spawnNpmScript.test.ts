@@ -161,6 +161,32 @@ describe("spawnNpmScript", () => {
     });
   });
 
+  it("streams stderr chunks while still capturing output", async () => {
+    const streamed: string[] = [];
+    const spawnImpl = vi.fn(() =>
+      createMockChild({
+        exitCode: 0,
+        stdout: "ok",
+        stderr: "[Import]\nprogress",
+      }),
+    );
+
+    const result = await spawnNpmScript(
+      "import:batch",
+      [],
+      {
+        platform: "linux",
+        spawnImpl,
+        onStderrChunk: (chunk) => {
+          streamed.push(chunk);
+        },
+      },
+    );
+
+    expect(streamed).toEqual(["[Import]\nprogress"]);
+    expect(result.stderr).toBe("[Import]\nprogress");
+  });
+
   it("rejects when the child process fails to spawn", async () => {
     const spawnImpl = vi.fn(() =>
       createMockChild({

@@ -129,6 +129,7 @@ export type BatchHistoricalImportRunnerDeps = {
   now?: () => Date;
   sleep?: (ms: number) => Promise<void>;
   logProgress?: (message: string) => void;
+  isProgressTty?: boolean;
 };
 
 export type BatchImportJob = {

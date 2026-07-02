@@ -2,6 +2,8 @@ import { posix } from "node:path";
 
 import { parseReplayPricingDiagnosticsFromResearchOutput } from "@/lib/data/research/diagnostics";
 
+import { createStrategySweepProgressReporter } from "@/lib/cli/progress";
+
 import { buildStrategySweepOutputPath } from "./buildStrategySweepOutputPath";
 import { parseStrategySweepSeriesRegistryJson } from "./parseDatasetRegistryJson";
 import { validateSerializedResearchOutputJson } from "@/lib/data/research/runner/validateSerializedResearchOutputJson";
@@ -408,11 +410,25 @@ export async function runStrategySweep(
   );
 
   const runResults: StrategySweepRunResult[] = [];
+  const progressReporter = deps.logProgress
+    ? createStrategySweepProgressReporter({
+        totalJobs: jobs.length,
+        totalMarkets: countUniqueMarkets(registryEntries),
+        strategyIds,
+        startedAtMs: startMs,
+        isTty: deps.isProgressTty ?? false,
+        write: deps.logProgress,
+        now: () => Date.now(),
+      })
+    : null;
 
   await runWithConcurrency(jobs, concurrency, async (job) => {
     const result = await executeJob(job, deps);
     runResults.push(result);
+    progressReporter?.recordJob(result);
   });
+
+  progressReporter?.complete();
 
   runResults.sort(compareRunResults);
 

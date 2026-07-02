@@ -1,3 +1,4 @@
+import { isCliProgressTty } from "@/lib/cli/progress";
 import {
   createNodeStrategySweepFilesystem,
   runStrategySweep,
@@ -92,6 +93,14 @@ export function runStrategySweepCommand(
     const summaryPath = parseSummaryPathFromArgv(normalizedArgv);
     const { deps } = normalizeCommandOptions(options);
     const runnerDeps = deps ?? createProductionDeps();
+    if (runnerDeps.logProgress === undefined) {
+      runnerDeps.logProgress = (message) => {
+        io.writeStderr(message);
+      };
+    }
+    if (runnerDeps.isProgressTty === undefined) {
+      runnerDeps.isProgressTty = isCliProgressTty();
+    }
     const strategyIds = resolveStrategySelectionFromArgv(
       normalizedArgv,
       () => runnerDeps.strategyRegistry.listStrategyIds(),

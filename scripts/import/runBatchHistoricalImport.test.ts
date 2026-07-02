@@ -339,8 +339,9 @@ describe("runBatchHistoricalImportCommand", () => {
     );
 
     expect(exitCode).toBe(0);
-    expect(stderr.join("")).toContain("[import] market=1/1");
-    expect(stdout.join("")).not.toContain("[import]");
+    expect(stderr.join("")).toContain("[Import]");
+    expect(stderr.join("")).toContain("1 / 1");
+    expect(stdout.join("")).not.toContain("[Import]");
     expect(() => JSON.parse(stdout.join(""))).not.toThrow();
   });
 });

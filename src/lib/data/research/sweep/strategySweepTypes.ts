@@ -127,4 +127,6 @@ export type StrategySweepRunnerDeps = {
     strategyConfig: Record<string, unknown>;
   }) => StrategySweepResearchResult;
   now?: () => Date;
+  logProgress?: (message: string) => void;
+  isProgressTty?: boolean;
 };

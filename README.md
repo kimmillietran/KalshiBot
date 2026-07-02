@@ -95,6 +95,8 @@ npm run research:pipeline -- --series KXBTC15M --limit 500 --request-delay-ms 10
 npm run research:pipeline -- --series KXBTC15M --limit 500 --no-adaptive-throttle
 ```
 
+Long-running **batch import** and **strategy sweep** steps stream live progress to stderr (`[Import]` / `[Sweep]` blocks with bar, ETA, and counters). Stdout remains machine-readable JSON summaries.
+
 ### Smoke-test debugging
 
 Runner-format `research-output.json` files double-encode `dataset` and `researchRun`, and fills live under `backtestResult.strategyRun.steps` — not at the top level. Use the inspect CLI instead of ad hoc PowerShell property access:

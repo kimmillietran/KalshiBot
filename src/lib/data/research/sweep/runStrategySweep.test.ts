@@ -326,6 +326,41 @@ describe("runStrategySweep", () => {
     expect(JSON.parse(filesystem.readFile(decisionTracePath)).entries.length).toBeGreaterThan(0);
   });
 
+  it("emits sweep progress to stderr without polluting stdout", async () => {
+    const marketTicker = "KXBTC15M-MARKET-A";
+    const fixturePath = `data/fixtures/KXBTC15M/${marketTicker}/fixture.json`;
+    const registryPath = "data/research-datasets/KXBTC15M/dataset-registry.json";
+    const filesystem = createFilesystem(
+      {
+        [registryPath]: JSON.stringify(
+          buildRegistry([{ marketTicker, fixturePath }]),
+        ),
+      },
+      {
+        [fixturePath]: JSON.stringify(createFixtureDocument(marketTicker)),
+      },
+    );
+    const progress: string[] = [];
+
+    await runStrategySweep(
+      {
+        registryDir: "data/research-datasets",
+        outputDir: "data/research-results",
+        strategyIds: ["noop"],
+      },
+      {
+        ...createDeps(filesystem),
+        logProgress: (message) => {
+          progress.push(message);
+        },
+        isProgressTty: false,
+      },
+    );
+
+    expect(progress.join("")).toContain("[Sweep]");
+    expect(progress.join("")).toContain("Research jobs completed:");
+  });
+
   it("does not write research-output.json when research output is undefined", async () => {
     const marketTicker = "KXBTC15M-MARKET-A";
     const fixturePath = `data/fixtures/KXBTC15M/${marketTicker}/fixture.json`;

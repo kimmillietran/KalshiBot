@@ -21,6 +21,7 @@ export type BatchImportCommandDeps = {
   now?: () => Date;
   sleep?: (ms: number) => Promise<void>;
   logProgress?: (message: string) => void;
+  isProgressTty?: boolean;
 };
 
 export type RunBatchHistoricalImportCommandOptions = {

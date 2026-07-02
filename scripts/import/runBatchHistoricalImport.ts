@@ -1,3 +1,4 @@
+import { isCliProgressTty } from "@/lib/cli/progress";
 import {
   createNodeBatchImportFilesystem,
   runBatchHistoricalImport,
@@ -78,6 +79,9 @@ export function runBatchHistoricalImportCommand(
       runnerDeps.logProgress = (message) => {
         io.writeStderr(message);
       };
+    }
+    if (runnerDeps.isProgressTty === undefined) {
+      runnerDeps.isProgressTty = isCliProgressTty();
     }
 
     return runBatchHistoricalImport(

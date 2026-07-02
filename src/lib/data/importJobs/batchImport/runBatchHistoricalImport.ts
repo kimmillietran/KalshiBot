@@ -15,9 +15,9 @@ import type { HistoricalBronzeImportJobResult } from "@/lib/data/importJobs/hist
 import { buildBatchImportOutputPath } from "./buildBatchImportOutputPath";
 import {
   AdaptiveThrottleController,
-  formatBatchImportProgressLine,
   parseBatchImportAdaptiveThrottleOptions,
 } from "./batchImportAdaptiveThrottle";
+import { createBatchImportProgressReporter } from "@/lib/cli/progress";
 import {
   parseBatchImportRateLimitOptions,
   runImportWithRateLimitRetry,
@@ -396,7 +396,15 @@ export async function runBatchHistoricalImport(
   const jobs = buildJobs(input, deps);
 
   const marketResults: BatchImportMarketResult[] = [];
-  let completedMarkets = 0;
+  const progressReporter = deps.logProgress
+    ? createBatchImportProgressReporter({
+        totalMarkets: jobs.length,
+        startedAtMs: startMs,
+        isTty: deps.isProgressTty ?? false,
+        write: deps.logProgress,
+        now: () => Date.now(),
+      })
+    : null;
 
   await runWithConcurrency(jobs, concurrency, async (job) => {
     const requestDelayMs = adaptiveThrottle.enabled
@@ -404,21 +412,11 @@ export async function runBatchHistoricalImport(
       : rateLimit.requestDelayMs;
     const result = await executeJob(job, deps, rateLimit, throttle, requestDelayMs);
     marketResults.push(result);
-    completedMarkets += 1;
 
-    const progressStatus =
-      result.rateLimited
-        ? "rate-limited"
-        : result.status;
-    deps.logProgress?.(
-      `${formatBatchImportProgressLine({
-        marketIndex: completedMarkets,
-        totalMarkets: jobs.length,
-        marketTicker: job.marketTicker,
-        status: progressStatus,
-        delayMs: requestDelayMs,
-        retries: result.retryCount ?? 0,
-      })}\n`,
+    progressReporter?.recordMarket(
+      result,
+      job.marketTicker,
+      adaptiveThrottle.enabled ? throttle.currentDelayMs : rateLimit.requestDelayMs,
     );
 
     const interRequestDelayMs = adaptiveThrottle.enabled
@@ -430,6 +428,8 @@ export async function runBatchHistoricalImport(
       await sleep(interRequestDelayMs);
     }
   });
+
+  progressReporter?.complete();
 
   marketResults.sort(compareMarketResults);
 

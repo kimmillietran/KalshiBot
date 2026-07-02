@@ -538,7 +538,8 @@ describe("runBatchHistoricalImport", () => {
     expect(summary.markets.every((market) => market.requestDelayMs === 100)).toBe(true);
     expect(summary.averageRequestDelayMs).toBe(100);
     expect(sleep).toHaveBeenCalledTimes(3);
-    expect(progress.join("")).toContain("status=success");
+    expect(progress.join("")).toContain("[Import]");
+    expect(progress.join("")).toContain("Success: 3");
     expect(progress.join("")).not.toContain("stdout");
   });
 

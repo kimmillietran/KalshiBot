@@ -24,6 +24,8 @@ export type StrategySweepCommandDeps = {
   ) => import("@/lib/data/fixtures").HistoricalResearchCliInputDocument;
   runResearch: import("@/lib/data/research/sweep").StrategySweepRunnerDeps["runResearch"];
   now?: () => Date;
+  logProgress?: (message: string) => void;
+  isProgressTty?: boolean;
 };
 
 export type RunStrategySweepCommandOptions = {
