@@ -49,10 +49,18 @@ export type ResearchPipelineConfig = {
   limit: number;
   concurrency: number;
   continueOnError: boolean;
+  strictDependencies: boolean;
   discoveryOutputPath: string;
   summaryOutputPath: string;
   rankBy: "totalPnL" | "sharpe" | "winRate";
   importThrottle: ResearchPipelineImportThrottleConfig;
+};
+
+export type ResearchPipelineStepDependencyFields = {
+  dependencyStatus: "passed" | "warning" | "failed";
+  missingDependencies: readonly string[];
+  staleDependencies: readonly string[];
+  warnings: readonly string[];
 };
 
 export type ResearchPipelineStepResult = {
@@ -66,7 +74,7 @@ export type ResearchPipelineStepResult = {
   errorMessage?: string;
   stdoutTail?: string;
   stderrTail?: string;
-};
+} & ResearchPipelineStepDependencyFields;
 
 export type ResearchPipelineSummary = {
   generatedAt: string;
@@ -92,6 +100,7 @@ export type RunResearchPipelineInput = {
   generatedAt: string;
   runner: ResearchPipelineRunner;
   log?: (message: string) => void;
+  dependencyIo?: import("@/lib/data/research/dependencyValidation").ResearchDependencyIo;
 };
 
 export type RunResearchPipelineOutput = {

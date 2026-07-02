@@ -15,6 +15,7 @@ import type {
   ResearchPipelineConfig,
   ResearchPipelineRunner,
 } from "./researchPipelineTypes";
+import type { ResearchDependencyIo } from "@/lib/data/research/dependencyValidation";
 
 const GENERATED_AT = "2026-07-02T14:00:00.000Z";
 
@@ -26,6 +27,7 @@ function createConfig(
     limit: 500,
     concurrency: 1,
     continueOnError: false,
+    strictDependencies: false,
     discoveryOutputPath: "discovery-result.json",
     summaryOutputPath: "data/research-results/pipeline-summary.json",
     rankBy: "totalPnL",
@@ -149,11 +151,10 @@ describe("parseResearchPipelineConfigFromArgv", () => {
     });
   });
 
-  it("uses fixed delay when --no-adaptive-throttle is provided", () => {
-    const config = parseResearchPipelineConfigFromArgv(["--no-adaptive-throttle"]);
+  it("parses strict-dependencies", () => {
+    const config = parseResearchPipelineConfigFromArgv(["--strict-dependencies"]);
 
-    expect(config.importThrottle.adaptiveThrottleEnabled).toBe(false);
-    expect(config.importThrottle.fixedRequestDelayMs).toBe(1000);
+    expect(config.strictDependencies).toBe(true);
   });
 });
 
@@ -275,5 +276,59 @@ describe("runResearchPipeline", () => {
     expect(summary.steps[0]?.errorMessage).toBe(
       formatPipelineSpawnError(spawnError, summary.steps[0]!.command),
     );
+  });
+
+  it("fails a step before running npm when required dependencies are missing", async () => {
+    const runner: ResearchPipelineRunner = async () => ({
+      exitCode: 0,
+      stdout: "",
+      stderr: "",
+    });
+    const dependencyIo: ResearchDependencyIo = {
+      fileExists: () => false,
+      isDirectory: () => false,
+      getModifiedTimeMs: () => null,
+      countFilesNamedUnder: () => 0,
+    };
+
+    const { summary, exitCode } = await runResearchPipeline({
+      config: createConfig(),
+      generatedAt: GENERATED_AT,
+      runner,
+      dependencyIo,
+    });
+
+    expect(exitCode).toBe(1);
+    expect(summary.steps[1]?.status).toBe("failed");
+    expect(summary.steps[1]?.dependencyStatus).toBe("failed");
+    expect(summary.steps[1]?.missingDependencies.length).toBeGreaterThan(0);
+    expect(summary.steps[1]?.exitCode).toBeNull();
+  });
+
+  it("includes dependency validation fields in serialized summaries", async () => {
+    const dependencyIo: ResearchDependencyIo = {
+      fileExists: () => true,
+      isDirectory: () => true,
+      getModifiedTimeMs: () => 100,
+      countFilesNamedUnder: () => 1,
+    };
+
+    const { summary } = await runResearchPipeline({
+      config: createConfig(),
+      generatedAt: GENERATED_AT,
+      runner: async () => ({ exitCode: 0, stdout: "", stderr: "" }),
+      dependencyIo,
+    });
+
+    const serialized = serializeResearchPipelineSummary({
+      ...summary,
+      steps: summary.steps.map((step) => ({ ...step, durationMs: 0 })),
+    });
+
+    const parsed = JSON.parse(serialized);
+    expect(parsed.steps[0].dependencyStatus).toBe("passed");
+    expect(parsed.steps[0].missingDependencies).toEqual([]);
+    expect(parsed.steps[0].staleDependencies).toEqual([]);
+    expect(parsed.steps[0].warnings).toEqual([]);
   });
 });

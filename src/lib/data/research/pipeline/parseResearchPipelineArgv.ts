@@ -80,6 +80,7 @@ export function parseResearchPipelineConfigFromArgv(
     limit,
     concurrency,
     continueOnError: argv.includes("--continue-on-error"),
+    strictDependencies: argv.includes("--strict-dependencies"),
     discoveryOutputPath:
       parseFlagValue(argv, "--discovery-output") ?? DEFAULT_DISCOVERY_OUTPUT_PATH,
     summaryOutputPath:

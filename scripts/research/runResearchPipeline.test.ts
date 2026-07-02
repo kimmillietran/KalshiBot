@@ -22,6 +22,12 @@ describe("runResearchPipelineCommand", () => {
           writes.set(path, data);
         },
         mkdirSync: () => {},
+        dependencyIo: {
+          fileExists: () => true,
+          isDirectory: () => true,
+          getModifiedTimeMs: () => 100,
+          countFilesNamedUnder: () => 1,
+        },
         runner: async (npmScript) => {
           calls.push(npmScript);
           return { exitCode: 0, stdout: "", stderr: "" };

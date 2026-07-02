@@ -1,6 +1,7 @@
 import {
   ResearchPipelineError,
 } from "@/lib/data/research/pipeline";
+import type { ResearchDependencyIo } from "@/lib/data/research/dependencyValidation";
 
 export class ResearchPipelineCommandError extends Error {
   constructor(message: string) {
@@ -18,6 +19,7 @@ export type ResearchPipelineCommandIo = {
     npmScript: string,
     args: readonly string[],
   ) => Promise<{ exitCode: number; stdout: string; stderr: string }>;
+  dependencyIo?: ResearchDependencyIo;
 };
 
 export function formatStdoutOutput(serialized: string): string {

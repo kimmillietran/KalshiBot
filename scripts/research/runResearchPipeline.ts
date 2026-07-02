@@ -7,6 +7,7 @@ import {
   runResearchPipeline,
   serializeResearchPipelineSummary,
 } from "@/lib/data/research/pipeline";
+import { createNodeResearchDependencyIo } from "@/lib/data/research/dependencyValidation";
 
 import { normalizeResearchPipelineArgv } from "../lib/cliArgvSchemas";
 
@@ -32,6 +33,7 @@ export function runResearchPipelineCommand(
         config,
         generatedAt,
         runner,
+        dependencyIo: io.dependencyIo ?? createNodeResearchDependencyIo(),
         log: (message) => {
           io.writeStdout(`${message}\n`);
         },
