@@ -74,6 +74,20 @@ npm run discover:markets -- \
 
 Default output: `discovery-result.json` (override with `--output`). Progress logs stream to stderr (`[discover] ...`); stdout remains JSON summary.
 
+### Smoke-test debugging
+
+Runner-format `research-output.json` files double-encode `dataset` and `researchRun`, and fills live under `backtestResult.strategyRun.steps` — not at the top level. Use the inspect CLI instead of ad hoc PowerShell property access:
+
+```bash
+# Single run
+npm run research:inspect -- --input data/research-results/buy-first-ask/KXBTC15M/KXBTC15M-26APR301900-00/research-output.json
+
+# Scan a strategy folder
+npm run research:inspect -- --input-dir data/research-results --strategy buy-first-ask --limit 5
+```
+
+Stdout is compact JSON with `strategyId`, PnL, fill/rejection counts, replay step count, diagnostics warnings, and `decisionTracePath` when available.
+
 ## Project structure
 
 ```

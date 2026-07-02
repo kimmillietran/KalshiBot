@@ -79,6 +79,21 @@ export type {
 } from "./diagnostics";
 
 export {
+  discoverResearchOutputPaths,
+  inspectResearchOutputDocument,
+  serializeResearchOutputInspectionSummaries,
+  serializeResearchOutputInspectionSummary,
+  ResearchOutputInspectionError,
+  ResearchOutputInspectionErrorCode,
+} from "./inspect";
+export type {
+  ResearchOutputFillPreview,
+  ResearchOutputInspectionFormat,
+  ResearchOutputInspectionSummary,
+  ResearchOutputRejectedIntentPreview,
+} from "./inspect";
+
+export {
   runHistoricalResearchFromBronze,
   serializeHistoricalResearchRunnerResult,
   HistoricalResearchRunnerError,

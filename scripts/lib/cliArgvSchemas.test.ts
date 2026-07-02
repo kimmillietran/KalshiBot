@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   normalizeDiscoveryImportConfigsArgv,
+  normalizeResearchInspectArgv,
   normalizeStrategySweepArgv,
 } from "./cliArgvSchemas";
 
@@ -32,5 +33,16 @@ describe("cliArgvSchemas", () => {
     vi.stubEnv("npm_config_all", "true");
 
     expect(normalizeStrategySweepArgv([])).toEqual(["--all"]);
+  });
+
+  it("normalizes research inspect equals-style argv", () => {
+    expect(
+      normalizeResearchInspectArgv([
+        "--input=data/research-results/noop/KXBTC15M/MARKET/research-output.json",
+      ]),
+    ).toEqual([
+      "--input",
+      "data/research-results/noop/KXBTC15M/MARKET/research-output.json",
+    ]);
   });
 });
