@@ -118,6 +118,7 @@ docs/
 | 6.25D | Kalshi fee schedule execution cost model (`zero`, `per-contract-fee`, `kalshi-fee-schedule` via `costModelConfig`) — **complete** |
 | 6.26A | Diffusion fair value strategy (`fair-value-diffusion`, realized vol + edge threshold) — **complete** |
 | 6.26B | Probability calibration reports (`research:calibration`, Brier/log-loss/ECE/reliability) — **complete** |
+| 6.27A | Walk-forward validation engine (`research:walk-forward`, rolling train/validation folds) — **complete** |
 
 ## Intentionally deferred
 
