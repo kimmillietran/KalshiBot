@@ -352,7 +352,7 @@ async function executeJob(
       runId: job.fixture.runId,
       durationMs: Date.now() - startedMs,
       pricingDiagnostics:
-        parseReplayPricingDiagnosticsFromResearchOutput(serialized) ?? undefined,
+        parseReplayPricingDiagnosticsFromResearchOutput(validation.json) ?? undefined,
     });
   } catch (error) {
     return toRunResult(job, {
