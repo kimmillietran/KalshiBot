@@ -116,6 +116,7 @@ docs/
 | 6.25A | Execution cost model foundation (fees, gross/net PnL metrics, optional `costModelConfig`) — **complete** |
 | 6.25C | Historical bid/ask preservation audit (trade-close-only API; `missing-bid-ask` flag on live imports) — **complete** |
 | 6.25D | Kalshi fee schedule execution cost model (`zero`, `per-contract-fee`, `kalshi-fee-schedule` via `costModelConfig`) — **complete** |
+| 6.26A | Diffusion fair value strategy (`fair-value-diffusion`, realized vol + edge threshold) — **complete** |
 
 ## Intentionally deferred
 

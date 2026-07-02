@@ -7,6 +7,7 @@ Deterministic research baselines built on the strategy plugin interface. These s
 | `noop` | Control strategy that never trades |
 | `buy-first-ask` | Always buys YES at the ask when pricing exists |
 | `buy-below-probability` | Buys YES when yes mid is below a threshold |
+| `fair-value-diffusion` | Diffusion fair-value model; trades when model edge exceeds threshold |
 | `simple-momentum` | Buys YES on positive BTC candle momentum |
 | `simple-mean-reversion` | Buys YES when yes mid dips below its rolling mean |
 
@@ -42,6 +43,21 @@ Deterministic research baselines built on the strategy plugin interface. These s
 | `quantity` | positive integer | `1` | Contracts per intent |
 
 **Use:** Baseline for low-implied-probability entries. Not a calibrated edge model.
+
+## fair-value-diffusion
+
+**What it does:** Estimates fair settlement probability using a geometric diffusion model (spot, strike, time remaining, realized BTC volatility) and compares it to Kalshi yes mid. Buys YES when fair probability exceeds implied mid by at least `minimumEdgeThresholdCents`; buys NO when implied mid exceeds fair probability by the same margin.
+
+**Config fields:**
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `volatilityLookbackBars` | integer ≥ 2 | `10` | BTC candle window for realized volatility |
+| `minimumEdgeThresholdCents` | number ≥ 0 | `5` | Minimum fair-vs-implied edge in cents |
+| `minimumTimeRemainingMs` | number ≥ 0 | `60000` | Minimum ms before close to allow entries |
+| `maxPositionSize` | positive integer | `1` | Contracts per intent |
+
+**Use:** Flagship quantitative research strategy for fair-value edge detection. Deterministic; requires strike, BTC price, candle history, and pricing on each step.
 
 ## simple-momentum
 

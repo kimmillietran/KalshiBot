@@ -14,6 +14,13 @@ export function readYesMidCents(
   return yesMidCents === null || yesMidCents === undefined ? null : yesMidCents;
 }
 
+export function readNoAskCents(
+  pricing: { noAskCents: number | null } | null | undefined,
+): number | null {
+  const noAskCents = pricing?.noAskCents;
+  return noAskCents === null || noAskCents === undefined ? null : noAskCents;
+}
+
 export function computeBtcMomentumPct(
   candles: readonly EvaluationCandleSnapshot[],
   lookbackBars: number,

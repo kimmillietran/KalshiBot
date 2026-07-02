@@ -24,6 +24,7 @@ export const BUILTIN_STRATEGY_IDS = [
   "noop",
   "buy-first-ask",
   "buy-below-probability",
+  "fair-value-diffusion",
   "simple-momentum",
   "simple-mean-reversion",
 ] as const;

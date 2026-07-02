@@ -208,6 +208,7 @@ describe("StrategyRegistry", () => {
     expect(registry.listStrategyIds()).toEqual([
       "buy-below-probability",
       "buy-first-ask",
+      "fair-value-diffusion",
       "noop",
       "simple-mean-reversion",
       "simple-momentum",
@@ -215,6 +216,7 @@ describe("StrategyRegistry", () => {
     expect(registry.snapshot().strategyIds).toEqual([
       "buy-below-probability",
       "buy-first-ask",
+      "fair-value-diffusion",
       "noop",
       "simple-mean-reversion",
       "simple-momentum",

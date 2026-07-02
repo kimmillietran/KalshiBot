@@ -15,6 +15,7 @@ export {
   noopStrategyPlugin,
   buyFirstAskStrategyPlugin,
   buyBelowProbabilityStrategyPlugin,
+  fairValueDiffusionStrategyPlugin,
   simpleMomentumStrategyPlugin,
   simpleMeanReversionStrategyPlugin,
 } from "./baselineStrategyPlugins";

@@ -106,6 +106,7 @@ describe("StrategyPluginRegistry", () => {
     expect(registry.listStrategyIds()).toEqual([
       "buy-below-probability",
       "buy-first-ask",
+      "fair-value-diffusion",
       "noop",
       "simple-mean-reversion",
       "simple-momentum",
