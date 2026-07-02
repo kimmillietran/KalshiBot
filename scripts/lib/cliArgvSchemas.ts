@@ -161,6 +161,18 @@ export const RESEARCH_PIPELINE_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--request-delay-ms" },
 ];
 
+export const DATA_HEALTH_ARGV_SCHEMA: readonly NpmArgvField[] = [
+  { flag: "--discovery-result" },
+  { flag: "--imports-dir" },
+  { flag: "--import-configs-dir" },
+  { flag: "--fixtures-dir" },
+  { flag: "--registry-dir" },
+  { flag: "--research-results-dir" },
+  { flag: "--leaderboard" },
+  { flag: "--report-html" },
+  { flag: "--output" },
+];
+
 export const LEADERBOARD_STRATEGIES_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--input-dir" },
   { flag: "--output" },
@@ -322,6 +334,9 @@ export function normalizeOverfittingDiagnosticsArgv(argv: readonly string[]): st
   return normalizeNpmScriptArgv(argv, OVERFITTING_DIAGNOSTICS_ARGV_SCHEMA);
 }
 
+export function normalizeDataHealthArgv(argv: readonly string[]): string[] {
+  return normalizeNpmScriptArgv(argv, DATA_HEALTH_ARGV_SCHEMA);
+}
 
 export function normalizeLeaderboardStrategiesArgv(argv: readonly string[]): string[] {
   return normalizeNpmScriptArgv(argv, LEADERBOARD_STRATEGIES_ARGV_SCHEMA);

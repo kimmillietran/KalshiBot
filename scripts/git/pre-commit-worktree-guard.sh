@@ -22,7 +22,7 @@ branch_allowed() {
   local name="$2"
 
   case "$role" in
-    builder1|builder2)
+    builder1|builder2|builder3|builder4)
       [[ "$name" == feature/* ]]
       ;;
     review)
@@ -52,23 +52,29 @@ case "$pwd_now" in
   *kalshi-builder2*)
     worktree_role="builder2"
     ;;
+  *kalshi-builder3*)
+    worktree_role="builder3"
+    ;;
+  *kalshi-builder4*)
+    worktree_role="builder4"
+    ;;
   *kalshi-review*)
     worktree_role="review"
     ;;
   *KalshiBot*)
-    fail "Feature commits from the primary worktree are blocked. Use kalshi-builder1 or kalshi-builder2."
+    fail "Feature commits from the primary worktree are blocked. Use a builder worktree (kalshi-builder1–4)."
     ;;
   *)
     fail "Commit blocked outside a builder/reviewer worktree.
 Current directory:
    $pwd_now
 
-Use kalshi-builder1, kalshi-builder2, or kalshi-review."
+Use kalshi-builder1, kalshi-builder2, kalshi-builder3, kalshi-builder4, or kalshi-review."
     ;;
 esac
 
 case "$worktree_role" in
-  builder1|builder2)
+  builder1|builder2|builder3|builder4)
     if ! branch_allowed "$worktree_role" "$branch"; then
       fail "Builder worktrees must use feature/* branches (current: $branch)."
     fi

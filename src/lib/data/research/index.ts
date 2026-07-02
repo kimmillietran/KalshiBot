@@ -178,6 +178,28 @@ export type {
 } from "./decisionTraceAttribution";
 
 export {
+  buildDataHealthReport,
+  buildDataHealthReportFromPaths,
+  serializeDataHealthReport,
+  computeRecommendations,
+  computeStageStatuses,
+  scanDataHealthInputs,
+  DEFAULT_DATA_HEALTH_CONFIG,
+  DEFAULT_DATA_HEALTH_OUTPUT_PATH,
+  DATA_HEALTH_FILENAME,
+} from "./dataHealth";
+export type {
+  DataHealthConfig,
+  DataHealthIo,
+  DataHealthRecommendation,
+  DataHealthReport,
+  DataHealthStageStatus,
+  PipelineCoverage,
+  ResearchCoverage,
+  SettlementHealth,
+} from "./dataHealth";
+
+export {
   buildStatisticalSignificanceFromDirectories,
   buildStatisticalSignificanceReport,
   bootstrapMeanConfidenceInterval,
