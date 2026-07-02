@@ -37,6 +37,16 @@ export const DATA_AUDIT_BID_ASK_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--output" },
 ];
 
+export const DEBUG_SETTLEMENT_TRACE_ARGV_SCHEMA: readonly NpmArgvField[] = [
+  { flag: "--ticker" },
+  { flag: "--imports-dir" },
+  { flag: "--import-configs-dir" },
+  { flag: "--fixtures-dir" },
+  { flag: "--registry-dir" },
+  { flag: "--research-results-dir" },
+  { flag: "--output" },
+];
+
 export const DATASETS_BUILD_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--input-dir" },
   { flag: "--output" },
@@ -237,6 +247,10 @@ export function normalizeImportAnalyzeFailuresArgv(argv: readonly string[]): str
 
 export function normalizeDataAuditBidAskArgv(argv: readonly string[]): string[] {
   return normalizeNpmScriptArgv(argv, DATA_AUDIT_BID_ASK_ARGV_SCHEMA);
+}
+
+export function normalizeDebugSettlementTraceArgv(argv: readonly string[]): string[] {
+  return normalizeNpmScriptArgv(argv, DEBUG_SETTLEMENT_TRACE_ARGV_SCHEMA);
 }
 
 export function normalizeDatasetsBuildArgv(argv: readonly string[]): string[] {

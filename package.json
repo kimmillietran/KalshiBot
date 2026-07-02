@@ -35,6 +35,7 @@
     "experiments:register": "tsx scripts/experiments/registerExperiments.ts",
     "leaderboard:strategies": "tsx scripts/leaderboard/runStrategyLeaderboard.ts",
     "data:audit-bid-ask": "tsx scripts/data/auditBidAskFidelity.ts",
+    "debug:settlement": "tsx scripts/debug/traceSettlement.ts",
     "import:historical": "tsx scripts/import/runHistoricalImport.ts",
     "import:batch": "tsx scripts/import/runBatchHistoricalImport.ts",
     "imports:analyze-failures": "tsx scripts/import/analyzeBatchImportFailures.ts",
