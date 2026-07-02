@@ -11,6 +11,7 @@ import {
 } from "./calibrationTypes";
 import { scanCalibrationResearchOutputs } from "./scanCalibrationResearchOutputs";
 import { createRunnerResearchOutputJson } from "./testFixtures";
+import { parseCalibrationResearchDocument } from "./parseCalibrationResearchOutput";
 
 const STRATEGY_ID = "noop";
 const SERIES_TICKER = "KXBTC15M";
@@ -134,6 +135,47 @@ describe("buildProbabilityCalibrationReport", () => {
         }),
       ),
     );
+  });
+
+  it("reads settlement from the final expanded candle-replay snapshot", () => {
+    const snapshots = [
+      {
+        ticker: MARKET_A,
+        marketWindow: { ticker: MARKET_A, seriesTicker: SERIES_TICKER },
+        settlement: null,
+        kalshiCandles: [{ yesBidCents: 40, yesAskCents: 60, ticker: MARKET_A }],
+      },
+      {
+        ticker: MARKET_A,
+        marketWindow: { ticker: MARKET_A, seriesTicker: SERIES_TICKER },
+        settlement: { result: "no", ticker: MARKET_A },
+        kalshiCandles: [
+          { yesBidCents: 40, yesAskCents: 60, ticker: MARKET_A },
+          { yesBidCents: 70, yesAskCents: 80, ticker: MARKET_A },
+        ],
+      },
+    ];
+
+    const outputJson = JSON.stringify({
+      dataset: JSON.stringify({ snapshots }),
+      researchRun: JSON.stringify({
+        config: { strategyId: STRATEGY_ID },
+        backtestResult: JSON.stringify({
+          replayResult: {
+            results: [{ engineOutput: { probability: { probabilityUp: 0.4 } } }],
+          },
+        }),
+      }),
+      metadata: { strategyId: STRATEGY_ID },
+    });
+
+    const parsed = parseCalibrationResearchDocument(
+      outputJson,
+      `data/research-results/${STRATEGY_ID}/${SERIES_TICKER}/${MARKET_A}/research-output.json`,
+    );
+
+    expect(parsed.settlementOutcome).toBe(0);
+    expect(parsed.kalshiImpliedProbabilities).toHaveLength(2);
   });
 
   it("warns on missing settlement and missing strategy probability", () => {

@@ -164,6 +164,142 @@ describe("computeMispricingBucketSummary", () => {
   });
 });
 
+function createExpandedCandleReplayResearchOutputJson(options: {
+  marketTicker?: string;
+  settlementResult?: "yes" | "no" | null;
+  candleCount?: number;
+  steps?: Array<{
+    yesBidCents: number;
+    yesAskCents: number;
+    strikePrice: number;
+    spotPrice: number;
+    timeRemainingMs: number;
+  }>;
+}): string {
+  const marketTicker = options.marketTicker ?? MARKET_A;
+  const candleCount = options.candleCount ?? 3;
+  const settlementResult =
+    options.settlementResult === undefined ? "yes" : options.settlementResult;
+  const steps = options.steps ?? [
+    {
+      yesBidCents: 40,
+      yesAskCents: 60,
+      strikePrice: 60_000,
+      spotPrice: 59_500,
+      timeRemainingMs: 12 * 60_000,
+    },
+  ];
+
+  const snapshots = Array.from({ length: candleCount }, (_, index) => {
+    const isLast = index === candleCount - 1;
+    return {
+      ticker: marketTicker,
+      marketWindow: {
+        ticker: marketTicker,
+        seriesTicker: SERIES_TICKER,
+        strikePriceUsd: steps[0]?.strikePrice ?? 60_000,
+        closeTime: "2026-06-26T23:30:00.000Z",
+      },
+      settlement:
+        isLast && settlementResult !== null
+          ? { result: settlementResult, ticker: marketTicker }
+          : null,
+      kalshiCandles: Array.from({ length: index + 1 }, (_, candleIndex) => ({
+        yesBidCents: 40 + candleIndex * 10,
+        yesAskCents: 60 + candleIndex * 10,
+        closeTime: `2026-06-26T23:${15 + candleIndex}:00.000Z`,
+      })),
+      btcBars: [
+        {
+          closeUsd: 59_500 + index * 100,
+          openUsd: 59_400 + index * 100,
+          highUsd: 59_600 + index * 100,
+          lowUsd: 59_300 + index * 100,
+          closeTime: `2026-06-26T23:${14 + index}:00.000Z`,
+        },
+      ],
+    };
+  });
+
+  const replayResults = steps.map((step, stepIndex) => ({
+    stepIndex,
+    engineInput: {
+      pricing: {
+        yesBidCents: step.yesBidCents,
+        yesAskCents: step.yesAskCents,
+      },
+      market: {
+        strikePrice: step.strikePrice,
+        timeRemainingMs: step.timeRemainingMs,
+      },
+      btc: {
+        price: step.spotPrice,
+        candles: [
+          {
+            timestamp: stepIndex * 60_000,
+            open: step.spotPrice,
+            high: step.spotPrice,
+            low: step.spotPrice,
+            close: step.spotPrice,
+          },
+        ],
+      },
+    },
+  }));
+
+  return JSON.stringify({
+    dataset: JSON.stringify({ snapshots }),
+    researchRun: JSON.stringify({
+      config: { strategyId: STRATEGY_ID },
+      backtestResult: JSON.stringify({
+        replayResult: { results: replayResults },
+      }),
+    }),
+    metadata: { strategyId: STRATEGY_ID },
+  });
+}
+
+describe("extractMispricingObservationsFromResearchOutput settlement recovery", () => {
+  it("reads settlement from the final expanded snapshot", () => {
+    const extracted = extractMispricingObservationsFromResearchOutput(
+      createExpandedCandleReplayResearchOutputJson({
+        settlementResult: "no",
+        candleCount: 5,
+      }),
+      `${INPUT_ROOT}/${STRATEGY_ID}/${SERIES_TICKER}/${MARKET_A}/research-output.json`,
+    );
+
+    expect(extracted.warnings).toHaveLength(0);
+    expect(extracted.observations.length).toBeGreaterThan(0);
+    expect(extracted.observations.every((observation) => observation.observedOutcome === 0)).toBe(
+      true,
+    );
+  });
+});
+
+describe("buildMispricingAtlas settlement recovery", () => {
+  it("builds atlas observations from candle-replay research outputs", () => {
+    const atlas = buildMispricingAtlas({
+      inputRoot: INPUT_ROOT,
+      outputPath: `${INPUT_ROOT}/mispricing-atlas.json`,
+      generatedAt: GENERATED_AT,
+      scanned: [
+        createScanned(
+          MARKET_A,
+          createExpandedCandleReplayResearchOutputJson({
+            settlementResult: "yes",
+            candleCount: 4,
+          }),
+        ),
+      ],
+    });
+
+    expect(atlas.sampleCounts.totalObservations).toBeGreaterThan(0);
+    expect(atlas.coverageDiagnostics?.totalAtlasObservations).toBeGreaterThan(0);
+    expect(atlas.sampleCounts.skippedMissingSettlement).toBe(0);
+  });
+});
+
 describe("buildMispricingAtlas", () => {
   it("builds deterministic bucket ordering and overall calibration", () => {
     const atlas = buildMispricingAtlas({
@@ -321,5 +457,6 @@ describe("buildMispricingAtlas", () => {
     expect(atlas.warnings.some((warning) => warning.code === "missing-settlement")).toBe(
       true,
     );
+    expect(atlas.warnings[0]?.message).toContain("dataset.snapshots[0..0].settlement.result");
   });
 });

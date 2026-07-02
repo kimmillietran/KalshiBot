@@ -3,6 +3,13 @@ import { percentToTarget } from "@/lib/features/targetDistance";
 import type { EvaluationCandleSnapshot } from "@/types/domain/trading";
 
 import {
+  findFirstDatasetSnapshot,
+  findLastDatasetSnapshot,
+  findSettlementInDatasetSnapshots,
+  formatMissingSettlementDiagnostic,
+} from "@/lib/data/research/settlement";
+
+import {
   DEFAULT_MISPRICING_VOLATILITY_LOOKBACK_BARS,
   MispricingAtlasError,
   MispricingAtlasErrorCode,
@@ -41,22 +48,6 @@ function readString(record: Record<string, unknown>, key: string): string | unde
 
 function midProbability(yesBidCents: number, yesAskCents: number): number {
   return (yesBidCents + yesAskCents) / 2 / 100;
-}
-
-function readSettlementOutcome(value: unknown): 0 | 1 | null {
-  if (!isRecord(value)) {
-    return null;
-  }
-
-  if (value.result === "yes") {
-    return 1;
-  }
-
-  if (value.result === "no") {
-    return 0;
-  }
-
-  return null;
 }
 
 function mapCandles(value: unknown): EvaluationCandleSnapshot[] {
@@ -325,17 +316,22 @@ export function extractMispricingObservationsFromResearchOutput(
     );
   }
 
-  const snapshot = dataset.snapshots.find((entry) => isRecord(entry));
-  if (!snapshot || !isRecord(snapshot)) {
+  const contextSnapshot = findFirstDatasetSnapshot(dataset.snapshots);
+  if (!contextSnapshot) {
     throw new MispricingAtlasError(
       "dataset.snapshots must contain at least one snapshot",
       MispricingAtlasErrorCode.INVALID_DOCUMENT,
     );
   }
 
-  const marketWindow = isRecord(snapshot.marketWindow) ? snapshot.marketWindow : null;
+  const fallbackSnapshot =
+    findLastDatasetSnapshot(dataset.snapshots) ?? contextSnapshot;
+
+  const marketWindow = isRecord(contextSnapshot.marketWindow)
+    ? contextSnapshot.marketWindow
+    : null;
   const marketTicker =
-    readString(snapshot, "ticker")
+    readString(contextSnapshot, "ticker")
     ?? pathContext?.marketTicker?.trim()
     ?? (marketWindow ? readString(marketWindow, "ticker") : undefined)
     ?? "";
@@ -359,13 +355,17 @@ export function extractMispricingObservationsFromResearchOutput(
     ?? (isRecord(researchRun.config) ? readString(researchRun.config, "strategyId") : undefined)
     ?? "unknown";
 
-  const settlementOutcome = readSettlementOutcome(snapshot.settlement);
+  const settlementResolution = findSettlementInDatasetSnapshots(dataset.snapshots);
+  const settlementOutcome = settlementResolution.outcome;
   const warnings: MispricingAtlasWarning[] = [];
 
   if (settlementOutcome === null) {
     warnings.push({
       code: "missing-settlement",
-      message: `Missing settlement for market ${marketTicker}`,
+      message: formatMissingSettlementDiagnostic(
+        marketTicker,
+        dataset.snapshots.length,
+      ),
       marketTicker,
     });
 
@@ -393,7 +393,7 @@ export function extractMispricingObservationsFromResearchOutput(
           marketTicker,
           outputPath,
           observedOutcome: settlementOutcome,
-          snapshot,
+          snapshot: fallbackSnapshot,
         });
 
   if (observations.length === 0) {

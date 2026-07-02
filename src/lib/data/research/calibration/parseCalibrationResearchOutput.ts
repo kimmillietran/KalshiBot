@@ -3,6 +3,11 @@ import {
   CalibrationErrorCode,
   type ParsedCalibrationResearchDocument,
 } from "./calibrationTypes";
+import {
+  findFirstDatasetSnapshot,
+  findLastDatasetSnapshot,
+  findSettlementInDatasetSnapshots,
+} from "@/lib/data/research/settlement";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -31,22 +36,6 @@ function readFiniteNumber(record: Record<string, unknown>, key: string): number 
 
 function midProbability(yesBidCents: number, yesAskCents: number): number {
   return (yesBidCents + yesAskCents) / 2 / 100;
-}
-
-function readSettlementOutcome(value: unknown): 0 | 1 | null {
-  if (!isRecord(value)) {
-    return null;
-  }
-
-  if (value.result === "yes") {
-    return 1;
-  }
-
-  if (value.result === "no") {
-    return 0;
-  }
-
-  return null;
 }
 
 function extractKalshiProbabilities(snapshot: Record<string, unknown>): number[] {
@@ -162,8 +151,8 @@ export function parseCalibrationResearchDocument(
     );
   }
 
-  const snapshot = dataset.snapshots[0];
-  if (!isRecord(snapshot)) {
+  const contextSnapshot = findFirstDatasetSnapshot(dataset.snapshots);
+  if (!contextSnapshot) {
     throw new CalibrationError(
       "dataset snapshot must be a plain object",
       CalibrationErrorCode.INVALID_OUTPUT_SCHEMA,
@@ -171,9 +160,14 @@ export function parseCalibrationResearchDocument(
     );
   }
 
-  const marketWindow = isRecord(snapshot.marketWindow) ? snapshot.marketWindow : null;
+  const probabilitySnapshot =
+    findLastDatasetSnapshot(dataset.snapshots) ?? contextSnapshot;
+
+  const marketWindow = isRecord(contextSnapshot.marketWindow)
+    ? contextSnapshot.marketWindow
+    : null;
   const marketTicker =
-    (typeof snapshot.ticker === "string" ? snapshot.ticker.trim() : "")
+    (typeof contextSnapshot.ticker === "string" ? contextSnapshot.ticker.trim() : "")
     || pathContext?.marketTicker?.trim()
     || (marketWindow && typeof marketWindow.ticker === "string"
       ? marketWindow.ticker.trim()
@@ -203,8 +197,8 @@ export function parseCalibrationResearchDocument(
       : "")
     || "unknown";
 
-  const settlementOutcome = readSettlementOutcome(snapshot.settlement);
-  const kalshiImpliedProbabilities = extractKalshiProbabilities(snapshot);
+  const settlementOutcome = findSettlementInDatasetSnapshots(dataset.snapshots).outcome;
+  const kalshiImpliedProbabilities = extractKalshiProbabilities(probabilitySnapshot);
 
   const backtestResult = parseJsonValue(
     researchRun.backtestResult,
