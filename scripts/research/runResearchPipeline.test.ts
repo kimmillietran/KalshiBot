@@ -32,8 +32,9 @@ describe("runResearchPipelineCommand", () => {
 
     expect(exitCode).toBe(0);
     expect(calls[0]).toBe("discover:markets");
+    expect(calls.at(-2)).toBe("research:mispricing-atlas");
     expect(calls.at(-1)).toBe("research:hypotheses");
-    expect(calls).toHaveLength(17);
+    expect(calls).toHaveLength(18);
 
     const serialized = writes.get(OUTPUT_PATH);
     expect(serialized).toBeDefined();
@@ -42,7 +43,7 @@ describe("runResearchPipelineCommand", () => {
     expect(parsed.generatedAt).toBe(GENERATED_AT);
     expect(parsed.config.series).toBe("KXBTC15M");
     expect(parsed.status).toBe("succeeded");
-    expect(parsed.steps).toHaveLength(17);
+    expect(parsed.steps).toHaveLength(18);
     expect(JSON.parse(stdout.trim().split("\n").at(-1)!).outputPath).toBe(
       OUTPUT_PATH,
     );

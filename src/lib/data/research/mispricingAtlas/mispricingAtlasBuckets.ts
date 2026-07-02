@@ -8,6 +8,45 @@ export type NumericBucketDefinition = {
 };
 
 export const PROBABILITY_BUCKET_COUNT = DEFAULT_CALIBRATION_BIN_COUNT;
+export const COARSE_PROBABILITY_ONLY_BIN_COUNT = 5;
+export const COARSE_PROBABILITY_AXIS_BIN_COUNT = 3;
+
+export const COARSE_TIME_REMAINING_AXIS_DEFINITIONS: readonly NumericBucketDefinition[] = [
+  {
+    bucketId: "coarse-time-early",
+    bucketLabel: "< 15 minutes remaining",
+    minInclusive: 0,
+    maxExclusive: 15 * 60 * 1_000,
+  },
+  {
+    bucketId: "coarse-time-late",
+    bucketLabel: ">= 15 minutes remaining",
+    minInclusive: 15 * 60 * 1_000,
+    maxExclusive: null,
+  },
+];
+
+export const COARSE_VOLATILITY_REGIME_DEFINITIONS: readonly {
+  bucketId: string;
+  bucketLabel: string;
+  regimeTag: "low" | "medium" | "high";
+}[] = [
+  {
+    bucketId: "coarse-regime-low",
+    bucketLabel: "low volatility regime",
+    regimeTag: "low",
+  },
+  {
+    bucketId: "coarse-regime-medium",
+    bucketLabel: "medium volatility regime",
+    regimeTag: "medium",
+  },
+  {
+    bucketId: "coarse-regime-high",
+    bucketLabel: "high volatility regime",
+    regimeTag: "high",
+  },
+];
 
 export const TIME_REMAINING_BUCKET_DEFINITIONS: readonly NumericBucketDefinition[] = [
   {
@@ -118,6 +157,22 @@ export function buildProbabilityBucketDefinitions(
   }
 
   return buckets;
+}
+
+export function buildCoarseProbabilityBucketDefinitions(
+  binCount: number = COARSE_PROBABILITY_ONLY_BIN_COUNT,
+): readonly NumericBucketDefinition[] {
+  return buildProbabilityBucketDefinitions(binCount).map((definition) => ({
+    ...definition,
+    bucketId: definition.bucketId.replace(/^prob-/, "coarse-prob-"),
+    bucketLabel: definition.bucketLabel,
+  }));
+}
+
+export function buildCoarseProbabilityAxisDefinitions(
+  binCount: number = COARSE_PROBABILITY_AXIS_BIN_COUNT,
+): readonly NumericBucketDefinition[] {
+  return buildCoarseProbabilityBucketDefinitions(binCount);
 }
 
 export function probabilityFitsBucket(

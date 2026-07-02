@@ -1,7 +1,10 @@
 import { stableStringify } from "@/lib/trading/config/hashConfig";
 
 import type { MispricingAtlasBucketSummary } from "@/lib/data/research/mispricingAtlas/mispricingAtlasTypes";
+import type { MispricingAtlasCoverageDiagnostics } from "@/lib/data/research/mispricingAtlas/mispricingAtlasTypes";
 import type { LeadLagLagMetrics } from "@/lib/data/research/leadLag/leadLagTypes";
+
+import { normalizeMispricingAtlas } from "./normalizeMispricingAtlas";
 
 import {
   DEFAULT_HYPOTHESIS_MIN_SAMPLE_SIZE,
@@ -19,7 +22,14 @@ import type {
 } from "./hypothesisCandidateTypes";
 
 type AtlasBucketGroup = {
-  groupId: "volatility" | "timeRemaining" | "moneyness" | "probability";
+  groupId:
+    | "probabilityOnly"
+    | "probabilityTime"
+    | "probabilityRegime"
+    | "volatility"
+    | "timeRemaining"
+    | "moneyness"
+    | "probability";
   buckets: readonly MispricingAtlasBucketSummary[];
 };
 
@@ -191,13 +201,75 @@ function buildAtlasCandidate(options: {
 
 function collectAtlasBucketGroups(
   atlas: NonNullable<ParsedHypothesisCandidateInputs["mispricingAtlas"]>,
+  minSampleSize: number,
 ): AtlasBucketGroup[] {
+  const normalizedAtlas = normalizeMispricingAtlas(atlas, minSampleSize);
+
   return [
-    { groupId: "volatility", buckets: atlas.volatilityBuckets },
-    { groupId: "timeRemaining", buckets: atlas.timeRemainingBuckets },
-    { groupId: "moneyness", buckets: atlas.moneynessBuckets },
-    { groupId: "probability", buckets: atlas.probabilityBuckets },
+    {
+      groupId: "probabilityOnly",
+      buckets: normalizedAtlas.coarseBuckets.probabilityOnly,
+    },
+    {
+      groupId: "probabilityTime",
+      buckets: normalizedAtlas.coarseBuckets.probabilityTime,
+    },
+    {
+      groupId: "probabilityRegime",
+      buckets: normalizedAtlas.coarseBuckets.probabilityRegime,
+    },
+    { groupId: "probability", buckets: normalizedAtlas.probabilityBuckets },
+    { groupId: "timeRemaining", buckets: normalizedAtlas.timeRemainingBuckets },
+    { groupId: "moneyness", buckets: normalizedAtlas.moneynessBuckets },
+    { groupId: "volatility", buckets: normalizedAtlas.volatilityBuckets },
   ];
+}
+
+function resolveAtlasCoverageDiagnostics(
+  atlas: NonNullable<ParsedHypothesisCandidateInputs["mispricingAtlas"]>,
+  config: HypothesisCandidateConfig,
+): MispricingAtlasCoverageDiagnostics {
+  return normalizeMispricingAtlas(atlas, config.minSampleSize).coverageDiagnostics;
+}
+
+function buildAtlasNoCandidateReasons(
+  atlas: NonNullable<ParsedHypothesisCandidateInputs["mispricingAtlas"]>,
+  config: HypothesisCandidateConfig,
+): string[] {
+  const coverage = resolveAtlasCoverageDiagnostics(atlas, config);
+  const reasons: string[] = [];
+
+  if (coverage.totalAtlasObservations === 0) {
+    if (coverage.skipReasons.missingSettlement > 0) {
+      reasons.push(
+        `No candidate: no settlement outcomes found (${coverage.skipReasons.missingSettlement} markets skipped).`,
+      );
+    }
+
+    reasons.push(
+      `No candidate: insufficient atlas observations (0 < ${config.minSampleSize}).`,
+    );
+
+    return reasons;
+  }
+
+  if (coverage.nonEmptyBuckets === 0) {
+    reasons.push("No candidate: atlas file parsed but no non-empty buckets.");
+    return reasons;
+  }
+
+  if (coverage.largestBucketObservations < config.minSampleSize) {
+    reasons.push(
+      `No candidate: largest bucket has ${coverage.largestBucketObservations} observations, below threshold (${config.minSampleSize}).`,
+    );
+    return reasons;
+  }
+
+  reasons.push(
+    "No candidate: no statistically meaningful mispricing cells above the minimum sample threshold.",
+  );
+
+  return reasons;
 }
 
 function buildAtlasCandidates(
@@ -217,7 +289,7 @@ function buildAtlasCandidates(
 
   const candidates: HypothesisCandidate[] = [];
 
-  for (const group of collectAtlasBucketGroups(inputs.mispricingAtlas)) {
+  for (const group of collectAtlasBucketGroups(inputs.mispricingAtlas, config.minSampleSize)) {
     for (const bucket of group.buckets) {
       const candidate = buildAtlasCandidate({
         groupId: group.groupId,
@@ -339,10 +411,16 @@ function buildSummary(
   inputs: ParsedHypothesisCandidateInputs,
   config: HypothesisCandidateConfig,
 ): HypothesisCandidatesSummary {
+  const atlasCoverageDiagnostics =
+    inputs.mispricingAtlas === null
+      ? null
+      : resolveAtlasCoverageDiagnostics(inputs.mispricingAtlas, config);
+
   if (candidates.length > 0) {
     return {
       candidateCount: candidates.length,
       noCandidateReasons: [],
+      atlasCoverageDiagnostics,
     };
   }
 
@@ -354,35 +432,21 @@ function buildSummary(
   ) {
     reasons.push("No candidate: missing mispricing-atlas.json and lead-lag-analysis.json inputs.");
   } else {
-  if (
-    inputs.mispricingAtlas !== null
-    && inputs.mispricingAtlas.sampleCounts.totalObservations < config.minSampleSize
-  ) {
-    reasons.push(
-      `No candidate: insufficient atlas observations (${inputs.mispricingAtlas.sampleCounts.totalObservations} < ${config.minSampleSize}).`,
-    );
-  }
-
-  if (
-    inputs.mispricingAtlas !== null
-    && inputs.mispricingAtlas.sampleCounts.totalObservations >= config.minSampleSize
-  ) {
-    reasons.push(
-      "No candidate: no statistically meaningful mispricing cells above the minimum sample threshold.",
-    );
-  }
-
-  if (inputs.leadLagAnalysis !== null) {
-    const hasLeadLagSignal = selectLeadLagSignal(
-      inputs.leadLagAnalysis.aggregateLagMetrics,
-      config,
-    );
-    if (!hasLeadLagSignal) {
-      reasons.push(
-        "No candidate: lead-lag analysis did not show a BTC-leading signal above correlation and sample thresholds.",
-      );
+    if (inputs.mispricingAtlas !== null) {
+      reasons.push(...buildAtlasNoCandidateReasons(inputs.mispricingAtlas, config));
     }
-  }
+
+    if (inputs.leadLagAnalysis !== null) {
+      const hasLeadLagSignal = selectLeadLagSignal(
+        inputs.leadLagAnalysis.aggregateLagMetrics,
+        config,
+      );
+      if (!hasLeadLagSignal) {
+        reasons.push(
+          "No candidate: lead-lag analysis did not show a BTC-leading signal above correlation and sample thresholds.",
+        );
+      }
+    }
   }
 
   if (reasons.length === 0) {
@@ -394,6 +458,7 @@ function buildSummary(
   return {
     candidateCount: 0,
     noCandidateReasons: reasons,
+    atlasCoverageDiagnostics,
   };
 }
 

@@ -34,6 +34,34 @@ const mispricingBucketSchema = z.object({
   averageAbsoluteError: z.number().finite().nullable(),
 });
 
+const mispricingAtlasCoverageDiagnosticsSchema = z.object({
+  totalAtlasObservations: z.number().finite().int().nonnegative(),
+  totalBuckets: z.number().finite().int().nonnegative(),
+  nonEmptyBuckets: z.number().finite().int().nonnegative(),
+  bucketsBelowMinSampleThreshold: z.number().finite().int().nonnegative(),
+  minSampleThreshold: z.number().finite().int().positive(),
+  largestBucketObservations: z.number().finite().int().nonnegative(),
+  topBucketsBySampleSize: z.array(
+    z.object({
+      bucketId: z.string().trim().min(1),
+      bucketLabel: z.string().trim().min(1),
+      dimension: z.string().trim().min(1),
+      observations: z.number().finite().int().nonnegative(),
+    }),
+  ),
+  skipReasons: z.object({
+    missingSettlement: z.number().finite().int().nonnegative(),
+    missingProbability: z.number().finite().int().nonnegative(),
+    missingContext: z.number().finite().int().nonnegative(),
+  }),
+});
+
+const mispricingAtlasCoarseBucketsSchema = z.object({
+  probabilityOnly: z.array(mispricingBucketSchema),
+  probabilityTime: z.array(mispricingBucketSchema),
+  probabilityRegime: z.array(mispricingBucketSchema),
+});
+
 const mispricingAtlasSchema = z.object({
   generatedAt: z.string().trim().min(1),
   inputRoot: z.string().trim().min(1),
@@ -50,6 +78,8 @@ const mispricingAtlasSchema = z.object({
   timeRemainingBuckets: z.array(mispricingBucketSchema),
   moneynessBuckets: z.array(mispricingBucketSchema),
   volatilityBuckets: z.array(mispricingBucketSchema),
+  coarseBuckets: mispricingAtlasCoarseBucketsSchema.optional(),
+  coverageDiagnostics: mispricingAtlasCoverageDiagnosticsSchema.optional(),
   warnings: z.array(
     z.object({
       code: z.enum(["missing-settlement", "missing-probability", "missing-context"]),
@@ -271,8 +301,11 @@ function parseJsonDocument<T>(
 
   const result = schema.safeParse(parsed);
   if (!result.success) {
+    const schemaLabel = path.endsWith("mispricing-atlas.json")
+      ? "mispricing-atlas schema mismatch"
+      : "invalid document";
     throw new HypothesisCandidateError(
-      `Invalid document in ${path}: ${result.error.message}`,
+      `${schemaLabel} in ${path}: ${result.error.message}`,
       HypothesisCandidateErrorCode.INVALID_DOCUMENT,
     );
   }

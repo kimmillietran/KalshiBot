@@ -4,10 +4,12 @@ import {
   buildAtlasCandidate,
   buildHypothesisCandidates,
   buildHypothesisCandidateInputStatus,
+  HypothesisCandidateError,
   loadHypothesisCandidateInputs,
   serializeHypothesisCandidatesReport,
   selectLeadLagSignal,
 } from "./index";
+import { createEmptyMispricingAtlasCoarseBuckets } from "./normalizeMispricingAtlas";
 import type {
   HypothesisCandidateInputStatus,
   ParsedHypothesisCandidateInputs,
@@ -62,6 +64,7 @@ function createEmptyMispricingAtlas() {
     timeRemainingBuckets: [],
     moneynessBuckets: [],
     volatilityBuckets: [],
+    coarseBuckets: createEmptyMispricingAtlasCoarseBuckets(),
     warnings: [],
   };
 }
@@ -71,7 +74,7 @@ function createMispricingAtlasWithBucket(options: {
   bucketLabel: string;
   observations: number;
   calibrationError: number;
-  group?: "volatility" | "timeRemaining" | "moneyness";
+  group?: "volatility" | "timeRemaining" | "moneyness" | "probabilityOnly";
 }) {
   const bucket = {
     bucketId: options.bucketId,
@@ -92,6 +95,11 @@ function createMispricingAtlasWithBucket(options: {
     atlas.timeRemainingBuckets = [bucket];
   } else if (options.group === "moneyness") {
     atlas.moneynessBuckets = [bucket];
+  } else if (options.group === "probabilityOnly") {
+    atlas.coarseBuckets = {
+      ...createEmptyMispricingAtlasCoarseBuckets(),
+      probabilityOnly: [bucket],
+    };
   } else {
     atlas.volatilityBuckets = [bucket];
   }
@@ -339,6 +347,160 @@ describe("buildHypothesisCandidates", () => {
       "atlas-volatility-vol-high-over",
       "lead-lag-aggregate-lag-1",
     ]);
+  });
+  it("reports atlas coverage diagnostics in the summary", () => {
+    const report = buildReport({
+      mispricingAtlas: createMispricingAtlasWithBucket({
+        bucketId: "coarse-prob-2",
+        bucketLabel: "[0.4, 0.6)",
+        observations: 50,
+        calibrationError: 0.12,
+        group: "probabilityOnly",
+      }),
+      leadLagAnalysis: null,
+      statisticalSignificance: null,
+      regimeTags: null,
+      strategyLeaderboard: null,
+    });
+
+    expect(report.summary.atlasCoverageDiagnostics?.totalAtlasObservations).toBe(50);
+    expect(report.summary.atlasCoverageDiagnostics?.largestBucketObservations).toBe(50);
+  });
+
+  it("reports sparse bucket diagnostics when cells are below threshold", () => {
+    const atlas = createEmptyMispricingAtlas();
+    atlas.sampleCounts.totalObservations = 45;
+    atlas.sampleCounts.marketCount = 3;
+    atlas.probabilityBuckets = [
+      {
+        bucketId: "prob-0",
+        bucketLabel: "[0.0, 0.1)",
+        observations: 15,
+        averageImpliedProbability: 0.7,
+        realizedFrequency: 0.55,
+        calibrationError: 0.15,
+        brierScore: 0.2,
+        averageAbsoluteError: 0.15,
+      },
+      {
+        bucketId: "prob-1",
+        bucketLabel: "[0.1, 0.2)",
+        observations: 12,
+        averageImpliedProbability: 0.65,
+        realizedFrequency: 0.5,
+        calibrationError: 0.15,
+        brierScore: 0.2,
+        averageAbsoluteError: 0.15,
+      },
+    ];
+
+    const report = buildReport({
+      mispricingAtlas: atlas,
+      leadLagAnalysis: null,
+      statisticalSignificance: null,
+      regimeTags: null,
+      strategyLeaderboard: null,
+    });
+
+    expect(report.candidates).toHaveLength(0);
+    expect(report.summary.noCandidateReasons).toContain(
+      "No candidate: largest bucket has 15 observations, below threshold (30).",
+    );
+    expect(report.summary.atlasCoverageDiagnostics?.bucketsBelowMinSampleThreshold).toBeGreaterThan(
+      0,
+    );
+  });
+
+  it("reports settlement skip reason when atlas has zero observations", () => {
+    const atlas = createEmptyMispricingAtlas();
+    atlas.sampleCounts.skippedMissingSettlement = 12;
+
+    const report = buildReport({
+      mispricingAtlas: atlas,
+      leadLagAnalysis: null,
+      statisticalSignificance: null,
+      regimeTags: null,
+      strategyLeaderboard: null,
+    });
+
+    expect(report.summary.noCandidateReasons).toContain(
+      "No candidate: no settlement outcomes found (12 markets skipped).",
+    );
+  });
+
+  it("creates a candidate from a coarse probability-only bucket", () => {
+    const report = buildReport({
+      mispricingAtlas: createMispricingAtlasWithBucket({
+        bucketId: "coarse-prob-1",
+        bucketLabel: "[0.2, 0.4)",
+        observations: 40,
+        calibrationError: 0.1,
+        group: "probabilityOnly",
+      }),
+      leadLagAnalysis: null,
+      statisticalSignificance: null,
+      regimeTags: null,
+      strategyLeaderboard: null,
+    });
+
+    expect(report.candidates).toHaveLength(1);
+    expect(report.candidates[0]?.candidateId).toBe("atlas-probabilityOnly-coarse-prob-1-over");
+  });
+
+  it("handles empty atlas artifacts gracefully", () => {
+    const report = buildReport({
+      mispricingAtlas: createEmptyMispricingAtlas(),
+      leadLagAnalysis: null,
+      statisticalSignificance: null,
+      regimeTags: null,
+      strategyLeaderboard: null,
+    });
+
+    expect(report.candidates).toEqual([]);
+    expect(report.summary.atlasCoverageDiagnostics?.totalAtlasObservations).toBe(0);
+    expect(report.summary.noCandidateReasons).toContain(
+      "No candidate: insufficient atlas observations (0 < 30).",
+    );
+  });
+});
+
+describe("loadHypothesisCandidateInputs atlas parsing", () => {
+  it("throws a schema mismatch error for invalid mispricing atlas documents", () => {
+    expect(() =>
+      loadHypothesisCandidateInputs(
+        {
+          fileExists: (path) => path.endsWith("mispricing-atlas.json"),
+          readFile: () => JSON.stringify({ generatedAt: "bad" }),
+        },
+        {
+          mispricingAtlasPath: "data/research-results/mispricing-atlas.json",
+          leadLagAnalysisPath: "missing/lead-lag-analysis.json",
+          statisticalSignificancePath: "missing/statistical-significance.json",
+          regimeTagsPath: "missing/regime-tags.json",
+          strategyLeaderboardPath: "missing/strategy-leaderboard.json",
+        },
+      ),
+    ).toThrow(HypothesisCandidateError);
+
+    try {
+      loadHypothesisCandidateInputs(
+        {
+          fileExists: (path) => path.endsWith("mispricing-atlas.json"),
+          readFile: () => JSON.stringify({ generatedAt: "bad" }),
+        },
+        {
+          mispricingAtlasPath: "data/research-results/mispricing-atlas.json",
+          leadLagAnalysisPath: "missing/lead-lag-analysis.json",
+          statisticalSignificancePath: "missing/statistical-significance.json",
+          regimeTagsPath: "missing/regime-tags.json",
+          strategyLeaderboardPath: "missing/strategy-leaderboard.json",
+        },
+      );
+    } catch (error) {
+      expect((error as HypothesisCandidateError).message).toContain(
+        "mispricing-atlas schema mismatch",
+      );
+    }
   });
 });
 

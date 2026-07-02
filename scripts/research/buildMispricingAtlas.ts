@@ -52,6 +52,9 @@ export function runMispricingAtlasCommand(
           totalObservations: atlas.sampleCounts.totalObservations,
           marketCount: atlas.sampleCounts.marketCount,
           warningCount: atlas.warnings.length,
+          nonEmptyBuckets: atlas.coverageDiagnostics?.nonEmptyBuckets ?? 0,
+          largestBucketObservations:
+            atlas.coverageDiagnostics?.largestBucketObservations ?? 0,
         }),
       ),
     );

@@ -2,22 +2,30 @@ import { stableStringify } from "@/lib/trading/config/hashConfig";
 
 import { scanCalibrationResearchOutputs } from "@/lib/data/research/calibration/scanCalibrationResearchOutputs";
 import type { ScannedCalibrationResearchOutput } from "@/lib/data/research/calibration/calibrationTypes";
+import { DEFAULT_REGIME_TAGS_INPUT_PATH } from "@/lib/data/research/hypothesisCandidates/hypothesisCandidateTypes";
 
 import {
+  computeCoarseMispricingBucketSummaries,
   computeMoneynessBucketSummaries,
   computeOverallMispricingCalibration,
   computeProbabilityBucketSummaries,
   computeTimeRemainingBucketSummaries,
   computeVolatilityBucketSummaries,
 } from "./computeMispricingBucketMetrics";
+import {
+  collectMispricingAtlasBucketGroups,
+  computeMispricingAtlasCoverageDiagnostics,
+} from "./computeMispricingAtlasCoverage";
 import { extractMispricingObservationsFromResearchOutput } from "./parseMispricingObservations";
-import type {
-  BuildMispricingAtlasInput,
-  MispricingAtlas,
-  MispricingAtlasIo,
-  MispricingAtlasSampleCounts,
-  MispricingAtlasWarning,
-  MispricingObservation,
+import { loadRegimeVolatilityByMarket } from "./loadRegimeVolatilityByMarket";
+import {
+  DEFAULT_MISPRICING_ATLAS_MIN_SAMPLE_THRESHOLD,
+  type BuildMispricingAtlasInput,
+  type MispricingAtlas,
+  type MispricingAtlasIo,
+  type MispricingAtlasSampleCounts,
+  type MispricingAtlasWarning,
+  type MispricingObservation,
 } from "./mispricingAtlasTypes";
 
 function sortWarnings(
@@ -112,17 +120,41 @@ export function buildMispricingAtlas(
   input: BuildMispricingAtlasInput,
 ): MispricingAtlas {
   const { observations, warnings, marketCount } = collectObservations(input.scanned);
+  const sampleCounts = buildSampleCounts({ observations, marketCount, warnings });
+  const minSampleThreshold =
+    input.minSampleThreshold ?? DEFAULT_MISPRICING_ATLAS_MIN_SAMPLE_THRESHOLD;
+  const probabilityBuckets = computeProbabilityBucketSummaries(observations);
+  const timeRemainingBuckets = computeTimeRemainingBucketSummaries(observations);
+  const moneynessBuckets = computeMoneynessBucketSummaries(observations);
+  const volatilityBuckets = computeVolatilityBucketSummaries(observations);
+  const coarseBuckets = computeCoarseMispricingBucketSummaries(
+    observations,
+    input.regimeVolatilityByMarket,
+  );
+  const coverageDiagnostics = computeMispricingAtlasCoverageDiagnostics({
+    bucketGroups: collectMispricingAtlasBucketGroups({
+      probabilityBuckets,
+      timeRemainingBuckets,
+      moneynessBuckets,
+      volatilityBuckets,
+      coarseBuckets,
+    }),
+    sampleCounts,
+    minSampleThreshold,
+  });
 
   return {
     generatedAt: input.generatedAt,
     inputRoot: input.inputRoot,
     outputPath: input.outputPath,
-    sampleCounts: buildSampleCounts({ observations, marketCount, warnings }),
+    sampleCounts,
     overallCalibration: computeOverallMispricingCalibration(observations),
-    probabilityBuckets: computeProbabilityBucketSummaries(observations),
-    timeRemainingBuckets: computeTimeRemainingBucketSummaries(observations),
-    moneynessBuckets: computeMoneynessBucketSummaries(observations),
-    volatilityBuckets: computeVolatilityBucketSummaries(observations),
+    probabilityBuckets,
+    timeRemainingBuckets,
+    moneynessBuckets,
+    volatilityBuckets,
+    coarseBuckets,
+    coverageDiagnostics,
     warnings,
   };
 }
@@ -131,15 +163,23 @@ export function buildMispricingAtlasFromDirectories(
   inputRoot: string,
   outputPath: string,
   io: MispricingAtlasIo,
-  options: { generatedAt: string },
+  options: {
+    generatedAt: string;
+    regimeTagsPath?: string;
+    minSampleThreshold?: number;
+  },
 ): MispricingAtlas {
   const scanned = scanCalibrationResearchOutputs(inputRoot, io);
+  const regimeTagsPath = options.regimeTagsPath ?? DEFAULT_REGIME_TAGS_INPUT_PATH;
+  const regimeVolatilityByMarket = loadRegimeVolatilityByMarket(io, regimeTagsPath);
 
   return buildMispricingAtlas({
     inputRoot,
     outputPath,
     generatedAt: options.generatedAt,
     scanned,
+    regimeVolatilityByMarket,
+    minSampleThreshold: options.minSampleThreshold,
   });
 }
 

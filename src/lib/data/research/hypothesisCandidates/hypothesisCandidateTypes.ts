@@ -1,5 +1,8 @@
 import type { LeadLagAnalysis } from "@/lib/data/research/leadLag/leadLagTypes";
 import type { MispricingAtlas } from "@/lib/data/research/mispricingAtlas/mispricingAtlasTypes";
+import type {
+  MispricingAtlasCoverageDiagnostics,
+} from "@/lib/data/research/mispricingAtlas/mispricingAtlasTypes";
 import type { StrategyLeaderboard } from "@/lib/data/research/leaderboard/strategyLeaderboardTypes";
 import type { StatisticalSignificanceReport } from "@/lib/data/research/statisticalSignificance/statisticalSignificanceTypes";
 
@@ -92,6 +95,7 @@ export type HypothesisCandidateInputStatus = {
 export type HypothesisCandidatesSummary = {
   candidateCount: number;
   noCandidateReasons: readonly string[];
+  atlasCoverageDiagnostics: MispricingAtlasCoverageDiagnostics | null;
 };
 
 export type HypothesisCandidatesReport = {

@@ -160,6 +160,12 @@ export function buildResearchPipelineSteps(
       args: [],
     },
     {
+      id: "mispricing-atlas",
+      label: "Build mispricing atlas",
+      npmScript: "research:mispricing-atlas",
+      args: [],
+    },
+    {
       id: "hypotheses",
       label: "Generate hypothesis candidates",
       npmScript: "research:hypotheses",

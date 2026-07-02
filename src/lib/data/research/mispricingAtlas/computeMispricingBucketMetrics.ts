@@ -4,7 +4,11 @@ import {
 } from "@/lib/data/research/calibration/computeCalibrationMetrics";
 
 import {
+  buildCoarseProbabilityAxisDefinitions,
+  buildCoarseProbabilityBucketDefinitions,
   buildProbabilityBucketDefinitions,
+  COARSE_TIME_REMAINING_AXIS_DEFINITIONS,
+  COARSE_VOLATILITY_REGIME_DEFINITIONS,
   MONEYNESS_BUCKET_DEFINITIONS,
   probabilityFitsBucket,
   TIME_REMAINING_BUCKET_DEFINITIONS,
@@ -13,7 +17,9 @@ import {
 } from "./mispricingAtlasBuckets";
 import type {
   MispricingAtlasBucketSummary,
+  MispricingAtlasCoarseBuckets,
   MispricingObservation,
+  RegimeVolatilityByMarketKey,
 } from "./mispricingAtlasTypes";
 
 function roundMetric(value: number): number {
@@ -45,7 +51,7 @@ function computeAverageAbsoluteError(
   return roundMetric(total / observations.length);
 }
 
-function computeCalibrationGap(
+function computeSignedCalibrationGap(
   averageImpliedProbability: number | null,
   realizedFrequency: number | null,
 ): number | null {
@@ -53,7 +59,7 @@ function computeCalibrationGap(
     return null;
   }
 
-  return roundMetric(Math.abs(averageImpliedProbability - realizedFrequency));
+  return roundMetric(averageImpliedProbability - realizedFrequency);
 }
 
 export function computeMispricingBucketSummary(
@@ -80,7 +86,7 @@ export function computeMispricingBucketSummary(
         : roundMetric(averageImpliedProbability),
     realizedFrequency:
       realizedFrequency === null ? null : roundMetric(realizedFrequency),
-    calibrationError: computeCalibrationGap(
+    calibrationError: computeSignedCalibrationGap(
       averageImpliedProbability,
       realizedFrequency,
     ),
@@ -187,4 +193,108 @@ export function buildProbabilityReliabilityFromBins(
       }),
     ),
   );
+}
+
+function marketJoinKey(observation: MispricingObservation): string {
+  return `${observation.strategyId}/${observation.seriesTicker}/${observation.marketTicker}`;
+}
+
+export function computeCoarseProbabilityOnlyBucketSummaries(
+  observations: readonly MispricingObservation[],
+): MispricingAtlasBucketSummary[] {
+  const definitions = buildCoarseProbabilityBucketDefinitions();
+
+  return definitions.map((definition) => {
+    const inBucket = observations.filter((observation) =>
+      probabilityFitsBucket(observation.predictedProbability, definition),
+    );
+
+    return computeMispricingBucketSummary(
+      definition.bucketId,
+      definition.bucketLabel,
+      inBucket,
+    );
+  });
+}
+
+export function computeCoarseProbabilityTimeBucketSummaries(
+  observations: readonly MispricingObservation[],
+): MispricingAtlasBucketSummary[] {
+  const probabilityDefinitions = buildCoarseProbabilityAxisDefinitions();
+  const summaries: MispricingAtlasBucketSummary[] = [];
+
+  for (const probabilityDefinition of probabilityDefinitions) {
+    for (const timeDefinition of COARSE_TIME_REMAINING_AXIS_DEFINITIONS) {
+      const inBucket = observations.filter((observation) => {
+        if (observation.timeRemainingMs === null) {
+          return false;
+        }
+
+        return (
+          probabilityFitsBucket(observation.predictedProbability, probabilityDefinition)
+          && valueFitsBucket(observation.timeRemainingMs, timeDefinition)
+        );
+      });
+
+      summaries.push(
+        computeMispricingBucketSummary(
+          `${probabilityDefinition.bucketId}-${timeDefinition.bucketId}`,
+          `${probabilityDefinition.bucketLabel} × ${timeDefinition.bucketLabel}`,
+          inBucket,
+        ),
+      );
+    }
+  }
+
+  return summaries;
+}
+
+export function computeCoarseProbabilityRegimeBucketSummaries(
+  observations: readonly MispricingObservation[],
+  regimeVolatilityByMarket: RegimeVolatilityByMarketKey,
+): MispricingAtlasBucketSummary[] {
+  const probabilityDefinitions = buildCoarseProbabilityAxisDefinitions();
+  const summaries: MispricingAtlasBucketSummary[] = [];
+
+  for (const probabilityDefinition of probabilityDefinitions) {
+    for (const regimeDefinition of COARSE_VOLATILITY_REGIME_DEFINITIONS) {
+      const inBucket = observations.filter((observation) => {
+        const regimeTag = regimeVolatilityByMarket.get(marketJoinKey(observation));
+        if (regimeTag !== regimeDefinition.regimeTag) {
+          return false;
+        }
+
+        return probabilityFitsBucket(
+          observation.predictedProbability,
+          probabilityDefinition,
+        );
+      });
+
+      summaries.push(
+        computeMispricingBucketSummary(
+          `${probabilityDefinition.bucketId}-${regimeDefinition.bucketId}`,
+          `${probabilityDefinition.bucketLabel} × ${regimeDefinition.bucketLabel}`,
+          inBucket,
+        ),
+      );
+    }
+  }
+
+  return summaries;
+}
+
+export function computeCoarseMispricingBucketSummaries(
+  observations: readonly MispricingObservation[],
+  regimeVolatilityByMarket?: RegimeVolatilityByMarketKey,
+): MispricingAtlasCoarseBuckets {
+  return {
+    probabilityOnly: computeCoarseProbabilityOnlyBucketSummaries(observations),
+    probabilityTime: computeCoarseProbabilityTimeBucketSummaries(observations),
+    probabilityRegime: regimeVolatilityByMarket
+      ? computeCoarseProbabilityRegimeBucketSummaries(
+          observations,
+          regimeVolatilityByMarket,
+        )
+      : [],
+  };
 }

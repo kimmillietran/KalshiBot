@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildMispricingAtlas,
+  computeCoarseMispricingBucketSummaries,
   computeMispricingBucketSummary,
   extractMispricingObservationsFromResearchOutput,
   serializeMispricingAtlas,
@@ -224,7 +225,49 @@ describe("buildMispricingAtlas", () => {
     expect(atlas.moneynessBuckets).toHaveLength(4);
     expect(atlas.volatilityBuckets).toHaveLength(3);
     expect(atlas.probabilityBuckets[0]?.bucketId).toBe("prob-0");
+    expect(atlas.coarseBuckets?.probabilityOnly).toHaveLength(5);
+    expect(atlas.coarseBuckets?.probabilityTime).toHaveLength(6);
+    expect(atlas.coverageDiagnostics?.totalAtlasObservations).toBe(3);
+    expect(atlas.coverageDiagnostics?.nonEmptyBuckets).toBeGreaterThan(0);
     expect(serializeMispricingAtlas(atlas)).toBe(serializeMispricingAtlas(atlas));
+  });
+
+  it("builds coarse probability-regime buckets when regime tags are available", () => {
+    const observations = extractMispricingObservationsFromResearchOutput(
+      createReplayResearchOutputJson({
+        settlementResult: "yes",
+        steps: [
+          {
+            yesBidCents: 70,
+            yesAskCents: 80,
+            strikePrice: 60_000,
+            spotPrice: 60_500,
+            timeRemainingMs: 4 * 60_000,
+          },
+          {
+            yesBidCents: 70,
+            yesAskCents: 80,
+            strikePrice: 60_000,
+            spotPrice: 60_500,
+            timeRemainingMs: 4 * 60_000,
+          },
+        ],
+      }),
+      `${INPUT_ROOT}/${STRATEGY_ID}/${SERIES_TICKER}/${MARKET_A}/research-output.json`,
+      {
+        strategyId: STRATEGY_ID,
+        seriesTicker: SERIES_TICKER,
+        marketTicker: MARKET_A,
+      },
+    ).observations;
+
+    const coarseBuckets = computeCoarseMispricingBucketSummaries(observations, new Map([
+      [`${STRATEGY_ID}/${SERIES_TICKER}/${MARKET_A}`, "high"],
+    ]));
+
+    expect(coarseBuckets.probabilityRegime.some((bucket) => bucket.observations > 0)).toBe(
+      true,
+    );
   });
 
   it("handles empty datasets with sparse bucket shells", () => {
@@ -237,6 +280,11 @@ describe("buildMispricingAtlas", () => {
 
     expect(atlas.sampleCounts.totalObservations).toBe(0);
     expect(atlas.overallCalibration.observations).toBe(0);
+    expect(atlas.coarseBuckets?.probabilityOnly.every((bucket) => bucket.observations === 0)).toBe(
+      true,
+    );
+    expect(atlas.coverageDiagnostics?.totalAtlasObservations).toBe(0);
+    expect(atlas.coverageDiagnostics?.nonEmptyBuckets).toBe(0);
     expect(atlas.probabilityBuckets.every((bucket) => bucket.observations === 0)).toBe(
       true,
     );

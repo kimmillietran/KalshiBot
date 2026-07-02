@@ -4,6 +4,7 @@ export const DEFAULT_MISPRICING_ATLAS_OUTPUT_PATH =
   "data/research-results/mispricing-atlas.json";
 
 export const DEFAULT_MISPRICING_VOLATILITY_LOOKBACK_BARS = 10;
+export const DEFAULT_MISPRICING_ATLAS_MIN_SAMPLE_THRESHOLD = 30;
 
 export const MispricingAtlasErrorCode = {
   INVALID_JSON: "invalid-json",
@@ -56,6 +57,36 @@ export type MispricingAtlasSampleCounts = {
   skippedMissingContext: number;
 };
 
+export type MispricingAtlasSkipReasonCounts = {
+  missingSettlement: number;
+  missingProbability: number;
+  missingContext: number;
+};
+
+export type MispricingAtlasTopBucketEntry = {
+  bucketId: string;
+  bucketLabel: string;
+  dimension: string;
+  observations: number;
+};
+
+export type MispricingAtlasCoverageDiagnostics = {
+  totalAtlasObservations: number;
+  totalBuckets: number;
+  nonEmptyBuckets: number;
+  bucketsBelowMinSampleThreshold: number;
+  minSampleThreshold: number;
+  largestBucketObservations: number;
+  topBucketsBySampleSize: readonly MispricingAtlasTopBucketEntry[];
+  skipReasons: MispricingAtlasSkipReasonCounts;
+};
+
+export type MispricingAtlasCoarseBuckets = {
+  probabilityOnly: readonly MispricingAtlasBucketSummary[];
+  probabilityTime: readonly MispricingAtlasBucketSummary[];
+  probabilityRegime: readonly MispricingAtlasBucketSummary[];
+};
+
 export type MispricingAtlasWarning = {
   code: "missing-settlement" | "missing-probability" | "missing-context";
   message: string;
@@ -72,14 +103,23 @@ export type MispricingAtlas = {
   timeRemainingBuckets: readonly MispricingAtlasBucketSummary[];
   moneynessBuckets: readonly MispricingAtlasBucketSummary[];
   volatilityBuckets: readonly MispricingAtlasBucketSummary[];
+  coarseBuckets?: MispricingAtlasCoarseBuckets;
+  coverageDiagnostics?: MispricingAtlasCoverageDiagnostics;
   warnings: readonly MispricingAtlasWarning[];
 };
+
+export type RegimeVolatilityByMarketKey = Map<
+  string,
+  "low" | "medium" | "high"
+>;
 
 export type BuildMispricingAtlasInput = {
   inputRoot: string;
   outputPath: string;
   generatedAt: string;
   scanned: readonly import("@/lib/data/research/calibration/calibrationTypes").ScannedCalibrationResearchOutput[];
+  regimeVolatilityByMarket?: RegimeVolatilityByMarketKey;
+  minSampleThreshold?: number;
 };
 
 export type MispricingAtlasIo = {

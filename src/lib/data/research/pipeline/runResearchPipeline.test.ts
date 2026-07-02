@@ -60,6 +60,7 @@ describe("buildResearchPipelineSteps", () => {
       "power-analysis",
       "overfitting-diagnostics",
       "regime-tags",
+      "mispricing-atlas",
       "hypotheses",
     ]);
   });
@@ -177,7 +178,7 @@ describe("runResearchPipeline", () => {
     expect(summary.steps[0]?.status).toBe("failed");
     expect(summary.steps[0]?.errorMessage).toBe("discover failed");
     expect(summary.steps[1]?.status).toBe("skipped");
-    expect(summary.steps).toHaveLength(17);
+    expect(summary.steps).toHaveLength(18);
   });
 
   it("continues after failures when configured", async () => {
@@ -200,7 +201,7 @@ describe("runResearchPipeline", () => {
     expect(summary.status).toBe("partial");
     expect(summary.steps[0]?.status).toBe("failed");
     expect(summary.steps[1]?.status).toBe("succeeded");
-    expect(callCount).toBe(17);
+    expect(callCount).toBe(18);
   });
 
   it("serializes pipeline summaries deterministically", async () => {
