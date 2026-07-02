@@ -273,6 +273,37 @@ export type {
 } from "./powerAnalysis";
 
 export {
+  buildOverfittingDiagnosticsFromDirectories,
+  buildOverfittingDiagnosticsReport,
+  buildMultipleTestingDiagnostics,
+  computeBenjaminiHochbergFdr,
+  computeFamilyWiseAdjustedPValues,
+  computePboFromFoldMatrix,
+  discoverExperimentRegistry,
+  serializeOverfittingDiagnosticsReport,
+  DEFAULT_MULTIPLE_TESTING_ALPHA,
+  DEFAULT_OVERFITTING_DIAGNOSTICS_EXPERIMENTS_ROOT,
+  DEFAULT_OVERFITTING_DIAGNOSTICS_INPUT_DIR,
+  DEFAULT_OVERFITTING_DIAGNOSTICS_OUTPUT_PATH,
+  OVERFITTING_DIAGNOSTICS_FILENAME,
+} from "./overfittingDiagnostics";
+export type {
+  BacktestOverfittingDiagnostic,
+  BuildOverfittingDiagnosticsReportInput,
+  DeflatedSharpeDiagnostic,
+  EvaluationScope,
+  ExperimentRegistryDiagnostics,
+  FamilyWiseAdjustedPValue,
+  FdrAdjustedPValue,
+  FoldPerformanceMatrix,
+  MetricAvailability,
+  MultipleTestingDiagnostics,
+  OverfittingDiagnosticsIo,
+  OverfittingDiagnosticsReport,
+  StrategyFamilyDiagnostics,
+} from "./overfittingDiagnostics";
+
+export {
   runHistoricalResearchFromBronze,
   serializeHistoricalResearchRunnerResult,
   HistoricalResearchRunnerError,

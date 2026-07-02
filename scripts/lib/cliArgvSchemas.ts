@@ -109,6 +109,12 @@ export const HYPOTHESIS_CANDIDATES_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--min-sample" },
 ];
 
+export const OVERFITTING_DIAGNOSTICS_ARGV_SCHEMA: readonly NpmArgvField[] = [
+  { flag: "--input-dir" },
+  { flag: "--experiments-root" },
+  { flag: "--output" },
+];
+
 export const LEADERBOARD_STRATEGIES_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--input-dir" },
   { flag: "--output" },
@@ -247,6 +253,10 @@ export function normalizeHypothesisCandidatesArgv(argv: readonly string[]): stri
 
 export function normalizePowerAnalysisArgv(argv: readonly string[]): string[] {
   return normalizeNpmScriptArgv(argv, POWER_ANALYSIS_ARGV_SCHEMA);
+}
+
+export function normalizeOverfittingDiagnosticsArgv(argv: readonly string[]): string[] {
+  return normalizeNpmScriptArgv(argv, OVERFITTING_DIAGNOSTICS_ARGV_SCHEMA);
 }
 
 export function normalizeLeaderboardStrategiesArgv(argv: readonly string[]): string[] {
