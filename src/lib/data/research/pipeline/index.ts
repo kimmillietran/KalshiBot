@@ -2,7 +2,9 @@ export {
   buildResearchPipelineSteps,
   formatResearchPipelineCommand,
 } from "./buildResearchPipelineSteps";
+export { buildImportBatchStepArgs } from "./buildImportBatchStepArgs";
 export { parseResearchPipelineConfigFromArgv } from "./parseResearchPipelineArgv";
+export { parseResearchPipelineImportThrottleFromArgv } from "./parseResearchPipelineImportThrottle";
 export {
   runResearchPipeline,
   serializeResearchPipelineSummary,
@@ -18,6 +20,9 @@ export {
 } from "./spawnNpmScript";
 export {
   DEFAULT_DISCOVERY_OUTPUT_PATH,
+  DEFAULT_PIPELINE_IMPORT_FIXED_REQUEST_DELAY_MS,
+  DEFAULT_PIPELINE_IMPORT_MAX_REQUEST_DELAY_MS,
+  DEFAULT_PIPELINE_IMPORT_MIN_REQUEST_DELAY_MS,
   DEFAULT_RESEARCH_PIPELINE_CONCURRENCY,
   DEFAULT_RESEARCH_PIPELINE_LIMIT,
   DEFAULT_RESEARCH_PIPELINE_SERIES,
@@ -28,6 +33,7 @@ export {
 } from "./researchPipelineTypes";
 export type {
   ResearchPipelineConfig,
+  ResearchPipelineImportThrottleConfig,
   ResearchPipelineRunStatus,
   ResearchPipelineRunner,
   ResearchPipelineRunnerResult,

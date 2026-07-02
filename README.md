@@ -86,7 +86,14 @@ npm run research:pipeline -- --series KXBTC15M --limit 100
 npm run research:pipeline -- --series KXBTC15M --limit 100 --continue-on-error
 ```
 
-Writes `data/research-results/pipeline-summary.json` with per-step commands, exit codes, and durations. Default is fail-fast.
+Writes `data/research-results/pipeline-summary.json` with per-step commands, exit codes, durations, and import throttle settings (`config.importThrottle`). Default is fail-fast.
+
+Batch import uses **adaptive throttling** by default (`--adaptive-throttle`, 100–3000 ms). Override with fixed delay:
+
+```bash
+npm run research:pipeline -- --series KXBTC15M --limit 500 --request-delay-ms 1000
+npm run research:pipeline -- --series KXBTC15M --limit 500 --no-adaptive-throttle
+```
 
 ### Smoke-test debugging
 

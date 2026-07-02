@@ -29,6 +29,12 @@ function createConfig(
     discoveryOutputPath: "discovery-result.json",
     summaryOutputPath: "data/research-results/pipeline-summary.json",
     rankBy: "totalPnL",
+    importThrottle: {
+      adaptiveThrottleEnabled: true,
+      minRequestDelayMs: 100,
+      maxRequestDelayMs: 3000,
+      fixedRequestDelayMs: null,
+    },
     ...overrides,
   };
 }
@@ -77,8 +83,23 @@ describe("buildResearchPipelineSteps", () => {
       "--output",
       "discovery-result.json",
     ]);
-    expect(steps[2]?.args).toContain("--max-retries");
-    expect(steps[2]?.args).toContain("5");
+    expect(steps[2]?.args).toEqual([
+      "--input-dir",
+      "data/import-configs",
+      "--output-dir",
+      "data/imports",
+      "--concurrency",
+      "2",
+      "--max-retries",
+      "5",
+      "--retry-base-delay-ms",
+      "2000",
+      "--adaptive-throttle",
+      "--min-request-delay-ms",
+      "100",
+      "--max-request-delay-ms",
+      "3000",
+    ]);
     expect(steps[6]?.args).toContain("--concurrency");
     expect(steps[6]?.args).toContain("2");
   });
@@ -103,6 +124,35 @@ describe("parseResearchPipelineConfigFromArgv", () => {
     expect(() =>
       parseResearchPipelineConfigFromArgv(["--limit", "0"]),
     ).toThrow(/Invalid --limit/);
+  });
+
+  it("defaults import batch step to adaptive throttling", () => {
+    const config = parseResearchPipelineConfigFromArgv([]);
+
+    expect(config.importThrottle).toEqual({
+      adaptiveThrottleEnabled: true,
+      minRequestDelayMs: 100,
+      maxRequestDelayMs: 3000,
+      fixedRequestDelayMs: null,
+    });
+  });
+
+  it("uses fixed delay when --request-delay-ms is provided", () => {
+    const config = parseResearchPipelineConfigFromArgv(["--request-delay-ms", "750"]);
+
+    expect(config.importThrottle).toEqual({
+      adaptiveThrottleEnabled: false,
+      minRequestDelayMs: 100,
+      maxRequestDelayMs: 3000,
+      fixedRequestDelayMs: 750,
+    });
+  });
+
+  it("uses fixed delay when --no-adaptive-throttle is provided", () => {
+    const config = parseResearchPipelineConfigFromArgv(["--no-adaptive-throttle"]);
+
+    expect(config.importThrottle.adaptiveThrottleEnabled).toBe(false);
+    expect(config.importThrottle.fixedRequestDelayMs).toBe(1000);
   });
 });
 
@@ -171,10 +221,21 @@ describe("runResearchPipeline", () => {
       runner,
     });
 
-    expect(serializeResearchPipelineSummary(first.summary)).toBe(
-      serializeResearchPipelineSummary(second.summary),
-    );
+    const normalizeSummary = (summary: typeof first.summary) => ({
+      ...summary,
+      steps: summary.steps.map((step) => ({ ...step, durationMs: 0 })),
+    });
+
+    expect(
+      serializeResearchPipelineSummary(normalizeSummary(first.summary)),
+    ).toBe(serializeResearchPipelineSummary(normalizeSummary(second.summary)));
     expect(first.summary.steps[0]?.command).toContain("discover:markets");
+    expect(first.summary.config.importThrottle).toEqual({
+      adaptiveThrottleEnabled: true,
+      minRequestDelayMs: 100,
+      maxRequestDelayMs: 3000,
+      fixedRequestDelayMs: null,
+    });
   });
 
   it("records stdout and stderr tails for failed steps", async () => {

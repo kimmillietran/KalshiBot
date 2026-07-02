@@ -2,6 +2,7 @@ import type {
   ResearchPipelineConfig,
   ResearchPipelineStepDefinition,
 } from "./researchPipelineTypes";
+import { buildImportBatchStepArgs } from "./buildImportBatchStepArgs";
 
 /** Builds the ordered research pipeline step definitions. */
 export function buildResearchPipelineSteps(
@@ -42,20 +43,7 @@ export function buildResearchPipelineSteps(
       id: "import-batch",
       label: "Batch import historical data",
       npmScript: "import:batch",
-      args: [
-        "--input-dir",
-        "data/import-configs",
-        "--output-dir",
-        "data/imports",
-        "--concurrency",
-        String(config.concurrency),
-        "--request-delay-ms",
-        "1000",
-        "--max-retries",
-        "5",
-        "--retry-base-delay-ms",
-        "2000",
-      ],
+      args: buildImportBatchStepArgs(config),
     },
     {
       id: "analyze-failures",

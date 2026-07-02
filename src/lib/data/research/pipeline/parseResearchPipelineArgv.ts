@@ -1,5 +1,6 @@
 import { STRATEGY_LEADERBOARD_RANK_METRICS } from "@/lib/data/research/leaderboard/strategyLeaderboardTypes";
 
+import { parseResearchPipelineImportThrottleFromArgv } from "./parseResearchPipelineImportThrottle";
 import {
   DEFAULT_DISCOVERY_OUTPUT_PATH,
   DEFAULT_RESEARCH_PIPELINE_CONCURRENCY,
@@ -72,6 +73,7 @@ export function parseResearchPipelineConfigFromArgv(
     "--concurrency",
   );
   const rankBy = parseRankBy(parseFlagValue(argv, "--rank-by") ?? "totalPnL");
+  const importThrottle = parseResearchPipelineImportThrottleFromArgv(argv);
 
   return {
     series,
@@ -83,5 +85,6 @@ export function parseResearchPipelineConfigFromArgv(
     summaryOutputPath:
       parseFlagValue(argv, "--output") ?? DEFAULT_RESEARCH_PIPELINE_SUMMARY_PATH,
     rankBy,
+    importThrottle,
   };
 }

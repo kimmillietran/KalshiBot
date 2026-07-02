@@ -144,6 +144,11 @@ export const RESEARCH_PIPELINE_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--output" },
   { flag: "--discovery-output" },
   { flag: "--continue-on-error" },
+  { flag: "--adaptive-throttle" },
+  { flag: "--no-adaptive-throttle" },
+  { flag: "--min-request-delay-ms" },
+  { flag: "--max-request-delay-ms" },
+  { flag: "--request-delay-ms" },
 ];
 
 export const LEADERBOARD_STRATEGIES_ARGV_SCHEMA: readonly NpmArgvField[] = [
@@ -331,6 +336,6 @@ export function normalizeParameterSweepArgv(argv: readonly string[]): string[] {
 export function normalizeResearchPipelineArgv(argv: readonly string[]): string[] {
   return mergeNpmBooleanFlags(
     normalizeNpmScriptArgv(argv, RESEARCH_PIPELINE_ARGV_SCHEMA),
-    ["--continue-on-error"],
+    ["--continue-on-error", "--adaptive-throttle", "--no-adaptive-throttle"],
   );
 }

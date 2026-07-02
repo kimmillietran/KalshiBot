@@ -5,6 +5,16 @@ export const DEFAULT_RESEARCH_PIPELINE_SERIES = "KXBTC15M";
 export const DEFAULT_RESEARCH_PIPELINE_LIMIT = 500;
 export const DEFAULT_RESEARCH_PIPELINE_CONCURRENCY = 1;
 export const DEFAULT_DISCOVERY_OUTPUT_PATH = "discovery-result.json";
+export const DEFAULT_PIPELINE_IMPORT_MIN_REQUEST_DELAY_MS = 100;
+export const DEFAULT_PIPELINE_IMPORT_MAX_REQUEST_DELAY_MS = 3000;
+export const DEFAULT_PIPELINE_IMPORT_FIXED_REQUEST_DELAY_MS = 1000;
+
+export type ResearchPipelineImportThrottleConfig = {
+  adaptiveThrottleEnabled: boolean;
+  minRequestDelayMs: number;
+  maxRequestDelayMs: number;
+  fixedRequestDelayMs: number | null;
+};
 
 export const ResearchPipelineErrorCode = {
   INVALID_ARGUMENT: "invalid-argument",
@@ -42,6 +52,7 @@ export type ResearchPipelineConfig = {
   discoveryOutputPath: string;
   summaryOutputPath: string;
   rankBy: "totalPnL" | "sharpe" | "winRate";
+  importThrottle: ResearchPipelineImportThrottleConfig;
 };
 
 export type ResearchPipelineStepResult = {
