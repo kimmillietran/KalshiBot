@@ -117,6 +117,7 @@ docs/
 | 6.25C | Historical bid/ask preservation audit (trade-close-only API; `missing-bid-ask` flag on live imports) — **complete** |
 | 6.25D | Kalshi fee schedule execution cost model (`zero`, `per-contract-fee`, `kalshi-fee-schedule` via `costModelConfig`) — **complete** |
 | 6.26A | Diffusion fair value strategy (`fair-value-diffusion`, realized vol + edge threshold) — **complete** |
+| 6.26B | Probability calibration reports (`research:calibration`, Brier/log-loss/ECE/reliability) — **complete** |
 
 ## Intentionally deferred
 
