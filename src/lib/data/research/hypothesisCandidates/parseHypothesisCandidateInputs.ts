@@ -19,6 +19,7 @@ import type {
   HypothesisCandidateInputStatus,
   HypothesisCandidateIo,
   ParsedHypothesisCandidateInputs,
+  RegimeTagEntry,
   RegimeTagsDocument,
 } from "./hypothesisCandidateTypes";
 
