@@ -120,6 +120,16 @@ export const OVERFITTING_DIAGNOSTICS_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--output" },
 ];
 
+export const RESEARCH_PIPELINE_ARGV_SCHEMA: readonly NpmArgvField[] = [
+  { flag: "--series" },
+  { flag: "--limit" },
+  { flag: "--concurrency" },
+  { flag: "--rank-by" },
+  { flag: "--output" },
+  { flag: "--discovery-output" },
+  { flag: "--continue-on-error" },
+];
+
 export const LEADERBOARD_STRATEGIES_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--input-dir" },
   { flag: "--output" },
@@ -290,4 +300,11 @@ export function normalizeWalkForwardSweepArgv(argv: readonly string[]): string[]
 
 export function normalizeParameterSweepArgv(argv: readonly string[]): string[] {
   return normalizeNpmScriptArgv(argv, PARAMETER_SWEEP_ARGV_SCHEMA);
+}
+
+export function normalizeResearchPipelineArgv(argv: readonly string[]): string[] {
+  return mergeNpmBooleanFlags(
+    normalizeNpmScriptArgv(argv, RESEARCH_PIPELINE_ARGV_SCHEMA),
+    ["--continue-on-error"],
+  );
 }

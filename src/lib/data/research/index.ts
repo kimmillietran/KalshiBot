@@ -328,6 +328,34 @@ export type {
 } from "./overfittingDiagnostics";
 
 export {
+  buildResearchPipelineSteps,
+  formatResearchPipelineCommand,
+  parseResearchPipelineConfigFromArgv,
+  runResearchPipeline,
+  serializeResearchPipelineSummary,
+  DEFAULT_DISCOVERY_OUTPUT_PATH,
+  DEFAULT_RESEARCH_PIPELINE_CONCURRENCY,
+  DEFAULT_RESEARCH_PIPELINE_LIMIT,
+  DEFAULT_RESEARCH_PIPELINE_SERIES,
+  DEFAULT_RESEARCH_PIPELINE_SUMMARY_PATH,
+  RESEARCH_PIPELINE_SUMMARY_FILENAME,
+  ResearchPipelineError,
+  ResearchPipelineErrorCode,
+} from "./pipeline";
+export type {
+  ResearchPipelineConfig,
+  ResearchPipelineRunStatus,
+  ResearchPipelineRunner,
+  ResearchPipelineRunnerResult,
+  ResearchPipelineStepDefinition,
+  ResearchPipelineStepResult,
+  ResearchPipelineStepStatus,
+  ResearchPipelineSummary,
+  RunResearchPipelineInput,
+  RunResearchPipelineOutput,
+} from "./pipeline";
+
+export {
   runHistoricalResearchFromBronze,
   serializeHistoricalResearchRunnerResult,
   HistoricalResearchRunnerError,
