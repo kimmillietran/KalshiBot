@@ -130,7 +130,7 @@ describe("normalizeKalshiCandle", () => {
     const dataset = buildHistoricalDataset([
       ...LIVE_KALSHI_HISTORICAL_IMPORT_BRONZE_RECORDS,
     ]);
-    const latestCandle = dataset.snapshots[0]!.kalshiCandles.at(-1)!;
+    const latestCandle = dataset.snapshots.at(-1)!.kalshiCandles.at(-1)!;
 
     expect(latestCandle.qualityFlags).toContain(DataQualityFlag.MISSING_BID_ASK);
     expect(latestCandle.yesBidCents).toBe(latestCandle.yesAskCents);
@@ -196,10 +196,11 @@ describe("normalizeKalshiCandle", () => {
       ...LIVE_KALSHI_HISTORICAL_IMPORT_BRONZE_RECORDS,
     ]);
 
-    expect(dataset.snapshots).toHaveLength(1);
-    expect(dataset.snapshots[0]?.kalshiCandles).toHaveLength(2);
+    expect(dataset.snapshots).toHaveLength(2);
+    expect(dataset.snapshots[0]?.kalshiCandles).toHaveLength(1);
+    expect(dataset.snapshots[1]?.kalshiCandles).toHaveLength(2);
     expect(dataset.snapshots[0]?.kalshiCandles[0]?.yesBidCents).toBe(56);
-    expect(dataset.snapshots[0]?.kalshiCandles[1]?.yesBidCents).toBe(63);
+    expect(dataset.snapshots[1]?.kalshiCandles[1]?.yesBidCents).toBe(63);
   });
 
   it("bridges a valid HistoricalBronzeImportJobResult to a research fixture", () => {

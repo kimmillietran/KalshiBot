@@ -33,6 +33,7 @@ import {
 } from "@/lib/data/silver/shared";
 import { SilverMalformedPayloadError } from "@/lib/data/silver/errors";
 
+import { expandMarketSnapshotsForCandleReplay } from "./expandMarketSnapshotsForCandleReplay";
 import {
   DATASET_BRONZE_CONTENT_TYPE,
   HistoricalDatasetBuildError,
@@ -398,7 +399,8 @@ export function buildHistoricalDataset(
     }
 
     try {
-      snapshots.push(normalizeGroupRecords(group, normalizer));
+      const marketSnapshot = normalizeGroupRecords(group, normalizer);
+      snapshots.push(...expandMarketSnapshotsForCandleReplay(marketSnapshot));
     } catch (error) {
       if (error instanceof SilverUnsupportedContentTypeError) {
         throw new HistoricalDatasetBuildError(

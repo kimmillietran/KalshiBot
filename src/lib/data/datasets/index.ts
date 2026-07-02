@@ -17,6 +17,8 @@ export {
   serializeHistoricalDataset,
 } from "./HistoricalDatasetBuilder";
 
+export { expandMarketSnapshotsForCandleReplay } from "./expandMarketSnapshotsForCandleReplay";
+
 export {
   HistoricalBronzeValidationErrorCode,
   serializeHistoricalBronzeValidation,
