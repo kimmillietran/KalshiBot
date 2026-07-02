@@ -250,6 +250,29 @@ export type {
 } from "./hypothesisCandidates";
 
 export {
+  buildPowerAnalysisReport,
+  buildPowerAnalysisReportFromDirectories,
+  computeMinimumDetectableEffect,
+  computeRequiredSampleSize,
+  computeStrategyPowerAnalysis,
+  serializePowerAnalysisReport,
+  DEFAULT_POWER_ANALYSIS_ALPHA,
+  DEFAULT_POWER_ANALYSIS_INPUT_DIR,
+  DEFAULT_POWER_ANALYSIS_LEVELS,
+  DEFAULT_POWER_ANALYSIS_OUTPUT_PATH,
+  DEFAULT_TARGET_EDGE_CENTS,
+  POWER_ANALYSIS_FILENAME,
+  PowerAnalysisError,
+  PowerAnalysisErrorCode,
+} from "./powerAnalysis";
+export type {
+  PowerAnalysisOverallSummary,
+  PowerAnalysisReport,
+  PowerTableRow,
+  StrategyPowerAnalysis,
+} from "./powerAnalysis";
+
+export {
   runHistoricalResearchFromBronze,
   serializeHistoricalResearchRunnerResult,
   HistoricalResearchRunnerError,
