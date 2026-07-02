@@ -104,6 +104,12 @@ export const VOL_PREMIUM_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--output" },
 ];
 
+export const EVENT_STUDY_ARGV_SCHEMA: readonly NpmArgvField[] = [
+  { flag: "--input-dir" },
+  { flag: "--events" },
+  { flag: "--output" },
+];
+
 export const POWER_ANALYSIS_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--input-dir" },
   { flag: "--output" },
@@ -123,6 +129,16 @@ export const OVERFITTING_DIAGNOSTICS_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--input-dir" },
   { flag: "--experiments-root" },
   { flag: "--output" },
+];
+
+export const RESEARCH_PIPELINE_ARGV_SCHEMA: readonly NpmArgvField[] = [
+  { flag: "--series" },
+  { flag: "--limit" },
+  { flag: "--concurrency" },
+  { flag: "--rank-by" },
+  { flag: "--output" },
+  { flag: "--discovery-output" },
+  { flag: "--continue-on-error" },
 ];
 
 export const LEADERBOARD_STRATEGIES_ARGV_SCHEMA: readonly NpmArgvField[] = [
@@ -265,6 +281,11 @@ export function normalizeVolPremiumArgv(argv: readonly string[]): string[] {
   return normalizeNpmScriptArgv(argv, VOL_PREMIUM_ARGV_SCHEMA);
 }
 
+export function normalizeEventStudyArgv(argv: readonly string[]): string[] {
+  return normalizeNpmScriptArgv(argv, EVENT_STUDY_ARGV_SCHEMA);
+}
+
+
 export function normalizeHypothesisCandidatesArgv(argv: readonly string[]): string[] {
   return normalizeNpmScriptArgv(argv, HYPOTHESIS_CANDIDATES_ARGV_SCHEMA);
 }
@@ -300,4 +321,11 @@ export function normalizeWalkForwardSweepArgv(argv: readonly string[]): string[]
 
 export function normalizeParameterSweepArgv(argv: readonly string[]): string[] {
   return normalizeNpmScriptArgv(argv, PARAMETER_SWEEP_ARGV_SCHEMA);
+}
+
+export function normalizeResearchPipelineArgv(argv: readonly string[]): string[] {
+  return mergeNpmBooleanFlags(
+    normalizeNpmScriptArgv(argv, RESEARCH_PIPELINE_ARGV_SCHEMA),
+    ["--continue-on-error"],
+  );
 }

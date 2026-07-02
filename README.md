@@ -74,6 +74,20 @@ npm run discover:markets -- \
 
 Default output: `discovery-result.json` (override with `--output`). Progress logs stream to stderr (`[discover] ...`); stdout remains JSON summary.
 
+### Official research pipeline
+
+```bash
+npm run research:pipeline -- --series KXBTC15M --limit 500
+
+# Smaller smoke run
+npm run research:pipeline -- --series KXBTC15M --limit 100
+
+# Continue after step failures (overall status becomes partial)
+npm run research:pipeline -- --series KXBTC15M --limit 100 --continue-on-error
+```
+
+Writes `data/research-results/pipeline-summary.json` with per-step commands, exit codes, and durations. Default is fail-fast.
+
 ### Smoke-test debugging
 
 Runner-format `research-output.json` files double-encode `dataset` and `researchRun`, and fills live under `backtestResult.strategyRun.steps` — not at the top level. Use the inspect CLI instead of ad hoc PowerShell property access:
@@ -169,6 +183,7 @@ docs/
 | 6.27C | Walk-forward strategy sweep (`research:walk-forward-sweep`, OOS validation research) — **complete** |
 | 6.27D | Kalshi discovery rate-limit handling (`discover:markets` throttle + 429 retry/backoff) — **complete** |
 | 6.27E | Discovery early stop + progress logging (`--limit` smoke pagination stop, stderr progress) — **complete** |
+| 8.4 | Official research pipeline (`research:pipeline`, end-to-end orchestration CLI) — **complete** |
 
 ## Intentionally deferred
 
