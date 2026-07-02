@@ -183,6 +183,39 @@ export type {
 } from "./statisticalSignificance";
 
 export {
+  buildRegimeTagsReport,
+  buildRegimeTagsReportFromDirectories,
+  classifyMarketState,
+  classifyTrendRegime,
+  classifyVolatilityRegime,
+  computeRegimeMarketEntry,
+  extractRegimeStepsFromResearchOutput,
+  serializeRegimeTagsReport,
+  DEFAULT_REGIME_TAGGING_INPUT_DIR,
+  DEFAULT_REGIME_TAGGING_OUTPUT_PATH,
+  DEFAULT_REGIME_VOLATILITY_LOOKBACK_BARS,
+  REGIME_TAGS_FILENAME,
+  RegimeTaggingError,
+  RegimeTaggingErrorCode,
+} from "./regimeTagging";
+export type {
+  BuildRegimeTagsReportInput,
+  MarketStateRegimeTag,
+  RegimeMarketEntry,
+  RegimeMarketMetrics,
+  RegimeMarketTags,
+  RegimeStepPoint,
+  RegimeSummaryCounts,
+  RegimeTaggingIo,
+  RegimeTaggingSampleCounts,
+  RegimeTaggingWarning,
+  RegimeTagsReport,
+  RegimeTimeRemainingProfile,
+  TrendRegimeTag,
+  VolatilityRegimeTag,
+} from "./regimeTagging";
+
+export {
   runHistoricalResearchFromBronze,
   serializeHistoricalResearchRunnerResult,
   HistoricalResearchRunnerError,

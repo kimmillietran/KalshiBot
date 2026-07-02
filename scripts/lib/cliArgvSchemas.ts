@@ -89,6 +89,11 @@ export const STATISTICAL_SIGNIFICANCE_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--simulations" },
 ];
 
+export const REGIME_TAGGING_ARGV_SCHEMA: readonly NpmArgvField[] = [
+  { flag: "--input-dir" },
+  { flag: "--output" },
+];
+
 export const LEADERBOARD_STRATEGIES_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--input-dir" },
   { flag: "--output" },
@@ -215,6 +220,10 @@ export function normalizeLeadLagArgv(argv: readonly string[]): string[] {
 
 export function normalizeStatisticalSignificanceArgv(argv: readonly string[]): string[] {
   return normalizeNpmScriptArgv(argv, STATISTICAL_SIGNIFICANCE_ARGV_SCHEMA);
+}
+
+export function normalizeRegimeTaggingArgv(argv: readonly string[]): string[] {
+  return normalizeNpmScriptArgv(argv, REGIME_TAGGING_ARGV_SCHEMA);
 }
 
 export function normalizeLeaderboardStrategiesArgv(argv: readonly string[]): string[] {
