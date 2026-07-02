@@ -40,6 +40,10 @@ npm run lint     # eslint
 npm run test     # vitest
 npm run test:watch
 npm run test:coverage
+```
+
+On Windows PowerShell, `npm run <script> -- --flag value` may strip `--flag` tokens before they reach the script. Pipeline CLIs normalize argv at entry so both flag-style npm invocations and direct positional `tsx` usage work. See `scripts/lib/normalizeNpmArgv.ts`.
+
 ### Historical market discovery
 
 ```bash

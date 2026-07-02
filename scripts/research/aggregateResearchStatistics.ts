@@ -15,6 +15,8 @@ import {
   serializeResearchAggregateSummary,
 } from "@/lib/data/research/aggregation";
 
+import { normalizeResearchAggregateArgv } from "../lib/cliArgvSchemas";
+
 import {
   AggregateResearchStatisticsCommandError,
   formatStdoutOutput,
@@ -43,8 +45,9 @@ export function runAggregateResearchStatisticsCommand(
   options?: { generatedAt?: string },
 ): number {
   try {
-    const inputRoot = parseInputDirFromArgv(argv);
-    const outputRoot = parseOutputDirFromArgv(argv);
+    const normalizedArgv = normalizeResearchAggregateArgv(argv);
+    const inputRoot = parseInputDirFromArgv(normalizedArgv);
+    const outputRoot = parseOutputDirFromArgv(normalizedArgv);
     const generatedAt = options?.generatedAt ?? new Date().toISOString();
 
     const summaries = buildResearchAggregateSummariesFromDirectories(

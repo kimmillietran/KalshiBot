@@ -132,6 +132,26 @@ describe("runStrategyLeaderboardCommand", () => {
     });
   });
 
+  it("accepts npm-stripped positional input-dir, output, and rank-by", () => {
+    const { io, writes, getStdout } = createIo();
+
+    const exitCode = runStrategyLeaderboardCommand(
+      [
+        "data/research-results",
+        "data/leaderboards/strategy-leaderboard.json",
+        "totalPnL",
+      ],
+      io,
+      { generatedAt: "2026-06-27T14:00:00.000Z" },
+    );
+
+    expect(exitCode).toBe(0);
+    expect(writes.has("data/leaderboards/strategy-leaderboard.json")).toBe(true);
+    expect(JSON.parse(getStdout())).toMatchObject({
+      rankBy: "totalPnL",
+    });
+  });
+
   it("reports missing input directories", () => {
     const { io, getStderr } = createIo();
 

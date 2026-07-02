@@ -6,6 +6,8 @@ import {
 import type { BatchFixtureBridgeOptions } from "@/lib/data/importJobs/batchFixtureBridge";
 import { serializeHistoricalResearchFixtureFromImportResult } from "@/lib/data/importJobs/fixtureBridge";
 
+import { normalizeFixturesBatchArgv } from "../lib/cliArgvSchemas";
+
 import {
   formatStdoutOutput,
   parseInputDirFromArgv,
@@ -51,9 +53,10 @@ export function runBatchFixtureBridgeCommand(
   options?: BatchFixtureBridgeCommandDeps | RunBatchFixtureBridgeCommandOptions,
 ): Promise<number> {
   try {
-    const inputDir = parseInputDirFromArgv(argv);
-    const outputDir = parseOutputDirFromArgv(argv);
-    const summaryPath = parseSummaryPathFromArgv(argv);
+    const normalizedArgv = normalizeFixturesBatchArgv(argv);
+    const inputDir = parseInputDirFromArgv(normalizedArgv);
+    const outputDir = parseOutputDirFromArgv(normalizedArgv);
+    const summaryPath = parseSummaryPathFromArgv(normalizedArgv);
     const { deps, bridgeOptions } = normalizeCommandOptions(options);
     const runnerDeps = deps ?? createProductionDeps(bridgeOptions);
 

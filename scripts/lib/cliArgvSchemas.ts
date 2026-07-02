@@ -1,0 +1,158 @@
+import {
+  expandEqualsStyleFlags,
+  hasCliFlags,
+  mapPositionalToFlags,
+  mergeNpmBooleanFlags,
+  normalizeNpmScriptArgv,
+  type NpmArgvField,
+} from "./normalizeNpmArgv";
+
+export const DISCOVERY_IMPORT_CONFIGS_ARGV_SCHEMA: readonly NpmArgvField[] = [
+  { flag: "--input" },
+  { flag: "--output-dir" },
+];
+
+export const IMPORT_BATCH_ARGV_SCHEMA: readonly NpmArgvField[] = [
+  { flag: "--input-dir" },
+  { flag: "--output-dir" },
+  { flag: "--concurrency" },
+];
+
+export const DATA_AUDIT_BID_ASK_ARGV_SCHEMA: readonly NpmArgvField[] = [
+  { flag: "--input-dir" },
+  { flag: "--output" },
+];
+
+export const DATASETS_BUILD_ARGV_SCHEMA: readonly NpmArgvField[] = [
+  { flag: "--input-dir" },
+  { flag: "--output" },
+];
+
+export const FIXTURES_BATCH_ARGV_SCHEMA: readonly NpmArgvField[] = [
+  { flag: "--input-dir" },
+  { flag: "--output-dir" },
+  { flag: "--summary" },
+];
+
+export const RESEARCH_REGISTRY_ARGV_SCHEMA: readonly NpmArgvField[] = [
+  { flag: "--input-dir" },
+  { flag: "--metadata-dir" },
+  { flag: "--output-dir" },
+];
+
+export const RESEARCH_AGGREGATE_ARGV_SCHEMA: readonly NpmArgvField[] = [
+  { flag: "--input-dir" },
+  { flag: "--output-dir" },
+];
+
+export const RESEARCH_CALIBRATION_ARGV_SCHEMA: readonly NpmArgvField[] = [
+  { flag: "--input-dir" },
+  { flag: "--output-dir" },
+];
+
+export const LEADERBOARD_STRATEGIES_ARGV_SCHEMA: readonly NpmArgvField[] = [
+  { flag: "--input-dir" },
+  { flag: "--output" },
+  { flag: "--rank-by" },
+];
+
+export const EXPERIMENTS_REGISTER_ARGV_SCHEMA: readonly NpmArgvField[] = [
+  { flag: "--research-root" },
+  { flag: "--experiments-root" },
+  { flag: "--fixtures-root" },
+];
+
+export const WALK_FORWARD_VALIDATION_ARGV_SCHEMA: readonly NpmArgvField[] = [
+  { flag: "--registry" },
+  { flag: "--output-dir" },
+  { flag: "--config" },
+];
+
+const STRATEGY_SWEEP_POSITIONAL_SCHEMA: readonly NpmArgvField[] = [
+  { flag: "--registry" },
+  { flag: "--output-dir" },
+  { flag: "--concurrency" },
+  { flag: "--summary" },
+];
+
+const WALK_FORWARD_SWEEP_POSITIONAL_SCHEMA: readonly NpmArgvField[] = [
+  { flag: "--split-id" },
+  { flag: "--split-input-dir" },
+  { flag: "--output-dir" },
+  { flag: "--concurrency" },
+];
+
+function normalizeStrategySelectionArgv(
+  argv: readonly string[],
+  positionalSchema: readonly NpmArgvField[],
+): string[] {
+  const expanded = expandEqualsStyleFlags(argv);
+
+  if (hasCliFlags(expanded)) {
+    return mergeNpmBooleanFlags(expanded, ["--all"]);
+  }
+
+  const booleanMerged = mergeNpmBooleanFlags(expanded, ["--all"]);
+  if (booleanMerged.some((token) => token === "--all")) {
+    return booleanMerged;
+  }
+
+  if (expanded.length === 1) {
+    return ["--strategy", expanded[0]];
+  }
+
+  const positional = mapPositionalToFlags(expanded, positionalSchema);
+  return mergeNpmBooleanFlags(positional, ["--all"]);
+}
+
+export function normalizeDiscoveryImportConfigsArgv(argv: readonly string[]): string[] {
+  return normalizeNpmScriptArgv(argv, DISCOVERY_IMPORT_CONFIGS_ARGV_SCHEMA);
+}
+
+export function normalizeImportBatchArgv(argv: readonly string[]): string[] {
+  return normalizeNpmScriptArgv(argv, IMPORT_BATCH_ARGV_SCHEMA);
+}
+
+export function normalizeDataAuditBidAskArgv(argv: readonly string[]): string[] {
+  return normalizeNpmScriptArgv(argv, DATA_AUDIT_BID_ASK_ARGV_SCHEMA);
+}
+
+export function normalizeDatasetsBuildArgv(argv: readonly string[]): string[] {
+  return normalizeNpmScriptArgv(argv, DATASETS_BUILD_ARGV_SCHEMA);
+}
+
+export function normalizeFixturesBatchArgv(argv: readonly string[]): string[] {
+  return normalizeNpmScriptArgv(argv, FIXTURES_BATCH_ARGV_SCHEMA);
+}
+
+export function normalizeResearchRegistryArgv(argv: readonly string[]): string[] {
+  return normalizeNpmScriptArgv(argv, RESEARCH_REGISTRY_ARGV_SCHEMA);
+}
+
+export function normalizeResearchAggregateArgv(argv: readonly string[]): string[] {
+  return normalizeNpmScriptArgv(argv, RESEARCH_AGGREGATE_ARGV_SCHEMA);
+}
+
+export function normalizeResearchCalibrationArgv(argv: readonly string[]): string[] {
+  return normalizeNpmScriptArgv(argv, RESEARCH_CALIBRATION_ARGV_SCHEMA);
+}
+
+export function normalizeLeaderboardStrategiesArgv(argv: readonly string[]): string[] {
+  return normalizeNpmScriptArgv(argv, LEADERBOARD_STRATEGIES_ARGV_SCHEMA);
+}
+
+export function normalizeExperimentsRegisterArgv(argv: readonly string[]): string[] {
+  return normalizeNpmScriptArgv(argv, EXPERIMENTS_REGISTER_ARGV_SCHEMA);
+}
+
+export function normalizeWalkForwardValidationArgv(argv: readonly string[]): string[] {
+  return normalizeNpmScriptArgv(argv, WALK_FORWARD_VALIDATION_ARGV_SCHEMA);
+}
+
+export function normalizeStrategySweepArgv(argv: readonly string[]): string[] {
+  return normalizeStrategySelectionArgv(argv, STRATEGY_SWEEP_POSITIONAL_SCHEMA);
+}
+
+export function normalizeWalkForwardSweepArgv(argv: readonly string[]): string[] {
+  return normalizeStrategySelectionArgv(argv, WALK_FORWARD_SWEEP_POSITIONAL_SCHEMA);
+}

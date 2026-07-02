@@ -15,6 +15,8 @@ import {
 } from "@/lib/data/datasets/validation/audit";
 import { stableStringify } from "@/lib/trading/config/hashConfig";
 
+import { normalizeDataAuditBidAskArgv } from "../lib/cliArgvSchemas";
+
 import {
   AuditBidAskFidelityCommandError,
   formatStdoutOutput,
@@ -39,8 +41,9 @@ export function runAuditBidAskFidelityCommand(
   options?: { generatedAt?: string },
 ): number {
   try {
-    const inputDir = parseInputDirFromArgv(argv);
-    const outputPath = parseOutputPathFromArgv(argv);
+    const normalizedArgv = normalizeDataAuditBidAskArgv(argv);
+    const inputDir = parseInputDirFromArgv(normalizedArgv);
+    const outputPath = parseOutputPathFromArgv(normalizedArgv);
     const generatedAt = options?.generatedAt ?? new Date().toISOString();
     const datasets = scanBidAskAuditDatasets(inputDir, {
       readdir: (path) => io.readdir(path),

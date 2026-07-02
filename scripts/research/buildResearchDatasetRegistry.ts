@@ -15,6 +15,8 @@ import {
   serializeResearchDatasetSeriesRegistry,
 } from "@/lib/data/research/registry";
 
+import { normalizeResearchRegistryArgv } from "../lib/cliArgvSchemas";
+
 import {
   BuildResearchDatasetRegistryCommandError,
   formatStdoutOutput,
@@ -44,9 +46,10 @@ export function runBuildResearchDatasetRegistryCommand(
   options?: { generatedAt?: string },
 ): number {
   try {
-    const fixturesRoot = parseFixturesDirFromArgv(argv);
-    const metadataRoot = parseMetadataDirFromArgv(argv);
-    const outputRoot = parseOutputDirFromArgv(argv);
+    const normalizedArgv = normalizeResearchRegistryArgv(argv);
+    const fixturesRoot = parseFixturesDirFromArgv(normalizedArgv);
+    const metadataRoot = parseMetadataDirFromArgv(normalizedArgv);
+    const outputRoot = parseOutputDirFromArgv(normalizedArgv);
     const generatedAt = options?.generatedAt ?? new Date().toISOString();
 
     const registries = buildResearchDatasetRegistryFromDirectories(

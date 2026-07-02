@@ -6,6 +6,8 @@ import {
   serializeDatasetManifest,
 } from "@/lib/data/datasets/registry";
 
+import { normalizeDatasetsBuildArgv } from "../lib/cliArgvSchemas";
+
 import {
   BuildDatasetManifestCommandError,
   formatStdoutOutput,
@@ -34,8 +36,9 @@ export function runBuildDatasetManifestCommand(
   options?: { generatedAt?: string },
 ): number {
   try {
-    const inputDir = parseInputDirFromArgv(argv);
-    const outputPath = parseOutputPathFromArgv(argv);
+    const normalizedArgv = normalizeDatasetsBuildArgv(argv);
+    const inputDir = parseInputDirFromArgv(normalizedArgv);
+    const outputPath = parseOutputPathFromArgv(normalizedArgv);
     const generatedAt = options?.generatedAt ?? new Date().toISOString();
     const manifest = buildDatasetManifestFromDirectory(
       inputDir,

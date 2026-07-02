@@ -6,6 +6,8 @@ import { runHistoricalResearchFromBronze } from "@/lib/data/research/runner";
 import { StrategyPluginRegistry } from "@/lib/data/strategies/plugin/StrategyPluginRegistry";
 import { stableStringify } from "@/lib/trading/config/hashConfig";
 
+import { normalizeWalkForwardSweepArgv } from "../lib/cliArgvSchemas";
+
 import { parseHistoricalResearchInputJson } from "./runHistoricalResearch";
 import {
   formatStdoutOutput,
@@ -80,18 +82,19 @@ export function runWalkForwardStrategySweepCommand(
   options?: WalkForwardSweepCommandDeps | RunWalkForwardSweepCommandOptions,
 ): Promise<number> {
   try {
-    const splitId = parseSplitIdFromArgv(argv);
+    const normalizedArgv = normalizeWalkForwardSweepArgv(argv);
+    const splitId = parseSplitIdFromArgv(normalizedArgv);
     if (!splitId?.trim()) {
       throw new Error("Missing required --split-id <id>");
     }
 
-    const splitInputDir = parseSplitInputDirFromArgv(argv);
-    const outputDir = parseOutputDirFromArgv(argv);
-    const concurrency = parseConcurrencyFromArgv(argv);
+    const splitInputDir = parseSplitInputDirFromArgv(normalizedArgv);
+    const outputDir = parseOutputDirFromArgv(normalizedArgv);
+    const concurrency = parseConcurrencyFromArgv(normalizedArgv);
     const { deps } = normalizeCommandOptions(options);
     const runnerDeps = deps ?? createProductionDeps();
     const strategyIds = resolveStrategySelectionFromArgv(
-      argv,
+      normalizedArgv,
       () => runnerDeps.strategyRegistry.listStrategyIds(),
     );
 

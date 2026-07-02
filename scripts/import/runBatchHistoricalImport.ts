@@ -6,6 +6,8 @@ import { runHistoricalImportFromConfig } from "@/lib/data/importJobs";
 import type { HistoricalImportFetchLike } from "@/lib/data/importJobs";
 import { stableStringify } from "@/lib/trading/config/hashConfig";
 
+import { normalizeImportBatchArgv } from "../lib/cliArgvSchemas";
+
 import {
   formatStdoutOutput,
   parseConcurrencyFromArgv,
@@ -48,9 +50,10 @@ export function runBatchHistoricalImportCommand(
   options?: BatchImportCommandDeps | RunBatchHistoricalImportCommandOptions,
 ): Promise<number> {
   try {
-    const inputDir = parseInputDirFromArgv(argv);
-    const outputDir = parseOutputDirFromArgv(argv);
-    const concurrency = parseConcurrencyFromArgv(argv);
+    const normalizedArgv = normalizeImportBatchArgv(argv);
+    const inputDir = parseInputDirFromArgv(normalizedArgv);
+    const outputDir = parseOutputDirFromArgv(normalizedArgv);
+    const concurrency = parseConcurrencyFromArgv(normalizedArgv);
     const { deps, fetchImpl } = normalizeCommandOptions(options);
     const runnerDeps = deps ?? createProductionDeps(fetchImpl);
 

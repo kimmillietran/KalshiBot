@@ -15,6 +15,8 @@ import {
   StrategyLeaderboardError,
 } from "@/lib/data/research/leaderboard";
 
+import { normalizeLeaderboardStrategiesArgv } from "../lib/cliArgvSchemas";
+
 import {
   formatStdoutOutput,
   parseInputDirFromArgv,
@@ -44,9 +46,10 @@ export function runStrategyLeaderboardCommand(
   options?: { generatedAt?: string },
 ): number {
   try {
-    const inputRoot = parseInputDirFromArgv(argv);
-    const outputPath = parseOutputPathFromArgv(argv);
-    const rankBy = parseStrategyLeaderboardRankMetric(parseRankByFromArgv(argv));
+    const normalizedArgv = normalizeLeaderboardStrategiesArgv(argv);
+    const inputRoot = parseInputDirFromArgv(normalizedArgv);
+    const outputPath = parseOutputPathFromArgv(normalizedArgv);
+    const rankBy = parseStrategyLeaderboardRankMetric(parseRankByFromArgv(normalizedArgv));
     const generatedAt = options?.generatedAt ?? new Date().toISOString();
 
     const leaderboard = buildStrategyLeaderboardFromDirectories(

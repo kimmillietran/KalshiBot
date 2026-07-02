@@ -176,6 +176,30 @@ describe("runBuildResearchDatasetRegistryCommand", () => {
     });
   });
 
+  it("accepts npm-stripped positional fixture, metadata, and output dirs", () => {
+    const { io, writes, getStdout } = createIo();
+
+    const exitCode = runBuildResearchDatasetRegistryCommand(
+      [
+        "data/fixtures",
+        "data/imports",
+        "data/research-datasets",
+      ],
+      io,
+      { generatedAt: "2026-06-27T12:00:00.000Z" },
+    );
+
+    expect(exitCode).toBe(0);
+    expect(writes.has("data/research-datasets/KXBTC15M/dataset-registry.json")).toBe(
+      true,
+    );
+    expect(JSON.parse(getStdout())).toMatchObject({
+      fixturesRoot: "data/fixtures",
+      metadataRoot: "data/imports",
+      outputRoot: "data/research-datasets",
+    });
+  });
+
   it("reports missing fixture directories", () => {
     const { io, getStderr } = createIo();
 

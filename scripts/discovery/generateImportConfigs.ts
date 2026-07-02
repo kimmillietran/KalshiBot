@@ -7,6 +7,8 @@ import {
   buildBatchImportConfigsFromDiscoveryJson,
 } from "@/lib/data/importJobs/batchConfig";
 
+import { normalizeDiscoveryImportConfigsArgv } from "../lib/cliArgvSchemas";
+
 import {
   formatStdoutOutput,
   GenerateImportConfigsCommandError,
@@ -38,8 +40,9 @@ export function runGenerateImportConfigsCommand(
   io: GenerateImportConfigsCommandIo,
 ): number {
   try {
-    const inputPath = parseInputPathFromArgv(argv);
-    const outputDir = parseOutputDirFromArgv(argv);
+    const normalizedArgv = normalizeDiscoveryImportConfigsArgv(argv);
+    const inputPath = parseInputPathFromArgv(normalizedArgv);
+    const outputDir = parseOutputDirFromArgv(normalizedArgv);
     const discoveryJson = io.readFile(inputPath);
     const result = buildBatchImportConfigsFromDiscoveryJson(discoveryJson, {
       outputRoot: outputDir,

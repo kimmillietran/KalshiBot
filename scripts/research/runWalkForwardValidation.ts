@@ -12,6 +12,8 @@ import type { WalkForwardSplitDefinition } from "@/lib/data/research/walkForward
 
 import type { WalkForwardSplitFilesystem } from "@/lib/data/research/walkForwardEngine";
 
+import { normalizeWalkForwardValidationArgv } from "../lib/cliArgvSchemas";
+
 import {
   formatStdoutOutput,
   parseAllowOverlappingValidationWindowsFromArgv,
@@ -100,9 +102,10 @@ export function runWalkForwardValidationCommand(
   },
 ): number {
   try {
-    const registryDir = parseRegistryDirFromArgv(argv);
-    const outputDir = parseOutputDirFromArgv(argv);
-    const config = resolveSplitDefinition(argv, io);
+    const normalizedArgv = normalizeWalkForwardValidationArgv(argv);
+    const registryDir = parseRegistryDirFromArgv(normalizedArgv);
+    const outputDir = parseOutputDirFromArgv(normalizedArgv);
+    const config = resolveSplitDefinition(normalizedArgv, io);
     const generatedAt = options?.generatedAt ?? new Date().toISOString();
 
     const summary = runWalkForwardSplit(

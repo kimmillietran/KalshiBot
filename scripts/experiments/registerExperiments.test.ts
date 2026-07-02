@@ -103,6 +103,24 @@ describe("runRegisterExperimentsCommand", () => {
     expect(payload.outputPaths).toEqual([experimentPath]);
   });
 
+  it("accepts npm-stripped positional research, experiments, and fixtures roots", () => {
+    const { io, writes, getStdout, experimentPath } = createIo();
+
+    const exitCode = runRegisterExperimentsCommand(
+      ["data/research-results", "data/experiments", "data/fixtures"],
+      io,
+      { registeredAt: "2026-06-27T00:00:00.000Z" },
+    );
+
+    expect(exitCode).toBe(0);
+    expect(writes.has(experimentPath)).toBe(true);
+    expect(JSON.parse(getStdout())).toMatchObject({
+      researchRoot: "data/research-results",
+      experimentsRoot: "data/experiments",
+      fixturesRoot: "data/fixtures",
+    });
+  });
+
   it("returns non-zero exit code for empty datasets", () => {
     const { io, getStderr } = createIo();
     io.readdir = () => [];

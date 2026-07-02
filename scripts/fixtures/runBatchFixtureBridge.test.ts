@@ -239,6 +239,33 @@ describe("runBatchFixtureBridgeCommand", () => {
     });
   });
 
+  it("accepts npm-stripped positional input-dir, output-dir, and summary", async () => {
+    const marketTicker = "KXBTC15M-MARKET-A";
+    const filesystem = createFilesystem({
+      [`data/imports/KXBTC15M/${marketTicker}/import-result.json`]:
+        validImportJson(marketTicker),
+    });
+    const runFixtureBridge: RunSingleBatchFixtureBridgeFn = vi.fn(
+      () => `{"fixture":true}`,
+    );
+    const { io, stdout } = createIo();
+
+    const exitCode = await runBatchFixtureBridgeCommand(
+      [
+        "data/imports",
+        "data/fixtures",
+        "batch-fixtures-summary.json",
+      ],
+      io,
+      { deps: { filesystem, runFixtureBridge } },
+    );
+
+    expect(exitCode).toBe(0);
+    expect(JSON.parse(stdout.join(""))).toMatchObject({
+      summaryPath: "data/fixtures/batch-fixtures-summary.json",
+    });
+  });
+
   it("returns a fatal error when duplicate output paths are detected", async () => {
     const importPath = "data/imports/KXBTC15M/MARKET-A/import-result.json";
     const filesystem = createFilesystem({

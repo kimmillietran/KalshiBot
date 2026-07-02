@@ -1,36 +1,27 @@
 import {
-  DEFAULT_DISCOVERY_OUTPUT_PATH,
   MarketDiscoveryCommandError,
+  DEFAULT_DISCOVERY_OUTPUT_PATH,
 } from "./types";
+import {
+  expandEqualsStyleFlags,
+  hasCliFlags,
+  mergeNpmConfigFlags,
+  readNpmConfigEnv,
+} from "../lib/normalizeNpmArgv";
 
 const OUTPUT_PATH_PATTERN = /\.json$/i;
 
-function expandEqualsStyleFlags(argv: readonly string[]): string[] {
-  const expanded: string[] = [];
-
-  for (const token of argv) {
-    if (token.startsWith("--") && token.includes("=")) {
-      const separatorIndex = token.indexOf("=");
-      const flag = token.slice(0, separatorIndex);
-      const value = token.slice(separatorIndex + 1);
-
-      if (!value) {
-        throw new MarketDiscoveryCommandError(`Missing value for ${flag}`);
-      }
-
-      expanded.push(flag, value);
-      continue;
-    }
-
-    expanded.push(token);
-  }
-
-  return expanded;
-}
-
-function hasDiscoveryFlags(argv: readonly string[]): boolean {
-  return argv.some((token) => token.startsWith("--"));
-}
+const DISCOVERY_NPM_CONFIG_FLAGS = [
+  "--series",
+  "--limit",
+  "--offset",
+  "--after",
+  "--before",
+  "--request-delay-ms",
+  "--max-retries",
+  "--retry-base-delay-ms",
+  "--output",
+] as const;
 
 function isIntegerToken(token: string): boolean {
   return /^\d+$/.test(token.trim());
@@ -42,12 +33,6 @@ function looksLikeOutputPath(token: string): boolean {
     || token.includes("/")
     || token.includes("\\")
   );
-}
-
-function readNpmConfigValue(flag: string): string | undefined {
-  const envKey = `npm_config_${flag.slice(2).replace(/-/g, "_")}`;
-  const value = process.env[envKey]?.trim();
-  return value || undefined;
 }
 
 function appendFlag(
@@ -99,32 +84,16 @@ function parsePositionalDiscoveryArgv(argv: readonly string[]): string[] {
   return normalized;
 }
 
-function mergeNpmConfigFlags(argv: readonly string[]): string[] {
-  const flagsPresent = new Set(
-    argv.filter((token) => token.startsWith("--")),
-  );
-
-  const merged = [...argv];
-
-  const configFlags = [
-    ["--series", readNpmConfigValue("--series")],
-    ["--limit", readNpmConfigValue("--limit")],
-    ["--offset", readNpmConfigValue("--offset")],
-    ["--after", readNpmConfigValue("--after")],
-    ["--before", readNpmConfigValue("--before")],
-    ["--request-delay-ms", readNpmConfigValue("--request-delay-ms")],
-    ["--max-retries", readNpmConfigValue("--max-retries")],
-    ["--retry-base-delay-ms", readNpmConfigValue("--retry-base-delay-ms")],
-    ["--output", readNpmConfigValue("--output")],
-  ] as const;
-
-  for (const [flag, value] of configFlags) {
-    if (!flagsPresent.has(flag) && value !== undefined) {
-      merged.push(flag, value);
+function expandDiscoveryEqualsStyleFlags(argv: readonly string[]): string[] {
+  try {
+    return expandEqualsStyleFlags(argv);
+  } catch (error) {
+    if (error instanceof Error) {
+      throw new MarketDiscoveryCommandError(error.message);
     }
-  }
 
-  return merged;
+    throw error;
+  }
 }
 
 /**
@@ -132,13 +101,16 @@ function mergeNpmConfigFlags(argv: readonly string[]): string[] {
  * only the bare values positionally. Normalize argv before flag parsing.
  */
 export function normalizeDiscoveryCliArgv(argv: readonly string[]): string[] {
-  const expanded = expandEqualsStyleFlags(argv);
+  const expanded = expandDiscoveryEqualsStyleFlags(argv);
 
-  if (hasDiscoveryFlags(expanded)) {
-    return mergeNpmConfigFlags(expanded);
+  if (hasCliFlags(expanded)) {
+    return mergeNpmConfigFlags(expanded, DISCOVERY_NPM_CONFIG_FLAGS);
   }
 
-  return mergeNpmConfigFlags(parsePositionalDiscoveryArgv(expanded));
+  return mergeNpmConfigFlags(
+    parsePositionalDiscoveryArgv(expanded),
+    DISCOVERY_NPM_CONFIG_FLAGS,
+  );
 }
 
 export function parseNormalizedOutputPath(argv: readonly string[]): string {
@@ -150,3 +122,5 @@ export function parseNormalizedOutputPath(argv: readonly string[]): string {
 
   return DEFAULT_DISCOVERY_OUTPUT_PATH;
 }
+
+export { readNpmConfigEnv };

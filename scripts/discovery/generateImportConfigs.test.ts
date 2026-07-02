@@ -126,4 +126,21 @@ describe("runGenerateImportConfigsCommand", () => {
     expect(exitCode).toBe(1);
     expect(getStderr()).toContain("Missing required --input");
   });
+
+  it("accepts npm-stripped positional input and output-dir", () => {
+    const { io, writes, getStdout } = createIo();
+
+    const exitCode = runGenerateImportConfigsCommand(
+      ["discovery-result.json", "data/import-configs"],
+      io,
+    );
+
+    expect(exitCode).toBe(0);
+    expect(writes.size).toBe(1);
+    expect(JSON.parse(getStdout())).toMatchObject({
+      inputPath: "discovery-result.json",
+      outputDir: "data/import-configs",
+      configCount: 1,
+    });
+  });
 });

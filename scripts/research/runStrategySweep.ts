@@ -6,6 +6,8 @@ import { runHistoricalResearchFromBronze } from "@/lib/data/research/runner";
 import { StrategyPluginRegistry } from "@/lib/data/strategies/plugin/StrategyPluginRegistry";
 import { stableStringify } from "@/lib/trading/config/hashConfig";
 
+import { normalizeStrategySweepArgv } from "../lib/cliArgvSchemas";
+
 import { parseHistoricalResearchInputJson } from "./runHistoricalResearch";
 import {
   formatStdoutOutput,
@@ -80,14 +82,15 @@ export function runStrategySweepCommand(
   options?: StrategySweepCommandDeps | RunStrategySweepCommandOptions,
 ): Promise<number> {
   try {
-    const registryDir = parseRegistryDirFromArgv(argv);
-    const outputDir = parseOutputDirFromArgv(argv);
-    const concurrency = parseConcurrencyFromArgv(argv);
-    const summaryPath = parseSummaryPathFromArgv(argv);
+    const normalizedArgv = normalizeStrategySweepArgv(argv);
+    const registryDir = parseRegistryDirFromArgv(normalizedArgv);
+    const outputDir = parseOutputDirFromArgv(normalizedArgv);
+    const concurrency = parseConcurrencyFromArgv(normalizedArgv);
+    const summaryPath = parseSummaryPathFromArgv(normalizedArgv);
     const { deps } = normalizeCommandOptions(options);
     const runnerDeps = deps ?? createProductionDeps();
     const strategyIds = resolveStrategySelectionFromArgv(
-      argv,
+      normalizedArgv,
       () => runnerDeps.strategyRegistry.listStrategyIds(),
     );
 

@@ -14,6 +14,8 @@ import {
   serializeProbabilityCalibrationReport,
 } from "@/lib/data/research/calibration";
 
+import { normalizeResearchCalibrationArgv } from "../lib/cliArgvSchemas";
+
 import {
   formatStdoutOutput,
   parseInputDirFromArgv,
@@ -42,8 +44,9 @@ export function runProbabilityCalibrationReportCommand(
   options?: { generatedAt?: string },
 ): number {
   try {
-    const inputRoot = parseInputDirFromArgv(argv);
-    const outputRoot = parseOutputDirFromArgv(argv);
+    const normalizedArgv = normalizeResearchCalibrationArgv(argv);
+    const inputRoot = parseInputDirFromArgv(normalizedArgv);
+    const outputRoot = parseOutputDirFromArgv(normalizedArgv);
     const generatedAt = options?.generatedAt ?? new Date().toISOString();
 
     const reports = buildProbabilityCalibrationReportsFromDirectories(

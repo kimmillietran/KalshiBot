@@ -35,6 +35,34 @@ describe("resolveStrategySelectionFromArgv", () => {
 });
 
 describe("runStrategySweepCommand", () => {
+  it("accepts npm-stripped positional strategy id", async () => {
+    const exitCode = await runStrategySweepCommand(
+      ["noop"],
+      {
+        writeStdout: vi.fn(),
+        writeStderr: vi.fn(),
+      },
+      {
+        deps: {
+          filesystem: {
+            exists: () => false,
+            readFile: () => "",
+            writeFile: vi.fn(),
+            mkdir: vi.fn(),
+            listRegistryPaths: () => {
+              throw new Error("Registry directory does not exist");
+            },
+          },
+          strategyRegistry: StrategyPluginRegistry.createBuiltIn(),
+          parseFixtureJson: (json) => JSON.parse(json),
+          runResearch: () => "{}",
+        },
+      },
+    );
+
+    expect(exitCode).toBe(1);
+  });
+
   it("returns exit code 1 when any run fails", async () => {
     const exitCode = await runStrategySweepCommand(
       ["--strategy", "noop", "--registry", "missing-registry"],

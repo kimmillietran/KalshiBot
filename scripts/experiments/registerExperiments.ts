@@ -14,6 +14,8 @@ import {
   registerExperiments,
 } from "@/lib/data/research/experiment-registry";
 
+import { normalizeExperimentsRegisterArgv } from "../lib/cliArgvSchemas";
+
 import {
   formatStdoutOutput,
   parseExperimentsRootFromArgv,
@@ -56,9 +58,10 @@ export function runRegisterExperimentsCommand(
   options?: { registeredAt?: string; gitCommit?: string | null },
 ): number {
   try {
-    const researchRoot = parseResearchRootFromArgv(argv);
-    const experimentsRoot = parseExperimentsRootFromArgv(argv);
-    const fixturesRoot = parseFixturesRootFromArgv(argv);
+    const normalizedArgv = normalizeExperimentsRegisterArgv(argv);
+    const researchRoot = parseResearchRootFromArgv(normalizedArgv);
+    const experimentsRoot = parseExperimentsRootFromArgv(normalizedArgv);
+    const fixturesRoot = parseFixturesRootFromArgv(normalizedArgv);
     const registeredAt = options?.registeredAt ?? new Date().toISOString();
     const gitCommit =
       options?.gitCommit
