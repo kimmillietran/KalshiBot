@@ -99,6 +99,11 @@ export const REGIME_TAGGING_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--output" },
 ];
 
+export const VOL_PREMIUM_ARGV_SCHEMA: readonly NpmArgvField[] = [
+  { flag: "--input-dir" },
+  { flag: "--output" },
+];
+
 export const POWER_ANALYSIS_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--input-dir" },
   { flag: "--output" },
@@ -256,6 +261,10 @@ export function normalizeRegimeTaggingArgv(argv: readonly string[]): string[] {
   return normalizeNpmScriptArgv(argv, REGIME_TAGGING_ARGV_SCHEMA);
 }
 
+export function normalizeVolPremiumArgv(argv: readonly string[]): string[] {
+  return normalizeNpmScriptArgv(argv, VOL_PREMIUM_ARGV_SCHEMA);
+}
+
 export function normalizeHypothesisCandidatesArgv(argv: readonly string[]): string[] {
   return normalizeNpmScriptArgv(argv, HYPOTHESIS_CANDIDATES_ARGV_SCHEMA);
 }
@@ -267,6 +276,7 @@ export function normalizePowerAnalysisArgv(argv: readonly string[]): string[] {
 export function normalizeOverfittingDiagnosticsArgv(argv: readonly string[]): string[] {
   return normalizeNpmScriptArgv(argv, OVERFITTING_DIAGNOSTICS_ARGV_SCHEMA);
 }
+
 
 export function normalizeLeaderboardStrategiesArgv(argv: readonly string[]): string[] {
   return normalizeNpmScriptArgv(argv, LEADERBOARD_STRATEGIES_ARGV_SCHEMA);
