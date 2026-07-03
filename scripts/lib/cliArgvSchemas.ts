@@ -293,6 +293,7 @@ const STRATEGY_SWEEP_POSITIONAL_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--output-dir" },
   { flag: "--concurrency" },
   { flag: "--summary" },
+  { flag: "--synthesis" },
 ];
 
 const WALK_FORWARD_SWEEP_POSITIONAL_SCHEMA: readonly NpmArgvField[] = [
@@ -309,10 +310,10 @@ function normalizeStrategySelectionArgv(
   const expanded = expandEqualsStyleFlags(argv);
 
   if (hasCliFlags(expanded)) {
-    return mergeNpmBooleanFlags(expanded, ["--all"]);
+    return mergeNpmBooleanFlags(expanded, ["--all", "--include-synthesized"]);
   }
 
-  const booleanMerged = mergeNpmBooleanFlags(expanded, ["--all"]);
+  const booleanMerged = mergeNpmBooleanFlags(expanded, ["--all", "--include-synthesized"]);
   if (booleanMerged.some((token) => token === "--all")) {
     return booleanMerged;
   }
@@ -322,7 +323,7 @@ function normalizeStrategySelectionArgv(
   }
 
   const positional = mapPositionalToFlags(expanded, positionalSchema);
-  return mergeNpmBooleanFlags(positional, ["--all"]);
+  return mergeNpmBooleanFlags(positional, ["--all", "--include-synthesized"]);
 }
 
 export function normalizeDiscoveryImportConfigsArgv(argv: readonly string[]): string[] {

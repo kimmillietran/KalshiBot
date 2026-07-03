@@ -13,6 +13,10 @@ export {
   loadStrategySynthesisCandidatesReport,
 } from "./loadSynthesizedStrategySpecs";
 export {
+  normalizeSynthesizedStrategySpec,
+  parseStrategySynthesisCandidatesReport,
+} from "./normalizeSynthesizedStrategySpec";
+export {
   CALIBRATION_FADE_STRATEGY_ID,
   calibrationFadeStrategyPlugin,
 } from "./plugins/calibrationFadeStrategyPlugin";

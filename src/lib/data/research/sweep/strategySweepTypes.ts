@@ -24,6 +24,8 @@ export const StrategySweepErrorCode = {
   UNKNOWN_STRATEGY_ID: "unknown-strategy-id",
   INVALID_CONCURRENCY: "invalid-concurrency",
   MISSING_STRATEGY_SELECTION: "missing-strategy-selection",
+  MISSING_SYNTHESIS_FILE: "missing-synthesis-file",
+  INVALID_SYNTHESIS_FILE: "invalid-synthesis-file",
 } as const;
 
 export type StrategySweepErrorCode =
@@ -59,6 +61,18 @@ export type StrategySweepMarketEntry = {
   };
 };
 
+export type StrategySweepSynthesizedMetadata = {
+  synthesizedStrategyId: string;
+  hypothesisId: string;
+  strategyFamily: string;
+  pluginStrategyId: string;
+};
+
+export type SynthesizedStrategySweepEntry = StrategySweepSynthesizedMetadata & {
+  sweepStrategyId: string;
+  strategyConfig: Record<string, unknown>;
+};
+
 export type StrategySweepRunResult = {
   strategyId: string;
   seriesTicker: string;
@@ -71,6 +85,7 @@ export type StrategySweepRunResult = {
   durationMs: number;
   runId: string | null;
   pricingDiagnostics?: ReplayPricingDiagnosticsRunSummary;
+  synthesized?: StrategySweepSynthesizedMetadata;
 };
 
 export type StrategySweepSummary = {
@@ -82,6 +97,9 @@ export type StrategySweepSummary = {
   completedAt: string;
   durationMs: number;
   strategiesExecuted: readonly string[];
+  includeSynthesized: boolean;
+  synthesizedStrategiesExecuted: readonly string[];
+  warnings: readonly string[];
   marketsTested: number;
   totalRuns: number;
   successfulRuns: number;
@@ -99,7 +117,9 @@ export type StrategySweepFilesystem = {
 
 export type StrategySweepJob = {
   strategyId: string;
+  executionStrategyId: string;
   strategyConfig: Record<string, unknown>;
+  synthesized?: StrategySweepSynthesizedMetadata;
   entry: StrategySweepMarketEntry;
   outputPath: string;
   fixture: HistoricalResearchCliInputDocument | null;
@@ -115,6 +135,8 @@ export type RunStrategySweepInput = {
   concurrency?: number;
   summaryPath?: string;
   writeSummary?: boolean;
+  includeSynthesized?: boolean;
+  synthesisPath?: string;
 };
 
 export type StrategySweepRunnerDeps = {
@@ -125,6 +147,7 @@ export type StrategySweepRunnerDeps = {
     fixture: HistoricalResearchCliInputDocument;
     strategyId: string;
     strategyConfig: Record<string, unknown>;
+    synthesized?: StrategySweepSynthesizedMetadata;
   }) => StrategySweepResearchResult;
   now?: () => Date;
   logProgress?: (message: string) => void;

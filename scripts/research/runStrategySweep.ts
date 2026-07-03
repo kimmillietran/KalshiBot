@@ -3,6 +3,7 @@ import {
   createNodeStrategySweepFilesystem,
   runStrategySweep,
 } from "@/lib/data/research/sweep";
+import { createResearchStrategyHarnessRegistry } from "@/lib/data/research/strategyHarness";
 import { runHistoricalResearchFromBronze } from "@/lib/data/research/runner";
 import { StrategyPluginRegistry } from "@/lib/data/strategies/plugin/StrategyPluginRegistry";
 import { stableStringify } from "@/lib/trading/config/hashConfig";
@@ -13,9 +14,11 @@ import { parseHistoricalResearchInputJson } from "./runHistoricalResearch";
 import {
   formatStdoutOutput,
   parseConcurrencyFromArgv,
+  parseIncludeSynthesizedFromArgv,
   parseOutputDirFromArgv,
   parseRegistryDirFromArgv,
   parseSummaryPathFromArgv,
+  parseSynthesisPathFromArgv,
   resolveStrategySelectionFromArgv,
 } from "./strategySweepTypes";
 import type {
@@ -38,8 +41,10 @@ function normalizeCommandOptions(
   return options;
 }
 
-function createProductionDeps(): StrategySweepCommandDeps {
-  const strategyRegistry = StrategyPluginRegistry.createBuiltIn();
+function createProductionDeps(includeSynthesized: boolean): StrategySweepCommandDeps {
+  const strategyRegistry = includeSynthesized
+    ? createResearchStrategyHarnessRegistry()
+    : StrategyPluginRegistry.createBuiltIn();
 
   return {
     filesystem: createNodeStrategySweepFilesystem(),
@@ -91,8 +96,10 @@ export function runStrategySweepCommand(
     const outputDir = parseOutputDirFromArgv(normalizedArgv);
     const concurrency = parseConcurrencyFromArgv(normalizedArgv);
     const summaryPath = parseSummaryPathFromArgv(normalizedArgv);
+    const includeSynthesized = parseIncludeSynthesizedFromArgv(normalizedArgv);
+    const synthesisPath = parseSynthesisPathFromArgv(normalizedArgv);
     const { deps } = normalizeCommandOptions(options);
-    const runnerDeps = deps ?? createProductionDeps();
+    const runnerDeps = deps ?? createProductionDeps(includeSynthesized);
     if (runnerDeps.logProgress === undefined) {
       runnerDeps.logProgress = (message) => {
         io.writeStderr(message);
@@ -113,6 +120,8 @@ export function runStrategySweepCommand(
         strategyIds,
         concurrency,
         summaryPath,
+        includeSynthesized,
+        synthesisPath,
       },
       runnerDeps,
     ).then(
@@ -122,6 +131,9 @@ export function runStrategySweepCommand(
             stableStringify({
               summaryPath: summary.summaryPath,
               strategiesExecuted: summary.strategiesExecuted,
+              includeSynthesized: summary.includeSynthesized,
+              synthesizedStrategiesExecuted: summary.synthesizedStrategiesExecuted,
+              warnings: summary.warnings,
               marketsTested: summary.marketsTested,
               totalRuns: summary.totalRuns,
               successfulRuns: summary.successfulRuns,
@@ -171,9 +183,11 @@ export {
   formatStdoutOutput,
   parseAllStrategiesFromArgv,
   parseConcurrencyFromArgv,
+  parseIncludeSynthesizedFromArgv,
   parseOutputDirFromArgv,
   parseRegistryDirFromArgv,
   parseStrategyIdsFromArgv,
   parseSummaryPathFromArgv,
+  parseSynthesisPathFromArgv,
   resolveStrategySelectionFromArgv,
 } from "./strategySweepTypes";

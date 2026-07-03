@@ -4,8 +4,10 @@ import { parseReplayPricingDiagnosticsFromResearchOutput } from "@/lib/data/rese
 
 import { createStrategySweepProgressReporter } from "@/lib/cli/progress";
 
+import { augmentResearchOutputWithSynthesizedMetadata } from "./augmentResearchOutputWithSynthesizedMetadata";
 import { buildStrategySweepOutputPath } from "./buildStrategySweepOutputPath";
 import { parseStrategySweepSeriesRegistryJson } from "./parseDatasetRegistryJson";
+import { resolveSynthesizedStrategySweepEntries } from "./resolveSynthesizedStrategySweepEntries";
 import { validateSerializedResearchOutputJson } from "@/lib/data/research/runner/validateSerializedResearchOutputJson";
 import { buildStrategySweepDecisionTracePath } from "@/lib/data/research/decisionTrace";
 import {
@@ -21,6 +23,7 @@ import {
   type StrategySweepRunnerDeps,
   type StrategySweepSummary,
   type RunStrategySweepInput,
+  type SynthesizedStrategySweepEntry,
 } from "./strategySweepTypes";
 
 function normalizePath(path: string): string {
@@ -164,14 +167,13 @@ function resolveStrategyConfig(
   return {};
 }
 
-function buildJobs(
+function buildBaselineJobs(
   input: RunStrategySweepInput,
   strategyIds: readonly string[],
+  entries: readonly StrategySweepMarketEntry[],
   deps: StrategySweepRunnerDeps,
 ): StrategySweepJob[] {
   const normalizedOutputDir = normalizePath(input.outputDir);
-  const entries = loadRegistryEntries(input.registryDir, deps);
-  const seenOutputPaths = new Map<string, string>();
   const jobs: StrategySweepJob[] = [];
 
   for (const strategyId of strategyIds) {
@@ -184,20 +186,6 @@ function buildJobs(
         input.parameterSetId
           ? { parameterSetId: input.parameterSetId }
           : undefined,
-      );
-
-      const existingEntry = seenOutputPaths.get(outputPath);
-      if (existingEntry !== undefined) {
-        throw new StrategySweepError(
-          `Duplicate output path: ${outputPath}`,
-          StrategySweepErrorCode.DUPLICATE_OUTPUT_PATH,
-          { strategyId, marketTicker: entry.marketTicker },
-        );
-      }
-
-      seenOutputPaths.set(
-        outputPath,
-        `${strategyId}/${entry.seriesTicker}/${entry.marketTicker}`,
       );
 
       let fixture = null;
@@ -225,6 +213,7 @@ function buildJobs(
 
       jobs.push({
         strategyId,
+        executionStrategyId: strategyId,
         strategyConfig,
         entry,
         outputPath,
@@ -234,7 +223,102 @@ function buildJobs(
     }
   }
 
-  return jobs.sort(compareJobs);
+  return jobs;
+}
+
+function buildSynthesizedJobs(
+  input: RunStrategySweepInput,
+  synthesizedEntries: readonly SynthesizedStrategySweepEntry[],
+  entries: readonly StrategySweepMarketEntry[],
+  deps: StrategySweepRunnerDeps,
+): StrategySweepJob[] {
+  const normalizedOutputDir = normalizePath(input.outputDir);
+  const jobs: StrategySweepJob[] = [];
+
+  for (const synthesizedEntry of synthesizedEntries) {
+    for (const entry of entries) {
+      const outputPath = buildStrategySweepOutputPath(
+        normalizedOutputDir,
+        synthesizedEntry.sweepStrategyId,
+        entry.seriesTicker,
+        entry.marketTicker,
+        input.parameterSetId
+          ? { parameterSetId: input.parameterSetId }
+          : undefined,
+      );
+
+      let fixture = null;
+      let parseErrorMessage: string | null = null;
+
+      if (!deps.filesystem.exists(entry.fixturePath)) {
+        parseErrorMessage = `Missing fixture: ${entry.fixturePath}`;
+      } else {
+        try {
+          fixture = deps.parseFixtureJson(
+            deps.filesystem.readFile(entry.fixturePath),
+            entry.marketTicker,
+          );
+          deps.strategyRegistry.parseConfig(
+            synthesizedEntry.pluginStrategyId,
+            synthesizedEntry.strategyConfig,
+          );
+        } catch (error) {
+          parseErrorMessage =
+            error instanceof Error ? error.message : "Failed to prepare synthesized sweep job";
+        }
+      }
+
+      jobs.push({
+        strategyId: synthesizedEntry.sweepStrategyId,
+        executionStrategyId: synthesizedEntry.pluginStrategyId,
+        strategyConfig: synthesizedEntry.strategyConfig,
+        synthesized: {
+          synthesizedStrategyId: synthesizedEntry.synthesizedStrategyId,
+          hypothesisId: synthesizedEntry.hypothesisId,
+          strategyFamily: synthesizedEntry.strategyFamily,
+          pluginStrategyId: synthesizedEntry.pluginStrategyId,
+        },
+        entry,
+        outputPath,
+        fixture,
+        parseErrorMessage,
+      });
+    }
+  }
+
+  return jobs;
+}
+
+function buildJobs(
+  input: RunStrategySweepInput,
+  strategyIds: readonly string[],
+  synthesizedEntries: readonly SynthesizedStrategySweepEntry[],
+  deps: StrategySweepRunnerDeps,
+): StrategySweepJob[] {
+  const entries = loadRegistryEntries(input.registryDir, deps);
+  const seenOutputPaths = new Map<string, string>();
+  const jobs = [
+    ...buildBaselineJobs(input, strategyIds, entries, deps),
+    ...buildSynthesizedJobs(input, synthesizedEntries, entries, deps),
+  ].sort(compareJobs);
+
+  for (const job of jobs) {
+    const existingEntry = seenOutputPaths.get(job.outputPath);
+    if (existingEntry !== undefined) {
+      throw new StrategySweepError(
+        `Duplicate output path: ${job.outputPath}`,
+        StrategySweepErrorCode.DUPLICATE_OUTPUT_PATH,
+        { strategyId: job.strategyId, marketTicker: job.entry.marketTicker },
+      );
+    }
+
+    seenOutputPaths.set(
+      job.outputPath,
+      `${job.strategyId}/${job.entry.seriesTicker}/${job.entry.marketTicker}`,
+    );
+  }
+
+  return jobs;
 }
 
 async function runWithConcurrency<T>(
@@ -280,6 +364,7 @@ function toRunResult(
     errorMessage: result?.errorMessage ?? null,
     durationMs: result?.durationMs ?? 0,
     runId: result?.runId ?? job.fixture?.runId ?? null,
+    ...(job.synthesized ? { synthesized: job.synthesized } : {}),
     ...(result?.pricingDiagnostics
       ? { pricingDiagnostics: result.pricingDiagnostics }
       : {}),
@@ -311,8 +396,9 @@ async function executeJob(
   try {
     const researchResult = deps.runResearch({
       fixture: job.fixture,
-      strategyId: job.strategyId,
+      strategyId: job.executionStrategyId,
       strategyConfig: job.strategyConfig,
+      synthesized: job.synthesized,
     });
 
     if (
@@ -342,8 +428,15 @@ async function executeJob(
       });
     }
 
+    const serializedOutput = job.synthesized
+      ? augmentResearchOutputWithSynthesizedMetadata(validation.json, {
+          sweepStrategyId: job.strategyId,
+          synthesized: job.synthesized,
+        })
+      : validation.json;
+
     deps.filesystem.mkdir(posix.dirname(job.outputPath));
-    deps.filesystem.writeFile(job.outputPath, validation.json);
+    deps.filesystem.writeFile(job.outputPath, serializedOutput);
     deps.filesystem.writeFile(
       buildStrategySweepDecisionTracePath(job.outputPath),
       researchResult.decisionTrace,
@@ -394,6 +487,16 @@ export async function runStrategySweep(
   );
   const strategyIds = resolveSelectedStrategyIds(input, deps);
   const registryEntries = loadRegistryEntries(normalizedRegistryDir, deps);
+  const synthesizedResolution = input.includeSynthesized
+    ? resolveSynthesizedStrategySweepEntries({
+        synthesisPath: input.synthesisPath,
+        readFile: deps.filesystem.readFile,
+        fileExists: deps.filesystem.exists,
+      })
+    : { entries: [], warnings: [] };
+  const synthesizedStrategyIds = synthesizedResolution.entries.map(
+    (entry) => entry.sweepStrategyId,
+  );
   const jobs = buildJobs(
     {
       registryDir: normalizedRegistryDir,
@@ -404,8 +507,11 @@ export async function runStrategySweep(
       summaryPath,
       concurrency,
       writeSummary: input.writeSummary,
+      includeSynthesized: input.includeSynthesized,
+      synthesisPath: input.synthesisPath,
     },
     strategyIds,
+    synthesizedResolution.entries,
     deps,
   );
 
@@ -414,7 +520,7 @@ export async function runStrategySweep(
     ? createStrategySweepProgressReporter({
         totalJobs: jobs.length,
         totalMarkets: countUniqueMarkets(registryEntries),
-        strategyIds,
+        strategyIds: [...strategyIds, ...synthesizedStrategyIds],
         startedAtMs: startMs,
         isTty: deps.isProgressTty ?? false,
         write: deps.logProgress,
@@ -445,6 +551,9 @@ export async function runStrategySweep(
     completedAt,
     durationMs: Date.now() - startMs,
     strategiesExecuted: [...strategyIds],
+    includeSynthesized: input.includeSynthesized === true,
+    synthesizedStrategiesExecuted: synthesizedStrategyIds,
+    warnings: synthesizedResolution.warnings,
     marketsTested: countUniqueMarkets(registryEntries),
     totalRuns: jobs.length,
     successfulRuns,

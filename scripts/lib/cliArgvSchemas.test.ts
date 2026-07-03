@@ -36,6 +36,15 @@ describe("cliArgvSchemas", () => {
     expect(normalizeStrategySweepArgv([])).toEqual(["--all"]);
   });
 
+  it("re-injects --include-synthesized when npm consumed the boolean flag", () => {
+    vi.stubEnv("npm_config_include_synthesized", "true");
+
+    expect(normalizeStrategySweepArgv(["--all"])).toEqual([
+      "--all",
+      "--include-synthesized",
+    ]);
+  });
+
   it("normalizes research inspect equals-style argv", () => {
     expect(
       normalizeResearchInspectArgv([

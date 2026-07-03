@@ -13,6 +13,12 @@ export { parseStrategySweepSeriesRegistryJson } from "./parseDatasetRegistryJson
 export { runStrategySweep } from "./runStrategySweep";
 
 export {
+  buildSynthesizedSweepStrategyId,
+  resolveSynthesizedStrategySweepEntries,
+  SYNTHESIZED_SWEEP_STRATEGY_PREFIX,
+} from "./resolveSynthesizedStrategySweepEntries";
+
+export {
   resolveStrategySweepSummaryPath,
   serializeStrategySweepSummary,
 } from "./serializeStrategySweepSummary";
@@ -35,6 +41,8 @@ export type {
   StrategySweepRunResult,
   StrategySweepRunnerDeps,
   StrategySweepSummary,
+  StrategySweepSynthesizedMetadata,
+  SynthesizedStrategySweepEntry,
 } from "./strategySweepTypes";
 
 export type { StrategySweepSeriesRegistryDocument } from "./parseDatasetRegistryJson";

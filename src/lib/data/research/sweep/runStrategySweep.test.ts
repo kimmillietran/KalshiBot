@@ -13,7 +13,11 @@ import { DEFAULT_BACKTEST_FILL_SIMULATION_CONFIG } from "@/lib/data/backtesting/
 
 import { buildStrategySweepOutputPath } from "./buildStrategySweepOutputPath";
 import { buildStrategySweepDecisionTracePath } from "@/lib/data/research/decisionTrace";
+import { createResearchStrategyHarnessRegistry } from "@/lib/data/research/strategyHarness";
 import { runStrategySweep } from "./runStrategySweep";
+import {
+  buildSynthesizedSweepStrategyId,
+} from "./resolveSynthesizedStrategySweepEntries";
 import {
   StrategySweepError,
   StrategySweepErrorCode,
@@ -169,13 +173,13 @@ function createFilesystem(
   };
 }
 
-function productionResearchFn(): StrategySweepRunnerDeps["runResearch"] {
-  const strategyRegistry = StrategyPluginRegistry.createBuiltIn();
-
+function productionResearchFn(
+  registry = StrategyPluginRegistry.createBuiltIn(),
+): StrategySweepRunnerDeps["runResearch"] {
   return ({ fixture, strategyId, strategyConfig }) => {
     const result = runHistoricalResearchFromBronze({
       bronzeRecords: fixture.bronzeRecords,
-      strategy: strategyRegistry.resolveBacktestStrategy(strategyId, strategyConfig),
+      strategy: registry.resolveBacktestStrategy(strategyId, strategyConfig),
       engineConfig: fixture.engineConfig,
       initialCashCents: fixture.initialCashCents,
       runId: fixture.runId,
@@ -194,10 +198,13 @@ function productionResearchFn(): StrategySweepRunnerDeps["runResearch"] {
 function createDeps(
   filesystem: StrategySweepFilesystem,
   runResearch?: StrategySweepRunnerDeps["runResearch"],
+  options?: { includeHarnessRegistry?: boolean },
 ): StrategySweepRunnerDeps {
   return {
     filesystem,
-    strategyRegistry: StrategyPluginRegistry.createBuiltIn(),
+    strategyRegistry: options?.includeHarnessRegistry
+      ? createResearchStrategyHarnessRegistry()
+      : StrategyPluginRegistry.createBuiltIn(),
     parseFixtureJson: (json) => JSON.parse(json) as HistoricalResearchCliInputDocument,
     runResearch: runResearch ?? productionResearchFn(),
     now: () => FIXED_NOW,
@@ -583,6 +590,9 @@ describe("runStrategySweep", () => {
 
     expect(summary.summaryPath).toBe(summaryPath);
     expect(summary.strategiesExecuted).toEqual(["noop", "buy-first-ask"]);
+    expect(summary.includeSynthesized).toBe(false);
+    expect(summary.synthesizedStrategiesExecuted).toEqual([]);
+    expect(summary.warnings).toEqual([]);
     expect(summary.marketsTested).toBe(1);
     expect(summary.totalRuns).toBe(2);
     expect(summary.startedAt).toBe(FIXED_NOW.toISOString());
@@ -650,6 +660,172 @@ describe("runStrategySweep", () => {
       ),
     ).rejects.toMatchObject({
       code: StrategySweepErrorCode.MISSING_REGISTRY_DIR,
+    });
+  });
+
+  it("does not include synthesized strategies unless explicitly enabled", async () => {
+    const marketTicker = "KXBTC15M-MARKET-A";
+    const fixturePath = `data/fixtures/KXBTC15M/${marketTicker}/fixture.json`;
+    const registryPath = "data/research-datasets/KXBTC15M/dataset-registry.json";
+    const synthesisPath = "data/research-results/strategy-synthesis-candidates.json";
+    const filesystem = createFilesystem(
+      {
+        [registryPath]: JSON.stringify(
+          buildRegistry([{ marketTicker, fixturePath }]),
+        ),
+      },
+      {
+        [fixturePath]: JSON.stringify(createFixtureDocument(marketTicker)),
+        [synthesisPath]: JSON.stringify({
+          strategies: [
+            {
+              strategyId: "synth-atlas-vol-high-over",
+              hypothesisId: "atlas-volatility-vol-high-over",
+              strategyFamily: "calibration-fade",
+              direction: "fade-yes",
+              entryConditions: { yesMidThresholdCents: 55 },
+              exitAssumption: "Hold to settlement",
+              requiredData: [],
+              riskNotes: [],
+              validationSummary: {
+                robustnessScore: 84,
+                passes: true,
+                observationCount: 12,
+              },
+              promotionStatus: "candidate",
+            },
+          ],
+        }),
+      },
+    );
+
+    const summary = await runStrategySweep(
+      {
+        registryDir: "data/research-datasets",
+        outputDir: "data/research-results",
+        strategyIds: ["noop"],
+      },
+      createDeps(filesystem),
+    );
+
+    expect(summary.totalRuns).toBe(1);
+    expect(summary.includeSynthesized).toBe(false);
+    expect(summary.synthesizedStrategiesExecuted).toEqual([]);
+  });
+
+  it("includes synthesized strategies when opt-in is enabled", async () => {
+    const marketTicker = "KXBTC15M-MARKET-A";
+    const fixturePath = `data/fixtures/KXBTC15M/${marketTicker}/fixture.json`;
+    const registryPath = "data/research-datasets/KXBTC15M/dataset-registry.json";
+    const synthesisPath = "data/research-results/strategy-synthesis-candidates.json";
+    const synthesizedSweepId = buildSynthesizedSweepStrategyId("synth-atlas-vol-high-over");
+    const outputPath = buildStrategySweepOutputPath(
+      "data/research-results",
+      synthesizedSweepId,
+      "KXBTC15M",
+      marketTicker,
+    );
+    const filesystem = createFilesystem(
+      {
+        [registryPath]: JSON.stringify(
+          buildRegistry([{ marketTicker, fixturePath }]),
+        ),
+      },
+      {
+        [fixturePath]: JSON.stringify(createFixtureDocument(marketTicker)),
+        [synthesisPath]: JSON.stringify({
+          strategies: [
+            {
+              strategyId: "synth-atlas-vol-high-over",
+              hypothesisId: "atlas-volatility-vol-high-over",
+              strategyFamily: "calibration-fade",
+              direction: "fade-yes",
+              entryConditions: { yesMidThresholdCents: 55 },
+              exitAssumption: "Hold to settlement",
+              requiredData: [],
+              riskNotes: [],
+              validationSummary: {
+                robustnessScore: 84,
+                passes: true,
+                observationCount: 12,
+              },
+              promotionStatus: "candidate",
+            },
+            {
+              strategyId: "synth-delayed",
+              hypothesisId: "lead-lag-btc-over",
+              strategyFamily: "delayed-reaction",
+              direction: "buy-yes",
+              entryConditions: { yesMidThresholdCents: 50 },
+              exitAssumption: "Hold to settlement",
+              requiredData: [],
+              riskNotes: [],
+              validationSummary: {
+                robustnessScore: 20,
+                passes: false,
+                observationCount: 2,
+              },
+              promotionStatus: "experimental",
+            },
+          ],
+        }),
+      },
+    );
+    const runResearch = vi.fn((input) => {
+      const registry = createResearchStrategyHarnessRegistry();
+      return productionResearchFn(registry)(input);
+    });
+
+    const summary = await runStrategySweep(
+      {
+        registryDir: "data/research-datasets",
+        outputDir: "data/research-results",
+        strategyIds: ["noop"],
+        includeSynthesized: true,
+        synthesisPath,
+      },
+      createDeps(filesystem, runResearch, { includeHarnessRegistry: true }),
+    );
+
+    expect(summary.totalRuns).toBe(2);
+    expect(summary.includeSynthesized).toBe(true);
+    expect(summary.synthesizedStrategiesExecuted).toEqual([synthesizedSweepId]);
+    expect(summary.warnings).toHaveLength(1);
+    expect(summary.warnings[0]).toContain("synth-delayed");
+    expect(summary.runs.find((run) => run.strategyId === synthesizedSweepId)).toMatchObject({
+      status: "success",
+      synthesized: {
+        synthesizedStrategyId: "synth-atlas-vol-high-over",
+        hypothesisId: "atlas-volatility-vol-high-over",
+        strategyFamily: "calibration-fade",
+        pluginStrategyId: "calibration-fade",
+      },
+    });
+    expect(runResearch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        strategyId: "calibration-fade",
+        synthesized: expect.objectContaining({
+          hypothesisId: "atlas-volatility-vol-high-over",
+        }),
+      }),
+    );
+    expect(filesystem.readFile(outputPath)).toContain("synth-atlas-vol-high-over");
+  });
+
+  it("fails clearly when synthesis file is missing and synthesized strategies were requested", async () => {
+    await expect(
+      runStrategySweep(
+        {
+          registryDir: "data/research-datasets",
+          outputDir: "data/research-results",
+          strategyIds: ["noop"],
+          includeSynthesized: true,
+          synthesisPath: "data/research-results/strategy-synthesis-candidates.json",
+        },
+        createDeps(createFilesystem({}, {}), undefined, { includeHarnessRegistry: true }),
+      ),
+    ).rejects.toMatchObject({
+      code: StrategySweepErrorCode.MISSING_SYNTHESIS_FILE,
     });
   });
 });

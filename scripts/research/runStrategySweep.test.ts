@@ -4,6 +4,7 @@ import { StrategyPluginRegistry } from "@/lib/data/strategies/plugin/StrategyPlu
 
 import { runStrategySweepCommand } from "./runStrategySweep";
 import {
+  parseIncludeSynthesizedFromArgv,
   resolveStrategySelectionFromArgv,
   StrategySweepCommandError,
 } from "./strategySweepTypes";
@@ -31,6 +32,13 @@ describe("resolveStrategySelectionFromArgv", () => {
         "buy-first-ask",
       ]),
     ).toEqual(["noop", "buy-first-ask"]);
+  });
+});
+
+describe("parseIncludeSynthesizedFromArgv", () => {
+  it("defaults to false unless --include-synthesized is passed", () => {
+    expect(parseIncludeSynthesizedFromArgv([])).toBe(false);
+    expect(parseIncludeSynthesizedFromArgv(["--include-synthesized"])).toBe(true);
   });
 });
 

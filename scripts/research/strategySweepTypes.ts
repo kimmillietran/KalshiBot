@@ -108,6 +108,28 @@ export function parseAllStrategiesFromArgv(argv: readonly string[]): boolean {
   return argv.includes("--all");
 }
 
+export function parseIncludeSynthesizedFromArgv(argv: readonly string[]): boolean {
+  return argv.includes("--include-synthesized");
+}
+
+export function parseSynthesisPathFromArgv(
+  argv: readonly string[],
+  defaultPath = "data/research-results/strategy-synthesis-candidates.json",
+): string {
+  for (let index = 0; index < argv.length; index += 1) {
+    const token = argv[index];
+    if (token === "--synthesis") {
+      const next = argv[index + 1];
+      if (!next || next.startsWith("-")) {
+        throw new StrategySweepCommandError("Missing value for --synthesis <path>");
+      }
+      return next;
+    }
+  }
+
+  return defaultPath;
+}
+
 export function parseStrategyIdsFromArgv(argv: readonly string[]): string[] {
   const strategyIds: string[] = [];
 
