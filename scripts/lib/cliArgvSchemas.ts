@@ -208,6 +208,19 @@ export const RESEARCH_ARTIFACT_INDEX_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--html-output" },
 ];
 
+export const RESEARCH_PIPELINE_DASHBOARD_ARGV_SCHEMA: readonly NpmArgvField[] = [
+  { flag: "--output" },
+  { flag: "--pipeline-summary" },
+  { flag: "--artifact-index" },
+  { flag: "--hypothesis-candidates" },
+  { flag: "--hypothesis-validation" },
+  { flag: "--strategy-synthesis" },
+  { flag: "--harness-results" },
+  { flag: "--harness-summary" },
+  { flag: "--leaderboard" },
+  { flag: "--data-health" },
+];
+
 export const LEADERBOARD_STRATEGIES_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--input-dir" },
   { flag: "--output" },
@@ -383,6 +396,10 @@ export function normalizeHypothesisLifecycleArgv(argv: readonly string[]): strin
 
 export function normalizeResearchArtifactIndexArgv(argv: readonly string[]): string[] {
   return normalizeNpmScriptArgv(argv, RESEARCH_ARTIFACT_INDEX_ARGV_SCHEMA);
+}
+
+export function normalizeResearchPipelineDashboardArgv(argv: readonly string[]): string[] {
+  return normalizeNpmScriptArgv(argv, RESEARCH_PIPELINE_DASHBOARD_ARGV_SCHEMA);
 }
 
 export function normalizeLeaderboardStrategiesArgv(argv: readonly string[]): string[] {
