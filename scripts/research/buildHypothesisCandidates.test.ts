@@ -6,7 +6,7 @@ const GENERATED_AT = "2026-07-02T12:00:00.000Z";
 const OUTPUT_PATH = "data/research-results/hypothesis-candidates.json";
 
 describe("runHypothesisCandidatesCommand", () => {
-  it("writes hypothesis-candidates.json for missing input artifacts", () => {
+  it("writes hypothesis-candidates.json and research-hypotheses.html for missing input artifacts", () => {
     const writes = new Map<string, string>();
     let stdout = "";
 
@@ -33,7 +33,14 @@ describe("runHypothesisCandidatesCommand", () => {
     expect(parsed.generatedAt).toBe(GENERATED_AT);
     expect(parsed.candidates).toEqual([]);
     expect(parsed.summary.noCandidateReasons.length).toBeGreaterThan(0);
-    expect(JSON.parse(stdout).outputPath).toBe(OUTPUT_PATH);
+
+    const html = writes.get("data/reports/research-hypotheses.html");
+    expect(html).toBeDefined();
+    expect(html).toContain("Hypothesis Evidence Report");
+
+    const stdoutPayload = JSON.parse(stdout);
+    expect(stdoutPayload.outputPath).toBe(OUTPUT_PATH);
+    expect(stdoutPayload.htmlOutputPath).toBe("data/reports/research-hypotheses.html");
   });
 
   it("accepts custom artifact paths and min sample overrides", () => {

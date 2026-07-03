@@ -7,6 +7,8 @@ import {
   DEFAULT_STATISTICAL_SIGNIFICANCE_INPUT_PATH,
   DEFAULT_STRATEGY_LEADERBOARD_INPUT_PATH,
 } from "@/lib/data/research/hypothesisCandidates";
+import { DEFAULT_HYPOTHESIS_EVIDENCE_HTML_PATH } from "@/lib/data/research/hypothesisEvidence";
+import { DEFAULT_LEAD_LAG_INPUT_DIR } from "@/lib/data/research/leadLag";
 
 export class HypothesisCandidatesCommandError extends Error {
   constructor(message: string) {
@@ -23,6 +25,46 @@ export type HypothesisCandidatesCommandIo = {
   writeFile: (path: string, data: string) => void;
   mkdirSync: (path: string, options: { recursive: boolean }) => void;
 };
+
+export function parseHtmlOutputPathFromArgv(
+  argv: readonly string[],
+  defaultPath = DEFAULT_HYPOTHESIS_EVIDENCE_HTML_PATH,
+): string {
+  for (let index = 0; index < argv.length; index += 1) {
+    const token = argv[index];
+    if (token === "--html-output") {
+      const next = argv[index + 1];
+      if (!next || next.startsWith("-")) {
+        throw new HypothesisCandidatesCommandError(
+          "Missing value for --html-output <path>",
+        );
+      }
+      return next;
+    }
+  }
+
+  return defaultPath;
+}
+
+export function parseResearchInputRootFromArgv(
+  argv: readonly string[],
+  defaultRoot = DEFAULT_LEAD_LAG_INPUT_DIR,
+): string {
+  for (let index = 0; index < argv.length; index += 1) {
+    const token = argv[index];
+    if (token === "--research-input-root") {
+      const next = argv[index + 1];
+      if (!next || next.startsWith("-")) {
+        throw new HypothesisCandidatesCommandError(
+          "Missing value for --research-input-root <path>",
+        );
+      }
+      return next;
+    }
+  }
+
+  return defaultRoot;
+}
 
 export function parseOutputPathFromArgv(
   argv: readonly string[],

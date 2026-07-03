@@ -111,6 +111,10 @@ npm run research:inspect -- --input-dir data/research-results --strategy buy-fir
 
 Stdout is compact JSON with `strategyId`, PnL, fill/rejection counts, replay step count, diagnostics warnings, and `decisionTracePath` when available.
 
+### Hypothesis evidence report
+
+`npm run research:hypotheses` writes `data/research-results/hypothesis-candidates.json` and a human-readable `data/reports/research-hypotheses.html` with per-hypothesis evidence cards (metrics, confidence summary, and example markets). Override paths with `--output` and `--html-output`.
+
 ## Project structure
 
 ```

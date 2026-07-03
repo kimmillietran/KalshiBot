@@ -366,6 +366,23 @@ export type {
 } from "./hypothesisCandidates";
 
 export {
+  buildHypothesisEvidenceReport,
+  buildHypothesisConfidenceSummary,
+  collectHypothesisExampleMarkets,
+  hasStatisticallySignificantStrategy,
+  parseAtlasCandidateReference,
+  parseLeadLagCandidateReference,
+  serializeHypothesisEvidenceHtml,
+  DEFAULT_HYPOTHESIS_EVIDENCE_HTML_PATH,
+} from "./hypothesisEvidence";
+export type {
+  BuildHypothesisEvidenceReportInput,
+  HypothesisEvidenceCard,
+  HypothesisEvidenceReport,
+  HypothesisExampleMarket,
+} from "./hypothesisEvidence";
+
+export {
   buildPowerAnalysisReport,
   buildPowerAnalysisReportFromDirectories,
   computeMinimumDetectableEffect,

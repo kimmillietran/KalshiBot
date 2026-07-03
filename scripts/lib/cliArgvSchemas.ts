@@ -132,12 +132,14 @@ export const POWER_ANALYSIS_ARGV_SCHEMA: readonly NpmArgvField[] = [
 
 export const HYPOTHESIS_CANDIDATES_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--output" },
+  { flag: "--html-output" },
   { flag: "--mispricing-atlas" },
   { flag: "--lead-lag" },
   { flag: "--significance" },
   { flag: "--regime-tags" },
   { flag: "--leaderboard" },
   { flag: "--min-sample" },
+  { flag: "--research-input-root" },
 ];
 
 export const OVERFITTING_DIAGNOSTICS_ARGV_SCHEMA: readonly NpmArgvField[] = [
