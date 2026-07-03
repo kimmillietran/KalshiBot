@@ -145,6 +145,10 @@ Invokes existing research CLIs (data health → mispricing atlas → hypotheses 
 
 `npm run research:strategy-synthesis` reads `hypothesis-candidates.json` and `hypothesis-validation.json`, then writes `data/research-results/strategy-synthesis-candidates.json` with parameterized strategy specs (direction, entry conditions, promotion status). Read-only — does not execute or modify strategies.
 
+### Harness results
+
+`npm run research:harness-results` reads `strategy-synthesis-candidates.json` and M8.15B harness outputs under `data/research-results/harness/`, then writes `data/research-results/harness-results.json` and `data/reports/research-harness-results.html` with per-strategy PnL metrics and promotion recommendations. Reporting only — does not modify replay or baseline strategy results.
+
 
 ## Project structure
 

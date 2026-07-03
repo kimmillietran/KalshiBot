@@ -510,6 +510,24 @@ export type {
 } from "./strategyHarness";
 
 export {
+  buildHarnessResultsReport,
+  deriveHarnessPromotionRecommendation,
+  loadHarnessResultsInputs,
+  serializeHarnessResultsHtml,
+  serializeHarnessResultsReport,
+  DEFAULT_HARNESS_RESULTS_HTML_PATH,
+  DEFAULT_HARNESS_RESULTS_OUTPUT_PATH,
+  HarnessResultsError,
+  HarnessResultsErrorCode,
+} from "./harnessResults";
+export type {
+  BuildHarnessResultsReportInput,
+  HarnessPromotionRecommendation,
+  HarnessResultsReport,
+  HarnessStrategyResult,
+} from "./harnessResults";
+
+export {
   buildPowerAnalysisReport,
   buildPowerAnalysisReportFromDirectories,
   computeMinimumDetectableEffect,

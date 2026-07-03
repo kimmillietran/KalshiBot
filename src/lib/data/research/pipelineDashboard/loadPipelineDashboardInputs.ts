@@ -85,6 +85,78 @@ const harnessResultsSchema = z.object({
   ),
 });
 
+const harnessResultsReportSchema = z.object({
+  generatedAt: z.string().trim().min(1),
+  summary: z.object({
+    evaluatedCount: z.number().finite(),
+  }),
+  strategies: z.array(
+    z.object({
+      strategyId: z.string().trim().min(1),
+      hypothesisId: z.string().trim().min(1),
+      harnessRuns: z.object({
+        total: z.number().finite(),
+        successful: z.number().finite(),
+        failed: z.number().finite(),
+        skipped: z.number().finite(),
+      }),
+    }),
+  ),
+});
+
+type ParsedHarnessResults = z.infer<typeof harnessResultsSchema>;
+
+function normalizeHarnessResultsReport(
+  report: z.infer<typeof harnessResultsReportSchema>,
+): ParsedHarnessResults {
+  const results = report.strategies.flatMap((strategy) => [
+    ...Array.from({ length: strategy.harnessRuns.successful }, () => ({
+      synthesizedStrategyId: strategy.strategyId,
+      hypothesisId: strategy.hypothesisId,
+      status: "success" as const,
+    })),
+    ...Array.from({ length: strategy.harnessRuns.failed }, () => ({
+      synthesizedStrategyId: strategy.strategyId,
+      hypothesisId: strategy.hypothesisId,
+      status: "failed" as const,
+    })),
+    ...Array.from({ length: strategy.harnessRuns.skipped }, () => ({
+      synthesizedStrategyId: strategy.strategyId,
+      hypothesisId: strategy.hypothesisId,
+      status: "skipped" as const,
+    })),
+  ]);
+
+  return {
+    completedAt: report.generatedAt,
+    evaluatedStrategies: report.summary.evaluatedCount,
+    successfulRuns: results.filter((result) => result.status === "success").length,
+    results,
+  };
+}
+
+function tryReadHarnessResultsDocument(
+  io: PipelineDashboardIo,
+  path: string,
+): ParsedHarnessResults | null {
+  if (!io.fileExists(path)) {
+    return null;
+  }
+
+  const parsed = parseJson(path, io.readFile(path));
+  const legacy = harnessResultsSchema.safeParse(parsed);
+  if (legacy.success) {
+    return legacy.data;
+  }
+
+  const report = harnessResultsReportSchema.safeParse(parsed);
+  if (report.success) {
+    return normalizeHarnessResultsReport(report.data);
+  }
+
+  return null;
+}
+
 const strategyLeaderboardSchema = z.object({
   generatedAt: z.string().trim().min(1),
   rankBy: z.string().trim().min(1),
@@ -172,7 +244,8 @@ function readHarnessResults(
   inputPaths: PipelineDashboardInputPaths,
 ) {
   return (
-    tryReadDocument(io, inputPaths.harnessResultsPath, harnessResultsSchema)
+    tryReadHarnessResultsDocument(io, inputPaths.harnessResultsPath)
+    ?? tryReadHarnessResultsDocument(io, inputPaths.harnessSummaryFallbackPath)
     ?? tryReadDocument(io, inputPaths.harnessSummaryFallbackPath, harnessResultsSchema)
   );
 }
