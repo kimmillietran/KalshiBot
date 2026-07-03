@@ -549,6 +549,29 @@ export type {
 } from "./pipeline";
 
 export {
+  buildFullResearchSteps,
+  createDefaultFullResearchOrchestratorConfig,
+  parseFullResearchOrchestratorConfigFromArgv,
+  runFullResearchOrchestrator,
+  serializeFullResearchSummary,
+  DEFAULT_FULL_RESEARCH_SUMMARY_PATH,
+  FULL_RESEARCH_SUMMARY_FILENAME,
+  FullResearchOrchestratorError,
+  FullResearchOrchestratorErrorCode,
+} from "./fullOrchestrator";
+export type {
+  FullResearchOrchestratorConfig,
+  FullResearchOutputIo,
+  FullResearchRunStatus,
+  FullResearchStepDefinition,
+  FullResearchStepResult,
+  FullResearchStepStatus,
+  FullResearchSummary,
+  RunFullResearchOrchestratorInput,
+  RunFullResearchOrchestratorOutput,
+} from "./fullOrchestrator";
+
+export {
   runHistoricalResearchFromBronze,
   serializeHistoricalResearchRunnerResult,
   HistoricalResearchRunnerError,

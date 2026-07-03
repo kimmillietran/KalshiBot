@@ -125,6 +125,22 @@ npm run research:artifact-index
 
 Writes `data/research-results/research-artifact-index.json` and `data/reports/research-artifact-index.html`. Each entry includes artifact name, path, generated timestamp, producing pipeline step, upstream/downstream dependencies, file size, and status (`present`, `stale`, or `missing`). This is read-only — it does not run or modify the research pipeline.
 
+### Research dashboard
+
+```bash
+npm run research:dashboard
+```
+
+Writes `data/reports/research-dashboard.html` — a read-only landing page with pipeline status, artifact health, hypothesis/strategy summaries, and research health from existing artifacts.
+
+### Full research orchestrator
+
+```bash
+npm run research:full
+```
+
+Invokes existing research CLIs (data health → mispricing atlas → hypotheses → validation → synthesis → harness → artifact index → lifecycle → dashboard). Writes `data/research-results/full-research-summary.json` with per-step status, duration, outputs, warnings, and failures. Independent reporting steps still run when upstream analysis fails. Use `--continue-on-error` to keep executing the core chain after step failures.
+
 ## Project structure
 
 ```
@@ -208,6 +224,8 @@ docs/
 | 6.27E | Discovery early stop + progress logging (`--limit` smoke pagination stop, stderr progress) — **complete** |
 | 8.4 | Official research pipeline (`research:pipeline`, end-to-end orchestration CLI) — **complete** |
 | 8.17 | Research artifact index (`research:artifact-index`, centralized output health dashboard) — **complete** |
+| 8.18 | Research pipeline dashboard (`research:dashboard`, read-only research landing page) — **complete** |
+| 8.19 | End-to-end research orchestrator (`research:full`, post-pipeline workflow CLI) — **complete** |
 
 ## Intentionally deferred
 

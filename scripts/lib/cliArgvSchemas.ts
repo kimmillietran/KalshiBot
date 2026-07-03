@@ -173,6 +173,11 @@ export const RESEARCH_PIPELINE_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--request-delay-ms" },
 ];
 
+export const FULL_RESEARCH_ORCHESTRATOR_ARGV_SCHEMA: readonly NpmArgvField[] = [
+  { flag: "--output" },
+  { flag: "--continue-on-error" },
+];
+
 export const DATA_HEALTH_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--discovery-result" },
   { flag: "--imports-dir" },
@@ -400,6 +405,13 @@ export function normalizeResearchArtifactIndexArgv(argv: readonly string[]): str
 
 export function normalizeResearchPipelineDashboardArgv(argv: readonly string[]): string[] {
   return normalizeNpmScriptArgv(argv, RESEARCH_PIPELINE_DASHBOARD_ARGV_SCHEMA);
+}
+
+export function normalizeFullResearchOrchestratorArgv(argv: readonly string[]): string[] {
+  return mergeNpmBooleanFlags(
+    normalizeNpmScriptArgv(argv, FULL_RESEARCH_ORCHESTRATOR_ARGV_SCHEMA),
+    ["--continue-on-error"],
+  );
 }
 
 export function normalizeLeaderboardStrategiesArgv(argv: readonly string[]): string[] {
