@@ -124,10 +124,10 @@ export type ParsedArtifactIndex = {
   outputPath: string;
   artifacts: readonly {
     artifactId: string;
-    label: string;
+    name: string;
     path: string;
     status: "present" | "stale" | "missing";
-    lastModified: string | null;
+    generatedTimestamp: string | null;
   }[];
 };
 

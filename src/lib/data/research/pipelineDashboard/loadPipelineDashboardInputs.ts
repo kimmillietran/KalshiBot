@@ -26,10 +26,10 @@ const artifactIndexSchema = z.object({
   artifacts: z.array(
     z.object({
       artifactId: z.string().trim().min(1),
-      label: z.string().trim().min(1),
+      name: z.string().trim().min(1),
       path: z.string().trim().min(1),
       status: z.enum(["present", "stale", "missing"]),
-      lastModified: z.string().nullable(),
+      generatedTimestamp: z.string().nullable(),
     }),
   ),
 });

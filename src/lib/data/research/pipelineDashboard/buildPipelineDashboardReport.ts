@@ -63,10 +63,10 @@ function buildArtifactHealthSection(
     const entries: ArtifactHealthEntry[] = [...inputs.artifactIndex.artifacts]
       .map((artifact) => ({
         artifactId: artifact.artifactId,
-        label: artifact.label,
+        label: artifact.name,
         path: artifact.path,
         status: artifact.status,
-        lastModified: artifact.lastModified,
+        lastModified: artifact.generatedTimestamp,
       }))
       .sort((left, right) => left.artifactId.localeCompare(right.artifactId));
 

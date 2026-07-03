@@ -54,17 +54,17 @@ function createHealthyFixture(): MockFs {
       artifacts: [
         {
           artifactId: "pipeline-summary",
-          label: "Pipeline summary",
+          name: "Pipeline summary",
           path: DEFAULT_PIPELINE_DASHBOARD_INPUT_PATHS.pipelineSummaryPath,
           status: "present",
-          lastModified: "2026-07-03T20:00:00.000Z",
+          generatedTimestamp: "2026-07-03T20:00:00.000Z",
         },
         {
           artifactId: "data-health",
-          label: "Data health",
+          name: "Data health",
           path: DEFAULT_PIPELINE_DASHBOARD_INPUT_PATHS.dataHealthPath,
           status: "stale",
-          lastModified: "2026-07-03T19:00:00.000Z",
+          generatedTimestamp: "2026-07-03T19:00:00.000Z",
         },
       ],
     }),
