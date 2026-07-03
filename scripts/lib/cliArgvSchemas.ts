@@ -185,6 +185,16 @@ export const DATA_HEALTH_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--output" },
 ];
 
+export const HYPOTHESIS_LIFECYCLE_ARGV_SCHEMA: readonly NpmArgvField[] = [
+  { flag: "--output" },
+  { flag: "--hypothesis-candidates" },
+  { flag: "--evidence-html" },
+  { flag: "--hypothesis-validation" },
+  { flag: "--strategy-synthesis" },
+  { flag: "--harness-summary" },
+  { flag: "--harness-dir" },
+];
+
 export const LEADERBOARD_STRATEGIES_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--input-dir" },
   { flag: "--output" },
@@ -352,6 +362,10 @@ export function normalizeOverfittingDiagnosticsArgv(argv: readonly string[]): st
 
 export function normalizeDataHealthArgv(argv: readonly string[]): string[] {
   return normalizeNpmScriptArgv(argv, DATA_HEALTH_ARGV_SCHEMA);
+}
+
+export function normalizeHypothesisLifecycleArgv(argv: readonly string[]): string[] {
+  return normalizeNpmScriptArgv(argv, HYPOTHESIS_LIFECYCLE_ARGV_SCHEMA);
 }
 
 export function normalizeLeaderboardStrategiesArgv(argv: readonly string[]): string[] {
