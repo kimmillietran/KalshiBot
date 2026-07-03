@@ -528,6 +528,25 @@ export type {
 } from "./harnessResults";
 
 export {
+  buildCandidatePromotionReport,
+  classifyAllCandidatePromotions,
+  classifyCandidatePromotion,
+  loadCandidatePromotionInputs,
+  serializeCandidatePromotionHtml,
+  serializeCandidatePromotionReport,
+  DEFAULT_CANDIDATE_PROMOTIONS_HTML_PATH,
+  DEFAULT_CANDIDATE_PROMOTIONS_OUTPUT_PATH,
+  CandidatePromotionError,
+} from "./candidatePromotion";
+export type {
+  BuildCandidatePromotionReportInput,
+  CandidatePromotionDecision,
+  CandidatePromotionEntry,
+  CandidatePromotionReport,
+  CandidatePromotionSupportingMetrics,
+} from "./candidatePromotion";
+
+export {
   buildPowerAnalysisReport,
   buildPowerAnalysisReportFromDirectories,
   computeMinimumDetectableEffect,

@@ -149,6 +149,10 @@ Invokes existing research CLIs (data health → mispricing atlas → hypotheses 
 
 `npm run research:harness-results` reads `strategy-synthesis-candidates.json` and M8.15B harness outputs under `data/research-results/harness/`, then writes `data/research-results/harness-results.json` and `data/reports/research-harness-results.html` with per-strategy PnL metrics and promotion recommendations. Reporting only — does not modify replay or baseline strategy results.
 
+### Candidate promotions
+
+`npm run research:candidate-promotions` reads hypothesis validation, strategy synthesis, harness results (with harness-summary fallback), and optional statistical significance, then writes `data/research-results/candidate-promotions.json` and `data/reports/research-candidate-promotions.html` with advisory promotion decisions (`rejected`, `exploratory`, `needs-more-data`, `candidate`, `production-watchlist`). Read-only — does not modify strategy execution, trading, leaderboard, or sweep behavior.
+
 
 ## Project structure
 
@@ -235,6 +239,7 @@ docs/
 | 8.17 | Research artifact index (`research:artifact-index`, centralized output health dashboard) — **complete** |
 | 8.18 | Research pipeline dashboard (`research:dashboard`, read-only research landing page) — **complete** |
 | 8.19 | End-to-end research orchestrator (`research:full`, post-pipeline workflow CLI) — **complete** |
+| 8.21 | Candidate promotion engine (`research:candidate-promotions`, advisory read-only classification) — **complete** |
 
 ## Intentionally deferred
 

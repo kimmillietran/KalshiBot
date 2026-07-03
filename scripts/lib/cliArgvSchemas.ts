@@ -177,6 +177,16 @@ export const HARNESS_RESULTS_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--leaderboard" },
 ];
 
+export const CANDIDATE_PROMOTION_ARGV_SCHEMA: readonly NpmArgvField[] = [
+  { flag: "--output" },
+  { flag: "--html-output" },
+  { flag: "--hypothesis-validation" },
+  { flag: "--strategy-synthesis" },
+  { flag: "--harness-results" },
+  { flag: "--harness-summary" },
+  { flag: "--statistical-significance" },
+];
+
 export const OVERFITTING_DIAGNOSTICS_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--input-dir" },
   { flag: "--experiments-root" },
@@ -422,6 +432,10 @@ export function normalizeStrategyHarnessArgv(argv: readonly string[]): string[] 
 
 export function normalizeHarnessResultsArgv(argv: readonly string[]): string[] {
   return normalizeNpmScriptArgv(argv, HARNESS_RESULTS_ARGV_SCHEMA);
+}
+
+export function normalizeCandidatePromotionArgv(argv: readonly string[]): string[] {
+  return normalizeNpmScriptArgv(argv, CANDIDATE_PROMOTION_ARGV_SCHEMA);
 }
 
 export function normalizePowerAnalysisArgv(argv: readonly string[]): string[] {
