@@ -157,6 +157,16 @@ export const STRATEGY_SYNTHESIS_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--hypothesis-validation" },
 ];
 
+export const STRATEGY_HARNESS_ARGV_SCHEMA: readonly NpmArgvField[] = [
+  { flag: "--synthesis" },
+  { flag: "--registry-dir" },
+  { flag: "--output-dir" },
+  { flag: "--family" },
+  { flag: "--strategy-id" },
+  { flag: "--concurrency" },
+  { flag: "--include-rejected" },
+];
+
 export const OVERFITTING_DIAGNOSTICS_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--input-dir" },
   { flag: "--experiments-root" },
@@ -391,6 +401,13 @@ export function normalizeHypothesisValidationArgv(argv: readonly string[]): stri
 
 export function normalizeStrategySynthesisArgv(argv: readonly string[]): string[] {
   return normalizeNpmScriptArgv(argv, STRATEGY_SYNTHESIS_ARGV_SCHEMA);
+}
+
+export function normalizeStrategyHarnessArgv(argv: readonly string[]): string[] {
+  return mergeNpmBooleanFlags(
+    normalizeNpmScriptArgv(argv, STRATEGY_HARNESS_ARGV_SCHEMA),
+    ["--include-rejected"],
+  );
 }
 
 export function normalizePowerAnalysisArgv(argv: readonly string[]): string[] {

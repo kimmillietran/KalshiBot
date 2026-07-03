@@ -31,6 +31,7 @@
     "research:hypotheses": "tsx scripts/research/buildHypothesisCandidates.ts",
     "research:hypothesis-validation": "tsx scripts/research/buildHypothesisValidation.ts",
     "research:strategy-synthesis": "tsx scripts/research/buildStrategySynthesisCandidates.ts",
+    "research:harness": "tsx scripts/research/runStrategyHarness.ts",
     "research:power-analysis": "tsx scripts/research/buildPowerAnalysis.ts",
     "research:overfitting-diagnostics": "tsx scripts/research/buildOverfittingDiagnostics.ts",
     "research:pipeline": "tsx scripts/research/runResearchPipeline.ts",

@@ -486,6 +486,33 @@ export type {
 } from "./strategySynthesis";
 
 export {
+  buildStrategyHarnessOutputPath,
+  createResearchStrategyHarnessRegistry,
+  filterHarnessStrategySpecs,
+  loadStrategySynthesisCandidatesReport,
+  resolveHarnessStrategyFromSpec,
+  resolveTranslatedHarnessStrategy,
+  runStrategyHarness,
+  serializeStrategyHarnessSummary,
+  translateSynthesizedStrategySpec,
+  CALIBRATION_FADE_STRATEGY_ID,
+  DEFAULT_STRATEGY_HARNESS_OUTPUT_DIR,
+  DEFAULT_STRATEGY_SYNTHESIS_CANDIDATES_PATH,
+  SUPPORTED_STRATEGY_HARNESS_FAMILIES,
+  StrategyHarnessError,
+} from "./strategyHarness";
+export type {
+  RunStrategyHarnessEvaluationFn,
+  RunStrategyHarnessEvaluationInput,
+  RunStrategyHarnessInput,
+  StrategyHarnessIo,
+  StrategyHarnessMarketResult,
+  StrategyHarnessSummary,
+  SynthesizedStrategySpec,
+  TranslatedHarnessStrategy,
+} from "./strategyHarness";
+
+export {
   buildPowerAnalysisReport,
   buildPowerAnalysisReportFromDirectories,
   computeMinimumDetectableEffect,
