@@ -1,46 +1,10 @@
-import { z } from "zod";
-
 import {
   StrategyHarnessError,
-  SYNTHESIZED_PROMOTION_STATUSES,
-  SYNTHESIZED_STRATEGY_DIRECTIONS,
   type StrategyHarnessIo,
   type StrategySynthesisCandidatesReport,
   type SynthesizedStrategySpec,
 } from "./strategyHarnessTypes";
-
-const entryConditionsSchema = z.object({
-  yesMidThresholdCents: z.number().finite().int().min(1).max(99),
-  minCalibrationError: z.number().finite().optional(),
-  probabilityBucketId: z.string().trim().min(1).optional(),
-});
-
-const validationSummarySchema = z.object({
-  robustnessScore: z.number().finite().nullable(),
-  passes: z.boolean(),
-  observationCount: z.number().finite().int().nonnegative().nullable(),
-});
-
-const synthesizedStrategySpecSchema = z.object({
-  strategyId: z.string().trim().min(1),
-  hypothesisId: z.string().trim().min(1),
-  strategyFamily: z.string().trim().min(1),
-  direction: z.enum(SYNTHESIZED_STRATEGY_DIRECTIONS),
-  entryConditions: entryConditionsSchema,
-  exitAssumption: z.string().trim().min(1),
-  requiredData: z.array(z.string().trim().min(1)),
-  riskNotes: z.array(z.string().trim().min(1)),
-  validationSummary: validationSummarySchema,
-  promotionStatus: z.enum(SYNTHESIZED_PROMOTION_STATUSES),
-});
-
-const strategySynthesisCandidatesReportSchema = z.object({
-  generatedAt: z.string().trim().min(1),
-  outputPath: z.string().trim().min(1),
-  inputs: z.record(z.string(), z.unknown()),
-  strategies: z.array(synthesizedStrategySpecSchema),
-  summary: z.record(z.string(), z.unknown()),
-});
+import { parseStrategySynthesisCandidatesReport } from "./normalizeSynthesizedStrategySpec";
 
 function parseJson(path: string, json: string): unknown {
   try {
@@ -59,14 +23,7 @@ export function loadStrategySynthesisCandidatesReport(
   }
 
   const parsed = parseJson(path, io.readFile(path));
-  const result = strategySynthesisCandidatesReportSchema.safeParse(parsed);
-  if (!result.success) {
-    throw new StrategyHarnessError(
-      `Invalid strategy-synthesis-candidates.json schema in ${path}: ${result.error.message}`,
-    );
-  }
-
-  return result.data;
+  return parseStrategySynthesisCandidatesReport(path, parsed);
 }
 
 export function filterHarnessStrategySpecs(
