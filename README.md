@@ -115,6 +115,16 @@ Stdout is compact JSON with `strategyId`, PnL, fill/rejection counts, replay ste
 
 `npm run research:hypotheses` writes `data/research-results/hypothesis-candidates.json` and a human-readable `data/reports/research-hypotheses.html` with per-hypothesis evidence cards (metrics, confidence summary, and example markets). Override paths with `--output` and `--html-output`.
 
+### Research artifact index
+
+Inspect the health of all canonical research outputs in one place:
+
+```bash
+npm run research:artifact-index
+```
+
+Writes `data/research-results/research-artifact-index.json` and `data/reports/research-artifact-index.html`. Each entry includes artifact name, path, generated timestamp, producing pipeline step, upstream/downstream dependencies, file size, and status (`present`, `stale`, or `missing`). This is read-only — it does not run or modify the research pipeline.
+
 ## Project structure
 
 ```
@@ -197,6 +207,7 @@ docs/
 | 6.27D | Kalshi discovery rate-limit handling (`discover:markets` throttle + 429 retry/backoff) — **complete** |
 | 6.27E | Discovery early stop + progress logging (`--limit` smoke pagination stop, stderr progress) — **complete** |
 | 8.4 | Official research pipeline (`research:pipeline`, end-to-end orchestration CLI) — **complete** |
+| 8.17 | Research artifact index (`research:artifact-index`, centralized output health dashboard) — **complete** |
 
 ## Intentionally deferred
 

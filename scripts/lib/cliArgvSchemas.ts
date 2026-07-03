@@ -195,6 +195,19 @@ export const HYPOTHESIS_LIFECYCLE_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--harness-dir" },
 ];
 
+export const RESEARCH_ARTIFACT_INDEX_ARGV_SCHEMA: readonly NpmArgvField[] = [
+  { flag: "--discovery-result" },
+  { flag: "--imports-dir" },
+  { flag: "--import-configs-dir" },
+  { flag: "--fixtures-dir" },
+  { flag: "--registry-dir" },
+  { flag: "--research-results-dir" },
+  { flag: "--leaderboard" },
+  { flag: "--report-html" },
+  { flag: "--output" },
+  { flag: "--html-output" },
+];
+
 export const LEADERBOARD_STRATEGIES_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--input-dir" },
   { flag: "--output" },
@@ -366,6 +379,10 @@ export function normalizeDataHealthArgv(argv: readonly string[]): string[] {
 
 export function normalizeHypothesisLifecycleArgv(argv: readonly string[]): string[] {
   return normalizeNpmScriptArgv(argv, HYPOTHESIS_LIFECYCLE_ARGV_SCHEMA);
+}
+
+export function normalizeResearchArtifactIndexArgv(argv: readonly string[]): string[] {
+  return normalizeNpmScriptArgv(argv, RESEARCH_ARTIFACT_INDEX_ARGV_SCHEMA);
 }
 
 export function normalizeLeaderboardStrategiesArgv(argv: readonly string[]): string[] {

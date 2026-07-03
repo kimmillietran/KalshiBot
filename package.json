@@ -35,6 +35,7 @@
     "research:pipeline": "tsx scripts/research/runResearchPipeline.ts",
     "research:data-health": "tsx scripts/research/buildDataHealthReport.ts",
     "research:hypothesis-lifecycle": "tsx scripts/research/buildHypothesisLifecycleDashboard.ts",
+    "research:artifact-index": "tsx scripts/research/buildResearchArtifactIndex.ts",
     "experiments:register": "tsx scripts/experiments/registerExperiments.ts",
     "leaderboard:strategies": "tsx scripts/leaderboard/runStrategyLeaderboard.ts",
     "data:audit-bid-ask": "tsx scripts/data/auditBidAskFidelity.ts",
