@@ -383,6 +383,33 @@ export type {
 } from "./hypothesisEvidence";
 
 export {
+  assertHypothesisValidationInputFiles,
+  buildHypothesisValidationReport,
+  buildHypothesisValidationReportFromInputs,
+  buildDefaultHypothesisValidationInputPaths,
+  collectEnrichedMispricingObservations,
+  computeRobustnessScore,
+  computeSignedCalibrationError,
+  computeTimeStabilityMetrics,
+  filterObservationsForAtlasBucket,
+  loadHypothesisCandidatesFromFile,
+  parseAtlasHypothesisCandidateId,
+  serializeHypothesisValidationHtml,
+  serializeHypothesisValidationReport,
+  DEFAULT_HYPOTHESIS_VALIDATION_HTML_PATH,
+  DEFAULT_HYPOTHESIS_VALIDATION_OUTPUT_PATH,
+  DEFAULT_HYPOTHESIS_VALIDATION_PASS_SCORE,
+  HypothesisRobustnessError,
+} from "./hypothesisRobustness";
+export type {
+  BuildHypothesisValidationReportInput,
+  EnrichedMispricingObservation,
+  HypothesisRobustnessIo,
+  HypothesisValidationEntry,
+  HypothesisValidationReport,
+} from "./hypothesisRobustness";
+
+export {
   buildPowerAnalysisReport,
   buildPowerAnalysisReportFromDirectories,
   computeMinimumDetectableEffect,

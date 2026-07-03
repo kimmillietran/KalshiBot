@@ -142,6 +142,15 @@ export const HYPOTHESIS_CANDIDATES_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--research-input-root" },
 ];
 
+export const HYPOTHESIS_VALIDATION_ARGV_SCHEMA: readonly NpmArgvField[] = [
+  { flag: "--output" },
+  { flag: "--html-output" },
+  { flag: "--hypothesis-candidates" },
+  { flag: "--mispricing-atlas" },
+  { flag: "--research-results-dir" },
+  { flag: "--regime-tags" },
+];
+
 export const OVERFITTING_DIAGNOSTICS_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--input-dir" },
   { flag: "--experiments-root" },
@@ -327,6 +336,10 @@ export function normalizeEventStudyArgv(argv: readonly string[]): string[] {
 
 export function normalizeHypothesisCandidatesArgv(argv: readonly string[]): string[] {
   return normalizeNpmScriptArgv(argv, HYPOTHESIS_CANDIDATES_ARGV_SCHEMA);
+}
+
+export function normalizeHypothesisValidationArgv(argv: readonly string[]): string[] {
+  return normalizeNpmScriptArgv(argv, HYPOTHESIS_VALIDATION_ARGV_SCHEMA);
 }
 
 export function normalizePowerAnalysisArgv(argv: readonly string[]): string[] {
