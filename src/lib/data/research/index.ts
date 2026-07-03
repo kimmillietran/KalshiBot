@@ -547,6 +547,26 @@ export type {
 } from "./candidatePromotion";
 
 export {
+  buildResearchCandidateRegistryReport,
+  buildResearchCandidateRegistryReportFromInputs,
+  loadExistingResearchCandidateRegistry,
+  loadResearchCandidateRegistryInputs,
+  serializeResearchCandidateRegistryHtml,
+  serializeResearchCandidateRegistryReport,
+  DEFAULT_RESEARCH_CANDIDATE_REGISTRY_HTML_PATH,
+  DEFAULT_RESEARCH_CANDIDATE_REGISTRY_INPUT_PATHS,
+  DEFAULT_RESEARCH_CANDIDATE_REGISTRY_OUTPUT_PATH,
+  RESEARCH_CANDIDATE_REGISTRY_FILENAME,
+  ResearchCandidateRegistryError,
+} from "./candidateRegistry";
+export type {
+  BuildResearchCandidateRegistryInput,
+  ResearchCandidateRegistryEntry,
+  ResearchCandidateRegistryReport,
+  ResearchCandidateStatus,
+} from "./candidateRegistry";
+
+export {
   buildPowerAnalysisReport,
   buildPowerAnalysisReportFromDirectories,
   computeMinimumDetectableEffect,

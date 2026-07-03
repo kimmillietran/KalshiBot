@@ -153,6 +153,10 @@ Invokes existing research CLIs (data health → mispricing atlas → hypotheses 
 
 `npm run research:candidate-promotions` reads hypothesis validation, strategy synthesis, harness results (with harness-summary fallback), and optional statistical significance, then writes `data/research-results/candidate-promotions.json` and `data/reports/research-candidate-promotions.html` with advisory promotion decisions (`rejected`, `exploratory`, `needs-more-data`, `candidate`, `production-watchlist`). Read-only — does not modify strategy execution, trading, leaderboard, or sweep behavior.
 
+### Candidate registry
+
+`npm run research:candidate-registry` merges hypothesis, validation, synthesis, and harness artifacts into `data/research-results/research-candidate-registry.json` and `data/reports/research-candidate-registry.html` with stable candidate IDs, status tracking, promotion history, and rejection reasons. Read-only append/update registry — does not modify replay, strategies, sweep, or hypothesis generation.
+
 
 ## Project structure
 
@@ -240,6 +244,7 @@ docs/
 | 8.18 | Research pipeline dashboard (`research:dashboard`, read-only research landing page) — **complete** |
 | 8.19 | End-to-end research orchestrator (`research:full`, post-pipeline workflow CLI) — **complete** |
 | 8.21 | Candidate promotion engine (`research:candidate-promotions`, advisory read-only classification) — **complete** |
+| 8.20 | Research candidate registry (`research:candidate-registry`, canonical pipeline candidate records) — **complete** |
 
 ## Intentionally deferred
 

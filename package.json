@@ -34,6 +34,7 @@
     "research:harness": "tsx scripts/research/runStrategyHarness.ts",
     "research:harness-results": "tsx scripts/research/buildHarnessResults.ts",
     "research:candidate-promotions": "tsx scripts/research/buildCandidatePromotions.ts",
+    "research:candidate-registry": "tsx scripts/research/buildResearchCandidateRegistry.ts",
     "research:power-analysis": "tsx scripts/research/buildPowerAnalysis.ts",
     "research:overfitting-diagnostics": "tsx scripts/research/buildOverfittingDiagnostics.ts",
     "research:pipeline": "tsx scripts/research/runResearchPipeline.ts",

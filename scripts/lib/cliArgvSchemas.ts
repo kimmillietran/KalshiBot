@@ -187,6 +187,16 @@ export const CANDIDATE_PROMOTION_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--statistical-significance" },
 ];
 
+export const RESEARCH_CANDIDATE_REGISTRY_ARGV_SCHEMA: readonly NpmArgvField[] = [
+  { flag: "--output" },
+  { flag: "--html-output" },
+  { flag: "--hypothesis-candidates" },
+  { flag: "--hypothesis-validation" },
+  { flag: "--strategy-synthesis" },
+  { flag: "--harness-results" },
+  { flag: "--harness-summary" },
+];
+
 export const OVERFITTING_DIAGNOSTICS_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--input-dir" },
   { flag: "--experiments-root" },
@@ -437,6 +447,10 @@ export function normalizeHarnessResultsArgv(argv: readonly string[]): string[] {
 
 export function normalizeCandidatePromotionArgv(argv: readonly string[]): string[] {
   return normalizeNpmScriptArgv(argv, CANDIDATE_PROMOTION_ARGV_SCHEMA);
+}
+
+export function normalizeResearchCandidateRegistryArgv(argv: readonly string[]): string[] {
+  return normalizeNpmScriptArgv(argv, RESEARCH_CANDIDATE_REGISTRY_ARGV_SCHEMA);
 }
 
 export function normalizePowerAnalysisArgv(argv: readonly string[]): string[] {
