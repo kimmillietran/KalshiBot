@@ -141,6 +141,11 @@ npm run research:full
 
 Invokes existing research CLIs (data health → mispricing atlas → hypotheses → validation → synthesis → harness → artifact index → lifecycle → dashboard). Writes `data/research-results/full-research-summary.json` with per-step status, duration, outputs, warnings, and failures. Independent reporting steps still run when upstream analysis fails. Use `--continue-on-error` to keep executing the core chain after step failures.
 
+### Strategy synthesis
+
+`npm run research:strategy-synthesis` reads `hypothesis-candidates.json` and `hypothesis-validation.json`, then writes `data/research-results/strategy-synthesis-candidates.json` with parameterized strategy specs (direction, entry conditions, promotion status). Read-only — does not execute or modify strategies.
+
+
 ## Project structure
 
 ```

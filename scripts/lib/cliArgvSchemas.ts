@@ -151,6 +151,12 @@ export const HYPOTHESIS_VALIDATION_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--regime-tags" },
 ];
 
+export const STRATEGY_SYNTHESIS_ARGV_SCHEMA: readonly NpmArgvField[] = [
+  { flag: "--output" },
+  { flag: "--hypothesis-candidates" },
+  { flag: "--hypothesis-validation" },
+];
+
 export const OVERFITTING_DIAGNOSTICS_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--input-dir" },
   { flag: "--experiments-root" },
@@ -381,6 +387,10 @@ export function normalizeHypothesisCandidatesArgv(argv: readonly string[]): stri
 
 export function normalizeHypothesisValidationArgv(argv: readonly string[]): string[] {
   return normalizeNpmScriptArgv(argv, HYPOTHESIS_VALIDATION_ARGV_SCHEMA);
+}
+
+export function normalizeStrategySynthesisArgv(argv: readonly string[]): string[] {
+  return normalizeNpmScriptArgv(argv, STRATEGY_SYNTHESIS_ARGV_SCHEMA);
 }
 
 export function normalizePowerAnalysisArgv(argv: readonly string[]): string[] {

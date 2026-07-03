@@ -466,6 +466,26 @@ export type {
 } from "./hypothesisLifecycle";
 
 export {
+  buildStrategySynthesisReport,
+  derivePromotionStatus,
+  deriveStrategyDirection,
+  loadStrategySynthesisInputs,
+  serializeStrategySynthesisReport,
+  DEFAULT_STRATEGY_SYNTHESIS_OUTPUT_PATH,
+  STRATEGY_SYNTHESIS_CANDIDATES_FILENAME,
+  StrategySynthesisError,
+  StrategySynthesisErrorCode,
+} from "./strategySynthesis";
+export type {
+  BuildStrategySynthesisReportInput,
+  StrategyPromotionStatus,
+  StrategySynthesisCandidate,
+  StrategySynthesisCandidatesReport,
+  StrategySynthesisDirection,
+  StrategySynthesisEntryConditions,
+} from "./strategySynthesis";
+
+export {
   buildPowerAnalysisReport,
   buildPowerAnalysisReportFromDirectories,
   computeMinimumDetectableEffect,
