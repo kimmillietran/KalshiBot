@@ -124,6 +124,7 @@ function buildDiscoveredMarket(input: {
     expirationValue: wire.expiration_value?.trim() ?? null,
     title: wire.title ?? null,
     subtitle: wire.subtitle ?? null,
+    listMarketWire: input.listWire ?? wire,
     provenance,
   };
 }
