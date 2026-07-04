@@ -321,6 +321,15 @@ export const RESEARCH_ARTIFACT_INDEX_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--html-output" },
 ];
 
+export const RESEARCH_PERFORMANCE_AUDIT_ARGV_SCHEMA: readonly NpmArgvField[] = [
+  { flag: "--output" },
+  { flag: "--html-output" },
+  { flag: "--full-research-summary" },
+  { flag: "--artifact-index" },
+  { flag: "--historical-coverage-plan" },
+  { flag: "--experiment-index" },
+];
+
 export const RESEARCH_PIPELINE_DASHBOARD_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--output" },
   { flag: "--pipeline-summary" },
@@ -569,6 +578,10 @@ export function normalizeResearchArtifactIndexArgv(argv: readonly string[]): str
 
 export function normalizeResearchPipelineDashboardArgv(argv: readonly string[]): string[] {
   return normalizeNpmScriptArgv(argv, RESEARCH_PIPELINE_DASHBOARD_ARGV_SCHEMA);
+}
+
+export function normalizeResearchPerformanceAuditArgv(argv: readonly string[]): string[] {
+  return normalizeNpmScriptArgv(argv, RESEARCH_PERFORMANCE_AUDIT_ARGV_SCHEMA);
 }
 
 export function normalizeFullResearchOrchestratorArgv(argv: readonly string[]): string[] {

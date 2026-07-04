@@ -305,6 +305,7 @@ docs/
 | 9.5 | Historical expansion import executor (`research:execute-expansion-import`, dry-run by default) — **complete** |
 | 9.3 | Coverage-aware validation (`research:coverage-validation`, advisory inconclusive vs weak classification) — **complete** |
 | 9.4 | Full orchestrator coverage phase (`research:full` coverage planning + optional validation wiring) — **complete** |
+| 9.9 | Research pipeline performance audit (`research:performance-audit`, diagnostic runtime analysis) — **complete** |
 
 ## Intentionally deferred
 

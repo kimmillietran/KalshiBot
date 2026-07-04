@@ -479,6 +479,30 @@ export type {
 } from "./pipelineDashboard";
 
 export {
+  buildResearchPerformanceAudit,
+  loadPerformanceAuditInputs,
+  parseResearchPerformanceAuditConfigFromArgv,
+  serializeResearchPerformanceAudit,
+  serializeResearchPerformanceAuditHtml,
+  buildPipelineStepResourceProfiles,
+  computeCriticalPath,
+  findParallelExecutionGroups,
+  estimateParallelRuntimeMs,
+  DEFAULT_RESEARCH_PERFORMANCE_AUDIT_OUTPUT_PATH,
+  DEFAULT_RESEARCH_PERFORMANCE_AUDIT_HTML_PATH,
+  DEFAULT_PERFORMANCE_AUDIT_FULL_RESEARCH_SUMMARY_PATH,
+  PerformanceAuditError,
+} from "./performanceAudit";
+export type {
+  BuildResearchPerformanceAuditInput,
+  PerformanceAuditConfig,
+  PerformanceAuditReport,
+  PerformanceAuditStepReport,
+  OptimizationOpportunity,
+  CriticalPathAnalysis,
+} from "./performanceAudit";
+
+export {
   buildHypothesisLifecycleReport,
   buildHypothesisLifecycleReportFromInputs,
   loadHypothesisLifecycleInputs,
