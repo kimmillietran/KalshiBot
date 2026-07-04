@@ -104,6 +104,40 @@ describe("isWindowFullyCovered", () => {
 });
 
 describe("buildHistoricalExpansionImportConfig", () => {
+  it("converts M9.1 coverage-import-1 recommendation into a scheduled import job", () => {
+    const config = buildHistoricalExpansionImportConfig({
+      plan: parseHistoricalCoveragePlanJson(
+        "plan.json",
+        JSON.stringify({
+          generatedAt: GENERATED_AT,
+          outputPath: "data/research-results/historical-coverage-plan.json",
+          recommendations: [
+            {
+              recommendationId: "coverage-import-1",
+              seriesTicker: "KXBTC15M",
+              startMonth: "2026-01",
+              endMonth: "2026-03",
+              priorityScore: 71,
+              rationale: "Fill Q1 gap",
+              expectedResearchBenefit: "Adds missing months",
+            },
+          ],
+        }),
+      ),
+      inputPath: "data/research-results/historical-coverage-plan.json",
+      outputPath: "data/import-configs/historical-expansion-config.json",
+      importConfigsDir: "data/import-configs",
+      generatedAt: GENERATED_AT,
+      dryRun: false,
+    });
+
+    expect(config.outputPath).toBe("data/import-configs/historical-expansion-config.json");
+    expect(config.jobs).toHaveLength(1);
+    expect(config.jobs[0]?.jobId).toBe("expansion-KXBTC15M-20260101-20260331");
+    expect(config.jobs[0]?.status).toBe("scheduled");
+    expect(config.jobs[0]?.importDefaults.kalshi.marketSource).toBe("kalshi-rest");
+  });
+
   it("converts recommendations into prioritized import jobs with Coinbase defaults", () => {
     const config = buildHistoricalExpansionImportConfig({
       plan: createPlan([

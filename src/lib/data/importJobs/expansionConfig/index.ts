@@ -32,4 +32,8 @@ export {
   loadHistoricalCoveragePlan,
   parseHistoricalCoveragePlanJson,
 } from "./loadHistoricalCoveragePlan";
+export {
+  assertExpansionConfigNotCoveragePlan,
+  parseHistoricalExpansionImportConfigJson,
+} from "./parseHistoricalExpansionImportConfigJson";
 export { serializeHistoricalExpansionConfigHtml } from "./serializeHistoricalExpansionConfigHtml";

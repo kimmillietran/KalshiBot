@@ -70,6 +70,11 @@ export function parseImportConfigsDirFromArgv(
   return readFlagValue(argv, "--import-configs-dir", "data/import-configs");
 }
 
+export function parseDryRunFromArgv(argv: readonly string[]): boolean {
+  return readBooleanFlag(argv, "--dry-run");
+}
+
+/** @deprecated Use parseDryRunFromArgv; write is now the default. */
 export function parseWriteFromArgv(argv: readonly string[]): boolean {
   return readBooleanFlag(argv, "--write");
 }

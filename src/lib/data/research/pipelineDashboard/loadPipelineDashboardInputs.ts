@@ -229,6 +229,7 @@ const historicalExpansionConfigSchema = z.object({
   summary: z
     .object({
       jobCount: z.number().finite().optional(),
+      scheduledJobCount: z.number().finite().optional(),
       estimatedMarketCount: z.number().finite().optional(),
     })
     .optional(),
@@ -264,7 +265,10 @@ function normalizeHistoricalExpansionConfig(
     generatedAt: document.generatedAt,
     jobs: document.jobs ?? [],
     summary: {
-      jobCount: document.summary?.jobCount ?? null,
+      jobCount:
+        document.summary?.jobCount
+        ?? document.summary?.scheduledJobCount
+        ?? null,
       estimatedMarketCount: document.summary?.estimatedMarketCount ?? null,
     },
   };

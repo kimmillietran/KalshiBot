@@ -59,7 +59,7 @@ const REPORT: PipelineDashboardReport = {
     },
     expansionConfig: {
       label: "Expansion import config",
-      path: "data/research-results/historical-expansion-config.json",
+      path: "data/import-configs/historical-expansion-config.json",
       present: false,
       generatedAt: null,
       orchestratorStepStatus: null,

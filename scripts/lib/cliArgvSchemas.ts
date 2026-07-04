@@ -253,6 +253,7 @@ export const GENERATE_EXPANSION_IMPORT_CONFIG_ARGV_SCHEMA: readonly NpmArgvField
   { flag: "--output" },
   { flag: "--html-output" },
   { flag: "--import-configs-dir" },
+  { flag: "--dry-run" },
 ];
 
 export const DATA_HEALTH_ARGV_SCHEMA: readonly NpmArgvField[] = [
@@ -598,6 +599,6 @@ export function normalizeGenerateExpansionImportConfigArgv(
 ): string[] {
   return mergeNpmBooleanFlags(
     normalizeNpmScriptArgv(argv, GENERATE_EXPANSION_IMPORT_CONFIG_ARGV_SCHEMA),
-    ["--write"],
+    ["--dry-run"],
   );
 }

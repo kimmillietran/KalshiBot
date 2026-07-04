@@ -163,10 +163,10 @@ Evaluates promotion-eligible synthesized strategies (`experimental`, `candidate`
 
 ```bash
 npm run research:generate-expansion-import-config
-npm run research:generate-expansion-import-config -- --write
+npm run research:generate-expansion-import-config -- --dry-run
 ```
 
-Reads `historical-coverage-plan.json` (M9.1) and produces `historical-expansion-config.json` plus an HTML report. Dry-run by default; pass `--write` to persist outputs. Does not execute imports.
+Reads `historical-coverage-plan.json` (M9.1) and writes `data/import-configs/historical-expansion-config.json` plus an HTML report. Writes by default; pass `--dry-run` to preview without persisting outputs. Does not execute imports.
 
 ### Coverage-aware validation
 

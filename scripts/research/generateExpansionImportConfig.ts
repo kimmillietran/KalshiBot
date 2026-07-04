@@ -22,11 +22,11 @@ import { normalizeGenerateExpansionImportConfigArgv } from "../lib/cliArgvSchema
 import {
   formatStdoutOutput,
   GenerateExpansionImportConfigCommandError,
+  parseDryRunFromArgv,
   parseHtmlOutputPathFromArgv,
   parseImportConfigsDirFromArgv,
   parseInputPathFromArgv,
   parseOutputPathFromArgv,
-  parseWriteFromArgv,
 } from "./generateExpansionImportConfigTypes";
 import type { GenerateExpansionImportConfigCommandIo } from "./generateExpansionImportConfigTypes";
 
@@ -55,7 +55,7 @@ export function runGenerateExpansionImportConfigCommand(
     const outputPath = parseOutputPathFromArgv(normalizedArgv);
     const htmlOutputPath = parseHtmlOutputPathFromArgv(normalizedArgv);
     const importConfigsDir = parseImportConfigsDirFromArgv(normalizedArgv);
-    const dryRun = !parseWriteFromArgv(normalizedArgv);
+    const dryRun = parseDryRunFromArgv(normalizedArgv);
     const generatedAt = options?.generatedAt ?? new Date().toISOString();
 
     const plan = loadHistoricalCoveragePlan(io.readFile, io.fileExists, inputPath);
@@ -143,6 +143,7 @@ if (process.env.VITEST !== "true") {
 export {
   formatStdoutOutput,
   GenerateExpansionImportConfigCommandError,
+  parseDryRunFromArgv,
   parseHtmlOutputPathFromArgv,
   parseImportConfigsDirFromArgv,
   parseInputPathFromArgv,

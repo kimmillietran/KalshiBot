@@ -161,8 +161,11 @@ export function buildHistoricalExpansionImportConfig(
   };
 }
 
+import { assertExpansionConfigNotCoveragePlan } from "./parseHistoricalExpansionImportConfigJson";
+
 export function serializeHistoricalExpansionImportConfig(
   config: HistoricalExpansionImportConfig,
 ): string {
+  assertExpansionConfigNotCoveragePlan(config, config.outputPath);
   return stableStringify(config);
 }

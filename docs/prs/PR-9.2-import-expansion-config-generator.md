@@ -6,16 +6,10 @@ Convert M9.1 historical coverage recommendations into concrete, deduplicated imp
 
 ## Usage
 
-Dry-run by default (stdout plan only):
+Dry-run preview (no files written):
 
 ```bash
-npm run research:generate-expansion-import-config
-```
-
-Write JSON + HTML artifacts:
-
-```bash
-npm run research:generate-expansion-import-config -- --write
+npm run research:generate-expansion-import-config -- --dry-run
 ```
 
 | Flag | Default |
@@ -24,7 +18,7 @@ npm run research:generate-expansion-import-config -- --write
 | `--output` | `data/import-configs/historical-expansion-config.json` |
 | `--html-output` | `data/reports/historical-expansion-config.html` |
 | `--import-configs-dir` | `data/import-configs` |
-| `--write` | off (dry-run) |
+| `--dry-run` | off (writes enabled) |
 
 ## Behavior
 
@@ -32,7 +26,7 @@ npm run research:generate-expansion-import-config -- --write
 2. Sorts recommendations by `priority`
 3. Skips windows already covered by plan snapshot or existing import configs
 4. Emits jobs with Kalshi discovery sampling windows and 6.22B import defaults (`coinbase-spot`, `kalshi-rest`)
-5. Writes expansion manifest + HTML report when `--write` is set
+5. Writes expansion manifest + HTML report by default (`--dry-run` to preview only)
 
 ## Constraints
 

@@ -15,6 +15,8 @@ export const ExpansionConfigErrorCode = {
   MISSING_COVERAGE_PLAN: "missing-coverage-plan",
   INVALID_COVERAGE_PLAN: "invalid-coverage-plan",
   INVALID_COVERAGE_PLAN_JSON: "invalid-coverage-plan-json",
+  INVALID_EXPANSION_CONFIG_OUTPUT: "invalid-expansion-config-output",
+  COVERAGE_PLAN_OUTPUT_REJECTED: "coverage-plan-output-rejected",
 } as const;
 
 export type ExpansionConfigErrorCode =
