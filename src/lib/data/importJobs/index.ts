@@ -151,3 +151,20 @@ export type {
   HistoricalExpansionImportConfig,
   HistoricalExpansionImportJob,
 } from "./expansionConfig";
+
+export {
+  DEFAULT_HISTORICAL_EXPANSION_IMPORT_CONFIG_PATH,
+  DEFAULT_HISTORICAL_EXPANSION_IMPORT_SUMMARY_HTML_PATH,
+  DEFAULT_HISTORICAL_EXPANSION_IMPORT_SUMMARY_PATH,
+  ExpansionExecutorError,
+  ExpansionExecutorErrorCode,
+  runHistoricalExpansionImport,
+  scanExistingExpansionMarketTickers,
+  serializeHistoricalExpansionImportSummary,
+  serializeHistoricalExpansionImportSummaryHtml,
+} from "./expansionExecutor";
+export type {
+  ExpansionExecutorDeps,
+  HistoricalExpansionImportExecutorConfig,
+  HistoricalExpansionImportSummary,
+} from "./expansionExecutor";

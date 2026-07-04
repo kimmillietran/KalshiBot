@@ -256,6 +256,19 @@ export const GENERATE_EXPANSION_IMPORT_CONFIG_ARGV_SCHEMA: readonly NpmArgvField
   { flag: "--dry-run" },
 ];
 
+export const EXECUTE_EXPANSION_IMPORT_ARGV_SCHEMA: readonly NpmArgvField[] = [
+  { flag: "--input" },
+  { flag: "--output" },
+  { flag: "--html-output" },
+  { flag: "--import-configs-dir" },
+  { flag: "--imports-dir" },
+  { flag: "--fixtures-dir" },
+  { flag: "--research-results-dir" },
+  { flag: "--max-markets" },
+  { flag: "--job-id" },
+  { flag: "--execute" },
+];
+
 export const DATA_HEALTH_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--discovery-result" },
   { flag: "--imports-dir" },
@@ -600,5 +613,12 @@ export function normalizeGenerateExpansionImportConfigArgv(
   return mergeNpmBooleanFlags(
     normalizeNpmScriptArgv(argv, GENERATE_EXPANSION_IMPORT_CONFIG_ARGV_SCHEMA),
     ["--dry-run"],
+  );
+}
+
+export function normalizeExecuteExpansionImportArgv(argv: readonly string[]): string[] {
+  return mergeNpmBooleanFlags(
+    normalizeNpmScriptArgv(argv, EXECUTE_EXPANSION_IMPORT_ARGV_SCHEMA),
+    ["--execute"],
   );
 }

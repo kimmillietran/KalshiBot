@@ -1,0 +1,144 @@
+import type { HistoricalBronzeImportConfig } from "@/lib/data/importJobs/config";
+import type { HistoricalBronzeImportJobResult } from "@/lib/data/importJobs/historicalBronzeImportJobTypes";
+import type { HistoricalExpansionImportJob } from "@/lib/data/importJobs/expansionConfig";
+
+export const DEFAULT_HISTORICAL_EXPANSION_IMPORT_CONFIG_PATH =
+  "data/import-configs/historical-expansion-config.json";
+export const DEFAULT_HISTORICAL_EXPANSION_IMPORT_SUMMARY_PATH =
+  "data/research-results/historical-expansion-import-summary.json";
+export const DEFAULT_HISTORICAL_EXPANSION_IMPORT_SUMMARY_HTML_PATH =
+  "data/reports/historical-expansion-import-summary.html";
+export const DEFAULT_EXPANSION_IMPORT_CONFIGS_DIR = "data/import-configs";
+export const DEFAULT_EXPANSION_IMPORTS_DIR = "data/imports";
+export const DEFAULT_EXPANSION_FIXTURES_DIR = "data/fixtures";
+export const DEFAULT_EXPANSION_RESEARCH_RESULTS_DIR = "data/research-results";
+
+export const ExpansionExecutorErrorCode = {
+  MISSING_EXPANSION_CONFIG: "missing-expansion-config",
+  INVALID_EXPANSION_CONFIG: "invalid-expansion-config",
+  NO_SCHEDULED_JOBS: "no-scheduled-jobs",
+  JOB_NOT_FOUND: "job-not-found",
+} as const;
+
+export type ExpansionExecutorErrorCode =
+  (typeof ExpansionExecutorErrorCode)[keyof typeof ExpansionExecutorErrorCode];
+
+export class ExpansionExecutorError extends Error {
+  readonly code: ExpansionExecutorErrorCode;
+
+  constructor(message: string, code: ExpansionExecutorErrorCode) {
+    super(message);
+    this.name = "ExpansionExecutorError";
+    this.code = code;
+  }
+}
+
+export type ExpansionImportMarketStatus =
+  | "planned"
+  | "imported"
+  | "skipped"
+  | "failed";
+
+export type ExpansionImportMarketResult = {
+  marketTicker: string;
+  seriesTicker: string;
+  status: ExpansionImportMarketStatus;
+  configPath: string | null;
+  importResultPath: string | null;
+  errorMessage: string | null;
+  skipReason: string | null;
+  durationMs: number | null;
+};
+
+export type ExpansionImportJobRunStatus = "completed" | "skipped" | "failed";
+
+export type ExpansionImportJobResult = {
+  jobId: string;
+  seriesTicker: string;
+  status: ExpansionImportJobRunStatus;
+  discoveredMarketCount: number;
+  importedCount: number;
+  skippedCount: number;
+  failedCount: number;
+  plannedCount: number;
+  durationMs: number;
+  warnings: readonly string[];
+  markets: readonly ExpansionImportMarketResult[];
+};
+
+export type HistoricalExpansionImportSummary = {
+  generatedAt: string;
+  execute: boolean;
+  inputPath: string;
+  outputPath: string;
+  htmlOutputPath: string;
+  importConfigsDir: string;
+  importsDir: string;
+  maxMarkets: number | null;
+  jobIdFilter: string | null;
+  summary: {
+    jobCount: number;
+    discoveredMarketCount: number;
+    importedCount: number;
+    skippedCount: number;
+    failedCount: number;
+    plannedCount: number;
+    durationMs: number;
+  };
+  jobs: readonly ExpansionImportJobResult[];
+  warnings: readonly string[];
+};
+
+export type HistoricalExpansionImportExecutorConfig = {
+  inputPath: string;
+  outputPath: string;
+  htmlOutputPath: string;
+  importConfigsDir: string;
+  importsDir: string;
+  fixturesDir: string;
+  researchResultsDir: string;
+  execute: boolean;
+  maxMarkets: number | null;
+  jobId: string | null;
+};
+
+export type ExpansionExecutorIo = {
+  readdir: (path: string) => readonly string[];
+  readFile: (path: string) => string;
+  fileExists: (path: string) => boolean;
+  isDirectory: (path: string) => boolean;
+  writeFile: (path: string, data: string) => void;
+  mkdirSync: (path: string, options: { recursive: boolean }) => void;
+};
+
+export type RunHistoricalExpansionImportInput = {
+  generatedAt: string;
+  config: HistoricalExpansionImportExecutorConfig;
+  expansionConfigJson: string;
+  io: ExpansionExecutorIo;
+  deps: ExpansionExecutorDeps;
+};
+
+export type ExpansionExecutorDeps = {
+  discoverMarkets: (
+    seriesTicker: string,
+    sampling: { after: string; before: string },
+  ) => Promise<
+    readonly {
+      marketTicker: string;
+      seriesTicker: string;
+      openTime: string | null;
+      closeTime: string | null;
+    }[]
+  >;
+  runImport: (config: HistoricalBronzeImportConfig) => Promise<HistoricalBronzeImportJobResult>;
+};
+
+export type PlannedExpansionMarket = {
+  job: HistoricalExpansionImportJob;
+  marketTicker: string;
+  seriesTicker: string;
+  config: HistoricalBronzeImportConfig;
+  configPath: string;
+  importResultPath: string;
+};

@@ -168,6 +168,16 @@ npm run research:generate-expansion-import-config -- --dry-run
 
 Reads `historical-coverage-plan.json` (M9.1) and writes `data/import-configs/historical-expansion-config.json` plus an HTML report. Writes by default; pass `--dry-run` to preview without persisting outputs. Does not execute imports.
 
+### Historical expansion import executor
+
+```bash
+npm run research:execute-expansion-import
+npm run research:execute-expansion-import -- --execute
+npm run research:execute-expansion-import -- --execute --max-markets 5 --job-id expansion-KXBTC15M-20260101-20260331
+```
+
+Consumes `historical-expansion-config.json`, discovers matching Kalshi markets per scheduled job, dedupes against existing import configs/fixtures/research outputs, and runs the standard historical import flow for new markets only. Dry-run by default (`--execute` required to write import artifacts). Writes `historical-expansion-import-summary.json` and HTML in all modes.
+
 ### Coverage-aware validation
 
 ```bash
@@ -291,7 +301,8 @@ docs/
 | 8.20 | Research candidate registry (`research:candidate-registry`, canonical pipeline candidate records) — **complete** |
 | 8.25 | Research experiment manager (`research:experiments`, immutable run snapshots + comparison report) — **complete** |
 | 9.1 | Historical coverage expansion planner (`research:coverage-plan`, read-only import recommendations) — **complete** |
-| 9.2 | Expansion import config generator (`research:generate-expansion-import-config`, dry-run configs) — **complete** |
+| 9.2 | Expansion import config generator (`research:generate-expansion-import-config`) — **complete** |
+| 9.5 | Historical expansion import executor (`research:execute-expansion-import`, dry-run by default) — **complete** |
 | 9.3 | Coverage-aware validation (`research:coverage-validation`, advisory inconclusive vs weak classification) — **complete** |
 | 9.4 | Full orchestrator coverage phase (`research:full` coverage planning + optional validation wiring) — **complete** |
 
