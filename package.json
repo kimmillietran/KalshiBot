@@ -36,6 +36,7 @@
     "research:candidate-promotions": "tsx scripts/research/buildCandidatePromotions.ts",
     "research:candidate-registry": "tsx scripts/research/buildResearchCandidateRegistry.ts",
     "research:cross-validation": "tsx scripts/research/buildCrossValidation.ts",
+    "research:coverage-validation": "tsx scripts/research/buildCoverageAwareValidation.ts",
     "research:power-analysis": "tsx scripts/research/buildPowerAnalysis.ts",
     "research:overfitting-diagnostics": "tsx scripts/research/buildOverfittingDiagnostics.ts",
     "research:pipeline": "tsx scripts/research/runResearchPipeline.ts",

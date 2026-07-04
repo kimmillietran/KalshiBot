@@ -220,6 +220,29 @@ export type {
 } from "./coveragePlanner";
 
 export {
+  buildCoverageAwareValidationReport,
+  buildCoverageAwareValidationReportFromInputs,
+  buildDefaultCoverageAwareValidationInputPaths,
+  classifyCoverageAwareValidation,
+  loadCoverageAwareValidationInputs,
+  serializeCoverageAwareValidationHtml,
+  serializeCoverageAwareValidationReport,
+  COVERAGE_AWARE_VALIDATION_FILENAME,
+  CoverageAwareValidationError,
+  DEFAULT_COVERAGE_AWARE_VALIDATION_HTML_PATH,
+  DEFAULT_COVERAGE_AWARE_VALIDATION_OUTPUT_PATH,
+  DEFAULT_HISTORICAL_COVERAGE_PLAN_PATH,
+} from "./coverageAwareValidation";
+export type {
+  BuildCoverageAwareValidationReportInput,
+  CoverageAwareValidationClassification,
+  CoverageAwareValidationEntry,
+  CoverageAwareValidationReport,
+  HistoricalCoveragePlan,
+  RecommendedImportWindow,
+} from "./coverageAwareValidation";
+
+export {
   buildStatisticalSignificanceFromDirectories,
   buildStatisticalSignificanceReport,
   bootstrapMeanConfidenceInterval,

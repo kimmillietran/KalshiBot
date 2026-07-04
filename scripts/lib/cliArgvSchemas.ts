@@ -212,6 +212,15 @@ export const RESEARCH_CROSS_VALIDATION_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--bootstrap-seed" },
 ];
 
+export const RESEARCH_COVERAGE_AWARE_VALIDATION_ARGV_SCHEMA: readonly NpmArgvField[] = [
+  { flag: "--output" },
+  { flag: "--html-output" },
+  { flag: "--hypothesis-validation" },
+  { flag: "--cross-validation" },
+  { flag: "--historical-coverage-plan" },
+  { flag: "--hypothesis-candidates" },
+];
+
 export const OVERFITTING_DIAGNOSTICS_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--input-dir" },
   { flag: "--experiments-root" },
@@ -504,6 +513,10 @@ export function normalizeResearchCandidateRegistryArgv(argv: readonly string[]):
 
 export function normalizeCrossValidationArgv(argv: readonly string[]): string[] {
   return normalizeNpmScriptArgv(argv, RESEARCH_CROSS_VALIDATION_ARGV_SCHEMA);
+}
+
+export function normalizeCoverageAwareValidationArgv(argv: readonly string[]): string[] {
+  return normalizeNpmScriptArgv(argv, RESEARCH_COVERAGE_AWARE_VALIDATION_ARGV_SCHEMA);
 }
 
 export function normalizePowerAnalysisArgv(argv: readonly string[]): string[] {

@@ -168,6 +168,14 @@ npm run research:generate-expansion-import-config -- --write
 
 Reads `historical-coverage-plan.json` (M9.1) and produces `historical-expansion-config.json` plus an HTML report. Dry-run by default; pass `--write` to persist outputs. Does not execute imports.
 
+### Coverage-aware validation
+
+```bash
+npm run research:coverage-validation
+```
+
+Advisory report that distinguishes weak hypotheses from hypotheses that are inconclusive due to insufficient historical coverage. Reads hypothesis validation, cross-validation, coverage plan, and hypothesis candidates without modifying upstream scores or promotion logic.
+
 ### Strategy synthesis
 
 `npm run research:strategy-synthesis` reads `hypothesis-candidates.json` and `hypothesis-validation.json`, then writes `data/research-results/strategy-synthesis-candidates.json` with parameterized strategy specs (direction, entry conditions, promotion status). Read-only — does not execute or modify strategies.
@@ -282,6 +290,9 @@ docs/
 | 8.21 | Candidate promotion engine (`research:candidate-promotions`, advisory read-only classification) — **complete** |
 | 8.20 | Research candidate registry (`research:candidate-registry`, canonical pipeline candidate records) — **complete** |
 | 8.25 | Research experiment manager (`research:experiments`, immutable run snapshots + comparison report) — **complete** |
+| 9.1 | Historical coverage expansion planner (`research:coverage-plan`, read-only import recommendations) — **complete** |
+| 9.2 | Expansion import config generator (`research:generate-expansion-import-config`, dry-run configs) — **complete** |
+| 9.3 | Coverage-aware validation (`research:coverage-validation`, advisory inconclusive vs weak classification) — **complete** |
 
 ## Intentionally deferred
 
