@@ -49,6 +49,35 @@ const REPORT: PipelineDashboardReport = {
     dataHealthPath: DEFAULT_PIPELINE_DASHBOARD_INPUT_PATHS.dataHealthPath,
     dataHealthPresent: false,
   },
+  coveragePhase: {
+    plan: {
+      label: "Coverage plan",
+      path: "data/research-results/historical-coverage-plan.json",
+      present: false,
+      generatedAt: null,
+      orchestratorStepStatus: null,
+    },
+    expansionConfig: {
+      label: "Expansion import config",
+      path: "data/research-results/historical-expansion-config.json",
+      present: false,
+      generatedAt: null,
+      orchestratorStepStatus: null,
+    },
+    coverageValidation: {
+      label: "Coverage-aware validation",
+      path: "data/research-results/coverage-aware-validation.json",
+      present: false,
+      generatedAt: null,
+      orchestratorStepStatus: null,
+    },
+    currentMarketCount: null,
+    uniqueTradingDays: null,
+    missingMonthCount: null,
+    recommendedImportWindowCount: null,
+    expansionJobCount: null,
+    summary: null,
+  },
 };
 
 describe("serializePipelineDashboardHtml", () => {
