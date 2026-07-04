@@ -572,7 +572,7 @@ describe("runHistoricalExpansionImport safety", () => {
 
     expect(runImport).toHaveBeenCalledTimes(1);
     expect(summary.summary.importedCount).toBe(1);
-    expect(summary.summary.plannedCount).toBe(0);
+    expect(summary.summary.plannedCount).toBe(1);
     expect(summary.jobs[0]?.warnings).toContainEqual(
       expect.stringContaining("--max-markets"),
     );
@@ -629,5 +629,227 @@ describe("runHistoricalExpansionImport safety", () => {
     expect(summary.summary.importedCount).toBe(1);
     expect(summary.warnings.join(" ")).not.toContain("circuit breaker");
     expect(summary.runStatus).toBe("completed");
+  });
+});
+
+describe("runHistoricalExpansionImport cap enforcement", () => {
+  it("attempts at most max-markets imports even when every attempt fails", async () => {
+    const mock: MockFs = { files: {}, directories: new Set(["data"]) };
+    const io = createIo(mock);
+    const discovered = Array.from({ length: 25 }, (_, index) =>
+      createExpansionDiscoveredMarket({
+        marketTicker: `KXBTC15M-TICKER-${index}`,
+      }),
+    );
+    const runImport = vi.fn(async () => {
+      throw new Error("import failed");
+    });
+    const recordMarket = vi.fn();
+
+    const summary = await runHistoricalExpansionImport({
+      generatedAt: GENERATED_AT,
+      config: createBaseConfig({ maxMarkets: 10 }),
+      expansionConfigJson: createManifestJson(),
+      io,
+      deps: {
+        discoverMarkets: vi.fn(async () => discovered),
+        runImport,
+      },
+      progress: {
+        reportJobHeader: vi.fn(),
+        recordMarket,
+        recordDedupedMarket: vi.fn(),
+        reportAbortGuard: vi.fn(),
+        completeJob: vi.fn(),
+        complete: vi.fn(),
+      },
+    });
+
+    expect(runImport).toHaveBeenCalledTimes(10);
+    expect(summary.summary.plannedCount).toBe(10);
+    expect(summary.summary.failedCount).toBe(10);
+    expect(summary.summary.importedCount).toBe(0);
+    expect(recordMarket).toHaveBeenCalledTimes(10);
+    expect(summary.warnings.join("\n")).toContain("ABORT");
+  });
+
+  it("counts failures toward the max-markets cap without exceeding the planned queue", async () => {
+    const mock: MockFs = { files: {}, directories: new Set(["data"]) };
+    const io = createIo(mock);
+    const runImport = vi.fn(async (config) => {
+      if (
+        config.marketTicker === "KXBTC15M-26JAN151215-00"
+        || config.marketTicker === "KXBTC15M-26JAN151230-00"
+      ) {
+        throw new Error(`failure-${config.marketTicker}`);
+      }
+      return createImportResult(config.marketTicker);
+    });
+
+    const summary = await runHistoricalExpansionImport({
+      generatedAt: GENERATED_AT,
+      config: createBaseConfig({ maxMarkets: 3 }),
+      expansionConfigJson: createManifestJson(),
+      io,
+      deps: {
+        discoverMarkets: vi.fn(async () => DISCOVERED_MARKETS),
+        runImport,
+      },
+    });
+
+    expect(runImport).toHaveBeenCalledTimes(3);
+    expect(summary.summary.plannedCount).toBe(3);
+    expect(summary.summary.failedCount).toBe(2);
+    expect(summary.summary.importedCount).toBe(1);
+  });
+
+  it("does not count deduped markets against max-markets", async () => {
+    const mock: MockFs = { files: {}, directories: new Set(["data"]) };
+    mock.directories.add("data/import-configs");
+    mock.directories.add("data/import-configs/KXBTC15M");
+    mock.directories.add("data/import-configs/KXBTC15M/KXBTC15M-26JAN151215-00");
+    mock.files["data/import-configs/KXBTC15M/KXBTC15M-26JAN151215-00/config.json"] =
+      JSON.stringify({ marketTicker: "KXBTC15M-26JAN151215-00" });
+    const io = createIo(mock);
+    const runImport = vi.fn(async (config) => createImportResult(config.marketTicker));
+    const recordDedupedMarket = vi.fn();
+
+    const summary = await runHistoricalExpansionImport({
+      generatedAt: GENERATED_AT,
+      config: createBaseConfig({ maxMarkets: 1 }),
+      expansionConfigJson: createManifestJson(),
+      io,
+      deps: {
+        discoverMarkets: vi.fn(async () => DISCOVERED_MARKETS),
+        runImport,
+      },
+      progress: {
+        reportJobHeader: vi.fn(),
+        recordMarket: vi.fn(),
+        recordDedupedMarket,
+        reportAbortGuard: vi.fn(),
+        completeJob: vi.fn(),
+        complete: vi.fn(),
+      },
+    });
+
+    expect(runImport).toHaveBeenCalledTimes(1);
+    expect(recordDedupedMarket).toHaveBeenCalledWith("KXBTC15M-26JAN151215-00");
+    expect(summary.summary.plannedCount).toBe(1);
+    expect(summary.summary.skippedCount).toBe(1);
+    expect(summary.summary.importedCount).toBe(1);
+  });
+
+  it("applies max-markets across multiple scheduled jobs", async () => {
+    const manifest = JSON.parse(createManifestJson());
+    manifest.jobs.push({
+      ...manifest.jobs[0],
+      jobId: "expansion-KXBTC15M-20260401-20260630",
+      priority: 72,
+      discovery: {
+        ...manifest.jobs[0].discovery,
+        sampling: {
+          afterDate: "2026-04-01T00:00:00.000Z",
+          beforeDate: "2026-06-30T23:59:59.999Z",
+        },
+      },
+    });
+    const mock: MockFs = { files: {}, directories: new Set(["data"]) };
+    const io = createIo(mock);
+    const runImport = vi.fn(async (config) => createImportResult(config.marketTicker));
+    let jobDiscoveryCount = 0;
+
+    const summary = await runHistoricalExpansionImport({
+      generatedAt: GENERATED_AT,
+      config: createBaseConfig({ maxMarkets: 2 }),
+      expansionConfigJson: JSON.stringify(manifest),
+      io,
+      deps: {
+        discoverMarkets: vi.fn(async () => {
+          jobDiscoveryCount += 1;
+          return jobDiscoveryCount === 1
+            ? DISCOVERED_MARKETS.slice(0, 2)
+            : DISCOVERED_MARKETS.slice(1, 3);
+        }),
+        runImport,
+      },
+    });
+
+    expect(runImport).toHaveBeenCalledTimes(2);
+    expect(summary.summary.plannedCount).toBe(2);
+    expect(summary.summary.importedCount).toBe(2);
+  });
+
+  it("reports abort guard failure reasons when all planned markets fail", async () => {
+    const mock: MockFs = { files: {}, directories: new Set(["data"]) };
+    const io = createIo(mock);
+    const reportAbortGuard = vi.fn();
+    const runImport = vi.fn(async (config) => {
+      throw new Error(`failed-${config.marketTicker}`);
+    });
+
+    const summary = await runHistoricalExpansionImport({
+      generatedAt: GENERATED_AT,
+      config: createBaseConfig({ maxMarkets: 2 }),
+      expansionConfigJson: createManifestJson(),
+      io,
+      deps: {
+        discoverMarkets: vi.fn(async () => DISCOVERED_MARKETS.slice(0, 2)),
+        runImport,
+      },
+      progress: {
+        reportJobHeader: vi.fn(),
+        recordMarket: vi.fn(),
+        recordDedupedMarket: vi.fn(),
+        reportAbortGuard,
+        completeJob: vi.fn(),
+        complete: vi.fn(),
+      },
+    });
+
+    expect(reportAbortGuard).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.stringContaining("ABORT"),
+        expect.stringContaining("KXBTC15M-26JAN151215-00: failed-"),
+      ]),
+    );
+    expect(summary.runStatus).toBe("interrupted");
+    expect(summary.summary.plannedCount).toBe(2);
+    expect(summary.summary.failedCount).toBe(2);
+  });
+
+  it("keeps progress denominator aligned with the planned queue length", async () => {
+    const mock: MockFs = { files: {}, directories: new Set(["data"]) };
+    const io = createIo(mock);
+    const reportJobHeader = vi.fn();
+    const recordMarket = vi.fn();
+    const runImport = vi.fn(async () => {
+      throw new Error("failed");
+    });
+
+    await runHistoricalExpansionImport({
+      generatedAt: GENERATED_AT,
+      config: createBaseConfig({ maxMarkets: 2, execute: false }),
+      expansionConfigJson: createManifestJson(),
+      io,
+      deps: {
+        discoverMarkets: vi.fn(async () => DISCOVERED_MARKETS),
+        runImport,
+      },
+      progress: {
+        reportJobHeader,
+        recordMarket,
+        recordDedupedMarket: vi.fn(),
+        reportAbortGuard: vi.fn(),
+        completeJob: vi.fn(),
+        complete: vi.fn(),
+      },
+    });
+
+    expect(reportJobHeader).toHaveBeenCalledWith(
+      expect.objectContaining({ toImportCount: 2 }),
+    );
+    expect(recordMarket).toHaveBeenCalledTimes(2);
+    expect(runImport).not.toHaveBeenCalled();
   });
 });

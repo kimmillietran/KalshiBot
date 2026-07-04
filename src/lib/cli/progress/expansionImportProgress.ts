@@ -52,6 +52,7 @@ export type ExpansionImportProgressReporter = {
   reportJobHeader: (snapshot: ExpansionImportJobHeaderSnapshot) => void;
   recordMarket: (status: ExpansionImportMarketStatus, marketTicker: string) => void;
   recordDedupedMarket: (marketTicker: string) => void;
+  reportAbortGuard: (lines: readonly string[]) => void;
   completeJob: () => void;
   complete: () => void;
 };
@@ -194,6 +195,9 @@ export function createExpansionImportProgressReporter(
     recordDedupedMarket(marketTicker) {
       dedupedCount += 1;
       currentMarketTicker = marketTicker;
+    },
+    reportAbortGuard(lines) {
+      write(`\n${lines.join("\n")}\n\n`);
     },
     completeJob() {
       if (totalMarkets <= 0 || !jobRenderer) {

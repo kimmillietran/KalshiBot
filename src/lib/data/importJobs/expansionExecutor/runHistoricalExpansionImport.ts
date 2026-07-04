@@ -22,6 +22,7 @@ import type { HistoricalExpansionImportCheckpoint } from "@/lib/data/importJobs/
 import { stableStringify } from "@/lib/trading/config/hashConfig";
 
 import { buildExpansionMarketImportArtifacts } from "./buildExpansionMarketImportConfig";
+import { buildPlannedExpansionImportQueue } from "./buildPlannedExpansionImportQueue";
 import {
   createExpansionImportReconciliationTracer,
   traceDiscoveryListResponse,
@@ -46,36 +47,17 @@ import {
   type RunHistoricalExpansionImportInput,
 } from "./expansionExecutorTypes";
 import { scanExistingExpansionMarketTickers } from "./scanExistingExpansionMarketTickers";
+import {
+  assertExpansionImportJobSummaryInvariants,
+  buildExpansionImportMarketsInDiscoveryOrder,
+  collectFirstExpansionImportFailureMessages,
+  countExpansionImportAttempts,
+  formatExpansionImportAbortGuardLines,
+  isExpansionImportAbortGuardTriggered,
+} from "./summarizeExpansionImportJobResults";
 
-function countImportPlan(
-  discovered: readonly {
-    marketTicker: string;
-  }[],
-  existingTickers: ReadonlySet<string>,
-  remainingMarketBudget: number | null,
-): { alreadyCoveredCount: number; toImportCount: number } {
-  let alreadyCoveredCount = 0;
-  let toImportCount = 0;
-  let budget = remainingMarketBudget;
-
-  for (const market of discovered) {
-    if (existingTickers.has(market.marketTicker)) {
-      alreadyCoveredCount += 1;
-      continue;
-    }
-
-    if (budget !== null && budget <= 0) {
-      break;
-    }
-
-    toImportCount += 1;
-    if (budget !== null) {
-      budget -= 1;
-    }
-  }
-
-  return { alreadyCoveredCount, toImportCount };
-}
+const DEDUPED_SKIP_REASON =
+  "Market already present in import configs, fixtures, or research outputs";
 
 function compareJobs(
   left: HistoricalExpansionImportJob,
@@ -356,16 +338,19 @@ export async function runHistoricalExpansionImport(
     const jobWarnings: string[] = [];
     const sampling = toSamplingWindow(job);
     const discovered = await input.deps.discoverMarkets(job.seriesTicker, sampling);
-    const markets: ExpansionImportMarketResult[] = [];
 
     const sortedDiscovered = [...discovered].sort((left, right) =>
       left.marketTicker.localeCompare(right.marketTicker),
     );
-    const importPlan = countImportPlan(
+    const existingTickersAtPlanning = new Set(existingTickers);
+    const budgetBeforeJob = remainingMarketBudget;
+    const importPlan = buildPlannedExpansionImportQueue(
       sortedDiscovered,
       existingTickers,
       remainingMarketBudget,
     );
+    const plannedQueue = importPlan.plannedQueue;
+    const plannedTickers = new Set(plannedQueue.map((market) => market.marketTicker));
 
     progress?.reportJobHeader({
       dryRun: !input.config.execute,
@@ -378,13 +363,12 @@ export async function runHistoricalExpansionImport(
       windowLabel: `${sampling.after.slice(0, 10)} → ${sampling.before.slice(0, 10)}`,
       discoveredCount: discovered.length,
       alreadyCoveredCount: importPlan.alreadyCoveredCount,
-      toImportCount: importPlan.toImportCount,
+      toImportCount: plannedQueue.length,
     });
 
     for (const market of sortedDiscovered) {
-      if (input.signal?.aborted) {
-        interrupted = true;
-        break;
+      if (!existingTickersAtPlanning.has(market.marketTicker)) {
+        continue;
       }
 
       traceDiscoveryListResponse(reconciliationTrace, {
@@ -392,10 +376,33 @@ export async function runHistoricalExpansionImport(
         listMarketWire: market.listMarketWire,
       });
 
-      if (remainingMarketBudget !== null && remainingMarketBudget <= 0) {
-        jobWarnings.push(
-          "Stopped scheduling additional markets after reaching --max-markets limit",
+      progress?.recordDedupedMarket(market.marketTicker);
+
+      if (input.config.execute) {
+        const skippedResult: ExpansionImportMarketResult = {
+          marketTicker: market.marketTicker,
+          seriesTicker: market.seriesTicker,
+          status: "skipped",
+          configPath: null,
+          importResultPath: null,
+          errorMessage: null,
+          skipReason: DEDUPED_SKIP_REASON,
+          durationMs: 0,
+        };
+        checkpoint = updateExpansionImportCheckpoint(
+          checkpoint,
+          job.jobId,
+          skippedResult,
+          input.generatedAt,
         );
+      }
+    }
+
+    const attemptedResults: ExpansionImportMarketResult[] = [];
+
+    for (const market of plannedQueue) {
+      if (input.signal?.aborted) {
+        interrupted = true;
         break;
       }
 
@@ -407,7 +414,7 @@ export async function runHistoricalExpansionImport(
       });
 
       if (executionPlan.action === "skip") {
-        markets.push({
+        const skippedResult: ExpansionImportMarketResult = {
           marketTicker: market.marketTicker,
           seriesTicker: market.seriesTicker,
           status: "skipped",
@@ -416,24 +423,13 @@ export async function runHistoricalExpansionImport(
           errorMessage: null,
           skipReason: executionPlan.reason,
           durationMs: 0,
-        });
-        progress?.recordMarket("skipped", market.marketTicker);
-        continue;
-      }
-
-      if (existingTickers.has(market.marketTicker)) {
-        const skippedResult: ExpansionImportMarketResult = {
-          marketTicker: market.marketTicker,
-          seriesTicker: market.seriesTicker,
-          status: "skipped",
-          configPath: null,
-          importResultPath: null,
-          errorMessage: null,
-          skipReason: "Market already present in import configs, fixtures, or research outputs",
-          durationMs: 0,
         };
-        markets.push(skippedResult);
-        progress?.recordDedupedMarket(market.marketTicker);
+        attemptedResults.push(skippedResult);
+        progress?.recordMarket("skipped", market.marketTicker);
+
+        if (remainingMarketBudget !== null) {
+          remainingMarketBudget -= 1;
+        }
 
         if (input.config.execute) {
           checkpoint = updateExpansionImportCheckpoint(
@@ -447,9 +443,18 @@ export async function runHistoricalExpansionImport(
         continue;
       }
 
+      traceDiscoveryListResponse(reconciliationTrace, {
+        ticker: market.marketTicker,
+        listMarketWire: market.listMarketWire,
+      });
+
       const result = await executeMarketImport(input, job, market, reconciliationTrace);
-      markets.push(result);
+      attemptedResults.push(result);
       progress?.recordMarket(result.status, market.marketTicker);
+
+      if (remainingMarketBudget !== null) {
+        remainingMarketBudget -= 1;
+      }
 
       if (
         input.config.execute
@@ -474,9 +479,6 @@ export async function runHistoricalExpansionImport(
       }
 
       if (result.status === "planned" || result.status === "imported") {
-        if (remainingMarketBudget !== null) {
-          remainingMarketBudget -= 1;
-        }
         existingTickers.add(market.marketTicker);
       }
 
@@ -488,6 +490,17 @@ export async function runHistoricalExpansionImport(
           input.generatedAt,
         );
 
+        const partialAttemptCounts = countExpansionImportAttempts(attemptedResults);
+        const partialMarkets = buildExpansionImportMarketsInDiscoveryOrder({
+          sortedDiscovered,
+          existingTickersAtPlanning,
+          plannedTickers,
+          attemptedResultsByTicker: new Map(
+            attemptedResults.map((entry) => [entry.marketTicker, entry]),
+          ),
+          dedupedSkipReason: DEDUPED_SKIP_REASON,
+        });
+
         const partialSummary = buildPartialSummary(
           input,
           [
@@ -497,13 +510,17 @@ export async function runHistoricalExpansionImport(
               seriesTicker: job.seriesTicker,
               status: "completed",
               discoveredMarketCount: discovered.length,
-              importedCount: markets.filter((entry) => entry.status === "imported").length,
-              skippedCount: markets.filter((entry) => entry.status === "skipped").length,
-              failedCount: markets.filter((entry) => entry.status === "failed").length,
-              plannedCount: markets.filter((entry) => entry.status === "planned").length,
+              importedCount: partialAttemptCounts.importedCount,
+              skippedCount:
+                partialAttemptCounts.skippedCount
+                + sortedDiscovered.filter((entry) =>
+                  existingTickersAtPlanning.has(entry.marketTicker),
+                ).length,
+              failedCount: partialAttemptCounts.failedCount,
+              plannedCount: plannedQueue.length,
               durationMs: Date.now() - jobStartedAtMs,
               warnings: jobWarnings,
-              markets,
+              markets: partialMarkets,
             },
           ],
           startedAtMs,
@@ -519,16 +536,48 @@ export async function runHistoricalExpansionImport(
       }
     }
 
+    if (
+      remainingMarketBudget !== null
+      && remainingMarketBudget <= 0
+      && sortedDiscovered.some(
+        (market) =>
+          !existingTickersAtPlanning.has(market.marketTicker)
+          && !plannedTickers.has(market.marketTicker),
+      )
+    ) {
+      jobWarnings.push(
+        "Stopped scheduling additional markets after reaching --max-markets limit",
+      );
+    }
+
+    const attemptedResultsByTicker = new Map(
+      attemptedResults.map((entry) => [entry.marketTicker, entry]),
+    );
+    const markets = buildExpansionImportMarketsInDiscoveryOrder({
+      sortedDiscovered,
+      existingTickersAtPlanning,
+      plannedTickers,
+      attemptedResultsByTicker,
+      dedupedSkipReason: DEDUPED_SKIP_REASON,
+    });
+    const attemptCounts = countExpansionImportAttempts(attemptedResults);
+    const plannedCount = plannedQueue.length;
+    const importedCount = markets.filter((entry) => entry.status === "imported").length;
+    const failedCount = markets.filter((entry) => entry.status === "failed").length;
+    const skippedCount = markets.filter((entry) => entry.status === "skipped").length;
+
+    assertExpansionImportJobSummaryInvariants({
+      plannedQueueLength: plannedCount,
+      attemptedResults,
+      budgetAtPlanning: budgetBeforeJob,
+      execute: input.config.execute,
+    });
+
     if (discovered.length === 0) {
       jobWarnings.push(
         `No markets discovered for ${job.seriesTicker} between ${sampling.after} and ${sampling.before}`,
       );
     }
-
-    const importedCount = markets.filter((entry) => entry.status === "imported").length;
-    const skippedCount = markets.filter((entry) => entry.status === "skipped").length;
-    const failedCount = markets.filter((entry) => entry.status === "failed").length;
-    const plannedCount = markets.filter((entry) => entry.status === "planned").length;
 
     jobResults.push({
       jobId: job.jobId,
@@ -549,6 +598,22 @@ export async function runHistoricalExpansionImport(
 
     warnings.push(...jobWarnings);
     progress?.completeJob();
+
+    if (
+      isExpansionImportAbortGuardTriggered({
+        plannedQueueLength: plannedCount,
+        importedCount: attemptCounts.importedCount,
+        failedCount: attemptCounts.failedCount,
+        execute: input.config.execute,
+      })
+    ) {
+      const failureMessages = collectFirstExpansionImportFailureMessages(attemptedResults);
+      const abortLines = formatExpansionImportAbortGuardLines(failureMessages);
+      warnings.push(...abortLines);
+      jobWarnings.push(...abortLines);
+      progress?.reportAbortGuard?.(abortLines);
+      interrupted = true;
+    }
 
     if (interrupted) {
       break;
