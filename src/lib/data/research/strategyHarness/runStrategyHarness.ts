@@ -8,8 +8,8 @@ import { parseResearchDatasetSeriesRegistryJson } from "@/lib/data/research/batc
 import { buildStrategyHarnessOutputPath, resolveStrategyHarnessSummaryPath } from "./buildStrategyHarnessOutputPath";
 import { resolveHarnessStrategyFromSpec } from "./createResearchStrategyHarnessRegistry";
 import {
-  filterHarnessStrategySpecs,
-  loadStrategySynthesisCandidatesReport,
+  HARNESS_NO_MATCH_WARNING,
+  loadHarnessStrategySpecs,
 } from "./loadSynthesizedStrategySpecs";
 import {
   DEFAULT_STRATEGY_HARNESS_OUTPUT_DIR,
@@ -140,6 +140,35 @@ function compareResults(
   return left.marketTicker.localeCompare(right.marketTicker);
 }
 
+function buildEmptyHarnessSummary(input: {
+  synthesisPath: string;
+  registryDir: string;
+  outputDir: string;
+  summaryPath: string;
+  startedAt: string;
+  completedAt: string;
+  durationMs: number;
+  includeRejected: boolean;
+}): StrategyHarnessSummary {
+  return {
+    synthesisPath: input.synthesisPath,
+    registryDir: input.registryDir,
+    outputDir: input.outputDir,
+    summaryPath: input.summaryPath,
+    startedAt: input.startedAt,
+    completedAt: input.completedAt,
+    durationMs: input.durationMs,
+    includeRejected: input.includeRejected,
+    evaluatedStrategies: 0,
+    totalRuns: 0,
+    successfulRuns: 0,
+    failedRuns: 0,
+    skippedRuns: 0,
+    warnings: [HARNESS_NO_MATCH_WARNING],
+    results: [],
+  };
+}
+
 /** Evaluates synthesized strategy specs across registry markets via the research pipeline. */
 export async function runStrategyHarness(
   input: RunStrategyHarnessInput,
@@ -150,23 +179,22 @@ export async function runStrategyHarness(
   const summaryPath = input.summaryPath
     ?? resolveStrategyHarnessSummaryPath(outputDir, DEFAULT_STRATEGY_HARNESS_SUMMARY_FILENAME);
   const concurrency = input.concurrency ?? 1;
+  const includeRejected = input.includeRejected === true;
 
   if (!Number.isInteger(concurrency) || concurrency < 1) {
     throw new StrategyHarnessError("concurrency must be a positive integer");
   }
 
-  const report = loadStrategySynthesisCandidatesReport(input.io, input.synthesisPath);
-
-  const specs = filterHarnessStrategySpecs(report.strategies, {
+  const specs = loadHarnessStrategySpecs(input.io, input.synthesisPath, {
     strategyFamily: input.strategyFamily,
     synthesizedStrategyId: input.synthesizedStrategyId,
-    includeRejected: input.includeRejected,
+    includeRejected,
   });
 
   if (specs.length === 0) {
     input.io.mkdir(outputDir);
     const completedAt = input.now?.().toISOString() ?? new Date().toISOString();
-    const summary: StrategyHarnessSummary = {
+    const summary = buildEmptyHarnessSummary({
       synthesisPath: input.synthesisPath,
       registryDir: normalizePath(input.registryDir),
       outputDir,
@@ -174,13 +202,8 @@ export async function runStrategyHarness(
       startedAt,
       completedAt,
       durationMs: Date.now() - startMs,
-      evaluatedStrategies: 0,
-      totalRuns: 0,
-      successfulRuns: 0,
-      failedRuns: 0,
-      skippedRuns: 0,
-      results: [],
-    };
+      includeRejected,
+    });
 
     input.io.writeFile(summaryPath, stableStringify(summary));
     return summary;
@@ -299,11 +322,13 @@ export async function runStrategyHarness(
     startedAt,
     completedAt,
     durationMs: Date.now() - startMs,
+    includeRejected,
     evaluatedStrategies: specs.length,
     totalRuns: sortedResults.length,
     successfulRuns: sortedResults.filter((result) => result.status === "success").length,
     failedRuns: sortedResults.filter((result) => result.status === "failed").length,
     skippedRuns: sortedResults.filter((result) => result.status === "skipped").length,
+    warnings: [],
     results: sortedResults,
   };
 

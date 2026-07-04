@@ -10,10 +10,15 @@ export {
 } from "./createResearchStrategyHarnessRegistry";
 export {
   filterHarnessStrategySpecs,
+  HARNESS_DEFAULT_PROMOTION_STATUSES,
+  HARNESS_NO_MATCH_WARNING,
+  loadHarnessStrategySpecs,
   loadStrategySynthesisCandidatesReport,
+  resolveHarnessStrategySpecs,
 } from "./loadSynthesizedStrategySpecs";
 export {
   normalizeSynthesizedStrategySpec,
+  parseRawStrategySynthesisCandidatesReport,
   parseStrategySynthesisCandidatesReport,
 } from "./normalizeSynthesizedStrategySpec";
 export {

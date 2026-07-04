@@ -176,10 +176,20 @@ export function normalizeSynthesizedStrategySpec(
   };
 }
 
-export function parseStrategySynthesisCandidatesReport(
+export type RawSynthesizedStrategySpec = z.infer<typeof rawStrategySchema>;
+
+export type RawStrategySynthesisCandidatesReport = {
+  generatedAt: string;
+  outputPath: string;
+  inputs: Record<string, unknown>;
+  strategies: readonly RawSynthesizedStrategySpec[];
+  summary: Record<string, unknown>;
+};
+
+function parseRawStrategySynthesisReport(
   path: string,
   parsed: unknown,
-): StrategySynthesisCandidatesReport {
+): RawStrategySynthesisCandidatesReport {
   const result = rawReportSchema.safeParse(parsed);
   if (!result.success) {
     throw new StrategyHarnessError(
@@ -198,7 +208,29 @@ export function parseStrategySynthesisCandidatesReport(
     generatedAt: result.data.generatedAt,
     outputPath: result.data.outputPath,
     inputs,
-    strategies: result.data.strategies.map(normalizeSynthesizedStrategySpec),
+    strategies: result.data.strategies,
     summary: result.data.summary,
+  };
+}
+
+export function parseRawStrategySynthesisCandidatesReport(
+  path: string,
+  parsed: unknown,
+): RawStrategySynthesisCandidatesReport {
+  return parseRawStrategySynthesisReport(path, parsed);
+}
+
+export function parseStrategySynthesisCandidatesReport(
+  path: string,
+  parsed: unknown,
+): StrategySynthesisCandidatesReport {
+  const rawReport = parseRawStrategySynthesisReport(path, parsed);
+
+  return {
+    generatedAt: rawReport.generatedAt,
+    outputPath: rawReport.outputPath,
+    inputs: rawReport.inputs,
+    strategies: rawReport.strategies.map(normalizeSynthesizedStrategySpec),
+    summary: rawReport.summary,
   };
 }

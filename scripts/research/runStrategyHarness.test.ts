@@ -115,6 +115,7 @@ describe("runStrategyHarnessCommand", () => {
 
   it("accepts --input as an alias for --synthesis", async () => {
     let stdout = "";
+    let stderr = "";
     const synthesisPath = "tmp/custom-synthesis.json";
 
     const exitCode = await runStrategyHarnessCommand(
@@ -136,7 +137,9 @@ describe("runStrategyHarnessCommand", () => {
         writeStdout: (text) => {
           stdout += text;
         },
-        writeStderr: () => {},
+        writeStderr: (text) => {
+          stderr += text;
+        },
         writeFile: () => {},
         mkdirSync: () => {},
       },
@@ -144,5 +147,132 @@ describe("runStrategyHarnessCommand", () => {
 
     expect(exitCode).toBe(0);
     expect(JSON.parse(stdout).evaluatedStrategies).toBe(0);
+    expect(JSON.parse(stdout).warnings).toHaveLength(1);
+    expect(stderr).toBe(
+      "warning: No synthesized strategies matched harness filters; wrote empty strategy-harness-summary.json\n",
+    );
+  });
+
+  it("returns non-zero for malformed synthesis JSON", async () => {
+    let stderr = "";
+    const synthesisPath = "data/research-results/strategy-synthesis-candidates.json";
+
+    const exitCode = await runStrategyHarnessCommand(
+      ["--synthesis", synthesisPath],
+      {
+        readFile: () => "{not-json",
+        fileExists: () => true,
+        writeStdout: () => {},
+        writeStderr: (text) => {
+          stderr += text;
+        },
+        writeFile: () => {},
+        mkdirSync: () => {},
+        readdir: () => [],
+        isDirectory: () => false,
+      },
+    );
+
+    expect(exitCode).toBe(1);
+    expect(stderr).toContain("Invalid JSON");
+  });
+
+  it("includes rejected strategies when --include-rejected is passed", async () => {
+    let stdout = "";
+    const synthesisPath = "data/research-results/strategy-synthesis-candidates.json";
+    const registryPath = "data/research-datasets/KXBTC15M/dataset-registry.json";
+    const fixturePath = "data/fixtures/KXBTC15M/market-a.json";
+
+    const exitCode = await runStrategyHarnessCommand(
+      [
+        "--synthesis",
+        synthesisPath,
+        "--registry-dir",
+        "data/research-datasets",
+        "--include-rejected",
+      ],
+      {
+        readFile: (path) => {
+          if (path === synthesisPath) {
+            return JSON.stringify({
+              generatedAt: "2026-07-03T12:00:00.000Z",
+              outputPath: synthesisPath,
+              inputs: {},
+              strategies: [
+                {
+                  strategyId: "synth-rejected",
+                  hypothesisId: "atlas-test-over",
+                  strategyFamily: "calibration-fade",
+                  direction: "fade-yes",
+                  entryConditions: { yesMidThresholdCents: 55 },
+                  exitAssumption: "Hold to settlement",
+                  requiredData: [],
+                  riskNotes: [],
+                  validationSummary: {
+                    robustnessScore: 20,
+                    passes: false,
+                    observationCount: 2,
+                  },
+                  promotionStatus: "rejected",
+                },
+              ],
+              summary: {},
+            });
+          }
+
+          if (path === registryPath) {
+            return JSON.stringify({
+              seriesTicker: "KXBTC15M",
+              markets: [
+                {
+                  seriesTicker: "KXBTC15M",
+                  marketTicker: "MARKET-A",
+                  fixturePath,
+                },
+              ],
+            });
+          }
+
+          return "{}";
+        },
+        fileExists: (path) =>
+          path === synthesisPath
+          || path === registryPath
+          || path === fixturePath,
+        readdir: (path) =>
+          path.endsWith("KXBTC15M") ? ["dataset-registry.json"] : ["KXBTC15M"],
+        isDirectory: (path) =>
+          path.endsWith("research-datasets") || path.endsWith("KXBTC15M"),
+        writeStdout: (text) => {
+          stdout += text;
+        },
+        writeStderr: () => {},
+        writeFile: () => {},
+        mkdirSync: () => {},
+      },
+      {
+        runEvaluation: () => JSON.stringify({ metadata: { runId: "harness-run" } }),
+        parseFixtureJson: () =>
+          ({
+            bronzeRecords: [{ recordId: "r1" }],
+            strategyId: "noop",
+            engineConfig: {
+              enabled: true,
+              minEdgePercent: 1,
+              minLiquidityQuality: "Fair",
+              maxSpreadPercent: 10,
+              minimumTimeRemaining: 0,
+              minimumCandles: 0,
+            },
+            initialCashCents: 10_000,
+            runId: "fixture-run",
+            durationMs: 1_000,
+          }) as HistoricalResearchCliInputDocument,
+      },
+    );
+
+    expect(exitCode).toBe(0);
+    expect(JSON.parse(stdout).evaluatedStrategies).toBe(1);
+    expect(JSON.parse(stdout).warnings).toEqual([]);
   });
 });

@@ -139,7 +139,15 @@ Writes `data/reports/research-dashboard.html` — a read-only landing page with 
 npm run research:full
 ```
 
-Invokes existing research CLIs in order: data health → mispricing atlas → hypotheses → validation → synthesis → harness (with `--input data/research-results/strategy-synthesis-candidates.json`) → harness results → candidate registry → candidate promotions → artifact index → lifecycle → dashboard. Writes `data/research-results/full-research-summary.json` with per-step status, duration, outputs, warnings, and failures. Independent reporting steps still run when upstream analysis fails. When no synthesized strategies match harness filters, the harness step no-ops with an empty summary. Use `--continue-on-error` to keep executing the core chain after step failures.
+Invokes existing research CLIs in order: data health → mispricing atlas → hypotheses → validation → synthesis → harness (with `--input data/research-results/strategy-synthesis-candidates.json`) → harness results → candidate registry → candidate promotions → artifact index → lifecycle → dashboard. Writes `data/research-results/full-research-summary.json` with per-step status, duration, outputs, warnings, and failures. Independent reporting steps still run when upstream analysis fails. When no synthesized strategies match harness filters, the harness step no-ops with an empty summary and a single warning. Use `--continue-on-error` to keep executing the core chain after step failures.
+
+### Strategy harness
+
+```bash
+npm run research:harness -- --input data/research-results/strategy-synthesis-candidates.json
+```
+
+Evaluates promotion-eligible synthesized strategies (`experimental`, `candidate`) through the historical research pipeline. Rejected strategies are excluded by default; pass `--include-rejected` for research experiments. When no strategies match filters, the harness exits successfully with an empty summary and one warning.
 
 ### Strategy synthesis
 

@@ -93,11 +93,13 @@ export type StrategyHarnessSummary = {
   startedAt: string;
   completedAt: string;
   durationMs: number;
+  includeRejected: boolean;
   evaluatedStrategies: number;
   totalRuns: number;
   successfulRuns: number;
   failedRuns: number;
   skippedRuns: number;
+  warnings: readonly string[];
   results: readonly StrategyHarnessMarketResult[];
 };
 
