@@ -274,6 +274,20 @@ export const EXECUTE_EXPANSION_IMPORT_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--resume" },
 ];
 
+export const REBUILD_AFTER_EXPANSION_ARGV_SCHEMA: readonly NpmArgvField[] = [
+  { flag: "--input" },
+  { flag: "--output" },
+  { flag: "--html-output" },
+  { flag: "--fixtures-dir" },
+  { flag: "--imports-dir" },
+  { flag: "--import-configs-dir" },
+  { flag: "--registry-dir" },
+  { flag: "--research-results-dir" },
+  { flag: "--mispricing-atlas" },
+  { flag: "--concurrency" },
+  { flag: "--full-rebuild" },
+];
+
 export const DATA_HEALTH_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--discovery-result" },
   { flag: "--imports-dir" },
@@ -640,5 +654,12 @@ export function normalizeExecuteExpansionImportArgv(argv: readonly string[]): st
   return mergeNpmBooleanFlags(
     normalizeNpmScriptArgv(argv, EXECUTE_EXPANSION_IMPORT_ARGV_SCHEMA),
     ["--execute", "--resume"],
+  );
+}
+
+export function normalizeRebuildAfterExpansionArgv(argv: readonly string[]): string[] {
+  return mergeNpmBooleanFlags(
+    normalizeNpmScriptArgv(argv, REBUILD_AFTER_EXPANSION_ARGV_SCHEMA),
+    ["--full-rebuild"],
   );
 }

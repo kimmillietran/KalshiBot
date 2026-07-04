@@ -1113,3 +1113,36 @@ export type {
   StrategyDecisionTraceEntry,
   StrategyDecisionTraceMetadata,
 } from "./decisionTrace";
+
+export {
+  collectExpansionRebuildMetrics,
+  DEFAULT_EXPANSION_FIXTURES_DIR,
+  DEFAULT_EXPANSION_IMPORT_CONFIGS_DIR,
+  DEFAULT_EXPANSION_IMPORTS_DIR,
+  DEFAULT_EXPANSION_MISPRICING_ATLAS_PATH,
+  DEFAULT_EXPANSION_REGISTRY_DIR,
+  DEFAULT_EXPANSION_REBUILD_SUMMARY_HTML_PATH,
+  DEFAULT_EXPANSION_REBUILD_SUMMARY_PATH,
+  DEFAULT_EXPANSION_RESEARCH_RESULTS_DIR,
+  DEFAULT_HISTORICAL_EXPANSION_IMPORT_SUMMARY_PATH,
+  ExpansionRebuildError,
+  ExpansionRebuildErrorCode,
+  extractImportedExpansionMarkets,
+  loadHistoricalExpansionImportSummary,
+  parseHistoricalExpansionImportSummaryJson,
+  runExpansionRebuild,
+  serializeExpansionRebuildSummary,
+  serializeExpansionRebuildSummaryHtml,
+} from "./expansionRebuild";
+export type {
+  ExpansionRebuildFixtureMarketResult,
+  ExpansionRebuildIo,
+  ExpansionRebuildMarketStatus,
+  ExpansionRebuildMetrics,
+  ExpansionRebuildResearchMarketResult,
+  ExpansionRebuildSummary,
+  ExpansionRebuildTargetMarket,
+  HistoricalExpansionImportSummary,
+  RunExpansionRebuildDeps,
+  RunExpansionRebuildInput,
+} from "./expansionRebuild";

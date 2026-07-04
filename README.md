@@ -193,6 +193,15 @@ Planned: 9 | Failed: 0 | Skipped: 1
 Elapsed: 01:42 | ETA: 02:33
 ```
 
+### Expansion fixture + research rebuild
+
+```bash
+npm run research:rebuild-after-expansion
+npm run research:rebuild-after-expansion -- --full-rebuild
+```
+
+Reads `historical-expansion-import-summary.json` (M9.5) and rebuilds fixtures and research outputs for newly imported markets. Rebuilds the research dataset registry, records before/after fixture/research/registry/trading-day/atlas counts, and writes `data/research-results/expansion-rebuild-summary.json` plus `data/reports/expansion-rebuild-summary.html`. Pass `--full-rebuild` to overwrite all fixtures and research outputs discovered under `--imports-dir`. Does not change replay semantics, strategy behavior, or hypothesis scoring.
+
 ### Coverage-aware validation
 
 ```bash
@@ -321,6 +330,7 @@ docs/
 | 9.10 | Expansion import progress reporting (live stderr progress for long import runs) — **complete** |
 | 9.3 | Coverage-aware validation (`research:coverage-validation`, advisory inconclusive vs weak classification) — **complete** |
 | 9.4 | Full orchestrator coverage phase (`research:full` coverage planning + optional validation wiring) — **complete** |
+| 9.6 | Expansion fixture + research rebuild (`research:rebuild-after-expansion`, post-import fixture/registry/replay pipeline) — **complete** |
 | 9.9 | Research pipeline performance audit (`research:performance-audit`, diagnostic runtime analysis) — **complete** |
 
 ## Intentionally deferred
