@@ -174,11 +174,17 @@ Reads `historical-coverage-plan.json` (M9.1) and writes `data/import-configs/his
 npm run research:execute-expansion-import
 npm run research:execute-expansion-import -- --execute
 npm run research:execute-expansion-import -- --execute --max-markets 5 --job-id expansion-KXBTC15M-20260101-20260331
+npm run research:execute-expansion-import -- --execute --max-markets=10
+npm run research:execute-expansion-import -- data/import-configs/historical-expansion-config.json --execute --max-markets=10
 ```
 
 Consumes `historical-expansion-config.json`, discovers matching Kalshi markets per scheduled job, dedupes against existing import configs/fixtures/research outputs, and runs the standard historical import flow for new markets only. Dry-run by default (`--execute` required to write import artifacts). Writes `historical-expansion-import-summary.json` and HTML in all modes.
 
-While the command runs, stderr shows live progress: per-job discovery counts, import window, market progress bar, current ticker, imported/planned/failed/skipped counts, elapsed time, and ETA. Dry-run output is labeled `DRY RUN`; `--max-markets` and `--resume` appear in the job header when set.
+On Windows/PowerShell, npm may consume `--max-markets`; the CLI normalizer re-injects it from `npm_config_max_markets` or bare numeric argv tokens. Both `--max-markets 10` and `--max-markets=10` are supported.
+
+If repeated parser/import-compatibility failures occur during execute mode, a failure-rate circuit breaker aborts the job after 50 attempts instead of continuing to hammer the Kalshi API. Sanitized parse diagnostics are written to `data/debug/kalshi-market-{ticker}.json`.
+
+While the command runs, stderr shows live progress: per-job discovery counts, import window, market progress bar (planned import denominator), current ticker, imported/planned/failed/skipped/deduped counts, elapsed time, and ETA. Dry-run output is labeled `DRY RUN`; `--max-markets` and `--resume` appear in the job header when set.
 
 ```text
 [Expansion Import] DRY RUN
@@ -189,7 +195,7 @@ Discovered: 480 markets | Already covered: 120 | To import: 25
 [Expansion Import]
 ████████░░░░░░░░░░░░ 10/25 markets
 Current: KXBTC15M-26JAN01-BTC-00
-Planned: 9 | Failed: 0 | Skipped: 1
+Planned: 9 | Failed: 0 | Skipped: 1 | Deduped: 120
 Elapsed: 01:42 | ETA: 02:33
 ```
 
@@ -333,6 +339,7 @@ docs/
 | 9.6 | Expansion fixture + research rebuild (`research:rebuild-after-expansion`, post-import fixture/registry/replay pipeline) — **complete** |
 | 9.9 | Research pipeline performance audit (`research:performance-audit`, diagnostic runtime analysis) — **complete** |
 | 9.11 | Coverage depth thresholds (`research:coverage-plan` missing/under-covered/covered month classification) — **complete** |
+| 9.12 | Historical import compatibility investigation (parse diagnostics, circuit breaker, max-markets CLI, progress denominator) — **complete** |
 
 ## Intentionally deferred
 

@@ -134,6 +134,7 @@ export type ExpansionImportProgressHooks = {
     toImportCount: number;
   }) => void;
   recordMarket: (status: ExpansionImportMarketStatus, marketTicker: string) => void;
+  recordDedupedMarket: (marketTicker: string) => void;
   completeJob: () => void;
   complete: () => void;
 };

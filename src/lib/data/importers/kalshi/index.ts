@@ -16,6 +16,20 @@ export {
   type KalshiHistoricalHttpAdapterOptions,
 } from "./KalshiHistoricalHttpAdapter";
 export {
+  buildKalshiMarketDebugArtifactPath,
+  buildKalshiMarketParseDiagnostic,
+  compareKalshiMarketResponseShapes,
+  findMissingKalshiMarketRecordFields,
+  findMissingKalshiMarketWireFields,
+  formatKalshiMarketParseError,
+  KalshiMarketImportCompatibilityError,
+  sanitizeKalshiMarketResponseExcerpt,
+  saveKalshiMarketDebugArtifact,
+  type CompareKalshiMarketResponseShapesResult,
+  type KalshiMarketParseDiagnostic,
+  type KalshiMarketWireShape,
+} from "./kalshiMarketImportDiagnostics";
+export {
   KALSHI_BRONZE_CONTENT_TYPE,
   eventTimeFromMarketWire,
   kalshiUnixSecondsToEventTime,

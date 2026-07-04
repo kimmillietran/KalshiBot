@@ -7,6 +7,12 @@ import {
   mapKalshiMarketPayloadToBronzeRecord,
   mapKalshiSettlementPayloadToBronzeRecord,
 } from "@/lib/data/importers/kalshi";
+import {
+  buildKalshiMarketDebugArtifactPath,
+  buildKalshiMarketParseDiagnostic,
+  findMissingKalshiMarketRecordFields,
+  KalshiMarketImportCompatibilityError,
+} from "@/lib/data/importers/kalshi/kalshiMarketImportDiagnostics";
 import type {
   HistoricalCandlestickInterval,
   HistoricalCandlestickRecord,
@@ -102,14 +108,24 @@ function requireFiniteTimestamp(label: string, value: string): number {
   return parsed;
 }
 
-function marketRecordToWire(market: HistoricalMarketRecord): KalshiMarketWire {
-  if (
-    !market.ticker.trim()
-    || !market.openTime.trim()
-    || !market.closeTime.trim()
-    || !market.expirationValue.trim()
-  ) {
-    throw new Error("Kalshi historical market response is missing required fields");
+function marketRecordToWire(
+  market: HistoricalMarketRecord,
+  marketTicker: string,
+): KalshiMarketWire {
+  const missingRequiredFields = findMissingKalshiMarketRecordFields(market);
+  if (missingRequiredFields.length > 0) {
+    const requestPath = buildHistoricalMarketPath(marketTicker);
+    throw new KalshiMarketImportCompatibilityError(
+      buildKalshiMarketParseDiagnostic({
+        ticker: marketTicker,
+        endpoint: requestPath,
+        requestContext: `bronze-provider marketRecordToWire for ${marketTicker}`,
+        httpStatus: 200,
+        body: { market: market },
+        missingRequiredFields,
+        debugArtifactPath: buildKalshiMarketDebugArtifactPath(marketTicker),
+      }),
+    );
   }
 
   return {
@@ -171,7 +187,7 @@ function mapMarketRecordToBronze(
   input: KalshiHistoricalBronzeProviderMethodInput,
   requestPath: string,
 ): RawHistoricalRecord {
-  const wire = marketRecordToWire(market);
+  const wire = marketRecordToWire(market, input.marketTicker);
 
   return mapKalshiMarketPayloadToBronzeRecord({
     ticker: input.marketTicker,

@@ -62,6 +62,7 @@ describe("formatExpansionImportMarketProgressLines", () => {
       plannedCount: 0,
       failedCount: 0,
       skippedCount: 1,
+      dedupedCount: 0,
       elapsedMs: 102_000,
     });
 
@@ -83,6 +84,7 @@ describe("formatExpansionImportMarketProgressLines", () => {
       plannedCount: 2,
       failedCount: 0,
       skippedCount: 0,
+      dedupedCount: 0,
       elapsedMs: 30_000,
     });
 
@@ -99,10 +101,29 @@ describe("formatExpansionImportMarketProgressLines", () => {
       plannedCount: 0,
       failedCount: 2,
       skippedCount: 0,
+      dedupedCount: 0,
       elapsedMs: 45_000,
     });
 
     expect(lines.join("\n")).toContain("Imported: 1 | Failed: 2 | Skipped: 0");
+  });
+
+  it("shows deduped counts separately from planned import progress", () => {
+    const lines = formatExpansionImportMarketProgressLines({
+      dryRun: true,
+      completedMarkets: 2,
+      totalMarkets: 2,
+      currentMarketTicker: "KXBTC15M-PLANNED-2",
+      importedCount: 0,
+      plannedCount: 2,
+      failedCount: 0,
+      skippedCount: 0,
+      dedupedCount: 512,
+      elapsedMs: 12_000,
+    });
+
+    expect(lines.join("\n")).toContain("2/2 markets");
+    expect(lines.join("\n")).toContain("Deduped: 512");
   });
 });
 
@@ -143,11 +164,13 @@ describe("createExpansionImportProgressReporter", () => {
     });
     reporter.recordMarket("planned", "KXBTC15M-A");
     reporter.recordMarket("planned", "KXBTC15M-B");
+    reporter.recordDedupedMarket("KXBTC15M-EXISTING");
     reporter.completeJob();
 
     const output = write.mock.calls.map(([chunk]) => chunk).join("");
     expect(output.match(/\[Expansion Import\] DRY RUN/g)?.length).toBe(1);
     expect(output).toContain("Planned: 2");
     expect(output).toContain("2/2 markets");
+    expect(output).toContain("Deduped: 1");
   });
 });

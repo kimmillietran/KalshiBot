@@ -6,6 +6,13 @@ import {
   buildHistoricalTradesPath,
   DEFAULT_KALSHI_HISTORICAL_API_BASE,
 } from "./historicalEndpoints";
+import {
+  buildKalshiMarketDebugArtifactPath,
+  buildKalshiMarketParseDiagnostic,
+  findMissingKalshiMarketWireFields,
+  KalshiMarketImportCompatibilityError,
+  saveKalshiMarketDebugArtifact,
+} from "./kalshiMarketImportDiagnostics";
 import type { HistoricalImporter } from "./HistoricalImporter";
 import type {
   HistoricalCandlestickInterval,
@@ -33,10 +40,17 @@ export type KalshiHistoricalHttpClient = {
   get(url: string): Promise<KalshiHistoricalHttpResponse>;
 };
 
+export type KalshiHistoricalImporterPersistDiagnosticsIo = {
+  writeFile: (path: string, data: string) => void;
+  mkdirSync: (path: string, options: { recursive: boolean }) => void;
+};
+
 export type KalshiHistoricalImporterOptions = {
   httpClient: KalshiHistoricalHttpClient;
   baseUrl?: string;
   now?: () => Date;
+  persistMarketParseDiagnostics?: boolean;
+  persistMarketParseDiagnosticsIo?: KalshiHistoricalImporterPersistDiagnosticsIo;
 };
 
 export class KalshiHistoricalImporterError extends Error {
@@ -238,10 +252,48 @@ export class KalshiHistoricalImporter implements HistoricalImporter {
   private readonly baseUrl: string;
   private readonly now: () => Date;
 
+  private readonly persistMarketParseDiagnostics: boolean;
+  private readonly persistMarketParseDiagnosticsIo:
+    | KalshiHistoricalImporterPersistDiagnosticsIo
+    | null;
+
   constructor(options: KalshiHistoricalImporterOptions) {
     this.httpClient = options.httpClient;
     this.baseUrl = options.baseUrl ?? DEFAULT_KALSHI_HISTORICAL_API_BASE;
     this.now = options.now ?? (() => new Date());
+    this.persistMarketParseDiagnostics = options.persistMarketParseDiagnostics ?? true;
+    this.persistMarketParseDiagnosticsIo =
+      options.persistMarketParseDiagnosticsIo ?? null;
+  }
+
+  private throwMarketImportCompatibilityError(input: {
+    ticker: string;
+    endpoint: string;
+    requestContext: string;
+    httpStatus: number;
+    body: unknown;
+    missingRequiredFields: readonly string[];
+  }): never {
+    const plannedArtifactPath = buildKalshiMarketDebugArtifactPath(input.ticker);
+    let debugArtifactPath: string | null = null;
+    const diagnostic = buildKalshiMarketParseDiagnostic({
+      ...input,
+      debugArtifactPath: plannedArtifactPath,
+    });
+
+    if (this.persistMarketParseDiagnostics && this.persistMarketParseDiagnosticsIo) {
+      debugArtifactPath = saveKalshiMarketDebugArtifact({
+        ticker: input.ticker,
+        diagnostic,
+        writeFile: this.persistMarketParseDiagnosticsIo.writeFile,
+        mkdirSync: this.persistMarketParseDiagnosticsIo.mkdirSync,
+      });
+    }
+
+    throw new KalshiMarketImportCompatibilityError({
+      ...diagnostic,
+      debugArtifactPath,
+    });
   }
 
   async listHistoricalMarkets(
@@ -324,8 +376,33 @@ export class KalshiHistoricalImporter implements HistoricalImporter {
     const requestPath = buildHistoricalMarketPath(ticker);
 
     try {
-      const body = await this.request<KalshiMarketResponseWire>(requestPath, "market");
-      return parseMarketRecord(body.market);
+      const { status, body, headers } = await this.httpClient.get(
+        `${this.baseUrl}${requestPath}`,
+      );
+
+      if (status === 404) {
+        return null;
+      }
+
+      const response = assertKalshiResponse<KalshiMarketResponseWire>(
+        body,
+        status,
+        "market",
+        headers,
+      );
+      const missingRequiredFields = findMissingKalshiMarketWireFields(response.market);
+      if (missingRequiredFields.length > 0) {
+        this.throwMarketImportCompatibilityError({
+          ticker,
+          endpoint: requestPath,
+          requestContext: `GET ${requestPath}`,
+          httpStatus: status,
+          body,
+          missingRequiredFields,
+        });
+      }
+
+      return parseMarketRecord(response.market);
     } catch (error) {
       if (error instanceof KalshiHistoricalImporterError && error.status === 404) {
         return null;

@@ -1,3 +1,5 @@
+import { mkdirSync, writeFileSync } from "node:fs";
+
 import { DataSource } from "@/lib/data/provenance";
 import {
   BtcHistoricalHttpAdapter,
@@ -127,6 +129,15 @@ async function createKalshiProviderFromConfig(
   const importer = new KalshiHistoricalImporter({
     httpClient: httpAdapter,
     now: () => new Date(config.collectionTime),
+    persistMarketParseDiagnostics: true,
+    persistMarketParseDiagnosticsIo: {
+      writeFile: (path, data) => {
+        writeFileSync(path, data, "utf8");
+      },
+      mkdirSync: (path, options) => {
+        mkdirSync(path, options);
+      },
+    },
   });
 
   return createPrefetchedKalshiHistoricalBronzeProvider({

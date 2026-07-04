@@ -3,7 +3,9 @@ import {
   hasCliFlags,
   mapPositionalToFlags,
   mergeNpmBooleanFlags,
+  mergeNpmConfigFlags,
   normalizeNpmScriptArgv,
+  readNpmConfigEnv,
   type NpmArgvField,
 } from "./normalizeNpmArgv";
 
@@ -664,9 +666,114 @@ export function normalizeRebuildAfterExpansionArgv(argv: readonly string[]): str
   );
 }
 
+const EXECUTE_EXPANSION_IMPORT_NPM_CONFIG_FLAGS = [
+  "--input",
+  "--output",
+  "--html-output",
+  "--import-configs-dir",
+  "--imports-dir",
+  "--fixtures-dir",
+  "--research-results-dir",
+  "--checkpoint-path",
+  "--summary-input",
+  "--max-markets",
+  "--max-retries",
+  "--job-id",
+  "--force-market",
+] as const;
+
+const EXECUTE_EXPANSION_IMPORT_BOOLEAN_FLAGS = [
+  "--execute",
+  "--resume",
+  "--skip-failed",
+] as const;
+
+function looksLikeExpansionImportConfigPath(token: string): boolean {
+  return token.endsWith(".json") || token.includes("/") || token.includes("\\");
+}
+
+function isIntegerToken(token: string): boolean {
+  return /^\d+$/.test(token.trim());
+}
+
+function appendFlag(
+  normalized: string[],
+  flag: string,
+  value: string | undefined,
+): void {
+  if (value !== undefined) {
+    normalized.push(flag, value);
+  }
+}
+
+function parsePositionalExecuteExpansionImportArgv(argv: readonly string[]): string[] {
+  if (argv.length === 0) {
+    return [];
+  }
+
+  const normalized: string[] = [];
+  let inputPath: string | undefined;
+  let maxMarkets: string | undefined;
+
+  for (const token of argv) {
+    if (looksLikeExpansionImportConfigPath(token)) {
+      inputPath = token;
+      continue;
+    }
+
+    if (isIntegerToken(token)) {
+      maxMarkets = token;
+      continue;
+    }
+  }
+
+  appendFlag(normalized, "--input", inputPath);
+  appendFlag(normalized, "--max-markets", maxMarkets);
+  return normalized;
+}
+
+function attachTrailingMaxMarkets(argv: readonly string[]): string[] {
+  if (argv.includes("--max-markets")) {
+    return [...argv];
+  }
+
+  const configValue = readNpmConfigEnv("--max-markets");
+  if (configValue && configValue !== "true") {
+    return [...argv, "--max-markets", configValue];
+  }
+
+  const merged = [...argv];
+  for (let index = 0; index < argv.length; index += 1) {
+    const token = argv[index];
+    if (!isIntegerToken(token)) {
+      continue;
+    }
+
+    const previous = argv[index - 1];
+    if (previous === "--max-markets") {
+      continue;
+    }
+
+    if (previous?.startsWith("--")) {
+      merged.push("--max-markets", token);
+      break;
+    }
+  }
+
+  return merged;
+}
+
 export function normalizeExecuteExpansionImportArgv(argv: readonly string[]): string[] {
+  const expanded = expandEqualsStyleFlags(argv);
+  const withConfigFlags = hasCliFlags(expanded)
+    ? mergeNpmConfigFlags(expanded, EXECUTE_EXPANSION_IMPORT_NPM_CONFIG_FLAGS)
+    : mergeNpmConfigFlags(
+        parsePositionalExecuteExpansionImportArgv(expanded),
+        EXECUTE_EXPANSION_IMPORT_NPM_CONFIG_FLAGS,
+      );
+
   return mergeNpmBooleanFlags(
-    normalizeNpmScriptArgv(argv, EXECUTE_EXPANSION_IMPORT_ARGV_SCHEMA),
-    ["--execute", "--resume", "--skip-failed"],
+    attachTrailingMaxMarkets(withConfigFlags),
+    EXECUTE_EXPANSION_IMPORT_BOOLEAN_FLAGS,
   );
 }

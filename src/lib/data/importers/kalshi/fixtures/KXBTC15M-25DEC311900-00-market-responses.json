@@ -1,0 +1,30 @@
+{
+  "ticker": "KXBTC15M-25DEC311900-00",
+  "listEndpoint": "/historical/markets?series_ticker=KXBTC15M",
+  "detailEndpoint": "/historical/markets/KXBTC15M-25DEC311900-00",
+  "listMarket": {
+    "ticker": "KXBTC15M-25DEC311900-00",
+    "event_ticker": "KXBTC15M-25DEC311900",
+    "status": "finalized",
+    "result": "yes",
+    "open_time": "2025-12-31T18:45:00Z",
+    "close_time": "2025-12-31T19:00:00Z",
+    "settlement_ts": "2025-12-31T19:05:00Z",
+    "settlement_value_dollars": "1.0000",
+    "expiration_value": "94210.55",
+    "floor_strike": 94180.12,
+    "series_ticker": "KXBTC15M"
+  },
+  "detailMarket": {
+    "ticker": "KXBTC15M-25DEC311900-00",
+    "event_ticker": "KXBTC15M-25DEC311900",
+    "status": "finalized",
+    "result": "yes",
+    "open_time": "2025-12-31T18:45:00Z",
+    "close_time": "2025-12-31T19:00:00Z",
+    "settlement_ts": "2025-12-31T19:05:00Z",
+    "settlement_value_dollars": "1.0000",
+    "floor_strike": 94180.12,
+    "series_ticker": "KXBTC15M"
+  }
+}

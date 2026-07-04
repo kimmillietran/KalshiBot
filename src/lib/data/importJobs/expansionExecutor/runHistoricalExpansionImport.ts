@@ -23,6 +23,12 @@ import { stableStringify } from "@/lib/trading/config/hashConfig";
 
 import { buildExpansionMarketImportArtifacts } from "./buildExpansionMarketImportConfig";
 import {
+  createExpansionImportCircuitBreakerState,
+  evaluateExpansionImportCircuitBreaker,
+  formatExpansionImportCircuitBreakerWarning,
+  recordExpansionImportCircuitBreakerFailure,
+} from "./expansionImportCircuitBreaker";
+import {
   ExpansionExecutorError,
   ExpansionExecutorErrorCode,
   type ExpansionImportJobResult,
@@ -293,6 +299,7 @@ export async function runHistoricalExpansionImport(
   const jobResults: ExpansionImportJobResult[] = [];
   let remainingMarketBudget = input.config.maxMarkets;
   let interrupted = false;
+  let circuitBreakerState = createExpansionImportCircuitBreakerState();
   const sortedScheduledJobs = [...scheduledJobs].sort(compareJobs);
   const progress = input.progress ?? null;
 
@@ -378,7 +385,7 @@ export async function runHistoricalExpansionImport(
           durationMs: 0,
         };
         markets.push(skippedResult);
-        progress?.recordMarket("skipped", market.marketTicker);
+        progress?.recordDedupedMarket(market.marketTicker);
 
         if (input.config.execute) {
           checkpoint = updateExpansionImportCheckpoint(
@@ -395,6 +402,28 @@ export async function runHistoricalExpansionImport(
       const result = await executeMarketImport(input, job, market);
       markets.push(result);
       progress?.recordMarket(result.status, market.marketTicker);
+
+      if (
+        input.config.execute
+        && result.status === "failed"
+        && result.errorMessage
+      ) {
+        circuitBreakerState = recordExpansionImportCircuitBreakerFailure(
+          circuitBreakerState,
+          market.marketTicker,
+          result.errorMessage,
+        );
+        const circuitBreakerTrip = evaluateExpansionImportCircuitBreaker(
+          circuitBreakerState,
+        );
+        if (circuitBreakerTrip) {
+          const warning = formatExpansionImportCircuitBreakerWarning(circuitBreakerTrip);
+          jobWarnings.push(warning);
+          warnings.push(warning);
+          interrupted = true;
+          break;
+        }
+      }
 
       if (result.status === "planned" || result.status === "imported") {
         if (remainingMarketBudget !== null) {

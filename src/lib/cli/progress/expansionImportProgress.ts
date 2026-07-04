@@ -36,6 +36,7 @@ export type ExpansionImportMarketProgressSnapshot = {
   plannedCount: number;
   failedCount: number;
   skippedCount: number;
+  dedupedCount: number;
   elapsedMs: number;
 };
 
@@ -50,6 +51,7 @@ export type ExpansionImportProgressReporterOptions = {
 export type ExpansionImportProgressReporter = {
   reportJobHeader: (snapshot: ExpansionImportJobHeaderSnapshot) => void;
   recordMarket: (status: ExpansionImportMarketStatus, marketTicker: string) => void;
+  recordDedupedMarket: (marketTicker: string) => void;
   completeJob: () => void;
   complete: () => void;
 };
@@ -98,7 +100,7 @@ export function formatExpansionImportMarketProgressLines(
     "[Expansion Import]",
     `${formatProgressBar(snapshot.completedMarkets, snapshot.totalMarkets)} ${snapshot.completedMarkets}/${snapshot.totalMarkets} markets`,
     `Current: ${snapshot.currentMarketTicker}`,
-    `${outcomeLabel}: ${outcomeCount} | Failed: ${snapshot.failedCount} | Skipped: ${snapshot.skippedCount}`,
+    `${outcomeLabel}: ${outcomeCount} | Failed: ${snapshot.failedCount} | Skipped: ${snapshot.skippedCount} | Deduped: ${snapshot.dedupedCount}`,
     `Elapsed: ${formatDurationClock(snapshot.elapsedMs)} | ETA: ${
       etaMs === null ? "--:--" : formatDurationClock(etaMs)
     }`,
@@ -126,6 +128,7 @@ export function createExpansionImportProgressReporter(
   let plannedCount = 0;
   let failedCount = 0;
   let skippedCount = 0;
+  let dedupedCount = 0;
   let currentMarketTicker = "";
   let dryRun = true;
 
@@ -138,6 +141,7 @@ export function createExpansionImportProgressReporter(
     plannedCount,
     failedCount,
     skippedCount,
+    dedupedCount,
     elapsedMs: Math.max(0, now() - options.startedAtMs),
   });
 
@@ -152,6 +156,7 @@ export function createExpansionImportProgressReporter(
     plannedCount = 0;
     failedCount = 0;
     skippedCount = 0;
+    dedupedCount = 0;
     currentMarketTicker = "";
   };
 
@@ -185,6 +190,10 @@ export function createExpansionImportProgressReporter(
         totalMarkets,
         formatExpansionImportMarketProgressLines(buildMarketSnapshot()),
       );
+    },
+    recordDedupedMarket(marketTicker) {
+      dedupedCount += 1;
+      currentMarketTicker = marketTicker;
     },
     completeJob() {
       if (totalMarkets <= 0 || !jobRenderer) {

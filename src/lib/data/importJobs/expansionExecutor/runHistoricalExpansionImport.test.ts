@@ -13,6 +13,7 @@ import {
 } from "@/lib/data/importJobs/expansionImportSafety";
 
 import { buildExpansionMarketImportArtifacts } from "./buildExpansionMarketImportConfig";
+import { EXPANSION_IMPORT_CIRCUIT_BREAKER_WINDOW } from "./expansionImportCircuitBreaker";
 import {
   runHistoricalExpansionImport,
   serializeHistoricalExpansionImportSummary,
@@ -153,6 +154,7 @@ function createBaseConfig(overrides?: Partial<{
   maxRetries: number;
   skipFailed: boolean;
   forceMarket: string | null;
+  maxMarkets: number | null;
 }>) {
   return {
     inputPath: CONFIG_PATH,
@@ -509,5 +511,61 @@ describe("runHistoricalExpansionImport safety", () => {
     expect(serializeHistoricalExpansionImportSummary(summary)).toContain(
       "historical-expansion-import-summary",
     );
+  });
+
+  it("respects max-markets when planning and executing imports", async () => {
+    const mock: MockFs = { files: {}, directories: new Set(["data"]) };
+    const io = createIo(mock);
+    const runImport = vi.fn(async (config) => createImportResult(config.marketTicker));
+
+    const summary = await runHistoricalExpansionImport({
+      generatedAt: GENERATED_AT,
+      config: createBaseConfig({ maxMarkets: 1 }),
+      expansionConfigJson: createManifestJson(),
+      io,
+      deps: {
+        discoverMarkets: vi.fn(async () => DISCOVERED_MARKETS),
+        runImport,
+      },
+    });
+
+    expect(runImport).toHaveBeenCalledTimes(1);
+    expect(summary.summary.importedCount).toBe(1);
+    expect(summary.summary.plannedCount).toBe(0);
+    expect(summary.jobs[0]?.warnings).toContainEqual(
+      expect.stringContaining("--max-markets"),
+    );
+  });
+
+  it("aborts execute imports when the compatibility failure-rate circuit breaker trips", async () => {
+    const mock: MockFs = { files: {}, directories: new Set(["data"]) };
+    const io = createIo(mock);
+    const compatibilityError =
+      "Kalshi historical market response missing required fields: expiration_value. Raw response saved to data/debug/kalshi-market-KXBTC15M-25DEC311900-00.json.";
+    const discovered = Array.from({ length: EXPANSION_IMPORT_CIRCUIT_BREAKER_WINDOW + 5 }, (_, index) => ({
+      marketTicker: `KXBTC15M-TICKER-${index}`,
+      seriesTicker: "KXBTC15M",
+      openTime: "2026-01-15T12:00:00.000Z",
+      closeTime: "2026-01-15T12:15:00.000Z",
+    }));
+    const runImport = vi.fn(async () => {
+      throw new Error(compatibilityError);
+    });
+
+    const summary = await runHistoricalExpansionImport({
+      generatedAt: GENERATED_AT,
+      config: createBaseConfig(),
+      expansionConfigJson: createManifestJson(),
+      io,
+      deps: {
+        discoverMarkets: vi.fn(async () => discovered),
+        runImport,
+      },
+    });
+
+    expect(runImport).toHaveBeenCalledTimes(EXPANSION_IMPORT_CIRCUIT_BREAKER_WINDOW);
+    expect(summary.runStatus).toBe("interrupted");
+    expect(summary.warnings.join(" ")).toContain("circuit breaker");
+    expect(summary.warnings.join(" ")).toContain("import-compatibility");
   });
 });

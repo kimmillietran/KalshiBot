@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   normalizeDiscoveryImportConfigsArgv,
   normalizeEventStudyArgv,
+  normalizeExecuteExpansionImportArgv,
   normalizeResearchInspectArgv,
   normalizeStrategySweepArgv,
 } from "./cliArgvSchemas";
@@ -60,6 +61,39 @@ describe("cliArgvSchemas", () => {
     expect(normalizeEventStudyArgv(["data/events/events.json"])).toEqual([
       "--events",
       "data/events/events.json",
+    ]);
+  });
+
+  it("normalizes execute expansion import max-markets from equals, space, and npm config forms", () => {
+    vi.stubEnv("npm_config_max_markets", "10");
+
+    expect(
+      normalizeExecuteExpansionImportArgv(["--execute", "--max-markets=10"]),
+    ).toEqual(["--execute", "--max-markets", "10"]);
+
+    expect(
+      normalizeExecuteExpansionImportArgv(["--execute", "--max-markets", "10"]),
+    ).toEqual(["--execute", "--max-markets", "10"]);
+
+    expect(normalizeExecuteExpansionImportArgv(["--execute", "10"])).toEqual([
+      "--execute",
+      "10",
+      "--max-markets",
+      "10",
+    ]);
+  });
+
+  it("maps positional expansion import config paths to --input", () => {
+    expect(
+      normalizeExecuteExpansionImportArgv([
+        "data/import-configs/historical-expansion-config.json",
+        "25",
+      ]),
+    ).toEqual([
+      "--input",
+      "data/import-configs/historical-expansion-config.json",
+      "--max-markets",
+      "25",
     ]);
   });
 });

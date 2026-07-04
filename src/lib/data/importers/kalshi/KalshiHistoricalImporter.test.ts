@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
+import fixture from "./fixtures/KXBTC15M-25DEC311900-00-market-responses.json";
 import {
   KalshiHistoricalImporter,
   KalshiHistoricalImporterError,
@@ -36,11 +37,22 @@ function createFakeClient(
   };
 }
 
-function createImporter(client: KalshiHistoricalHttpClient) {
+function createImporter(
+  client: KalshiHistoricalHttpClient,
+  options?: {
+    persistMarketParseDiagnostics?: boolean;
+    persistMarketParseDiagnosticsIo?: {
+      writeFile: (path: string, data: string) => void;
+      mkdirSync: (path: string, options: { recursive: boolean }) => void;
+    };
+  },
+) {
   return new KalshiHistoricalImporter({
     httpClient: client,
     baseUrl: "https://example.test/trade-api/v2",
     now: () => FIXED_NOW,
+    persistMarketParseDiagnostics: options?.persistMarketParseDiagnostics,
+    persistMarketParseDiagnosticsIo: options?.persistMarketParseDiagnosticsIo,
   });
 }
 
@@ -290,6 +302,35 @@ describe("KalshiHistoricalImporter", () => {
     const importer = createImporter(client);
 
     await expect(importer.getHistoricalMarket("KXBTC-MISSING")).resolves.toBeNull();
+  });
+
+  it("throws actionable diagnostics for KXBTC15M-25DEC311900-00 detail payload missing expiration_value", async () => {
+    const writes = new Map<string, string>();
+    const client = createFakeClient((url) => {
+      expect(url).toBe(
+        "https://example.test/trade-api/v2/historical/markets/KXBTC15M-25DEC311900-00",
+      );
+      return {
+        status: 200,
+        body: { market: fixture.detailMarket },
+      };
+    });
+
+    const importer = createImporter(client, {
+      persistMarketParseDiagnostics: true,
+      persistMarketParseDiagnosticsIo: {
+        writeFile: (path, data) => {
+          writes.set(path, data);
+        },
+        mkdirSync: () => {},
+      },
+    });
+
+    await expect(importer.getHistoricalMarket(fixture.ticker)).rejects.toMatchObject({
+      name: "KalshiMarketImportCompatibilityError",
+      message: expect.stringContaining("missing required fields: expiration_value"),
+    });
+    expect(writes.has("data/debug/kalshi-market-KXBTC15M-25DEC311900-00.json")).toBe(true);
   });
 
   it("returns settlement result from historical market endpoint", async () => {

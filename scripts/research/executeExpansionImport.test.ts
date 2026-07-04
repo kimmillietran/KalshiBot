@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 
+import { parseExecuteExpansionImportConfigFromArgv } from "./executeExpansionImportTypes";
 import { runExecuteExpansionImportCommand } from "./executeExpansionImport";
+import { normalizeExecuteExpansionImportArgv } from "../lib/cliArgvSchemas";
 
 const GENERATED_AT = "2026-07-04T04:00:00.000Z";
 const CONFIG_PATH = "data/import-configs/historical-expansion-config.json";
@@ -168,5 +170,97 @@ describe("runExecuteExpansionImportCommand", () => {
       ),
     ).toBe(true);
     expect(writes.has(CHECKPOINT_PATH)).toBe(true);
+  });
+
+  it("parses max-markets from equals, space, and npm-forwarded argv forms", () => {
+    expect(
+      parseExecuteExpansionImportConfigFromArgv(
+        normalizeExecuteExpansionImportArgv(["--execute", "--max-markets=10"]),
+      ).maxMarkets,
+    ).toBe(10);
+
+    expect(
+      parseExecuteExpansionImportConfigFromArgv(
+        normalizeExecuteExpansionImportArgv(["--execute", "--max-markets", "10"]),
+      ).maxMarkets,
+    ).toBe(10);
+
+    vi.stubEnv("npm_config_max_markets", "10");
+    expect(
+      parseExecuteExpansionImportConfigFromArgv(
+        normalizeExecuteExpansionImportArgv(["--execute", "10"]),
+      ).maxMarkets,
+    ).toBe(10);
+    vi.unstubAllEnvs();
+  });
+
+  it("caps executed imports when max-markets is provided", async () => {
+    const writes = new Map<string, string>();
+    const runImport = vi.fn(async () => ({
+      jobId: "expansion-import-KXBTC15M-26JAN151215-00",
+      bronzeRecords: [],
+      validationResult: {
+        valid: true,
+        errors: [],
+        warnings: [],
+        statistics: {
+          totalRecords: 1,
+          marketCount: 1,
+          btcBarCount: 1,
+          settlementCount: 0,
+          duplicateCount: 0,
+        },
+      },
+      metadata: {
+        jobId: "expansion-import-KXBTC15M-26JAN151215-00",
+        marketTicker: "KXBTC15M-26JAN151215-00",
+        startTime: "2026-01-15T12:00:00.000Z",
+        endTime: "2026-01-15T12:15:00.000Z",
+        collectionTime: "2026-01-15T12:15:10.000Z",
+        observedAt: "2026-01-15T12:15:10.000Z",
+        bronzeRecordCount: 1,
+        valid: true,
+      },
+      serialized: "{}",
+    }));
+
+    const exitCode = await runExecuteExpansionImportCommand(
+      normalizeExecuteExpansionImportArgv(["--execute", "--max-markets", "1"]),
+      {
+        readFile: (path) => (path === CONFIG_PATH ? createManifestJson() : ""),
+        fileExists: (path) => path === CONFIG_PATH,
+        isDirectory: () => false,
+        readdir: () => [],
+        writeStdout: () => {},
+        writeStderr: () => {},
+        writeFile: (path, data) => {
+          writes.set(path, data);
+        },
+        mkdirSync: () => {},
+      },
+      {
+        generatedAt: GENERATED_AT,
+        deps: {
+          discoverMarkets: vi.fn(async () => [
+            {
+              marketTicker: "KXBTC15M-26JAN151215-00",
+              seriesTicker: "KXBTC15M",
+              openTime: "2026-01-15T12:00:00.000Z",
+              closeTime: "2026-01-15T12:15:00.000Z",
+            },
+            {
+              marketTicker: "KXBTC15M-26JAN151230-00",
+              seriesTicker: "KXBTC15M",
+              openTime: "2026-01-15T12:15:00.000Z",
+              closeTime: "2026-01-15T12:30:00.000Z",
+            },
+          ]),
+          runImport,
+        },
+      },
+    );
+
+    expect(exitCode).toBe(0);
+    expect(runImport).toHaveBeenCalledTimes(1);
   });
 });
