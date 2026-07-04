@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import fixture from "./fixtures/KXBTC15M-25DEC311900-00-market-responses.json";
 import {
   discoveredMarketToKalshiListWireShape,
+  historicalMarketRecordToKalshiListWireShape,
   KALSHI_DISCOVERY_LIST_MARKET_METADATA_KEY,
   mergeKalshiMarketWireFromListDetail,
   readKalshiDiscoveryListMarketFromMetadata,
@@ -31,6 +32,27 @@ describe("kalshiMarketSchemaReconciliation", () => {
 
     expect(wire.expiration_value).toBe("94210.55");
     expect(wire.result).toBeUndefined();
+  });
+
+  it("maps historical list records to wire snapshots with expiration_value", () => {
+    const wire = historicalMarketRecordToKalshiListWireShape({
+      ticker: fixture.ticker,
+      eventTicker: "KXBTC15M-25DEC311900",
+      status: "finalized",
+      result: "yes",
+      openTime: fixture.listMarket.open_time!,
+      closeTime: fixture.listMarket.close_time!,
+      settlementTs: fixture.listMarket.settlement_ts ?? null,
+      settlementValueDollars: fixture.listMarket.settlement_value_dollars ?? null,
+      expirationValue: fixture.listMarket.expiration_value!,
+      floorStrike: fixture.listMarket.floor_strike ?? null,
+      title: null,
+      subtitle: null,
+      seriesTicker: "KXBTC15M",
+    });
+
+    expect(wire.expiration_value).toBe("94210.55");
+    expect(wire.result).toBe("yes");
   });
 
   it("merges list expiration_value into detail payload for KXBTC15M-25DEC311900-00", () => {

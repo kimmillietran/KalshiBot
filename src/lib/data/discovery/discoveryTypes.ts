@@ -1,4 +1,5 @@
 import type { HistoricalImportProvenance } from "@/lib/data/importers/kalshi/kalshiHistoricalTypes";
+import type { KalshiMarketWireShape } from "@/lib/data/importers/kalshi/kalshiMarketImportDiagnostics";
 
 export const DEFAULT_KXBTC15M_SERIES_TICKER = "KXBTC15M" as const;
 
@@ -35,6 +36,7 @@ export type DiscoveredMarket = {
   closeTime: string | null;
   settlementTime: string | null;
   expirationValue: string | null;
+  listMarketWire: KalshiMarketWireShape;
   provenance: MarketDiscoveryProvenance;
 };
 

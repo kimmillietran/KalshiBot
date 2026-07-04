@@ -27,6 +27,7 @@ export {
   readKalshiDiscoveryListMarketFromMetadata,
   readKalshiDiscoveryListMarketProvenanceFromMetadata,
   buildKalshiSchemaReconciliationMetadata,
+  historicalMarketRecordToKalshiListWireShape,
   type KalshiMarketSchemaReconciliationResult,
   type KalshiSchemaReconciliationMetadata,
 } from "./kalshiMarketSchemaReconciliation";

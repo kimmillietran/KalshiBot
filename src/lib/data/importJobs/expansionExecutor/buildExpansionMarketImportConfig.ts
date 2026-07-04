@@ -13,6 +13,7 @@ import {
   KALSHI_DISCOVERY_LIST_MARKET_METADATA_KEY,
   KALSHI_DISCOVERY_LIST_MARKET_PROVENANCE_METADATA_KEY,
 } from "@/lib/data/importers/kalshi/kalshiMarketSchemaReconciliation";
+import type { KalshiMarketWireShape } from "@/lib/data/importers/kalshi/kalshiMarketImportDiagnostics";
 import {
   BATCH_IMPORT_CONFIG_FILENAME,
   BATCH_IMPORT_RESULT_FILENAME,
@@ -49,6 +50,7 @@ export function buildExpansionMarketImportArtifacts(
     | "expirationValue"
     | "title"
     | "subtitle"
+    | "listMarketWire"
     | "provenance"
   >,
   paths: {
@@ -59,6 +61,9 @@ export function buildExpansionMarketImportArtifacts(
   const window = deriveImportWindowFromDiscoveredMarket(market as DiscoveredMarket);
   const safeSeries = assertSafePathSegment(market.seriesTicker, "seriesTicker");
   const safeMarket = assertSafePathSegment(market.marketTicker, "marketTicker");
+
+  const listMarketWire: KalshiMarketWireShape =
+    market.listMarketWire ?? discoveredMarketToKalshiListWireShape(market);
 
   const configInput = {
     jobId: `expansion-import-${market.marketTicker}`,
@@ -71,8 +76,7 @@ export function buildExpansionMarketImportArtifacts(
     btc: job.importDefaults.btc,
     output: job.importDefaults.output,
     metadata: {
-      [KALSHI_DISCOVERY_LIST_MARKET_METADATA_KEY]:
-        discoveredMarketToKalshiListWireShape(market),
+      [KALSHI_DISCOVERY_LIST_MARKET_METADATA_KEY]: listMarketWire,
       [KALSHI_DISCOVERY_LIST_MARKET_PROVENANCE_METADATA_KEY]: market.provenance,
     },
   };

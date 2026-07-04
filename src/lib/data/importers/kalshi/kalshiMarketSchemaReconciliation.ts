@@ -1,5 +1,8 @@
 import type { DiscoveredMarket } from "@/lib/data/discovery/discoveryTypes";
-import type { HistoricalImportProvenance } from "./kalshiHistoricalTypes";
+import type {
+  HistoricalImportProvenance,
+  HistoricalMarketRecord,
+} from "./kalshiHistoricalTypes";
 
 import {
   findMissingKalshiMarketWireFields,
@@ -90,6 +93,50 @@ export function discoveredMarketToKalshiListWireShape(
 
   if (market.subtitle) {
     wire.subtitle = market.subtitle;
+  }
+
+  return wire;
+}
+
+/** Maps a parsed historical list market record into a list-endpoint wire snapshot. */
+export function historicalMarketRecordToKalshiListWireShape(
+  record: HistoricalMarketRecord,
+): KalshiMarketWireShape {
+  const wire: KalshiMarketWireShape = {
+    ticker: record.ticker,
+    event_ticker: record.eventTicker,
+    status: record.status,
+    result: record.result,
+    open_time: record.openTime,
+    close_time: record.closeTime,
+  };
+
+  if (record.settlementTs) {
+    wire.settlement_ts = record.settlementTs;
+  }
+
+  if (record.settlementValueDollars) {
+    wire.settlement_value_dollars = record.settlementValueDollars;
+  }
+
+  if (record.expirationValue?.trim()) {
+    wire.expiration_value = record.expirationValue;
+  }
+
+  if (record.floorStrike !== null && record.floorStrike !== undefined) {
+    wire.floor_strike = record.floorStrike;
+  }
+
+  if (record.title) {
+    wire.title = record.title;
+  }
+
+  if (record.subtitle) {
+    wire.subtitle = record.subtitle;
+  }
+
+  if (record.seriesTicker) {
+    wire.series_ticker = record.seriesTicker;
   }
 
   return wire;

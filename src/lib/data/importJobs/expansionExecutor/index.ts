@@ -2,6 +2,10 @@ export {
   buildExpansionMarketImportArtifacts,
 } from "./buildExpansionMarketImportConfig";
 export {
+  buildExpansionImportReconciliationTraceCallbacks,
+  createExpansionImportReconciliationTracer,
+} from "./expansionImportReconciliationTrace";
+export {
   DEFAULT_EXPANSION_FIXTURES_DIR,
   DEFAULT_EXPANSION_IMPORT_CONFIGS_DIR,
   DEFAULT_EXPANSION_IMPORTS_DIR,

@@ -24,6 +24,15 @@ function createMockDiscoveredMarket(
     expirationValue: "60010.25",
     title: null,
     subtitle: null,
+    listMarketWire: {
+      ticker: marketTicker,
+      event_ticker: "KXBTC15M-26JAN151215",
+      series_ticker: "KXBTC15M",
+      status: "finalized",
+      open_time: "2026-01-15T12:00:00.000Z",
+      close_time: "2026-01-15T12:15:00.000Z",
+      expiration_value: "60010.25",
+    },
     provenance: {
       source: "kalshi-historical-api" as const,
       fetchedAt: GENERATED_AT,
@@ -178,6 +187,18 @@ describe("runExecuteExpansionImportCommand", () => {
       ),
     ).toBe(true);
     expect(writes.has(CHECKPOINT_PATH)).toBe(true);
+  });
+
+  it("parses --trace-market for reconciliation debugging", () => {
+    expect(
+      parseExecuteExpansionImportConfigFromArgv(
+        normalizeExecuteExpansionImportArgv([
+          "--execute",
+          "--trace-market",
+          "KXBTC15M-25DEC311900-00",
+        ]),
+      ).traceMarket,
+    ).toBe("KXBTC15M-25DEC311900-00");
   });
 
   it("parses max-markets from equals, space, and npm-forwarded argv forms", () => {

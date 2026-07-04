@@ -14,6 +14,7 @@ import {
 } from "@/lib/data/discovery";
 import { runHistoricalImportFromConfig } from "@/lib/data/importJobs";
 import type { HistoricalImportFetchLike } from "@/lib/data/importJobs";
+import { buildExpansionImportReconciliationTraceCallbacks } from "@/lib/data/importJobs/expansionExecutor/expansionImportReconciliationTrace";
 import type { FetchLike } from "@/lib/data/importers/kalshi";
 import type { ExpansionExecutorDeps } from "@/lib/data/importJobs/expansionExecutor";
 import {
@@ -85,11 +86,18 @@ function createProductionDeps(fetchImpl?: HistoricalImportFetchLike): ExpansionE
         expirationValue: market.expirationValue,
         title: market.title,
         subtitle: market.subtitle,
+        listMarketWire: market.listMarketWire,
         provenance: market.provenance,
       }));
     },
-    runImport: (config: Parameters<typeof runHistoricalImportFromConfig>[0]["config"]) =>
-      runHistoricalImportFromConfig({ config, fetchImpl }),
+    runImport: (config, options) =>
+      runHistoricalImportFromConfig({
+        config,
+        fetchImpl,
+        reconciliationTrace: buildExpansionImportReconciliationTraceCallbacks(
+          options?.reconciliationTrace ?? null,
+        ),
+      }),
   };
 }
 

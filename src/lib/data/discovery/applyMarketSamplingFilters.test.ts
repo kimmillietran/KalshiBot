@@ -19,6 +19,14 @@ function market(
     closeTime,
     settlementTime: null,
     expirationValue: null,
+    listMarketWire: {
+      ticker,
+      event_ticker: `${ticker}-event`,
+      series_ticker: "KXBTC15M",
+      status: "finalized",
+      open_time: closeTime,
+      close_time: closeTime,
+    },
     provenance: {
       source: "kalshi-historical-api",
       fetchedAt: "2026-06-27T00:00:00.000Z",

@@ -107,9 +107,27 @@ function createSyncImporter(
 export async function prefetchKalshiHistoricalBronzeImporter(
   input: PrefetchKalshiHistoricalBronzeImporterInput,
 ): Promise<KalshiHistoricalBronzeImporter> {
-  const { importer, marketTicker, startTime, endTime, listMarketWire } = input;
+  const {
+    importer,
+    marketTicker,
+    startTime,
+    endTime,
+    listMarketWire,
+    reconciliationTrace,
+  } = input;
   const dateRange = toHistoricalDateRange(startTime, endTime);
-  const fetchOptions = listMarketWire ? { listMarketWire } : undefined;
+  reconciliationTrace?.onPrefetchListMarketWire?.({
+    ticker: marketTicker,
+    listMarketWire,
+  });
+  const fetchOptions = listMarketWire || reconciliationTrace?.importerTrace
+    ? {
+        ...(listMarketWire ? { listMarketWire } : {}),
+        ...(reconciliationTrace?.importerTrace
+          ? { reconciliationTrace: reconciliationTrace.importerTrace }
+          : {}),
+      }
+    : undefined;
 
   const [market, candlesticks, settlementResult] = await Promise.all([
     importer.getHistoricalMarket(marketTicker, fetchOptions),
@@ -143,6 +161,7 @@ export async function createPrefetchedKalshiHistoricalBronzeProvider(
     collectionTime,
     observedAt,
     listMarketWire,
+    reconciliationTrace,
   } = input;
   const bronzeImporter = await prefetchKalshiHistoricalBronzeImporter({
     importer,
@@ -150,6 +169,7 @@ export async function createPrefetchedKalshiHistoricalBronzeProvider(
     startTime,
     endTime,
     listMarketWire,
+    reconciliationTrace,
   });
 
   return createKalshiHistoricalBronzeProvider({

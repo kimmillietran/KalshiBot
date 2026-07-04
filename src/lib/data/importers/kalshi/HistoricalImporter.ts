@@ -11,9 +11,11 @@ import type {
   HistoricalTradesScope,
 } from "./kalshiHistoricalTypes";
 import type { KalshiMarketWireShape } from "./kalshiMarketImportDiagnostics";
+import type { KalshiHistoricalMarketReconciliationTraceHooks } from "./kalshiMarketReconciliationTraceHooks";
 
 export type KalshiHistoricalMarketFetchOptions = {
   listMarketWire?: KalshiMarketWireShape | null;
+  reconciliationTrace?: KalshiHistoricalMarketReconciliationTraceHooks;
 };
 
 /** Abstraction for retrieving archived Kalshi exchange data. */

@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import type { HistoricalMarketRecord } from "@/lib/data/importers/kalshi/kalshiHistoricalTypes";
 
+import { historicalMarketRecordToKalshiListWireShape } from "@/lib/data/importers/kalshi/kalshiMarketSchemaReconciliation";
+
 import { normalizeDiscoveredMarket } from "./normalizeDiscoveredMarket";
 
 const PROVENANCE = {
@@ -51,8 +53,20 @@ describe("normalizeDiscoveredMarket", () => {
       closeTime: "2026-06-27T01:15:00.000Z",
       settlementTime: "2026-06-27T01:20:00.000Z",
       expirationValue: "60010.25",
+      listMarketWire: historicalMarketRecordToKalshiListWireShape(sampleMarket()),
       provenance: PROVENANCE,
     });
+  });
+
+  it("preserves list wire expiration_value when normalized expirationValue is null", () => {
+    const discovered = normalizeDiscoveredMarket({
+      seriesTicker: "KXBTC15M",
+      market: sampleMarket({ expirationValue: "" }),
+      provenance: PROVENANCE,
+    });
+
+    expect(discovered.expirationValue).toBeNull();
+    expect(discovered.listMarketWire.expiration_value).toBeUndefined();
   });
 
   it("derives series ticker from event ticker when series metadata is absent", () => {

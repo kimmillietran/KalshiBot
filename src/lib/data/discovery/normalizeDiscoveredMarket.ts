@@ -1,4 +1,5 @@
 import type { HistoricalMarketRecord } from "@/lib/data/importers/kalshi/kalshiHistoricalTypes";
+import { historicalMarketRecordToKalshiListWireShape } from "@/lib/data/importers/kalshi/kalshiMarketSchemaReconciliation";
 import { isUtcIsoTimestamp } from "@/lib/data/timestamps";
 
 import type { DiscoveredMarket, MarketDiscoveryProvenance } from "./discoveryTypes";
@@ -81,6 +82,7 @@ export function normalizeDiscoveredMarket(
     closeTime: normalizeOptionalTimestamp(market.closeTime),
     settlementTime: normalizeOptionalTimestamp(market.settlementTs),
     expirationValue: market.expirationValue?.trim() || null,
+    listMarketWire: historicalMarketRecordToKalshiListWireShape(market),
     provenance: { ...provenance },
   };
 }

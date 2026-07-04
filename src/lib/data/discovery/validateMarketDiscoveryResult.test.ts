@@ -24,6 +24,15 @@ function discoveredMarket(
     closeTime: "2026-06-27T01:15:00.000Z",
     settlementTime: "2026-06-27T01:20:00.000Z",
     expirationValue: "60010.25",
+    listMarketWire: {
+      ticker: "KXBTC15M-26JUN270115-15",
+      event_ticker: "KXBTC15M-26JUN270115",
+      series_ticker: "KXBTC15M",
+      status: "finalized",
+      open_time: "2026-06-27T01:00:00.000Z",
+      close_time: "2026-06-27T01:15:00.000Z",
+      expiration_value: "60010.25",
+    },
     provenance: PROVENANCE,
     ...overrides,
   };

@@ -119,6 +119,7 @@ export function parseExecuteExpansionImportConfigFromArgv(
     maxMarkets: readOptionalNumberFlag(argv, "--max-markets"),
     maxRetries: readOptionalNumberFlag(argv, "--max-retries") ?? 0,
     jobId: readOptionalFlag(argv, "--job-id"),
+    traceMarket: readOptionalFlag(argv, "--trace-market"),
   };
 }
 

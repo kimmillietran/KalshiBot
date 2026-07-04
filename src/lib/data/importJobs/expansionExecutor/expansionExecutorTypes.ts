@@ -118,6 +118,7 @@ export type HistoricalExpansionImportExecutorConfig = {
   checkpointPath: string;
   maxRetries: number;
   summaryInputPath: string | null;
+  traceMarket: string | null;
 };
 
 export type ExpansionImportProgressHooks = {
@@ -161,6 +162,7 @@ export type RunHistoricalExpansionImportInput = {
     summaryJson: string;
   }) => void;
   progress?: ExpansionImportProgressHooks | null;
+  reconciliationTrace?: import("./expansionImportReconciliationTrace").ExpansionImportReconciliationTracer | null;
 };
 
 export type ExpansionDiscoveredMarket = {
@@ -174,6 +176,7 @@ export type ExpansionDiscoveredMarket = {
   expirationValue: string | null;
   title: string | null;
   subtitle: string | null;
+  listMarketWire: import("@/lib/data/importers/kalshi/kalshiMarketImportDiagnostics").KalshiMarketWireShape;
   provenance: MarketDiscoveryProvenance;
 };
 
@@ -182,7 +185,12 @@ export type ExpansionExecutorDeps = {
     seriesTicker: string,
     sampling: { after: string; before: string },
   ) => Promise<readonly ExpansionDiscoveredMarket[]>;
-  runImport: (config: HistoricalBronzeImportConfig) => Promise<HistoricalBronzeImportJobResult>;
+  runImport: (
+    config: HistoricalBronzeImportConfig,
+    options?: {
+      reconciliationTrace?: import("./expansionImportReconciliationTrace").ExpansionImportReconciliationTracer | null;
+    },
+  ) => Promise<HistoricalBronzeImportJobResult>;
 };
 
 export type PlannedExpansionMarket = {

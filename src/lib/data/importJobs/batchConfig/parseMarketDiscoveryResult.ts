@@ -7,6 +7,8 @@ import type {
   MarketDiscoveryValidationResult,
 } from "@/lib/data/discovery";
 import { MarketDiscoveryErrorCode } from "@/lib/data/discovery";
+import type { KalshiMarketWireShape } from "@/lib/data/importers/kalshi/kalshiMarketImportDiagnostics";
+import { discoveredMarketToKalshiListWireShape } from "@/lib/data/importers/kalshi/kalshiMarketSchemaReconciliation";
 
 import {
   BatchImportConfigError,
@@ -69,10 +71,33 @@ function parseProvenance(value: unknown): MarketDiscoveryProvenance {
   };
 }
 
+function parseListMarketWire(
+  value: unknown,
+  market: Pick<
+    DiscoveredMarket,
+    | "marketTicker"
+    | "eventTicker"
+    | "seriesTicker"
+    | "status"
+    | "openTime"
+    | "closeTime"
+    | "settlementTime"
+    | "expirationValue"
+    | "title"
+    | "subtitle"
+  >,
+): KalshiMarketWireShape {
+  if (value !== null && typeof value === "object" && !Array.isArray(value)) {
+    return value as KalshiMarketWireShape;
+  }
+
+  return discoveredMarketToKalshiListWireShape(market);
+}
+
 function parseDiscoveredMarket(value: unknown): DiscoveredMarket {
   assertPlainObject(value, "discovered market");
 
-  return {
+  const marketFields = {
     marketTicker: readNonEmptyString(value.marketTicker, "marketTicker"),
     eventTicker: readNonEmptyString(value.eventTicker, "eventTicker"),
     seriesTicker: readNonEmptyString(value.seriesTicker, "seriesTicker"),
@@ -83,6 +108,11 @@ function parseDiscoveredMarket(value: unknown): DiscoveredMarket {
     closeTime: readNullableString(value.closeTime),
     settlementTime: readNullableString(value.settlementTime),
     expirationValue: readNullableString(value.expirationValue),
+  };
+
+  return {
+    ...marketFields,
+    listMarketWire: parseListMarketWire(value.listMarketWire, marketFields),
     provenance: parseProvenance(value.provenance),
   };
 }

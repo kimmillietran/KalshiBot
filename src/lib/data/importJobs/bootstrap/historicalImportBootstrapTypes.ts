@@ -3,7 +3,22 @@ import type {
   HistoricalBronzeImportJobResult,
   KalshiHistoricalBronzeProvider,
 } from "../historicalBronzeImportJobTypes";
+import type { KalshiMarketWireShape } from "@/lib/data/importers/kalshi/kalshiMarketImportDiagnostics";
+import type { KalshiHistoricalMarketReconciliationTraceHooks } from "@/lib/data/importers/kalshi/kalshiMarketReconciliationTraceHooks";
+
 import type { HistoricalBronzeImportConfig } from "../config/historicalBronzeImportConfigTypes";
+
+export type HistoricalImportReconciliationTraceCallbacks = {
+  onBootstrapListMarketWire?: (input: {
+    ticker: string;
+    listMarketWire: KalshiMarketWireShape | null | undefined;
+  }) => void;
+  onPrefetchListMarketWire?: (input: {
+    ticker: string;
+    listMarketWire: KalshiMarketWireShape | null | undefined;
+  }) => void;
+  importerTrace?: KalshiHistoricalMarketReconciliationTraceHooks;
+};
 
 export type HistoricalImportFetchLike = (
   input: string,
@@ -18,11 +33,13 @@ export type HistoricalImportProviders = {
 export type CreateHistoricalImportProvidersFromConfigInput = {
   config: HistoricalBronzeImportConfig;
   fetchImpl?: HistoricalImportFetchLike;
+  reconciliationTrace?: HistoricalImportReconciliationTraceCallbacks | null;
 };
 
 export type RunHistoricalImportFromConfigInput = {
   config: HistoricalBronzeImportConfig;
   fetchImpl?: HistoricalImportFetchLike;
+  reconciliationTrace?: HistoricalImportReconciliationTraceCallbacks | null;
 };
 
 export type { HistoricalBronzeImportJobResult };

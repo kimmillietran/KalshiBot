@@ -176,6 +176,7 @@ function createBaseConfig(overrides?: Partial<{
     skipFailed: false,
     forceMarket: null,
     maxRetries: 2,
+    traceMarket: null,
     ...overrides,
   };
 }
@@ -185,17 +186,29 @@ function createExpansionDiscoveredMarket(
 ): ExpansionDiscoveredMarket {
   const eventTicker = overrides.eventTicker
     ?? overrides.marketTicker.split("-").slice(0, 2).join("-");
+  const openTime = overrides.openTime ?? "2026-01-15T12:00:00.000Z";
+  const closeTime = overrides.closeTime ?? "2026-01-15T12:15:00.000Z";
+  const expirationValue = overrides.expirationValue ?? "60010.25";
 
   return {
     seriesTicker: "KXBTC15M",
     eventTicker,
     status: "finalized",
-    openTime: "2026-01-15T12:00:00.000Z",
-    closeTime: "2026-01-15T12:15:00.000Z",
+    openTime,
+    closeTime,
     settlementTime: "2026-01-15T12:20:00.000Z",
-    expirationValue: "60010.25",
+    expirationValue,
     title: null,
     subtitle: null,
+    listMarketWire: {
+      ticker: overrides.marketTicker,
+      event_ticker: eventTicker,
+      series_ticker: "KXBTC15M",
+      status: "finalized",
+      open_time: openTime,
+      close_time: closeTime,
+      expiration_value: expirationValue,
+    },
     provenance: {
       source: "kalshi-historical-api",
       fetchedAt: GENERATED_AT,

@@ -125,6 +125,7 @@ function createPrefetchedBtcHistoricalImporter(
 async function createKalshiProviderFromConfig(
   config: HistoricalBronzeImportConfig,
   fetchImpl: HistoricalImportFetchLike,
+  reconciliationTrace?: import("./historicalImportBootstrapTypes").HistoricalImportReconciliationTraceCallbacks | null,
 ) {
   const httpAdapter = new KalshiHistoricalHttpAdapter({ fetchImpl });
   const importer = new KalshiHistoricalImporter({
@@ -141,6 +142,12 @@ async function createKalshiProviderFromConfig(
     },
   });
 
+  const listMarketWire = readKalshiDiscoveryListMarketFromMetadata(config.metadata);
+  reconciliationTrace?.onBootstrapListMarketWire?.({
+    ticker: config.marketTicker,
+    listMarketWire,
+  });
+
   return createPrefetchedKalshiHistoricalBronzeProvider({
     importer,
     marketTicker: config.marketTicker,
@@ -148,7 +155,13 @@ async function createKalshiProviderFromConfig(
     endTime: config.endTime,
     collectionTime: config.collectionTime,
     observedAt: config.observedAt,
-    listMarketWire: readKalshiDiscoveryListMarketFromMetadata(config.metadata),
+    listMarketWire,
+    reconciliationTrace: reconciliationTrace
+      ? {
+          onPrefetchListMarketWire: reconciliationTrace.onPrefetchListMarketWire,
+          importerTrace: reconciliationTrace.importerTrace,
+        }
+      : null,
   });
 }
 
@@ -183,7 +196,11 @@ export async function createHistoricalImportProvidersFromConfig(
   const fetchImpl = resolveFetchImpl(input.fetchImpl);
 
   const [kalshiProvider, btcProvider] = await Promise.all([
-    createKalshiProviderFromConfig(input.config, fetchImpl),
+    createKalshiProviderFromConfig(
+      input.config,
+      fetchImpl,
+      input.reconciliationTrace,
+    ),
     createBtcProviderFromConfig(input.config, fetchImpl),
   ]);
 

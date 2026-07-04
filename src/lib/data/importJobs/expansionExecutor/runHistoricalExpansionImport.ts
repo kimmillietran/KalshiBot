@@ -23,6 +23,14 @@ import { stableStringify } from "@/lib/trading/config/hashConfig";
 
 import { buildExpansionMarketImportArtifacts } from "./buildExpansionMarketImportConfig";
 import {
+  createExpansionImportReconciliationTracer,
+  traceDiscoveryListResponse,
+  traceExecutorLoad,
+  traceExpansionImportConfigMetadata,
+  traceSerializedConfigJson,
+} from "./expansionImportReconciliationTrace";
+import { readKalshiDiscoveryListMarketFromMetadata } from "@/lib/data/importers/kalshi/kalshiMarketSchemaReconciliation";
+import {
   createExpansionImportCircuitBreakerState,
   evaluateExpansionImportCircuitBreaker,
   formatExpansionImportCircuitBreakerWarning,
@@ -154,6 +162,7 @@ async function executeMarketImport(
   input: RunHistoricalExpansionImportInput,
   job: HistoricalExpansionImportJob,
   market: ExpansionDiscoveredMarket,
+  reconciliationTrace: import("./expansionImportReconciliationTrace").ExpansionImportReconciliationTracer | null,
 ): Promise<ExpansionImportMarketResult> {
   const startedAtMs = Date.now();
 
@@ -174,6 +183,23 @@ async function executeMarketImport(
     importConfigsDir: input.config.importConfigsDir,
     importsDir: input.config.importsDir,
   });
+  const listMarketWire = readKalshiDiscoveryListMarketFromMetadata(artifacts.config.metadata);
+
+  traceExpansionImportConfigMetadata(reconciliationTrace, {
+    ticker: market.marketTicker,
+    metadata: artifacts.config.metadata,
+    listMarketWire,
+  });
+  traceSerializedConfigJson(reconciliationTrace, {
+    ticker: market.marketTicker,
+    serializedConfig: artifacts.serializedConfig,
+    parsedMetadata: artifacts.config.metadata,
+    listMarketWire,
+  });
+  traceExecutorLoad(reconciliationTrace, {
+    ticker: market.marketTicker,
+    listMarketWire,
+  });
 
   if (!input.config.execute) {
     return {
@@ -189,7 +215,9 @@ async function executeMarketImport(
   }
 
   try {
-    const importResult = await input.deps.runImport(artifacts.config);
+    const importResult = await input.deps.runImport(artifacts.config, {
+      reconciliationTrace,
+    });
     const importDir = posix.dirname(artifacts.importResultPath);
 
     input.io.mkdirSync(posix.dirname(artifacts.configPath), { recursive: true });
@@ -221,6 +249,11 @@ async function executeMarketImport(
       durationMs: Date.now() - startedAtMs,
     };
   } catch (error) {
+    if (input.config.execute) {
+      input.io.mkdirSync(posix.dirname(artifacts.configPath), { recursive: true });
+      input.io.writeFile(artifacts.configPath, artifacts.serializedConfig);
+    }
+
     return {
       marketTicker: market.marketTicker,
       seriesTicker: market.seriesTicker,
@@ -303,6 +336,15 @@ export async function runHistoricalExpansionImport(
   let circuitBreakerState = createExpansionImportCircuitBreakerState();
   const sortedScheduledJobs = [...scheduledJobs].sort(compareJobs);
   const progress = input.progress ?? null;
+  const reconciliationTrace = input.reconciliationTrace
+    ?? createExpansionImportReconciliationTracer({
+      traceMarket: input.config.traceMarket,
+      write: (message) => {
+        if (typeof process !== "undefined" && process.stderr?.write) {
+          process.stderr.write(message);
+        }
+      },
+    });
 
   for (const [jobIndex, job] of sortedScheduledJobs.entries()) {
     if (input.signal?.aborted) {
@@ -344,6 +386,11 @@ export async function runHistoricalExpansionImport(
         interrupted = true;
         break;
       }
+
+      traceDiscoveryListResponse(reconciliationTrace, {
+        ticker: market.marketTicker,
+        listMarketWire: market.listMarketWire,
+      });
 
       if (remainingMarketBudget !== null && remainingMarketBudget <= 0) {
         jobWarnings.push(
@@ -400,7 +447,7 @@ export async function runHistoricalExpansionImport(
         continue;
       }
 
-      const result = await executeMarketImport(input, job, market);
+      const result = await executeMarketImport(input, job, market, reconciliationTrace);
       markets.push(result);
       progress?.recordMarket(result.status, market.marketTicker);
 
@@ -535,6 +582,8 @@ export async function runHistoricalExpansionImport(
   }
 
   progress?.complete();
+
+  reconciliationTrace?.flush();
 
   return summary;
 }

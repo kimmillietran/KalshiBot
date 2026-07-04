@@ -399,9 +399,22 @@ export class KalshiHistoricalImporter implements HistoricalImporter {
         listMarket: options?.listMarketWire,
         detailMarket: response.market,
       });
+      options?.reconciliationTrace?.onDetailMarket?.({
+        ticker,
+        detailMarket: response.market,
+        listMarketWire: options?.listMarketWire,
+      });
+      options?.reconciliationTrace?.onMerge?.({
+        ticker,
+        reconciliation,
+      });
       const missingRequiredFields = findMissingKalshiMarketWireFields(
         reconciliation.mergedWire,
       );
+      options?.reconciliationTrace?.onValidation?.({
+        ticker,
+        wire: reconciliation.mergedWire,
+      });
       if (missingRequiredFields.length > 0) {
         this.throwMarketImportCompatibilityError({
           ticker,
