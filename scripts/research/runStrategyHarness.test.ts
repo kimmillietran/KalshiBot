@@ -112,4 +112,37 @@ describe("runStrategyHarnessCommand", () => {
     expect(exitCode).toBe(0);
     expect(JSON.parse(stdout).successfulRuns).toBe(1);
   });
+
+  it("accepts --input as an alias for --synthesis", async () => {
+    let stdout = "";
+    const synthesisPath = "tmp/custom-synthesis.json";
+
+    const exitCode = await runStrategyHarnessCommand(
+      ["--input", synthesisPath],
+      {
+        readFile: (path) =>
+          path === synthesisPath
+            ? JSON.stringify({
+                generatedAt: "2026-07-03T12:00:00.000Z",
+                outputPath: synthesisPath,
+                inputs: {},
+                strategies: [],
+                summary: {},
+              })
+            : "",
+        fileExists: (path) => path === synthesisPath,
+        readdir: () => [],
+        isDirectory: () => false,
+        writeStdout: (text) => {
+          stdout += text;
+        },
+        writeStderr: () => {},
+        writeFile: () => {},
+        mkdirSync: () => {},
+      },
+    );
+
+    expect(exitCode).toBe(0);
+    expect(JSON.parse(stdout).evaluatedStrategies).toBe(0);
+  });
 });

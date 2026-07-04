@@ -19,10 +19,23 @@ describe("buildFullResearchSteps", () => {
       "hypothesis-validation",
       "strategy-synthesis",
       "research-harness",
+      "harness-results",
+      "candidate-registry",
+      "candidate-promotions",
       "artifact-index",
       "hypothesis-lifecycle",
       "research-dashboard",
     ]);
+  });
+
+  it("passes synthesis candidates to the harness via --input", () => {
+    const harness = buildFullResearchSteps().find((step) => step.id === "research-harness");
+
+    expect(harness?.args).toEqual([
+      "--input",
+      "data/research-results/strategy-synthesis-candidates.json",
+    ]);
+    expect(harness?.npmScript).toBe("research:harness");
   });
 
   it("marks reporting steps as independent", () => {
@@ -34,6 +47,16 @@ describe("buildFullResearchSteps", () => {
       "artifact-index",
       "research-dashboard",
     ]);
+  });
+
+  it("chains harness downstream steps through candidate promotions", () => {
+    const steps = buildFullResearchSteps();
+    const byId = new Map(steps.map((step) => [step.id, step]));
+
+    expect(byId.get("harness-results")?.upstreamStepIds).toEqual(["research-harness"]);
+    expect(byId.get("candidate-registry")?.upstreamStepIds).toEqual(["harness-results"]);
+    expect(byId.get("candidate-promotions")?.upstreamStepIds).toEqual(["candidate-registry"]);
+    expect(byId.get("artifact-index")?.upstreamStepIds).toEqual([]);
   });
 });
 
@@ -53,6 +76,44 @@ describe("parseFullResearchOrchestratorConfigFromArgv", () => {
 });
 
 describe("runFullResearchOrchestrator", () => {
+  it("invokes harness with synthesis input args in pipeline order", async () => {
+    const calls: Array<{ npmScript: string; args: readonly string[] }> = [];
+    const runner: ResearchPipelineRunner = async (npmScript, args) => {
+      calls.push({ npmScript, args });
+      return { exitCode: 0, stdout: "", stderr: "" };
+    };
+
+    await runFullResearchOrchestrator({
+      config: {
+        continueOnError: false,
+        summaryOutputPath: "data/research-results/full-research-summary.json",
+      },
+      generatedAt: GENERATED_AT,
+      runner,
+      isNpmScriptRegistered: () => true,
+    });
+
+    const harnessCall = calls.find((call) => call.npmScript === "research:harness");
+    expect(harnessCall?.args).toEqual([
+      "--input",
+      "data/research-results/strategy-synthesis-candidates.json",
+    ]);
+    expect(calls.map((call) => call.npmScript)).toEqual([
+      "research:data-health",
+      "research:mispricing-atlas",
+      "research:hypotheses",
+      "research:hypothesis-validation",
+      "research:strategy-synthesis",
+      "research:harness",
+      "research:harness-results",
+      "research:candidate-registry",
+      "research:candidate-promotions",
+      "research:artifact-index",
+      "research:hypothesis-lifecycle",
+      "research:dashboard",
+    ]);
+  });
+
   it("fails fast on core chain failures and still runs independent reporting steps", async () => {
     const calls: string[] = [];
     const runner: ResearchPipelineRunner = async (npmScript) => {

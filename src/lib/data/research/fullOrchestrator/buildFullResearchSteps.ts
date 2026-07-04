@@ -1,4 +1,13 @@
+import { DEFAULT_CANDIDATE_PROMOTIONS_HTML_PATH, DEFAULT_CANDIDATE_PROMOTIONS_OUTPUT_PATH } from "@/lib/data/research/candidatePromotion/candidatePromotionTypes";
+import {
+  DEFAULT_RESEARCH_CANDIDATE_REGISTRY_HTML_PATH,
+  DEFAULT_RESEARCH_CANDIDATE_REGISTRY_OUTPUT_PATH,
+} from "@/lib/data/research/candidateRegistry/researchCandidateRegistryTypes";
 import { DEFAULT_DATA_HEALTH_OUTPUT_PATH } from "@/lib/data/research/dataHealth/dataHealthTypes";
+import {
+  DEFAULT_HARNESS_RESULTS_HTML_PATH,
+  DEFAULT_HARNESS_RESULTS_OUTPUT_PATH,
+} from "@/lib/data/research/harnessResults/harnessResultsTypes";
 import { DEFAULT_HYPOTHESIS_CANDIDATES_OUTPUT_PATH } from "@/lib/data/research/hypothesisCandidates/hypothesisCandidateTypes";
 import { DEFAULT_HYPOTHESIS_EVIDENCE_HTML_PATH } from "@/lib/data/research/hypothesisEvidence/hypothesisEvidenceTypes";
 import {
@@ -76,9 +85,45 @@ export function buildFullResearchSteps(): readonly FullResearchStepDefinition[] 
       id: "research-harness",
       label: "Research strategy harness",
       npmScript: "research:harness",
-      args: [],
+      args: ["--input", STRATEGY_SYNTHESIS_OUTPUT],
       expectedOutputs: [HARNESS_SUMMARY_OUTPUT],
       upstreamStepIds: ["strategy-synthesis"],
+      independent: false,
+    },
+    {
+      id: "harness-results",
+      label: "Harness results integration",
+      npmScript: "research:harness-results",
+      args: [],
+      expectedOutputs: [
+        DEFAULT_HARNESS_RESULTS_OUTPUT_PATH,
+        DEFAULT_HARNESS_RESULTS_HTML_PATH,
+      ],
+      upstreamStepIds: ["research-harness"],
+      independent: false,
+    },
+    {
+      id: "candidate-registry",
+      label: "Research candidate registry",
+      npmScript: "research:candidate-registry",
+      args: [],
+      expectedOutputs: [
+        DEFAULT_RESEARCH_CANDIDATE_REGISTRY_OUTPUT_PATH,
+        DEFAULT_RESEARCH_CANDIDATE_REGISTRY_HTML_PATH,
+      ],
+      upstreamStepIds: ["harness-results"],
+      independent: false,
+    },
+    {
+      id: "candidate-promotions",
+      label: "Candidate promotions",
+      npmScript: "research:candidate-promotions",
+      args: [],
+      expectedOutputs: [
+        DEFAULT_CANDIDATE_PROMOTIONS_OUTPUT_PATH,
+        DEFAULT_CANDIDATE_PROMOTIONS_HTML_PATH,
+      ],
+      upstreamStepIds: ["candidate-registry"],
       independent: false,
     },
     {

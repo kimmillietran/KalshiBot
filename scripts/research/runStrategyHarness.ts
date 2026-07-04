@@ -120,6 +120,12 @@ export function runStrategyHarnessCommand(
       runEvaluation: options?.runEvaluation ?? createProductionRunEvaluation(),
     }).then(
       (summary) => {
+        if (summary.evaluatedStrategies === 0) {
+          io.writeStderr(
+            "warning: no synthesized strategies matched harness filters (no-op)\n",
+          );
+        }
+
         io.writeStdout(
           formatStdoutOutput(
             stableStringify({

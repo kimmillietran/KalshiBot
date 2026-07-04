@@ -158,6 +158,7 @@ export const STRATEGY_SYNTHESIS_ARGV_SCHEMA: readonly NpmArgvField[] = [
 ];
 
 export const STRATEGY_HARNESS_ARGV_SCHEMA: readonly NpmArgvField[] = [
+  { flag: "--input" },
   { flag: "--synthesis" },
   { flag: "--registry-dir" },
   { flag: "--output-dir" },

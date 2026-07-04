@@ -156,12 +156,6 @@ export async function runStrategyHarness(
   }
 
   const report = loadStrategySynthesisCandidatesReport(input.io, input.synthesisPath);
-  const normalizedRegistryDir = normalizePath(input.registryDir);
-  if (!input.io.isDirectory(normalizedRegistryDir)) {
-    throw new StrategyHarnessError(
-      `Registry directory does not exist: ${normalizedRegistryDir}`,
-    );
-  }
 
   const specs = filterHarnessStrategySpecs(report.strategies, {
     strategyFamily: input.strategyFamily,
@@ -170,7 +164,33 @@ export async function runStrategyHarness(
   });
 
   if (specs.length === 0) {
-    throw new StrategyHarnessError("No synthesized strategies matched harness filters");
+    input.io.mkdir(outputDir);
+    const completedAt = input.now?.().toISOString() ?? new Date().toISOString();
+    const summary: StrategyHarnessSummary = {
+      synthesisPath: input.synthesisPath,
+      registryDir: normalizePath(input.registryDir),
+      outputDir,
+      summaryPath,
+      startedAt,
+      completedAt,
+      durationMs: Date.now() - startMs,
+      evaluatedStrategies: 0,
+      totalRuns: 0,
+      successfulRuns: 0,
+      failedRuns: 0,
+      skippedRuns: 0,
+      results: [],
+    };
+
+    input.io.writeFile(summaryPath, stableStringify(summary));
+    return summary;
+  }
+
+  const normalizedRegistryDir = normalizePath(input.registryDir);
+  if (!input.io.isDirectory(normalizedRegistryDir)) {
+    throw new StrategyHarnessError(
+      `Registry directory does not exist: ${normalizedRegistryDir}`,
+    );
   }
 
   const markets = loadRegistryMarkets(input.registryDir, input.io);

@@ -112,46 +112,53 @@ describe("runStrategyHarness", () => {
     expect(writes.has(`${outputDir}/strategy-harness-summary.json`)).toBe(true);
   });
 
-  it("excludes rejected strategies by default", async () => {
+  it("no-ops with an empty harness summary when rejected strategies are excluded", async () => {
     const synthesisPath = "data/research-results/strategy-synthesis-candidates.json";
+    const outputDir = "data/research-results/harness";
+    const writes = new Map<string, string>();
 
-    await expect(
-      runStrategyHarness({
-        synthesisPath,
-        registryDir: "data/research-datasets",
-        io: {
-          readFile: (path) =>
-            path === synthesisPath
-              ? createSynthesisJson([
-                  {
-                    strategyId: "synth-rejected",
-                    hypothesisId: "atlas-test-over",
-                    strategyFamily: "calibration-fade",
-                    direction: "fade-yes",
-                    entryConditions: { yesMidThresholdCents: 55 },
-                    exitAssumption: "Hold to settlement",
-                    requiredData: [],
-                    riskNotes: [],
-                    validationSummary: {
-                      robustnessScore: 20,
-                      passes: false,
-                      observationCount: 2,
-                    },
-                    promotionStatus: "rejected",
+    const summary = await runStrategyHarness({
+      synthesisPath,
+      registryDir: "data/research-datasets",
+      outputDir,
+      io: {
+        readFile: (path) =>
+          path === synthesisPath
+            ? createSynthesisJson([
+                {
+                  strategyId: "synth-rejected",
+                  hypothesisId: "atlas-test-over",
+                  strategyFamily: "calibration-fade",
+                  direction: "fade-yes",
+                  entryConditions: { yesMidThresholdCents: 55 },
+                  exitAssumption: "Hold to settlement",
+                  requiredData: [],
+                  riskNotes: [],
+                  validationSummary: {
+                    robustnessScore: 20,
+                    passes: false,
+                    observationCount: 2,
                   },
-                ])
-              : "",
-          fileExists: (path) => path === synthesisPath,
-          readdir: () => [],
-          isDirectory: () => true,
-          writeFile: () => {},
-          mkdir: () => {},
+                  promotionStatus: "rejected",
+                },
+              ])
+            : "",
+        fileExists: (path) => path === synthesisPath,
+        readdir: () => [],
+        isDirectory: () => false,
+        writeFile: (path, data) => {
+          writes.set(path, data);
         },
-        parseFixtureJson: () => {
-          throw new Error("should not parse fixtures");
-        },
-        runEvaluation: () => "",
-      }),
-    ).rejects.toThrow(/No synthesized strategies matched harness filters/);
+        mkdir: () => {},
+      },
+      parseFixtureJson: () => {
+        throw new Error("should not parse fixtures");
+      },
+      runEvaluation: () => "",
+    });
+
+    expect(summary.evaluatedStrategies).toBe(0);
+    expect(summary.totalRuns).toBe(0);
+    expect(writes.has(`${outputDir}/strategy-harness-summary.json`)).toBe(true);
   });
 });

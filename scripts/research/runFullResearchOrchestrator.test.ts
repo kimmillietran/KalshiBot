@@ -9,7 +9,7 @@ describe("runFullResearchOrchestratorCommand", () => {
   it("writes full-research-summary.json and reports stdout metadata", async () => {
     const writes = new Map<string, string>();
     let stdout = "";
-    const calls: string[] = [];
+    const calls: Array<{ npmScript: string; args: readonly string[] }> = [];
 
     const exitCode = await runFullResearchOrchestratorCommand([], {
       writeStdout: (text) => {
@@ -28,20 +28,29 @@ describe("runFullResearchOrchestratorCommand", () => {
         "research:hypothesis-validation",
         "research:strategy-synthesis",
         "research:harness",
+        "research:harness-results",
+        "research:candidate-registry",
+        "research:candidate-promotions",
         "research:artifact-index",
         "research:hypothesis-lifecycle",
         "research:dashboard",
       ]),
-      runner: async (npmScript) => {
-        calls.push(npmScript);
+      runner: async (npmScript, args) => {
+        calls.push({ npmScript, args });
         return { exitCode: 0, stdout: "", stderr: "" };
       },
     }, { generatedAt: GENERATED_AT });
 
     expect(exitCode).toBe(0);
-    expect(calls[0]).toBe("research:data-health");
-    expect(calls.at(-1)).toBe("research:dashboard");
-    expect(calls).toHaveLength(9);
+    expect(calls[0]?.npmScript).toBe("research:data-health");
+    expect(calls.at(-1)?.npmScript).toBe("research:dashboard");
+    expect(calls).toHaveLength(12);
+
+    const harnessCall = calls.find((call) => call.npmScript === "research:harness");
+    expect(harnessCall?.args).toEqual([
+      "--input",
+      "data/research-results/strategy-synthesis-candidates.json",
+    ]);
 
     const serialized = writes.get(OUTPUT_PATH);
     expect(serialized).toBeDefined();
@@ -49,7 +58,7 @@ describe("runFullResearchOrchestratorCommand", () => {
     const parsed = JSON.parse(serialized!);
     expect(parsed.generatedAt).toBe(GENERATED_AT);
     expect(parsed.status).toBe("succeeded");
-    expect(parsed.steps).toHaveLength(9);
+    expect(parsed.steps).toHaveLength(12);
     expect(JSON.parse(stdout.trim().split("\n").at(-1)!).outputPath).toBe(OUTPUT_PATH);
   });
 

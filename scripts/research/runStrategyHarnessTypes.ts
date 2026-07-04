@@ -47,7 +47,7 @@ export function parseSynthesisPathFromArgv(
   argv: readonly string[],
   defaultPath = DEFAULT_STRATEGY_SYNTHESIS_CANDIDATES_PATH,
 ): string {
-  return readFlagValue(argv, "--synthesis") ?? defaultPath;
+  return readFlagValue(argv, "--input") ?? readFlagValue(argv, "--synthesis") ?? defaultPath;
 }
 
 export function parseRegistryDirFromArgv(

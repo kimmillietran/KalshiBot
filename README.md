@@ -139,7 +139,7 @@ Writes `data/reports/research-dashboard.html` — a read-only landing page with 
 npm run research:full
 ```
 
-Invokes existing research CLIs (data health → mispricing atlas → hypotheses → validation → synthesis → harness → artifact index → lifecycle → dashboard). Writes `data/research-results/full-research-summary.json` with per-step status, duration, outputs, warnings, and failures. Independent reporting steps still run when upstream analysis fails. Use `--continue-on-error` to keep executing the core chain after step failures.
+Invokes existing research CLIs in order: data health → mispricing atlas → hypotheses → validation → synthesis → harness (with `--input data/research-results/strategy-synthesis-candidates.json`) → harness results → candidate registry → candidate promotions → artifact index → lifecycle → dashboard. Writes `data/research-results/full-research-summary.json` with per-step status, duration, outputs, warnings, and failures. Independent reporting steps still run when upstream analysis fails. When no synthesized strategies match harness filters, the harness step no-ops with an empty summary. Use `--continue-on-error` to keep executing the core chain after step failures.
 
 ### Strategy synthesis
 
@@ -243,6 +243,7 @@ docs/
 | 8.17 | Research artifact index (`research:artifact-index`, centralized output health dashboard) — **complete** |
 | 8.18 | Research pipeline dashboard (`research:dashboard`, read-only research landing page) — **complete** |
 | 8.19 | End-to-end research orchestrator (`research:full`, post-pipeline workflow CLI) — **complete** |
+| 8.19B | Full orchestrator update (harness input, harness-results, registry, promotions) — **complete** |
 | 8.21 | Candidate promotion engine (`research:candidate-promotions`, advisory read-only classification) — **complete** |
 | 8.20 | Research candidate registry (`research:candidate-registry`, canonical pipeline candidate records) — **complete** |
 
