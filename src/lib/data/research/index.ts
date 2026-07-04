@@ -596,6 +596,28 @@ export type {
 } from "./experimentManager";
 
 export {
+  buildCrossValidationReport,
+  buildCrossValidationReportFromInputs,
+  buildDefaultCrossValidationInputPaths,
+  computeAllCrossValidationMethods,
+  serializeCrossValidationHtml,
+  serializeCrossValidationReport,
+  CROSS_VALIDATION_FILENAME,
+  CROSS_VALIDATION_METHOD_IDS,
+  CrossValidationError,
+  DEFAULT_CROSS_VALIDATION_HTML_PATH,
+  DEFAULT_CROSS_VALIDATION_OUTPUT_PATH,
+} from "./crossValidation";
+export type {
+  BuildCrossValidationReportInput,
+  CrossValidationConfig,
+  CrossValidationEntry,
+  CrossValidationMethodId,
+  CrossValidationMethodResult,
+  CrossValidationReport,
+} from "./crossValidation";
+
+export {
   buildPowerAnalysisReport,
   buildPowerAnalysisReportFromDirectories,
   computeMinimumDetectableEffect,
