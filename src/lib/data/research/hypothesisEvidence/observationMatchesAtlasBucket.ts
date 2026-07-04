@@ -12,6 +12,8 @@ import {
   VOLATILITY_BUCKET_DEFINITIONS,
 } from "@/lib/data/research/mispricingAtlas/mispricingAtlasBuckets";
 
+import { observationMatchesMultiAxisBucket } from "@/lib/data/research/mispricingAtlas/matchMultiAxisBucket";
+
 import type { AtlasCandidateGroupId } from "./parseAtlasCandidateReference";
 
 export type RegimeVolatilityByMarketKey = Map<string, "low" | "medium" | "high">;
@@ -116,6 +118,27 @@ export function observationMatchesAtlasBucket(
         && probabilityFitsBucket(observation.predictedProbability, probabilityDefinition)
       );
     }
+    case "probabilityMoneyness":
+      return observationMatchesMultiAxisBucket(bucketId, observation, [
+        "probability",
+        "moneyness",
+      ]);
+    case "moneynessTime":
+      return observationMatchesMultiAxisBucket(bucketId, observation, [
+        "moneyness",
+        "time",
+      ]);
+    case "volatilityMoneyness":
+      return observationMatchesMultiAxisBucket(bucketId, observation, [
+        "volatility",
+        "moneyness",
+      ]);
+    case "volatilityProbabilityTime":
+      return observationMatchesMultiAxisBucket(bucketId, observation, [
+        "volatility",
+        "probability",
+        "time",
+      ]);
     default:
       return false;
   }

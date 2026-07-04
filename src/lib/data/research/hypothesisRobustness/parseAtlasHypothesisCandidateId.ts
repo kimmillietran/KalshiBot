@@ -1,6 +1,10 @@
 import type { ParsedAtlasHypothesisRef } from "./hypothesisRobustnessTypes";
 
 const ATLAS_GROUP_IDS = [
+  "volatilityProbabilityTime",
+  "probabilityMoneyness",
+  "volatilityMoneyness",
+  "moneynessTime",
   "probabilityRegime",
   "probabilityOnly",
   "probabilityTime",

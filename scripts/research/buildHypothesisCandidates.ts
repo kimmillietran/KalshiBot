@@ -27,6 +27,7 @@ import {
   parseArtifactPathsFromArgv,
   parseHtmlOutputPathFromArgv,
   parseMinSampleFromArgv,
+  parseMinUniqueTradingDaysFromArgv,
   parseOutputPathFromArgv,
   parseResearchInputRootFromArgv,
 } from "./buildHypothesisCandidatesTypes";
@@ -76,6 +77,7 @@ export function runHypothesisCandidatesCommand(
     const researchInputRoot = parseResearchInputRootFromArgv(normalizedArgv);
     const artifactPaths = parseArtifactPathsFromArgv(normalizedArgv);
     const minSampleSize = parseMinSampleFromArgv(normalizedArgv);
+    const minUniqueTradingDays = parseMinUniqueTradingDaysFromArgv(normalizedArgv);
     const generatedAt = options?.generatedAt ?? new Date().toISOString();
 
     const { inputs, inputStatus } = loadHypothesisCandidateInputs(io, artifactPaths);
@@ -85,7 +87,7 @@ export function runHypothesisCandidatesCommand(
       outputPath,
       inputs,
       inputStatus,
-      config: { minSampleSize },
+      config: { minSampleSize, minUniqueTradingDays },
     });
 
     io.mkdirSync(dirname(outputPath), { recursive: true });
@@ -159,6 +161,7 @@ export {
   parseArtifactPathsFromArgv,
   parseHtmlOutputPathFromArgv,
   parseMinSampleFromArgv,
+  parseMinUniqueTradingDaysFromArgv,
   parseOutputPathFromArgv,
   parseResearchInputRootFromArgv,
   HypothesisCandidatesCommandError,

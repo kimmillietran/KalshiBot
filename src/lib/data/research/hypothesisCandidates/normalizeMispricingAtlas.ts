@@ -25,6 +25,19 @@ export function normalizeMispricingAtlas(
     probabilityOnly: [],
     probabilityTime: [],
     probabilityRegime: [],
+    probabilityMoneyness: [],
+    moneynessTime: [],
+    volatilityMoneyness: [],
+    volatilityProbabilityTime: [],
+  };
+  const normalizedCoarseBuckets: MispricingAtlasCoarseBuckets = {
+    probabilityOnly: coarseBuckets.probabilityOnly,
+    probabilityTime: coarseBuckets.probabilityTime,
+    probabilityRegime: coarseBuckets.probabilityRegime,
+    probabilityMoneyness: coarseBuckets.probabilityMoneyness ?? [],
+    moneynessTime: coarseBuckets.moneynessTime ?? [],
+    volatilityMoneyness: coarseBuckets.volatilityMoneyness ?? [],
+    volatilityProbabilityTime: coarseBuckets.volatilityProbabilityTime ?? [],
   };
   const coverageDiagnostics =
     atlas.coverageDiagnostics
@@ -34,7 +47,7 @@ export function normalizeMispricingAtlas(
         timeRemainingBuckets: atlas.timeRemainingBuckets,
         moneynessBuckets: atlas.moneynessBuckets,
         volatilityBuckets: atlas.volatilityBuckets,
-        coarseBuckets,
+        coarseBuckets: normalizedCoarseBuckets,
       }),
       sampleCounts: atlas.sampleCounts,
       minSampleThreshold,
@@ -42,7 +55,7 @@ export function normalizeMispricingAtlas(
 
   return {
     ...atlas,
-    coarseBuckets,
+    coarseBuckets: normalizedCoarseBuckets,
     coverageDiagnostics,
   };
 }

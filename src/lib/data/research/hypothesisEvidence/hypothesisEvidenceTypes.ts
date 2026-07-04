@@ -27,6 +27,9 @@ export type HypothesisEvidenceCard = {
   associatedRegime: string | null;
   associatedProbabilityBucket: string | null;
   associatedTimeBucket: string | null;
+  associatedMoneynessBucket: string | null;
+  associatedVolatilityBucket: string | null;
+  bucketGroup: string | null;
   warnings: readonly string[];
   sourceArtifact: string;
   confidenceSummary: string;

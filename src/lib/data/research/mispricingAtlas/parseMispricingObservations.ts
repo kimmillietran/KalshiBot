@@ -95,6 +95,10 @@ function readAnnualizedVolatility(
   return estimate?.annualizedVol ?? null;
 }
 
+function toTradingDayUtc(timestampMs: number): string {
+  return new Date(timestampMs).toISOString().slice(0, 10);
+}
+
 function buildObservation(input: {
   strategyId: string;
   seriesTicker: string;
@@ -107,6 +111,7 @@ function buildObservation(input: {
   strikePrice: number | null;
   timeRemainingMs: number | null;
   candles: readonly EvaluationCandleSnapshot[];
+  observationTimestampMs?: number | null;
 }): MispricingObservation {
   const moneynessPercent =
     input.spotPrice !== null && input.strikePrice !== null
@@ -125,6 +130,12 @@ function buildObservation(input: {
     moneynessPercent,
     annualizedVolatility:
       input.candles.length > 0 ? readAnnualizedVolatility(input.candles) : null,
+    tradingDayUtc:
+      input.observationTimestampMs !== undefined
+      && input.observationTimestampMs !== null
+      && Number.isFinite(input.observationTimestampMs)
+        ? toTradingDayUtc(input.observationTimestampMs)
+        : null,
   };
 }
 
@@ -166,6 +177,8 @@ function extractReplayStepObservations(input: {
       ? readFiniteNumber(market, "timeRemainingMs") ?? null
       : null;
     const candles = btc ? mapCandles(btc.candles) : [];
+    const evaluatedAt = readString(engineInput, "evaluatedAt");
+    const observationTimestampMs = evaluatedAt ? Date.parse(evaluatedAt) : Number.NaN;
 
     observations.push(
       buildObservation({
@@ -180,6 +193,9 @@ function extractReplayStepObservations(input: {
         strikePrice,
         timeRemainingMs,
         candles,
+        observationTimestampMs: Number.isFinite(observationTimestampMs)
+          ? observationTimestampMs
+          : null,
       }),
     );
   });
@@ -253,6 +269,9 @@ function extractSnapshotFallbackObservations(input: {
       Number.isFinite(closeTimeMs) && candleCloseTime
         ? Math.max(closeTimeMs - Date.parse(candleCloseTime), 0)
         : null;
+    const observationTimestampMs = candleCloseTime
+      ? Date.parse(candleCloseTime)
+      : Number.NaN;
 
     return [
       buildObservation({
@@ -267,6 +286,9 @@ function extractSnapshotFallbackObservations(input: {
         strikePrice,
         timeRemainingMs,
         candles: candles.slice(0, stepIndex + 1),
+        observationTimestampMs: Number.isFinite(observationTimestampMs)
+          ? observationTimestampMs
+          : null,
       }),
     ];
   });

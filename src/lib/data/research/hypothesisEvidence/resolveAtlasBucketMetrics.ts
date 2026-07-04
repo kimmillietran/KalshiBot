@@ -23,6 +23,14 @@ export function resolveAtlasBucketMetrics(
       return findBucket(atlas.coarseBuckets?.probabilityTime ?? [], bucketId);
     case "probabilityRegime":
       return findBucket(atlas.coarseBuckets?.probabilityRegime ?? [], bucketId);
+    case "probabilityMoneyness":
+      return findBucket(atlas.coarseBuckets?.probabilityMoneyness ?? [], bucketId);
+    case "moneynessTime":
+      return findBucket(atlas.coarseBuckets?.moneynessTime ?? [], bucketId);
+    case "volatilityMoneyness":
+      return findBucket(atlas.coarseBuckets?.volatilityMoneyness ?? [], bucketId);
+    case "volatilityProbabilityTime":
+      return findBucket(atlas.coarseBuckets?.volatilityProbabilityTime ?? [], bucketId);
     case "probability":
       return findBucket(atlas.probabilityBuckets, bucketId);
     case "timeRemaining":

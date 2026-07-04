@@ -140,6 +140,15 @@ function renderCard(card: HypothesisEvidenceCard): string {
       "Time bucket",
       escapeHtml(card.associatedTimeBucket ?? "—"),
     ),
+    renderMetric(
+      "Moneyness bucket",
+      escapeHtml(card.associatedMoneynessBucket ?? "—"),
+    ),
+    renderMetric(
+      "Volatility bucket",
+      escapeHtml(card.associatedVolatilityBucket ?? "—"),
+    ),
+    renderMetric("Bucket group", escapeHtml(card.bucketGroup ?? "—")),
     renderMetric("Source artifact", `<code>${escapeHtml(card.sourceArtifact)}</code>`),
   ].join("");
 

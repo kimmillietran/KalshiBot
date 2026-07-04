@@ -1,4 +1,8 @@
 export const ATLAS_CANDIDATE_GROUP_IDS = [
+  "volatilityProbabilityTime",
+  "probabilityMoneyness",
+  "volatilityMoneyness",
+  "moneynessTime",
   "probabilityOnly",
   "probabilityTime",
   "probabilityRegime",
@@ -68,6 +72,8 @@ export function parseBucketAxisLabels(bucketId: string): {
   probabilityBucket: string | null;
   timeBucket: string | null;
   regimeBucket: string | null;
+  moneynessBucket: string | null;
+  volatilityBucket: string | null;
 } {
   const coarseTimeMatch = /^(coarse-prob-\d+)-(coarse-time-(?:early|late))$/.exec(
     bucketId,
@@ -77,6 +83,8 @@ export function parseBucketAxisLabels(bucketId: string): {
       probabilityBucket: coarseTimeMatch[1] ?? null,
       timeBucket: coarseTimeMatch[2] ?? null,
       regimeBucket: null,
+      moneynessBucket: null,
+      volatilityBucket: null,
     };
   }
 
@@ -87,6 +95,57 @@ export function parseBucketAxisLabels(bucketId: string): {
       probabilityBucket: coarseRegimeMatch[1] ?? null,
       timeBucket: null,
       regimeBucket: coarseRegimeMatch[2] ?? null,
+      moneynessBucket: null,
+      volatilityBucket: null,
+    };
+  }
+
+  const probabilityMoneynessMatch =
+    /^(coarse-prob-\d+)-(moneyness-.+)$/.exec(bucketId);
+  if (probabilityMoneynessMatch) {
+    return {
+      probabilityBucket: probabilityMoneynessMatch[1] ?? null,
+      moneynessBucket: probabilityMoneynessMatch[2] ?? null,
+      timeBucket: null,
+      regimeBucket: null,
+      volatilityBucket: null,
+    };
+  }
+
+  const moneynessTimeMatch = /^(moneyness-.+)-(time-.+)$/.exec(bucketId);
+  if (moneynessTimeMatch) {
+    return {
+      moneynessBucket: moneynessTimeMatch[1] ?? null,
+      timeBucket: moneynessTimeMatch[2] ?? null,
+      probabilityBucket: null,
+      regimeBucket: null,
+      volatilityBucket: null,
+    };
+  }
+
+  const volatilityMoneynessMatch =
+    /^(vol-(?:low|medium|high))-(moneyness-.+)$/.exec(bucketId);
+  if (volatilityMoneynessMatch) {
+    return {
+      volatilityBucket: volatilityMoneynessMatch[1] ?? null,
+      moneynessBucket: volatilityMoneynessMatch[2] ?? null,
+      probabilityBucket: null,
+      timeBucket: null,
+      regimeBucket: null,
+    };
+  }
+
+  const volatilityProbabilityTimeMatch =
+    /^(vol-(?:low|medium|high))-(coarse-prob-\d+)-(coarse-time-(?:early|late))$/.exec(
+      bucketId,
+    );
+  if (volatilityProbabilityTimeMatch) {
+    return {
+      volatilityBucket: volatilityProbabilityTimeMatch[1] ?? null,
+      probabilityBucket: volatilityProbabilityTimeMatch[2] ?? null,
+      timeBucket: volatilityProbabilityTimeMatch[3] ?? null,
+      regimeBucket: null,
+      moneynessBucket: null,
     };
   }
 
@@ -95,6 +154,8 @@ export function parseBucketAxisLabels(bucketId: string): {
       probabilityBucket: bucketId,
       timeBucket: null,
       regimeBucket: null,
+      moneynessBucket: null,
+      volatilityBucket: null,
     };
   }
 
@@ -103,6 +164,8 @@ export function parseBucketAxisLabels(bucketId: string): {
       probabilityBucket: bucketId,
       timeBucket: null,
       regimeBucket: null,
+      moneynessBucket: null,
+      volatilityBucket: null,
     };
   }
 
@@ -111,6 +174,18 @@ export function parseBucketAxisLabels(bucketId: string): {
       probabilityBucket: null,
       timeBucket: bucketId,
       regimeBucket: null,
+      moneynessBucket: null,
+      volatilityBucket: null,
+    };
+  }
+
+  if (bucketId.startsWith("moneyness-")) {
+    return {
+      probabilityBucket: null,
+      timeBucket: null,
+      regimeBucket: null,
+      moneynessBucket: bucketId,
+      volatilityBucket: null,
     };
   }
 
@@ -119,6 +194,8 @@ export function parseBucketAxisLabels(bucketId: string): {
       probabilityBucket: null,
       timeBucket: null,
       regimeBucket: bucketId,
+      moneynessBucket: null,
+      volatilityBucket: bucketId,
     };
   }
 
@@ -126,5 +203,7 @@ export function parseBucketAxisLabels(bucketId: string): {
     probabilityBucket: null,
     timeBucket: null,
     regimeBucket: null,
+    moneynessBucket: null,
+    volatilityBucket: null,
   };
 }

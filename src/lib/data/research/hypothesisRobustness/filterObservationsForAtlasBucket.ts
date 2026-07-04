@@ -12,6 +12,8 @@ import {
 } from "@/lib/data/research/mispricingAtlas/mispricingAtlasBuckets";
 import type { RegimeVolatilityByMarketKey } from "@/lib/data/research/mispricingAtlas/mispricingAtlasTypes";
 
+import { observationMatchesMultiAxisBucket } from "@/lib/data/research/mispricingAtlas/matchMultiAxisBucket";
+
 import type {
   EnrichedMispricingObservation,
   ParsedAtlasHypothesisRef,
@@ -105,6 +107,35 @@ export function filterObservationsForAtlasBucket(
 
       return [];
     }
+    case "probabilityMoneyness":
+      return observations.filter((observation) =>
+        observationMatchesMultiAxisBucket(ref.bucketId, observation, [
+          "probability",
+          "moneyness",
+        ]),
+      );
+    case "moneynessTime":
+      return observations.filter((observation) =>
+        observationMatchesMultiAxisBucket(ref.bucketId, observation, [
+          "moneyness",
+          "time",
+        ]),
+      );
+    case "volatilityMoneyness":
+      return observations.filter((observation) =>
+        observationMatchesMultiAxisBucket(ref.bucketId, observation, [
+          "volatility",
+          "moneyness",
+        ]),
+      );
+    case "volatilityProbabilityTime":
+      return observations.filter((observation) =>
+        observationMatchesMultiAxisBucket(ref.bucketId, observation, [
+          "volatility",
+          "probability",
+          "time",
+        ]),
+      );
     case "timeRemaining": {
       const definition = findDefinition(TIME_REMAINING_BUCKET_DEFINITIONS, ref.bucketId);
       if (!definition) {

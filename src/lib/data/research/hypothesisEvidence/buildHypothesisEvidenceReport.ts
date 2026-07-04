@@ -55,7 +55,13 @@ function buildAtlasEvidenceCard(input: {
         );
   const axisLabels =
     reference === null
-      ? { probabilityBucket: null, timeBucket: null, regimeBucket: null }
+      ? {
+          probabilityBucket: null,
+          timeBucket: null,
+          regimeBucket: null,
+          moneynessBucket: null,
+          volatilityBucket: null,
+        }
       : parseBucketAxisLabels(reference.bucketId);
 
   const sampleSize = bucket?.observations ?? 0;
@@ -94,6 +100,13 @@ function buildAtlasEvidenceCard(input: {
     associatedTimeBucket:
       axisLabels.timeBucket
       ?? (reference?.groupId === "timeRemaining" ? reference.bucketId : null),
+    associatedMoneynessBucket:
+      axisLabels.moneynessBucket
+      ?? (reference?.groupId === "moneyness" ? reference.bucketId : null),
+    associatedVolatilityBucket:
+      axisLabels.volatilityBucket
+      ?? (reference?.groupId === "volatility" ? reference.bucketId : null),
+    bucketGroup: reference?.groupId ?? input.candidate.bucketMetadata?.groupId ?? null,
     warnings: input.candidate.warnings,
     sourceArtifact: input.candidate.sourceArtifact,
     confidenceSummary: buildHypothesisConfidenceSummary({
@@ -154,6 +167,9 @@ function buildLeadLagEvidenceCard(input: {
     }),
     associatedProbabilityBucket: null,
     associatedTimeBucket: reference ? `lag-${reference.lag}` : null,
+    associatedMoneynessBucket: null,
+    associatedVolatilityBucket: null,
+    bucketGroup: "lead-lag",
     warnings: input.candidate.warnings,
     sourceArtifact: input.candidate.sourceArtifact,
     confidenceSummary: buildHypothesisConfidenceSummary({
@@ -205,6 +221,9 @@ function buildEvidenceCard(
     associatedRegime: null,
     associatedProbabilityBucket: null,
     associatedTimeBucket: null,
+    associatedMoneynessBucket: null,
+    associatedVolatilityBucket: null,
+    bucketGroup: null,
     warnings: candidate.warnings,
     sourceArtifact: candidate.sourceArtifact,
     confidenceSummary: buildHypothesisConfidenceSummary({

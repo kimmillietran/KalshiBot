@@ -62,6 +62,20 @@ function computeSignedCalibrationGap(
   return roundMetric(averageImpliedProbability - realizedFrequency);
 }
 
+function countUniqueTradingDays(
+  observations: readonly MispricingObservation[],
+): number | null {
+  const days = new Set<string>();
+
+  for (const observation of observations) {
+    if (observation.tradingDayUtc) {
+      days.add(observation.tradingDayUtc);
+    }
+  }
+
+  return days.size > 0 ? days.size : null;
+}
+
 export function computeMispricingBucketSummary(
   bucketId: string,
   bucketLabel: string,
@@ -80,6 +94,7 @@ export function computeMispricingBucketSummary(
     bucketId,
     bucketLabel,
     observations: observations.length,
+    uniqueTradingDays: countUniqueTradingDays(observations),
     averageImpliedProbability:
       averageImpliedProbability === null
         ? null
@@ -283,6 +298,144 @@ export function computeCoarseProbabilityRegimeBucketSummaries(
   return summaries;
 }
 
+export function computeCoarseProbabilityMoneynessBucketSummaries(
+  observations: readonly MispricingObservation[],
+): MispricingAtlasBucketSummary[] {
+  const probabilityDefinitions = buildCoarseProbabilityAxisDefinitions();
+  const summaries: MispricingAtlasBucketSummary[] = [];
+
+  for (const probabilityDefinition of probabilityDefinitions) {
+    for (const moneynessDefinition of MONEYNESS_BUCKET_DEFINITIONS) {
+      const inBucket = observations.filter((observation) => {
+        if (observation.moneynessPercent === null) {
+          return false;
+        }
+
+        return (
+          probabilityFitsBucket(observation.predictedProbability, probabilityDefinition)
+          && valueFitsBucket(observation.moneynessPercent, moneynessDefinition)
+        );
+      });
+
+      summaries.push(
+        computeMispricingBucketSummary(
+          `${probabilityDefinition.bucketId}-${moneynessDefinition.bucketId}`,
+          `${probabilityDefinition.bucketLabel} × ${moneynessDefinition.bucketLabel}`,
+          inBucket,
+        ),
+      );
+    }
+  }
+
+  return summaries;
+}
+
+export function computeMoneynessTimeBucketSummaries(
+  observations: readonly MispricingObservation[],
+): MispricingAtlasBucketSummary[] {
+  const summaries: MispricingAtlasBucketSummary[] = [];
+
+  for (const moneynessDefinition of MONEYNESS_BUCKET_DEFINITIONS) {
+    for (const timeDefinition of TIME_REMAINING_BUCKET_DEFINITIONS) {
+      const inBucket = observations.filter((observation) => {
+        if (
+          observation.moneynessPercent === null
+          || observation.timeRemainingMs === null
+        ) {
+          return false;
+        }
+
+        return (
+          valueFitsBucket(observation.moneynessPercent, moneynessDefinition)
+          && valueFitsBucket(observation.timeRemainingMs, timeDefinition)
+        );
+      });
+
+      summaries.push(
+        computeMispricingBucketSummary(
+          `${moneynessDefinition.bucketId}-${timeDefinition.bucketId}`,
+          `${moneynessDefinition.bucketLabel} × ${timeDefinition.bucketLabel}`,
+          inBucket,
+        ),
+      );
+    }
+  }
+
+  return summaries;
+}
+
+export function computeVolatilityMoneynessBucketSummaries(
+  observations: readonly MispricingObservation[],
+): MispricingAtlasBucketSummary[] {
+  const summaries: MispricingAtlasBucketSummary[] = [];
+
+  for (const volatilityDefinition of VOLATILITY_BUCKET_DEFINITIONS) {
+    for (const moneynessDefinition of MONEYNESS_BUCKET_DEFINITIONS) {
+      const inBucket = observations.filter((observation) => {
+        if (
+          observation.annualizedVolatility === null
+          || observation.moneynessPercent === null
+        ) {
+          return false;
+        }
+
+        return (
+          valueFitsBucket(observation.annualizedVolatility, volatilityDefinition)
+          && valueFitsBucket(observation.moneynessPercent, moneynessDefinition)
+        );
+      });
+
+      summaries.push(
+        computeMispricingBucketSummary(
+          `${volatilityDefinition.bucketId}-${moneynessDefinition.bucketId}`,
+          `${volatilityDefinition.bucketLabel} × ${moneynessDefinition.bucketLabel}`,
+          inBucket,
+        ),
+      );
+    }
+  }
+
+  return summaries;
+}
+
+export function computeVolatilityProbabilityTimeBucketSummaries(
+  observations: readonly MispricingObservation[],
+): MispricingAtlasBucketSummary[] {
+  const probabilityDefinitions = buildCoarseProbabilityAxisDefinitions();
+  const summaries: MispricingAtlasBucketSummary[] = [];
+
+  for (const volatilityDefinition of VOLATILITY_BUCKET_DEFINITIONS) {
+    for (const probabilityDefinition of probabilityDefinitions) {
+      for (const timeDefinition of COARSE_TIME_REMAINING_AXIS_DEFINITIONS) {
+        const inBucket = observations.filter((observation) => {
+          if (
+            observation.annualizedVolatility === null
+            || observation.timeRemainingMs === null
+          ) {
+            return false;
+          }
+
+          return (
+            valueFitsBucket(observation.annualizedVolatility, volatilityDefinition)
+            && probabilityFitsBucket(observation.predictedProbability, probabilityDefinition)
+            && valueFitsBucket(observation.timeRemainingMs, timeDefinition)
+          );
+        });
+
+        summaries.push(
+          computeMispricingBucketSummary(
+            `${volatilityDefinition.bucketId}-${probabilityDefinition.bucketId}-${timeDefinition.bucketId}`,
+            `${volatilityDefinition.bucketLabel} × ${probabilityDefinition.bucketLabel} × ${timeDefinition.bucketLabel}`,
+            inBucket,
+          ),
+        );
+      }
+    }
+  }
+
+  return summaries;
+}
+
 export function computeCoarseMispricingBucketSummaries(
   observations: readonly MispricingObservation[],
   regimeVolatilityByMarket?: RegimeVolatilityByMarketKey,
@@ -296,5 +449,9 @@ export function computeCoarseMispricingBucketSummaries(
           regimeVolatilityByMarket,
         )
       : [],
+    probabilityMoneyness: computeCoarseProbabilityMoneynessBucketSummaries(observations),
+    moneynessTime: computeMoneynessTimeBucketSummaries(observations),
+    volatilityMoneyness: computeVolatilityMoneynessBucketSummaries(observations),
+    volatilityProbabilityTime: computeVolatilityProbabilityTimeBucketSummaries(observations),
   };
 }

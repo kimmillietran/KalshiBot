@@ -1,6 +1,7 @@
 import {
   DEFAULT_HYPOTHESIS_CANDIDATES_OUTPUT_PATH,
   DEFAULT_HYPOTHESIS_MIN_SAMPLE_SIZE,
+  DEFAULT_MIN_UNIQUE_TRADING_DAYS,
   DEFAULT_LEAD_LAG_INPUT_PATH,
   DEFAULT_MISPRICING_ATLAS_INPUT_PATH,
   DEFAULT_REGIME_TAGS_INPUT_PATH,
@@ -133,6 +134,34 @@ export function parseMinSampleFromArgv(
   }
 
   return defaultMinSample;
+}
+
+export function parseMinUniqueTradingDaysFromArgv(
+  argv: readonly string[],
+  defaultMinUniqueDays = DEFAULT_MIN_UNIQUE_TRADING_DAYS,
+): number {
+  for (let index = 0; index < argv.length; index += 1) {
+    const token = argv[index];
+    if (token === "--min-unique-days") {
+      const next = argv[index + 1];
+      if (!next || next.startsWith("-")) {
+        throw new HypothesisCandidatesCommandError(
+          "Missing value for --min-unique-days <count>",
+        );
+      }
+
+      const parsed = Number(next);
+      if (!Number.isInteger(parsed) || parsed <= 0) {
+        throw new HypothesisCandidatesCommandError(
+          `Invalid min unique trading days: ${next}`,
+        );
+      }
+
+      return parsed;
+    }
+  }
+
+  return defaultMinUniqueDays;
 }
 
 export function parseArtifactPathsFromArgv(argv: readonly string[]): {

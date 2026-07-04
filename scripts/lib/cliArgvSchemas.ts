@@ -139,6 +139,7 @@ export const HYPOTHESIS_CANDIDATES_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--regime-tags" },
   { flag: "--leaderboard" },
   { flag: "--min-sample" },
+  { flag: "--min-unique-days" },
   { flag: "--research-input-root" },
 ];
 

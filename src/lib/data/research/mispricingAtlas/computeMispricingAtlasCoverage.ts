@@ -18,6 +18,10 @@ export function collectMispricingAtlasBucketGroups(input: {
     probabilityOnly: readonly MispricingAtlasBucketSummary[];
     probabilityTime: readonly MispricingAtlasBucketSummary[];
     probabilityRegime: readonly MispricingAtlasBucketSummary[];
+    probabilityMoneyness?: readonly MispricingAtlasBucketSummary[];
+    moneynessTime?: readonly MispricingAtlasBucketSummary[];
+    volatilityMoneyness?: readonly MispricingAtlasBucketSummary[];
+    volatilityProbabilityTime?: readonly MispricingAtlasBucketSummary[];
   };
 }): MispricingAtlasBucketGroup[] {
   const groups: MispricingAtlasBucketGroup[] = [
@@ -32,6 +36,19 @@ export function collectMispricingAtlasBucketGroups(input: {
       { dimension: "probabilityOnly", buckets: input.coarseBuckets.probabilityOnly },
       { dimension: "probabilityTime", buckets: input.coarseBuckets.probabilityTime },
       { dimension: "probabilityRegime", buckets: input.coarseBuckets.probabilityRegime },
+      {
+        dimension: "probabilityMoneyness",
+        buckets: input.coarseBuckets.probabilityMoneyness ?? [],
+      },
+      { dimension: "moneynessTime", buckets: input.coarseBuckets.moneynessTime ?? [] },
+      {
+        dimension: "volatilityMoneyness",
+        buckets: input.coarseBuckets.volatilityMoneyness ?? [],
+      },
+      {
+        dimension: "volatilityProbabilityTime",
+        buckets: input.coarseBuckets.volatilityProbabilityTime ?? [],
+      },
     );
   }
 

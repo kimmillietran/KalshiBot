@@ -4,6 +4,7 @@ import {
   DEFAULT_HYPOTHESIS_CANDIDATES_OUTPUT_PATH,
   DEFAULT_MISPRICING_ATLAS_INPUT_PATH,
   DEFAULT_REGIME_TAGS_INPUT_PATH,
+  HYPOTHESIS_ATLAS_GROUP_IDS,
 } from "@/lib/data/research/hypothesisCandidates/hypothesisCandidateTypes";
 import { DEFAULT_CALIBRATION_INPUT_DIR } from "@/lib/data/research/calibration/calibrationTypes";
 
@@ -25,16 +26,32 @@ const hypothesisCandidateSchema = z.object({
   killCriterion: z.string().trim().min(1),
   confidence: z.enum(["low", "medium", "high"]),
   warnings: z.array(z.string().trim().min(1)),
+  bucketMetadata: z
+    .object({
+      groupId: z.enum(HYPOTHESIS_ATLAS_GROUP_IDS),
+      bucketId: z.string().trim().min(1),
+      bucketLabel: z.string().trim().min(1),
+      observations: z.number().finite().int().nonnegative(),
+      uniqueTradingDays: z.number().finite().int().nonnegative().nullable(),
+      calibrationError: z.number().finite(),
+      calibrationDirection: z.enum(["over", "under"]),
+    })
+    .nullable()
+    .optional(),
 });
 
 const hypothesisCandidatesReportSchema = z.object({
   generatedAt: z.string().trim().min(1),
   outputPath: z.string().trim().min(1),
-  config: z.object({
-    minSampleSize: z.number().finite(),
-    minCalibrationError: z.number().finite(),
-    minLeadLagCorrelation: z.number().finite(),
-  }),
+  config: z
+    .object({
+      minSampleSize: z.number().finite(),
+      minCalibrationError: z.number().finite(),
+      minLeadLagCorrelation: z.number().finite(),
+      minUniqueTradingDays: z.number().finite().optional(),
+      minSampleSizeByGroup: z.record(z.string(), z.number().finite()).optional(),
+    })
+    .passthrough(),
   inputs: z.record(z.string(), z.unknown()),
   candidates: z.array(hypothesisCandidateSchema),
   summary: z.record(z.string(), z.unknown()),

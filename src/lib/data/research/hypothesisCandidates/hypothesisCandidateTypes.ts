@@ -24,6 +24,28 @@ export const DEFAULT_STRATEGY_LEADERBOARD_INPUT_PATH =
 export const DEFAULT_HYPOTHESIS_MIN_SAMPLE_SIZE = 30;
 export const DEFAULT_MIN_CALIBRATION_ERROR = 0.05;
 export const DEFAULT_MIN_LEAD_LAG_CORRELATION = 0.2;
+export const DEFAULT_MIN_UNIQUE_TRADING_DAYS = 2;
+export const DEFAULT_TRIPLE_AXIS_MIN_SAMPLE_SIZE = 45;
+
+export const HYPOTHESIS_ATLAS_GROUP_IDS = [
+  "probabilityOnly",
+  "probabilityTime",
+  "probabilityRegime",
+  "probabilityMoneyness",
+  "moneynessTime",
+  "volatilityMoneyness",
+  "volatilityProbabilityTime",
+  "volatility",
+  "timeRemaining",
+  "moneyness",
+  "probability",
+] as const;
+
+export type HypothesisAtlasGroupId = (typeof HYPOTHESIS_ATLAS_GROUP_IDS)[number];
+
+export type HypothesisBucketSampleThresholds = Partial<
+  Record<HypothesisAtlasGroupId, number>
+>;
 
 export const HypothesisCandidateErrorCode = {
   INVALID_JSON: "invalid-json",
@@ -45,6 +67,16 @@ export class HypothesisCandidateError extends Error {
 
 export type HypothesisConfidence = "low" | "medium" | "high";
 
+export type HypothesisBucketMetadata = {
+  groupId: HypothesisAtlasGroupId;
+  bucketId: string;
+  bucketLabel: string;
+  observations: number;
+  uniqueTradingDays: number | null;
+  calibrationError: number;
+  calibrationDirection: "over" | "under";
+};
+
 export type HypothesisCandidate = {
   candidateId: string;
   sourceArtifact: string;
@@ -59,6 +91,7 @@ export type HypothesisCandidate = {
   killCriterion: string;
   confidence: HypothesisConfidence;
   warnings: readonly string[];
+  bucketMetadata?: HypothesisBucketMetadata | null;
 };
 
 export type RegimeTagEntry = {
@@ -77,6 +110,8 @@ export type HypothesisCandidateConfig = {
   minSampleSize: number;
   minCalibrationError: number;
   minLeadLagCorrelation: number;
+  minUniqueTradingDays: number;
+  minSampleSizeByGroup: HypothesisBucketSampleThresholds;
 };
 
 export type HypothesisCandidateInputStatus = {

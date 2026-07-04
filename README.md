@@ -113,7 +113,7 @@ Stdout is compact JSON with `strategyId`, PnL, fill/rejection counts, replay ste
 
 ### Hypothesis evidence report
 
-`npm run research:hypotheses` writes `data/research-results/hypothesis-candidates.json` and a human-readable `data/reports/research-hypotheses.html` with per-hypothesis evidence cards (metrics, confidence summary, and example markets). Override paths with `--output` and `--html-output`.
+`npm run research:hypotheses` writes `data/research-results/hypothesis-candidates.json` and a human-readable `data/reports/research-hypotheses.html` with per-hypothesis evidence cards (metrics, confidence summary, and example markets). The generator scans expanded mispricing atlas bucket combinations (probability × time, probability × moneyness, moneyness × time, volatility × moneyness, and volatility × probability × time when sample sizes permit), emits separate over/under confidence hypotheses per qualifying cell, and filters single-day-dominated buckets via `--min-unique-days` (default 2). Override paths with `--output` and `--html-output`.
 
 ### Research artifact index
 

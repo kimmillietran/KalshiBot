@@ -1,4 +1,8 @@
-import type { HypothesisCandidatesReport } from "@/lib/data/research/hypothesisCandidates/hypothesisCandidateTypes";
+import type { HypothesisCandidateConfig, HypothesisCandidatesReport } from "@/lib/data/research/hypothesisCandidates/hypothesisCandidateTypes";
+import {
+  DEFAULT_MIN_UNIQUE_TRADING_DAYS,
+  createDefaultHypothesisBucketSampleThresholds,
+} from "@/lib/data/research/hypothesisCandidates";
 
 import {
   StrategySynthesisError,
@@ -100,6 +104,39 @@ function parseHypothesisCandidate(value: unknown): HypothesisCandidatesReport["c
   };
 }
 
+function resolveHypothesisCandidateConfig(
+  config: Record<string, unknown> | undefined,
+): HypothesisCandidateConfig {
+  const minSampleSizeByGroup = isRecord(config?.minSampleSizeByGroup)
+    ? Object.fromEntries(
+        Object.entries(config.minSampleSizeByGroup).filter(
+          (entry): entry is [string, number] => typeof entry[1] === "number",
+        ),
+      )
+    : {};
+
+  return {
+    minSampleSize:
+      typeof config?.minSampleSize === "number" ? config.minSampleSize : 30,
+    minCalibrationError:
+      typeof config?.minCalibrationError === "number"
+        ? config.minCalibrationError
+        : 0.05,
+    minLeadLagCorrelation:
+      typeof config?.minLeadLagCorrelation === "number"
+        ? config.minLeadLagCorrelation
+        : 0.2,
+    minUniqueTradingDays:
+      typeof config?.minUniqueTradingDays === "number"
+        ? config.minUniqueTradingDays
+        : DEFAULT_MIN_UNIQUE_TRADING_DAYS,
+    minSampleSizeByGroup: {
+      ...createDefaultHypothesisBucketSampleThresholds(),
+      ...minSampleSizeByGroup,
+    },
+  };
+}
+
 export function parseHypothesisCandidatesReport(json: string): HypothesisCandidatesReport {
   return parseJsonDocument(json, "hypothesis-candidates.json", (value) => {
     if (!isRecord(value)) {
@@ -126,26 +163,9 @@ export function parseHypothesisCandidatesReport(json: string): HypothesisCandida
     return {
       generatedAt: value.generatedAt,
       outputPath: value.outputPath,
-      config: isRecord(value.config)
-        ? {
-            minSampleSize:
-              typeof value.config.minSampleSize === "number"
-                ? value.config.minSampleSize
-                : 30,
-            minCalibrationError:
-              typeof value.config.minCalibrationError === "number"
-                ? value.config.minCalibrationError
-                : 0.05,
-            minLeadLagCorrelation:
-              typeof value.config.minLeadLagCorrelation === "number"
-                ? value.config.minLeadLagCorrelation
-                : 0.2,
-          }
-        : {
-            minSampleSize: 30,
-            minCalibrationError: 0.05,
-            minLeadLagCorrelation: 0.2,
-          },
+      config: resolveHypothesisCandidateConfig(
+        isRecord(value.config) ? value.config : undefined,
+      ),
       inputs: isRecord(value.inputs)
         ? {
             mispricingAtlasPath:

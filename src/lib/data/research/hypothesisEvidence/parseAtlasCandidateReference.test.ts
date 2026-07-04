@@ -25,6 +25,16 @@ describe("parseAtlasCandidateReference", () => {
       bucketId: "coarse-prob-2-coarse-time-early",
       direction: "under",
     });
+
+    expect(
+      parseAtlasCandidateReference(
+        "atlas-volatilityProbabilityTime-vol-high-coarse-prob-2-coarse-time-early-over",
+      ),
+    ).toEqual({
+      groupId: "volatilityProbabilityTime",
+      bucketId: "vol-high-coarse-prob-2-coarse-time-early",
+      direction: "over",
+    });
   });
 
   it("returns null for non-atlas ids", () => {
@@ -48,6 +58,8 @@ describe("parseBucketAxisLabels", () => {
       probabilityBucket: "coarse-prob-2",
       timeBucket: "coarse-time-late",
       regimeBucket: null,
+      moneynessBucket: null,
+      volatilityBucket: null,
     });
   });
 
@@ -58,6 +70,20 @@ describe("parseBucketAxisLabels", () => {
       probabilityBucket: "coarse-prob-1",
       timeBucket: null,
       regimeBucket: "coarse-regime-high",
+      moneynessBucket: null,
+      volatilityBucket: null,
+    });
+  });
+
+  it("extracts moneyness and volatility axes from expanded bucket ids", () => {
+    expect(
+      parseBucketAxisLabels("vol-high-coarse-prob-2-coarse-time-late"),
+    ).toEqual({
+      volatilityBucket: "vol-high",
+      probabilityBucket: "coarse-prob-2",
+      timeBucket: "coarse-time-late",
+      regimeBucket: null,
+      moneynessBucket: null,
     });
   });
 });

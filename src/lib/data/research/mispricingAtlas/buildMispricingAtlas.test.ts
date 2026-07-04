@@ -363,6 +363,10 @@ describe("buildMispricingAtlas", () => {
     expect(atlas.probabilityBuckets[0]?.bucketId).toBe("prob-0");
     expect(atlas.coarseBuckets?.probabilityOnly).toHaveLength(5);
     expect(atlas.coarseBuckets?.probabilityTime).toHaveLength(6);
+    expect(atlas.coarseBuckets?.probabilityMoneyness).toHaveLength(12);
+    expect(atlas.coarseBuckets?.moneynessTime).toHaveLength(16);
+    expect(atlas.coarseBuckets?.volatilityMoneyness).toHaveLength(12);
+    expect(atlas.coarseBuckets?.volatilityProbabilityTime).toHaveLength(18);
     expect(atlas.coverageDiagnostics?.totalAtlasObservations).toBe(3);
     expect(atlas.coverageDiagnostics?.nonEmptyBuckets).toBeGreaterThan(0);
     expect(serializeMispricingAtlas(atlas)).toBe(serializeMispricingAtlas(atlas));

@@ -10,9 +10,12 @@ import {
   DEFAULT_HYPOTHESIS_MIN_SAMPLE_SIZE,
   DEFAULT_MIN_CALIBRATION_ERROR,
   DEFAULT_MIN_LEAD_LAG_CORRELATION,
+  DEFAULT_MIN_UNIQUE_TRADING_DAYS,
 } from "./hypothesisCandidateTypes";
 import type {
   BuildHypothesisCandidatesInput,
+  HypothesisAtlasGroupId,
+  HypothesisBucketMetadata,
   HypothesisCandidate,
   HypothesisCandidateConfig,
   HypothesisCandidatesReport,
@@ -20,16 +23,13 @@ import type {
   HypothesisConfidence,
   ParsedHypothesisCandidateInputs,
 } from "./hypothesisCandidateTypes";
+import {
+  createDefaultHypothesisBucketSampleThresholds,
+  resolveMinSampleSizeForGroup,
+} from "./resolveHypothesisBucketThresholds";
 
 type AtlasBucketGroup = {
-  groupId:
-    | "probabilityOnly"
-    | "probabilityTime"
-    | "probabilityRegime"
-    | "volatility"
-    | "timeRemaining"
-    | "moneyness"
-    | "probability";
+  groupId: HypothesisAtlasGroupId;
   buckets: readonly MispricingAtlasBucketSummary[];
 };
 
@@ -42,6 +42,12 @@ function resolveConfig(
       partial?.minCalibrationError ?? DEFAULT_MIN_CALIBRATION_ERROR,
     minLeadLagCorrelation:
       partial?.minLeadLagCorrelation ?? DEFAULT_MIN_LEAD_LAG_CORRELATION,
+    minUniqueTradingDays:
+      partial?.minUniqueTradingDays ?? DEFAULT_MIN_UNIQUE_TRADING_DAYS,
+    minSampleSizeByGroup: {
+      ...createDefaultHypothesisBucketSampleThresholds(),
+      ...partial?.minSampleSizeByGroup,
+    },
   };
 }
 
@@ -135,10 +141,12 @@ function buildAtlasCandidate(options: {
   significanceWarnings: readonly string[];
   significancePresent: boolean;
   regimeContext: string | null;
+  direction: "over" | "under";
 }): HypothesisCandidate | null {
-  const { bucket, config } = options;
+  const { bucket, config, direction } = options;
+  const minSampleSize = resolveMinSampleSizeForGroup(options.groupId, config);
 
-  if (bucket.observations < config.minSampleSize) {
+  if (bucket.observations < minSampleSize) {
     return null;
   }
 
@@ -147,11 +155,15 @@ function buildAtlasCandidate(options: {
   }
 
   const calibrationErrorMagnitude = Math.abs(bucket.calibrationError);
-  if (calibrationErrorMagnitude < config.minCalibrationError) {
+  if (direction === "over") {
+    if (bucket.calibrationError < config.minCalibrationError) {
+      return null;
+    }
+  } else if (bucket.calibrationError > -config.minCalibrationError) {
     return null;
   }
 
-  const overconfident = bucket.calibrationError > 0;
+  const overconfident = direction === "over";
   const fadeSide = overconfident ? "NO" : "YES";
   const strategyFamily = overconfident ? "calibration-no-fade" : "calibration-yes-fade";
   const marketCondition = options.regimeContext
@@ -163,17 +175,47 @@ function buildAtlasCandidate(options: {
     : `${marketCondition} appears underconfident; test ${fadeSide} fade against implied probability.`;
 
   const warnings = [...options.significanceWarnings];
-  if (bucket.observations < config.minSampleSize * 2) {
+  if (bucket.observations < minSampleSize * 2) {
     warnings.push(
       `Atlas cell sample size (${bucket.observations}) is above the minimum but still modest; widen replay coverage before trading.`,
     );
   }
 
+  const uniqueTradingDays = bucket.uniqueTradingDays ?? null;
+  if (
+    uniqueTradingDays !== null
+    && uniqueTradingDays < config.minUniqueTradingDays
+  ) {
+    warnings.push(
+      `Filtered: bucket dominated by ${uniqueTradingDays} unique trading day${uniqueTradingDays === 1 ? "" : "s"} (< ${config.minUniqueTradingDays} required).`,
+    );
+    return null;
+  }
+
+  if (
+    uniqueTradingDays !== null
+    && uniqueTradingDays < config.minUniqueTradingDays * 2
+  ) {
+    warnings.push(
+      `Sample spans only ${uniqueTradingDays} unique trading days; confirm temporal diversity before synthesis.`,
+    );
+  }
+
+  const bucketMetadata: HypothesisBucketMetadata = {
+    groupId: options.groupId,
+    bucketId: bucket.bucketId,
+    bucketLabel: bucket.bucketLabel,
+    observations: bucket.observations,
+    uniqueTradingDays,
+    calibrationError: bucket.calibrationError,
+    calibrationDirection: direction,
+  };
+
   return {
-    candidateId: `atlas-${options.groupId}-${bucket.bucketId}-${overconfident ? "over" : "under"}`,
+    candidateId: `atlas-${options.groupId}-${bucket.bucketId}-${direction}`,
     sourceArtifact: "mispricing-atlas.json",
     hypothesis,
-    rationale: `Observed calibration error of ${formatPercent(bucket.calibrationError)} across ${bucket.observations} observations (implied ${formatPercent(bucket.averageImpliedProbability ?? 0)}, realized ${formatPercent(bucket.realizedFrequency ?? 0)}).`,
+    rationale: `Observed calibration error of ${formatPercent(bucket.calibrationError)} across ${bucket.observations} observations${uniqueTradingDays !== null ? ` spanning ${uniqueTradingDays} unique trading days` : ""} (implied ${formatPercent(bucket.averageImpliedProbability ?? 0)}, realized ${formatPercent(bucket.realizedFrequency ?? 0)}).`,
     marketCondition,
     suggestedStrategyFamily: strategyFamily,
     requiredData: [
@@ -188,15 +230,40 @@ function buildAtlasCandidate(options: {
       "Hold through settlement unless a research-only stop is defined; evaluate PnL at market resolution.",
     expectedFailureMode:
       "Calibration gap is descriptive only and may be noise, regime-specific, or already arbitraged away in live markets.",
-    killCriterion: `Stop pursuing if out-of-sample calibration error for ${bucket.bucketLabel} falls below ${formatPercent(config.minCalibrationError / 2)} across the next ${config.minSampleSize} qualifying observations.`,
+    killCriterion: `Stop pursuing if out-of-sample calibration error for ${bucket.bucketLabel} falls below ${formatPercent(config.minCalibrationError / 2)} across the next ${minSampleSize} qualifying observations.`,
     confidence: deriveAtlasConfidence({
       observations: bucket.observations,
       calibrationErrorMagnitude,
-      minSampleSize: config.minSampleSize,
+      minSampleSize,
       significancePresent: options.significancePresent,
     }),
     warnings,
+    bucketMetadata,
   };
+}
+
+function buildAtlasCandidatesForBucket(options: {
+  groupId: AtlasBucketGroup["groupId"];
+  bucket: MispricingAtlasBucketSummary;
+  config: HypothesisCandidateConfig;
+  significanceWarnings: readonly string[];
+  significancePresent: boolean;
+  regimeContext: string | null;
+}): HypothesisCandidate[] {
+  const candidates: HypothesisCandidate[] = [];
+
+  for (const direction of ["over", "under"] as const) {
+    const candidate = buildAtlasCandidate({
+      ...options,
+      direction,
+    });
+
+    if (candidate) {
+      candidates.push(candidate);
+    }
+  }
+
+  return candidates;
 }
 
 function collectAtlasBucketGroups(
@@ -217,6 +284,22 @@ function collectAtlasBucketGroups(
     {
       groupId: "probabilityRegime",
       buckets: normalizedAtlas.coarseBuckets.probabilityRegime,
+    },
+    {
+      groupId: "probabilityMoneyness",
+      buckets: normalizedAtlas.coarseBuckets.probabilityMoneyness,
+    },
+    {
+      groupId: "moneynessTime",
+      buckets: normalizedAtlas.coarseBuckets.moneynessTime,
+    },
+    {
+      groupId: "volatilityMoneyness",
+      buckets: normalizedAtlas.coarseBuckets.volatilityMoneyness,
+    },
+    {
+      groupId: "volatilityProbabilityTime",
+      buckets: normalizedAtlas.coarseBuckets.volatilityProbabilityTime,
     },
     { groupId: "probability", buckets: normalizedAtlas.probabilityBuckets },
     { groupId: "timeRemaining", buckets: normalizedAtlas.timeRemainingBuckets },
@@ -291,7 +374,7 @@ function buildAtlasCandidates(
 
   for (const group of collectAtlasBucketGroups(inputs.mispricingAtlas, config.minSampleSize)) {
     for (const bucket of group.buckets) {
-      const candidate = buildAtlasCandidate({
+      const bucketCandidates = buildAtlasCandidatesForBucket({
         groupId: group.groupId,
         bucket,
         config,
@@ -303,9 +386,7 @@ function buildAtlasCandidates(
             : null,
       });
 
-      if (candidate) {
-        candidates.push(candidate);
-      }
+      candidates.push(...bucketCandidates);
     }
   }
 
@@ -395,6 +476,7 @@ function buildLeadLagCandidate(
       significancePresent,
     }),
     warnings,
+    bucketMetadata: null,
   };
 }
 

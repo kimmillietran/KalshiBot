@@ -27,6 +27,7 @@ const mispricingBucketSchema = z.object({
   bucketId: z.string().trim().min(1),
   bucketLabel: z.string().trim().min(1),
   observations: z.number().finite().int().nonnegative(),
+  uniqueTradingDays: z.number().finite().int().nonnegative().nullable().optional(),
   averageImpliedProbability: z.number().finite().nullable(),
   realizedFrequency: z.number().finite().nullable(),
   calibrationError: z.number().finite().nullable(),
@@ -60,6 +61,10 @@ const mispricingAtlasCoarseBucketsSchema = z.object({
   probabilityOnly: z.array(mispricingBucketSchema),
   probabilityTime: z.array(mispricingBucketSchema),
   probabilityRegime: z.array(mispricingBucketSchema),
+  probabilityMoneyness: z.array(mispricingBucketSchema).optional(),
+  moneynessTime: z.array(mispricingBucketSchema).optional(),
+  volatilityMoneyness: z.array(mispricingBucketSchema).optional(),
+  volatilityProbabilityTime: z.array(mispricingBucketSchema).optional(),
 });
 
 const mispricingAtlasSchema = z.object({

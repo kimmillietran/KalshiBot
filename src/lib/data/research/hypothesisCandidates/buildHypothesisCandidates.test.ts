@@ -16,6 +16,22 @@ import type {
 } from "./hypothesisCandidateTypes";
 
 const GENERATED_AT = "2026-07-02T12:00:00.000Z";
+
+function defaultHypothesisConfig(overrides: Partial<{
+  minSampleSize: number;
+  minCalibrationError: number;
+  minLeadLagCorrelation: number;
+  minUniqueTradingDays: number;
+}> = {}) {
+  return {
+    minSampleSize: 30,
+    minCalibrationError: 0.05,
+    minLeadLagCorrelation: 0.2,
+    minUniqueTradingDays: 2,
+    minSampleSizeByGroup: {},
+    ...overrides,
+  };
+}
 const OUTPUT_PATH = "data/research-results/hypothesis-candidates.json";
 
 function createInputStatus(
@@ -74,12 +90,22 @@ function createMispricingAtlasWithBucket(options: {
   bucketLabel: string;
   observations: number;
   calibrationError: number;
-  group?: "volatility" | "timeRemaining" | "moneyness" | "probabilityOnly";
+  uniqueTradingDays?: number | null;
+  group?:
+    | "volatility"
+    | "timeRemaining"
+    | "moneyness"
+    | "probabilityOnly"
+    | "probabilityMoneyness"
+    | "moneynessTime"
+    | "volatilityMoneyness"
+    | "volatilityProbabilityTime";
 }) {
   const bucket = {
     bucketId: options.bucketId,
     bucketLabel: options.bucketLabel,
     observations: options.observations,
+    uniqueTradingDays: options.uniqueTradingDays ?? null,
     averageImpliedProbability: 0.7,
     realizedFrequency: 0.7 - options.calibrationError,
     calibrationError: options.calibrationError,
@@ -99,6 +125,26 @@ function createMispricingAtlasWithBucket(options: {
     atlas.coarseBuckets = {
       ...createEmptyMispricingAtlasCoarseBuckets(),
       probabilityOnly: [bucket],
+    };
+  } else if (options.group === "probabilityMoneyness") {
+    atlas.coarseBuckets = {
+      ...createEmptyMispricingAtlasCoarseBuckets(),
+      probabilityMoneyness: [bucket],
+    };
+  } else if (options.group === "moneynessTime") {
+    atlas.coarseBuckets = {
+      ...createEmptyMispricingAtlasCoarseBuckets(),
+      moneynessTime: [bucket],
+    };
+  } else if (options.group === "volatilityMoneyness") {
+    atlas.coarseBuckets = {
+      ...createEmptyMispricingAtlasCoarseBuckets(),
+      volatilityMoneyness: [bucket],
+    };
+  } else if (options.group === "volatilityProbabilityTime") {
+    atlas.coarseBuckets = {
+      ...createEmptyMispricingAtlasCoarseBuckets(),
+      volatilityProbabilityTime: [bucket],
     };
   } else {
     atlas.volatilityBuckets = [bucket];
@@ -165,14 +211,11 @@ describe("buildAtlasCandidate", () => {
         brierScore: 0.2,
         averageAbsoluteError: 0.3,
       },
-      config: {
-        minSampleSize: 30,
-        minCalibrationError: 0.05,
-        minLeadLagCorrelation: 0.2,
-      },
+      config: defaultHypothesisConfig(),
       significanceWarnings: [],
       significancePresent: false,
       regimeContext: null,
+      direction: "over",
     });
 
     expect(candidate).toBeNull();
@@ -191,21 +234,70 @@ describe("buildAtlasCandidate", () => {
         brierScore: 0.2,
         averageAbsoluteError: 0.15,
       },
-      config: {
-        minSampleSize: 30,
-        minCalibrationError: 0.05,
-        minLeadLagCorrelation: 0.2,
-      },
+      config: defaultHypothesisConfig(),
       significanceWarnings: [],
       significancePresent: false,
       regimeContext: "High-volatility regime",
+      direction: "over",
     });
 
     expect(candidate).not.toBeNull();
     expect(candidate?.candidateId).toBe("atlas-volatility-vol-high-over");
+    expect(candidate?.bucketMetadata?.calibrationDirection).toBe("over");
     expect(candidate?.suggestedStrategyFamily).toBe("calibration-no-fade");
     expect(candidate?.marketCondition).toContain("High (>=60% annualized)");
     expect(candidate?.killCriterion).toContain("Stop pursuing");
+  });
+
+  it("filters buckets dominated by a single trading day", () => {
+    const candidate = buildAtlasCandidate({
+      groupId: "probabilityMoneyness",
+      bucket: {
+        bucketId: "coarse-prob-1-moneyness-near-above",
+        bucketLabel: "[0.2, 0.4) × 0% to 2% from strike",
+        observations: 40,
+        uniqueTradingDays: 1,
+        averageImpliedProbability: 0.55,
+        realizedFrequency: 0.4,
+        calibrationError: 0.15,
+        brierScore: 0.2,
+        averageAbsoluteError: 0.15,
+      },
+      config: defaultHypothesisConfig({ minUniqueTradingDays: 2 }),
+      significanceWarnings: [],
+      significancePresent: false,
+      regimeContext: null,
+      direction: "over",
+    });
+
+    expect(candidate).toBeNull();
+  });
+
+  it("creates underconfidence candidates when calibration error is negative", () => {
+    const candidate = buildAtlasCandidate({
+      groupId: "moneynessTime",
+      bucket: {
+        bucketId: "moneyness-near-below-time-0-5m",
+        bucketLabel: "-2% to 0% from strike × 0-5 minutes remaining",
+        observations: 40,
+        uniqueTradingDays: 5,
+        averageImpliedProbability: 0.45,
+        realizedFrequency: 0.58,
+        calibrationError: -0.13,
+        brierScore: 0.2,
+        averageAbsoluteError: 0.13,
+      },
+      config: defaultHypothesisConfig(),
+      significanceWarnings: [],
+      significancePresent: false,
+      regimeContext: null,
+      direction: "under",
+    });
+
+    expect(candidate?.candidateId).toBe(
+      "atlas-moneynessTime-moneyness-near-below-time-0-5m-under",
+    );
+    expect(candidate?.hypothesis).toContain("underconfident");
   });
 });
 
@@ -232,6 +324,8 @@ describe("selectLeadLagSignal", () => {
         minSampleSize: 30,
         minCalibrationError: 0.05,
         minLeadLagCorrelation: 0.2,
+        minUniqueTradingDays: 2,
+        minSampleSizeByGroup: {},
       },
     );
 
@@ -445,6 +539,52 @@ describe("buildHypothesisCandidates", () => {
 
     expect(report.candidates).toHaveLength(1);
     expect(report.candidates[0]?.candidateId).toBe("atlas-probabilityOnly-coarse-prob-1-over");
+  });
+
+  it("creates candidates from expanded multi-axis bucket groups", () => {
+    const report = buildReport({
+      mispricingAtlas: createMispricingAtlasWithBucket({
+        bucketId: "coarse-prob-1-moneyness-near-above",
+        bucketLabel: "[0.2, 0.4) × 0% to 2% from strike",
+        observations: 50,
+        calibrationError: 0.11,
+        uniqueTradingDays: 4,
+        group: "probabilityMoneyness",
+      }),
+      leadLagAnalysis: null,
+      statisticalSignificance: null,
+      regimeTags: null,
+      strategyLeaderboard: null,
+    });
+
+    expect(report.candidates).toHaveLength(1);
+    expect(report.candidates[0]?.candidateId).toBe(
+      "atlas-probabilityMoneyness-coarse-prob-1-moneyness-near-above-over",
+    );
+    expect(report.candidates[0]?.bucketMetadata?.groupId).toBe("probabilityMoneyness");
+  });
+
+  it("requires a higher sample threshold for triple-axis buckets by default", () => {
+    const report = buildReport(
+      {
+        mispricingAtlas: createMispricingAtlasWithBucket({
+          bucketId: "vol-high-coarse-prob-1-coarse-time-early",
+          bucketLabel: "High × [0.2, 0.4) × < 15 minutes remaining",
+          observations: 40,
+          calibrationError: 0.12,
+          uniqueTradingDays: 5,
+          group: "volatilityProbabilityTime",
+        }),
+        leadLagAnalysis: null,
+        statisticalSignificance: null,
+        regimeTags: null,
+        strategyLeaderboard: null,
+      },
+      { minSampleSize: 30 },
+    );
+
+    expect(report.candidates).toHaveLength(0);
+    expect(report.summary.noCandidateReasons.length).toBeGreaterThan(0);
   });
 
   it("handles empty atlas artifacts gracefully", () => {

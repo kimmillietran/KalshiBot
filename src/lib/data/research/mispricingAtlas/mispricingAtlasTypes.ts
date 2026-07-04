@@ -36,12 +36,15 @@ export type MispricingObservation = {
   timeRemainingMs: number | null;
   moneynessPercent: number | null;
   annualizedVolatility: number | null;
+  /** UTC trading day (YYYY-MM-DD) when the observation timestamp is known. */
+  tradingDayUtc?: string | null;
 };
 
 export type MispricingAtlasBucketSummary = {
   bucketId: string;
   bucketLabel: string;
   observations: number;
+  uniqueTradingDays?: number | null;
   averageImpliedProbability: number | null;
   realizedFrequency: number | null;
   calibrationError: number | null;
@@ -85,6 +88,10 @@ export type MispricingAtlasCoarseBuckets = {
   probabilityOnly: readonly MispricingAtlasBucketSummary[];
   probabilityTime: readonly MispricingAtlasBucketSummary[];
   probabilityRegime: readonly MispricingAtlasBucketSummary[];
+  probabilityMoneyness: readonly MispricingAtlasBucketSummary[];
+  moneynessTime: readonly MispricingAtlasBucketSummary[];
+  volatilityMoneyness: readonly MispricingAtlasBucketSummary[];
+  volatilityProbabilityTime: readonly MispricingAtlasBucketSummary[];
 };
 
 export type MispricingAtlasWarning = {

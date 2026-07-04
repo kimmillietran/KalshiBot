@@ -28,6 +28,9 @@ function createReport(
         associatedRegime: "vol-high",
         associatedProbabilityBucket: null,
         associatedTimeBucket: null,
+        associatedMoneynessBucket: null,
+        associatedVolatilityBucket: "vol-high",
+        bucketGroup: "volatility",
         warnings: ["Treat as exploratory only."],
         sourceArtifact: "mispricing-atlas.json",
         confidenceSummary:
@@ -57,6 +60,9 @@ describe("serializeHypothesisEvidenceHtml", () => {
     expect(html).toContain("Example markets");
     expect(html).toContain("KXBTC15M-MARKET-A");
     expect(html).toContain("Confidence summary");
+    expect(html).toContain("Moneyness bucket");
+    expect(html).toContain("Volatility bucket");
+    expect(html).toContain("Bucket group");
     expect(html).toContain("Treat as exploratory only.");
   });
 
