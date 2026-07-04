@@ -52,6 +52,36 @@ describe("parseHistoricalCoveragePlanJson", () => {
     expect(plan.recommendations).toHaveLength(1);
     expect(plan.recommendations[0]?.estimatedMarketCount).toBe(8640);
   });
+
+  it("parses M9.1 coverage planner recommendations with month fields", () => {
+    const plan = parseHistoricalCoveragePlanJson(
+      "plan.json",
+      JSON.stringify({
+        generatedAt: GENERATED_AT,
+        outputPath: "plan.json",
+        snapshot: {
+          marketCount: 500,
+          uniqueTradingDays: 6,
+          monthCoverage: [{ month: "2026-04" }],
+          missingMonths: ["2026-01"],
+        },
+        recommendations: [
+          {
+            seriesTicker: "KXBTC15M",
+            startMonth: "2026-01",
+            endMonth: "2026-03",
+            priorityScore: 71,
+            rationale: "Fill Q1 gap",
+            expectedResearchBenefit: "Adds missing months",
+          },
+        ],
+      }),
+    );
+
+    expect(plan.recommendations[0]?.priority).toBe(71);
+    expect(plan.recommendations[0]?.windowStart).toBe("2026-01-01T00:00:00.000Z");
+    expect(plan.recommendations[0]?.reason).toBe("Fill Q1 gap");
+  });
 });
 
 describe("isWindowFullyCovered", () => {
