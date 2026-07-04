@@ -25,6 +25,12 @@ export type FullResearchStepStatus = "succeeded" | "failed" | "skipped";
 
 export type FullResearchRunStatus = "succeeded" | "failed" | "partial";
 
+export type FullResearchRunMode = "read-only" | "import-executing";
+
+export type FullResearchStepExecutionRisk =
+  | "import-execution"
+  | "networked-rebuild";
+
 export type FullResearchStepDefinition = {
   id: string;
   label: string;
@@ -37,11 +43,17 @@ export type FullResearchStepDefinition = {
   independent: boolean;
   /** When true, missing npm scripts skip instead of failing the core chain. */
   optional?: boolean;
+  /** Marks destructive or networked steps in summaries and dashboards. */
+  executionRisk?: FullResearchStepExecutionRisk;
 };
 
 export type FullResearchOrchestratorConfig = {
   continueOnError: boolean;
   summaryOutputPath: string;
+  executeExpansionImport: boolean;
+  expansionImportMaxMarkets: number | null;
+  expansionImportJobId: string | null;
+  expansionImportResume: boolean;
 };
 
 export type FullResearchStepResult = {
@@ -54,6 +66,7 @@ export type FullResearchStepResult = {
   durationMs: number;
   outputsGenerated: readonly string[];
   warnings: readonly string[];
+  executionRisk?: FullResearchStepExecutionRisk;
   errorMessage?: string;
   stdoutTail?: string;
   stderrTail?: string;
@@ -62,7 +75,9 @@ export type FullResearchStepResult = {
 export type FullResearchSummary = {
   generatedAt: string;
   outputPath: string;
-  config: FullResearchOrchestratorConfig;
+  config: FullResearchOrchestratorConfig & {
+    runMode: FullResearchRunMode;
+  };
   status: FullResearchRunStatus;
   steps: readonly FullResearchStepResult[];
 };

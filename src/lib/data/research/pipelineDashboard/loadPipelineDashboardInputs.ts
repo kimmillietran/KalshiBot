@@ -20,6 +20,19 @@ const pipelineSummarySchema = z.object({
   ),
 });
 
+const fullResearchSummarySchema = pipelineSummarySchema.extend({
+  config: z
+    .object({
+      runMode: z.enum(["read-only", "import-executing"]).optional(),
+      executeExpansionImport: z.boolean().optional(),
+    })
+    .optional(),
+});
+
+const generatedArtifactSchema = z.object({
+  generatedAt: z.string().trim().min(1),
+});
+
 const artifactIndexSchema = z.object({
   generatedAt: z.string().trim().min(1),
   outputPath: z.string().trim().min(1),
@@ -366,22 +379,62 @@ function readCoverageValidation(
   return document ? normalizeCoverageValidation(document) : null;
 }
 
+function readFullResearchSummary(
+  io: PipelineDashboardIo,
+  path: string,
+): {
+  summary: ParsedPipelineDashboardInputs["fullResearchSummary"];
+  orchestrator: ParsedPipelineDashboardInputs["fullResearchOrchestrator"];
+} {
+  if (!io.fileExists(path)) {
+    return { summary: null, orchestrator: null };
+  }
+
+  const parsed = parseJson(path, io.readFile(path));
+  const result = fullResearchSummarySchema.safeParse(parsed);
+  if (!result.success) {
+    throw new PipelineDashboardError(
+      `Invalid document schema in ${path}: ${result.error.message}`,
+    );
+  }
+
+  const { config, ...summaryFields } = result.data;
+
+  return {
+    summary: summaryFields,
+    orchestrator: config
+      ? {
+          runMode:
+            config.runMode
+            ?? (config.executeExpansionImport ? "import-executing" : "read-only"),
+          executeExpansionImport: config.executeExpansionImport ?? false,
+        }
+      : null,
+  };
+}
+
+function readGeneratedArtifact(
+  io: PipelineDashboardIo,
+  path: string,
+): { generatedAt: string } | null {
+  return tryReadDocument(io, path, generatedArtifactSchema);
+}
+
 /** Loads optional pipeline dashboard artifacts without mutating data. */
 export function loadPipelineDashboardInputs(
   io: PipelineDashboardIo,
   inputPaths: PipelineDashboardInputPaths,
 ): ParsedPipelineDashboardInputs {
+  const fullResearch = readFullResearchSummary(io, inputPaths.fullResearchSummaryPath);
+
   return {
     pipelineSummary: tryReadDocument(
       io,
       inputPaths.pipelineSummaryPath,
       pipelineSummarySchema,
     ),
-    fullResearchSummary: tryReadDocument(
-      io,
-      inputPaths.fullResearchSummaryPath,
-      pipelineSummarySchema,
-    ),
+    fullResearchSummary: fullResearch.summary,
+    fullResearchOrchestrator: fullResearch.orchestrator,
     artifactIndex: tryReadDocument(
       io,
       inputPaths.artifactIndexPath,
@@ -422,5 +475,10 @@ export function loadPipelineDashboardInputs(
       inputPaths.historicalExpansionConfigPath,
     ),
     coverageValidation: readCoverageValidation(io, inputPaths.coverageValidationPath),
+    historicalExpansionImportSummary: readGeneratedArtifact(
+      io,
+      inputPaths.historicalExpansionImportSummaryPath,
+    ),
+    expansionRebuildSummary: readGeneratedArtifact(io, inputPaths.expansionRebuildSummaryPath),
   };
 }

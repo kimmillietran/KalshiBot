@@ -43,6 +43,7 @@ export function buildCoveragePhaseSection(
   const plan = inputs.historicalCoveragePlan;
   const expansion = inputs.historicalExpansionConfig;
   const validation = inputs.coverageValidation;
+  const runMode = inputs.fullResearchOrchestrator?.runMode ?? "unknown";
 
   const recommendedImportWindowCount =
     plan?.summary.recommendedImportWindows?.length ?? null;
@@ -52,7 +53,9 @@ export function buildCoveragePhaseSection(
     ?? expansion?.jobs?.length
     ?? null;
 
-  const summaryParts: string[] = [];
+  const summaryParts: string[] = [
+    runMode === "import-executing" ? "Import execution enabled" : "Read-only orchestrator run",
+  ];
   if (plan) {
     summaryParts.push(
       `${plan.summary.currentMarketCount ?? "—"} markets`,
@@ -72,6 +75,7 @@ export function buildCoveragePhaseSection(
   }
 
   return {
+    runMode,
     plan: buildArtifactLine(
       "Coverage plan",
       inputPaths.historicalCoveragePlanPath,
@@ -86,6 +90,20 @@ export function buildCoveragePhaseSection(
       expansion?.generatedAt ?? null,
       resolveOrchestratorStepStatus(inputs, "generate-expansion-import-config"),
     ),
+    expansionImportExecution: buildArtifactLine(
+      "Expansion import execution",
+      inputPaths.historicalExpansionImportSummaryPath,
+      inputs.historicalExpansionImportSummary !== null,
+      inputs.historicalExpansionImportSummary?.generatedAt ?? null,
+      resolveOrchestratorStepStatus(inputs, "execute-expansion-import"),
+    ),
+    rebuildAfterExpansion: buildArtifactLine(
+      "Rebuild after expansion",
+      inputPaths.expansionRebuildSummaryPath,
+      inputs.expansionRebuildSummary !== null,
+      inputs.expansionRebuildSummary?.generatedAt ?? null,
+      resolveOrchestratorStepStatus(inputs, "rebuild-after-expansion"),
+    ),
     coverageValidation: buildArtifactLine(
       "Coverage validation",
       inputPaths.coverageValidationPath,
@@ -98,6 +116,6 @@ export function buildCoveragePhaseSection(
     missingMonthCount,
     recommendedImportWindowCount,
     expansionJobCount,
-    summary: summaryParts.length > 0 ? summaryParts.join(" · ") : null,
+    summary: summaryParts.join(" · "),
   };
 }

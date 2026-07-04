@@ -22,12 +22,20 @@ import {
 import {
   COVERAGE_VALIDATION_HTML_PATH,
   COVERAGE_VALIDATION_OUTPUT_PATH,
+  EXPANSION_REBUILD_SUMMARY_HTML_PATH,
+  EXPANSION_REBUILD_SUMMARY_PATH,
   HISTORICAL_COVERAGE_PLAN_HTML_PATH,
   HISTORICAL_COVERAGE_PLAN_OUTPUT_PATH,
   HISTORICAL_EXPANSION_CONFIG_HTML_PATH,
   HISTORICAL_EXPANSION_CONFIG_OUTPUT_PATH,
+  HISTORICAL_EXPANSION_IMPORT_SUMMARY_HTML_PATH,
+  HISTORICAL_EXPANSION_IMPORT_SUMMARY_PATH,
 } from "./coveragePhasePaths";
-import type { FullResearchStepDefinition } from "./fullResearchOrchestratorTypes";
+import { buildExecuteExpansionImportStepArgs } from "./buildExecuteExpansionImportStepArgs";
+import type {
+  FullResearchOrchestratorConfig,
+  FullResearchStepDefinition,
+} from "./fullResearchOrchestratorTypes";
 
 const MISPRICING_ATLAS_OUTPUT = "data/research-results/mispricing-atlas.json";
 const STRATEGY_SYNTHESIS_OUTPUT =
@@ -40,7 +48,44 @@ const HYPOTHESIS_LIFECYCLE_HTML = "data/reports/research-hypothesis-lifecycle.ht
 const RESEARCH_DASHBOARD_HTML = "data/reports/research-dashboard.html";
 
 /** Builds the ordered end-to-end research workflow step definitions. */
-export function buildFullResearchSteps(): readonly FullResearchStepDefinition[] {
+export function buildFullResearchSteps(
+  config: FullResearchOrchestratorConfig,
+): readonly FullResearchStepDefinition[] {
+  const importExecutionSteps: FullResearchStepDefinition[] = config.executeExpansionImport
+    ? [
+        {
+          id: "execute-expansion-import",
+          label: "Execute historical expansion import",
+          npmScript: "research:execute-expansion-import",
+          args: buildExecuteExpansionImportStepArgs(config),
+          expectedOutputs: [
+            HISTORICAL_EXPANSION_IMPORT_SUMMARY_PATH,
+            HISTORICAL_EXPANSION_IMPORT_SUMMARY_HTML_PATH,
+          ],
+          upstreamStepIds: ["generate-expansion-import-config"],
+          independent: false,
+          executionRisk: "import-execution",
+        },
+        {
+          id: "rebuild-after-expansion",
+          label: "Rebuild fixtures and research after expansion",
+          npmScript: "research:rebuild-after-expansion",
+          args: [],
+          expectedOutputs: [
+            EXPANSION_REBUILD_SUMMARY_PATH,
+            EXPANSION_REBUILD_SUMMARY_HTML_PATH,
+          ],
+          upstreamStepIds: ["execute-expansion-import"],
+          independent: false,
+          executionRisk: "networked-rebuild",
+        },
+      ]
+    : [];
+
+  const atlasUpstreamStepIds = config.executeExpansionImport
+    ? ["rebuild-after-expansion"]
+    : [];
+
   return [
     {
       id: "data-health",
@@ -75,13 +120,14 @@ export function buildFullResearchSteps(): readonly FullResearchStepDefinition[] 
       upstreamStepIds: ["coverage-plan"],
       independent: false,
     },
+    ...importExecutionSteps,
     {
       id: "mispricing-atlas",
       label: "Mispricing atlas",
       npmScript: "research:mispricing-atlas",
       args: [],
       expectedOutputs: [MISPRICING_ATLAS_OUTPUT],
-      upstreamStepIds: [],
+      upstreamStepIds: atlasUpstreamStepIds,
       independent: false,
     },
     {

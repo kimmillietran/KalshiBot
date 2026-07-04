@@ -2,8 +2,10 @@ import { DEFAULT_DATA_HEALTH_OUTPUT_PATH } from "@/lib/data/research/dataHealth/
 import { DEFAULT_FULL_RESEARCH_SUMMARY_PATH } from "@/lib/data/research/fullOrchestrator/fullResearchOrchestratorTypes";
 import {
   COVERAGE_VALIDATION_OUTPUT_PATH,
+  EXPANSION_REBUILD_SUMMARY_PATH,
   HISTORICAL_COVERAGE_PLAN_OUTPUT_PATH,
   HISTORICAL_EXPANSION_CONFIG_OUTPUT_PATH,
+  HISTORICAL_EXPANSION_IMPORT_SUMMARY_PATH,
 } from "@/lib/data/research/fullOrchestrator/coveragePhasePaths";
 import { DEFAULT_HYPOTHESIS_CANDIDATES_OUTPUT_PATH } from "@/lib/data/research/hypothesisCandidates/hypothesisCandidateTypes";
 import { DEFAULT_HYPOTHESIS_VALIDATION_OUTPUT_PATH } from "@/lib/data/research/hypothesisRobustness/hypothesisRobustnessTypes";
@@ -35,6 +37,8 @@ export type PipelineDashboardInputPaths = {
   historicalCoveragePlanPath: string;
   historicalExpansionConfigPath: string;
   coverageValidationPath: string;
+  historicalExpansionImportSummaryPath: string;
+  expansionRebuildSummaryPath: string;
 };
 
 export const DEFAULT_PIPELINE_DASHBOARD_INPUT_PATHS: PipelineDashboardInputPaths = {
@@ -51,6 +55,8 @@ export const DEFAULT_PIPELINE_DASHBOARD_INPUT_PATHS: PipelineDashboardInputPaths
   historicalCoveragePlanPath: HISTORICAL_COVERAGE_PLAN_OUTPUT_PATH,
   historicalExpansionConfigPath: HISTORICAL_EXPANSION_CONFIG_OUTPUT_PATH,
   coverageValidationPath: COVERAGE_VALIDATION_OUTPUT_PATH,
+  historicalExpansionImportSummaryPath: HISTORICAL_EXPANSION_IMPORT_SUMMARY_PATH,
+  expansionRebuildSummaryPath: EXPANSION_REBUILD_SUMMARY_PATH,
 };
 
 export type PipelineStatusSection = {
@@ -113,8 +119,11 @@ export type CoverageArtifactStatus = {
 };
 
 export type CoveragePhaseSection = {
+  runMode: "read-only" | "import-executing" | "unknown";
   plan: CoverageArtifactStatus;
   expansionConfig: CoverageArtifactStatus;
+  expansionImportExecution: CoverageArtifactStatus;
+  rebuildAfterExpansion: CoverageArtifactStatus;
   coverageValidation: CoverageArtifactStatus;
   currentMarketCount: number | null;
   uniqueTradingDays: number | null;
@@ -152,6 +161,11 @@ export type ParsedPipelineSummary = {
     status: "succeeded" | "failed" | "skipped";
     durationMs: number;
   }[];
+};
+
+export type ParsedFullResearchOrchestratorSummary = {
+  runMode: "read-only" | "import-executing" | "unknown";
+  executeExpansionImport: boolean;
 };
 
 export type ParsedArtifactIndex = {
@@ -276,6 +290,7 @@ export type ParsedCoverageValidation = {
 export type ParsedPipelineDashboardInputs = {
   pipelineSummary: ParsedPipelineSummary | null;
   fullResearchSummary: ParsedPipelineSummary | null;
+  fullResearchOrchestrator: ParsedFullResearchOrchestratorSummary | null;
   artifactIndex: ParsedArtifactIndex | null;
   hypothesisCandidates: ParsedHypothesisCandidates | null;
   hypothesisValidation: ParsedHypothesisValidation | null;
@@ -287,6 +302,8 @@ export type ParsedPipelineDashboardInputs = {
   historicalCoveragePlan: ParsedHistoricalCoveragePlan | null;
   historicalExpansionConfig: ParsedHistoricalExpansionConfig | null;
   coverageValidation: ParsedCoverageValidation | null;
+  historicalExpansionImportSummary: { generatedAt: string } | null;
+  expansionRebuildSummary: { generatedAt: string } | null;
 };
 
 export type PipelineDashboardIo = {

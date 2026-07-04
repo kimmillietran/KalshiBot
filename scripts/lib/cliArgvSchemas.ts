@@ -246,6 +246,10 @@ export const RESEARCH_PIPELINE_ARGV_SCHEMA: readonly NpmArgvField[] = [
 export const FULL_RESEARCH_ORCHESTRATOR_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--output" },
   { flag: "--continue-on-error" },
+  { flag: "--execute-expansion-import" },
+  { flag: "--max-markets" },
+  { flag: "--job-id" },
+  { flag: "--resume" },
 ];
 
 export const GENERATE_EXPANSION_IMPORT_CONFIG_ARGV_SCHEMA: readonly NpmArgvField[] = [
@@ -332,6 +336,8 @@ export const RESEARCH_PIPELINE_DASHBOARD_ARGV_SCHEMA: readonly NpmArgvField[] = 
   { flag: "--historical-coverage-plan" },
   { flag: "--historical-expansion-config" },
   { flag: "--coverage-validation" },
+  { flag: "--historical-expansion-import-summary" },
+  { flag: "--expansion-rebuild-summary" },
 ];
 
 export const RESEARCH_EXPERIMENT_ARGV_SCHEMA: readonly NpmArgvField[] = [
@@ -568,7 +574,7 @@ export function normalizeResearchPipelineDashboardArgv(argv: readonly string[]):
 export function normalizeFullResearchOrchestratorArgv(argv: readonly string[]): string[] {
   return mergeNpmBooleanFlags(
     normalizeNpmScriptArgv(argv, FULL_RESEARCH_ORCHESTRATOR_ARGV_SCHEMA),
-    ["--continue-on-error"],
+    ["--continue-on-error", "--execute-expansion-import", "--resume"],
   );
 }
 

@@ -21,9 +21,11 @@ import {
   parseArtifactIndexPathFromArgv,
   parseCoverageValidationPathFromArgv,
   parseDataHealthPathFromArgv,
+  parseExpansionRebuildSummaryPathFromArgv,
   parseFullResearchSummaryPathFromArgv,
   parseHistoricalCoveragePlanPathFromArgv,
   parseHistoricalExpansionConfigPathFromArgv,
+  parseHistoricalExpansionImportSummaryPathFromArgv,
   parseHarnessResultsPathFromArgv,
   parseHarnessSummaryFallbackPathFromArgv,
   parseHypothesisCandidatesPathFromArgv,
@@ -58,6 +60,9 @@ export function runResearchPipelineDashboardCommand(
       historicalCoveragePlanPath: parseHistoricalCoveragePlanPathFromArgv(normalizedArgv),
       historicalExpansionConfigPath: parseHistoricalExpansionConfigPathFromArgv(normalizedArgv),
       coverageValidationPath: parseCoverageValidationPathFromArgv(normalizedArgv),
+      historicalExpansionImportSummaryPath:
+        parseHistoricalExpansionImportSummaryPathFromArgv(normalizedArgv),
+      expansionRebuildSummaryPath: parseExpansionRebuildSummaryPathFromArgv(normalizedArgv),
     };
     const generatedAt = options?.generatedAt ?? new Date().toISOString();
 

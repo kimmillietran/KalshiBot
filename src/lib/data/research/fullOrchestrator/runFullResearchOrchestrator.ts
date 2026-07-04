@@ -9,6 +9,7 @@ import {
 import { buildFullResearchSteps } from "./buildFullResearchSteps";
 import type {
   FullResearchOrchestratorConfig,
+  FullResearchRunMode,
   FullResearchRunStatus,
   FullResearchStepDefinition,
   FullResearchStepResult,
@@ -102,6 +103,7 @@ function createSkippedStepResult(
     durationMs: 0,
     outputsGenerated: [],
     warnings: [],
+    executionRisk: step.executionRisk,
     errorMessage: reason,
   };
 }
@@ -119,6 +121,17 @@ function parseWarnings(stdout: string, stderr: string): readonly string[] {
   return warnings;
 }
 
+function deriveRunMode(config: FullResearchOrchestratorConfig): FullResearchRunMode {
+  return config.executeExpansionImport ? "import-executing" : "read-only";
+}
+
+function attachExecutionRisk(
+  step: FullResearchStepDefinition,
+  result: FullResearchStepResult,
+): FullResearchStepResult {
+  return step.executionRisk ? { ...result, executionRisk: step.executionRisk } : result;
+}
+
 /** Runs the end-to-end research workflow by invoking existing research CLIs. */
 export async function runFullResearchOrchestrator(
   input: RunFullResearchOrchestratorInput,
@@ -126,7 +139,7 @@ export async function runFullResearchOrchestrator(
   const log = input.log ?? (() => {});
   const outputIo = input.outputIo ?? { fileExists: () => false };
   const isNpmScriptRegistered = input.isNpmScriptRegistered ?? (() => true);
-  const steps = buildFullResearchSteps();
+  const steps = buildFullResearchSteps(input.config);
   const results: FullResearchStepResult[] = [];
   const resultsById = new Map<string, FullResearchStepResult>();
   let coreChainHalted = false;
@@ -173,7 +186,7 @@ export async function runFullResearchOrchestrator(
         continue;
       }
 
-      const failed: FullResearchStepResult = {
+      const failed = attachExecutionRisk(step, {
         stepId: step.id,
         label: step.label,
         npmScript: step.npmScript,
@@ -184,7 +197,7 @@ export async function runFullResearchOrchestrator(
         outputsGenerated: [],
         warnings: [],
         errorMessage: formatMissingScriptReason(step.npmScript),
-      };
+      });
       results.push(failed);
       resultsById.set(step.id, failed);
       log(failed.errorMessage ?? "Step failed");
@@ -209,7 +222,7 @@ export async function runFullResearchOrchestrator(
 
       if (outcome.exitCode === 0) {
         const outputsGenerated = collectOutputsGenerated(step, outputIo);
-        const succeeded: FullResearchStepResult = {
+        const succeeded = attachExecutionRisk(step, {
           stepId: step.id,
           label: step.label,
           npmScript: step.npmScript,
@@ -219,7 +232,7 @@ export async function runFullResearchOrchestrator(
           durationMs,
           outputsGenerated,
           warnings,
-        };
+        });
         results.push(succeeded);
         resultsById.set(step.id, succeeded);
         continue;
@@ -227,7 +240,7 @@ export async function runFullResearchOrchestrator(
 
       const stdoutTail = tailCapturedOutput(outcome.stdout);
       const stderrTail = tailCapturedOutput(outcome.stderr);
-      const failed: FullResearchStepResult = {
+      const failed = attachExecutionRisk(step, {
         stepId: step.id,
         label: step.label,
         npmScript: step.npmScript,
@@ -244,7 +257,7 @@ export async function runFullResearchOrchestrator(
         }),
         stdoutTail,
         stderrTail,
-      };
+      });
       results.push(failed);
       resultsById.set(step.id, failed);
 
@@ -253,7 +266,7 @@ export async function runFullResearchOrchestrator(
       }
     } catch (error) {
       const durationMs = Date.now() - startedAt;
-      const failed: FullResearchStepResult = {
+      const failed = attachExecutionRisk(step, {
         stepId: step.id,
         label: step.label,
         npmScript: step.npmScript,
@@ -264,7 +277,7 @@ export async function runFullResearchOrchestrator(
         outputsGenerated: [],
         warnings: [],
         errorMessage: formatPipelineSpawnError(error, command),
-      };
+      });
       results.push(failed);
       resultsById.set(step.id, failed);
 
@@ -278,7 +291,10 @@ export async function runFullResearchOrchestrator(
   const summary: FullResearchSummary = {
     generatedAt: input.generatedAt,
     outputPath: input.config.summaryOutputPath,
-    config: input.config,
+    config: {
+      ...input.config,
+      runMode: deriveRunMode(input.config),
+    },
     status,
     steps: results,
   };
@@ -299,6 +315,10 @@ export function createDefaultFullResearchOrchestratorConfig(
   return {
     continueOnError: false,
     summaryOutputPath: "data/research-results/full-research-summary.json",
+    executeExpansionImport: false,
+    expansionImportMaxMarkets: null,
+    expansionImportJobId: null,
+    expansionImportResume: false,
     ...overrides,
   };
 }

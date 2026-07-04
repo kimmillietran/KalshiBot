@@ -55,9 +55,11 @@ export function runFullResearchOrchestratorCommand(
           JSON.stringify({
             outputPath: config.summaryOutputPath,
             status: summary.status,
+            runMode: summary.config.runMode,
             stepCount: summary.steps.length,
             failedSteps: summary.steps.filter((step) => step.status === "failed").length,
             skippedSteps: summary.steps.filter((step) => step.status === "skipped").length,
+            importExecutionSteps: summary.steps.filter((step) => step.executionRisk).length,
           }),
         ),
       );

@@ -140,6 +140,22 @@ export function parseCoverageValidationPathFromArgv(argv: readonly string[]): st
   );
 }
 
+export function parseHistoricalExpansionImportSummaryPathFromArgv(argv: readonly string[]): string {
+  return readFlagValue(
+    argv,
+    "--historical-expansion-import-summary",
+    DEFAULT_PIPELINE_DASHBOARD_INPUT_PATHS.historicalExpansionImportSummaryPath,
+  );
+}
+
+export function parseExpansionRebuildSummaryPathFromArgv(argv: readonly string[]): string {
+  return readFlagValue(
+    argv,
+    "--expansion-rebuild-summary",
+    DEFAULT_PIPELINE_DASHBOARD_INPUT_PATHS.expansionRebuildSummaryPath,
+  );
+}
+
 export function formatStdoutOutput(payload: string): string {
   return `${payload}\n`;
 }

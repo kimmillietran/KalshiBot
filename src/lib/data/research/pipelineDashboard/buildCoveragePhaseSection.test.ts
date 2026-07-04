@@ -9,32 +9,24 @@ import {
 const GENERATED_AT = "2026-07-03T21:00:00.000Z";
 
 describe("buildCoveragePhaseSection", () => {
-  it("surfaces coverage orchestrator step status and artifact metrics", () => {
+  it("surfaces read-only orchestrator mode by default", () => {
     const inputs: ParsedPipelineDashboardInputs = {
       pipelineSummary: null,
       fullResearchSummary: {
         generatedAt: GENERATED_AT,
-        status: "partial",
+        status: "succeeded",
         steps: [
           {
             stepId: "coverage-plan",
             label: "Historical coverage plan",
-            status: "failed",
+            status: "succeeded",
             durationMs: 10,
           },
-          {
-            stepId: "generate-expansion-import-config",
-            label: "Historical expansion import config",
-            status: "skipped",
-            durationMs: 0,
-          },
-          {
-            stepId: "coverage-validation",
-            label: "Coverage-aware validation",
-            status: "skipped",
-            durationMs: 0,
-          },
         ],
+      },
+      fullResearchOrchestrator: {
+        runMode: "read-only",
+        executeExpansionImport: false,
       },
       artifactIndex: null,
       hypothesisCandidates: null,
@@ -44,17 +36,11 @@ describe("buildCoveragePhaseSection", () => {
       strategyLeaderboard: null,
       dataHealth: null,
       mispricingAtlas: null,
-      historicalCoveragePlan: {
-        generatedAt: GENERATED_AT,
-        summary: {
-          currentMarketCount: 499,
-          uniqueTradingDays: 2,
-          missingMonths: ["2026-03", "2026-06"],
-          recommendedImportWindows: [{}, {}],
-        },
-      },
+      historicalCoveragePlan: null,
       historicalExpansionConfig: null,
       coverageValidation: null,
+      historicalExpansionImportSummary: null,
+      expansionRebuildSummary: null,
     };
 
     const section = buildCoveragePhaseSection({
@@ -64,11 +50,60 @@ describe("buildCoveragePhaseSection", () => {
       inputs,
     });
 
-    expect(section.plan.orchestratorStepStatus).toBe("failed");
-    expect(section.expansionConfig.orchestratorStepStatus).toBe("skipped");
-    expect(section.currentMarketCount).toBe(499);
-    expect(section.missingMonthCount).toBe(2);
-    expect(section.recommendedImportWindowCount).toBe(2);
-    expect(section.summary).toContain("499 markets");
+    expect(section.runMode).toBe("read-only");
+    expect(section.summary).toContain("Read-only orchestrator run");
+  });
+
+  it("surfaces import execution mode and step statuses", () => {
+    const inputs: ParsedPipelineDashboardInputs = {
+      pipelineSummary: null,
+      fullResearchSummary: {
+        generatedAt: GENERATED_AT,
+        status: "partial",
+        steps: [
+          {
+            stepId: "execute-expansion-import",
+            label: "Execute historical expansion import",
+            status: "succeeded",
+            durationMs: 100,
+          },
+          {
+            stepId: "rebuild-after-expansion",
+            label: "Rebuild fixtures and research after expansion",
+            status: "failed",
+            durationMs: 50,
+          },
+        ],
+      },
+      fullResearchOrchestrator: {
+        runMode: "import-executing",
+        executeExpansionImport: true,
+      },
+      artifactIndex: null,
+      hypothesisCandidates: null,
+      hypothesisValidation: null,
+      strategySynthesis: null,
+      harnessResults: null,
+      strategyLeaderboard: null,
+      dataHealth: null,
+      mispricingAtlas: null,
+      historicalCoveragePlan: null,
+      historicalExpansionConfig: null,
+      coverageValidation: null,
+      historicalExpansionImportSummary: { generatedAt: GENERATED_AT },
+      expansionRebuildSummary: null,
+    };
+
+    const section = buildCoveragePhaseSection({
+      generatedAt: GENERATED_AT,
+      outputPath: "data/reports/research-dashboard.html",
+      inputPaths: DEFAULT_PIPELINE_DASHBOARD_INPUT_PATHS,
+      inputs,
+    });
+
+    expect(section.runMode).toBe("import-executing");
+    expect(section.expansionImportExecution.orchestratorStepStatus).toBe("succeeded");
+    expect(section.rebuildAfterExpansion.orchestratorStepStatus).toBe("failed");
+    expect(section.summary).toContain("Import execution enabled");
   });
 });

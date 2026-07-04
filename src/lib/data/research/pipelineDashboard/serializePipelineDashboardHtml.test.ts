@@ -50,6 +50,7 @@ const REPORT: PipelineDashboardReport = {
     dataHealthPresent: false,
   },
   coveragePhase: {
+    runMode: "unknown",
     plan: {
       label: "Coverage plan",
       path: "data/research-results/historical-coverage-plan.json",
@@ -60,6 +61,20 @@ const REPORT: PipelineDashboardReport = {
     expansionConfig: {
       label: "Expansion import config",
       path: "data/import-configs/historical-expansion-config.json",
+      present: false,
+      generatedAt: null,
+      orchestratorStepStatus: null,
+    },
+    expansionImportExecution: {
+      label: "Expansion import execution",
+      path: "data/research-results/historical-expansion-import-summary.json",
+      present: false,
+      generatedAt: null,
+      orchestratorStepStatus: null,
+    },
+    rebuildAfterExpansion: {
+      label: "Rebuild after expansion",
+      path: "data/research-results/expansion-rebuild-summary.json",
       present: false,
       generatedAt: null,
       orchestratorStepStatus: null,

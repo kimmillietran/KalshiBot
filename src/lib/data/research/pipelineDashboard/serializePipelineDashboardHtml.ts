@@ -326,10 +326,13 @@ function renderCoverageArtifact(entry: CoveragePhaseSection["plan"]): string {
 
 function renderCoveragePhase(report: PipelineDashboardReport): string {
   const section = report.coveragePhase;
+  const runModeTone =
+    section.runMode === "import-executing" ? theme.warning : theme.bullish;
 
   return `
     <section class="panel">
       <h2>Coverage phase</h2>
+      <p class="muted">Run mode: <span style="color:${runModeTone}">${escapeHtml(section.runMode)}</span></p>
       <p class="muted">${escapeHtml(section.summary ?? "Coverage planning artifacts not generated yet.")}</p>
       <div class="stat-grid">
         ${renderStat("Markets", escapeHtml(section.currentMarketCount?.toString() ?? "—"))}
@@ -341,6 +344,8 @@ function renderCoveragePhase(report: PipelineDashboardReport): string {
       <div class="coverage-grid">
         ${renderCoverageArtifact(section.plan)}
         ${renderCoverageArtifact(section.expansionConfig)}
+        ${renderCoverageArtifact(section.expansionImportExecution)}
+        ${renderCoverageArtifact(section.rebuildAfterExpansion)}
         ${renderCoverageArtifact(section.coverageValidation)}
       </div>
     </section>`;

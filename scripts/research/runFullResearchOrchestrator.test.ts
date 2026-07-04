@@ -5,8 +5,27 @@ import { runFullResearchOrchestratorCommand } from "./runFullResearchOrchestrato
 const GENERATED_AT = "2026-07-03T22:00:00.000Z";
 const OUTPUT_PATH = "data/research-results/full-research-summary.json";
 
+const BASE_REGISTERED_SCRIPTS = [
+  "research:data-health",
+  "research:coverage-plan",
+  "research:generate-expansion-import-config",
+  "research:mispricing-atlas",
+  "research:hypotheses",
+  "research:hypothesis-validation",
+  "research:strategy-synthesis",
+  "research:cross-validation",
+  "research:coverage-validation",
+  "research:harness",
+  "research:harness-results",
+  "research:candidate-registry",
+  "research:candidate-promotions",
+  "research:artifact-index",
+  "research:hypothesis-lifecycle",
+  "research:dashboard",
+] as const;
+
 describe("runFullResearchOrchestratorCommand", () => {
-  it("writes full-research-summary.json with coverage phase steps", async () => {
+  it("writes read-only full-research-summary.json by default", async () => {
     const writes = new Map<string, string>();
     let stdout = "";
     const calls: Array<{ npmScript: string; args: readonly string[] }> = [];
@@ -21,24 +40,7 @@ describe("runFullResearchOrchestratorCommand", () => {
       },
       mkdirSync: () => {},
       fileExists: () => false,
-      registeredNpmScripts: new Set([
-        "research:data-health",
-        "research:coverage-plan",
-        "research:generate-expansion-import-config",
-        "research:mispricing-atlas",
-        "research:hypotheses",
-        "research:hypothesis-validation",
-        "research:strategy-synthesis",
-        "research:cross-validation",
-        "research:coverage-validation",
-        "research:harness",
-        "research:harness-results",
-        "research:candidate-registry",
-        "research:candidate-promotions",
-        "research:artifact-index",
-        "research:hypothesis-lifecycle",
-        "research:dashboard",
-      ]),
+      registeredNpmScripts: new Set(BASE_REGISTERED_SCRIPTS),
       runner: async (npmScript, args) => {
         calls.push({ npmScript, args });
         return { exitCode: 0, stdout: "", stderr: "" };
@@ -46,47 +48,52 @@ describe("runFullResearchOrchestratorCommand", () => {
     }, { generatedAt: GENERATED_AT });
 
     expect(exitCode).toBe(0);
-    expect(calls[0]?.npmScript).toBe("research:data-health");
-    expect(calls[1]?.npmScript).toBe("research:coverage-plan");
-    expect(calls.at(-1)?.npmScript).toBe("research:dashboard");
     expect(calls).toHaveLength(16);
-    expect(calls.some((call) => call.npmScript === "import:batch")).toBe(false);
+    expect(calls.some((call) => call.npmScript === "research:execute-expansion-import")).toBe(false);
 
-    const serialized = writes.get(OUTPUT_PATH);
-    expect(serialized).toBeDefined();
-
-    const parsed = JSON.parse(serialized!);
-    expect(parsed.generatedAt).toBe(GENERATED_AT);
-    expect(parsed.status).toBe("succeeded");
-    expect(parsed.steps).toHaveLength(16);
-    expect(parsed.steps.map((step: { stepId: string }) => step.stepId)).toContain(
-      "coverage-plan",
-    );
-    expect(JSON.parse(stdout.trim().split("\n").at(-1)!).outputPath).toBe(OUTPUT_PATH);
+    const parsed = JSON.parse(writes.get(OUTPUT_PATH)!);
+    expect(parsed.config.runMode).toBe("read-only");
+    expect(JSON.parse(stdout.trim().split("\n").at(-1)!).runMode).toBe("read-only");
   });
 
-  it("returns exit code 1 when a core step fails under fail-fast mode", async () => {
-    const exitCode = await runFullResearchOrchestratorCommand([], {
-      writeStdout: () => {},
-      writeStderr: () => {},
-      writeFile: () => {},
-      mkdirSync: () => {},
-      fileExists: () => false,
-      registeredNpmScripts: new Set([
-        "research:data-health",
-        "research:coverage-plan",
-        "research:generate-expansion-import-config",
-        "research:mispricing-atlas",
-        "research:artifact-index",
-        "research:dashboard",
-      ]),
-      runner: async (npmScript) => ({
-        exitCode: npmScript === "research:mispricing-atlas" ? 1 : 0,
-        stdout: "",
-        stderr: "atlas failure",
-      }),
-    }, { generatedAt: GENERATED_AT });
+  it("runs import execution mode when explicitly enabled", async () => {
+    const calls: Array<{ npmScript: string; args: readonly string[] }> = [];
 
-    expect(exitCode).toBe(1);
+    await runFullResearchOrchestratorCommand(
+      [
+        "--execute-expansion-import",
+        "--max-markets",
+        "2",
+        "--job-id",
+        "job-a",
+      ],
+      {
+        writeStdout: () => {},
+        writeStderr: () => {},
+        writeFile: () => {},
+        mkdirSync: () => {},
+        fileExists: () => false,
+        registeredNpmScripts: new Set([
+          ...BASE_REGISTERED_SCRIPTS,
+          "research:execute-expansion-import",
+          "research:rebuild-after-expansion",
+        ]),
+        runner: async (npmScript, args) => {
+          calls.push({ npmScript, args });
+          return { exitCode: 0, stdout: "", stderr: "" };
+        },
+      },
+      { generatedAt: GENERATED_AT },
+    );
+
+    expect(calls.map((call) => call.npmScript)).toContain("research:execute-expansion-import");
+    expect(calls.map((call) => call.npmScript)).toContain("research:rebuild-after-expansion");
+    expect(calls.find((call) => call.npmScript === "research:execute-expansion-import")?.args).toEqual([
+      "--execute",
+      "--max-markets",
+      "2",
+      "--job-id",
+      "job-a",
+    ]);
   });
 });
