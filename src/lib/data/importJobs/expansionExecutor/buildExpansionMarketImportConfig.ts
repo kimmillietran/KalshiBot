@@ -9,6 +9,11 @@ import type { HistoricalBronzeImportConfig } from "@/lib/data/importJobs/config"
 import { deriveImportWindowFromDiscoveredMarket } from "@/lib/data/importJobs/batchConfig/deriveImportWindow";
 import type { HistoricalExpansionImportJob } from "@/lib/data/importJobs/expansionConfig";
 import {
+  discoveredMarketToKalshiListWireShape,
+  KALSHI_DISCOVERY_LIST_MARKET_METADATA_KEY,
+  KALSHI_DISCOVERY_LIST_MARKET_PROVENANCE_METADATA_KEY,
+} from "@/lib/data/importers/kalshi/kalshiMarketSchemaReconciliation";
+import {
   BATCH_IMPORT_CONFIG_FILENAME,
   BATCH_IMPORT_RESULT_FILENAME,
 } from "@/lib/data/importJobs/batchImport/batchImportTypes";
@@ -32,7 +37,20 @@ function assertSafePathSegment(value: string, label: string): string {
 /** Builds per-market import config artifacts from an expansion job and discovered market. */
 export function buildExpansionMarketImportArtifacts(
   job: HistoricalExpansionImportJob,
-  market: Pick<DiscoveredMarket, "marketTicker" | "seriesTicker" | "openTime" | "closeTime">,
+  market: Pick<
+    DiscoveredMarket,
+    | "marketTicker"
+    | "seriesTicker"
+    | "eventTicker"
+    | "status"
+    | "openTime"
+    | "closeTime"
+    | "settlementTime"
+    | "expirationValue"
+    | "title"
+    | "subtitle"
+    | "provenance"
+  >,
   paths: {
     importConfigsDir: string;
     importsDir: string;
@@ -52,6 +70,11 @@ export function buildExpansionMarketImportArtifacts(
     kalshi: job.importDefaults.kalshi,
     btc: job.importDefaults.btc,
     output: job.importDefaults.output,
+    metadata: {
+      [KALSHI_DISCOVERY_LIST_MARKET_METADATA_KEY]:
+        discoveredMarketToKalshiListWireShape(market),
+      [KALSHI_DISCOVERY_LIST_MARKET_PROVENANCE_METADATA_KEY]: market.provenance,
+    },
   };
 
   const config = buildHistoricalBronzeImportConfig(configInput);

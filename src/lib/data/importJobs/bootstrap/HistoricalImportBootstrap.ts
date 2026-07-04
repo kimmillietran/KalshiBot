@@ -16,6 +16,7 @@ import {
   KalshiHistoricalHttpAdapter,
   KalshiHistoricalImporter,
 } from "@/lib/data/importers/kalshi";
+import { readKalshiDiscoveryListMarketFromMetadata } from "@/lib/data/importers/kalshi/kalshiMarketSchemaReconciliation";
 
 import {
   HistoricalBronzeImportBtcInterval,
@@ -147,6 +148,7 @@ async function createKalshiProviderFromConfig(
     endTime: config.endTime,
     collectionTime: config.collectionTime,
     observedAt: config.observedAt,
+    listMarketWire: readKalshiDiscoveryListMarketFromMetadata(config.metadata),
   });
 }
 

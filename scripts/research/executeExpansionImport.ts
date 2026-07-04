@@ -77,8 +77,15 @@ function createProductionDeps(fetchImpl?: HistoricalImportFetchLike): ExpansionE
       return result.markets.map((market) => ({
         marketTicker: market.marketTicker,
         seriesTicker: market.seriesTicker,
+        eventTicker: market.eventTicker,
+        status: market.status,
         openTime: market.openTime,
         closeTime: market.closeTime,
+        settlementTime: market.settlementTime,
+        expirationValue: market.expirationValue,
+        title: market.title,
+        subtitle: market.subtitle,
+        provenance: market.provenance,
       }));
     },
     runImport: (config: Parameters<typeof runHistoricalImportFromConfig>[0]["config"]) =>

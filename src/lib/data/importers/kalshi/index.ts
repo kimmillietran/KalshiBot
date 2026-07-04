@@ -15,6 +15,21 @@ export {
   type FetchLike,
   type KalshiHistoricalHttpAdapterOptions,
 } from "./KalshiHistoricalHttpAdapter";
+export type {
+  KalshiHistoricalMarketFetchOptions,
+} from "./HistoricalImporter";
+export {
+  discoveredMarketToKalshiListWireShape,
+  KALSHI_DISCOVERY_LIST_MARKET_METADATA_KEY,
+  KALSHI_DISCOVERY_LIST_MARKET_PROVENANCE_METADATA_KEY,
+  KALSHI_SCHEMA_RECONCILIATION_METADATA_KEY,
+  mergeKalshiMarketWireFromListDetail,
+  readKalshiDiscoveryListMarketFromMetadata,
+  readKalshiDiscoveryListMarketProvenanceFromMetadata,
+  buildKalshiSchemaReconciliationMetadata,
+  type KalshiMarketSchemaReconciliationResult,
+  type KalshiSchemaReconciliationMetadata,
+} from "./kalshiMarketSchemaReconciliation";
 export {
   buildKalshiMarketDebugArtifactPath,
   buildKalshiMarketParseDiagnostic,

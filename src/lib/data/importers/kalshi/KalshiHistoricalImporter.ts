@@ -13,6 +13,8 @@ import {
   KalshiMarketImportCompatibilityError,
   saveKalshiMarketDebugArtifact,
 } from "./kalshiMarketImportDiagnostics";
+import { mergeKalshiMarketWireFromListDetail } from "./kalshiMarketSchemaReconciliation";
+import type { KalshiHistoricalMarketFetchOptions } from "./HistoricalImporter";
 import type { HistoricalImporter } from "./HistoricalImporter";
 import type {
   HistoricalCandlestickInterval,
@@ -372,7 +374,10 @@ export class KalshiHistoricalImporter implements HistoricalImporter {
     };
   }
 
-  async getHistoricalMarket(ticker: string): Promise<HistoricalMarketRecord | null> {
+  async getHistoricalMarket(
+    ticker: string,
+    options?: KalshiHistoricalMarketFetchOptions,
+  ): Promise<HistoricalMarketRecord | null> {
     const requestPath = buildHistoricalMarketPath(ticker);
 
     try {
@@ -390,19 +395,30 @@ export class KalshiHistoricalImporter implements HistoricalImporter {
         "market",
         headers,
       );
-      const missingRequiredFields = findMissingKalshiMarketWireFields(response.market);
+      const reconciliation = mergeKalshiMarketWireFromListDetail({
+        listMarket: options?.listMarketWire,
+        detailMarket: response.market,
+      });
+      const missingRequiredFields = findMissingKalshiMarketWireFields(
+        reconciliation.mergedWire,
+      );
       if (missingRequiredFields.length > 0) {
         this.throwMarketImportCompatibilityError({
           ticker,
           endpoint: requestPath,
           requestContext: `GET ${requestPath}`,
           httpStatus: status,
-          body,
+          body: {
+            market: reconciliation.mergedWire,
+            detailMarket: response.market,
+            listMarket: options?.listMarketWire ?? null,
+            mergedFields: reconciliation.mergedFields,
+          },
           missingRequiredFields,
         });
       }
 
-      return parseMarketRecord(response.market);
+      return parseMarketRecord(reconciliation.mergedWire as KalshiMarketWire);
     } catch (error) {
       if (error instanceof KalshiHistoricalImporterError && error.status === 404) {
         return null;
@@ -412,10 +428,25 @@ export class KalshiHistoricalImporter implements HistoricalImporter {
     }
   }
 
-  async getSettlementResult(ticker: string): Promise<HistoricalSettlementResult> {
+  async getSettlementResult(
+    ticker: string,
+    options?: KalshiHistoricalMarketFetchOptions,
+  ): Promise<HistoricalSettlementResult> {
     const requestPath = buildHistoricalMarketPath(ticker);
-    const body = await this.request<KalshiMarketResponseWire>(requestPath, "market");
-    const market = parseMarketRecord(body.market);
+    const { status, body, headers } = await this.httpClient.get(
+      `${this.baseUrl}${requestPath}`,
+    );
+    const response = assertKalshiResponse<KalshiMarketResponseWire>(
+      body,
+      status,
+      "market",
+      headers,
+    );
+    const reconciliation = mergeKalshiMarketWireFromListDetail({
+      listMarket: options?.listMarketWire,
+      detailMarket: response.market,
+    });
+    const market = parseMarketRecord(reconciliation.mergedWire as KalshiMarketWire);
     const fetchedAt = this.now().toISOString();
 
     return {

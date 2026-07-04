@@ -107,13 +107,14 @@ function createSyncImporter(
 export async function prefetchKalshiHistoricalBronzeImporter(
   input: PrefetchKalshiHistoricalBronzeImporterInput,
 ): Promise<KalshiHistoricalBronzeImporter> {
-  const { importer, marketTicker, startTime, endTime } = input;
+  const { importer, marketTicker, startTime, endTime, listMarketWire } = input;
   const dateRange = toHistoricalDateRange(startTime, endTime);
+  const fetchOptions = listMarketWire ? { listMarketWire } : undefined;
 
   const [market, candlesticks, settlementResult] = await Promise.all([
-    importer.getHistoricalMarket(marketTicker),
+    importer.getHistoricalMarket(marketTicker, fetchOptions),
     importer.getMarketCandlesticks(marketTicker, CANDLESTICK_INTERVAL, dateRange),
-    importer.getSettlementResult(marketTicker),
+    importer.getSettlementResult(marketTicker, fetchOptions),
   ]);
 
   const state: PrefetchedKalshiHistoricalBronzeState = deepFreeze({
@@ -134,12 +135,21 @@ export async function prefetchKalshiHistoricalBronzeImporter(
 export async function createPrefetchedKalshiHistoricalBronzeProvider(
   input: CreatePrefetchedKalshiHistoricalBronzeProviderInput,
 ) {
-  const { importer, marketTicker, startTime, endTime, collectionTime, observedAt } = input;
+  const {
+    importer,
+    marketTicker,
+    startTime,
+    endTime,
+    collectionTime,
+    observedAt,
+    listMarketWire,
+  } = input;
   const bronzeImporter = await prefetchKalshiHistoricalBronzeImporter({
     importer,
     marketTicker,
     startTime,
     endTime,
+    listMarketWire,
   });
 
   return createKalshiHistoricalBronzeProvider({

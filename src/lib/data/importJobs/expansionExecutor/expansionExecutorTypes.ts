@@ -1,5 +1,6 @@
 import type { HistoricalBronzeImportConfig } from "@/lib/data/importJobs/config";
 import type { HistoricalBronzeImportJobResult } from "@/lib/data/importJobs/historicalBronzeImportJobTypes";
+import type { MarketDiscoveryProvenance } from "@/lib/data/discovery/discoveryTypes";
 import type { HistoricalExpansionImportJob } from "@/lib/data/importJobs/expansionConfig";
 import { DEFAULT_HISTORICAL_EXPANSION_IMPORT_CHECKPOINT_PATH } from "@/lib/data/importJobs/expansionImportSafety/expansionImportSafetyTypes";
 
@@ -162,18 +163,25 @@ export type RunHistoricalExpansionImportInput = {
   progress?: ExpansionImportProgressHooks | null;
 };
 
+export type ExpansionDiscoveredMarket = {
+  marketTicker: string;
+  seriesTicker: string;
+  eventTicker: string;
+  status: string;
+  openTime: string | null;
+  closeTime: string | null;
+  settlementTime: string | null;
+  expirationValue: string | null;
+  title: string | null;
+  subtitle: string | null;
+  provenance: MarketDiscoveryProvenance;
+};
+
 export type ExpansionExecutorDeps = {
   discoverMarkets: (
     seriesTicker: string,
     sampling: { after: string; before: string },
-  ) => Promise<
-    readonly {
-      marketTicker: string;
-      seriesTicker: string;
-      openTime: string | null;
-      closeTime: string | null;
-    }[]
-  >;
+  ) => Promise<readonly ExpansionDiscoveredMarket[]>;
   runImport: (config: HistoricalBronzeImportConfig) => Promise<HistoricalBronzeImportJobResult>;
 };
 

@@ -10,6 +10,28 @@ const SUMMARY_PATH = "data/research-results/historical-expansion-import-summary.
 const HTML_PATH = "data/reports/historical-expansion-import-summary.html";
 const CHECKPOINT_PATH = "data/research-results/historical-expansion-import-checkpoint.json";
 
+function createMockDiscoveredMarket(
+  marketTicker = "KXBTC15M-26JAN151215-00",
+) {
+  return {
+    marketTicker,
+    seriesTicker: "KXBTC15M",
+    eventTicker: "KXBTC15M-26JAN151215",
+    status: "finalized",
+    openTime: "2026-01-15T12:00:00.000Z",
+    closeTime: "2026-01-15T12:15:00.000Z",
+    settlementTime: "2026-01-15T12:20:00.000Z",
+    expirationValue: "60010.25",
+    title: null,
+    subtitle: null,
+    provenance: {
+      source: "kalshi-historical-api" as const,
+      fetchedAt: GENERATED_AT,
+      requestPath: "/historical/markets?series_ticker=KXBTC15M",
+    },
+  };
+}
+
 function createManifestJson(): string {
   return JSON.stringify({
     generatedAt: GENERATED_AT,
@@ -83,14 +105,7 @@ describe("runExecuteExpansionImportCommand", () => {
     }, {
       generatedAt: GENERATED_AT,
       deps: {
-        discoverMarkets: vi.fn(async () => [
-          {
-            marketTicker: "KXBTC15M-26JAN151215-00",
-            seriesTicker: "KXBTC15M",
-            openTime: "2026-01-15T12:00:00.000Z",
-            closeTime: "2026-01-15T12:15:00.000Z",
-          },
-        ]),
+        discoverMarkets: vi.fn(async () => [createMockDiscoveredMarket()]),
         runImport: vi.fn(),
       },
     });
@@ -150,14 +165,7 @@ describe("runExecuteExpansionImportCommand", () => {
     }, {
       generatedAt: GENERATED_AT,
       deps: {
-        discoverMarkets: vi.fn(async () => [
-          {
-            marketTicker: "KXBTC15M-26JAN151215-00",
-            seriesTicker: "KXBTC15M",
-            openTime: "2026-01-15T12:00:00.000Z",
-            closeTime: "2026-01-15T12:15:00.000Z",
-          },
-        ]),
+        discoverMarkets: vi.fn(async () => [createMockDiscoveredMarket()]),
         runImport,
       },
     });
@@ -242,18 +250,8 @@ describe("runExecuteExpansionImportCommand", () => {
         generatedAt: GENERATED_AT,
         deps: {
           discoverMarkets: vi.fn(async () => [
-            {
-              marketTicker: "KXBTC15M-26JAN151215-00",
-              seriesTicker: "KXBTC15M",
-              openTime: "2026-01-15T12:00:00.000Z",
-              closeTime: "2026-01-15T12:15:00.000Z",
-            },
-            {
-              marketTicker: "KXBTC15M-26JAN151230-00",
-              seriesTicker: "KXBTC15M",
-              openTime: "2026-01-15T12:15:00.000Z",
-              closeTime: "2026-01-15T12:30:00.000Z",
-            },
+            createMockDiscoveredMarket("KXBTC15M-26JAN151215-00"),
+            createMockDiscoveredMarket("KXBTC15M-26JAN151230-00"),
           ]),
           runImport,
         },

@@ -12,15 +12,18 @@ import {
   serializeExpansionImportCheckpoint,
 } from "@/lib/data/importJobs/expansionImportSafety";
 
+import { KALSHI_DISCOVERY_LIST_MARKET_METADATA_KEY } from "@/lib/data/importers/kalshi/kalshiMarketSchemaReconciliation";
+
 import { buildExpansionMarketImportArtifacts } from "./buildExpansionMarketImportConfig";
 import { EXPANSION_IMPORT_CIRCUIT_BREAKER_WINDOW } from "./expansionImportCircuitBreaker";
+import type { ExpansionDiscoveredMarket, ExpansionExecutorIo } from "./expansionExecutorTypes";
+
 import {
   runHistoricalExpansionImport,
   serializeHistoricalExpansionImportSummary,
 } from "./runHistoricalExpansionImport";
 import { scanExistingExpansionMarketTickers } from "./scanExistingExpansionMarketTickers";
 import { serializeHistoricalExpansionImportSummaryHtml } from "./serializeHistoricalExpansionImportSummaryHtml";
-import type { ExpansionExecutorIo } from "./expansionExecutorTypes";
 
 const GENERATED_AT = "2026-07-04T04:00:00.000Z";
 const CONFIG_PATH = "data/import-configs/historical-expansion-config.json";
@@ -177,25 +180,47 @@ function createBaseConfig(overrides?: Partial<{
   };
 }
 
-const DISCOVERED_MARKETS = [
-  {
-    marketTicker: "KXBTC15M-26JAN151215-00",
+function createExpansionDiscoveredMarket(
+  overrides: Partial<ExpansionDiscoveredMarket> & Pick<ExpansionDiscoveredMarket, "marketTicker">,
+): ExpansionDiscoveredMarket {
+  const eventTicker = overrides.eventTicker
+    ?? overrides.marketTicker.split("-").slice(0, 2).join("-");
+
+  return {
     seriesTicker: "KXBTC15M",
+    eventTicker,
+    status: "finalized",
     openTime: "2026-01-15T12:00:00.000Z",
     closeTime: "2026-01-15T12:15:00.000Z",
-  },
-  {
+    settlementTime: "2026-01-15T12:20:00.000Z",
+    expirationValue: "60010.25",
+    title: null,
+    subtitle: null,
+    provenance: {
+      source: "kalshi-historical-api",
+      fetchedAt: GENERATED_AT,
+      requestPath: "/historical/markets?series_ticker=KXBTC15M",
+    },
+    ...overrides,
+  };
+}
+
+const DISCOVERED_MARKETS = [
+  createExpansionDiscoveredMarket({
+    marketTicker: "KXBTC15M-26JAN151215-00",
+    openTime: "2026-01-15T12:00:00.000Z",
+    closeTime: "2026-01-15T12:15:00.000Z",
+  }),
+  createExpansionDiscoveredMarket({
     marketTicker: "KXBTC15M-26JAN151230-00",
-    seriesTicker: "KXBTC15M",
     openTime: "2026-01-15T12:15:00.000Z",
     closeTime: "2026-01-15T12:30:00.000Z",
-  },
-  {
+  }),
+  createExpansionDiscoveredMarket({
     marketTicker: "KXBTC15M-26JAN151245-00",
-    seriesTicker: "KXBTC15M",
     openTime: "2026-01-15T12:30:00.000Z",
     closeTime: "2026-01-15T12:45:00.000Z",
-  },
+  }),
 ];
 
 describe("buildExpansionMarketImportArtifacts", () => {
@@ -203,12 +228,11 @@ describe("buildExpansionMarketImportArtifacts", () => {
     const manifest = JSON.parse(createManifestJson());
     const artifacts = buildExpansionMarketImportArtifacts(
       manifest.jobs[0],
-      {
+      createExpansionDiscoveredMarket({
         marketTicker: "KXBTC15M-26JAN151215-00",
-        seriesTicker: "KXBTC15M",
         openTime: "2026-01-15T12:00:00.000Z",
         closeTime: "2026-01-15T12:15:00.000Z",
-      },
+      }),
       {
         importConfigsDir: "data/import-configs",
         importsDir: "data/imports",
@@ -218,6 +242,10 @@ describe("buildExpansionMarketImportArtifacts", () => {
     expect(artifacts.config.btc.provider).toBe("coinbase-spot");
     expect(artifacts.config.btc.interval).toBe("1m");
     expect(artifacts.config.kalshi.marketSource).toBe("kalshi-rest");
+    expect(artifacts.config.metadata[KALSHI_DISCOVERY_LIST_MARKET_METADATA_KEY]).toMatchObject({
+      ticker: "KXBTC15M-26JAN151215-00",
+      expiration_value: "60010.25",
+    });
   });
 });
 
@@ -542,12 +570,11 @@ describe("runHistoricalExpansionImport safety", () => {
     const io = createIo(mock);
     const compatibilityError =
       "Kalshi historical market response missing required fields: expiration_value. Raw response saved to data/debug/kalshi-market-KXBTC15M-25DEC311900-00.json.";
-    const discovered = Array.from({ length: EXPANSION_IMPORT_CIRCUIT_BREAKER_WINDOW + 5 }, (_, index) => ({
-      marketTicker: `KXBTC15M-TICKER-${index}`,
-      seriesTicker: "KXBTC15M",
-      openTime: "2026-01-15T12:00:00.000Z",
-      closeTime: "2026-01-15T12:15:00.000Z",
-    }));
+    const discovered = Array.from({ length: EXPANSION_IMPORT_CIRCUIT_BREAKER_WINDOW + 5 }, (_, index) =>
+      createExpansionDiscoveredMarket({
+        marketTicker: `KXBTC15M-TICKER-${index}`,
+      }),
+    );
     const runImport = vi.fn(async () => {
       throw new Error(compatibilityError);
     });
@@ -567,5 +594,27 @@ describe("runHistoricalExpansionImport safety", () => {
     expect(summary.runStatus).toBe("interrupted");
     expect(summary.warnings.join(" ")).toContain("circuit breaker");
     expect(summary.warnings.join(" ")).toContain("import-compatibility");
+  });
+
+  it("does not trip the compatibility circuit breaker when expansion imports succeed", async () => {
+    const mock: MockFs = { files: {}, directories: new Set(["data"]) };
+    const io = createIo(mock);
+    const runImport = vi.fn(async () => createImportResult("KXBTC15M-26JAN151215-00"));
+
+    const summary = await runHistoricalExpansionImport({
+      generatedAt: GENERATED_AT,
+      config: createBaseConfig(),
+      expansionConfigJson: createManifestJson(),
+      io,
+      deps: {
+        discoverMarkets: vi.fn(async () => [DISCOVERED_MARKETS[0]!]),
+        runImport,
+      },
+    });
+
+    expect(runImport).toHaveBeenCalledTimes(1);
+    expect(summary.summary.importedCount).toBe(1);
+    expect(summary.warnings.join(" ")).not.toContain("circuit breaker");
+    expect(summary.runStatus).toBe("completed");
   });
 });

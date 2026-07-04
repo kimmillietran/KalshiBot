@@ -122,7 +122,7 @@ describe("prefetchKalshiHistoricalBronzeImporter", () => {
     await prefetchKalshiHistoricalBronzeImporter(prefetchInput({ importer }));
 
     expect(importer.getHistoricalMarket).toHaveBeenCalledTimes(1);
-    expect(importer.getHistoricalMarket).toHaveBeenCalledWith(MARKET_TICKER);
+    expect(importer.getHistoricalMarket).toHaveBeenCalledWith(MARKET_TICKER, undefined);
     expect(importer.getMarketCandlesticks).toHaveBeenCalledTimes(1);
     expect(importer.getMarketCandlesticks).toHaveBeenCalledWith(
       MARKET_TICKER,
@@ -130,7 +130,27 @@ describe("prefetchKalshiHistoricalBronzeImporter", () => {
       EXPECTED_DATE_RANGE,
     );
     expect(importer.getSettlementResult).toHaveBeenCalledTimes(1);
-    expect(importer.getSettlementResult).toHaveBeenCalledWith(MARKET_TICKER);
+    expect(importer.getSettlementResult).toHaveBeenCalledWith(MARKET_TICKER, undefined);
+  });
+
+  it("forwards discovery list payload to historical market fetches", async () => {
+    const listMarketWire = {
+      ticker: MARKET_TICKER,
+      expiration_value: "60010.25",
+      open_time: SAMPLE_MARKET.openTime,
+      close_time: SAMPLE_MARKET.closeTime,
+    };
+    const importer = createImporter();
+    await prefetchKalshiHistoricalBronzeImporter(
+      prefetchInput({ importer, listMarketWire }),
+    );
+
+    expect(importer.getHistoricalMarket).toHaveBeenCalledWith(MARKET_TICKER, {
+      listMarketWire,
+    });
+    expect(importer.getSettlementResult).toHaveBeenCalledWith(MARKET_TICKER, {
+      listMarketWire,
+    });
   });
 
   it("returned sync port serves prefetched market", async () => {

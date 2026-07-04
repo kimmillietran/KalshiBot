@@ -1,4 +1,5 @@
 import type { HistoricalImporter } from "@/lib/data/importers/kalshi";
+import type { KalshiMarketWireShape } from "@/lib/data/importers/kalshi/kalshiMarketImportDiagnostics";
 import type {
   HistoricalCandlesticksResult,
   HistoricalDateRange,
@@ -11,6 +12,7 @@ export type PrefetchKalshiHistoricalBronzeImporterInput = {
   marketTicker: string;
   startTime: string;
   endTime: string;
+  listMarketWire?: KalshiMarketWireShape | null;
 };
 
 export type PrefetchedKalshiHistoricalBronzeState = {
@@ -28,4 +30,5 @@ export type CreatePrefetchedKalshiHistoricalBronzeProviderInput = {
   endTime: string;
   collectionTime: string;
   observedAt: string;
+  listMarketWire?: KalshiMarketWireShape | null;
 };

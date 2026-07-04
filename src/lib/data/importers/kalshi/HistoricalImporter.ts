@@ -10,6 +10,11 @@ import type {
   HistoricalTradesPage,
   HistoricalTradesScope,
 } from "./kalshiHistoricalTypes";
+import type { KalshiMarketWireShape } from "./kalshiMarketImportDiagnostics";
+
+export type KalshiHistoricalMarketFetchOptions = {
+  listMarketWire?: KalshiMarketWireShape | null;
+};
 
 /** Abstraction for retrieving archived Kalshi exchange data. */
 export interface HistoricalImporter {
@@ -33,7 +38,13 @@ export interface HistoricalImporter {
 
   getHistoricalCutoff(): Promise<HistoricalCutoffTimestamps>;
 
-  getHistoricalMarket(ticker: string): Promise<HistoricalMarketRecord | null>;
+  getHistoricalMarket(
+    ticker: string,
+    options?: KalshiHistoricalMarketFetchOptions,
+  ): Promise<HistoricalMarketRecord | null>;
 
-  getSettlementResult(ticker: string): Promise<HistoricalSettlementResult>;
+  getSettlementResult(
+    ticker: string,
+    options?: KalshiHistoricalMarketFetchOptions,
+  ): Promise<HistoricalSettlementResult>;
 }

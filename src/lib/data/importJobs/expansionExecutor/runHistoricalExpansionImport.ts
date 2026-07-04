@@ -28,6 +28,7 @@ import {
   formatExpansionImportCircuitBreakerWarning,
   recordExpansionImportCircuitBreakerFailure,
 } from "./expansionImportCircuitBreaker";
+import type { ExpansionDiscoveredMarket } from "./expansionExecutorTypes";
 import {
   ExpansionExecutorError,
   ExpansionExecutorErrorCode,
@@ -152,7 +153,7 @@ function persistRunArtifacts(
 async function executeMarketImport(
   input: RunHistoricalExpansionImportInput,
   job: HistoricalExpansionImportJob,
-  market: { marketTicker: string; seriesTicker: string; openTime: string | null; closeTime: string | null },
+  market: ExpansionDiscoveredMarket,
 ): Promise<ExpansionImportMarketResult> {
   const startedAtMs = Date.now();
 

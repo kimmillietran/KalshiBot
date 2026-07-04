@@ -340,6 +340,7 @@ docs/
 | 9.9 | Research pipeline performance audit (`research:performance-audit`, diagnostic runtime analysis) — **complete** |
 | 9.11 | Coverage depth thresholds (`research:coverage-plan` missing/under-covered/covered month classification) — **complete** |
 | 9.12 | Historical import compatibility investigation (parse diagnostics, circuit breaker, max-markets CLI, progress denominator) — **complete** |
+| 9.13 | Historical import schema reconciliation (merge discovery list payload into detail import prefetch) — **complete** |
 
 ## Intentionally deferred
 

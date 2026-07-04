@@ -333,6 +333,51 @@ describe("KalshiHistoricalImporter", () => {
     expect(writes.has("data/debug/kalshi-market-KXBTC15M-25DEC311900-00.json")).toBe(true);
   });
 
+  it("imports KXBTC15M-25DEC311900-00 when discovery list payload supplies expiration_value", async () => {
+    const client = createFakeClient(() => ({
+      status: 200,
+      body: { market: fixture.detailMarket },
+    }));
+
+    const importer = createImporter(client);
+    const market = await importer.getHistoricalMarket(fixture.ticker, {
+      listMarketWire: fixture.listMarket,
+    });
+
+    expect(market?.expirationValue).toBe("94210.55");
+    expect(market?.closeTime).toBe(fixture.detailMarket.close_time);
+  });
+
+  it("still throws diagnostics when both list and detail payloads lack required fields", async () => {
+    const client = createFakeClient(() => ({
+      status: 200,
+      body: {
+        market: {
+          ticker: fixture.ticker,
+          event_ticker: "KXBTC15M-25DEC311900",
+          status: "finalized",
+          open_time: fixture.detailMarket.open_time,
+          close_time: fixture.detailMarket.close_time,
+        },
+      },
+    }));
+
+    const importer = createImporter(client, { persistMarketParseDiagnostics: false });
+
+    await expect(
+      importer.getHistoricalMarket(fixture.ticker, {
+        listMarketWire: {
+          ticker: fixture.ticker,
+          open_time: fixture.listMarket.open_time,
+          close_time: fixture.listMarket.close_time,
+        },
+      }),
+    ).rejects.toMatchObject({
+      name: "KalshiMarketImportCompatibilityError",
+      message: expect.stringContaining("missing required fields: expiration_value"),
+    });
+  });
+
   it("returns settlement result from historical market endpoint", async () => {
     const client = createFakeClient((url) => {
       expect(url).toBe(
