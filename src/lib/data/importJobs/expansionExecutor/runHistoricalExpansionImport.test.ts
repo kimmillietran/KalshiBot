@@ -232,6 +232,7 @@ describe("runHistoricalExpansionImport", () => {
         execute: false,
         maxMarkets: null,
         jobId: null,
+        resume: false,
       },
       expansionConfigJson: createManifestJson(),
       io,
@@ -276,6 +277,7 @@ describe("runHistoricalExpansionImport", () => {
         execute: true,
         maxMarkets: 1,
         jobId: "expansion-KXBTC15M-20260101-20260331",
+        resume: false,
       },
       expansionConfigJson: createManifestJson(),
       io,
@@ -334,6 +336,7 @@ describe("runHistoricalExpansionImport", () => {
         execute: true,
         maxMarkets: null,
         jobId: null,
+        resume: false,
       },
       expansionConfigJson: createManifestJson(),
       io: createIo(mock),
@@ -352,5 +355,121 @@ describe("runHistoricalExpansionImport", () => {
 
     expect(summary.summary.skippedCount).toBe(1);
     expect(summary.jobs[0]?.markets[0]?.skipReason).toContain("already present");
+  });
+
+  it("reports dry-run progress with planned counts and max-markets cap", async () => {
+    const mock: MockFs = { files: {}, directories: new Set(["data"]) };
+    const io = createIo(mock);
+    const reportJobHeader = vi.fn();
+    const recordMarket = vi.fn();
+    const completeJob = vi.fn();
+    const complete = vi.fn();
+
+    await runHistoricalExpansionImport({
+      generatedAt: GENERATED_AT,
+      config: {
+        inputPath: CONFIG_PATH,
+        outputPath: "data/research-results/historical-expansion-import-summary.json",
+        htmlOutputPath: "data/reports/historical-expansion-import-summary.html",
+        importConfigsDir: "data/import-configs",
+        importsDir: "data/imports",
+        fixturesDir: "data/fixtures",
+        researchResultsDir: "data/research-results",
+        execute: false,
+        maxMarkets: 1,
+        jobId: null,
+        resume: false,
+      },
+      expansionConfigJson: createManifestJson(),
+      io,
+      deps: {
+        discoverMarkets: vi.fn(async () => [
+          {
+            marketTicker: "KXBTC15M-26JAN151215-00",
+            seriesTicker: "KXBTC15M",
+            openTime: "2026-01-15T12:00:00.000Z",
+            closeTime: "2026-01-15T12:15:00.000Z",
+          },
+          {
+            marketTicker: "KXBTC15M-26JAN151230-00",
+            seriesTicker: "KXBTC15M",
+            openTime: "2026-01-15T12:15:00.000Z",
+            closeTime: "2026-01-15T12:30:00.000Z",
+          },
+        ]),
+        runImport: vi.fn(),
+      },
+      progress: {
+        reportJobHeader,
+        recordMarket,
+        completeJob,
+        complete,
+      },
+    });
+
+    expect(reportJobHeader).toHaveBeenCalledWith(
+      expect.objectContaining({
+        dryRun: true,
+        maxMarkets: 1,
+        discoveredCount: 2,
+        alreadyCoveredCount: 0,
+        toImportCount: 1,
+      }),
+    );
+    expect(recordMarket).toHaveBeenCalledTimes(1);
+    expect(recordMarket).toHaveBeenCalledWith("planned", "KXBTC15M-26JAN151215-00");
+    expect(completeJob).toHaveBeenCalledTimes(1);
+    expect(complete).toHaveBeenCalledTimes(1);
+  });
+
+  it("reports execute progress with imported and failed counts", async () => {
+    const mock: MockFs = { files: {}, directories: new Set(["data"]) };
+    const io = createIo(mock);
+    const recordMarket = vi.fn();
+
+    await runHistoricalExpansionImport({
+      generatedAt: GENERATED_AT,
+      config: {
+        inputPath: CONFIG_PATH,
+        outputPath: "data/research-results/historical-expansion-import-summary.json",
+        htmlOutputPath: "data/reports/historical-expansion-import-summary.html",
+        importConfigsDir: "data/import-configs",
+        importsDir: "data/imports",
+        fixturesDir: "data/fixtures",
+        researchResultsDir: "data/research-results",
+        execute: true,
+        maxMarkets: null,
+        jobId: null,
+        resume: true,
+      },
+      expansionConfigJson: createManifestJson(),
+      io,
+      deps: {
+        discoverMarkets: vi.fn(async () => [
+          {
+            marketTicker: "KXBTC15M-26JAN151215-00",
+            seriesTicker: "KXBTC15M",
+            openTime: "2026-01-15T12:00:00.000Z",
+            closeTime: "2026-01-15T12:15:00.000Z",
+          },
+          {
+            marketTicker: "KXBTC15M-26JAN151230-00",
+            seriesTicker: "KXBTC15M",
+            openTime: null,
+            closeTime: null,
+          },
+        ]),
+        runImport: vi.fn(async () => createImportResult("KXBTC15M-26JAN151215-00")),
+      },
+      progress: {
+        reportJobHeader: vi.fn(),
+        recordMarket,
+        completeJob: vi.fn(),
+        complete: vi.fn(),
+      },
+    });
+
+    expect(recordMarket).toHaveBeenCalledWith("imported", "KXBTC15M-26JAN151215-00");
+    expect(recordMarket).toHaveBeenCalledWith("skipped", "KXBTC15M-26JAN151230-00");
   });
 });

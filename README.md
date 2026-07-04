@@ -178,6 +178,21 @@ npm run research:execute-expansion-import -- --execute --max-markets 5 --job-id 
 
 Consumes `historical-expansion-config.json`, discovers matching Kalshi markets per scheduled job, dedupes against existing import configs/fixtures/research outputs, and runs the standard historical import flow for new markets only. Dry-run by default (`--execute` required to write import artifacts). Writes `historical-expansion-import-summary.json` and HTML in all modes.
 
+While the command runs, stderr shows live progress: per-job discovery counts, import window, market progress bar, current ticker, imported/planned/failed/skipped counts, elapsed time, and ETA. Dry-run output is labeled `DRY RUN`; `--max-markets` and `--resume` appear in the job header when set.
+
+```text
+[Expansion Import] DRY RUN
+Job 1/1: expansion-KXBTC15M-20260101-20260331
+Window: 2026-01-01 → 2026-03-31
+Discovered: 480 markets | Already covered: 120 | To import: 25
+
+[Expansion Import]
+████████░░░░░░░░░░░░ 10/25 markets
+Current: KXBTC15M-26JAN01-BTC-00
+Planned: 9 | Failed: 0 | Skipped: 1
+Elapsed: 01:42 | ETA: 02:33
+```
+
 ### Coverage-aware validation
 
 ```bash
@@ -303,6 +318,7 @@ docs/
 | 9.1 | Historical coverage expansion planner (`research:coverage-plan`, read-only import recommendations) — **complete** |
 | 9.2 | Expansion import config generator (`research:generate-expansion-import-config`) — **complete** |
 | 9.5 | Historical expansion import executor (`research:execute-expansion-import`, dry-run by default) — **complete** |
+| 9.10 | Expansion import progress reporting (live stderr progress for long import runs) — **complete** |
 | 9.3 | Coverage-aware validation (`research:coverage-validation`, advisory inconclusive vs weak classification) — **complete** |
 | 9.4 | Full orchestrator coverage phase (`research:full` coverage planning + optional validation wiring) — **complete** |
 | 9.9 | Research pipeline performance audit (`research:performance-audit`, diagnostic runtime analysis) — **complete** |

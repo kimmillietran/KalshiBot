@@ -170,4 +170,102 @@ describe("runExecuteExpansionImportCommand", () => {
       ),
     ).toBe(true);
   });
+
+  it("writes dry-run progress output to stderr", async () => {
+    let stderr = "";
+
+    await runExecuteExpansionImportCommand([], {
+      readFile: (path) => (path === CONFIG_PATH ? createManifestJson() : ""),
+      fileExists: (path) => path === CONFIG_PATH,
+      isDirectory: () => false,
+      readdir: () => [],
+      writeStdout: () => {},
+      writeStderr: (text) => {
+        stderr += text;
+      },
+      writeFile: () => {},
+      mkdirSync: () => {},
+    }, {
+      generatedAt: GENERATED_AT,
+      deps: {
+        discoverMarkets: vi.fn(async () => [
+          {
+            marketTicker: "KXBTC15M-26JAN151215-00",
+            seriesTicker: "KXBTC15M",
+            openTime: "2026-01-15T12:00:00.000Z",
+            closeTime: "2026-01-15T12:15:00.000Z",
+          },
+        ]),
+        runImport: vi.fn(),
+      },
+    });
+
+    expect(stderr).toContain("[Expansion Import] DRY RUN");
+    expect(stderr).toContain("Discovered: 1 markets");
+    expect(stderr).toContain("Planned: 1");
+  });
+
+  it("writes execute progress with resume and max-markets labels to stderr", async () => {
+    let stderr = "";
+
+    await runExecuteExpansionImportCommand(
+      ["--execute", "--resume", "--max-markets", "1"],
+      {
+        readFile: (path) => (path === CONFIG_PATH ? createManifestJson() : ""),
+        fileExists: (path) => path === CONFIG_PATH,
+        isDirectory: () => false,
+        readdir: () => [],
+        writeStdout: () => {},
+        writeStderr: (text) => {
+          stderr += text;
+        },
+        writeFile: () => {},
+        mkdirSync: () => {},
+      },
+      {
+        generatedAt: GENERATED_AT,
+        deps: {
+          discoverMarkets: vi.fn(async () => [
+            {
+              marketTicker: "KXBTC15M-26JAN151215-00",
+              seriesTicker: "KXBTC15M",
+              openTime: "2026-01-15T12:00:00.000Z",
+              closeTime: "2026-01-15T12:15:00.000Z",
+            },
+          ]),
+          runImport: vi.fn(async () => ({
+            jobId: "expansion-import-KXBTC15M-26JAN151215-00",
+            bronzeRecords: [],
+            validationResult: {
+              valid: true,
+              errors: [],
+              warnings: [],
+              statistics: {
+                totalRecords: 1,
+                marketCount: 1,
+                btcBarCount: 1,
+                settlementCount: 0,
+                duplicateCount: 0,
+              },
+            },
+            metadata: {
+              jobId: "expansion-import-KXBTC15M-26JAN151215-00",
+              marketTicker: "KXBTC15M-26JAN151215-00",
+              startTime: "2026-01-15T12:00:00.000Z",
+              endTime: "2026-01-15T12:15:00.000Z",
+              collectionTime: "2026-01-15T12:15:10.000Z",
+              observedAt: "2026-01-15T12:15:10.000Z",
+              bronzeRecordCount: 1,
+              valid: true,
+            },
+            serialized: "{}",
+          })),
+        },
+      },
+    );
+
+    expect(stderr).toContain("Import cap: 1 markets (--max-markets)");
+    expect(stderr).toContain("Resume: enabled");
+    expect(stderr).toContain("Imported: 1");
+  });
 });

@@ -24,6 +24,11 @@ import {
   serializeHistoricalExpansionImportSummaryHtml,
 } from "@/lib/data/importJobs/expansionExecutor";
 
+import {
+  createExpansionImportProgressReporter,
+  isCliProgressTty,
+} from "@/lib/cli/progress/expansionImportProgress";
+
 import { normalizeExecuteExpansionImportArgv } from "../lib/cliArgvSchemas";
 
 import {
@@ -94,6 +99,12 @@ export async function runExecuteExpansionImportCommand(
     const normalizedArgv = normalizeExecuteExpansionImportArgv(argv);
     const config = parseExecuteExpansionImportConfigFromArgv(normalizedArgv);
     const generatedAt = options?.generatedAt ?? new Date().toISOString();
+    const startedAtMs = Date.now();
+    const progress = createExpansionImportProgressReporter({
+      startedAtMs,
+      isTty: isCliProgressTty(),
+      write: (message) => io.writeStderr(message),
+    });
 
     if (!io.fileExists(config.inputPath)) {
       throw new ExpansionExecutorError(
@@ -115,6 +126,7 @@ export async function runExecuteExpansionImportCommand(
         mkdirSync: io.mkdirSync,
       },
       deps: options?.deps ?? createProductionDeps(options?.fetchImpl),
+      progress,
     });
 
     io.mkdirSync(dirname(config.outputPath), { recursive: true });

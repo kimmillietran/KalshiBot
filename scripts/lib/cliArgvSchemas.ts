@@ -271,6 +271,7 @@ export const EXECUTE_EXPANSION_IMPORT_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--max-markets" },
   { flag: "--job-id" },
   { flag: "--execute" },
+  { flag: "--resume" },
 ];
 
 export const DATA_HEALTH_ARGV_SCHEMA: readonly NpmArgvField[] = [
@@ -638,6 +639,6 @@ export function normalizeGenerateExpansionImportConfigArgv(
 export function normalizeExecuteExpansionImportArgv(argv: readonly string[]): string[] {
   return mergeNpmBooleanFlags(
     normalizeNpmScriptArgv(argv, EXECUTE_EXPANSION_IMPORT_ARGV_SCHEMA),
-    ["--execute"],
+    ["--execute", "--resume"],
   );
 }

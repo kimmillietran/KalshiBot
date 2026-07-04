@@ -108,6 +108,7 @@ export function parseExecuteExpansionImportConfigFromArgv(
     execute: readBooleanFlag(argv, "--execute"),
     maxMarkets: readOptionalNumberFlag(argv, "--max-markets"),
     jobId: readOptionalFlag(argv, "--job-id"),
+    resume: readBooleanFlag(argv, "--resume"),
   };
 }
 

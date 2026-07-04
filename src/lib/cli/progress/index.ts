@@ -30,3 +30,15 @@ export type {
   StrategySweepProgressReporterOptions,
   StrategySweepProgressSnapshot,
 } from "./strategySweepProgress";
+export {
+  createExpansionImportProgressReporter,
+  formatExpansionImportJobHeaderLines,
+  formatExpansionImportMarketProgressLines,
+  formatExpansionImportWindowLabel,
+} from "./expansionImportProgress";
+export type {
+  ExpansionImportJobHeaderSnapshot,
+  ExpansionImportMarketProgressSnapshot,
+  ExpansionImportProgressReporter,
+  ExpansionImportProgressReporterOptions,
+} from "./expansionImportProgress";

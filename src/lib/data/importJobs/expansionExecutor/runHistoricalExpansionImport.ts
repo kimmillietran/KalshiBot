@@ -23,6 +23,36 @@ import {
 } from "./expansionExecutorTypes";
 import { scanExistingExpansionMarketTickers } from "./scanExistingExpansionMarketTickers";
 
+function countImportPlan(
+  discovered: readonly {
+    marketTicker: string;
+  }[],
+  existingTickers: ReadonlySet<string>,
+  remainingMarketBudget: number | null,
+): { alreadyCoveredCount: number; toImportCount: number } {
+  let alreadyCoveredCount = 0;
+  let toImportCount = 0;
+  let budget = remainingMarketBudget;
+
+  for (const market of discovered) {
+    if (existingTickers.has(market.marketTicker)) {
+      alreadyCoveredCount += 1;
+      continue;
+    }
+
+    if (budget !== null && budget <= 0) {
+      break;
+    }
+
+    toImportCount += 1;
+    if (budget !== null) {
+      budget -= 1;
+    }
+  }
+
+  return { alreadyCoveredCount, toImportCount };
+}
+
 function compareJobs(
   left: HistoricalExpansionImportJob,
   right: HistoricalExpansionImportJob,
@@ -187,8 +217,10 @@ export async function runHistoricalExpansionImport(
   const warnings: string[] = [];
   const jobResults: ExpansionImportJobResult[] = [];
   let remainingMarketBudget = input.config.maxMarkets;
+  const sortedScheduledJobs = [...scheduledJobs].sort(compareJobs);
+  const progress = input.progress ?? null;
 
-  for (const job of [...scheduledJobs].sort(compareJobs)) {
+  for (const [jobIndex, job] of sortedScheduledJobs.entries()) {
     const jobStartedAtMs = Date.now();
     const jobWarnings: string[] = [];
     const sampling = toSamplingWindow(job);
@@ -198,6 +230,25 @@ export async function runHistoricalExpansionImport(
     const sortedDiscovered = [...discovered].sort((left, right) =>
       left.marketTicker.localeCompare(right.marketTicker),
     );
+    const importPlan = countImportPlan(
+      sortedDiscovered,
+      existingTickers,
+      remainingMarketBudget,
+    );
+
+    progress?.reportJobHeader({
+      dryRun: !input.config.execute,
+      resume: input.config.resume,
+      maxMarkets: input.config.maxMarkets,
+      jobIndex: jobIndex + 1,
+      totalJobs: sortedScheduledJobs.length,
+      jobId: job.jobId,
+      seriesTicker: job.seriesTicker,
+      windowLabel: `${sampling.after.slice(0, 10)} → ${sampling.before.slice(0, 10)}`,
+      discoveredCount: discovered.length,
+      alreadyCoveredCount: importPlan.alreadyCoveredCount,
+      toImportCount: importPlan.toImportCount,
+    });
 
     for (const market of sortedDiscovered) {
       if (remainingMarketBudget !== null && remainingMarketBudget <= 0) {
@@ -223,6 +274,7 @@ export async function runHistoricalExpansionImport(
 
       const result = await executeMarketImport(input, job, market);
       markets.push(result);
+      progress?.recordMarket(result.status, market.marketTicker);
 
       if (result.status === "planned" || result.status === "imported") {
         if (remainingMarketBudget !== null) {
@@ -261,7 +313,10 @@ export async function runHistoricalExpansionImport(
     });
 
     warnings.push(...jobWarnings);
+    progress?.completeJob();
   }
+
+  progress?.complete();
 
   return {
     generatedAt: input.generatedAt,

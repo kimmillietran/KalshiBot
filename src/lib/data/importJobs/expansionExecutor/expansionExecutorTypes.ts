@@ -100,6 +100,26 @@ export type HistoricalExpansionImportExecutorConfig = {
   execute: boolean;
   maxMarkets: number | null;
   jobId: string | null;
+  resume: boolean;
+};
+
+export type ExpansionImportProgressHooks = {
+  reportJobHeader: (snapshot: {
+    dryRun: boolean;
+    resume: boolean;
+    maxMarkets: number | null;
+    jobIndex: number;
+    totalJobs: number;
+    jobId: string;
+    seriesTicker: string;
+    windowLabel: string;
+    discoveredCount: number;
+    alreadyCoveredCount: number;
+    toImportCount: number;
+  }) => void;
+  recordMarket: (status: ExpansionImportMarketStatus, marketTicker: string) => void;
+  completeJob: () => void;
+  complete: () => void;
 };
 
 export type ExpansionExecutorIo = {
@@ -117,6 +137,7 @@ export type RunHistoricalExpansionImportInput = {
   expansionConfigJson: string;
   io: ExpansionExecutorIo;
   deps: ExpansionExecutorDeps;
+  progress?: ExpansionImportProgressHooks | null;
 };
 
 export type ExpansionExecutorDeps = {
