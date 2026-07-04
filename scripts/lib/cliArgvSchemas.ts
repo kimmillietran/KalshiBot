@@ -291,6 +291,9 @@ export const EXECUTE_EXPANSION_IMPORT_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--job-id" },
   { flag: "--force-market" },
   { flag: "--trace-market" },
+  { flag: "--market-ticker" },
+  { flag: "--single-market-output" },
+  { flag: "--single-market-html-output" },
   { flag: "--execute" },
   { flag: "--resume" },
   { flag: "--skip-failed" },
@@ -681,6 +684,9 @@ const EXECUTE_EXPANSION_IMPORT_NPM_CONFIG_FLAGS = [
   "--max-retries",
   "--job-id",
   "--force-market",
+  "--market-ticker",
+  "--single-market-output",
+  "--single-market-html-output",
 ] as const;
 
 const EXECUTE_EXPANSION_IMPORT_BOOLEAN_FLAGS = [

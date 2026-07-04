@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
+import fixture from "@/lib/data/importers/kalshi/fixtures/KXBTC15M-25DEC311900-00-market-responses.json";
+
 import { parseExecuteExpansionImportConfigFromArgv } from "./executeExpansionImportTypes";
 import { runExecuteExpansionImportCommand } from "./executeExpansionImport";
 import { normalizeExecuteExpansionImportArgv } from "../lib/cliArgvSchemas";
@@ -281,5 +283,174 @@ describe("runExecuteExpansionImportCommand", () => {
 
     expect(exitCode).toBe(0);
     expect(runImport).toHaveBeenCalledTimes(1);
+  });
+
+  it("runs single-market smoke mode without calling full-window discovery", async () => {
+    const writes = new Map<string, string>();
+    let stdout = "";
+    const discoverMarkets = vi.fn(async () => {
+      throw new Error("full-window discovery must not run in single-market mode");
+    });
+    const runImport = vi.fn(async () => ({
+      jobId: `expansion-import-${fixture.ticker}`,
+      bronzeRecords: [],
+      validationResult: {
+        valid: true,
+        errors: [],
+        warnings: [],
+        statistics: {
+          totalRecords: 1,
+          marketCount: 1,
+          btcBarCount: 1,
+          settlementCount: 0,
+          duplicateCount: 0,
+        },
+      },
+      metadata: {
+        jobId: `expansion-import-${fixture.ticker}`,
+        marketTicker: fixture.ticker,
+        startTime: fixture.listMarket.open_time,
+        endTime: fixture.listMarket.close_time,
+        collectionTime: "2026-01-15T12:15:10.000Z",
+        observedAt: "2026-01-15T12:15:10.000Z",
+        bronzeRecordCount: 1,
+        valid: true,
+      },
+      serialized: "{}",
+    }));
+
+    const exitCode = await runExecuteExpansionImportCommand(
+      ["--market-ticker", fixture.ticker],
+      {
+        readFile: (path) => (path === CONFIG_PATH ? createManifestJson() : ""),
+        fileExists: (path) => path === CONFIG_PATH,
+        isDirectory: () => false,
+        readdir: () => [],
+        writeStdout: (text) => {
+          stdout += text;
+        },
+        writeStderr: () => {},
+        writeFile: (path, data) => {
+          writes.set(path, data);
+        },
+        mkdirSync: () => {},
+      },
+      {
+        generatedAt: GENERATED_AT,
+        deps: {
+          discoverMarkets,
+          runImport,
+        },
+        fetchImpl: async (url: string) => {
+          if (String(url).includes("/historical/markets?")) {
+            return new Response(
+              JSON.stringify({
+                markets: [fixture.listMarket],
+                cursor: "",
+              }),
+              { status: 200 },
+            );
+          }
+
+          if (String(url).includes(`/historical/markets/${fixture.ticker}`)) {
+            return new Response(JSON.stringify({ market: fixture.detailMarket }), {
+              status: 200,
+            });
+          }
+
+          throw new Error(`Unexpected fetch URL: ${url}`);
+        },
+      },
+    );
+
+    expect(exitCode).toBe(0);
+    expect(discoverMarkets).not.toHaveBeenCalled();
+    expect(JSON.parse(stdout).mode).toBe("single-market-smoke");
+    expect(JSON.parse(stdout).importStatus).toBe("planned");
+    expect(writes.has("data/research-results/single-market-expansion-import-debug.json")).toBe(
+      true,
+    );
+    expect(writes.has("data/reports/single-market-expansion-import-debug.html")).toBe(true);
+  });
+
+  it("writes import artifacts in single-market execute mode", async () => {
+    const writes = new Map<string, string>();
+    const discoverMarkets = vi.fn();
+    const runImport = vi.fn(async () => ({
+      jobId: `expansion-import-${fixture.ticker}`,
+      bronzeRecords: [],
+      validationResult: {
+        valid: true,
+        errors: [],
+        warnings: [],
+        statistics: {
+          totalRecords: 1,
+          marketCount: 1,
+          btcBarCount: 1,
+          settlementCount: 0,
+          duplicateCount: 0,
+        },
+      },
+      metadata: {
+        jobId: `expansion-import-${fixture.ticker}`,
+        marketTicker: fixture.ticker,
+        startTime: fixture.listMarket.open_time,
+        endTime: fixture.listMarket.close_time,
+        collectionTime: "2026-01-15T12:15:10.000Z",
+        observedAt: "2026-01-15T12:15:10.000Z",
+        bronzeRecordCount: 1,
+        valid: true,
+      },
+      serialized: "{}",
+    }));
+
+    const exitCode = await runExecuteExpansionImportCommand(
+      ["--market-ticker", fixture.ticker, "--execute"],
+      {
+        readFile: (path) => (path === CONFIG_PATH ? createManifestJson() : ""),
+        fileExists: (path) => path === CONFIG_PATH,
+        isDirectory: () => false,
+        readdir: () => [],
+        writeStdout: () => {},
+        writeStderr: () => {},
+        writeFile: (path, data) => {
+          writes.set(path, data);
+        },
+        mkdirSync: () => {},
+      },
+      {
+        generatedAt: GENERATED_AT,
+        deps: {
+          discoverMarkets,
+          runImport,
+        },
+        fetchImpl: async (url: string) => {
+          if (String(url).includes("/historical/markets?")) {
+            return new Response(
+              JSON.stringify({
+                markets: [fixture.listMarket],
+                cursor: "",
+              }),
+              { status: 200 },
+            );
+          }
+
+          if (String(url).includes(`/historical/markets/${fixture.ticker}`)) {
+            return new Response(JSON.stringify({ market: fixture.detailMarket }), {
+              status: 200,
+            });
+          }
+
+          throw new Error(`Unexpected fetch URL: ${url}`);
+        },
+      },
+    );
+
+    expect(exitCode).toBe(0);
+    expect(discoverMarkets).not.toHaveBeenCalled();
+    expect(runImport).toHaveBeenCalledTimes(1);
+    expect(writes.has(`data/imports/KXBTC15M/${fixture.ticker}/import-result.json`)).toBe(
+      true,
+    );
   });
 });

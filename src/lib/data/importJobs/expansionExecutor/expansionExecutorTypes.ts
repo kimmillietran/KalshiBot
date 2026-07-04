@@ -15,6 +15,10 @@ export const DEFAULT_EXPANSION_IMPORT_CONFIGS_DIR = "data/import-configs";
 export const DEFAULT_EXPANSION_IMPORTS_DIR = "data/imports";
 export const DEFAULT_EXPANSION_FIXTURES_DIR = "data/fixtures";
 export const DEFAULT_EXPANSION_RESEARCH_RESULTS_DIR = "data/research-results";
+export {
+  DEFAULT_SINGLE_MARKET_EXPANSION_IMPORT_DEBUG_HTML_PATH,
+  DEFAULT_SINGLE_MARKET_EXPANSION_IMPORT_DEBUG_JSON_PATH,
+} from "./singleMarketExpansionImportDebugTypes";
 
 export const ExpansionExecutorErrorCode = {
   MISSING_EXPANSION_CONFIG: "missing-expansion-config",
@@ -119,6 +123,9 @@ export type HistoricalExpansionImportExecutorConfig = {
   maxRetries: number;
   summaryInputPath: string | null;
   traceMarket: string | null;
+  marketTicker: string | null;
+  singleMarketOutputPath: string;
+  singleMarketHtmlOutputPath: string;
 };
 
 export type ExpansionImportProgressHooks = {

@@ -18,11 +18,15 @@ import { buildExpansionImportReconciliationTraceCallbacks } from "@/lib/data/imp
 import type { FetchLike } from "@/lib/data/importers/kalshi";
 import type { ExpansionExecutorDeps } from "@/lib/data/importJobs/expansionExecutor";
 import {
+  createSingleMarketExpansionImportDebugDepsFromFetch,
   ExpansionExecutorError,
   ExpansionExecutorErrorCode,
   runHistoricalExpansionImport,
+  runSingleMarketExpansionImportDebug,
   serializeHistoricalExpansionImportSummary,
   serializeHistoricalExpansionImportSummaryHtml,
+  serializeSingleMarketExpansionImportDebugHtml,
+  serializeSingleMarketExpansionImportDebugReport,
 } from "@/lib/data/importJobs/expansionExecutor";
 
 import {
@@ -126,6 +130,70 @@ export async function runExecuteExpansionImportCommand(
         `Missing historical expansion import config: ${config.inputPath}`,
         ExpansionExecutorErrorCode.MISSING_EXPANSION_CONFIG,
       );
+    }
+
+    if (config.marketTicker) {
+      const report = await runSingleMarketExpansionImportDebug({
+        generatedAt,
+        config: {
+          marketTicker: config.marketTicker,
+          inputPath: config.inputPath,
+          outputPath: config.singleMarketOutputPath,
+          htmlOutputPath: config.singleMarketHtmlOutputPath,
+          importConfigsDir: config.importConfigsDir,
+          importsDir: config.importsDir,
+          execute: config.execute,
+          jobId: config.jobId,
+        },
+        expansionConfigJson: io.readFile(config.inputPath),
+        io: {
+          readFile: io.readFile,
+          fileExists: io.fileExists,
+          writeFile: io.writeFile,
+          mkdirSync: io.mkdirSync,
+        },
+        deps: createSingleMarketExpansionImportDebugDepsFromFetch(
+          resolveFetchImpl(options?.fetchImpl),
+          {
+            runImport:
+              options?.deps?.runImport
+              ?? ((importConfig) =>
+                runHistoricalImportFromConfig({
+                  config: importConfig,
+                  fetchImpl: options?.fetchImpl,
+                })),
+          },
+        ),
+      });
+
+      io.mkdirSync(dirname(config.singleMarketOutputPath), { recursive: true });
+      io.mkdirSync(dirname(config.singleMarketHtmlOutputPath), { recursive: true });
+      io.writeFile(
+        config.singleMarketOutputPath,
+        serializeSingleMarketExpansionImportDebugReport(report),
+      );
+      io.writeFile(
+        config.singleMarketHtmlOutputPath,
+        serializeSingleMarketExpansionImportDebugHtml(report),
+      );
+
+      io.writeStdout(
+        formatStdoutOutput(
+          JSON.stringify({
+            mode: "single-market-smoke",
+            marketTicker: report.marketTicker,
+            execute: report.execute,
+            importStatus: report.importStatus,
+            outputPath: report.outputPath,
+            htmlOutputPath: report.htmlOutputPath,
+            expirationValueSource: report.expirationValueSource,
+            reconciliationSuccess: report.reconciliation.success,
+            failureReason: report.failureReason,
+          }),
+        ),
+      );
+
+      return 0;
     }
 
     const summary = await runHistoricalExpansionImport({

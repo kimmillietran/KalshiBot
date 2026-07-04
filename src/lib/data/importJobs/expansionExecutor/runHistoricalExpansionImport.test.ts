@@ -177,6 +177,10 @@ function createBaseConfig(overrides?: Partial<{
     forceMarket: null,
     maxRetries: 2,
     traceMarket: null,
+    marketTicker: null,
+    singleMarketOutputPath:
+      "data/research-results/single-market-expansion-import-debug.json",
+    singleMarketHtmlOutputPath: "data/reports/single-market-expansion-import-debug.html",
     ...overrides,
   };
 }

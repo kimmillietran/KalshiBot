@@ -7,9 +7,12 @@ import {
   DEFAULT_HISTORICAL_EXPANSION_IMPORT_CONFIG_PATH,
   DEFAULT_HISTORICAL_EXPANSION_IMPORT_SUMMARY_HTML_PATH,
   DEFAULT_HISTORICAL_EXPANSION_IMPORT_SUMMARY_PATH,
+  DEFAULT_SINGLE_MARKET_EXPANSION_IMPORT_DEBUG_HTML_PATH,
+  DEFAULT_SINGLE_MARKET_EXPANSION_IMPORT_DEBUG_JSON_PATH,
   type HistoricalExpansionImportExecutorConfig,
 } from "@/lib/data/importJobs/expansionExecutor";
 import { ExpansionExecutorError } from "@/lib/data/importJobs/expansionExecutor/expansionExecutorTypes";
+import { SingleMarketExpansionImportDebugError } from "@/lib/data/importJobs/expansionExecutor/singleMarketExpansionImportDebugTypes";
 
 export class ExecuteExpansionImportCommandError extends Error {
   constructor(message: string) {
@@ -120,6 +123,17 @@ export function parseExecuteExpansionImportConfigFromArgv(
     maxRetries: readOptionalNumberFlag(argv, "--max-retries") ?? 0,
     jobId: readOptionalFlag(argv, "--job-id"),
     traceMarket: readOptionalFlag(argv, "--trace-market"),
+    marketTicker: readOptionalFlag(argv, "--market-ticker"),
+    singleMarketOutputPath: readFlagValue(
+      argv,
+      "--single-market-output",
+      DEFAULT_SINGLE_MARKET_EXPANSION_IMPORT_DEBUG_JSON_PATH,
+    ),
+    singleMarketHtmlOutputPath: readFlagValue(
+      argv,
+      "--single-market-html-output",
+      DEFAULT_SINGLE_MARKET_EXPANSION_IMPORT_DEBUG_HTML_PATH,
+    ),
   };
 }
 
@@ -131,6 +145,7 @@ export function mapCommandError(error: unknown): string {
   if (
     error instanceof ExecuteExpansionImportCommandError
     || error instanceof ExpansionExecutorError
+    || error instanceof SingleMarketExpansionImportDebugError
   ) {
     return error.message;
   }
