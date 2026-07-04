@@ -200,6 +200,26 @@ export type {
 } from "./dataHealth";
 
 export {
+  buildHistoricalCoveragePlan,
+  buildHistoricalCoveragePlanFromPaths,
+  buildCoverageImportRecommendations,
+  computeCoverageSnapshot,
+  loadCoveragePlannerArtifacts,
+  scanCoverageMarketRecords,
+  serializeHistoricalCoveragePlan,
+  serializeHistoricalCoveragePlanHtml,
+  DEFAULT_HISTORICAL_COVERAGE_PLAN_OUTPUT_PATH,
+  DEFAULT_HISTORICAL_COVERAGE_PLAN_HTML_PATH,
+  HISTORICAL_COVERAGE_PLAN_FILENAME,
+} from "./coveragePlanner";
+export type {
+  CoverageImportRecommendation,
+  CoverageSnapshot,
+  HistoricalCoveragePlanConfig,
+  HistoricalCoveragePlanReport,
+} from "./coveragePlanner";
+
+export {
   buildStatisticalSignificanceFromDirectories,
   buildStatisticalSignificanceReport,
   bootstrapMeanConfidenceInterval,

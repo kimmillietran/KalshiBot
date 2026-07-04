@@ -251,6 +251,19 @@ export const DATA_HEALTH_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--output" },
 ];
 
+export const HISTORICAL_COVERAGE_PLAN_ARGV_SCHEMA: readonly NpmArgvField[] = [
+  { flag: "--output" },
+  { flag: "--html-output" },
+  { flag: "--data-health" },
+  { flag: "--mispricing-atlas" },
+  { flag: "--hypothesis-validation" },
+  { flag: "--regime-tags" },
+  { flag: "--import-configs-dir" },
+  { flag: "--fixtures-dir" },
+  { flag: "--research-results-dir" },
+  { flag: "--month-persistence-threshold" },
+];
+
 export const HYPOTHESIS_LIFECYCLE_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--output" },
   { flag: "--hypothesis-candidates" },
@@ -496,6 +509,10 @@ export function normalizeOverfittingDiagnosticsArgv(argv: readonly string[]): st
 
 export function normalizeDataHealthArgv(argv: readonly string[]): string[] {
   return normalizeNpmScriptArgv(argv, DATA_HEALTH_ARGV_SCHEMA);
+}
+
+export function normalizeHistoricalCoveragePlanArgv(argv: readonly string[]): string[] {
+  return normalizeNpmScriptArgv(argv, HISTORICAL_COVERAGE_PLAN_ARGV_SCHEMA);
 }
 
 export function normalizeHypothesisLifecycleArgv(argv: readonly string[]): string[] {

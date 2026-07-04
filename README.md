@@ -125,6 +125,16 @@ npm run research:artifact-index
 
 Writes `data/research-results/research-artifact-index.json` and `data/reports/research-artifact-index.html`. Each entry includes artifact name, path, generated timestamp, producing pipeline step, upstream/downstream dependencies, file size, and status (`present`, `stale`, or `missing`). This is read-only — it does not run or modify the research pipeline.
 
+### Historical coverage expansion planner
+
+Analyze current historical coverage and get prioritized import recommendations:
+
+```bash
+npm run research:coverage-plan
+```
+
+Writes `data/research-results/historical-coverage-plan.json` and `data/reports/historical-coverage-plan.html` with market counts, month coverage, missing months, volatility regime coverage, market-type/ticker pattern coverage, and recommended next import windows with priority scores. Read-only — does not run imports or modify importer/replay/research calculations.
+
 ### Research dashboard
 
 ```bash

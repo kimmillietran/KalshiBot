@@ -40,6 +40,7 @@
     "research:overfitting-diagnostics": "tsx scripts/research/buildOverfittingDiagnostics.ts",
     "research:pipeline": "tsx scripts/research/runResearchPipeline.ts",
     "research:data-health": "tsx scripts/research/buildDataHealthReport.ts",
+    "research:coverage-plan": "tsx scripts/research/buildHistoricalCoveragePlan.ts",
     "research:hypothesis-lifecycle": "tsx scripts/research/buildHypothesisLifecycleDashboard.ts",
     "research:artifact-index": "tsx scripts/research/buildResearchArtifactIndex.ts",
     "research:dashboard": "tsx scripts/research/buildResearchPipelineDashboard.ts",
