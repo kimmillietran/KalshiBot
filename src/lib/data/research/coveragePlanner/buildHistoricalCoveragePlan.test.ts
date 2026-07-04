@@ -7,6 +7,7 @@ import {
 } from "./buildHistoricalCoveragePlan";
 import { serializeHistoricalCoveragePlanHtml } from "./serializeHistoricalCoveragePlanHtml";
 import { buildCoverageImportRecommendations } from "./buildCoverageImportRecommendations";
+import { classifyMonthCoverageDepth } from "./computeMonthCoverageDepth";
 import { computeCoverageSnapshot } from "./computeCoverageSnapshot";
 import {
   calendarMonthsBetween,
@@ -34,6 +35,14 @@ const DEFAULT_CONFIG: HistoricalCoveragePlanConfig = {
   fixturesDir: "data/fixtures",
   researchResultsDir: "data/research-results",
   monthPersistenceThreshold: 0.67,
+  minMarketsPerMonth: 100,
+  minTradingDaysPerMonth: 10,
+};
+
+const LOW_THRESHOLD_CONFIG: HistoricalCoveragePlanConfig = {
+  ...DEFAULT_CONFIG,
+  minMarketsPerMonth: 1,
+  minTradingDaysPerMonth: 1,
 };
 
 type MockFs = {
@@ -88,6 +97,160 @@ function importConfig(
 ): string {
   return JSON.stringify({ marketTicker, startTime, endTime });
 }
+
+function buildSparseMonthRecords(): CoverageMarketRecord[] {
+  return [
+    {
+      seriesTicker: "KXBTC15M",
+      marketTicker: "MKT-JAN-1",
+      source: "import-config",
+      calendarMonths: ["2026-01"],
+      tradingDays: ["2026-01-10"],
+      volatilityRegime: null,
+    },
+    {
+      seriesTicker: "KXBTC15M",
+      marketTicker: "MKT-JAN-2",
+      source: "import-config",
+      calendarMonths: ["2026-01"],
+      tradingDays: ["2026-01-11"],
+      volatilityRegime: null,
+    },
+    {
+      seriesTicker: "KXBTC15M",
+      marketTicker: "MKT-JAN-3",
+      source: "import-config",
+      calendarMonths: ["2026-01"],
+      tradingDays: ["2026-01-12"],
+      volatilityRegime: null,
+    },
+    {
+      seriesTicker: "KXBTC15M",
+      marketTicker: "MKT-JAN-4",
+      source: "import-config",
+      calendarMonths: ["2026-01"],
+      tradingDays: ["2026-01-13"],
+      volatilityRegime: null,
+    },
+    {
+      seriesTicker: "KXBTC15M",
+      marketTicker: "MKT-JAN-5",
+      source: "import-config",
+      calendarMonths: ["2026-01"],
+      tradingDays: ["2026-01-14"],
+      volatilityRegime: null,
+    },
+    {
+      seriesTicker: "KXBTC15M",
+      marketTicker: "MKT-FEB-1",
+      source: "import-config",
+      calendarMonths: ["2026-02"],
+      tradingDays: ["2026-02-01"],
+      volatilityRegime: null,
+    },
+    {
+      seriesTicker: "KXBTC15M",
+      marketTicker: "MKT-FEB-2",
+      source: "import-config",
+      calendarMonths: ["2026-02"],
+      tradingDays: ["2026-02-02"],
+      volatilityRegime: null,
+    },
+    {
+      seriesTicker: "KXBTC15M",
+      marketTicker: "MKT-FEB-3",
+      source: "import-config",
+      calendarMonths: ["2026-02"],
+      tradingDays: ["2026-02-03"],
+      volatilityRegime: null,
+    },
+    {
+      seriesTicker: "KXBTC15M",
+      marketTicker: "MKT-FEB-4",
+      source: "import-config",
+      calendarMonths: ["2026-02"],
+      tradingDays: ["2026-02-04"],
+      volatilityRegime: null,
+    },
+    {
+      seriesTicker: "KXBTC15M",
+      marketTicker: "MKT-FEB-5",
+      source: "import-config",
+      calendarMonths: ["2026-02"],
+      tradingDays: ["2026-02-05"],
+      volatilityRegime: null,
+    },
+    {
+      seriesTicker: "KXBTC15M",
+      marketTicker: "MKT-FEB-6",
+      source: "import-config",
+      calendarMonths: ["2026-02"],
+      tradingDays: ["2026-02-06"],
+      volatilityRegime: null,
+    },
+    {
+      seriesTicker: "KXBTC15M",
+      marketTicker: "MKT-MAR-1",
+      source: "import-config",
+      calendarMonths: ["2026-03"],
+      tradingDays: ["2026-03-01"],
+      volatilityRegime: null,
+    },
+    {
+      seriesTicker: "KXBTC15M",
+      marketTicker: "MKT-APR-1",
+      source: "import-config",
+      calendarMonths: ["2026-04"],
+      tradingDays: Array.from({ length: 20 }, (_, index) => `2026-04-${String(index + 1).padStart(2, "0")}`),
+      volatilityRegime: null,
+    },
+    ...Array.from({ length: 308 }, (_, index) => ({
+      seriesTicker: "KXBTC15M",
+      marketTicker: `MKT-APR-${index + 2}`,
+      source: "import-config" as const,
+      calendarMonths: ["2026-04"] as const,
+      tradingDays: [`2026-04-${String((index % 20) + 1).padStart(2, "0")}`] as const,
+      volatilityRegime: null,
+    })),
+  ];
+}
+
+describe("classifyMonthCoverageDepth", () => {
+  it("classifies missing, under-covered, and covered months", () => {
+    expect(
+      classifyMonthCoverageDepth(0, 0, {
+        minMarketsPerMonth: 100,
+        minTradingDaysPerMonth: 10,
+      }).coverageStatus,
+    ).toBe("MISSING");
+
+    expect(
+      classifyMonthCoverageDepth(5, 1, {
+        minMarketsPerMonth: 100,
+        minTradingDaysPerMonth: 10,
+      }),
+    ).toMatchObject({
+      coverageStatus: "UNDER_COVERED",
+      thresholds: {
+        marketsMet: false,
+        tradingDaysMet: false,
+      },
+    });
+
+    expect(
+      classifyMonthCoverageDepth(309, 20, {
+        minMarketsPerMonth: 100,
+        minTradingDaysPerMonth: 10,
+      }),
+    ).toMatchObject({
+      coverageStatus: "COVERED",
+      thresholds: {
+        marketsMet: true,
+        tradingDaysMet: true,
+      },
+    });
+  });
+});
 
 describe("coveragePlannerDateUtils", () => {
   it("lists inclusive months and trading days", () => {
@@ -161,18 +324,64 @@ describe("computeCoverageSnapshot", () => {
       },
     ];
 
-    const snapshot = computeCoverageSnapshot(records, {
-      importConfigCount: 2,
-      fixtureCount: 0,
-      researchOutputCount: 0,
-    });
+    const snapshot = computeCoverageSnapshot(
+      records,
+      {
+        importConfigCount: 2,
+        fixtureCount: 0,
+        researchOutputCount: 0,
+      },
+      { minMarketsPerMonth: 1, minTradingDaysPerMonth: 1 },
+    );
 
     expect(snapshot.marketCount).toBe(2);
     expect(snapshot.uniqueTradingDays).toBe(2);
     expect(snapshot.missingMonths).toEqual(["2026-02"]);
+    expect(snapshot.underCoveredMonths).toEqual([]);
+    expect(snapshot.coveredMonths).toEqual(["2026-01", "2026-03"]);
     expect(
       snapshot.volatilityRegimeCoverage.find((entry) => entry.regime === "high")?.marketCount,
     ).toBe(1);
+  });
+
+  it("flags sparse present months as under-covered with default depth thresholds", () => {
+    const snapshot = computeCoverageSnapshot(buildSparseMonthRecords(), {
+      importConfigCount: 13,
+      fixtureCount: 0,
+      researchOutputCount: 0,
+    });
+
+    const january = snapshot.monthCoverage.find((entry) => entry.month === "2026-01");
+    const april = snapshot.monthCoverage.find((entry) => entry.month === "2026-04");
+
+    expect(january).toMatchObject({
+      marketCount: 5,
+      tradingDayCount: 5,
+      coverageStatus: "UNDER_COVERED",
+    });
+    expect(april).toMatchObject({
+      marketCount: 309,
+      coverageStatus: "COVERED",
+    });
+    expect(snapshot.underCoveredMonths).toEqual(
+      expect.arrayContaining(["2026-01", "2026-02", "2026-03"]),
+    );
+    expect(snapshot.coveredMonths).toEqual(["2026-04"]);
+  });
+
+  it("respects configurable depth thresholds", () => {
+    const snapshot = computeCoverageSnapshot(
+      buildSparseMonthRecords(),
+      { importConfigCount: 13, fixtureCount: 0, researchOutputCount: 0 },
+      { minMarketsPerMonth: 5, minTradingDaysPerMonth: 5 },
+    );
+
+    expect(snapshot.monthCoverage.find((entry) => entry.month === "2026-01")?.coverageStatus).toBe(
+      "COVERED",
+    );
+    expect(snapshot.monthCoverage.find((entry) => entry.month === "2026-03")?.coverageStatus).toBe(
+      "UNDER_COVERED",
+    );
   });
 });
 
@@ -190,6 +399,7 @@ describe("buildCoverageImportRecommendations", () => {
         },
       ],
       { importConfigCount: 1, fixtureCount: 0, researchOutputCount: 0 },
+      { minMarketsPerMonth: 1, minTradingDaysPerMonth: 1 },
     );
 
     const recommendations = buildCoverageImportRecommendations(
@@ -212,7 +422,7 @@ describe("buildCoverageImportRecommendations", () => {
         } as never,
         regimeTags: null,
       },
-      { monthPersistenceThreshold: 0.67 },
+      LOW_THRESHOLD_CONFIG,
     );
 
     expect(recommendations).toHaveLength(1);
@@ -220,6 +430,37 @@ describe("buildCoverageImportRecommendations", () => {
     expect(recommendations[0]?.endMonth).toBe("2026-03");
     expect(recommendations[0]?.rationale).toContain("month-stability checks");
     expect(recommendations[0]?.rationale).toContain("2026-01 through 2026-03");
+  });
+
+  it("recommends imports for under-covered months and scores them by severity", () => {
+    const snapshot = computeCoverageSnapshot(buildSparseMonthRecords(), {
+      importConfigCount: 13,
+      fixtureCount: 0,
+      researchOutputCount: 0,
+    });
+
+    const recommendations = buildCoverageImportRecommendations(
+      snapshot,
+      {
+        dataHealth: null,
+        mispricingAtlas: null,
+        hypothesisValidation: null,
+        regimeTags: null,
+      },
+      DEFAULT_CONFIG,
+    );
+
+    expect(recommendations.length).toBeGreaterThan(0);
+    const januaryRecommendation = recommendations.find((entry) =>
+      entry.missingMonths.includes("2026-01"),
+    );
+    expect(januaryRecommendation?.includesUnderCovered).toBe(true);
+    expect(januaryRecommendation?.priorityScore).toBeGreaterThan(0);
+
+    const aprilRecommendation = recommendations.find((entry) =>
+      entry.missingMonths.includes("2026-04"),
+    );
+    expect(aprilRecommendation).toBeUndefined();
   });
 });
 
@@ -288,7 +529,7 @@ describe("buildHistoricalCoveragePlanFromPaths", () => {
     );
 
     const report = buildHistoricalCoveragePlanFromPaths(
-      DEFAULT_CONFIG,
+      LOW_THRESHOLD_CONFIG,
       createIo(mock),
       { generatedAt: GENERATED_AT },
     );
@@ -302,6 +543,7 @@ describe("buildHistoricalCoveragePlanFromPaths", () => {
       "Historical Coverage Expansion Plan",
     );
     expect(serializeHistoricalCoveragePlanHtml(report)).toContain("2026-02");
+    expect(serializeHistoricalCoveragePlanHtml(report)).toContain("Under-covered");
   });
 });
 

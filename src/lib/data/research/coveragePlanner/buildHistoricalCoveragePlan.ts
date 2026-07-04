@@ -34,7 +34,15 @@ function buildPlannerNotes(
     );
   }
 
-  if (report.snapshot.missingMonths.length === 0) {
+  if (report.snapshot.missingMonths.length === 0 && report.snapshot.underCoveredMonths.length === 0) {
+    notes.push(
+      "No missing or under-covered months detected at current depth thresholds; recommendations may be empty until the horizon expands.",
+    );
+  } else if (report.snapshot.underCoveredMonths.length > 0) {
+    notes.push(
+      `${report.snapshot.underCoveredMonths.length} month(s) are present but under-covered relative to minMarketsPerMonth=${report.snapshot.depthThresholds.minMarketsPerMonth} and minTradingDaysPerMonth=${report.snapshot.depthThresholds.minTradingDaysPerMonth}.`,
+    );
+  } else if (report.snapshot.missingMonths.length === 0) {
     notes.push(
       "No intra-horizon month gaps detected; recommendations may be empty until the horizon expands.",
     );
@@ -53,7 +61,10 @@ function buildPlannerNotes(
 export function buildHistoricalCoveragePlan(
   input: BuildHistoricalCoveragePlanInput,
 ): HistoricalCoveragePlanReport {
-  const snapshot = computeCoverageSnapshot(input.marketRecords, input.scanCounts);
+  const snapshot = computeCoverageSnapshot(input.marketRecords, input.scanCounts, {
+    minMarketsPerMonth: input.config.minMarketsPerMonth,
+    minTradingDaysPerMonth: input.config.minTradingDaysPerMonth,
+  });
 
   const recommendations = buildCoverageImportRecommendations(
     snapshot,

@@ -316,6 +316,8 @@ export const HISTORICAL_COVERAGE_PLAN_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--fixtures-dir" },
   { flag: "--research-results-dir" },
   { flag: "--month-persistence-threshold" },
+  { flag: "--min-markets-per-month" },
+  { flag: "--min-trading-days-per-month" },
 ];
 
 export const HYPOTHESIS_LIFECYCLE_ARGV_SCHEMA: readonly NpmArgvField[] = [

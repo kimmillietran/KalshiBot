@@ -36,6 +36,9 @@ const coveragePlanSchema = z.object({
 
 const m91MonthCoverageSchema = z.object({
   month: z.string().trim().min(1),
+  marketCount: z.number().finite().optional(),
+  tradingDayCount: z.number().finite().optional(),
+  coverageStatus: z.enum(["MISSING", "UNDER_COVERED", "COVERED"]).optional(),
 });
 
 const m91RecommendationSchema = z.object({
@@ -44,6 +47,8 @@ const m91RecommendationSchema = z.object({
   startMonth: z.string().trim().min(1),
   endMonth: z.string().trim().min(1),
   missingMonths: z.array(z.string().trim().min(1)).optional(),
+  includesMissing: z.boolean().optional(),
+  includesUnderCovered: z.boolean().optional(),
   priorityScore: z.number().finite(),
   rationale: z.string().trim().min(1),
   expectedResearchBenefit: z.string().trim().min(1),
@@ -59,6 +64,13 @@ const m91CoveragePlanSchema = z.object({
       uniqueTradingDays: z.number().finite().int().nonnegative().optional(),
       monthCoverage: z.array(m91MonthCoverageSchema).optional(),
       missingMonths: z.array(z.string().trim().min(1)).optional(),
+      underCoveredMonths: z.array(z.string().trim().min(1)).optional(),
+      depthThresholds: z
+        .object({
+          minMarketsPerMonth: z.number().finite(),
+          minTradingDaysPerMonth: z.number().finite(),
+        })
+        .optional(),
     })
     .optional(),
   recommendations: z.array(m91RecommendationSchema),

@@ -1,8 +1,14 @@
 import { quarterLabel } from "./coveragePlannerDateUtils";
+import {
+  averageUnderCoverageSeverity,
+  listMonthsByCoverageStatus,
+  listMonthsNeedingImport,
+} from "./computeMonthCoverageDepth";
 import type {
   CoverageImportRecommendation,
   CoverageSnapshot,
   HistoricalCoveragePlanConfig,
+  MonthCoverageEntry,
   ParsedCoveragePlannerArtifacts,
 } from "./coveragePlannerTypes";
 
@@ -10,7 +16,7 @@ type MonthGapWindow = {
   seriesTicker: string;
   startMonth: string;
   endMonth: string;
-  missingMonths: string[];
+  targetMonths: string[];
 };
 
 function groupContiguousMonths(months: readonly string[]): string[][] {
@@ -60,13 +66,14 @@ function dominantSeries(snapshot: CoverageSnapshot): string {
 
 function buildGapWindows(snapshot: CoverageSnapshot): MonthGapWindow[] {
   const seriesTicker = dominantSeries(snapshot);
-  const groups = groupContiguousMonths(snapshot.missingMonths);
+  const targetMonths = listMonthsNeedingImport(snapshot.monthCoverage);
+  const groups = groupContiguousMonths(targetMonths);
 
-  return groups.map((missingMonths) => ({
+  return groups.map((months) => ({
     seriesTicker,
-    startMonth: missingMonths[0]!,
-    endMonth: missingMonths.at(-1)!,
-    missingMonths,
+    startMonth: months[0]!,
+    endMonth: months.at(-1)!,
+    targetMonths: months,
   }));
 }
 
@@ -86,19 +93,22 @@ function buildPreHorizonQuarterWindows(
     return [];
   }
 
-  const observed = new Set(snapshot.monthCoverage.map((entry) => entry.month));
   const q1Months = [`${year}-01`, `${year}-02`, `${year}-03`];
-  const missingQ1 = q1Months.filter((month) => !observed.has(month));
-  if (missingQ1.length === 0) {
+  const q1Gaps = q1Months.filter((month) => {
+    const entry = snapshot.monthCoverage.find((candidate) => candidate.month === month);
+    return entry === undefined || entry.coverageStatus !== "COVERED";
+  });
+
+  if (q1Gaps.length === 0) {
     return [];
   }
 
   return [
     {
       seriesTicker: dominantSeries(snapshot),
-      startMonth: missingQ1[0]!,
-      endMonth: missingQ1.at(-1)!,
-      missingMonths: missingQ1,
+      startMonth: q1Gaps[0]!,
+      endMonth: q1Gaps.at(-1)!,
+      targetMonths: q1Gaps,
     },
   ];
 }
@@ -123,41 +133,102 @@ function formatMonthRange(startMonth: string, endMonth: string): string {
   return startMonth === endMonth ? startMonth : `${startMonth} through ${endMonth}`;
 }
 
+function includesMissingMonths(
+  monthCoverage: readonly MonthCoverageEntry[],
+  months: readonly string[],
+): boolean {
+  const byMonth = new Map(monthCoverage.map((entry) => [entry.month, entry]));
+  return months.some((month) => byMonth.get(month)?.coverageStatus === "MISSING");
+}
+
+function includesUnderCoveredMonths(
+  monthCoverage: readonly MonthCoverageEntry[],
+  months: readonly string[],
+): boolean {
+  const byMonth = new Map(monthCoverage.map((entry) => [entry.month, entry]));
+  return months.some((month) => byMonth.get(month)?.coverageStatus === "UNDER_COVERED");
+}
+
 function scoreRecommendation(input: {
-  missingMonthCount: number;
+  targetMonthCount: number;
+  averageSeverity: number;
   unstableHypothesisCount: number;
-  quarterFullyMissing: boolean;
+  quarterFullyGapped: boolean;
   marketCount: number;
 }): number {
-  const monthGapScore = Math.min(40, input.missingMonthCount * 12);
+  const monthGapScore = Math.min(40, input.targetMonthCount * 12);
+  const severityScore = Math.min(35, Math.round(input.averageSeverity * 35));
   const validationScore = Math.min(25, input.unstableHypothesisCount * 5);
-  const quarterScore = input.quarterFullyMissing ? 20 : 0;
+  const quarterScore = input.quarterFullyGapped ? 20 : 0;
   const sparseScore = input.marketCount < 5 ? 15 : input.marketCount < 15 ? 8 : 0;
 
   return Math.round(
-    Math.min(100, monthGapScore + validationScore + quarterScore + sparseScore),
+    Math.min(100, monthGapScore + severityScore + validationScore + quarterScore + sparseScore),
   );
 }
 
-function quarterFullyMissing(missingMonths: readonly string[]): boolean {
-  if (missingMonths.length === 0) {
+function quarterFullyGapped(targetMonths: readonly string[]): boolean {
+  if (targetMonths.length === 0) {
     return false;
   }
 
-  const quarters = new Set(missingMonths.map((month) => quarterLabel(month)));
-  return quarters.size === 1 && missingMonths.length >= 2;
+  const quarters = new Set(targetMonths.map((month) => quarterLabel(month)));
+  return quarters.size === 1 && targetMonths.length >= 2;
+}
+
+function describeMonthGaps(
+  monthCoverage: readonly MonthCoverageEntry[],
+  months: readonly string[],
+): string {
+  const byMonth = new Map(monthCoverage.map((entry) => [entry.month, entry]));
+  const labels = months.map((month) => {
+    const entry = byMonth.get(month);
+    if (!entry) {
+      return `${month} (missing)`;
+    }
+
+    if (entry.coverageStatus === "MISSING") {
+      return `${month} (missing)`;
+    }
+
+    return `${month} (${entry.marketCount}/${entry.thresholds.minMarketsPerMonth} markets, ${entry.tradingDayCount}/${entry.thresholds.minTradingDaysPerMonth} trading days)`;
+  });
+
+  return labels.join("; ");
 }
 
 function buildRationale(
   window: MonthGapWindow,
+  snapshot: CoverageSnapshot,
   unstableIds: readonly string[],
   threshold: number,
 ): string {
   const range = formatMonthRange(window.startMonth, window.endMonth);
   const quarter = quarterLabel(window.startMonth);
+  const gapSummary = describeMonthGaps(snapshot.monthCoverage, window.targetMonths);
+  const hasMissing = includesMissingMonths(snapshot.monthCoverage, window.targetMonths);
+  const hasUnderCovered = includesUnderCoveredMonths(
+    snapshot.monthCoverage,
+    window.targetMonths,
+  );
 
   if (unstableIds.length > 0) {
-    return `Import ${window.seriesTicker} markets for ${range} because current hypotheses fail month-stability checks (monthPersistenceRate < ${threshold}) and ${quarter} coverage is absent.`;
+    const stabilityNote = `current hypotheses fail month-stability checks (monthPersistenceRate < ${threshold})`;
+    if (hasMissing && hasUnderCovered) {
+      return `Import ${window.seriesTicker} markets for ${range} because ${stabilityNote} and ${quarter} has missing and under-covered months (${gapSummary}).`;
+    }
+    if (hasUnderCovered) {
+      return `Import ${window.seriesTicker} markets for ${range} because ${stabilityNote} and ${quarter} months are under-covered (${gapSummary}).`;
+    }
+    return `Import ${window.seriesTicker} markets for ${range} because ${stabilityNote} and ${quarter} coverage is absent.`;
+  }
+
+  if (hasMissing && hasUnderCovered) {
+    return `Import ${window.seriesTicker} markets for ${range} because ${quarter} has missing and under-covered months (${gapSummary}).`;
+  }
+
+  if (hasUnderCovered) {
+    return `Import ${window.seriesTicker} markets for ${range} because ${quarter} months are under-covered relative to depth thresholds (${gapSummary}).`;
   }
 
   return `Import ${window.seriesTicker} markets for ${range} because ${quarter} coverage is absent in the current historical dataset.`;
@@ -165,12 +236,31 @@ function buildRationale(
 
 function buildExpectedBenefit(
   window: MonthGapWindow,
+  snapshot: CoverageSnapshot,
   unstableIds: readonly string[],
   artifacts: ParsedCoveragePlannerArtifacts,
 ): string {
-  const benefits: string[] = [
-    `Adds ${window.missingMonths.length} missing calendar month(s) for ${window.seriesTicker}.`,
-  ];
+  const hasMissing = includesMissingMonths(snapshot.monthCoverage, window.targetMonths);
+  const hasUnderCovered = includesUnderCoveredMonths(
+    snapshot.monthCoverage,
+    window.targetMonths,
+  );
+  const benefits: string[] = [];
+
+  if (hasMissing) {
+    benefits.push(
+      `Adds ${listMonthsByCoverageStatus(
+        snapshot.monthCoverage.filter((entry) => window.targetMonths.includes(entry.month)),
+        "MISSING",
+      ).length} missing calendar month(s) for ${window.seriesTicker}.`,
+    );
+  }
+
+  if (hasUnderCovered) {
+    benefits.push(
+      `Deepens under-covered months for ${window.seriesTicker} toward ${snapshot.depthThresholds.minMarketsPerMonth} markets and ${snapshot.depthThresholds.minTradingDaysPerMonth} trading days per month.`,
+    );
+  }
 
   if (unstableIds.length > 0) {
     benefits.push(
@@ -199,7 +289,10 @@ function buildExpectedBenefit(
 export function buildCoverageImportRecommendations(
   snapshot: CoverageSnapshot,
   artifacts: ParsedCoveragePlannerArtifacts,
-  config: Pick<HistoricalCoveragePlanConfig, "monthPersistenceThreshold">,
+  config: Pick<
+    HistoricalCoveragePlanConfig,
+    "monthPersistenceThreshold" | "minMarketsPerMonth" | "minTradingDaysPerMonth"
+  >,
 ): CoverageImportRecommendation[] {
   const unstableIds = unstableHypothesisIds(
     artifacts,
@@ -211,10 +304,15 @@ export function buildCoverageImportRecommendations(
   ]);
 
   const recommendations = windows.map((window, index) => {
+    const averageSeverity = averageUnderCoverageSeverity(
+      snapshot.monthCoverage,
+      window.targetMonths,
+    );
     const priorityScore = scoreRecommendation({
-      missingMonthCount: window.missingMonths.length,
+      targetMonthCount: window.targetMonths.length,
+      averageSeverity,
       unstableHypothesisCount: unstableIds.length,
-      quarterFullyMissing: quarterFullyMissing(window.missingMonths),
+      quarterFullyGapped: quarterFullyGapped(window.targetMonths),
       marketCount: snapshot.marketCount,
     });
 
@@ -223,10 +321,20 @@ export function buildCoverageImportRecommendations(
       seriesTicker: window.seriesTicker,
       startMonth: window.startMonth,
       endMonth: window.endMonth,
-      missingMonths: window.missingMonths,
+      missingMonths: window.targetMonths,
+      includesMissing: includesMissingMonths(snapshot.monthCoverage, window.targetMonths),
+      includesUnderCovered: includesUnderCoveredMonths(
+        snapshot.monthCoverage,
+        window.targetMonths,
+      ),
       priorityScore,
-      rationale: buildRationale(window, unstableIds, config.monthPersistenceThreshold),
-      expectedResearchBenefit: buildExpectedBenefit(window, unstableIds, artifacts),
+      rationale: buildRationale(window, snapshot, unstableIds, config.monthPersistenceThreshold),
+      expectedResearchBenefit: buildExpectedBenefit(
+        window,
+        snapshot,
+        unstableIds,
+        artifacts,
+      ),
       supportingHypothesisIds: unstableIds.slice(0, 5),
     };
   });

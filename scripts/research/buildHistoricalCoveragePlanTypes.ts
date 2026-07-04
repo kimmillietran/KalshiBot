@@ -7,6 +7,8 @@ import {
   DEFAULT_IMPORT_CONFIGS_DIR,
   DEFAULT_MISPRICING_ATLAS_INPUT_PATH,
   DEFAULT_MONTH_PERSISTENCE_THRESHOLD,
+  DEFAULT_MIN_MARKETS_PER_MONTH,
+  DEFAULT_MIN_TRADING_DAYS_PER_MONTH,
   DEFAULT_REGIME_TAGS_INPUT_PATH,
   DEFAULT_RESEARCH_RESULTS_DIR,
   type HistoricalCoveragePlanConfig,
@@ -90,6 +92,16 @@ export function parseHistoricalCoveragePlanConfigFromArgv(
       argv,
       "--month-persistence-threshold",
       DEFAULT_MONTH_PERSISTENCE_THRESHOLD,
+    ),
+    minMarketsPerMonth: readNumberFlagValue(
+      argv,
+      "--min-markets-per-month",
+      DEFAULT_MIN_MARKETS_PER_MONTH,
+    ),
+    minTradingDaysPerMonth: readNumberFlagValue(
+      argv,
+      "--min-trading-days-per-month",
+      DEFAULT_MIN_TRADING_DAYS_PER_MONTH,
     ),
   };
 }

@@ -226,6 +226,48 @@ describe("buildHistoricalExpansionImportConfig", () => {
 
     expect(config.summary.skippedJobCount).toBe(1);
   });
+
+  it("creates scheduled jobs for under-covered month recommendations", () => {
+    const config = buildHistoricalExpansionImportConfig({
+      plan: parseHistoricalCoveragePlanJson(
+        "plan.json",
+        JSON.stringify({
+          generatedAt: GENERATED_AT,
+          outputPath: "data/research-results/historical-coverage-plan.json",
+          snapshot: {
+            underCoveredMonths: ["2026-01", "2026-02", "2026-03"],
+            depthThresholds: {
+              minMarketsPerMonth: 100,
+              minTradingDaysPerMonth: 10,
+            },
+          },
+          recommendations: [
+            {
+              recommendationId: "coverage-import-1",
+              seriesTicker: "KXBTC15M",
+              startMonth: "2026-01",
+              endMonth: "2026-03",
+              missingMonths: ["2026-01", "2026-02", "2026-03"],
+              includesMissing: false,
+              includesUnderCovered: true,
+              priorityScore: 88,
+              rationale: "Q1 months are under-covered",
+              expectedResearchBenefit: "Deepens under-covered months",
+            },
+          ],
+        }),
+      ),
+      inputPath: "data/research-results/historical-coverage-plan.json",
+      outputPath: "data/import-configs/historical-expansion-config.json",
+      importConfigsDir: "data/import-configs",
+      generatedAt: GENERATED_AT,
+      dryRun: false,
+    });
+
+    expect(config.summary.scheduledJobCount).toBe(1);
+    expect(config.jobs[0]?.status).toBe("scheduled");
+    expect(config.jobs[0]?.reason).toContain("under-covered");
+  });
 });
 
 describe("collectCoveredWindowsFromImportConfigs", () => {

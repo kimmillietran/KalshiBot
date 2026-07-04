@@ -133,7 +133,7 @@ Analyze current historical coverage and get prioritized import recommendations:
 npm run research:coverage-plan
 ```
 
-Writes `data/research-results/historical-coverage-plan.json` and `data/reports/historical-coverage-plan.html` with market counts, month coverage, missing months, volatility regime coverage, market-type/ticker pattern coverage, and recommended next import windows with priority scores. Read-only — does not run imports or modify importer/replay/research calculations.
+Writes `data/research-results/historical-coverage-plan.json` and `data/reports/historical-coverage-plan.html` with market counts, per-month depth status (`MISSING`, `UNDER_COVERED`, `COVERED`), missing/under-covered month lists, volatility regime coverage, market-type/ticker pattern coverage, and recommended next import windows with priority scores. Default depth thresholds: 100 markets/month and 10 trading days/month (override with `--min-markets-per-month` and `--min-trading-days-per-month`). Read-only — does not run imports or modify importer/replay/research calculations.
 
 ### Research dashboard
 
@@ -332,6 +332,7 @@ docs/
 | 9.4 | Full orchestrator coverage phase (`research:full` coverage planning + optional validation wiring) — **complete** |
 | 9.6 | Expansion fixture + research rebuild (`research:rebuild-after-expansion`, post-import fixture/registry/replay pipeline) — **complete** |
 | 9.9 | Research pipeline performance audit (`research:performance-audit`, diagnostic runtime analysis) — **complete** |
+| 9.11 | Coverage depth thresholds (`research:coverage-plan` missing/under-covered/covered month classification) — **complete** |
 
 ## Intentionally deferred
 

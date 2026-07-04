@@ -1,5 +1,10 @@
 import { enumerateMonthRange } from "./coveragePlannerDateUtils";
+import {
+  classifyMonthCoverageDepth,
+  listMonthsByCoverageStatus,
+} from "./computeMonthCoverageDepth";
 import type {
+  CoverageDepthThresholds,
   CoverageMarketRecord,
   CoverageSnapshot,
   MonthCoverageEntry,
@@ -10,9 +15,9 @@ function uniqueSorted(values: readonly string[]): string[] {
   return [...new Set(values)].sort();
 }
 
-function buildMonthCoverage(
+function buildRawMonthCounts(
   records: readonly CoverageMarketRecord[],
-): MonthCoverageEntry[] {
+): Map<string, { marketCount: number; tradingDayCount: number }> {
   const monthMarkets = new Map<string, Set<string>>();
   const monthDays = new Map<string, Set<string>>();
 
@@ -34,11 +39,40 @@ function buildMonthCoverage(
   }
 
   const months = uniqueSorted([...monthMarkets.keys(), ...monthDays.keys()]);
-  return months.map((month) => ({
-    month,
-    marketCount: monthMarkets.get(month)?.size ?? 0,
-    tradingDayCount: monthDays.get(month)?.size ?? 0,
-  }));
+  return new Map(
+    months.map((month) => [
+      month,
+      {
+        marketCount: monthMarkets.get(month)?.size ?? 0,
+        tradingDayCount: monthDays.get(month)?.size ?? 0,
+      },
+    ]),
+  );
+}
+
+function buildMonthCoverage(
+  records: readonly CoverageMarketRecord[],
+  thresholds: CoverageDepthThresholds,
+  horizonMonths: readonly string[],
+): MonthCoverageEntry[] {
+  const rawCounts = buildRawMonthCounts(records);
+
+  return horizonMonths.map((month) => {
+    const counts = rawCounts.get(month) ?? { marketCount: 0, tradingDayCount: 0 };
+    const depth = classifyMonthCoverageDepth(
+      counts.marketCount,
+      counts.tradingDayCount,
+      thresholds,
+    );
+
+    return {
+      month,
+      marketCount: counts.marketCount,
+      tradingDayCount: counts.tradingDayCount,
+      coverageStatus: depth.coverageStatus,
+      thresholds: depth.thresholds,
+    };
+  });
 }
 
 function buildVolatilityCoverage(
@@ -112,29 +146,38 @@ export function computeCoverageSnapshot(
     fixtureCount: number;
     researchOutputCount: number;
   },
+  thresholds: CoverageDepthThresholds = {
+    minMarketsPerMonth: 100,
+    minTradingDaysPerMonth: 10,
+  },
 ): CoverageSnapshot {
   const uniqueMarkets = new Set(records.map((record) => record.marketTicker));
   const uniqueTradingDays = uniqueSorted(
     records.flatMap((record) => record.tradingDays),
   );
-  const monthCoverage = buildMonthCoverage(records);
-
-  const observedMonths = monthCoverage.map((entry) => entry.month);
+  const rawCounts = buildRawMonthCounts(records);
+  const observedMonths = [...rawCounts.keys()].sort();
   const earliestMonth = observedMonths[0] ?? null;
   const latestMonth = observedMonths.at(-1) ?? null;
 
-  const missingMonths =
+  const horizonMonths =
     earliestMonth && latestMonth
-      ? enumerateMonthRange(earliestMonth, latestMonth).filter(
-          (month) => !observedMonths.includes(month),
-        )
+      ? enumerateMonthRange(earliestMonth, latestMonth)
       : [];
+
+  const monthCoverage = buildMonthCoverage(records, thresholds, horizonMonths);
+  const missingMonths = listMonthsByCoverageStatus(monthCoverage, "MISSING");
+  const underCoveredMonths = listMonthsByCoverageStatus(monthCoverage, "UNDER_COVERED");
+  const coveredMonths = listMonthsByCoverageStatus(monthCoverage, "COVERED");
 
   return {
     marketCount: uniqueMarkets.size,
     uniqueTradingDays: uniqueTradingDays.length,
     monthCoverage,
     missingMonths,
+    underCoveredMonths,
+    coveredMonths,
+    depthThresholds: thresholds,
     coverageHorizon: {
       earliestMonth,
       latestMonth,

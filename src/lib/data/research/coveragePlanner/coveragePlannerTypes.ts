@@ -20,7 +20,17 @@ export const DEFAULT_FIXTURES_DIR = "data/fixtures";
 export const DEFAULT_RESEARCH_RESULTS_DIR = "data/research-results";
 
 export const DEFAULT_MONTH_PERSISTENCE_THRESHOLD = 0.67;
-export const DEFAULT_MIN_MARKETS_PER_MONTH = 1;
+export const DEFAULT_MIN_MARKETS_PER_MONTH = 100;
+export const DEFAULT_MIN_TRADING_DAYS_PER_MONTH = 10;
+
+export type CoverageDepthStatus = "MISSING" | "UNDER_COVERED" | "COVERED";
+
+export type MonthCoverageThresholdComparison = {
+  minMarketsPerMonth: number;
+  minTradingDaysPerMonth: number;
+  marketsMet: boolean;
+  tradingDaysMet: boolean;
+};
 
 export const CoveragePlannerErrorCode = {
   INVALID_JSON: "invalid-json",
@@ -58,6 +68,8 @@ export type MonthCoverageEntry = {
   month: string;
   marketCount: number;
   tradingDayCount: number;
+  coverageStatus: CoverageDepthStatus;
+  thresholds: MonthCoverageThresholdComparison;
 };
 
 export type VolatilityRegimeCoverageEntry = {
@@ -77,6 +89,9 @@ export type CoverageSnapshot = {
   uniqueTradingDays: number;
   monthCoverage: readonly MonthCoverageEntry[];
   missingMonths: readonly string[];
+  underCoveredMonths: readonly string[];
+  coveredMonths: readonly string[];
+  depthThresholds: CoverageDepthThresholds;
   coverageHorizon: {
     earliestMonth: string | null;
     latestMonth: string | null;
@@ -88,12 +103,20 @@ export type CoverageSnapshot = {
   researchOutputCount: number;
 };
 
+export type CoverageDepthThresholds = {
+  minMarketsPerMonth: number;
+  minTradingDaysPerMonth: number;
+};
+
 export type CoverageImportRecommendation = {
   recommendationId: string;
   seriesTicker: string;
   startMonth: string;
   endMonth: string;
+  /** Months addressed by this recommendation (missing and/or under-covered). */
   missingMonths: readonly string[];
+  includesMissing: boolean;
+  includesUnderCovered: boolean;
   priorityScore: number;
   rationale: string;
   expectedResearchBenefit: string;
@@ -125,6 +148,8 @@ export type HistoricalCoveragePlanConfig = {
   fixturesDir: string;
   researchResultsDir: string;
   monthPersistenceThreshold: number;
+  minMarketsPerMonth: number;
+  minTradingDaysPerMonth: number;
 };
 
 export type HistoricalCoveragePlanReport = {

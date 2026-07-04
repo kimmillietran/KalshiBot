@@ -6,6 +6,11 @@ export {
 export { buildCoverageImportRecommendations } from "./buildCoverageImportRecommendations";
 export { computeCoverageSnapshot } from "./computeCoverageSnapshot";
 export {
+  classifyMonthCoverageDepth,
+  computeUnderCoverageSeverity,
+  listMonthsNeedingImport,
+} from "./computeMonthCoverageDepth";
+export {
   calendarMonthsBetween,
   enumerateMonthRange,
   quarterLabel,
@@ -24,12 +29,16 @@ export {
   DEFAULT_IMPORT_CONFIGS_DIR,
   DEFAULT_MISPRICING_ATLAS_INPUT_PATH,
   DEFAULT_MONTH_PERSISTENCE_THRESHOLD,
+  DEFAULT_MIN_MARKETS_PER_MONTH,
+  DEFAULT_MIN_TRADING_DAYS_PER_MONTH,
   DEFAULT_REGIME_TAGS_INPUT_PATH,
   DEFAULT_RESEARCH_RESULTS_DIR,
   HISTORICAL_COVERAGE_PLAN_FILENAME,
 } from "./coveragePlannerTypes";
 export type {
   BuildHistoricalCoveragePlanInput,
+  CoverageDepthStatus,
+  CoverageDepthThresholds,
   CoverageImportRecommendation,
   CoverageMarketRecord,
   CoveragePlannerInputStatus,
@@ -38,6 +47,7 @@ export type {
   HistoricalCoveragePlanConfig,
   HistoricalCoveragePlanReport,
   MonthCoverageEntry,
+  MonthCoverageThresholdComparison,
   ParsedCoveragePlannerArtifacts,
 } from "./coveragePlannerTypes";
 export { loadCoveragePlannerArtifacts } from "./parseCoveragePlannerArtifacts";

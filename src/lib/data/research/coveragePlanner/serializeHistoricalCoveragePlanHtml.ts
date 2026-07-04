@@ -1,6 +1,10 @@
 import { researchReportTheme as theme } from "@/lib/data/research/reports/reportTheme";
 
-import type { HistoricalCoveragePlanReport } from "./coveragePlannerTypes";
+import type {
+  CoverageDepthStatus,
+  HistoricalCoveragePlanReport,
+  MonthCoverageEntry,
+} from "./coveragePlannerTypes";
 
 function escapeHtml(value: string): string {
   return value
@@ -10,14 +14,33 @@ function escapeHtml(value: string): string {
     .replaceAll("\"", "&quot;");
 }
 
+function statusBadge(status: CoverageDepthStatus): string {
+  const styles: Record<CoverageDepthStatus, { label: string; color: string }> = {
+    MISSING: { label: "Missing", color: theme.bearish },
+    UNDER_COVERED: { label: "Under-covered", color: theme.warning },
+    COVERED: { label: "Covered", color: theme.bullish },
+  };
+  const entry = styles[status];
+  return `<span class="status-badge" style="background:${entry.color}22;color:${entry.color};border:1px solid ${entry.color}55">${entry.label}</span>`;
+}
+
+function renderThresholdCell(entry: MonthCoverageEntry): string {
+  return `${entry.marketCount} / ${entry.thresholds.minMarketsPerMonth}`;
+}
+
+function renderTradingDayCell(entry: MonthCoverageEntry): string {
+  return `${entry.tradingDayCount} / ${entry.thresholds.minTradingDaysPerMonth}`;
+}
+
 function renderSummaryCards(report: HistoricalCoveragePlanReport): string {
   const { snapshot } = report;
   return `
     <section class="summary-grid">
       <div class="summary-card"><div class="summary-label">Markets</div><div class="summary-value">${snapshot.marketCount}</div></div>
       <div class="summary-card"><div class="summary-label">Trading days</div><div class="summary-value">${snapshot.uniqueTradingDays}</div></div>
-      <div class="summary-card"><div class="summary-label">Months covered</div><div class="summary-value">${snapshot.monthCoverage.length}</div></div>
-      <div class="summary-card"><div class="summary-label">Missing months</div><div class="summary-value" style="color:${theme.warning}">${snapshot.missingMonths.length}</div></div>
+      <div class="summary-card"><div class="summary-label">Covered months</div><div class="summary-value" style="color:${theme.bullish}">${snapshot.coveredMonths.length}</div></div>
+      <div class="summary-card"><div class="summary-label">Under-covered</div><div class="summary-value" style="color:${theme.warning}">${snapshot.underCoveredMonths.length}</div></div>
+      <div class="summary-card"><div class="summary-label">Missing months</div><div class="summary-value" style="color:${theme.bearish}">${snapshot.missingMonths.length}</div></div>
       <div class="summary-card"><div class="summary-label">Recommendations</div><div class="summary-value">${report.recommendations.length}</div></div>
     </section>`;
 }
@@ -31,8 +54,9 @@ export function serializeHistoricalCoveragePlanHtml(
       (entry) => `
       <tr>
         <td>${escapeHtml(entry.month)}</td>
-        <td>${entry.marketCount}</td>
-        <td>${entry.tradingDayCount}</td>
+        <td>${renderThresholdCell(entry)}</td>
+        <td>${renderTradingDayCell(entry)}</td>
+        <td>${statusBadge(entry.coverageStatus)}</td>
       </tr>`,
     )
     .join("");
@@ -40,6 +64,10 @@ export function serializeHistoricalCoveragePlanHtml(
   const missingMonths =
     report.snapshot.missingMonths.length > 0
       ? report.snapshot.missingMonths.map(escapeHtml).join(", ")
+      : "—";
+  const underCoveredMonths =
+    report.snapshot.underCoveredMonths.length > 0
+      ? report.snapshot.underCoveredMonths.map(escapeHtml).join(", ")
       : "—";
 
   const regimeRows = report.snapshot.volatilityRegimeCoverage
@@ -74,7 +102,7 @@ export function serializeHistoricalCoveragePlanHtml(
         </div>
         <p>${escapeHtml(entry.rationale)}</p>
         <p class="muted">${escapeHtml(entry.expectedResearchBenefit)}</p>
-        <p class="muted">Missing months: ${escapeHtml(entry.missingMonths.join(", ") || "—")}</p>
+        <p class="muted">Target months: ${escapeHtml(entry.missingMonths.join(", ") || "—")}</p>
       </article>`,
     )
     .join("");
@@ -82,6 +110,8 @@ export function serializeHistoricalCoveragePlanHtml(
   const notes = report.plannerNotes
     .map((note) => `<li>${escapeHtml(note)}</li>`)
     .join("");
+
+  const { depthThresholds } = report.snapshot;
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -125,6 +155,14 @@ export function serializeHistoricalCoveragePlanHtml(
     }
     th { color: ${theme.textMuted}; font-weight: 600; }
     code { color: ${theme.info}; }
+    .status-badge {
+      display: inline-block;
+      border-radius: 999px;
+      padding: 2px 8px;
+      font-size: 11px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
     .recommendation-card {
       border: 1px solid ${theme.panelBorder};
       border-radius: 12px;
@@ -154,6 +192,7 @@ export function serializeHistoricalCoveragePlanHtml(
   <header>
     <h1>Historical Coverage Expansion Plan</h1>
     <p class="muted">Generated ${escapeHtml(report.generatedAt)} · read-only planner</p>
+    <p class="muted">Depth thresholds: ${depthThresholds.minMarketsPerMonth} markets/month · ${depthThresholds.minTradingDaysPerMonth} trading days/month</p>
   </header>
 
   ${renderSummaryCards(report)}
@@ -163,14 +202,15 @@ export function serializeHistoricalCoveragePlanHtml(
     <p>Earliest month: <strong>${escapeHtml(report.snapshot.coverageHorizon.earliestMonth ?? "—")}</strong></p>
     <p>Latest month: <strong>${escapeHtml(report.snapshot.coverageHorizon.latestMonth ?? "—")}</strong></p>
     <p>Missing months in horizon: <strong>${escapeHtml(missingMonths)}</strong></p>
+    <p>Under-covered months in horizon: <strong>${escapeHtml(underCoveredMonths)}</strong></p>
     <p class="muted">Import configs: ${report.snapshot.importConfigCount} · Fixtures: ${report.snapshot.fixtureCount} · Research outputs: ${report.snapshot.researchOutputCount}</p>
   </section>
 
   <section class="panel">
     <h2>Month coverage</h2>
     <table>
-      <thead><tr><th>Month</th><th>Markets</th><th>Trading days</th></tr></thead>
-      <tbody>${monthRows || "<tr><td colspan=\"3\">No month coverage detected</td></tr>"}</tbody>
+      <thead><tr><th>Month</th><th>Markets</th><th>Trading days</th><th>Status</th></tr></thead>
+      <tbody>${monthRows || "<tr><td colspan=\"4\">No month coverage detected</td></tr>"}</tbody>
     </table>
   </section>
 
