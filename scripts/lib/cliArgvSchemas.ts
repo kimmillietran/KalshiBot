@@ -273,6 +273,20 @@ export const RESEARCH_PIPELINE_DASHBOARD_ARGV_SCHEMA: readonly NpmArgvField[] = 
   { flag: "--data-health" },
 ];
 
+export const RESEARCH_EXPERIMENT_ARGV_SCHEMA: readonly NpmArgvField[] = [
+  { flag: "--experiments-dir" },
+  { flag: "--index-output" },
+  { flag: "--html-output" },
+  { flag: "--pipeline-summary" },
+  { flag: "--full-research-summary" },
+  { flag: "--hypothesis-candidates" },
+  { flag: "--hypothesis-validation" },
+  { flag: "--strategy-synthesis" },
+  { flag: "--harness-results" },
+  { flag: "--candidate-promotions" },
+  { flag: "--artifact-index" },
+];
+
 export const LEADERBOARD_STRATEGIES_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--input-dir" },
   { flag: "--output" },
@@ -483,6 +497,10 @@ export function normalizeFullResearchOrchestratorArgv(argv: readonly string[]): 
     normalizeNpmScriptArgv(argv, FULL_RESEARCH_ORCHESTRATOR_ARGV_SCHEMA),
     ["--continue-on-error"],
   );
+}
+
+export function normalizeResearchExperimentArgv(argv: readonly string[]): string[] {
+  return normalizeNpmScriptArgv(argv, RESEARCH_EXPERIMENT_ARGV_SCHEMA);
 }
 
 export function normalizeLeaderboardStrategiesArgv(argv: readonly string[]): string[] {

@@ -165,6 +165,14 @@ Evaluates promotion-eligible synthesized strategies (`experimental`, `candidate`
 
 `npm run research:candidate-registry` merges hypothesis, validation, synthesis, and harness artifacts into `data/research-results/research-candidate-registry.json` and `data/reports/research-candidate-registry.html` with stable candidate IDs, status tracking, promotion history, and rejection reasons. Read-only append/update registry — does not modify replay, strategies, sweep, or hypothesis generation.
 
+### Research experiment manager
+
+```bash
+npm run research:experiments
+```
+
+Snapshots the current research outputs as an immutable experiment under `data/research-results/experiments/<experimentId>/experiment.json`, updates `data/research-results/experiment-index.json` (latest pointer + history), and writes `data/reports/research-experiments.html` with deltas vs the previous experiment (hypothesis counts, robustness, promotions, candidates, runtime, artifact status). Read-only — does not modify replay, strategy execution, trading, or hypothesis calculations.
+
 
 ## Project structure
 
@@ -254,6 +262,7 @@ docs/
 | 8.19B | Full orchestrator update (harness input, harness-results, registry, promotions) — **complete** |
 | 8.21 | Candidate promotion engine (`research:candidate-promotions`, advisory read-only classification) — **complete** |
 | 8.20 | Research candidate registry (`research:candidate-registry`, canonical pipeline candidate records) — **complete** |
+| 8.25 | Research experiment manager (`research:experiments`, immutable run snapshots + comparison report) — **complete** |
 
 ## Intentionally deferred
 

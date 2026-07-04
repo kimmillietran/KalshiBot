@@ -571,6 +571,31 @@ export type {
 } from "./candidateRegistry";
 
 export {
+  buildExperimentRecord,
+  buildResearchExperimentId,
+  buildResearchExperimentRecordPath,
+  compareExperimentPair,
+  loadExperimentInputs,
+  parseExperimentManagerConfigFromArgv,
+  registerResearchExperiment,
+  serializeExperimentIndex,
+  serializeExperimentManagerHtml,
+  DEFAULT_RESEARCH_EXPERIMENT_INDEX_PATH,
+  DEFAULT_RESEARCH_EXPERIMENT_INPUT_PATHS,
+  DEFAULT_RESEARCH_EXPERIMENTS_DIR,
+  DEFAULT_RESEARCH_EXPERIMENTS_HTML_PATH,
+  RESEARCH_EXPERIMENT_ID_PREFIX,
+  ResearchExperimentManagerError,
+  ResearchExperimentManagerErrorCode,
+} from "./experimentManager";
+export type {
+  ExperimentPairComparison,
+  RegisterResearchExperimentResult,
+  ResearchExperimentIndex,
+  ResearchExperimentRecord,
+} from "./experimentManager";
+
+export {
   buildPowerAnalysisReport,
   buildPowerAnalysisReportFromDirectories,
   computeMinimumDetectableEffect,
