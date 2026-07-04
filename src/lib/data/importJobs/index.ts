@@ -131,3 +131,23 @@ export type {
   RunSingleBatchFixtureBridgeFn,
   RunSingleBatchFixtureBridgeInput,
 } from "./batchFixtureBridge";
+
+export {
+  buildHistoricalExpansionImportConfig,
+  collectCoveredWindowsFromImportConfigs,
+  DEFAULT_HISTORICAL_COVERAGE_PLAN_PATH,
+  DEFAULT_HISTORICAL_EXPANSION_CONFIG_HTML_PATH,
+  DEFAULT_HISTORICAL_EXPANSION_CONFIG_PATH,
+  ExpansionConfigError,
+  ExpansionConfigErrorCode,
+  isWindowFullyCovered,
+  loadHistoricalCoveragePlan,
+  parseHistoricalCoveragePlanJson,
+  serializeHistoricalExpansionConfigHtml,
+  serializeHistoricalExpansionImportConfig,
+} from "./expansionConfig";
+export type {
+  HistoricalCoveragePlan,
+  HistoricalExpansionImportConfig,
+  HistoricalExpansionImportJob,
+} from "./expansionConfig";

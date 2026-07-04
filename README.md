@@ -159,6 +159,15 @@ npm run research:harness -- --input data/research-results/strategy-synthesis-can
 
 Evaluates promotion-eligible synthesized strategies (`experimental`, `candidate`) through the historical research pipeline. Rejected strategies are excluded by default; pass `--include-rejected` for research experiments. When no strategies match filters, the harness exits successfully with an empty summary and one warning.
 
+### Expansion import config generator
+
+```bash
+npm run research:generate-expansion-import-config
+npm run research:generate-expansion-import-config -- --write
+```
+
+Reads `historical-coverage-plan.json` (M9.1) and produces `historical-expansion-config.json` plus an HTML report. Dry-run by default; pass `--write` to persist outputs. Does not execute imports.
+
 ### Strategy synthesis
 
 `npm run research:strategy-synthesis` reads `hypothesis-candidates.json` and `hypothesis-validation.json`, then writes `data/research-results/strategy-synthesis-candidates.json` with parameterized strategy specs (direction, entry conditions, promotion status). Read-only — does not execute or modify strategies.

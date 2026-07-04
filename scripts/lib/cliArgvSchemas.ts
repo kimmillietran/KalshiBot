@@ -239,6 +239,13 @@ export const FULL_RESEARCH_ORCHESTRATOR_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--continue-on-error" },
 ];
 
+export const GENERATE_EXPANSION_IMPORT_CONFIG_ARGV_SCHEMA: readonly NpmArgvField[] = [
+  { flag: "--input" },
+  { flag: "--output" },
+  { flag: "--html-output" },
+  { flag: "--import-configs-dir" },
+];
+
 export const DATA_HEALTH_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--discovery-result" },
   { flag: "--imports-dir" },
@@ -566,5 +573,14 @@ export function normalizeResearchPipelineArgv(argv: readonly string[]): string[]
   return mergeNpmBooleanFlags(
     normalizeNpmScriptArgv(argv, RESEARCH_PIPELINE_ARGV_SCHEMA),
     ["--continue-on-error", "--strict-dependencies", "--adaptive-throttle", "--no-adaptive-throttle"],
+  );
+}
+
+export function normalizeGenerateExpansionImportConfigArgv(
+  argv: readonly string[],
+): string[] {
+  return mergeNpmBooleanFlags(
+    normalizeNpmScriptArgv(argv, GENERATE_EXPANSION_IMPORT_CONFIG_ARGV_SCHEMA),
+    ["--write"],
   );
 }
