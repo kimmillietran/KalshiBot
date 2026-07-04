@@ -50,7 +50,7 @@ const strategySynthesisCandidateSchema = z.object({
 });
 
 const strategySynthesisReportSchema = z.object({
-  candidates: z.array(strategySynthesisCandidateSchema),
+  strategies: z.array(strategySynthesisCandidateSchema),
 });
 
 function parseJson(path: string, json: string): unknown {
@@ -101,7 +101,7 @@ function loadOptionalSynthesizedStrategies(
     );
   }
 
-  return result.data.candidates;
+  return result.data.strategies;
 }
 
 function loadOptionalHypothesisCandidates(
