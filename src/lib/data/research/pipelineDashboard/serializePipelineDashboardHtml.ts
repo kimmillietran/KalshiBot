@@ -1,6 +1,6 @@
 import { researchReportTheme as theme } from "@/lib/data/research/reports/reportTheme";
 
-import type { PipelineDashboardReport } from "./pipelineDashboardTypes";
+import type { CoveragePhaseSection, PipelineDashboardReport } from "./pipelineDashboardTypes";
 
 function escapeHtml(value: string): string {
   return value
@@ -110,6 +110,18 @@ function renderStyles(): string {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
       gap: 16px;
+    }
+    .coverage-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+      margin-top: 12px;
+    }
+    .coverage-card {
+      border: 1px solid ${theme.panelBorder};
+      border-radius: 10px;
+      padding: 12px;
+      background: ${theme.pageBg};
     }
     .stat-grid {
       display: grid;
@@ -288,6 +300,52 @@ function renderResearchHealth(report: PipelineDashboardReport): string {
     </section>`;
 }
 
+function formatOrchestratorStepStatus(
+  status: CoveragePhaseSection["plan"]["orchestratorStepStatus"],
+): string {
+  return status ?? "not run";
+}
+
+function renderCoverageArtifact(entry: CoveragePhaseSection["plan"]): string {
+  const statusTone =
+    entry.orchestratorStepStatus === "succeeded"
+      ? theme.bullish
+      : entry.orchestratorStepStatus === "failed"
+        ? theme.bearish
+        : entry.orchestratorStepStatus === "skipped"
+          ? theme.warning
+          : theme.textMuted;
+
+  return `
+    <div class="coverage-card">
+      <div class="label">${escapeHtml(entry.label)}</div>
+      <div style="color:${statusTone}">${escapeHtml(formatOrchestratorStepStatus(entry.orchestratorStepStatus))}</div>
+      <p class="muted"><code>${escapeHtml(entry.path)}</code> · ${entry.present ? "artifact present" : "artifact missing"}</p>
+    </div>`;
+}
+
+function renderCoveragePhase(report: PipelineDashboardReport): string {
+  const section = report.coveragePhase;
+
+  return `
+    <section class="panel">
+      <h2>Coverage phase</h2>
+      <p class="muted">${escapeHtml(section.summary ?? "Coverage planning artifacts not generated yet.")}</p>
+      <div class="stat-grid">
+        ${renderStat("Markets", escapeHtml(section.currentMarketCount?.toString() ?? "—"))}
+        ${renderStat("Trading days", escapeHtml(section.uniqueTradingDays?.toString() ?? "—"))}
+        ${renderStat("Missing months", escapeHtml(section.missingMonthCount?.toString() ?? "—"))}
+        ${renderStat("Import windows", escapeHtml(section.recommendedImportWindowCount?.toString() ?? "—"))}
+        ${renderStat("Expansion jobs", escapeHtml(section.expansionJobCount?.toString() ?? "—"))}
+      </div>
+      <div class="coverage-grid">
+        ${renderCoverageArtifact(section.plan)}
+        ${renderCoverageArtifact(section.expansionConfig)}
+        ${renderCoverageArtifact(section.coverageValidation)}
+      </div>
+    </section>`;
+}
+
 function renderQuickLinks(report: PipelineDashboardReport): string {
   const links = [
     report.inputPaths.pipelineSummaryPath,
@@ -298,6 +356,10 @@ function renderQuickLinks(report: PipelineDashboardReport): string {
     report.inputPaths.harnessResultsPath,
     report.inputPaths.strategyLeaderboardPath,
     report.researchHealth.dataHealthPath,
+    report.inputPaths.fullResearchSummaryPath,
+    report.coveragePhase.plan.path,
+    report.coveragePhase.expansionConfig.path,
+    report.coveragePhase.coverageValidation.path,
     "data/reports/research-hypothesis-lifecycle.html",
     "data/reports/research-report.html",
   ];
@@ -335,6 +397,7 @@ export function serializePipelineDashboardHtml(
         </span>
       </header>
       ${renderPipelineStatus(report)}
+      ${renderCoveragePhase(report)}
       <div class="grid-2">
         ${renderArtifactHealth(report)}
         ${renderHypothesisSummary(report)}

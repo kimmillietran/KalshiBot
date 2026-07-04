@@ -19,7 +19,11 @@ import {
   formatStdoutOutput,
   mapCommandError,
   parseArtifactIndexPathFromArgv,
+  parseCoverageValidationPathFromArgv,
   parseDataHealthPathFromArgv,
+  parseFullResearchSummaryPathFromArgv,
+  parseHistoricalCoveragePlanPathFromArgv,
+  parseHistoricalExpansionConfigPathFromArgv,
   parseHarnessResultsPathFromArgv,
   parseHarnessSummaryFallbackPathFromArgv,
   parseHypothesisCandidatesPathFromArgv,
@@ -42,6 +46,7 @@ export function runResearchPipelineDashboardCommand(
     const outputPath = parseOutputPathFromArgv(normalizedArgv);
     const inputPaths = {
       pipelineSummaryPath: parsePipelineSummaryPathFromArgv(normalizedArgv),
+      fullResearchSummaryPath: parseFullResearchSummaryPathFromArgv(normalizedArgv),
       artifactIndexPath: parseArtifactIndexPathFromArgv(normalizedArgv),
       hypothesisCandidatesPath: parseHypothesisCandidatesPathFromArgv(normalizedArgv),
       hypothesisValidationPath: parseHypothesisValidationPathFromArgv(normalizedArgv),
@@ -50,6 +55,9 @@ export function runResearchPipelineDashboardCommand(
       harnessSummaryFallbackPath: parseHarnessSummaryFallbackPathFromArgv(normalizedArgv),
       strategyLeaderboardPath: parseStrategyLeaderboardPathFromArgv(normalizedArgv),
       dataHealthPath: parseDataHealthPathFromArgv(normalizedArgv),
+      historicalCoveragePlanPath: parseHistoricalCoveragePlanPathFromArgv(normalizedArgv),
+      historicalExpansionConfigPath: parseHistoricalExpansionConfigPathFromArgv(normalizedArgv),
+      coverageValidationPath: parseCoverageValidationPathFromArgv(normalizedArgv),
     };
     const generatedAt = options?.generatedAt ?? new Date().toISOString();
 

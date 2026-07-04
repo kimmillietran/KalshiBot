@@ -3,6 +3,10 @@ import {
   DEFAULT_RESEARCH_CANDIDATE_REGISTRY_HTML_PATH,
   DEFAULT_RESEARCH_CANDIDATE_REGISTRY_OUTPUT_PATH,
 } from "@/lib/data/research/candidateRegistry/researchCandidateRegistryTypes";
+import {
+  DEFAULT_CROSS_VALIDATION_HTML_PATH,
+  DEFAULT_CROSS_VALIDATION_OUTPUT_PATH,
+} from "@/lib/data/research/crossValidation/crossValidationTypes";
 import { DEFAULT_DATA_HEALTH_OUTPUT_PATH } from "@/lib/data/research/dataHealth/dataHealthTypes";
 import {
   DEFAULT_HARNESS_RESULTS_HTML_PATH,
@@ -15,6 +19,14 @@ import {
   DEFAULT_HYPOTHESIS_VALIDATION_OUTPUT_PATH,
 } from "@/lib/data/research/hypothesisRobustness/hypothesisRobustnessTypes";
 
+import {
+  COVERAGE_VALIDATION_HTML_PATH,
+  COVERAGE_VALIDATION_OUTPUT_PATH,
+  HISTORICAL_COVERAGE_PLAN_HTML_PATH,
+  HISTORICAL_COVERAGE_PLAN_OUTPUT_PATH,
+  HISTORICAL_EXPANSION_CONFIG_HTML_PATH,
+  HISTORICAL_EXPANSION_CONFIG_OUTPUT_PATH,
+} from "./coveragePhasePaths";
 import type { FullResearchStepDefinition } from "./fullResearchOrchestratorTypes";
 
 const MISPRICING_ATLAS_OUTPUT = "data/research-results/mispricing-atlas.json";
@@ -38,6 +50,30 @@ export function buildFullResearchSteps(): readonly FullResearchStepDefinition[] 
       expectedOutputs: [DEFAULT_DATA_HEALTH_OUTPUT_PATH],
       upstreamStepIds: [],
       independent: true,
+    },
+    {
+      id: "coverage-plan",
+      label: "Historical coverage plan",
+      npmScript: "research:coverage-plan",
+      args: [],
+      expectedOutputs: [
+        HISTORICAL_COVERAGE_PLAN_OUTPUT_PATH,
+        HISTORICAL_COVERAGE_PLAN_HTML_PATH,
+      ],
+      upstreamStepIds: [],
+      independent: false,
+    },
+    {
+      id: "generate-expansion-import-config",
+      label: "Historical expansion import config",
+      npmScript: "research:generate-expansion-import-config",
+      args: [],
+      expectedOutputs: [
+        HISTORICAL_EXPANSION_CONFIG_OUTPUT_PATH,
+        HISTORICAL_EXPANSION_CONFIG_HTML_PATH,
+      ],
+      upstreamStepIds: ["coverage-plan"],
+      independent: false,
     },
     {
       id: "mispricing-atlas",
@@ -80,6 +116,31 @@ export function buildFullResearchSteps(): readonly FullResearchStepDefinition[] 
       expectedOutputs: [STRATEGY_SYNTHESIS_OUTPUT],
       upstreamStepIds: ["hypothesis-validation"],
       independent: false,
+    },
+    {
+      id: "cross-validation",
+      label: "Cross-validation diagnostics",
+      npmScript: "research:cross-validation",
+      args: [],
+      expectedOutputs: [
+        DEFAULT_CROSS_VALIDATION_OUTPUT_PATH,
+        DEFAULT_CROSS_VALIDATION_HTML_PATH,
+      ],
+      upstreamStepIds: ["strategy-synthesis", "hypothesis-validation"],
+      independent: false,
+    },
+    {
+      id: "coverage-validation",
+      label: "Coverage-aware validation",
+      npmScript: "research:coverage-validation",
+      args: [],
+      expectedOutputs: [
+        COVERAGE_VALIDATION_OUTPUT_PATH,
+        COVERAGE_VALIDATION_HTML_PATH,
+      ],
+      upstreamStepIds: ["cross-validation"],
+      independent: false,
+      optional: true,
     },
     {
       id: "research-harness",
@@ -155,3 +216,5 @@ export function buildFullResearchSteps(): readonly FullResearchStepDefinition[] 
     },
   ];
 }
+
+export { HISTORICAL_COVERAGE_PLAN_OUTPUT_PATH, HISTORICAL_EXPANSION_CONFIG_OUTPUT_PATH };

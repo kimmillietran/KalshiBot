@@ -306,6 +306,7 @@ export const RESEARCH_ARTIFACT_INDEX_ARGV_SCHEMA: readonly NpmArgvField[] = [
 export const RESEARCH_PIPELINE_DASHBOARD_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--output" },
   { flag: "--pipeline-summary" },
+  { flag: "--full-research-summary" },
   { flag: "--artifact-index" },
   { flag: "--hypothesis-candidates" },
   { flag: "--hypothesis-validation" },
@@ -314,6 +315,9 @@ export const RESEARCH_PIPELINE_DASHBOARD_ARGV_SCHEMA: readonly NpmArgvField[] = 
   { flag: "--harness-summary" },
   { flag: "--leaderboard" },
   { flag: "--data-health" },
+  { flag: "--historical-coverage-plan" },
+  { flag: "--historical-expansion-config" },
+  { flag: "--coverage-validation" },
 ];
 
 export const RESEARCH_EXPERIMENT_ARGV_SCHEMA: readonly NpmArgvField[] = [

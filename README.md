@@ -149,7 +149,7 @@ Writes `data/reports/research-dashboard.html` — a read-only landing page with 
 npm run research:full
 ```
 
-Invokes existing research CLIs in order: data health → mispricing atlas → hypotheses → validation → synthesis → harness (with `--input data/research-results/strategy-synthesis-candidates.json`) → harness results → candidate registry → candidate promotions → artifact index → lifecycle → dashboard. Writes `data/research-results/full-research-summary.json` with per-step status, duration, outputs, warnings, and failures. Independent reporting steps still run when upstream analysis fails. When no synthesized strategies match harness filters, the harness step no-ops with an empty summary and a single warning. Use `--continue-on-error` to keep executing the core chain after step failures.
+Invokes existing research CLIs in order: data health → coverage plan → expansion import config (dry-run planning only) → mispricing atlas → hypotheses → validation → synthesis → cross-validation → optional coverage validation → harness (with `--input data/research-results/strategy-synthesis-candidates.json`) → harness results → candidate registry → candidate promotions → artifact index → lifecycle → dashboard. Writes `data/research-results/full-research-summary.json` with per-step status, duration, outputs, warnings, and failures. Independent reporting steps still run when upstream analysis fails. When coverage CLIs are not yet merged, required steps fail with a clear `npm script not registered` message; optional `research:coverage-validation` skips gracefully. No import execution is triggered by this orchestrator. Use `--continue-on-error` to keep executing the core chain after step failures.
 
 ### Strategy harness
 
@@ -293,6 +293,7 @@ docs/
 | 9.1 | Historical coverage expansion planner (`research:coverage-plan`, read-only import recommendations) — **complete** |
 | 9.2 | Expansion import config generator (`research:generate-expansion-import-config`, dry-run configs) — **complete** |
 | 9.3 | Coverage-aware validation (`research:coverage-validation`, advisory inconclusive vs weak classification) — **complete** |
+| 9.4 | Full orchestrator coverage phase (`research:full` coverage planning + optional validation wiring) — **complete** |
 
 ## Intentionally deferred
 

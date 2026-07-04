@@ -10,22 +10,57 @@ import type { ResearchPipelineRunner } from "@/lib/data/research/pipeline";
 
 const GENERATED_AT = "2026-07-03T22:00:00.000Z";
 
+const EXPECTED_STEP_ORDER = [
+  "data-health",
+  "coverage-plan",
+  "generate-expansion-import-config",
+  "mispricing-atlas",
+  "hypotheses",
+  "hypothesis-validation",
+  "strategy-synthesis",
+  "cross-validation",
+  "coverage-validation",
+  "research-harness",
+  "harness-results",
+  "candidate-registry",
+  "candidate-promotions",
+  "artifact-index",
+  "hypothesis-lifecycle",
+  "research-dashboard",
+] as const;
+
+const IMPORT_EXECUTION_SCRIPTS = [
+  "import:batch",
+  "import:historical",
+  "research:pipeline",
+] as const;
+
 describe("buildFullResearchSteps", () => {
   it("returns steps in the official end-to-end research order", () => {
-    expect(buildFullResearchSteps().map((step) => step.id)).toEqual([
-      "data-health",
-      "mispricing-atlas",
-      "hypotheses",
-      "hypothesis-validation",
+    expect(buildFullResearchSteps().map((step) => step.id)).toEqual([...EXPECTED_STEP_ORDER]);
+  });
+
+  it("places coverage planning after data health and before atlas", () => {
+    const ids = buildFullResearchSteps().map((step) => step.id);
+    expect(ids.indexOf("data-health")).toBeLessThan(ids.indexOf("coverage-plan"));
+    expect(ids.indexOf("coverage-plan")).toBeLessThan(
+      ids.indexOf("generate-expansion-import-config"),
+    );
+    expect(ids.indexOf("generate-expansion-import-config")).toBeLessThan(
+      ids.indexOf("mispricing-atlas"),
+    );
+  });
+
+  it("places coverage validation after cross-validation as an optional step", () => {
+    const steps = buildFullResearchSteps();
+    const byId = new Map(steps.map((step) => [step.id, step]));
+
+    expect(byId.get("cross-validation")?.upstreamStepIds).toEqual([
       "strategy-synthesis",
-      "research-harness",
-      "harness-results",
-      "candidate-registry",
-      "candidate-promotions",
-      "artifact-index",
-      "hypothesis-lifecycle",
-      "research-dashboard",
+      "hypothesis-validation",
     ]);
+    expect(byId.get("coverage-validation")?.upstreamStepIds).toEqual(["cross-validation"]);
+    expect(byId.get("coverage-validation")?.optional).toBe(true);
   });
 
   it("passes synthesis candidates to the harness via --input", () => {
@@ -49,10 +84,13 @@ describe("buildFullResearchSteps", () => {
     ]);
   });
 
-  it("chains harness downstream steps through candidate promotions", () => {
+  it("chains expansion config generation from the coverage plan", () => {
     const steps = buildFullResearchSteps();
     const byId = new Map(steps.map((step) => [step.id, step]));
 
+    expect(byId.get("generate-expansion-import-config")?.upstreamStepIds).toEqual([
+      "coverage-plan",
+    ]);
     expect(byId.get("harness-results")?.upstreamStepIds).toEqual(["research-harness"]);
     expect(byId.get("candidate-registry")?.upstreamStepIds).toEqual(["harness-results"]);
     expect(byId.get("candidate-promotions")?.upstreamStepIds).toEqual(["candidate-registry"]);
@@ -76,7 +114,7 @@ describe("parseFullResearchOrchestratorConfigFromArgv", () => {
 });
 
 describe("runFullResearchOrchestrator", () => {
-  it("invokes harness with synthesis input args in pipeline order", async () => {
+  it("invokes coverage and analysis steps in pipeline order without running imports", async () => {
     const calls: Array<{ npmScript: string; args: readonly string[] }> = [];
     const runner: ResearchPipelineRunner = async (npmScript, args) => {
       calls.push({ npmScript, args });
@@ -93,17 +131,16 @@ describe("runFullResearchOrchestrator", () => {
       isNpmScriptRegistered: () => true,
     });
 
-    const harnessCall = calls.find((call) => call.npmScript === "research:harness");
-    expect(harnessCall?.args).toEqual([
-      "--input",
-      "data/research-results/strategy-synthesis-candidates.json",
-    ]);
     expect(calls.map((call) => call.npmScript)).toEqual([
       "research:data-health",
+      "research:coverage-plan",
+      "research:generate-expansion-import-config",
       "research:mispricing-atlas",
       "research:hypotheses",
       "research:hypothesis-validation",
       "research:strategy-synthesis",
+      "research:cross-validation",
+      "research:coverage-validation",
       "research:harness",
       "research:harness-results",
       "research:candidate-registry",
@@ -112,6 +149,62 @@ describe("runFullResearchOrchestrator", () => {
       "research:hypothesis-lifecycle",
       "research:dashboard",
     ]);
+    expect(calls.some((call) => IMPORT_EXECUTION_SCRIPTS.includes(call.npmScript as typeof IMPORT_EXECUTION_SCRIPTS[number]))).toBe(false);
+  });
+
+  it("records coverage steps in full-research-summary.json output", async () => {
+    const { summary } = await runFullResearchOrchestrator({
+      config: {
+        continueOnError: true,
+        summaryOutputPath: "data/research-results/full-research-summary.json",
+      },
+      generatedAt: GENERATED_AT,
+      runner: async () => ({ exitCode: 0, stdout: "", stderr: "" }),
+      isNpmScriptRegistered: (npmScript) => npmScript !== "research:coverage-validation",
+    });
+
+    const coveragePlan = summary.steps.find((step) => step.stepId === "coverage-plan");
+    const expansionConfig = summary.steps.find(
+      (step) => step.stepId === "generate-expansion-import-config",
+    );
+    const coverageValidation = summary.steps.find(
+      (step) => step.stepId === "coverage-validation",
+    );
+
+    expect(coveragePlan?.status).toBe("succeeded");
+    expect(expansionConfig?.status).toBe("succeeded");
+    expect(coverageValidation?.status).toBe("skipped");
+    expect(coverageValidation?.errorMessage).toContain("Optional coverage step skipped");
+    expect(serializeFullResearchSummary(summary)).toContain("coverage-plan");
+  });
+
+  it("fails coverage planning clearly when npm scripts are not registered", async () => {
+    const { summary } = await runFullResearchOrchestrator({
+      config: {
+        continueOnError: true,
+        summaryOutputPath: "data/research-results/full-research-summary.json",
+      },
+      generatedAt: GENERATED_AT,
+      runner: async () => ({ exitCode: 0, stdout: "", stderr: "" }),
+      isNpmScriptRegistered: (npmScript) =>
+        [
+          "research:data-health",
+          "research:mispricing-atlas",
+          "research:hypotheses",
+          "research:hypothesis-validation",
+          "research:artifact-index",
+          "research:dashboard",
+        ].includes(npmScript),
+    });
+
+    const coveragePlan = summary.steps.find((step) => step.stepId === "coverage-plan");
+    const expansionConfig = summary.steps.find(
+      (step) => step.stepId === "generate-expansion-import-config",
+    );
+
+    expect(coveragePlan?.status).toBe("failed");
+    expect(coveragePlan?.errorMessage).toContain("research:coverage-plan");
+    expect(expansionConfig?.status).toBe("skipped");
   });
 
   it("fails fast on core chain failures and still runs independent reporting steps", async () => {
@@ -153,12 +246,7 @@ describe("runFullResearchOrchestrator", () => {
     expect(summary.steps.find((step) => step.stepId === "research-dashboard")?.status).toBe(
       "succeeded",
     );
-    expect(calls).toEqual([
-      "research:data-health",
-      "research:mispricing-atlas",
-      "research:artifact-index",
-      "research:dashboard",
-    ]);
+    expect(calls).not.toContain("import:batch");
   });
 
   it("skips downstream steps when upstream dependency fails", async () => {
@@ -212,36 +300,6 @@ describe("runFullResearchOrchestrator", () => {
     const dataHealth = summary.steps.find((step) => step.stepId === "data-health");
     expect(dataHealth?.outputsGenerated).toEqual(["data/research-results/data-health.json"]);
     expect(dataHealth?.warnings).toContain("⚠️  stale dependency warning");
-  });
-
-  it("fails steps cleanly when npm scripts are not registered", async () => {
-    const { summary } = await runFullResearchOrchestrator({
-      config: {
-        continueOnError: true,
-        summaryOutputPath: "data/research-results/full-research-summary.json",
-      },
-      generatedAt: GENERATED_AT,
-      runner: async () => ({ exitCode: 0, stdout: "", stderr: "" }),
-      isNpmScriptRegistered: (npmScript) =>
-        [
-          "research:data-health",
-          "research:mispricing-atlas",
-          "research:hypotheses",
-          "research:hypothesis-validation",
-          "research:artifact-index",
-          "research:dashboard",
-        ].includes(npmScript),
-    });
-
-    expect(summary.steps.find((step) => step.stepId === "strategy-synthesis")?.status).toBe(
-      "failed",
-    );
-    expect(
-      summary.steps.find((step) => step.stepId === "strategy-synthesis")?.errorMessage,
-    ).toContain("research:strategy-synthesis");
-    expect(summary.steps.find((step) => step.stepId === "artifact-index")?.status).toBe(
-      "succeeded",
-    );
   });
 
   it("serializes summaries deterministically", async () => {

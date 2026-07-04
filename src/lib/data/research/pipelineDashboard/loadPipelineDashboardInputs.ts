@@ -211,6 +211,77 @@ const mispricingAtlasSchema = z.object({
     .optional(),
 });
 
+const historicalCoveragePlanSchema = z.object({
+  generatedAt: z.string().trim().min(1),
+  summary: z
+    .object({
+      currentMarketCount: z.number().finite().optional(),
+      uniqueTradingDays: z.number().finite().optional(),
+      missingMonths: z.array(z.string()).optional(),
+      recommendedImportWindows: z.array(z.unknown()).optional(),
+    })
+    .optional(),
+});
+
+const historicalExpansionConfigSchema = z.object({
+  generatedAt: z.string().trim().min(1),
+  jobs: z.array(z.unknown()).optional(),
+  summary: z
+    .object({
+      jobCount: z.number().finite().optional(),
+      estimatedMarketCount: z.number().finite().optional(),
+    })
+    .optional(),
+});
+
+const coverageValidationSchema = z.object({
+  generatedAt: z.string().trim().min(1),
+  summary: z
+    .object({
+      inconclusiveInsufficientCoverageCount: z.number().finite().optional(),
+    })
+    .optional(),
+});
+
+function normalizeHistoricalCoveragePlan(
+  document: z.infer<typeof historicalCoveragePlanSchema>,
+): ParsedPipelineDashboardInputs["historicalCoveragePlan"] {
+  return {
+    generatedAt: document.generatedAt,
+    summary: {
+      currentMarketCount: document.summary?.currentMarketCount ?? null,
+      uniqueTradingDays: document.summary?.uniqueTradingDays ?? null,
+      missingMonths: document.summary?.missingMonths ?? [],
+      recommendedImportWindows: document.summary?.recommendedImportWindows ?? [],
+    },
+  };
+}
+
+function normalizeHistoricalExpansionConfig(
+  document: z.infer<typeof historicalExpansionConfigSchema>,
+): ParsedPipelineDashboardInputs["historicalExpansionConfig"] {
+  return {
+    generatedAt: document.generatedAt,
+    jobs: document.jobs ?? [],
+    summary: {
+      jobCount: document.summary?.jobCount ?? null,
+      estimatedMarketCount: document.summary?.estimatedMarketCount ?? null,
+    },
+  };
+}
+
+function normalizeCoverageValidation(
+  document: z.infer<typeof coverageValidationSchema>,
+): ParsedPipelineDashboardInputs["coverageValidation"] {
+  return {
+    generatedAt: document.generatedAt,
+    summary: {
+      inconclusiveInsufficientCoverageCount:
+        document.summary?.inconclusiveInsufficientCoverageCount ?? null,
+    },
+  };
+}
+
 function parseJson(path: string, json: string): unknown {
   try {
     return JSON.parse(json);
@@ -267,6 +338,30 @@ function readMispricingAtlasSummary(
   return { totalAtlasObservations };
 }
 
+function readHistoricalCoveragePlan(
+  io: PipelineDashboardIo,
+  path: string,
+): ParsedPipelineDashboardInputs["historicalCoveragePlan"] {
+  const document = tryReadDocument(io, path, historicalCoveragePlanSchema);
+  return document ? normalizeHistoricalCoveragePlan(document) : null;
+}
+
+function readHistoricalExpansionConfig(
+  io: PipelineDashboardIo,
+  path: string,
+): ParsedPipelineDashboardInputs["historicalExpansionConfig"] {
+  const document = tryReadDocument(io, path, historicalExpansionConfigSchema);
+  return document ? normalizeHistoricalExpansionConfig(document) : null;
+}
+
+function readCoverageValidation(
+  io: PipelineDashboardIo,
+  path: string,
+): ParsedPipelineDashboardInputs["coverageValidation"] {
+  const document = tryReadDocument(io, path, coverageValidationSchema);
+  return document ? normalizeCoverageValidation(document) : null;
+}
+
 /** Loads optional pipeline dashboard artifacts without mutating data. */
 export function loadPipelineDashboardInputs(
   io: PipelineDashboardIo,
@@ -276,6 +371,11 @@ export function loadPipelineDashboardInputs(
     pipelineSummary: tryReadDocument(
       io,
       inputPaths.pipelineSummaryPath,
+      pipelineSummarySchema,
+    ),
+    fullResearchSummary: tryReadDocument(
+      io,
+      inputPaths.fullResearchSummaryPath,
       pipelineSummarySchema,
     ),
     artifactIndex: tryReadDocument(
@@ -309,5 +409,14 @@ export function loadPipelineDashboardInputs(
       io,
       "data/research-results/mispricing-atlas.json",
     ),
+    historicalCoveragePlan: readHistoricalCoveragePlan(
+      io,
+      inputPaths.historicalCoveragePlanPath,
+    ),
+    historicalExpansionConfig: readHistoricalExpansionConfig(
+      io,
+      inputPaths.historicalExpansionConfigPath,
+    ),
+    coverageValidation: readCoverageValidation(io, inputPaths.coverageValidationPath),
   };
 }

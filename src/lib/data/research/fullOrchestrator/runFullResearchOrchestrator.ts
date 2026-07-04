@@ -84,6 +84,10 @@ function formatMissingScriptReason(npmScript: string): string {
   return `npm script not registered: ${npmScript}`;
 }
 
+function formatOptionalMissingScriptReason(npmScript: string): string {
+  return `Optional coverage step skipped: npm script not registered (${npmScript})`;
+}
+
 function createSkippedStepResult(
   step: FullResearchStepDefinition,
   reason: string,
@@ -158,6 +162,17 @@ export async function runFullResearchOrchestrator(
     }
 
     if (!isNpmScriptRegistered(step.npmScript)) {
+      if (step.optional) {
+        const skipped = createSkippedStepResult(
+          step,
+          formatOptionalMissingScriptReason(step.npmScript),
+        );
+        results.push(skipped);
+        resultsById.set(step.id, skipped);
+        log(skipped.errorMessage!);
+        continue;
+      }
+
       const failed: FullResearchStepResult = {
         stepId: step.id,
         label: step.label,

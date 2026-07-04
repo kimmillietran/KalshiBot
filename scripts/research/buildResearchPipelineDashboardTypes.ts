@@ -108,6 +108,38 @@ export function parseDataHealthPathFromArgv(argv: readonly string[]): string {
   );
 }
 
+export function parseFullResearchSummaryPathFromArgv(argv: readonly string[]): string {
+  return readFlagValue(
+    argv,
+    "--full-research-summary",
+    DEFAULT_PIPELINE_DASHBOARD_INPUT_PATHS.fullResearchSummaryPath,
+  );
+}
+
+export function parseHistoricalCoveragePlanPathFromArgv(argv: readonly string[]): string {
+  return readFlagValue(
+    argv,
+    "--historical-coverage-plan",
+    DEFAULT_PIPELINE_DASHBOARD_INPUT_PATHS.historicalCoveragePlanPath,
+  );
+}
+
+export function parseHistoricalExpansionConfigPathFromArgv(argv: readonly string[]): string {
+  return readFlagValue(
+    argv,
+    "--historical-expansion-config",
+    DEFAULT_PIPELINE_DASHBOARD_INPUT_PATHS.historicalExpansionConfigPath,
+  );
+}
+
+export function parseCoverageValidationPathFromArgv(argv: readonly string[]): string {
+  return readFlagValue(
+    argv,
+    "--coverage-validation",
+    DEFAULT_PIPELINE_DASHBOARD_INPUT_PATHS.coverageValidationPath,
+  );
+}
+
 export function formatStdoutOutput(payload: string): string {
   return `${payload}\n`;
 }

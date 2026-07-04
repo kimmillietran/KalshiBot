@@ -6,7 +6,7 @@ const GENERATED_AT = "2026-07-03T22:00:00.000Z";
 const OUTPUT_PATH = "data/research-results/full-research-summary.json";
 
 describe("runFullResearchOrchestratorCommand", () => {
-  it("writes full-research-summary.json and reports stdout metadata", async () => {
+  it("writes full-research-summary.json with coverage phase steps", async () => {
     const writes = new Map<string, string>();
     let stdout = "";
     const calls: Array<{ npmScript: string; args: readonly string[] }> = [];
@@ -23,10 +23,14 @@ describe("runFullResearchOrchestratorCommand", () => {
       fileExists: () => false,
       registeredNpmScripts: new Set([
         "research:data-health",
+        "research:coverage-plan",
+        "research:generate-expansion-import-config",
         "research:mispricing-atlas",
         "research:hypotheses",
         "research:hypothesis-validation",
         "research:strategy-synthesis",
+        "research:cross-validation",
+        "research:coverage-validation",
         "research:harness",
         "research:harness-results",
         "research:candidate-registry",
@@ -43,14 +47,10 @@ describe("runFullResearchOrchestratorCommand", () => {
 
     expect(exitCode).toBe(0);
     expect(calls[0]?.npmScript).toBe("research:data-health");
+    expect(calls[1]?.npmScript).toBe("research:coverage-plan");
     expect(calls.at(-1)?.npmScript).toBe("research:dashboard");
-    expect(calls).toHaveLength(12);
-
-    const harnessCall = calls.find((call) => call.npmScript === "research:harness");
-    expect(harnessCall?.args).toEqual([
-      "--input",
-      "data/research-results/strategy-synthesis-candidates.json",
-    ]);
+    expect(calls).toHaveLength(16);
+    expect(calls.some((call) => call.npmScript === "import:batch")).toBe(false);
 
     const serialized = writes.get(OUTPUT_PATH);
     expect(serialized).toBeDefined();
@@ -58,7 +58,10 @@ describe("runFullResearchOrchestratorCommand", () => {
     const parsed = JSON.parse(serialized!);
     expect(parsed.generatedAt).toBe(GENERATED_AT);
     expect(parsed.status).toBe("succeeded");
-    expect(parsed.steps).toHaveLength(12);
+    expect(parsed.steps).toHaveLength(16);
+    expect(parsed.steps.map((step: { stepId: string }) => step.stepId)).toContain(
+      "coverage-plan",
+    );
     expect(JSON.parse(stdout.trim().split("\n").at(-1)!).outputPath).toBe(OUTPUT_PATH);
   });
 
@@ -71,6 +74,8 @@ describe("runFullResearchOrchestratorCommand", () => {
       fileExists: () => false,
       registeredNpmScripts: new Set([
         "research:data-health",
+        "research:coverage-plan",
+        "research:generate-expansion-import-config",
         "research:mispricing-atlas",
         "research:artifact-index",
         "research:dashboard",

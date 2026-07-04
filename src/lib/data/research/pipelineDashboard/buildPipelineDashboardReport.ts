@@ -1,3 +1,4 @@
+import { buildCoveragePhaseSection } from "./buildCoveragePhaseSection";
 import type {
   ArtifactHealthEntry,
   ArtifactHealthSection,
@@ -11,8 +12,9 @@ import type {
 } from "./pipelineDashboardTypes";
 
 function buildPipelineStatusSection(
-  pipelineSummary: ParsedPipelineDashboardInputs["pipelineSummary"],
+  inputs: ParsedPipelineDashboardInputs,
 ): PipelineStatusSection {
+  const pipelineSummary = inputs.fullResearchSummary ?? inputs.pipelineSummary;
   if (!pipelineSummary) {
     return {
       pipelineStatus: "unknown",
@@ -196,7 +198,7 @@ export function buildPipelineDashboardReport(
     generatedAt: input.generatedAt,
     outputPath: input.outputPath,
     inputPaths: input.inputPaths,
-    pipelineStatus: buildPipelineStatusSection(input.inputs.pipelineSummary),
+    pipelineStatus: buildPipelineStatusSection(input.inputs),
     artifactHealth: buildArtifactHealthSection(
       input.inputs,
       input.inputPaths.artifactIndexPath,
@@ -207,6 +209,7 @@ export function buildPipelineDashboardReport(
       input.inputs,
       input.inputPaths.dataHealthPath,
     ),
+    coveragePhase: buildCoveragePhaseSection(input),
   };
 }
 

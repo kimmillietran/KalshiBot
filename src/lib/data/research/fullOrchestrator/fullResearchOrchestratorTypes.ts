@@ -35,6 +35,8 @@ export type FullResearchStepDefinition = {
   upstreamStepIds: readonly string[];
   /** When true, the step still runs after upstream/core-chain failures. */
   independent: boolean;
+  /** When true, missing npm scripts skip instead of failing the core chain. */
+  optional?: boolean;
 };
 
 export type FullResearchOrchestratorConfig = {
