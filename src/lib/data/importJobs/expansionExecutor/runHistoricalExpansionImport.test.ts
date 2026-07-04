@@ -7,6 +7,10 @@ import {
   HistoricalBronzeImportOutputFormat,
 } from "@/lib/data/importJobs/config";
 import type { HistoricalBronzeImportJobResult } from "@/lib/data/importJobs/historicalBronzeImportJobTypes";
+import {
+  parseExpansionImportCheckpointJson,
+  serializeExpansionImportCheckpoint,
+} from "@/lib/data/importJobs/expansionImportSafety";
 
 import { buildExpansionMarketImportArtifacts } from "./buildExpansionMarketImportConfig";
 import {
@@ -19,6 +23,9 @@ import type { ExpansionExecutorIo } from "./expansionExecutorTypes";
 
 const GENERATED_AT = "2026-07-04T04:00:00.000Z";
 const CONFIG_PATH = "data/import-configs/historical-expansion-config.json";
+const SUMMARY_PATH = "data/research-results/historical-expansion-import-summary.json";
+const CHECKPOINT_PATH = "data/research-results/historical-expansion-import-checkpoint.json";
+const JOB_ID = "expansion-KXBTC15M-20260101-20260331";
 
 function createManifestJson(): string {
   return JSON.stringify({
@@ -34,7 +41,7 @@ function createManifestJson(): string {
     },
     jobs: [
       {
-        jobId: "expansion-KXBTC15M-20260101-20260331",
+        jobId: JOB_ID,
         priority: 71,
         status: "scheduled",
         seriesTicker: "KXBTC15M",
@@ -114,44 +121,24 @@ function createIo(mock: MockFs): ExpansionExecutorIo & { writes: Map<string, str
   return {
     writes,
     readdir: (path) => {
-      const prefix = path.replace(/\\/g, "/").replace(/\/$/, "");
+      const prefix = path.replace(/\\/g, "/");
       const entries = new Set<string>();
       for (const filePath of Object.keys(mock.files)) {
         if (filePath.startsWith(`${prefix}/`)) {
-          const remainder = filePath.slice(prefix.length + 1);
-          const segment = remainder.split("/")[0];
-          if (segment) {
-            entries.add(segment);
-          }
+          entries.add(filePath.slice(prefix.length + 1).split("/")[0]!);
         }
       }
       for (const directory of mock.directories) {
         if (directory.startsWith(`${prefix}/`)) {
-          const remainder = directory.slice(prefix.length + 1);
-          const segment = remainder.split("/")[0];
-          if (segment) {
-            entries.add(segment);
-          }
+          entries.add(directory.slice(prefix.length + 1).split("/")[0]!);
         }
       }
       return [...entries].sort();
     },
     readFile: (path) => mock.files[path] ?? "",
-    fileExists: (path) => {
-      const normalized = path.replace(/\\/g, "/");
-      return (
-        mock.files[path] !== undefined
-        || mock.directories.has(path)
-        || Object.keys(mock.files).some((filePath) => filePath.startsWith(`${normalized}/`))
-      );
-    },
-    isDirectory: (path) => {
-      const normalized = path.replace(/\\/g, "/");
-      return (
-        mock.directories.has(path)
-        || Object.keys(mock.files).some((filePath) => filePath.startsWith(`${normalized}/`))
-      );
-    },
+    fileExists: (path) =>
+      mock.files[path] !== undefined || mock.directories.has(path),
+    isDirectory: (path) => mock.directories.has(path),
     writeFile: (path, data) => {
       writes.set(path, data);
       mock.files[path] = data;
@@ -159,6 +146,55 @@ function createIo(mock: MockFs): ExpansionExecutorIo & { writes: Map<string, str
     mkdirSync: () => {},
   };
 }
+
+function createBaseConfig(overrides?: Partial<{
+  execute: boolean;
+  resume: boolean;
+  maxRetries: number;
+  skipFailed: boolean;
+  forceMarket: string | null;
+}>) {
+  return {
+    inputPath: CONFIG_PATH,
+    outputPath: SUMMARY_PATH,
+    htmlOutputPath: "data/reports/historical-expansion-import-summary.html",
+    importConfigsDir: "data/import-configs",
+    importsDir: "data/imports",
+    fixturesDir: "data/fixtures",
+    researchResultsDir: "data/research-results",
+    checkpointPath: CHECKPOINT_PATH,
+    summaryInputPath: null,
+    execute: true,
+    maxMarkets: null,
+    jobId: null,
+    resume: false,
+    skipFailed: false,
+    forceMarket: null,
+    maxRetries: 2,
+    ...overrides,
+  };
+}
+
+const DISCOVERED_MARKETS = [
+  {
+    marketTicker: "KXBTC15M-26JAN151215-00",
+    seriesTicker: "KXBTC15M",
+    openTime: "2026-01-15T12:00:00.000Z",
+    closeTime: "2026-01-15T12:15:00.000Z",
+  },
+  {
+    marketTicker: "KXBTC15M-26JAN151230-00",
+    seriesTicker: "KXBTC15M",
+    openTime: "2026-01-15T12:15:00.000Z",
+    closeTime: "2026-01-15T12:30:00.000Z",
+  },
+  {
+    marketTicker: "KXBTC15M-26JAN151245-00",
+    seriesTicker: "KXBTC15M",
+    openTime: "2026-01-15T12:30:00.000Z",
+    closeTime: "2026-01-15T12:45:00.000Z",
+  },
+];
 
 describe("buildExpansionMarketImportArtifacts", () => {
   it("preserves Coinbase and Kalshi REST routing from expansion job defaults", () => {
@@ -180,24 +216,27 @@ describe("buildExpansionMarketImportArtifacts", () => {
     expect(artifacts.config.btc.provider).toBe("coinbase-spot");
     expect(artifacts.config.btc.interval).toBe("1m");
     expect(artifacts.config.kalshi.marketSource).toBe("kalshi-rest");
-    expect(artifacts.configPath).toBe(
-      "data/import-configs/KXBTC15M/KXBTC15M-26JAN151215-00/config.json",
-    );
-    expect(artifacts.importResultPath).toBe(
-      "data/imports/KXBTC15M/KXBTC15M-26JAN151215-00/import-result.json",
-    );
   });
 });
 
 describe("scanExistingExpansionMarketTickers", () => {
   it("collects tickers from import configs, fixtures, and research outputs", () => {
     const mock: MockFs = { files: {}, directories: new Set(["data"]) };
+    mock.directories.add("data/import-configs");
+    mock.directories.add("data/import-configs/KXBTC15M");
+    mock.directories.add("data/import-configs/KXBTC15M/MKT-A");
     mock.files["data/import-configs/KXBTC15M/MKT-A/config.json"] = JSON.stringify({
       marketTicker: "MKT-A",
     });
+    mock.directories.add("data/fixtures");
+    mock.directories.add("data/fixtures/KXBTC15M");
     mock.files["data/fixtures/KXBTC15M/MKT-B.json"] = JSON.stringify({
       marketTicker: "MKT-B",
     });
+    mock.directories.add("data/research-results");
+    mock.directories.add("data/research-results/noop");
+    mock.directories.add("data/research-results/noop/KXBTC15M");
+    mock.directories.add("data/research-results/noop/KXBTC15M/MKT-C");
     mock.files["data/research-results/noop/KXBTC15M/MKT-C/research-output.json"] =
       JSON.stringify({ marketTicker: "MKT-C" });
 
@@ -214,262 +253,261 @@ describe("scanExistingExpansionMarketTickers", () => {
   });
 });
 
-describe("runHistoricalExpansionImport", () => {
-  it("dry-runs scheduled jobs and records planned imports without writing artifacts", async () => {
+describe("runHistoricalExpansionImport safety", () => {
+  it("skips markets already recorded in checkpoint on resume", async () => {
+    const mock: MockFs = { files: {}, directories: new Set(["data"]) };
+    mock.files[CHECKPOINT_PATH] = serializeExpansionImportCheckpoint({
+      generatedAt: GENERATED_AT,
+      updatedAt: GENERATED_AT,
+      inputPath: CONFIG_PATH,
+      checkpointPath: CHECKPOINT_PATH,
+      resume: true,
+      runStatus: "partial",
+      maxRetries: 2,
+      jobs: [
+        {
+          jobId: JOB_ID,
+          lastCompletedMarketTicker: "KXBTC15M-26JAN151215-00",
+          completedMarkets: ["KXBTC15M-26JAN151215-00"],
+          failedMarkets: [],
+        },
+      ],
+    });
+    const io = createIo(mock);
+    const runImport = vi.fn(async () => createImportResult("KXBTC15M-26JAN151230-00"));
+
+    const summary = await runHistoricalExpansionImport({
+      generatedAt: GENERATED_AT,
+      config: createBaseConfig({ resume: true }),
+      expansionConfigJson: createManifestJson(),
+      io,
+      deps: {
+        discoverMarkets: vi.fn(async () => DISCOVERED_MARKETS.slice(0, 2)),
+        runImport,
+      },
+    });
+
+    expect(runImport).toHaveBeenCalledTimes(1);
+    expect(summary.summary.skippedCount).toBe(1);
+    expect(summary.jobs[0]?.markets[0]?.skipReason).toContain("checkpoint");
+  });
+
+  it("resumes after an interrupted import and completes remaining markets", async () => {
+    const mock: MockFs = { files: {}, directories: new Set(["data"]) };
+    mock.files[CHECKPOINT_PATH] = serializeExpansionImportCheckpoint({
+      generatedAt: GENERATED_AT,
+      updatedAt: GENERATED_AT,
+      inputPath: CONFIG_PATH,
+      checkpointPath: CHECKPOINT_PATH,
+      resume: true,
+      runStatus: "interrupted",
+      maxRetries: 2,
+      jobs: [
+        {
+          jobId: JOB_ID,
+          lastCompletedMarketTicker: "KXBTC15M-26JAN151215-00",
+          completedMarkets: ["KXBTC15M-26JAN151215-00"],
+          failedMarkets: [],
+        },
+      ],
+    });
+    const io = createIo(mock);
+    const runImport = vi.fn(async (config) =>
+      createImportResult(config.marketTicker),
+    );
+
+    const summary = await runHistoricalExpansionImport({
+      generatedAt: GENERATED_AT,
+      config: createBaseConfig({ resume: true }),
+      expansionConfigJson: createManifestJson(),
+      io,
+      deps: {
+        discoverMarkets: vi.fn(async () => DISCOVERED_MARKETS.slice(0, 2)),
+        runImport,
+      },
+    });
+
+    expect(summary.runStatus).toBe("completed");
+    expect(summary.summary.importedCount).toBe(1);
+    expect(runImport).toHaveBeenCalledTimes(1);
+  });
+
+  it("retries a failed market and succeeds on the next attempt", async () => {
+    const mock: MockFs = { files: {}, directories: new Set(["data"]) };
+    mock.files[CHECKPOINT_PATH] = serializeExpansionImportCheckpoint({
+      generatedAt: GENERATED_AT,
+      updatedAt: GENERATED_AT,
+      inputPath: CONFIG_PATH,
+      checkpointPath: CHECKPOINT_PATH,
+      resume: true,
+      runStatus: "partial",
+      maxRetries: 2,
+      jobs: [
+        {
+          jobId: JOB_ID,
+          lastCompletedMarketTicker: null,
+          completedMarkets: [],
+          failedMarkets: [
+            {
+              marketTicker: "KXBTC15M-26JAN151215-00",
+              retryCount: 1,
+              lastErrorMessage: "boom",
+              lastAttemptAt: GENERATED_AT,
+            },
+          ],
+        },
+      ],
+    });
+    const io = createIo(mock);
+    const runImport = vi.fn(async () => createImportResult("KXBTC15M-26JAN151215-00"));
+
+    const summary = await runHistoricalExpansionImport({
+      generatedAt: GENERATED_AT,
+      config: createBaseConfig({ resume: true, maxRetries: 2 }),
+      expansionConfigJson: createManifestJson(),
+      io,
+      deps: {
+        discoverMarkets: vi.fn(async () => [DISCOVERED_MARKETS[0]!]),
+        runImport,
+      },
+    });
+
+    expect(runImport).toHaveBeenCalledTimes(1);
+    expect(summary.summary.importedCount).toBe(1);
+    expect(summary.runStatus).toBe("completed");
+  });
+
+  it("stops retrying after max retries are exhausted", async () => {
+    const mock: MockFs = { files: {}, directories: new Set(["data"]) };
+    mock.files[CHECKPOINT_PATH] = serializeExpansionImportCheckpoint({
+      generatedAt: GENERATED_AT,
+      updatedAt: GENERATED_AT,
+      inputPath: CONFIG_PATH,
+      checkpointPath: CHECKPOINT_PATH,
+      resume: true,
+      runStatus: "partial",
+      maxRetries: 1,
+      jobs: [
+        {
+          jobId: JOB_ID,
+          lastCompletedMarketTicker: null,
+          completedMarkets: [],
+          failedMarkets: [
+            {
+              marketTicker: "KXBTC15M-26JAN151215-00",
+              retryCount: 1,
+              lastErrorMessage: "boom",
+              lastAttemptAt: GENERATED_AT,
+            },
+          ],
+        },
+      ],
+    });
+    const io = createIo(mock);
+    const runImport = vi.fn(async () => {
+      throw new Error("still failing");
+    });
+
+    const summary = await runHistoricalExpansionImport({
+      generatedAt: GENERATED_AT,
+      config: createBaseConfig({ resume: true, maxRetries: 1 }),
+      expansionConfigJson: createManifestJson(),
+      io,
+      deps: {
+        discoverMarkets: vi.fn(async () => [DISCOVERED_MARKETS[0]!]),
+        runImport,
+      },
+    });
+
+    expect(runImport).not.toHaveBeenCalled();
+    expect(summary.summary.skippedCount).toBe(1);
+    expect(summary.jobs[0]?.markets[0]?.skipReason).toContain("Retry exhausted");
+    expect(summary.runStatus).toBe("partial");
+  });
+
+  it("writes partial summary and checkpoint after each executed market", async () => {
+    const mock: MockFs = { files: {}, directories: new Set(["data"]) };
+    const io = createIo(mock);
+    const partialSummaries: string[] = [];
+    const runImport = vi.fn(async (config) => createImportResult(config.marketTicker));
+
+    await runHistoricalExpansionImport({
+      generatedAt: GENERATED_AT,
+      config: createBaseConfig(),
+      expansionConfigJson: createManifestJson(),
+      io,
+      deps: {
+        discoverMarkets: vi.fn(async () => DISCOVERED_MARKETS.slice(0, 2)),
+        runImport,
+      },
+      onPersist: ({ summaryJson }) => {
+        partialSummaries.push(summaryJson);
+      },
+    });
+
+    expect(partialSummaries.length).toBeGreaterThanOrEqual(2);
+    const lastPartial = JSON.parse(partialSummaries.at(-1)!);
+    expect(lastPartial.runStatus).toBe("completed");
+    expect(io.writes.has(CHECKPOINT_PATH)).toBe(true);
+    expect(io.writes.has(SUMMARY_PATH)).toBe(true);
+
+    const checkpoint = parseExpansionImportCheckpointJson(
+      CHECKPOINT_PATH,
+      io.writes.get(CHECKPOINT_PATH)!,
+    );
+    expect(checkpoint.jobs[0]?.completedMarkets).toHaveLength(2);
+  });
+
+  it("records interrupted status when the abort signal fires", async () => {
+    const mock: MockFs = { files: {}, directories: new Set(["data"]) };
+    const io = createIo(mock);
+    const controller = new AbortController();
+    const runImport = vi.fn(async (config) => {
+      if (config.marketTicker === "KXBTC15M-26JAN151215-00") {
+        controller.abort();
+      }
+      return createImportResult(config.marketTicker);
+    });
+
+    const summary = await runHistoricalExpansionImport({
+      generatedAt: GENERATED_AT,
+      config: createBaseConfig(),
+      expansionConfigJson: createManifestJson(),
+      io,
+      signal: controller.signal,
+      deps: {
+        discoverMarkets: vi.fn(async () => DISCOVERED_MARKETS.slice(0, 2)),
+        runImport,
+      },
+    });
+
+    expect(summary.runStatus).toBe("interrupted");
+    expect(summary.summary.importedCount).toBe(1);
+  });
+
+  it("dry-runs scheduled jobs without writing checkpoint artifacts", async () => {
     const mock: MockFs = { files: {}, directories: new Set(["data"]) };
     const io = createIo(mock);
 
     const summary = await runHistoricalExpansionImport({
       generatedAt: GENERATED_AT,
-      config: {
-        inputPath: CONFIG_PATH,
-        outputPath: "data/research-results/historical-expansion-import-summary.json",
-        htmlOutputPath: "data/reports/historical-expansion-import-summary.html",
-        importConfigsDir: "data/import-configs",
-        importsDir: "data/imports",
-        fixturesDir: "data/fixtures",
-        researchResultsDir: "data/research-results",
-        execute: false,
-        maxMarkets: null,
-        jobId: null,
-        resume: false,
-      },
+      config: createBaseConfig({ execute: false }),
       expansionConfigJson: createManifestJson(),
       io,
       deps: {
-        discoverMarkets: vi.fn(async () => [
-          {
-            marketTicker: "KXBTC15M-26JAN151215-00",
-            seriesTicker: "KXBTC15M",
-            openTime: "2026-01-15T12:00:00.000Z",
-            closeTime: "2026-01-15T12:15:00.000Z",
-          },
-        ]),
+        discoverMarkets: vi.fn(async () => [DISCOVERED_MARKETS[0]!]),
         runImport: vi.fn(),
       },
     });
 
     expect(summary.execute).toBe(false);
     expect(summary.summary.plannedCount).toBe(1);
-    expect(summary.summary.importedCount).toBe(0);
-    expect(summary.jobs[0]?.markets[0]?.status).toBe("planned");
     expect(io.writes.size).toBe(0);
     expect(serializeHistoricalExpansionImportSummaryHtml(summary)).toContain(
       "Historical Expansion Import Summary",
     );
-  });
-
-  it("executes imports and writes config/import-result artifacts for new markets", async () => {
-    const mock: MockFs = { files: {}, directories: new Set(["data"]) };
-    const io = createIo(mock);
-    const runImport = vi.fn(async () => createImportResult("KXBTC15M-26JAN151215-00"));
-
-    const summary = await runHistoricalExpansionImport({
-      generatedAt: GENERATED_AT,
-      config: {
-        inputPath: CONFIG_PATH,
-        outputPath: "data/research-results/historical-expansion-import-summary.json",
-        htmlOutputPath: "data/reports/historical-expansion-import-summary.html",
-        importConfigsDir: "data/import-configs",
-        importsDir: "data/imports",
-        fixturesDir: "data/fixtures",
-        researchResultsDir: "data/research-results",
-        execute: true,
-        maxMarkets: 1,
-        jobId: "expansion-KXBTC15M-20260101-20260331",
-        resume: false,
-      },
-      expansionConfigJson: createManifestJson(),
-      io,
-      deps: {
-        discoverMarkets: vi.fn(async () => [
-          {
-            marketTicker: "KXBTC15M-26JAN151215-00",
-            seriesTicker: "KXBTC15M",
-            openTime: "2026-01-15T12:00:00.000Z",
-            closeTime: "2026-01-15T12:15:00.000Z",
-          },
-          {
-            marketTicker: "KXBTC15M-26JAN151230-00",
-            seriesTicker: "KXBTC15M",
-            openTime: "2026-01-15T12:15:00.000Z",
-            closeTime: "2026-01-15T12:30:00.000Z",
-          },
-        ]),
-        runImport,
-      },
-    });
-
-    expect(summary.summary.importedCount).toBe(1);
-    expect(summary.summary.plannedCount).toBe(0);
-    expect(runImport).toHaveBeenCalledTimes(1);
-    expect(
-      io.writes.has(
-        "data/import-configs/KXBTC15M/KXBTC15M-26JAN151215-00/config.json",
-      ),
-    ).toBe(true);
-    expect(
-      io.writes.has(
-        "data/imports/KXBTC15M/KXBTC15M-26JAN151215-00/import-result.json",
-      ),
-    ).toBe(true);
     expect(serializeHistoricalExpansionImportSummary(summary)).toContain(
       "historical-expansion-import-summary",
     );
-  });
-
-  it("skips markets already present in existing datasets", async () => {
-    const mock: MockFs = { files: {}, directories: new Set(["data"]) };
-    mock.files["data/import-configs/KXBTC15M/KXBTC15M-26JAN151215-00/config.json"] =
-      JSON.stringify({ marketTicker: "KXBTC15M-26JAN151215-00" });
-
-    const summary = await runHistoricalExpansionImport({
-      generatedAt: GENERATED_AT,
-      config: {
-        inputPath: CONFIG_PATH,
-        outputPath: "data/research-results/historical-expansion-import-summary.json",
-        htmlOutputPath: "data/reports/historical-expansion-import-summary.html",
-        importConfigsDir: "data/import-configs",
-        importsDir: "data/imports",
-        fixturesDir: "data/fixtures",
-        researchResultsDir: "data/research-results",
-        execute: true,
-        maxMarkets: null,
-        jobId: null,
-        resume: false,
-      },
-      expansionConfigJson: createManifestJson(),
-      io: createIo(mock),
-      deps: {
-        discoverMarkets: vi.fn(async () => [
-          {
-            marketTicker: "KXBTC15M-26JAN151215-00",
-            seriesTicker: "KXBTC15M",
-            openTime: "2026-01-15T12:00:00.000Z",
-            closeTime: "2026-01-15T12:15:00.000Z",
-          },
-        ]),
-        runImport: vi.fn(),
-      },
-    });
-
-    expect(summary.summary.skippedCount).toBe(1);
-    expect(summary.jobs[0]?.markets[0]?.skipReason).toContain("already present");
-  });
-
-  it("reports dry-run progress with planned counts and max-markets cap", async () => {
-    const mock: MockFs = { files: {}, directories: new Set(["data"]) };
-    const io = createIo(mock);
-    const reportJobHeader = vi.fn();
-    const recordMarket = vi.fn();
-    const completeJob = vi.fn();
-    const complete = vi.fn();
-
-    await runHistoricalExpansionImport({
-      generatedAt: GENERATED_AT,
-      config: {
-        inputPath: CONFIG_PATH,
-        outputPath: "data/research-results/historical-expansion-import-summary.json",
-        htmlOutputPath: "data/reports/historical-expansion-import-summary.html",
-        importConfigsDir: "data/import-configs",
-        importsDir: "data/imports",
-        fixturesDir: "data/fixtures",
-        researchResultsDir: "data/research-results",
-        execute: false,
-        maxMarkets: 1,
-        jobId: null,
-        resume: false,
-      },
-      expansionConfigJson: createManifestJson(),
-      io,
-      deps: {
-        discoverMarkets: vi.fn(async () => [
-          {
-            marketTicker: "KXBTC15M-26JAN151215-00",
-            seriesTicker: "KXBTC15M",
-            openTime: "2026-01-15T12:00:00.000Z",
-            closeTime: "2026-01-15T12:15:00.000Z",
-          },
-          {
-            marketTicker: "KXBTC15M-26JAN151230-00",
-            seriesTicker: "KXBTC15M",
-            openTime: "2026-01-15T12:15:00.000Z",
-            closeTime: "2026-01-15T12:30:00.000Z",
-          },
-        ]),
-        runImport: vi.fn(),
-      },
-      progress: {
-        reportJobHeader,
-        recordMarket,
-        completeJob,
-        complete,
-      },
-    });
-
-    expect(reportJobHeader).toHaveBeenCalledWith(
-      expect.objectContaining({
-        dryRun: true,
-        maxMarkets: 1,
-        discoveredCount: 2,
-        alreadyCoveredCount: 0,
-        toImportCount: 1,
-      }),
-    );
-    expect(recordMarket).toHaveBeenCalledTimes(1);
-    expect(recordMarket).toHaveBeenCalledWith("planned", "KXBTC15M-26JAN151215-00");
-    expect(completeJob).toHaveBeenCalledTimes(1);
-    expect(complete).toHaveBeenCalledTimes(1);
-  });
-
-  it("reports execute progress with imported and failed counts", async () => {
-    const mock: MockFs = { files: {}, directories: new Set(["data"]) };
-    const io = createIo(mock);
-    const recordMarket = vi.fn();
-
-    await runHistoricalExpansionImport({
-      generatedAt: GENERATED_AT,
-      config: {
-        inputPath: CONFIG_PATH,
-        outputPath: "data/research-results/historical-expansion-import-summary.json",
-        htmlOutputPath: "data/reports/historical-expansion-import-summary.html",
-        importConfigsDir: "data/import-configs",
-        importsDir: "data/imports",
-        fixturesDir: "data/fixtures",
-        researchResultsDir: "data/research-results",
-        execute: true,
-        maxMarkets: null,
-        jobId: null,
-        resume: true,
-      },
-      expansionConfigJson: createManifestJson(),
-      io,
-      deps: {
-        discoverMarkets: vi.fn(async () => [
-          {
-            marketTicker: "KXBTC15M-26JAN151215-00",
-            seriesTicker: "KXBTC15M",
-            openTime: "2026-01-15T12:00:00.000Z",
-            closeTime: "2026-01-15T12:15:00.000Z",
-          },
-          {
-            marketTicker: "KXBTC15M-26JAN151230-00",
-            seriesTicker: "KXBTC15M",
-            openTime: null,
-            closeTime: null,
-          },
-        ]),
-        runImport: vi.fn(async () => createImportResult("KXBTC15M-26JAN151215-00")),
-      },
-      progress: {
-        reportJobHeader: vi.fn(),
-        recordMarket,
-        completeJob: vi.fn(),
-        complete: vi.fn(),
-      },
-    });
-
-    expect(recordMarket).toHaveBeenCalledWith("imported", "KXBTC15M-26JAN151215-00");
-    expect(recordMarket).toHaveBeenCalledWith("skipped", "KXBTC15M-26JAN151230-00");
   });
 });

@@ -1,6 +1,7 @@
 import type { HistoricalBronzeImportConfig } from "@/lib/data/importJobs/config";
 import type { HistoricalBronzeImportJobResult } from "@/lib/data/importJobs/historicalBronzeImportJobTypes";
 import type { HistoricalExpansionImportJob } from "@/lib/data/importJobs/expansionConfig";
+import { DEFAULT_HISTORICAL_EXPANSION_IMPORT_CHECKPOINT_PATH } from "@/lib/data/importJobs/expansionImportSafety/expansionImportSafetyTypes";
 
 export const DEFAULT_HISTORICAL_EXPANSION_IMPORT_CONFIG_PATH =
   "data/import-configs/historical-expansion-config.json";
@@ -8,6 +9,7 @@ export const DEFAULT_HISTORICAL_EXPANSION_IMPORT_SUMMARY_PATH =
   "data/research-results/historical-expansion-import-summary.json";
 export const DEFAULT_HISTORICAL_EXPANSION_IMPORT_SUMMARY_HTML_PATH =
   "data/reports/historical-expansion-import-summary.html";
+export { DEFAULT_HISTORICAL_EXPANSION_IMPORT_CHECKPOINT_PATH };
 export const DEFAULT_EXPANSION_IMPORT_CONFIGS_DIR = "data/import-configs";
 export const DEFAULT_EXPANSION_IMPORTS_DIR = "data/imports";
 export const DEFAULT_EXPANSION_FIXTURES_DIR = "data/fixtures";
@@ -66,12 +68,21 @@ export type ExpansionImportJobResult = {
   markets: readonly ExpansionImportMarketResult[];
 };
 
+export type ExpansionImportSummaryRunStatus =
+  | "completed"
+  | "partial"
+  | "interrupted";
+
 export type HistoricalExpansionImportSummary = {
   generatedAt: string;
   execute: boolean;
   inputPath: string;
   outputPath: string;
   htmlOutputPath: string;
+  checkpointPath: string | null;
+  resume: boolean;
+  maxRetries: number;
+  runStatus: ExpansionImportSummaryRunStatus;
   importConfigsDir: string;
   importsDir: string;
   maxMarkets: number | null;
@@ -101,6 +112,11 @@ export type HistoricalExpansionImportExecutorConfig = {
   maxMarkets: number | null;
   jobId: string | null;
   resume: boolean;
+  skipFailed: boolean;
+  forceMarket: string | null;
+  checkpointPath: string;
+  maxRetries: number;
+  summaryInputPath: string | null;
 };
 
 export type ExpansionImportProgressHooks = {
@@ -137,6 +153,11 @@ export type RunHistoricalExpansionImportInput = {
   expansionConfigJson: string;
   io: ExpansionExecutorIo;
   deps: ExpansionExecutorDeps;
+  signal?: AbortSignal | null;
+  onPersist?: (artifacts: {
+    checkpointJson: string;
+    summaryJson: string;
+  }) => void;
   progress?: ExpansionImportProgressHooks | null;
 };
 

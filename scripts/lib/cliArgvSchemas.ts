@@ -260,20 +260,6 @@ export const GENERATE_EXPANSION_IMPORT_CONFIG_ARGV_SCHEMA: readonly NpmArgvField
   { flag: "--dry-run" },
 ];
 
-export const EXECUTE_EXPANSION_IMPORT_ARGV_SCHEMA: readonly NpmArgvField[] = [
-  { flag: "--input" },
-  { flag: "--output" },
-  { flag: "--html-output" },
-  { flag: "--import-configs-dir" },
-  { flag: "--imports-dir" },
-  { flag: "--fixtures-dir" },
-  { flag: "--research-results-dir" },
-  { flag: "--max-markets" },
-  { flag: "--job-id" },
-  { flag: "--execute" },
-  { flag: "--resume" },
-];
-
 export const REBUILD_AFTER_EXPANSION_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--input" },
   { flag: "--output" },
@@ -286,6 +272,25 @@ export const REBUILD_AFTER_EXPANSION_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--mispricing-atlas" },
   { flag: "--concurrency" },
   { flag: "--full-rebuild" },
+];
+
+export const EXECUTE_EXPANSION_IMPORT_ARGV_SCHEMA: readonly NpmArgvField[] = [
+  { flag: "--input" },
+  { flag: "--output" },
+  { flag: "--html-output" },
+  { flag: "--import-configs-dir" },
+  { flag: "--imports-dir" },
+  { flag: "--fixtures-dir" },
+  { flag: "--research-results-dir" },
+  { flag: "--checkpoint-path" },
+  { flag: "--summary-input" },
+  { flag: "--max-markets" },
+  { flag: "--max-retries" },
+  { flag: "--job-id" },
+  { flag: "--force-market" },
+  { flag: "--execute" },
+  { flag: "--resume" },
+  { flag: "--skip-failed" },
 ];
 
 export const DATA_HEALTH_ARGV_SCHEMA: readonly NpmArgvField[] = [
@@ -650,16 +655,16 @@ export function normalizeGenerateExpansionImportConfigArgv(
   );
 }
 
-export function normalizeExecuteExpansionImportArgv(argv: readonly string[]): string[] {
-  return mergeNpmBooleanFlags(
-    normalizeNpmScriptArgv(argv, EXECUTE_EXPANSION_IMPORT_ARGV_SCHEMA),
-    ["--execute", "--resume"],
-  );
-}
-
 export function normalizeRebuildAfterExpansionArgv(argv: readonly string[]): string[] {
   return mergeNpmBooleanFlags(
     normalizeNpmScriptArgv(argv, REBUILD_AFTER_EXPANSION_ARGV_SCHEMA),
     ["--full-rebuild"],
+  );
+}
+
+export function normalizeExecuteExpansionImportArgv(argv: readonly string[]): string[] {
+  return mergeNpmBooleanFlags(
+    normalizeNpmScriptArgv(argv, EXECUTE_EXPANSION_IMPORT_ARGV_SCHEMA),
+    ["--execute", "--resume", "--skip-failed"],
   );
 }

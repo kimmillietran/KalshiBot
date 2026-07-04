@@ -3,6 +3,7 @@ import {
   DEFAULT_EXPANSION_IMPORT_CONFIGS_DIR,
   DEFAULT_EXPANSION_IMPORTS_DIR,
   DEFAULT_EXPANSION_RESEARCH_RESULTS_DIR,
+  DEFAULT_HISTORICAL_EXPANSION_IMPORT_CHECKPOINT_PATH,
   DEFAULT_HISTORICAL_EXPANSION_IMPORT_CONFIG_PATH,
   DEFAULT_HISTORICAL_EXPANSION_IMPORT_SUMMARY_HTML_PATH,
   DEFAULT_HISTORICAL_EXPANSION_IMPORT_SUMMARY_PATH,
@@ -105,10 +106,19 @@ export function parseExecuteExpansionImportConfigFromArgv(
       "--research-results-dir",
       DEFAULT_EXPANSION_RESEARCH_RESULTS_DIR,
     ),
+    checkpointPath: readFlagValue(
+      argv,
+      "--checkpoint-path",
+      DEFAULT_HISTORICAL_EXPANSION_IMPORT_CHECKPOINT_PATH,
+    ),
+    summaryInputPath: readOptionalFlag(argv, "--summary-input"),
     execute: readBooleanFlag(argv, "--execute"),
-    maxMarkets: readOptionalNumberFlag(argv, "--max-markets"),
-    jobId: readOptionalFlag(argv, "--job-id"),
     resume: readBooleanFlag(argv, "--resume"),
+    skipFailed: readBooleanFlag(argv, "--skip-failed"),
+    forceMarket: readOptionalFlag(argv, "--force-market"),
+    maxMarkets: readOptionalNumberFlag(argv, "--max-markets"),
+    maxRetries: readOptionalNumberFlag(argv, "--max-retries") ?? 0,
+    jobId: readOptionalFlag(argv, "--job-id"),
   };
 }
 

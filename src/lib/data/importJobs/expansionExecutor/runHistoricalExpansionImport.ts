@@ -10,6 +10,15 @@ import {
 } from "@/lib/data/importJobs/batchImport/batchImportTypes";
 import { parseHistoricalExpansionImportConfigJson } from "@/lib/data/importJobs/expansionConfig";
 import type { HistoricalExpansionImportJob } from "@/lib/data/importJobs/expansionConfig";
+import {
+  finalizeExpansionImportRunStatus,
+  initializeExpansionImportCheckpoint,
+  loadExpansionImportCheckpoint,
+  planExpansionMarketExecution,
+  serializeExpansionImportCheckpoint,
+  updateExpansionImportCheckpoint,
+} from "@/lib/data/importJobs/expansionImportSafety";
+import type { HistoricalExpansionImportCheckpoint } from "@/lib/data/importJobs/expansionImportSafety";
 import { stableStringify } from "@/lib/trading/config/hashConfig";
 
 import { buildExpansionMarketImportArtifacts } from "./buildExpansionMarketImportConfig";
@@ -91,6 +100,47 @@ function aggregateSummary(
     plannedCount: jobs.reduce((total, job) => total + job.plannedCount, 0),
     durationMs: Date.now() - startedAtMs,
   };
+}
+
+function buildPartialSummary(
+  input: RunHistoricalExpansionImportInput,
+  jobResults: readonly ExpansionImportJobResult[],
+  startedAtMs: number,
+  checkpoint: HistoricalExpansionImportCheckpoint,
+  runStatus: HistoricalExpansionImportSummary["runStatus"],
+  warnings: readonly string[],
+): HistoricalExpansionImportSummary {
+  return {
+    generatedAt: input.generatedAt,
+    execute: input.config.execute,
+    inputPath: input.config.inputPath,
+    outputPath: input.config.outputPath,
+    htmlOutputPath: input.config.htmlOutputPath,
+    checkpointPath: input.config.checkpointPath,
+    resume: input.config.resume,
+    maxRetries: input.config.maxRetries,
+    runStatus,
+    importConfigsDir: input.config.importConfigsDir,
+    importsDir: input.config.importsDir,
+    maxMarkets: input.config.maxMarkets,
+    jobIdFilter: input.config.jobId,
+    summary: aggregateSummary(jobResults, startedAtMs),
+    jobs: jobResults,
+    warnings,
+  };
+}
+
+function persistRunArtifacts(
+  input: RunHistoricalExpansionImportInput,
+  summary: HistoricalExpansionImportSummary,
+  checkpoint: HistoricalExpansionImportCheckpoint,
+): void {
+  const checkpointJson = serializeExpansionImportCheckpoint(checkpoint);
+  const summaryJson = serializeHistoricalExpansionImportSummary(summary);
+
+  input.io.writeFile(input.config.checkpointPath, checkpointJson);
+  input.io.writeFile(input.config.outputPath, summaryJson);
+  input.onPersist?.({ checkpointJson, summaryJson });
 }
 
 async function executeMarketImport(
@@ -205,6 +255,31 @@ export async function runHistoricalExpansionImport(
     );
   }
 
+  const existingCheckpoint = loadExpansionImportCheckpoint(
+    input.config.checkpointPath,
+    input.io,
+  );
+  let checkpoint = initializeExpansionImportCheckpoint({
+    generatedAt: input.generatedAt,
+    inputPath: input.config.inputPath,
+    checkpointPath: input.config.checkpointPath,
+    resume: input.config.resume,
+    maxRetries: input.config.maxRetries,
+    jobIds: scheduledJobs.map((job) => job.jobId),
+    existingCheckpointJson: existingCheckpoint
+      ? serializeExpansionImportCheckpoint(existingCheckpoint)
+      : null,
+  });
+
+  const safety = {
+    resume: input.config.resume,
+    skipFailed: input.config.skipFailed,
+    forceMarket: input.config.forceMarket,
+    checkpointPath: input.config.checkpointPath,
+    maxRetries: input.config.maxRetries,
+    summaryInputPath: input.config.summaryInputPath,
+  };
+
   const existingTickers = scanExistingExpansionMarketTickers(
     {
       importConfigsDir: input.config.importConfigsDir,
@@ -217,10 +292,16 @@ export async function runHistoricalExpansionImport(
   const warnings: string[] = [];
   const jobResults: ExpansionImportJobResult[] = [];
   let remainingMarketBudget = input.config.maxMarkets;
+  let interrupted = false;
   const sortedScheduledJobs = [...scheduledJobs].sort(compareJobs);
   const progress = input.progress ?? null;
 
   for (const [jobIndex, job] of sortedScheduledJobs.entries()) {
+    if (input.signal?.aborted) {
+      interrupted = true;
+      break;
+    }
+
     const jobStartedAtMs = Date.now();
     const jobWarnings: string[] = [];
     const sampling = toSamplingWindow(job);
@@ -251,15 +332,42 @@ export async function runHistoricalExpansionImport(
     });
 
     for (const market of sortedDiscovered) {
+      if (input.signal?.aborted) {
+        interrupted = true;
+        break;
+      }
+
       if (remainingMarketBudget !== null && remainingMarketBudget <= 0) {
         jobWarnings.push(
-          `Stopped scheduling additional markets after reaching --max-markets limit`,
+          "Stopped scheduling additional markets after reaching --max-markets limit",
         );
         break;
       }
 
-      if (existingTickers.has(market.marketTicker)) {
+      const executionPlan = planExpansionMarketExecution({
+        safety,
+        checkpoint,
+        jobId: job.jobId,
+        marketTicker: market.marketTicker,
+      });
+
+      if (executionPlan.action === "skip") {
         markets.push({
+          marketTicker: market.marketTicker,
+          seriesTicker: market.seriesTicker,
+          status: "skipped",
+          configPath: null,
+          importResultPath: null,
+          errorMessage: null,
+          skipReason: executionPlan.reason,
+          durationMs: 0,
+        });
+        progress?.recordMarket("skipped", market.marketTicker);
+        continue;
+      }
+
+      if (existingTickers.has(market.marketTicker)) {
+        const skippedResult: ExpansionImportMarketResult = {
           marketTicker: market.marketTicker,
           seriesTicker: market.seriesTicker,
           status: "skipped",
@@ -268,7 +376,19 @@ export async function runHistoricalExpansionImport(
           errorMessage: null,
           skipReason: "Market already present in import configs, fixtures, or research outputs",
           durationMs: 0,
-        });
+        };
+        markets.push(skippedResult);
+        progress?.recordMarket("skipped", market.marketTicker);
+
+        if (input.config.execute) {
+          checkpoint = updateExpansionImportCheckpoint(
+            checkpoint,
+            job.jobId,
+            skippedResult,
+            input.generatedAt,
+          );
+        }
+
         continue;
       }
 
@@ -281,6 +401,44 @@ export async function runHistoricalExpansionImport(
           remainingMarketBudget -= 1;
         }
         existingTickers.add(market.marketTicker);
+      }
+
+      if (input.config.execute) {
+        checkpoint = updateExpansionImportCheckpoint(
+          checkpoint,
+          job.jobId,
+          result,
+          input.generatedAt,
+        );
+
+        const partialSummary = buildPartialSummary(
+          input,
+          [
+            ...jobResults,
+            {
+              jobId: job.jobId,
+              seriesTicker: job.seriesTicker,
+              status: "completed",
+              discoveredMarketCount: discovered.length,
+              importedCount: markets.filter((entry) => entry.status === "imported").length,
+              skippedCount: markets.filter((entry) => entry.status === "skipped").length,
+              failedCount: markets.filter((entry) => entry.status === "failed").length,
+              plannedCount: markets.filter((entry) => entry.status === "planned").length,
+              durationMs: Date.now() - jobStartedAtMs,
+              warnings: jobWarnings,
+              markets,
+            },
+          ],
+          startedAtMs,
+          checkpoint,
+          interrupted ? "interrupted" : "partial",
+          warnings,
+        );
+
+        persistRunArtifacts(input, partialSummary, {
+          ...checkpoint,
+          runStatus: interrupted ? "interrupted" : "running",
+        });
       }
     }
 
@@ -314,24 +472,41 @@ export async function runHistoricalExpansionImport(
 
     warnings.push(...jobWarnings);
     progress?.completeJob();
+
+    if (interrupted) {
+      break;
+    }
+  }
+
+  const { checkpointRunStatus, summaryRunStatus } = finalizeExpansionImportRunStatus({
+    interrupted,
+    checkpoint,
+    jobs: jobResults,
+    maxRetries: input.config.maxRetries,
+  });
+
+  checkpoint = {
+    ...checkpoint,
+    runStatus: checkpointRunStatus,
+    updatedAt: input.generatedAt,
+  };
+
+  const summary = buildPartialSummary(
+    input,
+    jobResults,
+    startedAtMs,
+    checkpoint,
+    summaryRunStatus,
+    warnings,
+  );
+
+  if (input.config.execute) {
+    persistRunArtifacts(input, summary, checkpoint);
   }
 
   progress?.complete();
 
-  return {
-    generatedAt: input.generatedAt,
-    execute: input.config.execute,
-    inputPath: input.config.inputPath,
-    outputPath: input.config.outputPath,
-    htmlOutputPath: input.config.htmlOutputPath,
-    importConfigsDir: input.config.importConfigsDir,
-    importsDir: input.config.importsDir,
-    maxMarkets: input.config.maxMarkets,
-    jobIdFilter: input.config.jobId,
-    summary: aggregateSummary(jobResults, startedAtMs),
-    jobs: jobResults,
-    warnings,
-  };
+  return summary;
 }
 
 export function serializeHistoricalExpansionImportSummary(

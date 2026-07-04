@@ -153,6 +153,26 @@ export type {
 } from "./expansionConfig";
 
 export {
+  DEFAULT_HISTORICAL_EXPANSION_IMPORT_CHECKPOINT_PATH,
+  finalizeExpansionImportRunStatus,
+  initializeExpansionImportCheckpoint,
+  loadExpansionImportCheckpoint,
+  parseExpansionImportCheckpointJson,
+  planExpansionMarketExecution,
+  serializeExpansionImportCheckpoint,
+  updateExpansionImportCheckpoint,
+} from "./expansionImportSafety";
+export type {
+  ExpansionImportSafetyConfig,
+  HistoricalExpansionImportCheckpoint,
+} from "./expansionImportSafety";
+
+export {
+  buildExpansionMarketImportArtifacts,
+  DEFAULT_EXPANSION_FIXTURES_DIR,
+  DEFAULT_EXPANSION_IMPORT_CONFIGS_DIR,
+  DEFAULT_EXPANSION_IMPORTS_DIR,
+  DEFAULT_EXPANSION_RESEARCH_RESULTS_DIR,
   DEFAULT_HISTORICAL_EXPANSION_IMPORT_CONFIG_PATH,
   DEFAULT_HISTORICAL_EXPANSION_IMPORT_SUMMARY_HTML_PATH,
   DEFAULT_HISTORICAL_EXPANSION_IMPORT_SUMMARY_PATH,

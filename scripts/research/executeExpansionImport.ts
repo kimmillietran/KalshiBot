@@ -131,6 +131,7 @@ export async function runExecuteExpansionImportCommand(
 
     io.mkdirSync(dirname(config.outputPath), { recursive: true });
     io.mkdirSync(dirname(config.htmlOutputPath), { recursive: true });
+    io.mkdirSync(dirname(config.checkpointPath), { recursive: true });
     io.writeFile(config.outputPath, serializeHistoricalExpansionImportSummary(summary));
     io.writeFile(
       config.htmlOutputPath,
@@ -144,6 +145,9 @@ export async function runExecuteExpansionImportCommand(
           inputPath: summary.inputPath,
           outputPath: summary.outputPath,
           htmlOutputPath: summary.htmlOutputPath,
+          checkpointPath: summary.checkpointPath,
+          runStatus: summary.runStatus,
+          resume: summary.resume,
           importedCount: summary.summary.importedCount,
           skippedCount: summary.summary.skippedCount,
           failedCount: summary.summary.failedCount,
