@@ -235,6 +235,7 @@ export async function runExecuteExpansionImportCommand(
           skippedCount: summary.summary.skippedCount,
           failedCount: summary.summary.failedCount,
           plannedCount: summary.summary.plannedCount,
+          rateLimitDiagnostics: summary.rateLimitDiagnostics,
         }),
       ),
     );

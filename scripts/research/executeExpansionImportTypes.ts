@@ -2,6 +2,8 @@ import {
   DEFAULT_EXPANSION_FIXTURES_DIR,
   DEFAULT_EXPANSION_IMPORT_CONFIGS_DIR,
   DEFAULT_EXPANSION_IMPORTS_DIR,
+  DEFAULT_EXPANSION_MAX_RATE_LIMIT_RETRIES,
+  DEFAULT_EXPANSION_RATE_LIMIT_BACKOFF_MS,
   DEFAULT_EXPANSION_RESEARCH_RESULTS_DIR,
   DEFAULT_HISTORICAL_EXPANSION_IMPORT_CHECKPOINT_PATH,
   DEFAULT_HISTORICAL_EXPANSION_IMPORT_CONFIG_PATH,
@@ -134,6 +136,12 @@ export function parseExecuteExpansionImportConfigFromArgv(
       "--single-market-html-output",
       DEFAULT_SINGLE_MARKET_EXPANSION_IMPORT_DEBUG_HTML_PATH,
     ),
+    rateLimitBackoffMs:
+      readOptionalNumberFlag(argv, "--rate-limit-backoff-ms")
+      ?? DEFAULT_EXPANSION_RATE_LIMIT_BACKOFF_MS,
+    maxRateLimitRetries:
+      readOptionalNumberFlag(argv, "--max-rate-limit-retries")
+      ?? DEFAULT_EXPANSION_MAX_RATE_LIMIT_RETRIES,
   };
 }
 

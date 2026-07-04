@@ -4,6 +4,8 @@ import type { MarketDiscoveryProvenance } from "@/lib/data/discovery/discoveryTy
 import type { HistoricalExpansionImportJob } from "@/lib/data/importJobs/expansionConfig";
 import { DEFAULT_HISTORICAL_EXPANSION_IMPORT_CHECKPOINT_PATH } from "@/lib/data/importJobs/expansionImportSafety/expansionImportSafetyTypes";
 
+import type { ExpansionImportRateLimitDiagnostics } from "./expansionImportRateLimit";
+
 export const DEFAULT_HISTORICAL_EXPANSION_IMPORT_CONFIG_PATH =
   "data/import-configs/historical-expansion-config.json";
 export const DEFAULT_HISTORICAL_EXPANSION_IMPORT_SUMMARY_PATH =
@@ -103,6 +105,7 @@ export type HistoricalExpansionImportSummary = {
   };
   jobs: readonly ExpansionImportJobResult[];
   warnings: readonly string[];
+  rateLimitDiagnostics: ExpansionImportRateLimitDiagnostics;
 };
 
 export type HistoricalExpansionImportExecutorConfig = {
@@ -126,6 +129,8 @@ export type HistoricalExpansionImportExecutorConfig = {
   marketTicker: string | null;
   singleMarketOutputPath: string;
   singleMarketHtmlOutputPath: string;
+  rateLimitBackoffMs: number;
+  maxRateLimitRetries: number;
 };
 
 export type ExpansionImportProgressHooks = {
@@ -165,6 +170,7 @@ export type RunHistoricalExpansionImportInput = {
   io: ExpansionExecutorIo;
   deps: ExpansionExecutorDeps;
   signal?: AbortSignal | null;
+  sleep?: (ms: number) => Promise<void>;
   onPersist?: (artifacts: {
     checkpointJson: string;
     summaryJson: string;

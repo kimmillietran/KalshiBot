@@ -127,6 +127,17 @@ export function serializeHistoricalExpansionImportSummaryHtml(
   </section>
 
   <section class="panel">
+    <h2>Rate-limit diagnostics</h2>
+    <ul>
+      <li>Rate-limited events: ${summary.rateLimitDiagnostics.rateLimitedCount}</li>
+      <li>Backoff waited: ${summary.rateLimitDiagnostics.backoffDurationMs} ms</li>
+      <li>Retries: ${summary.rateLimitDiagnostics.retryCount}</li>
+      <li>First rate-limited ticker: <code>${escapeHtml(summary.rateLimitDiagnostics.firstRateLimitedTicker ?? "—")}</code></li>
+      <li>${escapeHtml(summary.rateLimitDiagnostics.recommendedNextAction)}</li>
+    </ul>
+  </section>
+
+  <section class="panel">
     <h2>Warnings</h2>
     <ul>${warningItems || "<li class=\"muted\">No warnings</li>"}</ul>
   </section>

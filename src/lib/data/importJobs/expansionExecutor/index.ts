@@ -28,6 +28,11 @@ export type {
   RunHistoricalExpansionImportInput,
 } from "./expansionExecutorTypes";
 export {
+  DEFAULT_EXPANSION_MAX_RATE_LIMIT_RETRIES,
+  DEFAULT_EXPANSION_RATE_LIMIT_BACKOFF_MS,
+} from "./expansionImportRateLimit";
+export type { ExpansionImportRateLimitDiagnostics } from "./expansionImportRateLimit";
+export {
   runHistoricalExpansionImport,
   serializeHistoricalExpansionImportSummary,
 } from "./runHistoricalExpansionImport";

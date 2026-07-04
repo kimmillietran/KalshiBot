@@ -16,6 +16,7 @@ import { KALSHI_DISCOVERY_LIST_MARKET_METADATA_KEY } from "@/lib/data/importers/
 
 import { buildExpansionMarketImportArtifacts } from "./buildExpansionMarketImportConfig";
 import { EXPANSION_IMPORT_CIRCUIT_BREAKER_WINDOW } from "./expansionImportCircuitBreaker";
+import { EXPANSION_RATE_LIMIT_CASCADE_ABORT_THRESHOLD } from "./expansionImportRateLimit";
 import type { ExpansionDiscoveredMarket, ExpansionExecutorIo } from "./expansionExecutorTypes";
 
 import {
@@ -24,6 +25,7 @@ import {
 } from "./runHistoricalExpansionImport";
 import { scanExistingExpansionMarketTickers } from "./scanExistingExpansionMarketTickers";
 import { serializeHistoricalExpansionImportSummaryHtml } from "./serializeHistoricalExpansionImportSummaryHtml";
+import { KalshiHistoricalImporterError } from "@/lib/data/importers/kalshi/KalshiHistoricalImporter";
 
 const GENERATED_AT = "2026-07-04T04:00:00.000Z";
 const CONFIG_PATH = "data/import-configs/historical-expansion-config.json";
@@ -158,6 +160,8 @@ function createBaseConfig(overrides?: Partial<{
   skipFailed: boolean;
   forceMarket: string | null;
   maxMarkets: number | null;
+  rateLimitBackoffMs: number;
+  maxRateLimitRetries: number;
 }>) {
   return {
     inputPath: CONFIG_PATH,
@@ -181,6 +185,8 @@ function createBaseConfig(overrides?: Partial<{
     singleMarketOutputPath:
       "data/research-results/single-market-expansion-import-debug.json",
     singleMarketHtmlOutputPath: "data/reports/single-market-expansion-import-debug.html",
+    rateLimitBackoffMs: 1000,
+    maxRateLimitRetries: 2,
     ...overrides,
   };
 }
@@ -633,6 +639,77 @@ describe("runHistoricalExpansionImport safety", () => {
     expect(summary.summary.importedCount).toBe(1);
     expect(summary.warnings.join(" ")).not.toContain("circuit breaker");
     expect(summary.runStatus).toBe("completed");
+  });
+
+  it("backs off and retries a single 429 before importing successfully", async () => {
+    const mock: MockFs = { files: {}, directories: new Set(["data"]) };
+    const io = createIo(mock);
+    const sleep = vi.fn(async () => {});
+    const attemptsByTicker = new Map<string, number>();
+    const runImport = vi.fn(async (config) => {
+      const attempts = attemptsByTicker.get(config.marketTicker) ?? 0;
+      attemptsByTicker.set(config.marketTicker, attempts + 1);
+      if (attempts === 0) {
+        throw new KalshiHistoricalImporterError("Kalshi historical API error (429)", 429);
+      }
+
+      return createImportResult(config.marketTicker);
+    });
+
+    const summary = await runHistoricalExpansionImport({
+      generatedAt: GENERATED_AT,
+      config: createBaseConfig({ maxRateLimitRetries: 1, rateLimitBackoffMs: 500 }),
+      expansionConfigJson: createManifestJson(),
+      io,
+      sleep,
+      deps: {
+        discoverMarkets: vi.fn(async () => [DISCOVERED_MARKETS[0]!]),
+        runImport,
+      },
+    });
+
+    expect(runImport).toHaveBeenCalledTimes(2);
+    expect(sleep).toHaveBeenCalledWith(500);
+    expect(summary.summary.importedCount).toBe(1);
+    expect(summary.rateLimitDiagnostics.rateLimitedCount).toBe(1);
+    expect(summary.rateLimitDiagnostics.backoffDurationMs).toBe(500);
+    expect(summary.rateLimitDiagnostics.firstRateLimitedTicker).toBe(
+      DISCOVERED_MARKETS[0]!.marketTicker,
+    );
+  });
+
+  it("aborts repeated 429 cascades without tripping the compatibility circuit breaker", async () => {
+    const mock: MockFs = { files: {}, directories: new Set(["data"]) };
+    const io = createIo(mock);
+    const discovered = Array.from(
+      { length: EXPANSION_RATE_LIMIT_CASCADE_ABORT_THRESHOLD + 2 },
+      (_, index) =>
+        createExpansionDiscoveredMarket({
+          marketTicker: `KXBTC15M-RATE-${index}`,
+        }),
+    );
+    const runImport = vi.fn(async () => {
+      throw new KalshiHistoricalImporterError("Kalshi historical API error (429)", 429);
+    });
+
+    const summary = await runHistoricalExpansionImport({
+      generatedAt: GENERATED_AT,
+      config: createBaseConfig({ maxRateLimitRetries: 0, rateLimitBackoffMs: 10 }),
+      expansionConfigJson: createManifestJson(),
+      io,
+      sleep: vi.fn(async () => {}),
+      deps: {
+        discoverMarkets: vi.fn(async () => discovered),
+        runImport,
+      },
+    });
+
+    expect(runImport).toHaveBeenCalledTimes(EXPANSION_RATE_LIMIT_CASCADE_ABORT_THRESHOLD);
+    expect(summary.runStatus).toBe("interrupted");
+    expect(summary.warnings.join(" ")).toContain("consecutive rate-limited market failures");
+    expect(summary.warnings.join(" ")).not.toContain("import-compatibility");
+    expect(summary.rateLimitDiagnostics.rateLimitedCount).toBe(0);
+    expect(summary.rateLimitDiagnostics.firstRateLimitedTicker).toBe("KXBTC15M-RATE-0");
   });
 });
 

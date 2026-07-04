@@ -39,6 +39,20 @@ import {
 } from "./expansionImportCircuitBreaker";
 import type { ExpansionDiscoveredMarket } from "./expansionExecutorTypes";
 import {
+  buildExpansionRateLimitDiagnostics,
+  createExpansionImportRateLimitState,
+  evaluateExpansionRateLimitCascadeAbort,
+  EXPANSION_RATE_LIMIT_CASCADE_ABORT_THRESHOLD,
+  formatExpansionRateLimitAbortWarning,
+  isExpansionImportRateLimitMessage,
+  parseExpansionImportRateLimitConfig,
+  recordExpansionPostRetryRateLimitFailure,
+  resetExpansionRateLimitSuccessStreak,
+  runExpansionImportWithRateLimitRetry,
+  type ExpansionImportRateLimitConfig,
+  type ExpansionImportRateLimitState,
+} from "./expansionImportRateLimit";
+import {
   ExpansionExecutorError,
   ExpansionExecutorErrorCode,
   type ExpansionImportJobResult,
@@ -106,6 +120,7 @@ function buildPartialSummary(
   checkpoint: HistoricalExpansionImportCheckpoint,
   runStatus: HistoricalExpansionImportSummary["runStatus"],
   warnings: readonly string[],
+  rateLimitState = createExpansionImportRateLimitState(),
 ): HistoricalExpansionImportSummary {
   return {
     generatedAt: input.generatedAt,
@@ -121,6 +136,7 @@ function buildPartialSummary(
     importsDir: input.config.importsDir,
     maxMarkets: input.config.maxMarkets,
     jobIdFilter: input.config.jobId,
+    rateLimitDiagnostics: buildExpansionRateLimitDiagnostics(rateLimitState),
     summary: aggregateSummary(jobResults, startedAtMs),
     jobs: jobResults,
     warnings,
@@ -145,6 +161,8 @@ async function executeMarketImport(
   job: HistoricalExpansionImportJob,
   market: ExpansionDiscoveredMarket,
   reconciliationTrace: import("./expansionImportReconciliationTrace").ExpansionImportReconciliationTracer | null,
+  rateLimit: ExpansionImportRateLimitConfig,
+  rateLimitState: ExpansionImportRateLimitState,
 ): Promise<ExpansionImportMarketResult> {
   const startedAtMs = Date.now();
 
@@ -197,8 +215,14 @@ async function executeMarketImport(
   }
 
   try {
-    const importResult = await input.deps.runImport(artifacts.config, {
-      reconciliationTrace,
+    const importResult = await runExpansionImportWithRateLimitRetry({
+      runImport: () => input.deps.runImport(artifacts.config, {
+        reconciliationTrace,
+      }),
+      marketTicker: market.marketTicker,
+      rateLimit,
+      state: rateLimitState,
+      sleep: input.sleep,
     });
     const importDir = posix.dirname(artifacts.importResultPath);
 
@@ -316,6 +340,11 @@ export async function runHistoricalExpansionImport(
   let remainingMarketBudget = input.config.maxMarkets;
   let interrupted = false;
   let circuitBreakerState = createExpansionImportCircuitBreakerState();
+  const rateLimit = parseExpansionImportRateLimitConfig({
+    rateLimitBackoffMs: input.config.rateLimitBackoffMs,
+    maxRateLimitRetries: input.config.maxRateLimitRetries,
+  });
+  const rateLimitState = createExpansionImportRateLimitState();
   const sortedScheduledJobs = [...scheduledJobs].sort(compareJobs);
   const progress = input.progress ?? null;
   const reconciliationTrace = input.reconciliationTrace
@@ -448,7 +477,14 @@ export async function runHistoricalExpansionImport(
         listMarketWire: market.listMarketWire,
       });
 
-      const result = await executeMarketImport(input, job, market, reconciliationTrace);
+      const result = await executeMarketImport(
+        input,
+        job,
+        market,
+        reconciliationTrace,
+        rateLimit,
+        rateLimitState,
+      );
       attemptedResults.push(result);
       progress?.recordMarket(result.status, market.marketTicker);
 
@@ -456,11 +492,33 @@ export async function runHistoricalExpansionImport(
         remainingMarketBudget -= 1;
       }
 
+      if (result.status === "imported") {
+        resetExpansionRateLimitSuccessStreak(rateLimitState);
+      }
+
       if (
         input.config.execute
         && result.status === "failed"
         && result.errorMessage
       ) {
+        if (isExpansionImportRateLimitMessage(result.errorMessage)) {
+          if (!rateLimitState.firstRateLimitedTicker) {
+            rateLimitState.firstRateLimitedTicker = market.marketTicker;
+          }
+          recordExpansionPostRetryRateLimitFailure(rateLimitState);
+          const cascadeDiagnostics = evaluateExpansionRateLimitCascadeAbort(rateLimitState);
+          if (cascadeDiagnostics) {
+            const warning = formatExpansionRateLimitAbortWarning(
+              cascadeDiagnostics,
+              EXPANSION_RATE_LIMIT_CASCADE_ABORT_THRESHOLD,
+            );
+            jobWarnings.push(warning);
+            warnings.push(warning);
+            interrupted = true;
+            break;
+          }
+        }
+
         circuitBreakerState = recordExpansionImportCircuitBreakerFailure(
           circuitBreakerState,
           market.marketTicker,
@@ -527,6 +585,7 @@ export async function runHistoricalExpansionImport(
           checkpoint,
           interrupted ? "interrupted" : "partial",
           warnings,
+          rateLimitState,
         );
 
         persistRunArtifacts(input, partialSummary, {
@@ -640,6 +699,7 @@ export async function runHistoricalExpansionImport(
     checkpoint,
     summaryRunStatus,
     warnings,
+    rateLimitState,
   );
 
   if (input.config.execute) {
