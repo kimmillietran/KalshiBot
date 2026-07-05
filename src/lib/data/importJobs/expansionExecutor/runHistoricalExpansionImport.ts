@@ -21,6 +21,8 @@ import {
 import type { HistoricalExpansionImportCheckpoint } from "@/lib/data/importJobs/expansionImportSafety";
 import { stableStringify } from "@/lib/trading/config/hashConfig";
 
+import { sleepMs } from "@/lib/data/discovery/discoveryRateLimit";
+
 import { buildExpansionMarketImportArtifacts } from "./buildExpansionMarketImportConfig";
 import { buildPlannedExpansionImportQueue } from "./buildPlannedExpansionImportQueue";
 import { classifyUnsupportedHistoricalMarket, countUnsupportedHistoricalMarketResults } from "./classifyUnsupportedHistoricalMarket";
@@ -40,6 +42,10 @@ import {
   formatExpansionImportCircuitBreakerWarning,
   recordExpansionImportCircuitBreakerFailure,
 } from "./expansionImportCircuitBreaker";
+import {
+  ExpansionAdaptiveThrottleController,
+  parseExpansionImportAdaptiveThrottleOptions,
+} from "./expansionImportAdaptiveThrottle";
 import type { ExpansionDiscoveredMarket } from "./expansionExecutorTypes";
 import {
   buildExpansionRateLimitDiagnostics,
@@ -152,7 +158,11 @@ function buildPartialSummary(
   runStatus: HistoricalExpansionImportSummary["runStatus"],
   warnings: readonly string[],
   rateLimitState = createExpansionImportRateLimitState(),
+  adaptiveThrottle: ExpansionAdaptiveThrottleController | null = null,
 ): HistoricalExpansionImportSummary {
+  const durationMs = Date.now() - startedAtMs;
+  const rateLimitDiagnostics = buildExpansionRateLimitDiagnostics(rateLimitState);
+
   return {
     generatedAt: input.generatedAt,
     execute: input.config.execute,
@@ -169,7 +179,23 @@ function buildPartialSummary(
     jobIdFilter: input.config.jobId,
     sampleStrategy: input.config.sampleStrategy,
     selection: aggregateSelection(jobResults),
-    rateLimitDiagnostics: buildExpansionRateLimitDiagnostics(rateLimitState),
+    rateLimitDiagnostics,
+    adaptiveThrottleDiagnostics:
+      adaptiveThrottle?.buildDiagnostics({
+        durationMs,
+        rateLimitRetryBackoffMs: rateLimitDiagnostics.backoffDurationMs,
+      }) ?? {
+        adaptiveThrottleEnabled: false,
+        minBackoffMs: null,
+        maxBackoffMs: null,
+        currentDelayMs: null,
+        initialDelayMs: null,
+        rateLimitEvents: 0,
+        avoidedRetriesEstimate: null,
+        totalBackoffMs: rateLimitDiagnostics.backoffDurationMs,
+        throughputMarketsPerMinute: null,
+        throttleAdjustmentCount: 0,
+      },
     summary: aggregateSummary(jobResults, startedAtMs),
     jobs: jobResults,
     warnings,
@@ -196,6 +222,7 @@ async function executeMarketImport(
   reconciliationTrace: import("./expansionImportReconciliationTrace").ExpansionImportReconciliationTracer | null,
   rateLimit: ExpansionImportRateLimitConfig,
   rateLimitState: ExpansionImportRateLimitState,
+  adaptiveThrottle: ExpansionAdaptiveThrottleController | null,
 ): Promise<ExpansionImportMarketResult> {
   const startedAtMs = Date.now();
 
@@ -265,15 +292,19 @@ async function executeMarketImport(
   }
 
   try {
-    const importResult = await runExpansionImportWithRateLimitRetry({
-      runImport: () => input.deps.runImport(artifacts.config, {
-        reconciliationTrace,
-      }),
-      marketTicker: market.marketTicker,
-      rateLimit,
-      state: rateLimitState,
-      sleep: input.sleep,
-    });
+    const { value: importResult, rateLimited: hadRateLimitRetry } =
+      await runExpansionImportWithRateLimitRetry({
+        runImport: () => input.deps.runImport(artifacts.config, {
+          reconciliationTrace,
+        }),
+        marketTicker: market.marketTicker,
+        rateLimit,
+        state: rateLimitState,
+        sleep: input.sleep,
+        onRateLimited: ({ retryAfterMs }) => {
+          adaptiveThrottle?.onRateLimit(retryAfterMs);
+        },
+      });
     const importDir = posix.dirname(artifacts.importResultPath);
 
     input.io.mkdirSync(posix.dirname(artifacts.configPath), { recursive: true });
@@ -293,6 +324,8 @@ async function executeMarketImport(
       posix.join(importDir, BATCH_IMPORT_CONFIG_FILENAME),
       artifacts.serializedConfig,
     );
+
+    adaptiveThrottle?.onSuccessfulImport(hadRateLimitRetry);
 
     return {
       marketTicker: market.marketTicker,
@@ -395,6 +428,16 @@ export async function runHistoricalExpansionImport(
     maxRateLimitRetries: input.config.maxRateLimitRetries,
   });
   const rateLimitState = createExpansionImportRateLimitState();
+  const adaptiveThrottleConfig = parseExpansionImportAdaptiveThrottleOptions({
+    adaptiveThrottle: input.config.adaptiveThrottle,
+    minBackoffMs: input.config.minBackoffMs,
+    maxBackoffMs: input.config.maxBackoffMs,
+    backoffMultiplier: input.config.backoffMultiplier,
+    successDecayAfter: input.config.successDecayAfter,
+  });
+  const adaptiveThrottle = adaptiveThrottleConfig.enabled
+    ? new ExpansionAdaptiveThrottleController(adaptiveThrottleConfig)
+    : null;
   const sortedScheduledJobs = [...scheduledJobs].sort(compareJobs);
   const progress = input.progress ?? null;
   const reconciliationTrace = input.reconciliationTrace
@@ -545,6 +588,7 @@ export async function runHistoricalExpansionImport(
         reconciliationTrace,
         rateLimit,
         rateLimitState,
+        adaptiveThrottle,
       );
       attemptedResults.push(result);
       progress?.recordMarket(result.status, market.marketTicker);
@@ -555,6 +599,18 @@ export async function runHistoricalExpansionImport(
 
       if (result.status === "imported") {
         resetExpansionRateLimitSuccessStreak(rateLimitState);
+      }
+
+      if (
+        input.config.execute
+        && adaptiveThrottle
+        && result.status !== "skipped"
+      ) {
+        const interMarketDelayMs = adaptiveThrottle.currentDelayMs;
+        if (interMarketDelayMs > 0) {
+          adaptiveThrottle.recordInterMarketBackoff(interMarketDelayMs);
+          await sleepMs(interMarketDelayMs, input.sleep);
+        }
       }
 
       if (
@@ -653,6 +709,7 @@ export async function runHistoricalExpansionImport(
           interrupted ? "interrupted" : "partial",
           warnings,
           rateLimitState,
+          adaptiveThrottle,
         );
 
         persistRunArtifacts(input, partialSummary, {
@@ -771,6 +828,7 @@ export async function runHistoricalExpansionImport(
     summaryRunStatus,
     warnings,
     rateLimitState,
+    adaptiveThrottle,
   );
 
   if (input.config.execute) {

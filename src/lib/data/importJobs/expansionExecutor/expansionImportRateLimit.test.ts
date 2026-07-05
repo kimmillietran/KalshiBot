@@ -40,7 +40,7 @@ describe("expansionImportRateLimit", () => {
     const sleep = vi.fn(async () => {});
     let attempts = 0;
 
-    const result = await runExpansionImportWithRateLimitRetry({
+    const { value: result, retryCount } = await runExpansionImportWithRateLimitRetry({
       runImport: async () => {
         attempts += 1;
         if (attempts === 1) {
@@ -60,6 +60,7 @@ describe("expansionImportRateLimit", () => {
 
     expect(result).toEqual({ ok: true });
     expect(attempts).toBe(2);
+    expect(retryCount).toBe(1);
     expect(sleep).toHaveBeenCalledWith(1000);
     expect(state.rateLimitedCount).toBe(1);
     expect(state.retryCount).toBe(1);

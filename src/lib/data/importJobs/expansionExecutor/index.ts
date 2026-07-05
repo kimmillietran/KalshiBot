@@ -46,6 +46,15 @@ export {
 } from "./expansionImportRateLimit";
 export type { ExpansionImportRateLimitDiagnostics } from "./expansionImportRateLimit";
 export {
+  DEFAULT_EXPANSION_ADAPTIVE_MAX_BACKOFF_MS,
+  DEFAULT_EXPANSION_ADAPTIVE_MIN_BACKOFF_MS,
+  DEFAULT_EXPANSION_BACKOFF_MULTIPLIER,
+  DEFAULT_EXPANSION_SUCCESS_DECAY_AFTER,
+  ExpansionAdaptiveThrottleController,
+  parseExpansionImportAdaptiveThrottleOptions,
+} from "./expansionImportAdaptiveThrottle";
+export type { ExpansionImportAdaptiveThrottleDiagnostics } from "./expansionImportAdaptiveThrottle";
+export {
   runHistoricalExpansionImport,
   serializeHistoricalExpansionImportSummary,
 } from "./runHistoricalExpansionImport";

@@ -138,16 +138,33 @@ export type RunExpansionImportWithRateLimitRetryInput<T> = {
   rateLimit: ExpansionImportRateLimitConfig;
   state: ExpansionImportRateLimitState;
   sleep?: (ms: number) => Promise<void>;
+  onRateLimited?: (input: {
+    attempt: number;
+    delayMs: number;
+    retryAfterMs?: number;
+  }) => void;
+};
+
+export type RunExpansionImportWithRateLimitRetryResult<T> = {
+  value: T;
+  rateLimited: boolean;
+  retryCount: number;
 };
 
 export async function runExpansionImportWithRateLimitRetry<T>(
   input: RunExpansionImportWithRateLimitRetryInput<T>,
-): Promise<T> {
+): Promise<RunExpansionImportWithRateLimitRetryResult<T>> {
   let attempt = 0;
+  let retryCount = 0;
 
   while (true) {
     try {
-      return await input.runImport();
+      const value = await input.runImport();
+      return {
+        value,
+        rateLimited: retryCount > 0,
+        retryCount,
+      };
     } catch (error) {
       if (
         !isExpansionImportRateLimitError(error)
@@ -161,14 +178,22 @@ export async function runExpansionImportWithRateLimitRetry<T>(
         input.state.firstRateLimitedTicker = input.marketTicker;
       }
 
+      const retryAfterMs = extractRetryAfterMs(error);
       const delayMs = computeExpansionRateLimitDelayMs({
         attempt,
         rateLimitBackoffMs: input.rateLimit.rateLimitBackoffMs,
-        retryAfterMs: extractRetryAfterMs(error),
+        retryAfterMs,
       });
 
       input.state.backoffDurationMs += delayMs;
       input.state.retryCount += 1;
+      retryCount += 1;
+
+      input.onRateLimited?.({
+        attempt,
+        delayMs,
+        retryAfterMs,
+      });
 
       await sleepMs(delayMs, input.sleep);
       attempt += 1;

@@ -14,6 +14,12 @@ import {
   type HistoricalExpansionImportExecutorConfig,
 } from "@/lib/data/importJobs/expansionExecutor";
 import {
+  DEFAULT_EXPANSION_ADAPTIVE_MAX_BACKOFF_MS,
+  DEFAULT_EXPANSION_ADAPTIVE_MIN_BACKOFF_MS,
+  DEFAULT_EXPANSION_BACKOFF_MULTIPLIER,
+  DEFAULT_EXPANSION_SUCCESS_DECAY_AFTER,
+} from "@/lib/data/importJobs/expansionExecutor/expansionImportAdaptiveThrottle";
+import {
   DEFAULT_EXPANSION_IMPORT_SAMPLE_STRATEGY,
   EXPANSION_IMPORT_SAMPLE_STRATEGIES,
   type ExpansionImportSampleStrategy,
@@ -165,6 +171,19 @@ export function parseExecuteExpansionImportConfigFromArgv(
       readOptionalNumberFlag(argv, "--max-rate-limit-retries")
       ?? DEFAULT_EXPANSION_MAX_RATE_LIMIT_RETRIES,
     sampleStrategy: readSampleStrategyFlag(argv),
+    adaptiveThrottle: readBooleanFlag(argv, "--adaptive-throttle"),
+    minBackoffMs:
+      readOptionalNumberFlag(argv, "--min-backoff-ms")
+      ?? DEFAULT_EXPANSION_ADAPTIVE_MIN_BACKOFF_MS,
+    maxBackoffMs:
+      readOptionalNumberFlag(argv, "--max-backoff-ms")
+      ?? DEFAULT_EXPANSION_ADAPTIVE_MAX_BACKOFF_MS,
+    backoffMultiplier:
+      readOptionalNumberFlag(argv, "--backoff-multiplier")
+      ?? DEFAULT_EXPANSION_BACKOFF_MULTIPLIER,
+    successDecayAfter:
+      readOptionalNumberFlag(argv, "--success-decay-after")
+      ?? DEFAULT_EXPANSION_SUCCESS_DECAY_AFTER,
   };
 }
 

@@ -157,6 +157,21 @@ export function serializeHistoricalExpansionImportSummaryHtml(
   </section>
 
   <section class="panel">
+    <h2>Adaptive throttle</h2>
+    <ul>
+      <li>Enabled: ${summary.adaptiveThrottleDiagnostics.adaptiveThrottleEnabled ? "yes" : "no"}</li>
+      <li>Min delay: ${summary.adaptiveThrottleDiagnostics.minBackoffMs ?? "—"} ms</li>
+      <li>Max delay: ${summary.adaptiveThrottleDiagnostics.maxBackoffMs ?? "—"} ms</li>
+      <li>Current delay: ${summary.adaptiveThrottleDiagnostics.currentDelayMs ?? "—"} ms</li>
+      <li>Rate-limit events: ${summary.adaptiveThrottleDiagnostics.rateLimitEvents}</li>
+      <li>Avoided retries (est.): ${summary.adaptiveThrottleDiagnostics.avoidedRetriesEstimate ?? "—"}</li>
+      <li>Total backoff: ${summary.adaptiveThrottleDiagnostics.totalBackoffMs} ms</li>
+      <li>Throughput: ${summary.adaptiveThrottleDiagnostics.throughputMarketsPerMinute ?? "—"} markets/min</li>
+      <li>Adjustments: ${summary.adaptiveThrottleDiagnostics.throttleAdjustmentCount}</li>
+    </ul>
+  </section>
+
+  <section class="panel">
     <h2>Warnings</h2>
     <ul>${warningItems || "<li class=\"muted\">No warnings</li>"}</ul>
   </section>

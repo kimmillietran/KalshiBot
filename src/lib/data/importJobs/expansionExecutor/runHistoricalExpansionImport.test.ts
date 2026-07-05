@@ -188,6 +188,11 @@ function createBaseConfig(overrides?: Partial<{
     rateLimitBackoffMs: 1000,
     maxRateLimitRetries: 2,
     sampleStrategy: "supported-first",
+    adaptiveThrottle: false,
+    minBackoffMs: 500,
+    maxBackoffMs: 30_000,
+    backoffMultiplier: 2,
+    successDecayAfter: 3,
     ...overrides,
   };
 }
@@ -714,6 +719,40 @@ describe("runHistoricalExpansionImport safety", () => {
     expect(summary.warnings.join(" ")).not.toContain("import-compatibility");
     expect(summary.rateLimitDiagnostics.rateLimitedCount).toBe(0);
     expect(summary.rateLimitDiagnostics.firstRateLimitedTicker).toBe("KXBTC15M-RATE-0");
+  });
+
+  it("applies adaptive inter-market backoff and reports throttle diagnostics", async () => {
+    const mock: MockFs = { files: {}, directories: new Set(["data"]) };
+    const io = createIo(mock);
+    const sleep = vi.fn(async () => {});
+    const discovered = [
+      DISCOVERED_MARKETS[0]!,
+      createExpansionDiscoveredMarket({ marketTicker: "KXBTC15M-26JAN151230-00" }),
+    ];
+    const runImport = vi.fn(async (config) => createImportResult(config.marketTicker));
+
+    const summary = await runHistoricalExpansionImport({
+      generatedAt: GENERATED_AT,
+      config: createBaseConfig({
+        adaptiveThrottle: true,
+        minBackoffMs: 100,
+        maxBackoffMs: 1000,
+        successDecayAfter: 1,
+      }),
+      expansionConfigJson: createManifestJson(),
+      io,
+      sleep,
+      deps: {
+        discoverMarkets: vi.fn(async () => discovered),
+        runImport,
+      },
+    });
+
+    expect(summary.summary.importedCount).toBe(2);
+    expect(summary.adaptiveThrottleDiagnostics.adaptiveThrottleEnabled).toBe(true);
+    expect(summary.adaptiveThrottleDiagnostics.minBackoffMs).toBe(100);
+    expect(summary.adaptiveThrottleDiagnostics.totalBackoffMs).toBeGreaterThan(0);
+    expect(sleep).toHaveBeenCalledWith(100);
   });
 });
 

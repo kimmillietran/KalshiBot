@@ -5,6 +5,7 @@ import type { HistoricalExpansionImportJob } from "@/lib/data/importJobs/expansi
 import { DEFAULT_HISTORICAL_EXPANSION_IMPORT_CHECKPOINT_PATH } from "@/lib/data/importJobs/expansionImportSafety/expansionImportSafetyTypes";
 
 import type { ExpansionImportRateLimitDiagnostics } from "./expansionImportRateLimit";
+import type { ExpansionImportAdaptiveThrottleDiagnostics } from "./expansionImportAdaptiveThrottle";
 import type {
   ExpansionImportSampleStrategy,
   ExpansionImportSelectionCounts,
@@ -120,6 +121,7 @@ export type HistoricalExpansionImportSummary = {
   jobs: readonly ExpansionImportJobResult[];
   warnings: readonly string[];
   rateLimitDiagnostics: ExpansionImportRateLimitDiagnostics;
+  adaptiveThrottleDiagnostics: ExpansionImportAdaptiveThrottleDiagnostics;
 };
 
 export type HistoricalExpansionImportExecutorConfig = {
@@ -146,6 +148,11 @@ export type HistoricalExpansionImportExecutorConfig = {
   rateLimitBackoffMs: number;
   maxRateLimitRetries: number;
   sampleStrategy: ExpansionImportSampleStrategy;
+  adaptiveThrottle: boolean;
+  minBackoffMs: number;
+  maxBackoffMs: number;
+  backoffMultiplier: number;
+  successDecayAfter: number;
 };
 
 export type ExpansionImportProgressHooks = {

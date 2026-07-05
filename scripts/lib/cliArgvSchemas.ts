@@ -291,6 +291,10 @@ export const EXECUTE_EXPANSION_IMPORT_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--max-retries" },
   { flag: "--rate-limit-backoff-ms" },
   { flag: "--max-rate-limit-retries" },
+  { flag: "--min-backoff-ms" },
+  { flag: "--max-backoff-ms" },
+  { flag: "--backoff-multiplier" },
+  { flag: "--success-decay-after" },
   { flag: "--sample-strategy" },
   { flag: "--job-id" },
   { flag: "--force-market" },
@@ -298,6 +302,7 @@ export const EXECUTE_EXPANSION_IMPORT_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--market-ticker" },
   { flag: "--single-market-output" },
   { flag: "--single-market-html-output" },
+  { flag: "--adaptive-throttle" },
   { flag: "--execute" },
   { flag: "--resume" },
   { flag: "--skip-failed" },
@@ -718,6 +723,11 @@ const EXECUTE_EXPANSION_IMPORT_NPM_CONFIG_FLAGS = [
   "--max-retries",
   "--rate-limit-backoff-ms",
   "--max-rate-limit-retries",
+  "--min-backoff-ms",
+  "--max-backoff-ms",
+  "--backoff-multiplier",
+  "--success-decay-after",
+  "--sample-strategy",
   "--job-id",
   "--force-market",
   "--market-ticker",
@@ -729,6 +739,7 @@ const EXECUTE_EXPANSION_IMPORT_BOOLEAN_FLAGS = [
   "--execute",
   "--resume",
   "--skip-failed",
+  "--adaptive-throttle",
 ] as const;
 
 function looksLikeExpansionImportConfigPath(token: string): boolean {
