@@ -49,28 +49,16 @@ describe("fetchSingleMarketExpansionPayloads", () => {
     expect(detailResult.wire?.ticker).toBe(fixture.ticker);
   });
 
-  it("discovers list payload via paginated discovery without scanning the full expansion window", async () => {
+  it("discovers list payload via tickers filter without scanning the full expansion window", async () => {
     const listHistoricalMarkets = vi.fn(async (_series, _range, pagination) => {
-      if (!pagination?.cursor) {
-        return {
-          markets: [{ ...createMarketRecord(), ticker: "OTHER-TICKER" }],
-          cursor: "page-2",
-          provenance: {
-            source: "kalshi-historical-api",
-            fetchedAt: "2026-07-04T04:00:00.000Z",
-            requestPath: "/historical/markets?series_ticker=KXBTC15M&limit=100",
-          },
-        };
-      }
-
+      expect(pagination?.tickers).toBe(fixture.ticker);
       return {
         markets: [createMarketRecord()],
         cursor: "",
         provenance: {
           source: "kalshi-historical-api",
           fetchedAt: "2026-07-04T04:00:00.000Z",
-          requestPath:
-            "/historical/markets?series_ticker=KXBTC15M&limit=100&cursor=page-2",
+          requestPath: `/historical/markets?tickers=${fixture.ticker}&limit=100`,
         },
       };
     });
@@ -89,7 +77,7 @@ describe("fetchSingleMarketExpansionPayloads", () => {
       { importer },
     );
 
-    expect(listHistoricalMarkets).toHaveBeenCalledTimes(2);
+    expect(listHistoricalMarkets).toHaveBeenCalledTimes(1);
     expect(result?.market.listMarketWire.expiration_value).toBe("94210.55");
   });
 });

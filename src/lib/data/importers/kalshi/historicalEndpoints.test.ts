@@ -19,6 +19,15 @@ describe("historicalEndpoints", () => {
     ).toBe("/historical/markets?series_ticker=KXBTC15M&limit=50&cursor=abc123");
   });
 
+  it("builds historical markets path with tickers filter instead of series ticker", () => {
+    expect(
+      buildHistoricalMarketsPath("KXBTC15M", undefined, {
+        tickers: "KXBTC15M-25DEC311900-00",
+        limit: 1,
+      }),
+    ).toBe("/historical/markets?tickers=KXBTC15M-25DEC311900-00&limit=1");
+  });
+
   it("builds candlesticks path with interval and date range", () => {
     expect(
       buildHistoricalCandlesticksPath("KXBTC-OLD", 60, {

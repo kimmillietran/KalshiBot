@@ -20,6 +20,7 @@ import type { KalshiMarketWireShape } from "@/lib/data/importers/kalshi/kalshiMa
 import { readKalshiDiscoveryListMarketFromMetadata } from "@/lib/data/importers/kalshi/kalshiMarketSchemaReconciliation";
 
 import { buildExpansionMarketImportArtifacts } from "./buildExpansionMarketImportConfig";
+import { buildSingleMarketDiscoveryPayloadTrace } from "./buildSingleMarketDiscoveryPayloadTrace";
 import { evaluateExpansionMarketSchemaReconciliation } from "./evaluateExpansionMarketSchemaReconciliation";
 import { resolveSeriesTickerFromMarketTicker } from "./fetchSingleMarketExpansionPayloads";
 import type { ExpansionDiscoveredMarket } from "./expansionExecutorTypes";
@@ -249,6 +250,27 @@ export async function runSingleMarketExpansionImportDebug(
     }
   }
 
+  const configMetadataListWire =
+    discoveredMarket
+      ? readKalshiDiscoveryListMarketFromMetadata(
+          buildExpansionMarketImportArtifacts(job, discoveredMarket, {
+            importConfigsDir: input.config.importConfigsDir,
+            importsDir: input.config.importsDir,
+          }).config.metadata,
+        )
+      : null;
+  const discoveryTrace = buildSingleMarketDiscoveryPayloadTrace({
+    pagesScanned: discoveryResult?.pagesFetched ?? 0,
+    tickerFound: discoveryResult !== null,
+    foundOnPage: discoveryResult?.foundOnPage ?? null,
+    rawMarketRecord: discoveryResult?.rawMarketRecord ?? null,
+    normalizedMarket: discoveryResult?.normalizedMarket ?? null,
+    listMarketWire,
+    configMetadataListWire,
+    reconciliationListWire: listMarketWire,
+    reconciliationMergedWire: reconciliation.mergedWire,
+  });
+
   return {
     generatedAt: input.generatedAt,
     marketTicker,
@@ -259,6 +281,7 @@ export async function runSingleMarketExpansionImportDebug(
     htmlOutputPath: input.config.htmlOutputPath,
     jobId: job.jobId,
     discoveryPagesFetched: discoveryResult?.pagesFetched ?? 0,
+    discoveryTrace,
     listPayload,
     detailPayload,
     expirationValueSource,

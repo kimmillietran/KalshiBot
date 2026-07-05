@@ -49,6 +49,25 @@ export type SingleMarketExpansionImportDebugReconciliation = {
   listMissingRequiredFields: readonly string[];
 };
 
+export type SingleMarketDiscoveryPayloadTrace = {
+  pagesScanned: number;
+  tickerFound: boolean;
+  foundOnPage: number | null;
+  rawDiscoveredMarketTopLevelKeys: readonly string[];
+  rawDiscoveredMarketHasExpirationValue: boolean;
+  rawDiscoveredMarketExpirationValue: string | null;
+  normalizedMarketHasExpirationValue: boolean;
+  normalizedMarketExpirationValue: string | null;
+  listMarketWireHasExpirationValue: boolean;
+  listMarketWireExpirationValue: string | null;
+  configMetadataHasExpirationValue: boolean;
+  configMetadataExpirationValue: string | null;
+  reconciliationInputHasExpirationValue: boolean;
+  reconciliationInputExpirationValue: string | null;
+  reconciliationOutputHasExpirationValue: boolean;
+  reconciliationOutputExpirationValue: string | null;
+};
+
 export type SingleMarketExpansionImportDebugImportStatus =
   | "planned"
   | "imported"
@@ -65,6 +84,7 @@ export type SingleMarketExpansionImportDebugReport = {
   htmlOutputPath: string;
   jobId: string | null;
   discoveryPagesFetched: number;
+  discoveryTrace: SingleMarketDiscoveryPayloadTrace;
   listPayload: SingleMarketPayloadAvailability;
   detailPayload: SingleMarketPayloadAvailability;
   expirationValueSource: SingleMarketExpansionImportDebugExpirationValueSource;

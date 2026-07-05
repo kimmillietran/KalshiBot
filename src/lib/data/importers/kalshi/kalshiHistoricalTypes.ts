@@ -12,6 +12,8 @@ export type HistoricalCandlestickInterval = 1 | 60 | 1440;
 export type HistoricalPaginationOptions = {
   limit?: number;
   cursor?: string;
+  /** Comma-separated market tickers; mutually exclusive with series_ticker on the API. */
+  tickers?: string;
 };
 
 export type HistoricalImportProvenance = {
@@ -39,6 +41,8 @@ export type HistoricalMarketRecord = {
 
 export type HistoricalMarketsPage = {
   markets: HistoricalMarketRecord[];
+  /** Unparsed list-endpoint wire objects from the Kalshi API response. */
+  rawMarketWires?: readonly Record<string, unknown>[];
   cursor: string;
   provenance: HistoricalImportProvenance;
 };

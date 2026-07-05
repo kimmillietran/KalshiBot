@@ -309,6 +309,7 @@ export class KalshiHistoricalImporter implements HistoricalImporter {
 
     return {
       markets: body.markets.map(parseMarketRecord),
+      rawMarketWires: body.markets,
       cursor: body.cursor,
       provenance: buildProvenance(requestPath, fetchedAt, body.cursor),
     };

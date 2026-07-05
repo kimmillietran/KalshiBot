@@ -1,7 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 
+import { normalizeDiscoveredMarket } from "@/lib/data/discovery/normalizeDiscoveredMarket";
 import fixture from "@/lib/data/importers/kalshi/fixtures/KXBTC15M-25DEC311900-00-market-responses.json";
 import type { HistoricalBronzeImportJobResult } from "@/lib/data/importJobs/historicalBronzeImportJobTypes";
+import type { HistoricalMarketRecord } from "@/lib/data/importers/kalshi/kalshiHistoricalTypes";
 
 import {
   runSingleMarketExpansionImportDebug,
@@ -96,30 +98,59 @@ function createImportResult(): HistoricalBronzeImportJobResult {
   };
 }
 
+function createRawMarketRecord(): HistoricalMarketRecord {
+  return {
+    ticker: fixture.ticker,
+    eventTicker: "KXBTC15M-25DEC311900",
+    status: "finalized",
+    result: "yes",
+    openTime: fixture.listMarket.open_time!,
+    closeTime: fixture.listMarket.close_time!,
+    settlementTs: fixture.listMarket.settlement_ts ?? null,
+    settlementValueDollars: fixture.listMarket.settlement_value_dollars ?? null,
+    expirationValue: fixture.listMarket.expiration_value!,
+    floorStrike: fixture.listMarket.floor_strike ?? null,
+    title: null,
+    subtitle: null,
+    seriesTicker: "KXBTC15M",
+  };
+}
+
 function createDiscoveryResult(
   overrides?: Partial<DiscoveryResult["market"]>,
 ): DiscoveryResult {
+  const provenance = {
+    source: "kalshi-historical-api" as const,
+    fetchedAt: GENERATED_AT,
+    requestPath: `/historical/markets?tickers=${fixture.ticker}&limit=100`,
+  };
+  const rawMarketRecord = createRawMarketRecord();
+  const market = {
+    marketTicker: MARKET_TICKER,
+    seriesTicker: "KXBTC15M",
+    eventTicker: "KXBTC15M-25DEC311900",
+    status: "finalized",
+    openTime: fixture.listMarket.open_time ?? null,
+    closeTime: fixture.listMarket.close_time ?? null,
+    settlementTime: fixture.listMarket.settlement_ts ?? null,
+    expirationValue: fixture.listMarket.expiration_value ?? null,
+    title: null,
+    subtitle: null,
+    listMarketWire: fixture.listMarket,
+    provenance,
+    ...overrides,
+  };
+
   return {
     pagesFetched: 1,
-    market: {
-      marketTicker: MARKET_TICKER,
+    foundOnPage: 1,
+    rawMarketRecord,
+    normalizedMarket: normalizeDiscoveredMarket({
       seriesTicker: "KXBTC15M",
-      eventTicker: "KXBTC15M-25DEC311900",
-      status: "finalized",
-      openTime: fixture.listMarket.open_time ?? null,
-      closeTime: fixture.listMarket.close_time ?? null,
-      settlementTime: fixture.listMarket.settlement_ts ?? null,
-      expirationValue: fixture.listMarket.expiration_value ?? null,
-      title: null,
-      subtitle: null,
-      listMarketWire: fixture.listMarket,
-      provenance: {
-        source: "kalshi-historical-api",
-        fetchedAt: GENERATED_AT,
-        requestPath: fixture.listEndpoint,
-      },
-      ...overrides,
-    },
+      market: rawMarketRecord,
+      provenance,
+    }),
+    market,
   };
 }
 
@@ -427,5 +458,41 @@ describe("runSingleMarketExpansionImportDebug", () => {
     expect(report.reconciliation.success).toBe(true);
     expect(report.importStatus).toBe("failed");
     expect(report.failureReason).toBe("BTC provider unavailable");
+  });
+
+  it("KXBTC15M-25DEC311900-00 acceptance trace preserves expiration_value through reconciliation", async () => {
+    const report = await runSingleMarketExpansionImportDebug({
+      generatedAt: GENERATED_AT,
+      config: {
+        marketTicker: MARKET_TICKER,
+        inputPath: CONFIG_PATH,
+        outputPath: OUTPUT_PATH,
+        htmlOutputPath: HTML_PATH,
+        importConfigsDir: "data/import-configs",
+        importsDir: "data/imports",
+        execute: false,
+        jobId: null,
+      },
+      expansionConfigJson: createManifestJson(),
+      io: {
+        readFile: () => createManifestJson(),
+        fileExists: () => true,
+        writeFile: () => {},
+        mkdirSync: () => {},
+      },
+      deps: createDeps(),
+    });
+
+    expect(MARKET_TICKER).toBe("KXBTC15M-25DEC311900-00");
+    expect(report.discoveryTrace.tickerFound).toBe(true);
+    expect(report.discoveryTrace.rawDiscoveredMarketHasExpirationValue).toBe(true);
+    expect(report.discoveryTrace.listMarketWireHasExpirationValue).toBe(true);
+    expect(report.discoveryTrace.reconciliationInputHasExpirationValue).toBe(true);
+    expect(report.discoveryTrace.configMetadataHasExpirationValue).toBe(true);
+    expect(report.discoveryTrace.reconciliationOutputHasExpirationValue).toBe(true);
+    expect(report.reconciliation.success).toBe(true);
+    expect(["list", "merged"]).toContain(report.expirationValueSource);
+    expect(report.discoveryTrace.rawDiscoveredMarketExpirationValue).toBe("94210.55");
+    expect(report.discoveryTrace.listMarketWireExpirationValue).toBe("94210.55");
   });
 });

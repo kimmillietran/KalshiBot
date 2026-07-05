@@ -29,6 +29,26 @@ function createMarketRecord(
   };
 }
 
+function createListPage(
+  markets: HistoricalMarketRecord[],
+  options?: { cursor?: string; requestPath?: string },
+) {
+  return {
+    markets,
+    rawMarketWires: markets.map((market) =>
+      market.ticker === fixture.ticker
+        ? fixture.listMarket
+        : { ticker: market.ticker, expiration_value: market.expirationValue },
+    ),
+    cursor: options?.cursor ?? "",
+    provenance: {
+      source: "kalshi-historical-api" as const,
+      fetchedAt: GENERATED_AT,
+      requestPath: options?.requestPath ?? fixture.listEndpoint,
+    },
+  };
+}
+
 function createImporter(
   handler: HistoricalImporter["listHistoricalMarkets"],
 ): HistoricalImporter {
@@ -43,16 +63,13 @@ function createImporter(
 }
 
 describe("discoverSingleExpansionMarket", () => {
-  it("finds the target ticker on the first list page with listMarketWire preserved", async () => {
-    const importer = createImporter(async () => ({
-      markets: [createMarketRecord()],
-      cursor: "",
-      provenance: {
-        source: "kalshi-historical-api",
-        fetchedAt: GENERATED_AT,
-        requestPath: fixture.listEndpoint,
-      },
-    }));
+  it("finds the target ticker via tickers filter with listMarketWire preserved", async () => {
+    const importer = createImporter(async (_series, _range, pagination) => {
+      expect(pagination?.tickers).toBe(fixture.ticker);
+      return createListPage([createMarketRecord()], {
+        requestPath: `/historical/markets?tickers=${fixture.ticker}&limit=100`,
+      });
+    });
 
     const result = await discoverSingleExpansionMarket(
       { marketTicker: fixture.ticker, seriesTicker: "KXBTC15M" },
@@ -60,35 +77,32 @@ describe("discoverSingleExpansionMarket", () => {
     );
 
     expect(result?.pagesFetched).toBe(1);
+    expect(result?.foundOnPage).toBe(1);
     expect(result?.market.marketTicker).toBe(fixture.ticker);
     expect(result?.market.listMarketWire.expiration_value).toBe("94210.55");
+    expect(result?.rawMarketRecord.expirationValue).toBe("94210.55");
     expect(importer.listHistoricalMarkets).toHaveBeenCalledTimes(1);
   });
 
-  it("paginates until the target ticker is found", async () => {
+  it("falls back to pagination when tickers filter misses", async () => {
     const importer = createImporter(async (_series, _range, pagination) => {
-      if (!pagination?.cursor) {
-        return {
-          markets: [createMarketRecord({ ticker: "OTHER-TICKER" })],
-          cursor: "page-2",
-          provenance: {
-            source: "kalshi-historical-api",
-            fetchedAt: GENERATED_AT,
-            requestPath: "/historical/markets?series_ticker=KXBTC15M&limit=100",
-          },
-        };
+      if (pagination?.tickers) {
+        return createListPage([], {
+          requestPath: `/historical/markets?tickers=${fixture.ticker}&limit=100`,
+        });
       }
 
-      return {
-        markets: [createMarketRecord()],
-        cursor: "",
-        provenance: {
-          source: "kalshi-historical-api",
-          fetchedAt: GENERATED_AT,
-          requestPath:
-            "/historical/markets?series_ticker=KXBTC15M&limit=100&cursor=page-2",
-        },
-      };
+      if (!pagination?.cursor) {
+        return createListPage([createMarketRecord({ ticker: "OTHER-TICKER" })], {
+          cursor: "page-2",
+          requestPath: "/historical/markets?series_ticker=KXBTC15M&limit=100",
+        });
+      }
+
+      return createListPage([createMarketRecord()], {
+        requestPath:
+          "/historical/markets?series_ticker=KXBTC15M&limit=100&cursor=page-2",
+      });
     });
 
     const result = await discoverSingleExpansionMarket(
@@ -97,20 +111,19 @@ describe("discoverSingleExpansionMarket", () => {
     );
 
     expect(result?.pagesFetched).toBe(2);
+    expect(result?.foundOnPage).toBe(2);
     expect(result?.market.listMarketWire.expiration_value).toBe("94210.55");
-    expect(importer.listHistoricalMarkets).toHaveBeenCalledTimes(2);
+    expect(importer.listHistoricalMarkets).toHaveBeenCalledTimes(3);
   });
 
-  it("returns null when the ticker is absent from all list pages", async () => {
-    const importer = createImporter(async () => ({
-      markets: [createMarketRecord({ ticker: "OTHER-TICKER" })],
-      cursor: "",
-      provenance: {
-        source: "kalshi-historical-api",
-        fetchedAt: GENERATED_AT,
-        requestPath: fixture.listEndpoint,
-      },
-    }));
+  it("returns null when the ticker is absent from tickers filter and pagination", async () => {
+    const importer = createImporter(async (_series, _range, pagination) =>
+      createListPage([createMarketRecord({ ticker: "OTHER-TICKER" })], {
+        requestPath: pagination?.tickers
+          ? `/historical/markets?tickers=${fixture.ticker}&limit=100`
+          : fixture.listEndpoint,
+      }),
+    );
 
     const result = await discoverSingleExpansionMarket(
       { marketTicker: fixture.ticker, seriesTicker: "KXBTC15M" },

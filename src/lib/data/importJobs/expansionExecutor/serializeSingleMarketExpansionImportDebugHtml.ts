@@ -72,6 +72,8 @@ export function serializeSingleMarketExpansionImportDebugHtml(
         <tr><th>Series</th><td><code>${escapeHtml(report.seriesTicker)}</code></td></tr>
         <tr><th>Expansion job</th><td><code>${escapeHtml(report.jobId ?? "—")}</code></td></tr>
         <tr><th>Discovery pages fetched</th><td>${report.discoveryPagesFetched}</td></tr>
+        <tr><th>Ticker found</th><td>${report.discoveryTrace.tickerFound ? "yes" : "no"}</td></tr>
+        <tr><th>Found on page</th><td>${report.discoveryTrace.foundOnPage ?? "—"}</td></tr>
         <tr><th>Mode</th><td>${report.execute ? "execute" : "dry-run"}</td></tr>
         <tr><th>Import status</th><td>${escapeHtml(report.importStatus)}</td></tr>
         <tr><th>Failure reason</th><td>${escapeHtml(report.failureReason ?? "—")}</td></tr>
@@ -111,6 +113,22 @@ export function serializeSingleMarketExpansionImportDebugHtml(
           <th>expiration_value source</th>
           <td>${escapeHtml(report.expirationValueSource)}</td>
         </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="panel">
+    <h2>Discovery payload trace</h2>
+    <table>
+      <tbody>
+        <tr><th>Pages scanned</th><td>${report.discoveryTrace.pagesScanned}</td></tr>
+        <tr><th>Raw record keys</th><td>${renderFieldList(report.discoveryTrace.rawDiscoveredMarketTopLevelKeys)}</td></tr>
+        <tr><th>Raw expiration_value</th><td>${escapeHtml(report.discoveryTrace.rawDiscoveredMarketExpirationValue ?? "—")}</td></tr>
+        <tr><th>Normalized expiration_value</th><td>${escapeHtml(report.discoveryTrace.normalizedMarketExpirationValue ?? "—")}</td></tr>
+        <tr><th>List wire expiration_value</th><td>${escapeHtml(report.discoveryTrace.listMarketWireExpirationValue ?? "—")}</td></tr>
+        <tr><th>Config metadata expiration_value</th><td>${escapeHtml(report.discoveryTrace.configMetadataExpirationValue ?? "—")}</td></tr>
+        <tr><th>Reconciliation input expiration_value</th><td>${escapeHtml(report.discoveryTrace.reconciliationInputExpirationValue ?? "—")}</td></tr>
+        <tr><th>Reconciliation output expiration_value</th><td>${escapeHtml(report.discoveryTrace.reconciliationOutputExpirationValue ?? "—")}</td></tr>
       </tbody>
     </table>
   </div>

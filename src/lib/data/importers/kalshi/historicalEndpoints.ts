@@ -34,7 +34,14 @@ export function buildHistoricalMarketsPath(
   pagination?: HistoricalPaginationOptions,
 ): string {
   const params = new URLSearchParams();
-  params.set("series_ticker", seriesTicker);
+  const tickers = pagination?.tickers?.trim();
+
+  if (tickers) {
+    params.set("tickers", tickers);
+  } else {
+    params.set("series_ticker", seriesTicker);
+  }
+
   appendQuery(params, "limit", pagination?.limit);
   appendQuery(params, "cursor", pagination?.cursor);
   const query = params.toString();
