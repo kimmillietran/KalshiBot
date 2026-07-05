@@ -351,6 +351,24 @@ function renderCoveragePhase(report: PipelineDashboardReport): string {
     </section>`;
 }
 
+function renderHistoricalImportability(report: PipelineDashboardReport): string {
+  const section = report.historicalImportability;
+
+  return `
+    <section class="panel">
+      <h2>Historical Importability</h2>
+      <p class="muted">Learned from prior expansion import summaries · source <code>${escapeHtml(section.summaryPath)}</code></p>
+      <div class="stat-grid">
+        ${renderStat("Supported windows", escapeHtml(String(section.supportedWindows)), theme.bullish)}
+        ${renderStat("Unsupported windows", escapeHtml(String(section.unsupportedWindows)), section.unsupportedWindows > 0 ? theme.bearish : undefined)}
+        ${renderStat("Historical success rate", formatPercent(section.historicalSuccessRate))}
+        ${renderStat("Prior attempts", escapeHtml(String(section.totalAttempts)))}
+        ${renderStat("Successful imports", escapeHtml(String(section.successfulImports)), theme.bullish)}
+        ${renderStat("Unsupported markets", escapeHtml(String(section.unsupportedMarkets)), section.unsupportedMarkets > 0 ? theme.bearish : undefined)}
+      </div>
+    </section>`;
+}
+
 function renderQuickLinks(report: PipelineDashboardReport): string {
   const links = [
     report.inputPaths.pipelineSummaryPath,
@@ -403,6 +421,7 @@ export function serializePipelineDashboardHtml(
       </header>
       ${renderPipelineStatus(report)}
       ${renderCoveragePhase(report)}
+      ${renderHistoricalImportability(report)}
       <div class="grid-2">
         ${renderArtifactHealth(report)}
         ${renderHypothesisSummary(report)}

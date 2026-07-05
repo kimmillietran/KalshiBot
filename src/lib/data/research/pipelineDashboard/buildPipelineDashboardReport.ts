@@ -1,4 +1,5 @@
 import { buildCoveragePhaseSection } from "./buildCoveragePhaseSection";
+import { buildHistoricalImportabilitySection } from "./buildHistoricalImportabilitySection";
 import type {
   ArtifactHealthEntry,
   ArtifactHealthSection,
@@ -210,6 +211,10 @@ export function buildPipelineDashboardReport(
       input.inputPaths.dataHealthPath,
     ),
     coveragePhase: buildCoveragePhaseSection(input),
+    historicalImportability: buildHistoricalImportabilitySection({
+      summaryPath: input.inputPaths.historicalExpansionImportSummaryPath,
+      expansionImportSummary: input.inputs.historicalExpansionImportSummary,
+    }),
   };
 }
 

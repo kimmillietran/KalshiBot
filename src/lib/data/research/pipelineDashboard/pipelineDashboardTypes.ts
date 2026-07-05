@@ -133,6 +133,17 @@ export type CoveragePhaseSection = {
   summary: string | null;
 };
 
+export type HistoricalImportabilitySection = {
+  summaryPath: string;
+  summaryPresent: boolean;
+  supportedWindows: number;
+  unsupportedWindows: number;
+  historicalSuccessRate: number | null;
+  totalAttempts: number;
+  successfulImports: number;
+  unsupportedMarkets: number;
+};
+
 export type PipelineDashboardReport = {
   generatedAt: string;
   outputPath: string;
@@ -143,6 +154,7 @@ export type PipelineDashboardReport = {
   strategySummary: StrategySummarySection;
   researchHealth: ResearchHealthSection;
   coveragePhase: CoveragePhaseSection;
+  historicalImportability: HistoricalImportabilitySection;
 };
 
 export type BuildPipelineDashboardReportInput = {
@@ -287,6 +299,11 @@ export type ParsedCoverageValidation = {
   };
 };
 
+export type ParsedExpansionImportSummary = {
+  generatedAt: string;
+  document: import("@/lib/data/research/coveragePlanner/importability").ExpansionImportSummaryDocument;
+};
+
 export type ParsedPipelineDashboardInputs = {
   pipelineSummary: ParsedPipelineSummary | null;
   fullResearchSummary: ParsedPipelineSummary | null;
@@ -302,7 +319,7 @@ export type ParsedPipelineDashboardInputs = {
   historicalCoveragePlan: ParsedHistoricalCoveragePlan | null;
   historicalExpansionConfig: ParsedHistoricalExpansionConfig | null;
   coverageValidation: ParsedCoverageValidation | null;
-  historicalExpansionImportSummary: { generatedAt: string } | null;
+  historicalExpansionImportSummary: ParsedExpansionImportSummary | null;
   expansionRebuildSummary: { generatedAt: string } | null;
 };
 

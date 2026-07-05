@@ -93,6 +93,16 @@ const REPORT: PipelineDashboardReport = {
     expansionJobCount: null,
     summary: null,
   },
+  historicalImportability: {
+    summaryPath: "data/research-results/historical-expansion-import-summary.json",
+    summaryPresent: false,
+    supportedWindows: 0,
+    unsupportedWindows: 0,
+    historicalSuccessRate: null,
+    totalAttempts: 0,
+    successfulImports: 0,
+    unsupportedMarkets: 0,
+  },
 };
 
 describe("serializePipelineDashboardHtml", () => {
@@ -108,5 +118,25 @@ describe("serializePipelineDashboardHtml", () => {
     expect(html.startsWith("<!DOCTYPE html>")).toBe(true);
     expect(html).toContain("&lt;script&gt;alert(1)&lt;/script&gt;");
     expect(html).not.toContain("<script>alert(1)</script>");
+  });
+
+  it("renders the historical importability section", () => {
+    const html = serializePipelineDashboardHtml({
+      ...REPORT,
+      historicalImportability: {
+        ...REPORT.historicalImportability,
+        summaryPresent: true,
+        supportedWindows: 2,
+        unsupportedWindows: 1,
+        historicalSuccessRate: 0.67,
+        totalAttempts: 3,
+        successfulImports: 2,
+        unsupportedMarkets: 1,
+      },
+    });
+
+    expect(html).toContain("Historical Importability");
+    expect(html).toContain("Supported windows");
+    expect(html).toContain("67%");
   });
 });

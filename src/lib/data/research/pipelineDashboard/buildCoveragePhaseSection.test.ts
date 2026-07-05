@@ -90,7 +90,16 @@ describe("buildCoveragePhaseSection", () => {
       historicalCoveragePlan: null,
       historicalExpansionConfig: null,
       coverageValidation: null,
-      historicalExpansionImportSummary: { generatedAt: GENERATED_AT },
+      historicalExpansionImportSummary: {
+        generatedAt: GENERATED_AT,
+        document: {
+          generatedAt: GENERATED_AT,
+          inputPath: "data/import-configs/historical-expansion-config.json",
+          outputPath: "data/research-results/historical-expansion-import-summary.json",
+          execute: true,
+          jobs: [],
+        },
+      },
       expansionRebuildSummary: null,
     };
 

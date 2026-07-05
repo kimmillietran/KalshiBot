@@ -3,6 +3,13 @@ import type { HypothesisValidationReport } from "@/lib/data/research/hypothesisR
 import type { MispricingAtlas } from "@/lib/data/research/mispricingAtlas/mispricingAtlasTypes";
 import type { RegimeTagsReport } from "@/lib/data/research/regimeTagging/regimeTaggingTypes";
 
+import type {
+  EstimatedSupportLevel,
+  HistoricalImportabilityProfile,
+} from "./importability/importabilityTypes";
+
+export type { EstimatedSupportLevel, HistoricalImportabilityProfile };
+
 export const HISTORICAL_COVERAGE_PLAN_FILENAME = "historical-coverage-plan.json";
 export const DEFAULT_HISTORICAL_COVERAGE_PLAN_OUTPUT_PATH =
   "data/research-results/historical-coverage-plan.json";
@@ -15,6 +22,8 @@ export const DEFAULT_MISPRICING_ATLAS_INPUT_PATH =
 export const DEFAULT_HYPOTHESIS_VALIDATION_INPUT_PATH =
   "data/research-results/hypothesis-validation.json";
 export const DEFAULT_REGIME_TAGS_INPUT_PATH = "data/research-results/regime-tags.json";
+export const DEFAULT_EXPANSION_IMPORT_SUMMARY_INPUT_PATH =
+  "data/research-results/historical-expansion-import-summary.json";
 export const DEFAULT_IMPORT_CONFIGS_DIR = "data/import-configs";
 export const DEFAULT_FIXTURES_DIR = "data/fixtures";
 export const DEFAULT_RESEARCH_RESULTS_DIR = "data/research-results";
@@ -121,6 +130,8 @@ export type CoverageImportRecommendation = {
   rationale: string;
   expectedResearchBenefit: string;
   supportingHypothesisIds: readonly string[];
+  estimatedSupportLevel: EstimatedSupportLevel;
+  estimatedUnsupportedRate: number;
 };
 
 export type CoveragePlannerInputStatus = {
@@ -128,6 +139,7 @@ export type CoveragePlannerInputStatus = {
   mispricingAtlasPath: string;
   hypothesisValidationPath: string;
   regimeTagsPath: string;
+  expansionImportSummaryPath: string;
   importConfigsDir: string;
   fixturesDir: string;
   researchResultsDir: string;
@@ -135,6 +147,7 @@ export type CoveragePlannerInputStatus = {
   mispricingAtlasPresent: boolean;
   hypothesisValidationPresent: boolean;
   regimeTagsPresent: boolean;
+  expansionImportSummaryPresent: boolean;
 };
 
 export type HistoricalCoveragePlanConfig = {
@@ -144,6 +157,7 @@ export type HistoricalCoveragePlanConfig = {
   mispricingAtlasPath: string;
   hypothesisValidationPath: string;
   regimeTagsPath: string;
+  expansionImportSummaryPath: string;
   importConfigsDir: string;
   fixturesDir: string;
   researchResultsDir: string;
@@ -160,6 +174,7 @@ export type HistoricalCoveragePlanReport = {
   inputStatus: CoveragePlannerInputStatus;
   snapshot: CoverageSnapshot;
   recommendations: readonly CoverageImportRecommendation[];
+  importability: HistoricalImportabilityProfile;
   plannerNotes: readonly string[];
 };
 
@@ -188,4 +203,6 @@ export type BuildHistoricalCoveragePlanInput = {
     fixtureCount: number;
     researchOutputCount: number;
   };
+  importabilityMarkets: readonly import("./importability/importabilityTypes").ParsedExpansionImportMarketRecord[];
+  importability: import("./importability/importabilityTypes").HistoricalImportabilityProfile;
 };

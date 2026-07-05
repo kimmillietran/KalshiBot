@@ -4,6 +4,8 @@ import {
   listMonthsByCoverageStatus,
   listMonthsNeedingImport,
 } from "./computeMonthCoverageDepth";
+import { estimateRecommendationImportability } from "./importability/estimateRecommendationImportability";
+import type { ParsedExpansionImportMarketRecord } from "./importability/importabilityTypes";
 import type {
   CoverageImportRecommendation,
   CoverageSnapshot,
@@ -155,15 +157,33 @@ function scoreRecommendation(input: {
   unstableHypothesisCount: number;
   quarterFullyGapped: boolean;
   marketCount: number;
+  estimatedSupportLevel: "high" | "medium" | "low";
 }): number {
   const monthGapScore = Math.min(40, input.targetMonthCount * 12);
   const severityScore = Math.min(35, Math.round(input.averageSeverity * 35));
   const validationScore = Math.min(25, input.unstableHypothesisCount * 5);
   const quarterScore = input.quarterFullyGapped ? 20 : 0;
   const sparseScore = input.marketCount < 5 ? 15 : input.marketCount < 15 ? 8 : 0;
+  const importabilityScore =
+    input.estimatedSupportLevel === "high"
+      ? 15
+      : input.estimatedSupportLevel === "low"
+        ? -25
+        : 0;
 
   return Math.round(
-    Math.min(100, monthGapScore + severityScore + validationScore + quarterScore + sparseScore),
+    Math.min(
+      100,
+      Math.max(
+        0,
+        monthGapScore
+          + severityScore
+          + validationScore
+          + quarterScore
+          + sparseScore
+          + importabilityScore,
+      ),
+    ),
   );
 }
 
@@ -285,6 +305,30 @@ function buildExpectedBenefit(
   return benefits.join(" ");
 }
 
+function appendImportabilityNote(
+  rationale: string,
+  importability: {
+    estimatedSupportLevel: "high" | "medium" | "low";
+    estimatedUnsupportedRate: number;
+    attemptedCount: number;
+  },
+): string {
+  if (importability.attemptedCount === 0) {
+    return `${rationale} No prior expansion import attempts were recorded for this window.`;
+  }
+
+  const unsupportedPct = Math.round(importability.estimatedUnsupportedRate * 100);
+  if (importability.estimatedSupportLevel === "high") {
+    return `${rationale} Prior imports in this window succeeded with a low unsupported rate (${unsupportedPct}%).`;
+  }
+
+  if (importability.estimatedSupportLevel === "low") {
+    return `${rationale} Prior imports in this window were mostly unsupported (${unsupportedPct}% unsupported); deprioritized.`;
+  }
+
+  return `${rationale} Prior import support is mixed (${unsupportedPct}% unsupported).`;
+}
+
 /** Builds prioritized import window recommendations from coverage gaps. */
 export function buildCoverageImportRecommendations(
   snapshot: CoverageSnapshot,
@@ -293,6 +337,7 @@ export function buildCoverageImportRecommendations(
     HistoricalCoveragePlanConfig,
     "monthPersistenceThreshold" | "minMarketsPerMonth" | "minTradingDaysPerMonth"
   >,
+  importabilityMarkets: readonly ParsedExpansionImportMarketRecord[] = [],
 ): CoverageImportRecommendation[] {
   const unstableIds = unstableHypothesisIds(
     artifacts,
@@ -308,12 +353,18 @@ export function buildCoverageImportRecommendations(
       snapshot.monthCoverage,
       window.targetMonths,
     );
+    const importability = estimateRecommendationImportability(importabilityMarkets, {
+      seriesTicker: window.seriesTicker,
+      startMonth: window.startMonth,
+      endMonth: window.endMonth,
+    });
     const priorityScore = scoreRecommendation({
       targetMonthCount: window.targetMonths.length,
       averageSeverity,
       unstableHypothesisCount: unstableIds.length,
       quarterFullyGapped: quarterFullyGapped(window.targetMonths),
       marketCount: snapshot.marketCount,
+      estimatedSupportLevel: importability.estimatedSupportLevel,
     });
 
     return {
@@ -328,7 +379,10 @@ export function buildCoverageImportRecommendations(
         window.targetMonths,
       ),
       priorityScore,
-      rationale: buildRationale(window, snapshot, unstableIds, config.monthPersistenceThreshold),
+      rationale: appendImportabilityNote(
+        buildRationale(window, snapshot, unstableIds, config.monthPersistenceThreshold),
+        importability,
+      ),
       expectedResearchBenefit: buildExpectedBenefit(
         window,
         snapshot,
@@ -336,6 +390,8 @@ export function buildCoverageImportRecommendations(
         artifacts,
       ),
       supportingHypothesisIds: unstableIds.slice(0, 5),
+      estimatedSupportLevel: importability.estimatedSupportLevel,
+      estimatedUnsupportedRate: importability.estimatedUnsupportedRate,
     };
   });
 

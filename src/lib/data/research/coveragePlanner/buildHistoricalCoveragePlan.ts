@@ -8,6 +8,8 @@ import type {
 } from "./coveragePlannerTypes";
 import { loadCoveragePlannerArtifacts } from "./parseCoveragePlannerArtifacts";
 import { scanCoverageMarketRecords } from "./scanCoverageMarketRecords";
+import { buildHistoricalImportabilityProfile } from "./importability/buildHistoricalImportabilityProfile";
+import { tryLoadExpansionImportSummary } from "./importability/loadExpansionImportSummary";
 
 export function serializeHistoricalCoveragePlan(
   report: HistoricalCoveragePlanReport,
@@ -54,6 +56,12 @@ function buildPlannerNotes(
     );
   }
 
+  if (!report.inputStatus.expansionImportSummaryPresent) {
+    notes.push(
+      "historical-expansion-import-summary.json was not found; importability scoring defaults to medium support.",
+    );
+  }
+
   return notes;
 }
 
@@ -70,6 +78,7 @@ export function buildHistoricalCoveragePlan(
     snapshot,
     input.artifacts,
     input.config,
+    input.importabilityMarkets,
   );
 
   return {
@@ -80,6 +89,7 @@ export function buildHistoricalCoveragePlan(
     inputStatus: input.inputStatus,
     snapshot,
     recommendations,
+    importability: input.importability,
     plannerNotes: buildPlannerNotes({
       snapshot,
       inputStatus: input.inputStatus,
@@ -123,6 +133,7 @@ export function buildHistoricalCoveragePlanFromPaths(
     mispricingAtlasPath: config.mispricingAtlasPath,
     hypothesisValidationPath: config.hypothesisValidationPath,
     regimeTagsPath: config.regimeTagsPath,
+    expansionImportSummaryPath: config.expansionImportSummaryPath,
     importConfigsDir: config.importConfigsDir,
     fixturesDir: config.fixturesDir,
     researchResultsDir: config.researchResultsDir,
@@ -130,7 +141,20 @@ export function buildHistoricalCoveragePlanFromPaths(
     mispricingAtlasPresent: io.fileExists(config.mispricingAtlasPath),
     hypothesisValidationPresent: io.fileExists(config.hypothesisValidationPath),
     regimeTagsPresent: io.fileExists(config.regimeTagsPath),
+    expansionImportSummaryPresent: io.fileExists(config.expansionImportSummaryPath),
   };
+
+  const expansionSummary = tryLoadExpansionImportSummary(
+    io,
+    config.expansionImportSummaryPath,
+  );
+  const importabilityMarkets = expansionSummary
+    ? expansionSummary.jobs.flatMap((job) => job.markets)
+    : [];
+  const importability = buildHistoricalImportabilityProfile({
+    summaryPath: config.expansionImportSummaryPath,
+    summaries: expansionSummary ? [expansionSummary] : [],
+  });
 
   return buildHistoricalCoveragePlan({
     generatedAt,
@@ -143,5 +167,7 @@ export function buildHistoricalCoveragePlanFromPaths(
       fixtureCount: scanResult.fixtureCount,
       researchOutputCount: scanResult.researchOutputCount,
     },
+    importabilityMarkets,
+    importability,
   });
 }

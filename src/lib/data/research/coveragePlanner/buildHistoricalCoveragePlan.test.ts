@@ -9,6 +9,8 @@ import { serializeHistoricalCoveragePlanHtml } from "./serializeHistoricalCovera
 import { buildCoverageImportRecommendations } from "./buildCoverageImportRecommendations";
 import { classifyMonthCoverageDepth } from "./computeMonthCoverageDepth";
 import { computeCoverageSnapshot } from "./computeCoverageSnapshot";
+import { createEmptyHistoricalImportabilityProfile } from "./importability/buildHistoricalImportabilityProfile";
+import { normalizeExpansionImportMarketRecords } from "./importability/estimateRecommendationImportability";
 import {
   calendarMonthsBetween,
   enumerateMonthRange,
@@ -31,6 +33,8 @@ const DEFAULT_CONFIG: HistoricalCoveragePlanConfig = {
   mispricingAtlasPath: "data/research-results/mispricing-atlas.json",
   hypothesisValidationPath: "data/research-results/hypothesis-validation.json",
   regimeTagsPath: "data/research-results/regime-tags.json",
+  expansionImportSummaryPath:
+    "data/research-results/historical-expansion-import-summary.json",
   importConfigsDir: "data/import-configs",
   fixturesDir: "data/fixtures",
   researchResultsDir: "data/research-results",
@@ -212,6 +216,37 @@ function buildSparseMonthRecords(): CoverageMarketRecord[] {
       tradingDays: [`2026-04-${String((index % 20) + 1).padStart(2, "0")}`] as const,
       volatilityRegime: null,
     })),
+  ];
+}
+
+function buildSplitGapMonthRecords(): CoverageMarketRecord[] {
+  const coveredApril = Array.from({ length: 120 }, (_, index) => ({
+    seriesTicker: "KXBTC15M",
+    marketTicker: `MKT-APR-${index + 1}`,
+    source: "import-config" as const,
+    calendarMonths: ["2026-04"] as const,
+    tradingDays: [`2026-04-${String((index % 20) + 1).padStart(2, "0")}`] as const,
+    volatilityRegime: null,
+  }));
+
+  return [
+    ...Array.from({ length: 5 }, (_, index) => ({
+      seriesTicker: "KXBTC15M",
+      marketTicker: `MKT-JAN-${index + 1}`,
+      source: "import-config" as const,
+      calendarMonths: ["2026-01"] as const,
+      tradingDays: [`2026-01-${String(index + 10).padStart(2, "0")}`] as const,
+      volatilityRegime: null,
+    })),
+    ...Array.from({ length: 5 }, (_, index) => ({
+      seriesTicker: "KXBTC15M",
+      marketTicker: `MKT-JUN-${index + 1}`,
+      source: "import-config" as const,
+      calendarMonths: ["2026-06"] as const,
+      tradingDays: [`2026-06-${String(index + 1).padStart(2, "0")}`] as const,
+      volatilityRegime: null,
+    })),
+    ...coveredApril,
   ];
 }
 
@@ -430,6 +465,70 @@ describe("buildCoverageImportRecommendations", () => {
     expect(recommendations[0]?.endMonth).toBe("2026-03");
     expect(recommendations[0]?.rationale).toContain("month-stability checks");
     expect(recommendations[0]?.rationale).toContain("2026-01 through 2026-03");
+    expect(recommendations[0]?.estimatedSupportLevel).toBe("medium");
+  });
+
+  it("deprioritizes windows with mostly unsupported prior imports", () => {
+    const snapshot = computeCoverageSnapshot(buildSplitGapMonthRecords(), {
+      importConfigCount: 13,
+      fixtureCount: 0,
+      researchOutputCount: 0,
+    });
+    const importabilityMarkets = normalizeExpansionImportMarketRecords([
+      {
+        marketTicker: "KXBTC15M-26JAN151215-00",
+        seriesTicker: "KXBTC15M",
+        status: "failed",
+        errorMessage: "Kalshi historical market response missing required fields: expiration_value",
+      },
+      {
+        marketTicker: "KXBTC15M-26JAN151230-00",
+        seriesTicker: "KXBTC15M",
+        status: "failed",
+        errorMessage: "Kalshi historical market response missing required fields: expiration_value",
+      },
+      {
+        marketTicker: "KXBTC15M-26JAN151245-00",
+        seriesTicker: "KXBTC15M",
+        status: "failed",
+        errorMessage: "Kalshi historical market response missing required fields: expiration_value",
+      },
+      {
+        marketTicker: "KXBTC15M-26JUN151215-00",
+        seriesTicker: "KXBTC15M",
+        status: "imported",
+      },
+      {
+        marketTicker: "KXBTC15M-26JUN151230-00",
+        seriesTicker: "KXBTC15M",
+        status: "imported",
+      },
+    ]);
+
+    const recommendations = buildCoverageImportRecommendations(
+      snapshot,
+      {
+        dataHealth: null,
+        mispricingAtlas: null,
+        hypothesisValidation: null,
+        regimeTags: null,
+      },
+      LOW_THRESHOLD_CONFIG,
+      importabilityMarkets,
+    );
+
+    const januaryRecommendation = recommendations.find((entry) =>
+      entry.missingMonths.includes("2026-01"),
+    );
+    const juneRecommendation = recommendations.find((entry) =>
+      entry.missingMonths.includes("2026-06"),
+    );
+
+    expect(januaryRecommendation?.estimatedSupportLevel).toBe("low");
+    expect(juneRecommendation?.estimatedSupportLevel).toBe("high");
+    expect((juneRecommendation?.priorityScore ?? 0)).toBeGreaterThan(
+      januaryRecommendation?.priorityScore ?? 0,
+    );
   });
 
   it("recommends imports for under-covered months and scores them by severity", () => {
@@ -557,6 +656,7 @@ describe("buildHistoricalCoveragePlan", () => {
         mispricingAtlasPath: DEFAULT_CONFIG.mispricingAtlasPath,
         hypothesisValidationPath: DEFAULT_CONFIG.hypothesisValidationPath,
         regimeTagsPath: DEFAULT_CONFIG.regimeTagsPath,
+        expansionImportSummaryPath: DEFAULT_CONFIG.expansionImportSummaryPath,
         importConfigsDir: DEFAULT_CONFIG.importConfigsDir,
         fixturesDir: DEFAULT_CONFIG.fixturesDir,
         researchResultsDir: DEFAULT_CONFIG.researchResultsDir,
@@ -564,6 +664,7 @@ describe("buildHistoricalCoveragePlan", () => {
         mispricingAtlasPresent: false,
         hypothesisValidationPresent: false,
         regimeTagsPresent: false,
+        expansionImportSummaryPresent: false,
       },
       artifacts: {
         dataHealth: null,
@@ -573,6 +674,10 @@ describe("buildHistoricalCoveragePlan", () => {
       },
       marketRecords: [],
       scanCounts: { importConfigCount: 0, fixtureCount: 0, researchOutputCount: 0 },
+      importabilityMarkets: [],
+      importability: createEmptyHistoricalImportabilityProfile(
+        DEFAULT_CONFIG.expansionImportSummaryPath,
+      ),
     });
 
     expect(serializeHistoricalCoveragePlan(report)).toBe(

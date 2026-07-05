@@ -1,5 +1,6 @@
 import {
   DEFAULT_DATA_HEALTH_INPUT_PATH,
+  DEFAULT_EXPANSION_IMPORT_SUMMARY_INPUT_PATH,
   DEFAULT_FIXTURES_DIR,
   DEFAULT_HISTORICAL_COVERAGE_PLAN_HTML_PATH,
   DEFAULT_HISTORICAL_COVERAGE_PLAN_OUTPUT_PATH,
@@ -81,6 +82,11 @@ export function parseHistoricalCoveragePlanConfigFromArgv(
       DEFAULT_HYPOTHESIS_VALIDATION_INPUT_PATH,
     ),
     regimeTagsPath: readFlagValue(argv, "--regime-tags", DEFAULT_REGIME_TAGS_INPUT_PATH),
+    expansionImportSummaryPath: readFlagValue(
+      argv,
+      "--expansion-import-summary",
+      DEFAULT_EXPANSION_IMPORT_SUMMARY_INPUT_PATH,
+    ),
     importConfigsDir: readFlagValue(argv, "--import-configs-dir", DEFAULT_IMPORT_CONFIGS_DIR),
     fixturesDir: readFlagValue(argv, "--fixtures-dir", DEFAULT_FIXTURES_DIR),
     researchResultsDir: readFlagValue(

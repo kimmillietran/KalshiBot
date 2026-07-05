@@ -2,6 +2,7 @@ import { researchReportTheme as theme } from "@/lib/data/research/reports/report
 
 import type {
   CoverageDepthStatus,
+  EstimatedSupportLevel,
   HistoricalCoveragePlanReport,
   MonthCoverageEntry,
 } from "./coveragePlannerTypes";
@@ -12,6 +13,16 @@ function escapeHtml(value: string): string {
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;")
     .replaceAll("\"", "&quot;");
+}
+
+function supportLevelBadge(level: EstimatedSupportLevel): string {
+  const styles: Record<EstimatedSupportLevel, { label: string; color: string }> = {
+    high: { label: "Likely importable", color: theme.bullish },
+    medium: { label: "Partially supported", color: theme.warning },
+    low: { label: "Mostly unsupported", color: theme.bearish },
+  };
+  const entry = styles[level];
+  return `<span class="status-badge" style="background:${entry.color}22;color:${entry.color};border:1px solid ${entry.color}55">${entry.label}</span>`;
 }
 
 function statusBadge(status: CoverageDepthStatus): string {
@@ -42,6 +53,7 @@ function renderSummaryCards(report: HistoricalCoveragePlanReport): string {
       <div class="summary-card"><div class="summary-label">Under-covered</div><div class="summary-value" style="color:${theme.warning}">${snapshot.underCoveredMonths.length}</div></div>
       <div class="summary-card"><div class="summary-label">Missing months</div><div class="summary-value" style="color:${theme.bearish}">${snapshot.missingMonths.length}</div></div>
       <div class="summary-card"><div class="summary-label">Recommendations</div><div class="summary-value">${report.recommendations.length}</div></div>
+      <div class="summary-card"><div class="summary-label">Historical success rate</div><div class="summary-value">${report.importability.historicalSuccessRate === null ? "—" : `${Math.round(report.importability.historicalSuccessRate * 100)}%`}</div></div>
     </section>`;
 }
 
@@ -98,11 +110,14 @@ export function serializeHistoricalCoveragePlanHtml(
       <article class="recommendation-card">
         <div class="recommendation-header">
           <h3>${escapeHtml(entry.seriesTicker)} · ${escapeHtml(entry.startMonth)} → ${escapeHtml(entry.endMonth)}</h3>
-          <span class="priority-pill">Priority ${entry.priorityScore}</span>
+          <div class="recommendation-badges">
+            ${supportLevelBadge(entry.estimatedSupportLevel)}
+            <span class="priority-pill">Priority ${entry.priorityScore}</span>
+          </div>
         </div>
         <p>${escapeHtml(entry.rationale)}</p>
         <p class="muted">${escapeHtml(entry.expectedResearchBenefit)}</p>
-        <p class="muted">Target months: ${escapeHtml(entry.missingMonths.join(", ") || "—")}</p>
+        <p class="muted">Target months: ${escapeHtml(entry.missingMonths.join(", ") || "—")} · Estimated unsupported rate: ${Math.round(entry.estimatedUnsupportedRate * 100)}%</p>
       </article>`,
     )
     .join("");
@@ -177,6 +192,13 @@ export function serializeHistoricalCoveragePlanHtml(
       align-items: center;
       margin-bottom: 8px;
     }
+    .recommendation-badges {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
     .priority-pill {
       background: ${theme.info};
       color: ${theme.pageBg};
@@ -228,6 +250,17 @@ export function serializeHistoricalCoveragePlanHtml(
       <thead><tr><th>Series</th><th>Markets</th><th>Months</th><th>Pattern</th></tr></thead>
       <tbody>${marketTypeRows || "<tr><td colspan=\"4\">No market types detected</td></tr>"}</tbody>
     </table>
+  </section>
+
+  <section class="panel">
+    <h2>Historical importability</h2>
+    <p class="muted">Source: <code>${escapeHtml(report.importability.summaryPath ?? "—")}</code> · ${report.importability.summaryPresent ? "loaded" : "not found"}</p>
+    <div class="summary-grid">
+      <div class="summary-card"><div class="summary-label">Prior attempts</div><div class="summary-value">${report.importability.totalAttempts}</div></div>
+      <div class="summary-card"><div class="summary-label">Successful imports</div><div class="summary-value" style="color:${theme.bullish}">${report.importability.successfulImports}</div></div>
+      <div class="summary-card"><div class="summary-label">Unsupported markets</div><div class="summary-value" style="color:${theme.bearish}">${report.importability.unsupportedMarkets}</div></div>
+      <div class="summary-card"><div class="summary-label">Compatibility failures</div><div class="summary-value">${report.importability.compatibilityFailures}</div></div>
+    </div>
   </section>
 
   <section class="panel">

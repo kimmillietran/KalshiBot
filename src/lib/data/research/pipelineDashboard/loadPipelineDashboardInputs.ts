@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { parseExpansionImportSummaryJson } from "@/lib/data/research/coveragePlanner/importability";
+
 import {
   PipelineDashboardError,
   type ParsedPipelineDashboardInputs,
@@ -413,6 +415,27 @@ function readFullResearchSummary(
   };
 }
 
+function readHistoricalExpansionImportSummary(
+  io: PipelineDashboardIo,
+  path: string,
+): ParsedPipelineDashboardInputs["historicalExpansionImportSummary"] {
+  if (!io.fileExists(path)) {
+    return null;
+  }
+
+  try {
+    const document = parseExpansionImportSummaryJson(path, io.readFile(path));
+    return {
+      generatedAt: document.generatedAt,
+      document,
+    };
+  } catch (error) {
+    throw new PipelineDashboardError(
+      error instanceof Error ? error.message : `Failed to read ${path}`,
+    );
+  }
+}
+
 function readGeneratedArtifact(
   io: PipelineDashboardIo,
   path: string,
@@ -475,7 +498,7 @@ export function loadPipelineDashboardInputs(
       inputPaths.historicalExpansionConfigPath,
     ),
     coverageValidation: readCoverageValidation(io, inputPaths.coverageValidationPath),
-    historicalExpansionImportSummary: readGeneratedArtifact(
+    historicalExpansionImportSummary: readHistoricalExpansionImportSummary(
       io,
       inputPaths.historicalExpansionImportSummaryPath,
     ),

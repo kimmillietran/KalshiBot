@@ -320,6 +320,7 @@ export const HISTORICAL_COVERAGE_PLAN_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--mispricing-atlas" },
   { flag: "--hypothesis-validation" },
   { flag: "--regime-tags" },
+  { flag: "--expansion-import-summary" },
   { flag: "--import-configs-dir" },
   { flag: "--fixtures-dir" },
   { flag: "--research-results-dir" },
