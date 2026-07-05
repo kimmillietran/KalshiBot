@@ -193,6 +193,9 @@ function createBaseConfig(overrides?: Partial<{
     maxBackoffMs: 30_000,
     backoffMultiplier: 2,
     successDecayAfter: 3,
+    retryFailed: false,
+    retryUnsupported: false,
+    verifyResumeArtifacts: false,
     ...overrides,
   };
 }
@@ -315,6 +318,8 @@ describe("scanExistingExpansionMarketTickers", () => {
 describe("runHistoricalExpansionImport safety", () => {
   it("skips markets already recorded in checkpoint on resume", async () => {
     const mock: MockFs = { files: {}, directories: new Set(["data"]) };
+    mock.files["data/imports/KXBTC15M/KXBTC15M-26JAN151215-00/import-result.json"] =
+      "{\"valid\":true}";
     mock.files[CHECKPOINT_PATH] = serializeExpansionImportCheckpoint({
       generatedAt: GENERATED_AT,
       updatedAt: GENERATED_AT,
@@ -328,6 +333,7 @@ describe("runHistoricalExpansionImport safety", () => {
           jobId: JOB_ID,
           lastCompletedMarketTicker: "KXBTC15M-26JAN151215-00",
           completedMarkets: ["KXBTC15M-26JAN151215-00"],
+          unsupportedSkippedMarkets: [],
           failedMarkets: [],
         },
       ],
@@ -348,11 +354,14 @@ describe("runHistoricalExpansionImport safety", () => {
 
     expect(runImport).toHaveBeenCalledTimes(1);
     expect(summary.summary.skippedCount).toBe(1);
-    expect(summary.jobs[0]?.markets[0]?.skipReason).toContain("checkpoint");
+    expect(summary.jobs[0]?.markets[0]?.skipReason).toContain("Successful import already recorded");
+    expect(summary.resumeDiagnostics.resumeSkippedSuccessful).toBe(1);
   });
 
   it("resumes after an interrupted import and completes remaining markets", async () => {
     const mock: MockFs = { files: {}, directories: new Set(["data"]) };
+    mock.files["data/imports/KXBTC15M/KXBTC15M-26JAN151215-00/import-result.json"] =
+      "{\"valid\":true}";
     mock.files[CHECKPOINT_PATH] = serializeExpansionImportCheckpoint({
       generatedAt: GENERATED_AT,
       updatedAt: GENERATED_AT,
@@ -366,6 +375,7 @@ describe("runHistoricalExpansionImport safety", () => {
           jobId: JOB_ID,
           lastCompletedMarketTicker: "KXBTC15M-26JAN151215-00",
           completedMarkets: ["KXBTC15M-26JAN151215-00"],
+          unsupportedSkippedMarkets: [],
           failedMarkets: [],
         },
       ],
@@ -406,6 +416,7 @@ describe("runHistoricalExpansionImport safety", () => {
           jobId: JOB_ID,
           lastCompletedMarketTicker: null,
           completedMarkets: [],
+          unsupportedSkippedMarkets: [],
           failedMarkets: [
             {
               marketTicker: "KXBTC15M-26JAN151215-00",
@@ -451,6 +462,7 @@ describe("runHistoricalExpansionImport safety", () => {
           jobId: JOB_ID,
           lastCompletedMarketTicker: null,
           completedMarkets: [],
+          unsupportedSkippedMarkets: [],
           failedMarkets: [
             {
               marketTicker: "KXBTC15M-26JAN151215-00",

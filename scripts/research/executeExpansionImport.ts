@@ -231,6 +231,7 @@ export async function runExecuteExpansionImportCommand(
           selectedUnknownMarkets: summary.selection.selectedUnknownMarkets,
           selectedUnsupportedMarkets: summary.selection.selectedUnsupportedMarkets,
           rateLimitDiagnostics: summary.rateLimitDiagnostics,
+          resumeDiagnostics: summary.resumeDiagnostics,
         }),
       ),
     );

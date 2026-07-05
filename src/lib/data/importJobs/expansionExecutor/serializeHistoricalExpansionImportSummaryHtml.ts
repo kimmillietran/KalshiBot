@@ -172,6 +172,17 @@ export function serializeHistoricalExpansionImportSummaryHtml(
   </section>
 
   <section class="panel">
+    <h2>Resume diagnostics</h2>
+    <ul>
+      <li>Skipped successful: ${summary.resumeDiagnostics.resumeSkippedSuccessful}</li>
+      <li>Skipped unsupported: ${summary.resumeDiagnostics.resumeSkippedUnsupported}</li>
+      <li>Retried failed: ${summary.resumeDiagnostics.resumeRetriedFailed}</li>
+      <li>Retried transient: ${summary.resumeDiagnostics.resumeRetriedTransient}</li>
+      <li>Ambiguous artifact states: ${summary.resumeDiagnostics.resumeAmbiguousStateCount}</li>
+    </ul>
+  </section>
+
+  <section class="panel">
     <h2>Warnings</h2>
     <ul>${warningItems || "<li class=\"muted\">No warnings</li>"}</ul>
   </section>

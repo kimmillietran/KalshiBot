@@ -17,6 +17,12 @@ import {
   planExpansionMarketExecution,
   serializeExpansionImportCheckpoint,
   updateExpansionImportCheckpoint,
+  buildExpansionImportArtifactPaths,
+  createExpansionImportResumeDiagnostics,
+  healExpansionImportCheckpointForResume,
+  recordExpansionImportResumePlanMetric,
+  shouldPersistResumeSkipToCheckpoint,
+  verifyExpansionImportArtifacts,
 } from "@/lib/data/importJobs/expansionImportSafety";
 import type { HistoricalExpansionImportCheckpoint } from "@/lib/data/importJobs/expansionImportSafety";
 import { stableStringify } from "@/lib/trading/config/hashConfig";
@@ -159,6 +165,7 @@ function buildPartialSummary(
   warnings: readonly string[],
   rateLimitState = createExpansionImportRateLimitState(),
   adaptiveThrottle: ExpansionAdaptiveThrottleController | null = null,
+  resumeDiagnostics = createExpansionImportResumeDiagnostics(),
 ): HistoricalExpansionImportSummary {
   const durationMs = Date.now() - startedAtMs;
   const rateLimitDiagnostics = buildExpansionRateLimitDiagnostics(rateLimitState);
@@ -196,6 +203,7 @@ function buildPartialSummary(
         throughputMarketsPerMinute: null,
         throttleAdjustmentCount: 0,
       },
+    resumeDiagnostics,
     summary: aggregateSummary(jobResults, startedAtMs),
     jobs: jobResults,
     warnings,
@@ -400,9 +408,24 @@ export async function runHistoricalExpansionImport(
       : null,
   });
 
+  if (input.config.resume) {
+    checkpoint = healExpansionImportCheckpointForResume({
+      checkpoint,
+      jobs: scheduledJobs,
+      importConfigsDir: input.config.importConfigsDir,
+      importsDir: input.config.importsDir,
+      fileExists: input.io.fileExists,
+    });
+  }
+
+  const resumeDiagnostics = createExpansionImportResumeDiagnostics();
+
   const safety = {
     resume: input.config.resume,
     skipFailed: input.config.skipFailed,
+    retryFailed: input.config.retryFailed,
+    retryUnsupported: input.config.retryUnsupported,
+    verifyResumeArtifacts: input.config.verifyResumeArtifacts,
     forceMarket: input.config.forceMarket,
     checkpointPath: input.config.checkpointPath,
     maxRetries: input.config.maxRetries,
@@ -539,14 +562,26 @@ export async function runHistoricalExpansionImport(
         break;
       }
 
+      const artifactPaths = buildExpansionImportArtifactPaths(
+        market.seriesTicker,
+        market.marketTicker,
+        {
+          importConfigsDir: input.config.importConfigsDir,
+          importsDir: input.config.importsDir,
+        },
+      );
+
       const executionPlan = planExpansionMarketExecution({
         safety,
         checkpoint,
         jobId: job.jobId,
         marketTicker: market.marketTicker,
+        artifactPaths,
+        fileExists: input.io.fileExists,
       });
 
       if (executionPlan.action === "skip") {
+        recordExpansionImportResumePlanMetric(resumeDiagnostics, executionPlan);
         const skippedResult: ExpansionImportMarketResult = {
           marketTicker: market.marketTicker,
           seriesTicker: market.seriesTicker,
@@ -564,7 +599,7 @@ export async function runHistoricalExpansionImport(
           remainingMarketBudget -= 1;
         }
 
-        if (input.config.execute) {
+        if (input.config.execute && shouldPersistResumeSkipToCheckpoint(executionPlan.reason)) {
           checkpoint = updateExpansionImportCheckpoint(
             checkpoint,
             job.jobId,
@@ -574,6 +609,26 @@ export async function runHistoricalExpansionImport(
         }
 
         continue;
+      }
+
+      if (executionPlan.action === "retry") {
+        recordExpansionImportResumePlanMetric(resumeDiagnostics, executionPlan);
+      }
+
+      if (
+        input.config.verifyResumeArtifacts
+        && executionPlan.action === "execute"
+        && input.config.resume
+      ) {
+        const verification = verifyExpansionImportArtifacts({
+          ...artifactPaths,
+          fileExists: input.io.fileExists,
+        });
+        if (verification === "ambiguous") {
+          recordExpansionImportResumePlanMetric(resumeDiagnostics, executionPlan, {
+            ambiguousArtifact: true,
+          });
+        }
       }
 
       traceDiscoveryListResponse(reconciliationTrace, {
@@ -710,6 +765,7 @@ export async function runHistoricalExpansionImport(
           warnings,
           rateLimitState,
           adaptiveThrottle,
+          resumeDiagnostics,
         );
 
         persistRunArtifacts(input, partialSummary, {
@@ -829,6 +885,7 @@ export async function runHistoricalExpansionImport(
     warnings,
     rateLimitState,
     adaptiveThrottle,
+    resumeDiagnostics,
   );
 
   if (input.config.execute) {

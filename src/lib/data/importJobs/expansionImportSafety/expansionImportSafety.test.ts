@@ -16,12 +16,18 @@ const JOB_ID = "expansion-KXBTC15M-20260101-20260331";
 function createSafety(overrides?: Partial<{
   resume: boolean;
   skipFailed: boolean;
+  retryFailed: boolean;
+  retryUnsupported: boolean;
+  verifyResumeArtifacts: boolean;
   forceMarket: string | null;
   maxRetries: number;
 }>) {
   return {
     resume: false,
     skipFailed: false,
+    retryFailed: false,
+    retryUnsupported: false,
+    verifyResumeArtifacts: false,
     forceMarket: null,
     checkpointPath: CHECKPOINT_PATH,
     maxRetries: 2,
@@ -45,6 +51,7 @@ describe("initializeExpansionImportCheckpoint", () => {
           jobId: JOB_ID,
           lastCompletedMarketTicker: "MKT-A",
           completedMarkets: ["MKT-A"],
+          unsupportedSkippedMarkets: [],
           failedMarkets: [
             {
               marketTicker: "MKT-B",
@@ -94,6 +101,7 @@ describe("planExpansionMarketExecution", () => {
             jobId: JOB_ID,
             lastCompletedMarketTicker: "MKT-A",
             completedMarkets: ["MKT-A"],
+            unsupportedSkippedMarkets: [],
             failedMarkets: [],
           },
         ],
@@ -109,7 +117,8 @@ describe("planExpansionMarketExecution", () => {
 
     expect(plan).toEqual({
       action: "skip",
-      reason: "Already completed in checkpoint",
+      reason: "Successful import already recorded in checkpoint",
+      resumeMetric: "resumeSkippedSuccessful",
     });
   });
 
@@ -134,6 +143,7 @@ describe("planExpansionMarketExecution", () => {
             jobId: JOB_ID,
             lastCompletedMarketTicker: null,
             completedMarkets: [],
+            unsupportedSkippedMarkets: [],
             failedMarkets: [
               {
                 marketTicker: "MKT-B",

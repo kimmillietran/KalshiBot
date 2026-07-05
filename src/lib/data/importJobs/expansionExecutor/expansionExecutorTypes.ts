@@ -6,6 +6,7 @@ import { DEFAULT_HISTORICAL_EXPANSION_IMPORT_CHECKPOINT_PATH } from "@/lib/data/
 
 import type { ExpansionImportRateLimitDiagnostics } from "./expansionImportRateLimit";
 import type { ExpansionImportAdaptiveThrottleDiagnostics } from "./expansionImportAdaptiveThrottle";
+import type { ExpansionImportResumeDiagnostics } from "@/lib/data/importJobs/expansionImportSafety/expansionImportResumeSemantics";
 import type {
   ExpansionImportSampleStrategy,
   ExpansionImportSelectionCounts,
@@ -122,6 +123,7 @@ export type HistoricalExpansionImportSummary = {
   warnings: readonly string[];
   rateLimitDiagnostics: ExpansionImportRateLimitDiagnostics;
   adaptiveThrottleDiagnostics: ExpansionImportAdaptiveThrottleDiagnostics;
+  resumeDiagnostics: ExpansionImportResumeDiagnostics;
 };
 
 export type HistoricalExpansionImportExecutorConfig = {
@@ -137,6 +139,9 @@ export type HistoricalExpansionImportExecutorConfig = {
   jobId: string | null;
   resume: boolean;
   skipFailed: boolean;
+  retryFailed: boolean;
+  retryUnsupported: boolean;
+  verifyResumeArtifacts: boolean;
   forceMarket: string | null;
   checkpointPath: string;
   maxRetries: number;

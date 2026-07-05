@@ -1,6 +1,6 @@
 import type { ExpansionImportMarketResult } from "@/lib/data/importJobs/expansionExecutor/expansionExecutorTypes";
-import { isUnsupportedHistoricalMarketSkipReason } from "@/lib/data/importJobs/expansionExecutor/classifyUnsupportedHistoricalMarket";
 
+import { isTerminalUnsupportedSkipReason } from "./expansionImportResumeSemantics";
 import type {
   ExpansionImportJobCheckpoint,
   HistoricalExpansionImportCheckpoint,
@@ -12,27 +12,27 @@ function updateJobCheckpoint(
   updatedAt: string,
 ): ExpansionImportJobCheckpoint {
   const completedMarkets = new Set(job.completedMarkets);
+  const unsupportedSkippedMarkets = new Set(job.unsupportedSkippedMarkets);
   const failedMarkets = job.failedMarkets.filter(
     (entry) => entry.marketTicker !== market.marketTicker,
   );
 
-  if (market.status === "imported" || market.status === "planned") {
+  if (market.status === "imported") {
     completedMarkets.add(market.marketTicker);
+    unsupportedSkippedMarkets.delete(market.marketTicker);
 
     return {
       ...job,
       lastCompletedMarketTicker: market.marketTicker,
       completedMarkets: [...completedMarkets].sort(),
+      unsupportedSkippedMarkets: [...unsupportedSkippedMarkets].sort(),
       failedMarkets,
     };
   }
 
   if (
     market.status === "skipped"
-    && (
-      market.skipReason?.includes("already present")
-      || isUnsupportedHistoricalMarketSkipReason(market.skipReason)
-    )
+    && market.skipReason?.includes("already present")
   ) {
     completedMarkets.add(market.marketTicker);
 
@@ -40,6 +40,22 @@ function updateJobCheckpoint(
       ...job,
       lastCompletedMarketTicker: market.marketTicker,
       completedMarkets: [...completedMarkets].sort(),
+      unsupportedSkippedMarkets: [...unsupportedSkippedMarkets].sort(),
+      failedMarkets,
+    };
+  }
+
+  if (
+    market.status === "skipped"
+    && isTerminalUnsupportedSkipReason(market.skipReason)
+  ) {
+    unsupportedSkippedMarkets.add(market.marketTicker);
+    completedMarkets.delete(market.marketTicker);
+
+    return {
+      ...job,
+      completedMarkets: [...completedMarkets].sort(),
+      unsupportedSkippedMarkets: [...unsupportedSkippedMarkets].sort(),
       failedMarkets,
     };
   }
@@ -53,6 +69,7 @@ function updateJobCheckpoint(
     return {
       ...job,
       completedMarkets: [...completedMarkets].sort(),
+      unsupportedSkippedMarkets: [...unsupportedSkippedMarkets].sort(),
       failedMarkets: [
         ...failedMarkets,
         {
@@ -65,7 +82,12 @@ function updateJobCheckpoint(
     };
   }
 
-  return job;
+  return {
+    ...job,
+    completedMarkets: [...completedMarkets].sort(),
+    unsupportedSkippedMarkets: [...unsupportedSkippedMarkets].sort(),
+    failedMarkets,
+  };
 }
 
 /** Applies a market result to the in-memory checkpoint. */

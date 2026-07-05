@@ -9,6 +9,7 @@ function createEmptyJobCheckpoint(jobId: string): ExpansionImportJobCheckpoint {
     jobId,
     lastCompletedMarketTicker: null,
     completedMarkets: [],
+    unsupportedSkippedMarkets: [],
     failedMarkets: [],
   };
 }

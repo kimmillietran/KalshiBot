@@ -740,6 +740,9 @@ const EXECUTE_EXPANSION_IMPORT_BOOLEAN_FLAGS = [
   "--resume",
   "--skip-failed",
   "--adaptive-throttle",
+  "--retry-failed",
+  "--retry-unsupported",
+  "--verify-resume-artifacts",
 ] as const;
 
 function looksLikeExpansionImportConfigPath(token: string): boolean {

@@ -23,6 +23,7 @@ export type ExpansionImportJobCheckpoint = {
   jobId: string;
   lastCompletedMarketTicker: string | null;
   completedMarkets: readonly string[];
+  unsupportedSkippedMarkets: readonly string[];
   failedMarkets: readonly ExpansionImportFailedMarketCheckpoint[];
 };
 
@@ -40,16 +41,16 @@ export type HistoricalExpansionImportCheckpoint = {
 export type ExpansionImportSafetyConfig = {
   resume: boolean;
   skipFailed: boolean;
+  retryFailed: boolean;
+  retryUnsupported: boolean;
+  verifyResumeArtifacts: boolean;
   forceMarket: string | null;
   checkpointPath: string;
   maxRetries: number;
   summaryInputPath: string | null;
 };
 
-export type ExpansionMarketExecutionPlan =
-  | { action: "execute" }
-  | { action: "skip"; reason: string }
-  | { action: "retry"; retryCount: number };
+export type { ExpansionImportResumeDiagnostics } from "./expansionImportResumeSemantics";
 
 export type ExpansionImportCheckpointIo = {
   readFile: (path: string) => string;

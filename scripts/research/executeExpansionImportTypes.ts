@@ -184,6 +184,9 @@ export function parseExecuteExpansionImportConfigFromArgv(
     successDecayAfter:
       readOptionalNumberFlag(argv, "--success-decay-after")
       ?? DEFAULT_EXPANSION_SUCCESS_DECAY_AFTER,
+    retryFailed: readBooleanFlag(argv, "--retry-failed"),
+    retryUnsupported: readBooleanFlag(argv, "--retry-unsupported"),
+    verifyResumeArtifacts: readBooleanFlag(argv, "--verify-resume-artifacts"),
   };
 }
 

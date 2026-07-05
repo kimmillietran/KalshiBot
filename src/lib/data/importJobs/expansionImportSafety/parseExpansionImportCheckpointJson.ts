@@ -13,6 +13,7 @@ const jobCheckpointSchema = z.object({
   jobId: z.string().trim().min(1),
   lastCompletedMarketTicker: z.string().trim().min(1).nullable(),
   completedMarkets: z.array(z.string().trim().min(1)),
+  unsupportedSkippedMarkets: z.array(z.string().trim().min(1)).optional(),
   failedMarkets: z.array(failedMarketSchema),
 });
 
@@ -47,5 +48,11 @@ export function parseExpansionImportCheckpointJson(
     );
   }
 
-  return result.data as HistoricalExpansionImportCheckpoint;
+  return {
+    ...result.data,
+    jobs: result.data.jobs.map((job) => ({
+      ...job,
+      unsupportedSkippedMarkets: job.unsupportedSkippedMarkets ?? [],
+    })),
+  } as HistoricalExpansionImportCheckpoint;
 }
