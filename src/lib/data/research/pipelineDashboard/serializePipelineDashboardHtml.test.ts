@@ -103,6 +103,18 @@ const REPORT: PipelineDashboardReport = {
     successfulImports: 0,
     unsupportedMarkets: 0,
   },
+  hypothesisEvolution: {
+    historyPath: "data/research-results/hypothesis-history.json",
+    historyPresent: false,
+    runCount: 0,
+    strongestImprovingHypothesis: null,
+    largestRobustnessGain: null,
+    largestObservationGrowth: null,
+    approachingPromotion: [],
+    regressedHypotheses: [],
+    strengtheningCount: 0,
+    weakeningCount: 0,
+  },
 };
 
 describe("serializePipelineDashboardHtml", () => {

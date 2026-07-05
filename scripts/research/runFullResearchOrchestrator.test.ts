@@ -21,6 +21,7 @@ const BASE_REGISTERED_SCRIPTS = [
   "research:candidate-promotions",
   "research:artifact-index",
   "research:hypothesis-lifecycle",
+  "research:hypothesis-history",
   "research:dashboard",
 ] as const;
 
@@ -48,7 +49,7 @@ describe("runFullResearchOrchestratorCommand", () => {
     }, { generatedAt: GENERATED_AT });
 
     expect(exitCode).toBe(0);
-    expect(calls).toHaveLength(16);
+    expect(calls).toHaveLength(17);
     expect(calls.some((call) => call.npmScript === "research:execute-expansion-import")).toBe(false);
 
     const parsed = JSON.parse(writes.get(OUTPUT_PATH)!);

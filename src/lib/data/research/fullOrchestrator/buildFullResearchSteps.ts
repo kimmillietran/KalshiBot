@@ -15,6 +15,10 @@ import {
 import { DEFAULT_HYPOTHESIS_CANDIDATES_OUTPUT_PATH } from "@/lib/data/research/hypothesisCandidates/hypothesisCandidateTypes";
 import { DEFAULT_HYPOTHESIS_EVIDENCE_HTML_PATH } from "@/lib/data/research/hypothesisEvidence/hypothesisEvidenceTypes";
 import {
+  DEFAULT_HYPOTHESIS_EVOLUTION_HTML_PATH,
+  DEFAULT_HYPOTHESIS_HISTORY_OUTPUT_PATH,
+} from "@/lib/data/research/hypothesisEvolution/hypothesisEvolutionTypes";
+import {
   DEFAULT_HYPOTHESIS_VALIDATION_HTML_PATH,
   DEFAULT_HYPOTHESIS_VALIDATION_OUTPUT_PATH,
 } from "@/lib/data/research/hypothesisRobustness/hypothesisRobustnessTypes";
@@ -45,6 +49,8 @@ const HARNESS_SUMMARY_OUTPUT =
 const ARTIFACT_INDEX_JSON = "data/research-results/research-artifact-index.json";
 const ARTIFACT_INDEX_HTML = "data/reports/research-artifact-index.html";
 const HYPOTHESIS_LIFECYCLE_HTML = "data/reports/research-hypothesis-lifecycle.html";
+const HYPOTHESIS_HISTORY_JSON = DEFAULT_HYPOTHESIS_HISTORY_OUTPUT_PATH;
+const HYPOTHESIS_EVOLUTION_HTML = DEFAULT_HYPOTHESIS_EVOLUTION_HTML_PATH;
 const RESEARCH_DASHBOARD_HTML = "data/reports/research-dashboard.html";
 
 /** Builds the ordered end-to-end research workflow step definitions. */
@@ -249,6 +255,15 @@ export function buildFullResearchSteps(
       args: [],
       expectedOutputs: [HYPOTHESIS_LIFECYCLE_HTML],
       upstreamStepIds: ["hypothesis-validation"],
+      independent: false,
+    },
+    {
+      id: "hypothesis-history",
+      label: "Hypothesis evolution tracker",
+      npmScript: "research:hypothesis-history",
+      args: [],
+      expectedOutputs: [HYPOTHESIS_HISTORY_JSON, HYPOTHESIS_EVOLUTION_HTML],
+      upstreamStepIds: ["hypothesis-validation", "coverage-validation"],
       independent: false,
     },
     {

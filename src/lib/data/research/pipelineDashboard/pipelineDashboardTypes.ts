@@ -8,6 +8,7 @@ import {
   HISTORICAL_EXPANSION_IMPORT_SUMMARY_PATH,
 } from "@/lib/data/research/fullOrchestrator/coveragePhasePaths";
 import { DEFAULT_HYPOTHESIS_CANDIDATES_OUTPUT_PATH } from "@/lib/data/research/hypothesisCandidates/hypothesisCandidateTypes";
+import { DEFAULT_HYPOTHESIS_HISTORY_OUTPUT_PATH } from "@/lib/data/research/hypothesisEvolution/hypothesisEvolutionTypes";
 import { DEFAULT_HYPOTHESIS_VALIDATION_OUTPUT_PATH } from "@/lib/data/research/hypothesisRobustness/hypothesisRobustnessTypes";
 import { DEFAULT_STRATEGY_LEADERBOARD_OUTPUT_PATH } from "@/lib/data/research/leaderboard/strategyLeaderboardTypes";
 import { DEFAULT_RESEARCH_PIPELINE_SUMMARY_PATH } from "@/lib/data/research/pipeline/researchPipelineTypes";
@@ -39,6 +40,7 @@ export type PipelineDashboardInputPaths = {
   coverageValidationPath: string;
   historicalExpansionImportSummaryPath: string;
   expansionRebuildSummaryPath: string;
+  hypothesisHistoryPath: string;
 };
 
 export const DEFAULT_PIPELINE_DASHBOARD_INPUT_PATHS: PipelineDashboardInputPaths = {
@@ -57,6 +59,7 @@ export const DEFAULT_PIPELINE_DASHBOARD_INPUT_PATHS: PipelineDashboardInputPaths
   coverageValidationPath: COVERAGE_VALIDATION_OUTPUT_PATH,
   historicalExpansionImportSummaryPath: HISTORICAL_EXPANSION_IMPORT_SUMMARY_PATH,
   expansionRebuildSummaryPath: EXPANSION_REBUILD_SUMMARY_PATH,
+  hypothesisHistoryPath: DEFAULT_HYPOTHESIS_HISTORY_OUTPUT_PATH,
 };
 
 export type PipelineStatusSection = {
@@ -144,6 +147,19 @@ export type HistoricalImportabilitySection = {
   unsupportedMarkets: number;
 };
 
+export type HypothesisEvolutionSection = {
+  historyPath: string;
+  historyPresent: boolean;
+  runCount: number;
+  strongestImprovingHypothesis: string | null;
+  largestRobustnessGain: number | null;
+  largestObservationGrowth: number | null;
+  approachingPromotion: readonly string[];
+  regressedHypotheses: readonly string[];
+  strengtheningCount: number;
+  weakeningCount: number;
+};
+
 export type PipelineDashboardReport = {
   generatedAt: string;
   outputPath: string;
@@ -155,6 +171,7 @@ export type PipelineDashboardReport = {
   researchHealth: ResearchHealthSection;
   coveragePhase: CoveragePhaseSection;
   historicalImportability: HistoricalImportabilitySection;
+  hypothesisEvolution: HypothesisEvolutionSection;
 };
 
 export type BuildPipelineDashboardReportInput = {
@@ -321,6 +338,7 @@ export type ParsedPipelineDashboardInputs = {
   coverageValidation: ParsedCoverageValidation | null;
   historicalExpansionImportSummary: ParsedExpansionImportSummary | null;
   expansionRebuildSummary: { generatedAt: string } | null;
+  hypothesisHistory: import("@/lib/data/research/hypothesisEvolution/hypothesisEvolutionTypes").HypothesisHistoryDocument | null;
 };
 
 export type PipelineDashboardIo = {

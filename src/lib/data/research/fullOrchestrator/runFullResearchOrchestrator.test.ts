@@ -28,6 +28,7 @@ const READ_ONLY_STEP_ORDER = [
   "candidate-promotions",
   "artifact-index",
   "hypothesis-lifecycle",
+  "hypothesis-history",
   "research-dashboard",
 ] as const;
 
@@ -179,6 +180,7 @@ describe("runFullResearchOrchestrator", () => {
       "research:candidate-promotions",
       "research:artifact-index",
       "research:hypothesis-lifecycle",
+      "research:hypothesis-history",
       "research:dashboard",
     ]);
 

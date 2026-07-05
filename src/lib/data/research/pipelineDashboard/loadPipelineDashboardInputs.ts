@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { parseExpansionImportSummaryJson } from "@/lib/data/research/coveragePlanner/importability";
+import { parseHypothesisHistoryDocument } from "@/lib/data/research/hypothesisEvolution";
 
 import {
   PipelineDashboardError,
@@ -443,6 +444,23 @@ function readGeneratedArtifact(
   return tryReadDocument(io, path, generatedArtifactSchema);
 }
 
+function readHypothesisHistory(
+  io: PipelineDashboardIo,
+  path: string,
+): ParsedPipelineDashboardInputs["hypothesisHistory"] {
+  if (!io.fileExists(path)) {
+    return null;
+  }
+
+  try {
+    return parseHypothesisHistoryDocument(path, io.readFile(path));
+  } catch (error) {
+    throw new PipelineDashboardError(
+      error instanceof Error ? error.message : `Failed to read ${path}`,
+    );
+  }
+}
+
 /** Loads optional pipeline dashboard artifacts without mutating data. */
 export function loadPipelineDashboardInputs(
   io: PipelineDashboardIo,
@@ -503,5 +521,6 @@ export function loadPipelineDashboardInputs(
       inputPaths.historicalExpansionImportSummaryPath,
     ),
     expansionRebuildSummary: readGeneratedArtifact(io, inputPaths.expansionRebuildSummaryPath),
+    hypothesisHistory: readHypothesisHistory(io, inputPaths.hypothesisHistoryPath),
   };
 }

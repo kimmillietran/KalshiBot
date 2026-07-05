@@ -26,6 +26,7 @@ import {
   parseHistoricalCoveragePlanPathFromArgv,
   parseHistoricalExpansionConfigPathFromArgv,
   parseHistoricalExpansionImportSummaryPathFromArgv,
+  parseHypothesisHistoryPathFromArgv,
   parseHarnessResultsPathFromArgv,
   parseHarnessSummaryFallbackPathFromArgv,
   parseHypothesisCandidatesPathFromArgv,
@@ -63,6 +64,7 @@ export function runResearchPipelineDashboardCommand(
       historicalExpansionImportSummaryPath:
         parseHistoricalExpansionImportSummaryPathFromArgv(normalizedArgv),
       expansionRebuildSummaryPath: parseExpansionRebuildSummaryPathFromArgv(normalizedArgv),
+      hypothesisHistoryPath: parseHypothesisHistoryPathFromArgv(normalizedArgv),
     };
     const generatedAt = options?.generatedAt ?? new Date().toISOString();
 

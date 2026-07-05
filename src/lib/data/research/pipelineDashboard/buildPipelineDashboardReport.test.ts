@@ -189,6 +189,7 @@ describe("buildPipelineDashboardReport", () => {
 
     expect(report.pipelineStatus.pipelineStatus).toBe("unknown");
     expect(report.hypothesisSummary.hypothesisCount).toBe(0);
+    expect(report.hypothesisEvolution.runCount).toBe(0);
     expect(report.strategySummary.topCandidateStrategyId).toBeNull();
     expect(serializePipelineDashboardHtml(report)).toContain("Research Pipeline Dashboard");
   });
@@ -277,6 +278,7 @@ describe("buildPipelineDashboardReport", () => {
     expect(html).toContain("Hypothesis summary");
     expect(html).toContain("Strategy summary");
     expect(html).toContain("Research health");
+    expect(html).toContain("Hypothesis Evolution");
     expect(html).toContain("research-artifact-index.json");
   });
 });

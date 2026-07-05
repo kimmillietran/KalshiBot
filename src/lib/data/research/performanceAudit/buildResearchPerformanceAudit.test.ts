@@ -89,7 +89,7 @@ describe("buildResearchPerformanceAudit", () => {
       },
     });
 
-    expect(report.steps).toHaveLength(16);
+    expect(report.steps).toHaveLength(17);
     expect(report.summary.totalRuntimeMs).toBeGreaterThan(0);
     expect(report.summary.estimatedParallelRuntimeMs).toBeLessThan(
       report.summary.totalRuntimeMs,

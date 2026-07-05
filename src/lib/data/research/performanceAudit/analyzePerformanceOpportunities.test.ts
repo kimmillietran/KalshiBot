@@ -131,7 +131,7 @@ describe("full research summary fixture shape", () => {
       })),
     };
 
-    expect(summary.steps).toHaveLength(16);
+    expect(summary.steps).toHaveLength(17);
     expect(summary.steps.find((step) => step.stepId === "artifact-index")?.durationMs).toBe(500);
   });
 });

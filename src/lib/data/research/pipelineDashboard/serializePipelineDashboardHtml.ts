@@ -369,6 +369,26 @@ function renderHistoricalImportability(report: PipelineDashboardReport): string 
     </section>`;
 }
 
+function renderHypothesisEvolution(report: PipelineDashboardReport): string {
+  const section = report.hypothesisEvolution;
+
+  return `
+    <section class="panel">
+      <h2>Hypothesis Evolution</h2>
+      <p class="muted">Longitudinal hypothesis tracking · source <code>${escapeHtml(section.historyPath)}</code></p>
+      <div class="stat-grid">
+        ${renderStat("Runs tracked", escapeHtml(String(section.runCount)))}
+        ${renderStat("Strengthening", escapeHtml(String(section.strengtheningCount)), theme.bullish)}
+        ${renderStat("Weakening", escapeHtml(String(section.weakeningCount)), section.weakeningCount > 0 ? theme.bearish : undefined)}
+        ${renderStat("Largest robustness gain", escapeHtml(section.largestRobustnessGain?.toString() ?? "—"), theme.bullish)}
+        ${renderStat("Largest observation growth", escapeHtml(section.largestObservationGrowth?.toString() ?? "—"))}
+      </div>
+      <p><strong>Strongest improving:</strong> ${escapeHtml(section.strongestImprovingHypothesis ?? "—")}</p>
+      <p><strong>Approaching promotion:</strong> ${escapeHtml(section.approachingPromotion.join(", ") || "—")}</p>
+      <p><strong>Regressed hypotheses:</strong> ${escapeHtml(section.regressedHypotheses.join(", ") || "—")}</p>
+    </section>`;
+}
+
 function renderQuickLinks(report: PipelineDashboardReport): string {
   const links = [
     report.inputPaths.pipelineSummaryPath,
@@ -384,6 +404,7 @@ function renderQuickLinks(report: PipelineDashboardReport): string {
     report.coveragePhase.expansionConfig.path,
     report.coveragePhase.coverageValidation.path,
     "data/reports/research-hypothesis-lifecycle.html",
+    "data/reports/hypothesis-evolution.html",
     "data/reports/research-report.html",
   ];
 
@@ -422,6 +443,7 @@ export function serializePipelineDashboardHtml(
       ${renderPipelineStatus(report)}
       ${renderCoveragePhase(report)}
       ${renderHistoricalImportability(report)}
+      ${renderHypothesisEvolution(report)}
       <div class="grid-2">
         ${renderArtifactHealth(report)}
         ${renderHypothesisSummary(report)}

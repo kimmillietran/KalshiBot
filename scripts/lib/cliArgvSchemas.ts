@@ -341,6 +341,15 @@ export const HYPOTHESIS_LIFECYCLE_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--harness-dir" },
 ];
 
+export const HYPOTHESIS_HISTORY_ARGV_SCHEMA: readonly NpmArgvField[] = [
+  { flag: "--output" },
+  { flag: "--html-output" },
+  { flag: "--hypothesis-candidates" },
+  { flag: "--hypothesis-validation" },
+  { flag: "--coverage-validation" },
+  { flag: "--mispricing-atlas" },
+];
+
 export const RESEARCH_ARTIFACT_INDEX_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--discovery-result" },
   { flag: "--imports-dir" },
@@ -380,6 +389,7 @@ export const RESEARCH_PIPELINE_DASHBOARD_ARGV_SCHEMA: readonly NpmArgvField[] = 
   { flag: "--coverage-validation" },
   { flag: "--historical-expansion-import-summary" },
   { flag: "--expansion-rebuild-summary" },
+  { flag: "--hypothesis-history" },
 ];
 
 export const RESEARCH_EXPERIMENT_ARGV_SCHEMA: readonly NpmArgvField[] = [
@@ -603,6 +613,10 @@ export function normalizeHistoricalCoveragePlanArgv(argv: readonly string[]): st
 
 export function normalizeHypothesisLifecycleArgv(argv: readonly string[]): string[] {
   return normalizeNpmScriptArgv(argv, HYPOTHESIS_LIFECYCLE_ARGV_SCHEMA);
+}
+
+export function normalizeHypothesisHistoryArgv(argv: readonly string[]): string[] {
+  return normalizeNpmScriptArgv(argv, HYPOTHESIS_HISTORY_ARGV_SCHEMA);
 }
 
 export function normalizeResearchArtifactIndexArgv(argv: readonly string[]): string[] {

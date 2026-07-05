@@ -2,6 +2,7 @@ export {
   buildPipelineDashboardReport,
   buildPipelineDashboardReportFromInputs,
 } from "./buildPipelineDashboardReport";
+export { buildHypothesisEvolutionSection } from "./buildHypothesisEvolutionSection";
 export { loadPipelineDashboardInputs } from "./loadPipelineDashboardInputs";
 export { serializePipelineDashboardHtml } from "./serializePipelineDashboardHtml";
 export {
@@ -18,6 +19,7 @@ export type {
   ArtifactHealthSection,
   BuildPipelineDashboardReportInput,
   HypothesisSummarySection,
+  HypothesisEvolutionSection,
   ParsedPipelineDashboardInputs,
   PipelineDashboardInputPaths,
   PipelineDashboardIo,

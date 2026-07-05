@@ -530,6 +530,37 @@ export type {
 } from "./hypothesisLifecycle";
 
 export {
+  buildHypothesisEvolutionReport,
+  buildHypothesisEvolutionRun,
+  analyzeHypothesisEvolution,
+  loadHypothesisEvolutionInputs,
+  serializeHypothesisEvolutionHtml,
+  appendHypothesisHistoryRun,
+  parseHypothesisHistoryDocument,
+  pruneHypothesisHistoryRuns,
+  serializeHypothesisHistoryDocument,
+  tryLoadHypothesisHistoryDocument,
+  DEFAULT_HYPOTHESIS_EVOLUTION_HTML_PATH,
+  DEFAULT_HYPOTHESIS_HISTORY_MAX_RUNS,
+  DEFAULT_HYPOTHESIS_HISTORY_OUTPUT_PATH,
+  HypothesisEvolutionError,
+} from "./hypothesisEvolution";
+export type {
+  HypothesisEvolutionDashboardHighlights,
+  HypothesisEvolutionEntry,
+  HypothesisEvolutionInputPaths,
+  HypothesisEvolutionIo,
+  HypothesisEvolutionReport,
+  HypothesisEvolutionRunSnapshot,
+  HypothesisEvolutionSummary,
+  HypothesisEvolutionTrend,
+  HypothesisEvolutionTrendMetrics,
+  HypothesisEvolutionValidationEntry,
+  HypothesisHistoryDocument,
+  HypothesisHistoryRun,
+} from "./hypothesisEvolution";
+
+export {
   buildStrategySynthesisReport,
   derivePromotionStatus,
   deriveStrategyDirection,

@@ -80,7 +80,7 @@ describe("runResearchPerformanceAuditCommand", () => {
       totalRuntimeMs: number;
       opportunityCount: number;
     };
-    expect(payload.totalRuntimeMs).toBe(16_000);
+    expect(payload.totalRuntimeMs).toBe(17_000);
     expect(payload.opportunityCount).toBeGreaterThan(0);
   });
 
