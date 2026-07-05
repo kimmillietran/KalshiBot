@@ -503,6 +503,23 @@ export type {
 } from "./performanceAudit";
 
 export {
+  buildExpansionImportPerformanceAudit,
+  loadExpansionImportPerformanceAuditInputs,
+  parseExpansionImportPerformanceAuditConfigFromArgv,
+  serializeExpansionImportPerformanceAudit,
+  serializeExpansionImportPerformanceAuditHtml,
+  DEFAULT_EXPANSION_IMPORT_PERFORMANCE_AUDIT_OUTPUT_PATH,
+  DEFAULT_EXPANSION_IMPORT_PERFORMANCE_AUDIT_HTML_PATH,
+  ExpansionImportPerformanceAuditError,
+} from "./expansionImportPerformanceAudit";
+export type {
+  BuildExpansionImportPerformanceAuditInput,
+  ExpansionImportPerformanceAuditConfig,
+  ExpansionImportPerformanceAuditReport,
+  ExpansionImportPerformanceRecommendations,
+} from "./expansionImportPerformanceAudit";
+
+export {
   buildHypothesisLifecycleReport,
   buildHypothesisLifecycleReportFromInputs,
   loadHypothesisLifecycleInputs,

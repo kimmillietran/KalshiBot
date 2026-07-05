@@ -52,6 +52,7 @@
     "research:execute-expansion-import": "tsx scripts/research/executeExpansionImport.ts",
     "research:rebuild-after-expansion": "tsx scripts/research/rebuildAfterExpansion.ts",
     "research:performance-audit": "tsx scripts/research/buildResearchPerformanceAudit.ts",
+    "research:expansion-import-audit": "tsx scripts/research/buildExpansionImportPerformanceAudit.ts",
     "experiments:register": "tsx scripts/experiments/registerExperiments.ts",
     "leaderboard:strategies": "tsx scripts/leaderboard/runStrategyLeaderboard.ts",
     "data:audit-bid-ask": "tsx scripts/data/auditBidAskFidelity.ts",
