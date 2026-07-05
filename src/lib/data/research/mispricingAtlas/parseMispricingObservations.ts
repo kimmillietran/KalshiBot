@@ -295,6 +295,9 @@ function extractSnapshotFallbackObservations(input: {
 }
 
 export type ExtractedMispricingMarketData = {
+  strategyId: string;
+  seriesTicker: string;
+  marketTicker: string;
   observations: readonly MispricingObservation[];
   warnings: readonly MispricingAtlasWarning[];
 };
@@ -391,7 +394,13 @@ export function extractMispricingObservationsFromResearchOutput(
       marketTicker,
     });
 
-    return { observations: [], warnings };
+    return {
+      strategyId,
+      seriesTicker,
+      marketTicker,
+      observations: [],
+      warnings,
+    };
   }
 
   const backtestResult = parseJsonValue(researchRun.backtestResult, "backtestResult");
@@ -441,6 +450,9 @@ export function extractMispricingObservationsFromResearchOutput(
   }
 
   return {
+    strategyId,
+    seriesTicker,
+    marketTicker,
     observations: observations.sort((left, right) => {
       const marketCompare = left.marketTicker.localeCompare(right.marketTicker);
       if (marketCompare !== 0) {

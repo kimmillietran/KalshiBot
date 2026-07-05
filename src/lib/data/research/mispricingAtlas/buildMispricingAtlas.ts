@@ -1,145 +1,122 @@
 import { stableStringify } from "@/lib/trading/config/hashConfig";
 
-import { scanCalibrationResearchOutputs } from "@/lib/data/research/calibration/scanCalibrationResearchOutputs";
-import type { ScannedCalibrationResearchOutput } from "@/lib/data/research/calibration/calibrationTypes";
+import type { CalibrationResearchOutputRef } from "@/lib/data/research/calibration/enumerateCalibrationResearchOutputPaths";
+import { enumerateCalibrationResearchOutputPaths } from "@/lib/data/research/calibration/enumerateCalibrationResearchOutputPaths";
 import { DEFAULT_REGIME_TAGS_INPUT_PATH } from "@/lib/data/research/hypothesisCandidates/hypothesisCandidateTypes";
 
-import {
-  computeCoarseMispricingBucketSummaries,
-  computeMoneynessBucketSummaries,
-  computeOverallMispricingCalibration,
-  computeProbabilityBucketSummaries,
-  computeTimeRemainingBucketSummaries,
-  computeVolatilityBucketSummaries,
-} from "./computeMispricingBucketMetrics";
-import {
-  collectMispricingAtlasBucketGroups,
-  computeMispricingAtlasCoverageDiagnostics,
-} from "./computeMispricingAtlasCoverage";
-import { extractMispricingObservationsFromResearchOutput } from "./parseMispricingObservations";
+import { collectMispricingAtlasBucketGroups, computeMispricingAtlasCoverageDiagnostics } from "./computeMispricingAtlasCoverage";
 import { loadRegimeVolatilityByMarket } from "./loadRegimeVolatilityByMarket";
+import {
+  createMispricingAtlasIncrementalState,
+  finalizeMispricingAtlasIncrementalState,
+  ingestMispricingMarketExtraction,
+} from "./mispricingAtlasIncrementalAccumulator";
 import {
   DEFAULT_MISPRICING_ATLAS_MIN_SAMPLE_THRESHOLD,
   type BuildMispricingAtlasInput,
   type MispricingAtlas,
   type MispricingAtlasIo,
-  type MispricingAtlasSampleCounts,
-  type MispricingAtlasWarning,
-  type MispricingObservation,
+  type MispricingAtlasMemoryDiagnostics,
 } from "./mispricingAtlasTypes";
+import { extractMispricingObservationsFromResearchOutput } from "./parseMispricingObservations";
 
-function sortWarnings(
-  warnings: readonly MispricingAtlasWarning[],
-): MispricingAtlasWarning[] {
-  return [...warnings].sort((left, right) => {
-    const marketCompare = (left.marketTicker ?? "").localeCompare(
-      right.marketTicker ?? "",
-    );
-    if (marketCompare !== 0) {
-      return marketCompare;
-    }
-
-    return left.message.localeCompare(right.message);
-  });
-}
-
-function sortObservations(
-  observations: readonly MispricingObservation[],
-): MispricingObservation[] {
-  return [...observations].sort((left, right) => {
-    const marketCompare = left.marketTicker.localeCompare(right.marketTicker);
-    if (marketCompare !== 0) {
-      return marketCompare;
-    }
-
-    const strategyCompare = left.strategyId.localeCompare(right.strategyId);
-    if (strategyCompare !== 0) {
-      return strategyCompare;
-    }
-
-    return left.stepIndex - right.stepIndex;
-  });
-}
-
-function buildSampleCounts(input: {
-  observations: readonly MispricingObservation[];
-  marketCount: number;
-  warnings: readonly MispricingAtlasWarning[];
-}): MispricingAtlasSampleCounts {
-  return {
-    totalObservations: input.observations.length,
-    marketCount: input.marketCount,
-    skippedMissingSettlement: input.warnings.filter(
-      (warning) => warning.code === "missing-settlement",
-    ).length,
-    skippedMissingProbability: input.warnings.filter(
-      (warning) => warning.code === "missing-probability",
-    ).length,
-    skippedMissingContext: input.warnings.filter(
-      (warning) => warning.code === "missing-context",
-    ).length,
-  };
-}
-
-function collectObservations(
-  scanned: readonly ScannedCalibrationResearchOutput[],
-): {
-  observations: MispricingObservation[];
-  warnings: MispricingAtlasWarning[];
-  marketCount: number;
-} {
-  const observations: MispricingObservation[] = [];
-  const warnings: MispricingAtlasWarning[] = [];
-  const seenMarkets = new Set<string>();
-
-  for (const entry of scanned) {
-    const extracted = extractMispricingObservationsFromResearchOutput(
-      entry.outputJson,
-      entry.outputPath,
-      {
-        strategyId: entry.strategyId,
-        seriesTicker: entry.seriesTicker,
-        marketTicker: entry.marketTicker,
-      },
-    );
-
-    seenMarkets.add(`${entry.strategyId}/${entry.seriesTicker}/${entry.marketTicker}`);
-    observations.push(...extracted.observations);
-    warnings.push(...extracted.warnings);
+function readHeapUsedBytes(): number | null {
+  if (typeof process === "undefined" || typeof process.memoryUsage !== "function") {
+    return null;
   }
 
+  return process.memoryUsage().heapUsed;
+}
+
+function createMemoryDiagnosticsTracker(): {
+  recordFile: (outputPath: string, fileBytes: number) => void;
+  finalize: (totalObservations: number) => MispricingAtlasMemoryDiagnostics;
+} {
+  let filesProcessed = 0;
+  let peakHeapUsedBytes = readHeapUsedBytes();
+  let largestFileBytes = 0;
+  let largestFilePath: string | null = null;
+
   return {
-    observations: sortObservations(observations),
-    warnings: sortWarnings(warnings),
-    marketCount: seenMarkets.size,
+    recordFile(outputPath: string, fileBytes: number) {
+      filesProcessed += 1;
+      const heapUsed = readHeapUsedBytes();
+      if (heapUsed !== null) {
+        peakHeapUsedBytes =
+          peakHeapUsedBytes === null
+            ? heapUsed
+            : Math.max(peakHeapUsedBytes, heapUsed);
+      }
+
+      if (fileBytes > largestFileBytes) {
+        largestFileBytes = fileBytes;
+        largestFilePath = outputPath;
+      }
+    },
+    finalize(totalObservations: number) {
+      return {
+        filesProcessed,
+        peakHeapUsedBytes,
+        largestFileBytes,
+        largestFilePath,
+        totalObservations,
+      };
+    },
   };
 }
 
-/** Builds a deterministic mispricing atlas from scanned research outputs. */
-export function buildMispricingAtlas(
-  input: BuildMispricingAtlasInput,
+function processResearchOutputJson(
+  state: ReturnType<typeof createMispricingAtlasIncrementalState>,
+  outputJson: string,
+  ref: Pick<
+    CalibrationResearchOutputRef,
+    "strategyId" | "seriesTicker" | "marketTicker" | "outputPath"
+  >,
+  regimeVolatilityByMarket?: BuildMispricingAtlasInput["regimeVolatilityByMarket"],
+): void {
+  const extracted = extractMispricingObservationsFromResearchOutput(
+    outputJson,
+    ref.outputPath,
+    {
+      strategyId: ref.strategyId,
+      seriesTicker: ref.seriesTicker,
+      marketTicker: ref.marketTicker,
+    },
+  );
+
+  ingestMispricingMarketExtraction(
+    state,
+    {
+      strategyId: extracted.strategyId,
+      seriesTicker: extracted.seriesTicker,
+      marketTicker: extracted.marketTicker,
+      observations: extracted.observations,
+      warnings: extracted.warnings,
+    },
+    { regimeVolatilityByMarket },
+  );
+}
+
+function buildAtlasFromIncrementalState(
+  input: Pick<
+    BuildMispricingAtlasInput,
+    "generatedAt" | "inputRoot" | "outputPath" | "minSampleThreshold"
+  >,
+  state: ReturnType<typeof createMispricingAtlasIncrementalState>,
+  memoryDiagnostics?: MispricingAtlasMemoryDiagnostics,
 ): MispricingAtlas {
-  const { observations, warnings, marketCount } = collectObservations(input.scanned);
-  const sampleCounts = buildSampleCounts({ observations, marketCount, warnings });
+  const finalized = finalizeMispricingAtlasIncrementalState(state);
   const minSampleThreshold =
     input.minSampleThreshold ?? DEFAULT_MISPRICING_ATLAS_MIN_SAMPLE_THRESHOLD;
-  const probabilityBuckets = computeProbabilityBucketSummaries(observations);
-  const timeRemainingBuckets = computeTimeRemainingBucketSummaries(observations);
-  const moneynessBuckets = computeMoneynessBucketSummaries(observations);
-  const volatilityBuckets = computeVolatilityBucketSummaries(observations);
-  const coarseBuckets = computeCoarseMispricingBucketSummaries(
-    observations,
-    input.regimeVolatilityByMarket,
-  );
   const coverageDiagnostics = computeMispricingAtlasCoverageDiagnostics({
     bucketGroups: collectMispricingAtlasBucketGroups({
-      probabilityBuckets,
-      timeRemainingBuckets,
-      moneynessBuckets,
-      volatilityBuckets,
-      coarseBuckets,
+      probabilityBuckets: finalized.probabilityBuckets,
+      timeRemainingBuckets: finalized.timeRemainingBuckets,
+      moneynessBuckets: finalized.moneynessBuckets,
+      volatilityBuckets: finalized.volatilityBuckets,
+      coarseBuckets: finalized.coarseBuckets,
     }),
-    sampleCounts,
+    sampleCounts: finalized.sampleCounts,
     minSampleThreshold,
   });
 
@@ -147,16 +124,83 @@ export function buildMispricingAtlas(
     generatedAt: input.generatedAt,
     inputRoot: input.inputRoot,
     outputPath: input.outputPath,
-    sampleCounts,
-    overallCalibration: computeOverallMispricingCalibration(observations),
-    probabilityBuckets,
-    timeRemainingBuckets,
-    moneynessBuckets,
-    volatilityBuckets,
-    coarseBuckets,
+    sampleCounts: finalized.sampleCounts,
+    overallCalibration: finalized.overallCalibration,
+    probabilityBuckets: finalized.probabilityBuckets,
+    timeRemainingBuckets: finalized.timeRemainingBuckets,
+    moneynessBuckets: finalized.moneynessBuckets,
+    volatilityBuckets: finalized.volatilityBuckets,
+    coarseBuckets: finalized.coarseBuckets,
     coverageDiagnostics,
-    warnings,
+    ...(memoryDiagnostics ? { memoryDiagnostics } : {}),
+    warnings: finalized.warnings,
   };
+}
+
+function processResearchOutputRefsIncrementally(
+  refs: readonly CalibrationResearchOutputRef[],
+  io: MispricingAtlasIo,
+  options: {
+    regimeVolatilityByMarket?: BuildMispricingAtlasInput["regimeVolatilityByMarket"];
+    memoryReport?: boolean;
+  },
+): {
+  state: ReturnType<typeof createMispricingAtlasIncrementalState>;
+  memoryDiagnostics?: MispricingAtlasMemoryDiagnostics;
+} {
+  const state = createMispricingAtlasIncrementalState({
+    regimeVolatilityByMarket: options.regimeVolatilityByMarket,
+  });
+  const memoryTracker = options.memoryReport
+    ? createMemoryDiagnosticsTracker()
+    : null;
+
+  for (const ref of refs) {
+    const outputJson = io.readFile(ref.outputPath);
+    if (memoryTracker) {
+      memoryTracker.recordFile(ref.outputPath, outputJson.length);
+    }
+
+    processResearchOutputJson(state, outputJson, ref, options.regimeVolatilityByMarket);
+  }
+
+  return {
+    state,
+    memoryDiagnostics: memoryTracker
+      ? memoryTracker.finalize(state.totalObservations)
+      : undefined,
+  };
+}
+
+/** Builds a deterministic mispricing atlas from scanned research outputs. */
+export function buildMispricingAtlas(
+  input: BuildMispricingAtlasInput,
+): MispricingAtlas {
+  const state = createMispricingAtlasIncrementalState({
+    regimeVolatilityByMarket: input.regimeVolatilityByMarket,
+  });
+  const memoryTracker = input.memoryReport
+    ? createMemoryDiagnosticsTracker()
+    : null;
+
+  for (const entry of input.scanned) {
+    if (memoryTracker) {
+      memoryTracker.recordFile(entry.outputPath, entry.outputJson.length);
+    }
+
+    processResearchOutputJson(
+      state,
+      entry.outputJson,
+      entry,
+      input.regimeVolatilityByMarket,
+    );
+  }
+
+  return buildAtlasFromIncrementalState(
+    input,
+    state,
+    memoryTracker ? memoryTracker.finalize(state.totalObservations) : undefined,
+  );
 }
 
 export function buildMispricingAtlasFromDirectories(
@@ -167,20 +211,27 @@ export function buildMispricingAtlasFromDirectories(
     generatedAt: string;
     regimeTagsPath?: string;
     minSampleThreshold?: number;
+    memoryReport?: boolean;
   },
 ): MispricingAtlas {
-  const scanned = scanCalibrationResearchOutputs(inputRoot, io);
+  const refs = enumerateCalibrationResearchOutputPaths(inputRoot, io);
   const regimeTagsPath = options.regimeTagsPath ?? DEFAULT_REGIME_TAGS_INPUT_PATH;
   const regimeVolatilityByMarket = loadRegimeVolatilityByMarket(io, regimeTagsPath);
-
-  return buildMispricingAtlas({
-    inputRoot,
-    outputPath,
-    generatedAt: options.generatedAt,
-    scanned,
+  const { state, memoryDiagnostics } = processResearchOutputRefsIncrementally(refs, io, {
     regimeVolatilityByMarket,
-    minSampleThreshold: options.minSampleThreshold,
+    memoryReport: options.memoryReport,
   });
+
+  return buildAtlasFromIncrementalState(
+    {
+      generatedAt: options.generatedAt,
+      inputRoot,
+      outputPath,
+      minSampleThreshold: options.minSampleThreshold,
+    },
+    state,
+    memoryDiagnostics,
+  );
 }
 
 export function serializeMispricingAtlas(atlas: MispricingAtlas): string {

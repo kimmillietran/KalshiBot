@@ -19,6 +19,7 @@ import {
   formatStdoutOutput,
   mapCommandError,
   parseInputDirFromArgv,
+  parseMemoryReportFlag,
   parseOutputPathFromArgv,
 } from "./buildMispricingAtlasTypes";
 import type { MispricingAtlasCommandIo } from "./buildMispricingAtlasTypes";
@@ -32,13 +33,14 @@ export function runMispricingAtlasCommand(
     const normalizedArgv = normalizeMispricingAtlasArgv(argv);
     const inputRoot = parseInputDirFromArgv(normalizedArgv);
     const outputPath = parseOutputPathFromArgv(normalizedArgv);
+    const memoryReport = parseMemoryReportFlag(normalizedArgv);
     const generatedAt = options?.generatedAt ?? new Date().toISOString();
 
     const atlas = buildMispricingAtlasFromDirectories(
       inputRoot,
       outputPath,
       io,
-      { generatedAt },
+      { generatedAt, memoryReport },
     );
 
     io.mkdirSync(dirname(outputPath), { recursive: true });
@@ -55,6 +57,7 @@ export function runMispricingAtlasCommand(
           nonEmptyBuckets: atlas.coverageDiagnostics?.nonEmptyBuckets ?? 0,
           largestBucketObservations:
             atlas.coverageDiagnostics?.largestBucketObservations ?? 0,
+          memoryDiagnostics: atlas.memoryDiagnostics ?? null,
         }),
       ),
     );
@@ -96,6 +99,7 @@ if (process.env.VITEST !== "true") {
 export {
   formatStdoutOutput,
   parseInputDirFromArgv,
+  parseMemoryReportFlag,
   parseOutputPathFromArgv,
   MispricingAtlasCommandError,
 } from "./buildMispricingAtlasTypes";

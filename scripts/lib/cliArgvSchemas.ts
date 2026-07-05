@@ -92,6 +92,7 @@ export const RESEARCH_REPORT_ARGV_SCHEMA: readonly NpmArgvField[] = [
 export const MISPRICING_ATLAS_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--input-dir" },
   { flag: "--output" },
+  { flag: "--memory-report" },
 ];
 
 export const LEAD_LAG_ARGV_SCHEMA: readonly NpmArgvField[] = [

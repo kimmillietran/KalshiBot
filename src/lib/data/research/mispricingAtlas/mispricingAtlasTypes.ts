@@ -100,6 +100,14 @@ export type MispricingAtlasWarning = {
   marketTicker?: string;
 };
 
+export type MispricingAtlasMemoryDiagnostics = {
+  filesProcessed: number;
+  peakHeapUsedBytes: number | null;
+  largestFileBytes: number;
+  largestFilePath: string | null;
+  totalObservations: number;
+};
+
 export type MispricingAtlas = {
   generatedAt: string;
   inputRoot: string;
@@ -112,6 +120,7 @@ export type MispricingAtlas = {
   volatilityBuckets: readonly MispricingAtlasBucketSummary[];
   coarseBuckets?: MispricingAtlasCoarseBuckets;
   coverageDiagnostics?: MispricingAtlasCoverageDiagnostics;
+  memoryDiagnostics?: MispricingAtlasMemoryDiagnostics;
   warnings: readonly MispricingAtlasWarning[];
 };
 
@@ -127,6 +136,7 @@ export type BuildMispricingAtlasInput = {
   scanned: readonly import("@/lib/data/research/calibration/calibrationTypes").ScannedCalibrationResearchOutput[];
   regimeVolatilityByMarket?: RegimeVolatilityByMarketKey;
   minSampleThreshold?: number;
+  memoryReport?: boolean;
 };
 
 export type MispricingAtlasIo = {

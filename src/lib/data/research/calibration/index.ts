@@ -22,6 +22,8 @@ export {
   extractCalibrationObservationsFromScan,
 } from "./extractCalibrationObservations";
 export { parseCalibrationResearchDocument } from "./parseCalibrationResearchOutput";
+export { enumerateCalibrationResearchOutputPaths } from "./enumerateCalibrationResearchOutputPaths";
+export type { CalibrationResearchOutputRef } from "./enumerateCalibrationResearchOutputPaths";
 export { scanCalibrationResearchOutputs } from "./scanCalibrationResearchOutputs";
 export {
   CALIBRATION_REPORT_FILENAME,
