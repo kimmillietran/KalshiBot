@@ -2,16 +2,18 @@ import { quarterLabel } from "./coveragePlannerDateUtils";
 import {
   averageUnderCoverageSeverity,
   listMonthsByCoverageStatus,
-  listMonthsNeedingImport,
 } from "./computeMonthCoverageDepth";
 import { estimateRecommendationImportability } from "./importability/estimateRecommendationImportability";
 import type { ParsedExpansionImportMarketRecord } from "./importability/importabilityTypes";
+import { isPromisingHypothesis } from "./buildTemporalBalanceDiagnostics";
 import type {
   CoverageImportRecommendation,
   CoverageSnapshot,
   HistoricalCoveragePlanConfig,
+  HypothesisTemporalBalanceEntry,
   MonthCoverageEntry,
   ParsedCoveragePlannerArtifacts,
+  TemporalBalanceDiagnostics,
 } from "./coveragePlannerTypes";
 
 type MonthGapWindow = {
@@ -68,7 +70,9 @@ function dominantSeries(snapshot: CoverageSnapshot): string {
 
 function buildGapWindows(snapshot: CoverageSnapshot): MonthGapWindow[] {
   const seriesTicker = dominantSeries(snapshot);
-  const targetMonths = listMonthsNeedingImport(snapshot.monthCoverage);
+  const targetMonths = snapshot.monthCoverage
+    .filter((entry) => entry.coverageStatus !== "COVERED")
+    .map((entry) => entry.month);
   const groups = groupContiguousMonths(targetMonths);
 
   return groups.map((months) => ({
@@ -151,7 +155,7 @@ function includesUnderCoveredMonths(
   return months.some((month) => byMonth.get(month)?.coverageStatus === "UNDER_COVERED");
 }
 
-function scoreRecommendation(input: {
+function scoreCoverageGapRecommendation(input: {
   targetMonthCount: number;
   averageSeverity: number;
   unstableHypothesisCount: number;
@@ -187,6 +191,39 @@ function scoreRecommendation(input: {
   );
 }
 
+const TEMPORAL_BALANCE_PRIORITY_BOOST = 45;
+
+function scoreTemporalBalanceRecommendation(input: {
+  hypothesis: HypothesisTemporalBalanceEntry;
+  targetMonthCount: number;
+  estimatedSupportLevel: "high" | "medium" | "low";
+}): number {
+  const robustnessScore = Math.min(35, Math.round(input.hypothesis.robustnessScore * 0.45));
+  const thinMonthScore = Math.min(30, input.hypothesis.thinMonths.length * 10);
+  const windowScore = Math.min(20, input.targetMonthCount * 8);
+  const benefitScore =
+    (input.hypothesis.validationBenefit.improvesMonthPersistence ? 8 : 0)
+    + (input.hypothesis.validationBenefit.improvesLeaveOneMonthOutStability ? 8 : 0)
+    + (input.hypothesis.validationBenefit.improvesSampleConcentration ? 6 : 0);
+  const importabilityScore =
+    input.estimatedSupportLevel === "high"
+      ? 12
+      : input.estimatedSupportLevel === "low"
+        ? -20
+        : 0;
+
+  return Math.round(
+    Math.min(
+      100,
+      Math.max(
+        0,
+        robustnessScore + thinMonthScore + windowScore + benefitScore + importabilityScore
+          + TEMPORAL_BALANCE_PRIORITY_BOOST,
+      ),
+    ),
+  );
+}
+
 function quarterFullyGapped(targetMonths: readonly string[]): boolean {
   if (targetMonths.length === 0) {
     return false;
@@ -217,7 +254,7 @@ function describeMonthGaps(
   return labels.join("; ");
 }
 
-function buildRationale(
+function buildCoverageGapRationale(
   window: MonthGapWindow,
   snapshot: CoverageSnapshot,
   unstableIds: readonly string[],
@@ -254,7 +291,25 @@ function buildRationale(
   return `Import ${window.seriesTicker} markets for ${range} because ${quarter} coverage is absent in the current historical dataset.`;
 }
 
-function buildExpectedBenefit(
+function buildTemporalBalanceRationale(
+  window: MonthGapWindow,
+  hypothesis: HypothesisTemporalBalanceEntry,
+): string {
+  const range = formatMonthRange(window.startMonth, window.endMonth);
+  const thinSummary = hypothesis.thinMonths
+    .filter((month) => window.targetMonths.includes(month))
+    .map((month) => {
+      const entry = hypothesis.monthObservationDistribution.find(
+        (distribution) => distribution.month === month,
+      );
+      return `${month} (${entry?.observations ?? 0}/${hypothesis.targetMinimumObservationsPerMonth} obs)`;
+    })
+    .join("; ");
+
+  return `Temporal-balance import for ${window.seriesTicker} ${range} to strengthen "${hypothesis.hypothesis}" (robustness ${hypothesis.robustnessScore}). Thin months: ${thinSummary}.`;
+}
+
+function buildCoverageGapBenefit(
   window: MonthGapWindow,
   snapshot: CoverageSnapshot,
   unstableIds: readonly string[],
@@ -329,15 +384,70 @@ function appendImportabilityNote(
   return `${rationale} Prior import support is mixed (${unsupportedPct}% unsupported).`;
 }
 
-/** Builds prioritized import window recommendations from coverage gaps. */
-export function buildCoverageImportRecommendations(
+function buildTemporalBalanceRecommendations(
+  snapshot: CoverageSnapshot,
+  temporalBalance: TemporalBalanceDiagnostics,
+  importabilityMarkets: readonly ParsedExpansionImportMarketRecord[],
+): CoverageImportRecommendation[] {
+  const seriesTicker = dominantSeries(snapshot);
+  const recommendations: CoverageImportRecommendation[] = [];
+
+  for (const hypothesis of temporalBalance.hypothesisBalances) {
+    const groups = groupContiguousMonths(hypothesis.thinMonths);
+
+    for (const months of groups) {
+      const importability = estimateRecommendationImportability(importabilityMarkets, {
+        seriesTicker,
+        startMonth: months[0]!,
+        endMonth: months.at(-1)!,
+      });
+
+      recommendations.push({
+        recommendationId: `temporal-balance-${hypothesis.hypothesisId}-${months[0]}`,
+        recommendationType: "temporal-balance-import",
+        seriesTicker,
+        startMonth: months[0]!,
+        endMonth: months.at(-1)!,
+        missingMonths: months,
+        includesMissing: includesMissingMonths(snapshot.monthCoverage, months),
+        includesUnderCovered: includesUnderCoveredMonths(snapshot.monthCoverage, months),
+        priorityScore: scoreTemporalBalanceRecommendation({
+          hypothesis,
+          targetMonthCount: months.length,
+          estimatedSupportLevel: importability.estimatedSupportLevel,
+        }),
+        rationale: appendImportabilityNote(
+          buildTemporalBalanceRationale(
+            {
+              seriesTicker,
+              startMonth: months[0]!,
+              endMonth: months.at(-1)!,
+              targetMonths: months,
+            },
+            hypothesis,
+          ),
+          importability,
+        ),
+        expectedResearchBenefit: hypothesis.expectedValidationBenefit,
+        supportingHypothesisIds: [hypothesis.hypothesisId],
+        targetHypothesisIds: [hypothesis.hypothesisId],
+        estimatedSupportLevel: importability.estimatedSupportLevel,
+        estimatedUnsupportedRate: importability.estimatedUnsupportedRate,
+      });
+    }
+  }
+
+  return recommendations;
+}
+
+function buildCoverageGapRecommendations(
   snapshot: CoverageSnapshot,
   artifacts: ParsedCoveragePlannerArtifacts,
   config: Pick<
     HistoricalCoveragePlanConfig,
     "monthPersistenceThreshold" | "minMarketsPerMonth" | "minTradingDaysPerMonth"
   >,
-  importabilityMarkets: readonly ParsedExpansionImportMarketRecord[] = [],
+  importabilityMarkets: readonly ParsedExpansionImportMarketRecord[],
 ): CoverageImportRecommendation[] {
   const unstableIds = unstableHypothesisIds(
     artifacts,
@@ -348,7 +458,7 @@ export function buildCoverageImportRecommendations(
     ...buildGapWindows(snapshot),
   ]);
 
-  const recommendations = windows.map((window, index) => {
+  return windows.map((window, index) => {
     const averageSeverity = averageUnderCoverageSeverity(
       snapshot.monthCoverage,
       window.targetMonths,
@@ -358,7 +468,7 @@ export function buildCoverageImportRecommendations(
       startMonth: window.startMonth,
       endMonth: window.endMonth,
     });
-    const priorityScore = scoreRecommendation({
+    const priorityScore = scoreCoverageGapRecommendation({
       targetMonthCount: window.targetMonths.length,
       averageSeverity,
       unstableHypothesisCount: unstableIds.length,
@@ -369,6 +479,7 @@ export function buildCoverageImportRecommendations(
 
     return {
       recommendationId: `coverage-import-${index + 1}`,
+      recommendationType: "coverage-gap-import",
       seriesTicker: window.seriesTicker,
       startMonth: window.startMonth,
       endMonth: window.endMonth,
@@ -380,22 +491,124 @@ export function buildCoverageImportRecommendations(
       ),
       priorityScore,
       rationale: appendImportabilityNote(
-        buildRationale(window, snapshot, unstableIds, config.monthPersistenceThreshold),
+        buildCoverageGapRationale(
+          window,
+          snapshot,
+          unstableIds,
+          config.monthPersistenceThreshold,
+        ),
         importability,
       ),
-      expectedResearchBenefit: buildExpectedBenefit(
+      expectedResearchBenefit: buildCoverageGapBenefit(
         window,
         snapshot,
         unstableIds,
         artifacts,
       ),
       supportingHypothesisIds: unstableIds.slice(0, 5),
+      targetHypothesisIds: [],
       estimatedSupportLevel: importability.estimatedSupportLevel,
       estimatedUnsupportedRate: importability.estimatedUnsupportedRate,
     };
   });
-
-  return recommendations.sort(
-    (left, right) => right.priorityScore - left.priorityScore,
-  );
 }
+
+function mergeRecommendations(
+  recommendations: readonly CoverageImportRecommendation[],
+): CoverageImportRecommendation[] {
+  const byKey = new Map<string, CoverageImportRecommendation>();
+
+  for (const recommendation of recommendations) {
+    const key = `${recommendation.seriesTicker}:${recommendation.startMonth}:${recommendation.endMonth}`;
+    const existing = byKey.get(key);
+
+    if (!existing) {
+      byKey.set(key, recommendation);
+      continue;
+    }
+
+    const preferred =
+      recommendation.recommendationType === "temporal-balance-import"
+      && existing.recommendationType === "coverage-gap-import"
+        ? recommendation
+        : recommendation.priorityScore > existing.priorityScore
+          ? recommendation
+          : existing;
+
+    byKey.set(key, {
+      ...preferred,
+      priorityScore: Math.max(existing.priorityScore, recommendation.priorityScore),
+      supportingHypothesisIds: [
+        ...new Set([
+          ...existing.supportingHypothesisIds,
+          ...recommendation.supportingHypothesisIds,
+        ]),
+      ].sort(),
+      targetHypothesisIds: [
+        ...new Set([
+          ...existing.targetHypothesisIds,
+          ...recommendation.targetHypothesisIds,
+        ]),
+      ].sort(),
+    });
+  }
+
+  return [...byKey.values()].sort((left, right) => {
+    const scoreCompare = right.priorityScore - left.priorityScore;
+    if (scoreCompare !== 0) {
+      return scoreCompare;
+    }
+
+    if (
+      left.recommendationType === "temporal-balance-import"
+      && right.recommendationType !== "temporal-balance-import"
+    ) {
+      return -1;
+    }
+
+    if (
+      right.recommendationType === "temporal-balance-import"
+      && left.recommendationType !== "temporal-balance-import"
+    ) {
+      return 1;
+    }
+
+    return left.recommendationId.localeCompare(right.recommendationId);
+  });
+}
+
+/** Builds prioritized import window recommendations from coverage gaps and temporal balance. */
+export function buildCoverageImportRecommendations(
+  snapshot: CoverageSnapshot,
+  artifacts: ParsedCoveragePlannerArtifacts,
+  config: Pick<
+    HistoricalCoveragePlanConfig,
+    "monthPersistenceThreshold" | "minMarketsPerMonth" | "minTradingDaysPerMonth"
+  >,
+  importabilityMarkets: readonly ParsedExpansionImportMarketRecord[] = [],
+  temporalBalance?: TemporalBalanceDiagnostics,
+): CoverageImportRecommendation[] {
+  const coverageGapRecommendations = buildCoverageGapRecommendations(
+    snapshot,
+    artifacts,
+    config,
+    importabilityMarkets,
+  );
+
+  if (!temporalBalance || temporalBalance.hypothesisBalances.length === 0) {
+    return coverageGapRecommendations;
+  }
+
+  const temporalRecommendations = buildTemporalBalanceRecommendations(
+    snapshot,
+    temporalBalance,
+    importabilityMarkets,
+  );
+
+  return mergeRecommendations([
+    ...temporalRecommendations,
+    ...coverageGapRecommendations,
+  ]);
+}
+
+export { isPromisingHypothesis };

@@ -4,6 +4,11 @@ export {
   serializeHistoricalCoveragePlan,
 } from "./buildHistoricalCoveragePlan";
 export { buildCoverageImportRecommendations } from "./buildCoverageImportRecommendations";
+export {
+  buildTemporalBalanceDiagnostics,
+  DEFAULT_TARGET_MIN_OBSERVATIONS_PER_MONTH,
+  isPromisingHypothesis,
+} from "./buildTemporalBalanceDiagnostics";
 export { computeCoverageSnapshot } from "./computeCoverageSnapshot";
 export {
   classifyMonthCoverageDepth,
@@ -42,14 +47,19 @@ export type {
   CoverageDepthThresholds,
   CoverageImportRecommendation,
   CoverageMarketRecord,
+  CoverageRecommendationType,
   CoveragePlannerInputStatus,
   CoveragePlannerIo,
   CoverageSnapshot,
   HistoricalCoveragePlanConfig,
   HistoricalCoveragePlanReport,
+  HypothesisTemporalBalanceEntry,
+  HypothesisValidationBenefit,
   MonthCoverageEntry,
   MonthCoverageThresholdComparison,
   ParsedCoveragePlannerArtifacts,
+  TemporalBalanceDiagnostics,
+  TemporalBalanceMonthEntry,
 } from "./coveragePlannerTypes";
 export { loadCoveragePlannerArtifacts } from "./parseCoveragePlannerArtifacts";
 export { scanCoverageMarketRecords } from "./scanCoverageMarketRecords";

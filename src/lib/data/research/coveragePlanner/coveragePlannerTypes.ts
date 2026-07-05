@@ -32,6 +32,10 @@ export const DEFAULT_MONTH_PERSISTENCE_THRESHOLD = 0.67;
 export const DEFAULT_MIN_MARKETS_PER_MONTH = 100;
 export const DEFAULT_MIN_TRADING_DAYS_PER_MONTH = 10;
 
+export type CoverageRecommendationType =
+  | "coverage-gap-import"
+  | "temporal-balance-import";
+
 export type CoverageDepthStatus = "MISSING" | "UNDER_COVERED" | "COVERED";
 
 export type MonthCoverageThresholdComparison = {
@@ -119,6 +123,7 @@ export type CoverageDepthThresholds = {
 
 export type CoverageImportRecommendation = {
   recommendationId: string;
+  recommendationType: CoverageRecommendationType;
   seriesTicker: string;
   startMonth: string;
   endMonth: string;
@@ -130,8 +135,45 @@ export type CoverageImportRecommendation = {
   rationale: string;
   expectedResearchBenefit: string;
   supportingHypothesisIds: readonly string[];
+  targetHypothesisIds: readonly string[];
   estimatedSupportLevel: EstimatedSupportLevel;
   estimatedUnsupportedRate: number;
+};
+
+export type TemporalBalanceMonthEntry = {
+  month: string;
+  marketCount: number;
+  researchObservationCount: number;
+  qualifyingHypothesisObservationCount: number;
+};
+
+export type HypothesisValidationBenefit = {
+  improvesMonthPersistence: boolean;
+  improvesLeaveOneMonthOutStability: boolean;
+  improvesSampleConcentration: boolean;
+};
+
+export type HypothesisTemporalBalanceEntry = {
+  hypothesisId: string;
+  hypothesis: string;
+  robustnessScore: number;
+  monthObservationDistribution: readonly {
+    month: string;
+    observations: number;
+  }[];
+  weakestMonths: readonly string[];
+  thinMonths: readonly string[];
+  targetMinimumObservationsPerMonth: number;
+  expectedValidationBenefit: string;
+  validationBenefit: HypothesisValidationBenefit;
+};
+
+export type TemporalBalanceDiagnostics = {
+  monthDiagnostics: readonly TemporalBalanceMonthEntry[];
+  hypothesisBalances: readonly HypothesisTemporalBalanceEntry[];
+  unevenHypothesisCount: number;
+  thinMonthCount: number;
+  targetMinimumObservationsPerMonth: number;
 };
 
 export type CoveragePlannerInputStatus = {
@@ -174,6 +216,7 @@ export type HistoricalCoveragePlanReport = {
   inputStatus: CoveragePlannerInputStatus;
   snapshot: CoverageSnapshot;
   recommendations: readonly CoverageImportRecommendation[];
+  temporalBalance: TemporalBalanceDiagnostics;
   importability: HistoricalImportabilityProfile;
   plannerNotes: readonly string[];
 };

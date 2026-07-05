@@ -43,6 +43,16 @@ function renderTradingDayCell(entry: MonthCoverageEntry): string {
   return `${entry.tradingDayCount} / ${entry.thresholds.minTradingDaysPerMonth}`;
 }
 
+function renderRecommendationTypeBadge(
+  recommendationType: HistoricalCoveragePlanReport["recommendations"][number]["recommendationType"],
+): string {
+  if (recommendationType === "temporal-balance-import") {
+    return `<span class="status-badge" style="background:${theme.info}22;color:${theme.info};border:1px solid ${theme.info}55">Temporal balance</span>`;
+  }
+
+  return `<span class="status-badge" style="background:${theme.textMuted}22;color:${theme.textMuted};border:1px solid ${theme.textMuted}55">Coverage gap</span>`;
+}
+
 function renderSummaryCards(report: HistoricalCoveragePlanReport): string {
   const { snapshot } = report;
   return `
@@ -53,6 +63,8 @@ function renderSummaryCards(report: HistoricalCoveragePlanReport): string {
       <div class="summary-card"><div class="summary-label">Under-covered</div><div class="summary-value" style="color:${theme.warning}">${snapshot.underCoveredMonths.length}</div></div>
       <div class="summary-card"><div class="summary-label">Missing months</div><div class="summary-value" style="color:${theme.bearish}">${snapshot.missingMonths.length}</div></div>
       <div class="summary-card"><div class="summary-label">Recommendations</div><div class="summary-value">${report.recommendations.length}</div></div>
+      <div class="summary-card"><div class="summary-label">Temporal-balance targets</div><div class="summary-value" style="color:${theme.info}">${report.temporalBalance.unevenHypothesisCount}</div></div>
+      <div class="summary-card"><div class="summary-label">Thin months</div><div class="summary-value" style="color:${theme.warning}">${report.temporalBalance.thinMonthCount}</div></div>
       <div class="summary-card"><div class="summary-label">Historical success rate</div><div class="summary-value">${report.importability.historicalSuccessRate === null ? "—" : `${Math.round(report.importability.historicalSuccessRate * 100)}%`}</div></div>
     </section>`;
 }
@@ -111,15 +123,50 @@ export function serializeHistoricalCoveragePlanHtml(
         <div class="recommendation-header">
           <h3>${escapeHtml(entry.seriesTicker)} · ${escapeHtml(entry.startMonth)} → ${escapeHtml(entry.endMonth)}</h3>
           <div class="recommendation-badges">
+            ${renderRecommendationTypeBadge(entry.recommendationType)}
             ${supportLevelBadge(entry.estimatedSupportLevel)}
             <span class="priority-pill">Priority ${entry.priorityScore}</span>
           </div>
         </div>
         <p>${escapeHtml(entry.rationale)}</p>
         <p class="muted">${escapeHtml(entry.expectedResearchBenefit)}</p>
-        <p class="muted">Target months: ${escapeHtml(entry.missingMonths.join(", ") || "—")} · Estimated unsupported rate: ${Math.round(entry.estimatedUnsupportedRate * 100)}%</p>
+        <p class="muted">Target months: ${escapeHtml(entry.missingMonths.join(", ") || "—")} · Target hypotheses: ${escapeHtml(entry.targetHypothesisIds.join(", ") || "—")} · Estimated unsupported rate: ${Math.round(entry.estimatedUnsupportedRate * 100)}%</p>
       </article>`,
     )
+    .join("");
+
+  const temporalMonthRows = report.temporalBalance.monthDiagnostics
+    .map(
+      (entry) => `
+      <tr>
+        <td>${escapeHtml(entry.month)}</td>
+        <td>${entry.marketCount}</td>
+        <td>${entry.researchObservationCount}</td>
+        <td>${entry.qualifyingHypothesisObservationCount}</td>
+      </tr>`,
+    )
+    .join("");
+
+  const hypothesisBalanceCards = report.temporalBalance.hypothesisBalances
+    .map((entry) => {
+      const distribution = entry.monthObservationDistribution
+        .map(
+          (monthEntry) =>
+            `${escapeHtml(monthEntry.month)}: ${monthEntry.observations}`,
+        )
+        .join(", ");
+
+      return `
+      <article class="recommendation-card">
+        <h3>${escapeHtml(entry.hypothesis)}</h3>
+        <p class="muted"><code>${escapeHtml(entry.hypothesisId)}</code> · robustness ${entry.robustnessScore}</p>
+        <p><strong>Month distribution:</strong> ${distribution || "—"}</p>
+        <p><strong>Weakest months:</strong> ${escapeHtml(entry.weakestMonths.join(", ") || "—")}</p>
+        <p><strong>Thin months:</strong> ${escapeHtml(entry.thinMonths.join(", ") || "—")}</p>
+        <p><strong>Target minimum:</strong> ${entry.targetMinimumObservationsPerMonth} observations/month</p>
+        <p class="muted">${escapeHtml(entry.expectedValidationBenefit)}</p>
+      </article>`;
+    })
     .join("");
 
   const notes = report.plannerNotes
@@ -250,6 +297,20 @@ export function serializeHistoricalCoveragePlanHtml(
       <thead><tr><th>Series</th><th>Markets</th><th>Months</th><th>Pattern</th></tr></thead>
       <tbody>${marketTypeRows || "<tr><td colspan=\"4\">No market types detected</td></tr>"}</tbody>
     </table>
+  </section>
+
+  <section class="panel">
+    <h2>Temporal balance diagnostics</h2>
+    <p class="muted">Per-month counts and promising-hypothesis observation balance · target minimum ${report.temporalBalance.targetMinimumObservationsPerMonth} observations/month</p>
+    <table>
+      <thead><tr><th>Month</th><th>Markets</th><th>Research obs</th><th>Qualifying hypothesis obs</th></tr></thead>
+      <tbody>${temporalMonthRows || "<tr><td colspan=\"4\">No temporal diagnostics available</td></tr>"}</tbody>
+    </table>
+  </section>
+
+  <section class="panel">
+    <h2>Hypothesis temporal balance</h2>
+    ${hypothesisBalanceCards || "<p class=\"muted\">No uneven promising hypotheses detected.</p>"}
   </section>
 
   <section class="panel">

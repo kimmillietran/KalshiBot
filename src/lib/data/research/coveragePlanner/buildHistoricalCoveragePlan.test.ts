@@ -463,6 +463,7 @@ describe("buildCoverageImportRecommendations", () => {
     expect(recommendations).toHaveLength(1);
     expect(recommendations[0]?.startMonth).toBe("2026-01");
     expect(recommendations[0]?.endMonth).toBe("2026-03");
+    expect(recommendations[0]?.recommendationType).toBe("coverage-gap-import");
     expect(recommendations[0]?.rationale).toContain("month-stability checks");
     expect(recommendations[0]?.rationale).toContain("2026-01 through 2026-03");
     expect(recommendations[0]?.estimatedSupportLevel).toBe("medium");
@@ -643,6 +644,111 @@ describe("buildHistoricalCoveragePlanFromPaths", () => {
     );
     expect(serializeHistoricalCoveragePlanHtml(report)).toContain("2026-02");
     expect(serializeHistoricalCoveragePlanHtml(report)).toContain("Under-covered");
+    expect(report.temporalBalance.hypothesisBalances).toEqual([]);
+  });
+});
+
+describe("buildHistoricalCoveragePlan temporal balance integration", () => {
+  it("serializes temporal balance diagnostics and recommendations in JSON and HTML", () => {
+    const validation = {
+      hypothesisId: "hyp-high-vol-overconfident",
+      hypothesis: "High volatility × [0.3, 0.7) × <15 min remaining overconfident",
+      sourceArtifact: "mispricing-atlas.json",
+      robustnessScore: 61,
+      passes: false,
+      reasons: [],
+      observationCount: 201,
+      timeStability: {
+        monthPeriods: [
+          { periodKey: "2026-01", observations: 90, signedCalibrationError: 0.1, edgeMatchesDirection: true },
+          { periodKey: "2026-02", observations: 85, signedCalibrationError: 0.1, edgeMatchesDirection: true },
+          { periodKey: "2026-03", observations: 1, signedCalibrationError: 0.1, edgeMatchesDirection: true },
+          { periodKey: "2026-04", observations: 23, signedCalibrationError: 0.1, edgeMatchesDirection: true },
+          { periodKey: "2026-05", observations: 2, signedCalibrationError: 0.1, edgeMatchesDirection: true },
+        ],
+        quarterPeriods: [],
+        monthPersistenceRate: 0.4,
+        quarterPersistenceRate: 0.4,
+        scoreComponent: 0,
+      },
+      regimeStability: {
+        regimes: [],
+        regimesWithEdge: 1,
+        regimesWithData: 3,
+        scoreComponent: 0,
+      },
+      sampleConcentration: {
+        uniqueTradingDays: 37,
+        largestContributingDay: "2026-01-15",
+        largestDayObservations: 40,
+        largestDayPercent: 0.4,
+        singleDayDominated: true,
+        scoreComponent: 0,
+      },
+      leaveOnePeriodOut: {
+        folds: [],
+        errorVariance: 0.0001,
+        errorStdDev: 0.009,
+        scoreComponent: 0,
+      },
+    };
+
+    const report = buildHistoricalCoveragePlan({
+      generatedAt: GENERATED_AT,
+      config: LOW_THRESHOLD_CONFIG,
+      inputStatus: {
+        dataHealthPath: DEFAULT_CONFIG.dataHealthPath,
+        mispricingAtlasPath: DEFAULT_CONFIG.mispricingAtlasPath,
+        hypothesisValidationPath: DEFAULT_CONFIG.hypothesisValidationPath,
+        regimeTagsPath: DEFAULT_CONFIG.regimeTagsPath,
+        expansionImportSummaryPath: DEFAULT_CONFIG.expansionImportSummaryPath,
+        importConfigsDir: DEFAULT_CONFIG.importConfigsDir,
+        fixturesDir: DEFAULT_CONFIG.fixturesDir,
+        researchResultsDir: DEFAULT_CONFIG.researchResultsDir,
+        dataHealthPresent: false,
+        mispricingAtlasPresent: false,
+        hypothesisValidationPresent: true,
+        regimeTagsPresent: false,
+        expansionImportSummaryPresent: false,
+      },
+      artifacts: {
+        dataHealth: null,
+        mispricingAtlas: null,
+        regimeTags: null,
+        hypothesisValidation: {
+          generatedAt: GENERATED_AT,
+          validations: [validation],
+        } as never,
+      },
+      marketRecords: [
+        {
+          seriesTicker: "KXBTC15M",
+          marketTicker: "MKT-1",
+          source: "import-config",
+          calendarMonths: ["2026-01", "2026-02", "2026-03", "2026-04", "2026-05"],
+          tradingDays: ["2026-01-10", "2026-02-10", "2026-03-01", "2026-04-10", "2026-05-02"],
+          volatilityRegime: "high",
+        },
+      ],
+      scanCounts: { importConfigCount: 1, fixtureCount: 0, researchOutputCount: 0 },
+      importabilityMarkets: [],
+      importability: createEmptyHistoricalImportabilityProfile(
+        DEFAULT_CONFIG.expansionImportSummaryPath,
+      ),
+    });
+
+    const json = serializeHistoricalCoveragePlan(report);
+    const html = serializeHistoricalCoveragePlanHtml(report);
+
+    expect(report.temporalBalance.unevenHypothesisCount).toBe(1);
+    expect(report.recommendations.some(
+      (entry) => entry.recommendationType === "temporal-balance-import",
+    )).toBe(true);
+    expect(json).toContain("temporalBalance");
+    expect(json).toContain("temporal-balance-import");
+    expect(html).toContain("Temporal balance diagnostics");
+    expect(html).toContain("Hypothesis temporal balance");
+    expect(html).toContain("High volatility");
   });
 });
 

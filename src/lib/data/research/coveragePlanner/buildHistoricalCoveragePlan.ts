@@ -1,5 +1,6 @@
 import { buildCoverageImportRecommendations } from "./buildCoverageImportRecommendations";
 import { computeCoverageSnapshot } from "./computeCoverageSnapshot";
+import { buildTemporalBalanceDiagnostics } from "./buildTemporalBalanceDiagnostics";
 import type {
   BuildHistoricalCoveragePlanInput,
   CoveragePlannerIo,
@@ -18,7 +19,10 @@ export function serializeHistoricalCoveragePlan(
 }
 
 function buildPlannerNotes(
-  report: Pick<HistoricalCoveragePlanReport, "snapshot" | "inputStatus" | "recommendations">,
+  report: Pick<
+    HistoricalCoveragePlanReport,
+    "snapshot" | "inputStatus" | "recommendations" | "temporalBalance"
+  >,
 ): string[] {
   const notes: string[] = [
     "Read-only planner: does not run imports or mutate replay/research calculations.",
@@ -62,6 +66,21 @@ function buildPlannerNotes(
     );
   }
 
+  if (report.temporalBalance.unevenHypothesisCount > 0) {
+    notes.push(
+      `${report.temporalBalance.unevenHypothesisCount} promising hypothesis(es) have thin months below ${report.temporalBalance.targetMinimumObservationsPerMonth} observations/month; temporal-balance imports are prioritized over blind expansion.`,
+    );
+  }
+
+  const temporalRecommendations = report.recommendations.filter(
+    (entry) => entry.recommendationType === "temporal-balance-import",
+  );
+  if (temporalRecommendations.length > 0) {
+    notes.push(
+      `${temporalRecommendations.length} temporal-balance import window(s) target weak months for promising hypotheses.`,
+    );
+  }
+
   return notes;
 }
 
@@ -74,11 +93,18 @@ export function buildHistoricalCoveragePlan(
     minTradingDaysPerMonth: input.config.minTradingDaysPerMonth,
   });
 
+  const temporalBalance = buildTemporalBalanceDiagnostics({
+    snapshot,
+    artifacts: input.artifacts,
+    monthPersistenceThreshold: input.config.monthPersistenceThreshold,
+  });
+
   const recommendations = buildCoverageImportRecommendations(
     snapshot,
     input.artifacts,
     input.config,
     input.importabilityMarkets,
+    temporalBalance,
   );
 
   return {
@@ -89,11 +115,13 @@ export function buildHistoricalCoveragePlan(
     inputStatus: input.inputStatus,
     snapshot,
     recommendations,
+    temporalBalance,
     importability: input.importability,
     plannerNotes: buildPlannerNotes({
       snapshot,
       inputStatus: input.inputStatus,
       recommendations,
+      temporalBalance,
     }),
   };
 }
