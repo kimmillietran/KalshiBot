@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { buildExpansionImportPerformanceAudit } from "./buildExpansionImportPerformanceAudit";
+import { parseExpansionImportPerformanceAuditSummaryJson } from "./loadExpansionImportPerformanceAuditInputs";
 import { defaultExpansionImportPerformanceAuditConfig } from "./parseExpansionImportPerformanceAuditArgv";
 import { serializeExpansionImportPerformanceAuditHtml } from "./serializeExpansionImportPerformanceAuditHtml";
 
@@ -155,6 +156,17 @@ describe("buildExpansionImportPerformanceAudit", () => {
     expect(report.recommendations.recommendedBatchSize).not.toBeNull();
     expect(report.throughputByMonth.length).toBeGreaterThan(0);
     expect(report.timeEstimates.backoffTimeMs).toBe(435_000);
+  });
+
+  it("parses summaries missing throttle and resume diagnostics", () => {
+    const summary = parseExpansionImportPerformanceAuditSummaryJson(
+      SUMMARY_PATH,
+      buildFixtureSummaryJson(),
+    );
+
+    expect(summary.adaptiveThrottleDiagnostics.adaptiveThrottleEnabled).toBe(false);
+    expect(summary.adaptiveThrottleDiagnostics.totalBackoffMs).toBe(435_000);
+    expect(summary.resumeDiagnostics.resumeSkippedSuccessful).toBe(0);
   });
 
   it("serializes HTML with key audit sections", () => {

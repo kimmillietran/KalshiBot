@@ -1,7 +1,11 @@
 import { z } from "zod";
 
+import type { ExpansionImportAdaptiveThrottleDiagnostics } from "@/lib/data/importJobs/expansionExecutor/expansionImportAdaptiveThrottle";
 import type { HistoricalExpansionImportSummary } from "@/lib/data/importJobs/expansionExecutor/expansionExecutorTypes";
-import { parseExpansionImportCheckpointJson } from "@/lib/data/importJobs/expansionImportSafety";
+import {
+  createExpansionImportResumeDiagnostics,
+  parseExpansionImportCheckpointJson,
+} from "@/lib/data/importJobs/expansionImportSafety";
 import type { HistoricalExpansionImportCheckpoint } from "@/lib/data/importJobs/expansionImportSafety";
 
 import {
@@ -83,7 +87,47 @@ const summarySchema = z.object({
     durationMs: z.number().finite().nonnegative(),
   }),
   jobs: z.array(jobSchema),
+  adaptiveThrottleDiagnostics: z
+    .object({
+      adaptiveThrottleEnabled: z.boolean(),
+      minBackoffMs: z.number().finite().nonnegative().nullable(),
+      maxBackoffMs: z.number().finite().nonnegative().nullable(),
+      currentDelayMs: z.number().finite().nonnegative().nullable(),
+      initialDelayMs: z.number().finite().nonnegative().nullable(),
+      rateLimitEvents: z.number().finite().nonnegative(),
+      avoidedRetriesEstimate: z.number().finite().nonnegative().nullable(),
+      totalBackoffMs: z.number().finite().nonnegative(),
+      throughputMarketsPerMinute: z.number().finite().nonnegative().nullable(),
+      throttleAdjustmentCount: z.number().finite().int().nonnegative(),
+    })
+    .optional(),
+  resumeDiagnostics: z
+    .object({
+      resumeSkippedSuccessful: z.number().finite().int().nonnegative(),
+      resumeSkippedUnsupported: z.number().finite().int().nonnegative(),
+      resumeRetriedFailed: z.number().finite().int().nonnegative(),
+      resumeRetriedTransient: z.number().finite().int().nonnegative(),
+      resumeAmbiguousStateCount: z.number().finite().int().nonnegative(),
+    })
+    .optional(),
 });
+
+function defaultAdaptiveThrottleDiagnostics(
+  backoffDurationMs: number,
+): ExpansionImportAdaptiveThrottleDiagnostics {
+  return {
+    adaptiveThrottleEnabled: false,
+    minBackoffMs: null,
+    maxBackoffMs: null,
+    currentDelayMs: null,
+    initialDelayMs: null,
+    rateLimitEvents: 0,
+    avoidedRetriesEstimate: null,
+    totalBackoffMs: backoffDurationMs,
+    throughputMarketsPerMinute: null,
+    throttleAdjustmentCount: 0,
+  };
+}
 
 function parseJson(path: string, json: string): unknown {
   try {
@@ -188,6 +232,10 @@ export function parseExpansionImportPerformanceAuditSummaryJson(
       firstRateLimitedTicker: null,
       recommendedNextAction: "No rate-limit diagnostics recorded.",
     },
+    adaptiveThrottleDiagnostics:
+      data.adaptiveThrottleDiagnostics
+      ?? defaultAdaptiveThrottleDiagnostics(data.rateLimitDiagnostics?.backoffDurationMs ?? 0),
+    resumeDiagnostics: data.resumeDiagnostics ?? createExpansionImportResumeDiagnostics(),
   };
 }
 
