@@ -933,4 +933,43 @@ describe("runHistoricalExpansionImport cap enforcement", () => {
     expect(recordMarket).toHaveBeenCalledTimes(2);
     expect(runImport).not.toHaveBeenCalled();
   });
+
+  it("skips unsupported historical markets before import and reports unsupported counts", async () => {
+    const unsupportedMarket = createExpansionDiscoveredMarket({
+      marketTicker: "KXBTC15M-26UNSUPPORTED-00",
+      expirationValue: "",
+      listMarketWire: {
+        ticker: "KXBTC15M-26UNSUPPORTED-00",
+        event_ticker: "KXBTC15M-26UNSUPPORTED",
+        series_ticker: "KXBTC15M",
+        status: "finalized",
+        open_time: "2026-01-15T12:00:00.000Z",
+        close_time: "2026-01-15T12:15:00.000Z",
+        expiration_value: "",
+      },
+    });
+    const mock: MockFs = { files: {}, directories: new Set(["data"]) };
+    const io = createIo(mock);
+    const runImport = vi.fn(async (config) => createImportResult(config.marketTicker));
+
+    const summary = await runHistoricalExpansionImport({
+      generatedAt: GENERATED_AT,
+      config: createBaseConfig({ execute: true, maxMarkets: 1 }),
+      expansionConfigJson: createManifestJson(),
+      io,
+      deps: {
+        discoverMarkets: vi.fn(async () => [unsupportedMarket]),
+        runImport,
+      },
+    });
+
+    expect(runImport).not.toHaveBeenCalled();
+    expect(summary.summary.unsupportedCount).toBe(1);
+    expect(summary.summary.skippedUnsupportedCount).toBe(1);
+    expect(summary.summary.failedCount).toBe(0);
+    expect(summary.jobs[0]?.markets[0]?.status).toBe("skipped");
+    expect(summary.jobs[0]?.markets[0]?.skipReason).toBe(
+      "Unsupported historical market: Missing expiration_value from Kalshi historical API.",
+    );
+  });
 });

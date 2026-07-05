@@ -26,6 +26,7 @@ export function serializeHistoricalExpansionImportSummaryHtml(
         <td>${job.skippedCount}</td>
         <td>${job.failedCount}</td>
         <td>${job.plannedCount}</td>
+        <td>${job.unsupportedCount}</td>
         <td>${job.durationMs} ms</td>
       </tr>`,
     )
@@ -108,13 +109,15 @@ export function serializeHistoricalExpansionImportSummaryHtml(
     <div class="summary-card"><div class="summary-label">Skipped</div><div class="summary-value">${summary.summary.skippedCount}</div></div>
     <div class="summary-card"><div class="summary-label">Failed</div><div class="summary-value">${summary.summary.failedCount}</div></div>
     <div class="summary-card"><div class="summary-label">Planned</div><div class="summary-value">${summary.summary.plannedCount}</div></div>
+    <div class="summary-card"><div class="summary-label">Unsupported</div><div class="summary-value">${summary.summary.unsupportedCount}</div></div>
+    <div class="summary-card"><div class="summary-label">Skipped unsupported</div><div class="summary-value">${summary.summary.skippedUnsupportedCount}</div></div>
   </section>
 
   <section class="panel">
     <h2>Job results</h2>
     <table>
-      <thead><tr><th>Job</th><th>Series</th><th>Status</th><th>Discovered</th><th>Imported</th><th>Skipped</th><th>Failed</th><th>Planned</th><th>Duration</th></tr></thead>
-      <tbody>${jobRows || "<tr><td colspan=\"9\">No jobs executed</td></tr>"}</tbody>
+      <thead><tr><th>Job</th><th>Series</th><th>Status</th><th>Discovered</th><th>Imported</th><th>Skipped</th><th>Failed</th><th>Planned</th><th>Unsupported</th><th>Duration</th></tr></thead>
+      <tbody>${jobRows || "<tr><td colspan=\"10\">No jobs executed</td></tr>"}</tbody>
     </table>
   </section>
 

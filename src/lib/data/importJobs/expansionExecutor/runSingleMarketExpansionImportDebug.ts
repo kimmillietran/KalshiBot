@@ -21,6 +21,7 @@ import { readKalshiDiscoveryListMarketFromMetadata } from "@/lib/data/importers/
 
 import { buildExpansionMarketImportArtifacts } from "./buildExpansionMarketImportConfig";
 import { buildSingleMarketDiscoveryPayloadTrace } from "./buildSingleMarketDiscoveryPayloadTrace";
+import { classifyUnsupportedHistoricalMarket } from "./classifyUnsupportedHistoricalMarket";
 import { evaluateExpansionMarketSchemaReconciliation } from "./evaluateExpansionMarketSchemaReconciliation";
 import { resolveSeriesTickerFromMarketTicker } from "./fetchSingleMarketExpansionPayloads";
 import type { ExpansionDiscoveredMarket } from "./expansionExecutorTypes";
@@ -166,10 +167,15 @@ export async function runSingleMarketExpansionImportDebug(
     reconciliationSuccess,
     expirationValueSource,
   } = reconciliationEvaluation;
+  const unsupported = classifyUnsupportedHistoricalMarket({
+    listMarketWire,
+    detailMarketWire: detailFetch.wire,
+  });
 
   if (
     detailFetch.wire
     && !reconciliationSuccess
+    && unsupported.support === "supported"
     && input.config.execute
   ) {
     maybePersistDebugArtifact({
@@ -191,13 +197,16 @@ export async function runSingleMarketExpansionImportDebug(
 
   let importStatus: SingleMarketExpansionImportDebugImportStatus = "skipped";
   let failureReason: string | null = null;
+  let unsupportedHistoricalMarket = false;
   let configPath: string | null = null;
   let importResultPath: string | null = null;
 
   if (!detailFetch.wire && !listMarketWire) {
     failureReason = "Both list and detail payloads are unavailable";
-  } else if (!reconciliationSuccess) {
-    failureReason = `Schema reconciliation failed: missing ${mergedMissingRequiredFields.join(", ")}`;
+  } else if (unsupported.support === "unsupported") {
+    unsupportedHistoricalMarket = true;
+    importStatus = "skipped";
+    failureReason = unsupported.skipReason;
   } else if (!discoveredMarket) {
     failureReason = "Discovery list payload is unavailable";
   } else if (!discoveredMarket.openTime || !discoveredMarket.closeTime) {
@@ -285,6 +294,7 @@ export async function runSingleMarketExpansionImportDebug(
     listPayload,
     detailPayload,
     expirationValueSource,
+    unsupportedHistoricalMarket,
     reconciliation: {
       success: reconciliationSuccess,
       mergedFields: reconciliation.mergedFields,

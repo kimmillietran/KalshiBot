@@ -70,6 +70,8 @@ export type ExpansionImportJobResult = {
   skippedCount: number;
   failedCount: number;
   plannedCount: number;
+  unsupportedCount: number;
+  skippedUnsupportedCount: number;
   durationMs: number;
   warnings: readonly string[];
   markets: readonly ExpansionImportMarketResult[];
@@ -101,6 +103,8 @@ export type HistoricalExpansionImportSummary = {
     skippedCount: number;
     failedCount: number;
     plannedCount: number;
+    unsupportedCount: number;
+    skippedUnsupportedCount: number;
     durationMs: number;
   };
   jobs: readonly ExpansionImportJobResult[];

@@ -423,9 +423,58 @@ describe("runSingleMarketExpansionImportDebug", () => {
     });
 
     expect(report.reconciliation.success).toBe(false);
+    expect(report.unsupportedHistoricalMarket).toBe(true);
     expect(report.importStatus).toBe("skipped");
-    expect(report.failureReason).toContain("expiration_value");
+    expect(report.failureReason).toBe(
+      "Unsupported historical market: Missing expiration_value from Kalshi historical API.",
+    );
     expect(report.expirationValueSource).toBe("missing");
+  });
+
+  it("reports unsupported historical market for empty API expiration_value", async () => {
+    const incompleteList = {
+      ticker: MARKET_TICKER,
+      open_time: fixture.listMarket.open_time,
+      close_time: fixture.listMarket.close_time,
+      expiration_value: "",
+    };
+
+    const report = await runSingleMarketExpansionImportDebug({
+      generatedAt: GENERATED_AT,
+      config: {
+        marketTicker: MARKET_TICKER,
+        inputPath: CONFIG_PATH,
+        outputPath: OUTPUT_PATH,
+        htmlOutputPath: HTML_PATH,
+        importConfigsDir: "data/import-configs",
+        importsDir: "data/imports",
+        execute: false,
+        jobId: null,
+      },
+      expansionConfigJson: createManifestJson(),
+      io: {
+        readFile: () => createManifestJson(),
+        fileExists: () => true,
+        writeFile: () => {},
+        mkdirSync: () => {},
+      },
+      deps: createDeps({
+        discoverMarket: vi.fn(async () =>
+          createDiscoveryResult({ listMarketWire: incompleteList, expirationValue: "" }),
+        ),
+        fetchDetailMarketWire: vi.fn(async () => ({
+          wire: fixture.detailMarket,
+          requestPath: fixture.detailEndpoint,
+          httpStatus: 200,
+          unavailableReason: null,
+        })),
+      }),
+    });
+
+    expect(report.unsupportedHistoricalMarket).toBe(true);
+    expect(report.importStatus).toBe("skipped");
+    expect(report.failureReason).toContain("Unsupported historical market:");
+    expect(report.failureReason).toContain("expiration_value");
   });
 
   it("distinguishes import failure from reconciliation success", async () => {

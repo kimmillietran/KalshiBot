@@ -1,4 +1,5 @@
 import type { ExpansionImportMarketResult } from "@/lib/data/importJobs/expansionExecutor/expansionExecutorTypes";
+import { isUnsupportedHistoricalMarketSkipReason } from "@/lib/data/importJobs/expansionExecutor/classifyUnsupportedHistoricalMarket";
 
 import type {
   ExpansionImportJobCheckpoint,
@@ -26,7 +27,13 @@ function updateJobCheckpoint(
     };
   }
 
-  if (market.status === "skipped" && market.skipReason?.includes("already present")) {
+  if (
+    market.status === "skipped"
+    && (
+      market.skipReason?.includes("already present")
+      || isUnsupportedHistoricalMarketSkipReason(market.skipReason)
+    )
+  ) {
     completedMarkets.add(market.marketTicker);
 
     return {

@@ -44,6 +44,18 @@ export {
   resolveSeriesTickerFromMarketTicker,
 } from "./fetchSingleMarketExpansionPayloads";
 export { discoverSingleExpansionMarket } from "./discoverSingleExpansionMarket";
+export {
+  buildUnsupportedHistoricalMarketSkipReason,
+  classifyUnsupportedHistoricalMarket,
+  countUnsupportedHistoricalMarketResults,
+  formatUnsupportedHistoricalMarketFieldReason,
+  isUnsupportedHistoricalMarketSkipReason,
+} from "./classifyUnsupportedHistoricalMarket";
+export type {
+  UnsupportedHistoricalMarketClassification,
+  UnsupportedHistoricalMarketCounts,
+  UnsupportedHistoricalMarketSupport,
+} from "./classifyUnsupportedHistoricalMarket";
 export { evaluateExpansionMarketSchemaReconciliation } from "./evaluateExpansionMarketSchemaReconciliation";
 export { mapDiscoveredMarketToExpansionMarket } from "./mapDiscoveredMarketToExpansionMarket";
 export {

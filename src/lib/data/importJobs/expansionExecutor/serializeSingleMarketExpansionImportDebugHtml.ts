@@ -76,6 +76,7 @@ export function serializeSingleMarketExpansionImportDebugHtml(
         <tr><th>Found on page</th><td>${report.discoveryTrace.foundOnPage ?? "—"}</td></tr>
         <tr><th>Mode</th><td>${report.execute ? "execute" : "dry-run"}</td></tr>
         <tr><th>Import status</th><td>${escapeHtml(report.importStatus)}</td></tr>
+        <tr><th>Unsupported historical market</th><td>${report.unsupportedHistoricalMarket ? "yes" : "no"}</td></tr>
         <tr><th>Failure reason</th><td>${escapeHtml(report.failureReason ?? "—")}</td></tr>
       </tbody>
     </table>

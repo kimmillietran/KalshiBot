@@ -88,6 +88,7 @@ export type SingleMarketExpansionImportDebugReport = {
   listPayload: SingleMarketPayloadAvailability;
   detailPayload: SingleMarketPayloadAvailability;
   expirationValueSource: SingleMarketExpansionImportDebugExpirationValueSource;
+  unsupportedHistoricalMarket: boolean;
   reconciliation: SingleMarketExpansionImportDebugReconciliation;
   importStatus: SingleMarketExpansionImportDebugImportStatus;
   failureReason: string | null;

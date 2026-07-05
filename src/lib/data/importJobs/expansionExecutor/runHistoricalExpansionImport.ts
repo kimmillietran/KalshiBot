@@ -23,6 +23,7 @@ import { stableStringify } from "@/lib/trading/config/hashConfig";
 
 import { buildExpansionMarketImportArtifacts } from "./buildExpansionMarketImportConfig";
 import { buildPlannedExpansionImportQueue } from "./buildPlannedExpansionImportQueue";
+import { classifyUnsupportedHistoricalMarket, countUnsupportedHistoricalMarketResults } from "./classifyUnsupportedHistoricalMarket";
 import {
   createExpansionImportReconciliationTracer,
   traceDiscoveryListResponse,
@@ -109,6 +110,11 @@ function aggregateSummary(
     skippedCount: jobs.reduce((total, job) => total + job.skippedCount, 0),
     failedCount: jobs.reduce((total, job) => total + job.failedCount, 0),
     plannedCount: jobs.reduce((total, job) => total + job.plannedCount, 0),
+    unsupportedCount: jobs.reduce((total, job) => total + job.unsupportedCount, 0),
+    skippedUnsupportedCount: jobs.reduce(
+      (total, job) => total + job.skippedUnsupportedCount,
+      0,
+    ),
     durationMs: Date.now() - startedAtMs,
   };
 }
@@ -175,6 +181,23 @@ async function executeMarketImport(
       importResultPath: null,
       errorMessage: null,
       skipReason: "Discovered market is missing openTime or closeTime",
+      durationMs: Date.now() - startedAtMs,
+    };
+  }
+
+  const unsupported = classifyUnsupportedHistoricalMarket({
+    listMarketWire: market.listMarketWire,
+    detailMarketWire: null,
+  });
+  if (unsupported.support === "unsupported") {
+    return {
+      marketTicker: market.marketTicker,
+      seriesTicker: market.seriesTicker,
+      status: "skipped",
+      configPath: null,
+      importResultPath: null,
+      errorMessage: null,
+      skipReason: unsupported.skipReason,
       durationMs: Date.now() - startedAtMs,
     };
   }
@@ -559,6 +582,9 @@ export async function runHistoricalExpansionImport(
           dedupedSkipReason: DEDUPED_SKIP_REASON,
         });
 
+        const partialUnsupportedCounts = countUnsupportedHistoricalMarketResults(
+          partialMarkets,
+        );
         const partialSummary = buildPartialSummary(
           input,
           [
@@ -576,6 +602,8 @@ export async function runHistoricalExpansionImport(
                 ).length,
               failedCount: partialAttemptCounts.failedCount,
               plannedCount: plannedQueue.length,
+              unsupportedCount: partialUnsupportedCounts.unsupportedCount,
+              skippedUnsupportedCount: partialUnsupportedCounts.skippedUnsupportedCount,
               durationMs: Date.now() - jobStartedAtMs,
               warnings: jobWarnings,
               markets: partialMarkets,
@@ -624,6 +652,7 @@ export async function runHistoricalExpansionImport(
     const importedCount = markets.filter((entry) => entry.status === "imported").length;
     const failedCount = markets.filter((entry) => entry.status === "failed").length;
     const skippedCount = markets.filter((entry) => entry.status === "skipped").length;
+    const unsupportedCounts = countUnsupportedHistoricalMarketResults(markets);
 
     assertExpansionImportJobSummaryInvariants({
       plannedQueueLength: plannedCount,
@@ -650,6 +679,8 @@ export async function runHistoricalExpansionImport(
       skippedCount,
       failedCount,
       plannedCount,
+      unsupportedCount: unsupportedCounts.unsupportedCount,
+      skippedUnsupportedCount: unsupportedCounts.skippedUnsupportedCount,
       durationMs: Date.now() - jobStartedAtMs,
       warnings: jobWarnings,
       markets,
