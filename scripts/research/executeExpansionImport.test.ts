@@ -225,6 +225,24 @@ describe("runExecuteExpansionImportCommand", () => {
     vi.unstubAllEnvs();
   });
 
+  it("parses --sample-strategy with supported-first as default", () => {
+    expect(
+      parseExecuteExpansionImportConfigFromArgv(
+        normalizeExecuteExpansionImportArgv(["--execute"]),
+      ).sampleStrategy,
+    ).toBe("supported-first");
+
+    expect(
+      parseExecuteExpansionImportConfigFromArgv(
+        normalizeExecuteExpansionImportArgv([
+          "--execute",
+          "--sample-strategy",
+          "earliest",
+        ]),
+      ).sampleStrategy,
+    ).toBe("earliest");
+  });
+
   it("caps executed imports when max-markets is provided", async () => {
     const writes = new Map<string, string>();
     const runImport = vi.fn(async () => ({

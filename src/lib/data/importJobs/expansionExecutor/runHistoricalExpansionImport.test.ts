@@ -187,6 +187,7 @@ function createBaseConfig(overrides?: Partial<{
     singleMarketHtmlOutputPath: "data/reports/single-market-expansion-import-debug.html",
     rateLimitBackoffMs: 1000,
     maxRateLimitRetries: 2,
+    sampleStrategy: "supported-first",
     ...overrides,
   };
 }
@@ -558,6 +559,9 @@ describe("runHistoricalExpansionImport safety", () => {
     expect(io.writes.size).toBe(0);
     expect(serializeHistoricalExpansionImportSummaryHtml(summary)).toContain(
       "Historical Expansion Import Summary",
+    );
+    expect(serializeHistoricalExpansionImportSummaryHtml(summary)).toContain(
+      "Selection strategy",
     );
     expect(serializeHistoricalExpansionImportSummary(summary)).toContain(
       "historical-expansion-import-summary",
@@ -971,5 +975,68 @@ describe("runHistoricalExpansionImport cap enforcement", () => {
     expect(summary.jobs[0]?.markets[0]?.skipReason).toBe(
       "Unsupported historical market: Missing expiration_value from Kalshi historical API.",
     );
+  });
+
+  it("prefers supported markets for planning and reports selection summary fields", async () => {
+    const unsupportedFirst = createExpansionDiscoveredMarket({
+      marketTicker: "KXBTC15M-26UNSUPPORTED-00",
+      expirationValue: "",
+      listMarketWire: {
+        ticker: "KXBTC15M-26UNSUPPORTED-00",
+        event_ticker: "KXBTC15M-26UNSUPPORTED",
+        series_ticker: "KXBTC15M",
+        status: "finalized",
+        open_time: "2026-01-15T12:00:00.000Z",
+        close_time: "2026-01-15T12:15:00.000Z",
+        expiration_value: "",
+      },
+    });
+    const importable = createExpansionDiscoveredMarket({
+      marketTicker: "KXBTC15M-26IMPORTABLE-00",
+    });
+    const mock: MockFs = {
+      files: {
+        [SUMMARY_PATH]: JSON.stringify({
+          jobs: [
+            {
+              markets: [
+                {
+                  marketTicker: "KXBTC15M-26IMPORTABLE-00",
+                  status: "imported",
+                },
+                {
+                  marketTicker: "KXBTC15M-26HISTORY-UNSUPPORTED-00",
+                  status: "skipped",
+                  skipReason:
+                    "Unsupported historical market: Missing expiration_value from Kalshi historical API.",
+                },
+              ],
+            },
+          ],
+        }),
+      },
+      directories: new Set(["data"]),
+    };
+    const io = createIo(mock);
+    const runImport = vi.fn(async (config) => createImportResult(config.marketTicker));
+
+    const summary = await runHistoricalExpansionImport({
+      generatedAt: GENERATED_AT,
+      config: createBaseConfig({ execute: true, maxMarkets: 1 }),
+      expansionConfigJson: createManifestJson(),
+      io,
+      deps: {
+        discoverMarkets: vi.fn(async () => [unsupportedFirst, importable]),
+        runImport,
+      },
+    });
+
+    expect(runImport).toHaveBeenCalledTimes(1);
+    expect(runImport.mock.calls[0]?.[0].marketTicker).toBe("KXBTC15M-26IMPORTABLE-00");
+    expect(summary.sampleStrategy).toBe("supported-first");
+    expect(summary.selection.selectedSupportedMarkets).toBe(1);
+    expect(summary.selection.selectedUnknownMarkets).toBe(0);
+    expect(summary.selection.selectedUnsupportedMarkets).toBe(0);
+    expect(summary.summary.selectedSupportedMarkets).toBe(1);
   });
 });

@@ -290,6 +290,7 @@ export const EXECUTE_EXPANSION_IMPORT_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--max-retries" },
   { flag: "--rate-limit-backoff-ms" },
   { flag: "--max-rate-limit-retries" },
+  { flag: "--sample-strategy" },
   { flag: "--job-id" },
   { flag: "--force-market" },
   { flag: "--trace-market" },

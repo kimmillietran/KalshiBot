@@ -5,6 +5,10 @@ import type { HistoricalExpansionImportJob } from "@/lib/data/importJobs/expansi
 import { DEFAULT_HISTORICAL_EXPANSION_IMPORT_CHECKPOINT_PATH } from "@/lib/data/importJobs/expansionImportSafety/expansionImportSafetyTypes";
 
 import type { ExpansionImportRateLimitDiagnostics } from "./expansionImportRateLimit";
+import type {
+  ExpansionImportSampleStrategy,
+  ExpansionImportSelectionCounts,
+} from "./expansionImportSelectionTypes";
 
 export const DEFAULT_HISTORICAL_EXPANSION_IMPORT_CONFIG_PATH =
   "data/import-configs/historical-expansion-config.json";
@@ -72,6 +76,7 @@ export type ExpansionImportJobResult = {
   plannedCount: number;
   unsupportedCount: number;
   skippedUnsupportedCount: number;
+  selection: ExpansionImportSelectionCounts;
   durationMs: number;
   warnings: readonly string[];
   markets: readonly ExpansionImportMarketResult[];
@@ -96,6 +101,8 @@ export type HistoricalExpansionImportSummary = {
   importsDir: string;
   maxMarkets: number | null;
   jobIdFilter: string | null;
+  sampleStrategy: ExpansionImportSampleStrategy;
+  selection: ExpansionImportSelectionCounts;
   summary: {
     jobCount: number;
     discoveredMarketCount: number;
@@ -105,6 +112,9 @@ export type HistoricalExpansionImportSummary = {
     plannedCount: number;
     unsupportedCount: number;
     skippedUnsupportedCount: number;
+    selectedSupportedMarkets: number;
+    selectedUnknownMarkets: number;
+    selectedUnsupportedMarkets: number;
     durationMs: number;
   };
   jobs: readonly ExpansionImportJobResult[];
@@ -135,6 +145,7 @@ export type HistoricalExpansionImportExecutorConfig = {
   singleMarketHtmlOutputPath: string;
   rateLimitBackoffMs: number;
   maxRateLimitRetries: number;
+  sampleStrategy: ExpansionImportSampleStrategy;
 };
 
 export type ExpansionImportProgressHooks = {

@@ -24,6 +24,8 @@ import { stableStringify } from "@/lib/trading/config/hashConfig";
 import { buildExpansionMarketImportArtifacts } from "./buildExpansionMarketImportConfig";
 import { buildPlannedExpansionImportQueue } from "./buildPlannedExpansionImportQueue";
 import { classifyUnsupportedHistoricalMarket, countUnsupportedHistoricalMarketResults } from "./classifyUnsupportedHistoricalMarket";
+import type { ExpansionImportSelectionCounts } from "./expansionImportSelectionTypes";
+import { loadExpansionImportPlanningHistory } from "./loadExpansionImportPlanningHistory";
 import {
   createExpansionImportReconciliationTracer,
   traceDiscoveryListResponse,
@@ -96,10 +98,30 @@ function toSamplingWindow(job: HistoricalExpansionImportJob): {
   };
 }
 
+function aggregateSelection(
+  jobs: readonly ExpansionImportJobResult[],
+): ExpansionImportSelectionCounts {
+  return {
+    selectedSupportedMarkets: jobs.reduce(
+      (total, job) => total + job.selection.selectedSupportedMarkets,
+      0,
+    ),
+    selectedUnknownMarkets: jobs.reduce(
+      (total, job) => total + job.selection.selectedUnknownMarkets,
+      0,
+    ),
+    selectedUnsupportedMarkets: jobs.reduce(
+      (total, job) => total + job.selection.selectedUnsupportedMarkets,
+      0,
+    ),
+  };
+}
+
 function aggregateSummary(
   jobs: readonly ExpansionImportJobResult[],
   startedAtMs: number,
 ): HistoricalExpansionImportSummary["summary"] {
+  const selection = aggregateSelection(jobs);
   return {
     jobCount: jobs.length,
     discoveredMarketCount: jobs.reduce(
@@ -115,6 +137,9 @@ function aggregateSummary(
       (total, job) => total + job.skippedUnsupportedCount,
       0,
     ),
+    selectedSupportedMarkets: selection.selectedSupportedMarkets,
+    selectedUnknownMarkets: selection.selectedUnknownMarkets,
+    selectedUnsupportedMarkets: selection.selectedUnsupportedMarkets,
     durationMs: Date.now() - startedAtMs,
   };
 }
@@ -142,6 +167,8 @@ function buildPartialSummary(
     importsDir: input.config.importsDir,
     maxMarkets: input.config.maxMarkets,
     jobIdFilter: input.config.jobId,
+    sampleStrategy: input.config.sampleStrategy,
+    selection: aggregateSelection(jobResults),
     rateLimitDiagnostics: buildExpansionRateLimitDiagnostics(rateLimitState),
     summary: aggregateSummary(jobResults, startedAtMs),
     jobs: jobResults,
@@ -379,6 +406,12 @@ export async function runHistoricalExpansionImport(
         }
       },
     });
+  const planningHistoryPath =
+    input.config.summaryInputPath ?? input.config.outputPath;
+  const planningHistory = loadExpansionImportPlanningHistory(
+    input.io,
+    planningHistoryPath,
+  );
 
   for (const [jobIndex, job] of sortedScheduledJobs.entries()) {
     if (input.signal?.aborted) {
@@ -400,6 +433,11 @@ export async function runHistoricalExpansionImport(
       sortedDiscovered,
       existingTickers,
       remainingMarketBudget,
+      {
+        sampleStrategy: input.config.sampleStrategy,
+        planningHistory,
+        selectionSeed: job.jobId,
+      },
     );
     const plannedQueue = importPlan.plannedQueue;
     const plannedTickers = new Set(plannedQueue.map((market) => market.marketTicker));
@@ -604,6 +642,7 @@ export async function runHistoricalExpansionImport(
               plannedCount: plannedQueue.length,
               unsupportedCount: partialUnsupportedCounts.unsupportedCount,
               skippedUnsupportedCount: partialUnsupportedCounts.skippedUnsupportedCount,
+              selection: importPlan.selection,
               durationMs: Date.now() - jobStartedAtMs,
               warnings: jobWarnings,
               markets: partialMarkets,
@@ -681,6 +720,7 @@ export async function runHistoricalExpansionImport(
       plannedCount,
       unsupportedCount: unsupportedCounts.unsupportedCount,
       skippedUnsupportedCount: unsupportedCounts.skippedUnsupportedCount,
+      selection: importPlan.selection,
       durationMs: Date.now() - jobStartedAtMs,
       warnings: jobWarnings,
       markets,

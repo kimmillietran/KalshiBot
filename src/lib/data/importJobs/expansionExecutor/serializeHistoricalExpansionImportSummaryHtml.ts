@@ -111,6 +111,22 @@ export function serializeHistoricalExpansionImportSummaryHtml(
     <div class="summary-card"><div class="summary-label">Planned</div><div class="summary-value">${summary.summary.plannedCount}</div></div>
     <div class="summary-card"><div class="summary-label">Unsupported</div><div class="summary-value">${summary.summary.unsupportedCount}</div></div>
     <div class="summary-card"><div class="summary-label">Skipped unsupported</div><div class="summary-value">${summary.summary.skippedUnsupportedCount}</div></div>
+    <div class="summary-card"><div class="summary-label">Selected supported</div><div class="summary-value">${summary.selection.selectedSupportedMarkets}</div></div>
+    <div class="summary-card"><div class="summary-label">Selected unknown</div><div class="summary-value">${summary.selection.selectedUnknownMarkets}</div></div>
+    <div class="summary-card"><div class="summary-label">Selected unsupported</div><div class="summary-value">${summary.selection.selectedUnsupportedMarkets}</div></div>
+  </section>
+
+  <section class="panel">
+    <h2>Selection strategy</h2>
+    <p><strong>Strategy:</strong> <code>${escapeHtml(summary.sampleStrategy)}</code></p>
+    <table>
+      <thead><tr><th>Category</th><th>Planned markets</th></tr></thead>
+      <tbody>
+        <tr><td>Likely supported</td><td>${summary.selection.selectedSupportedMarkets}</td></tr>
+        <tr><td>Unknown</td><td>${summary.selection.selectedUnknownMarkets}</td></tr>
+        <tr><td>Known unsupported</td><td>${summary.selection.selectedUnsupportedMarkets}</td></tr>
+      </tbody>
+    </table>
   </section>
 
   <section class="panel">

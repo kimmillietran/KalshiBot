@@ -13,6 +13,11 @@ import {
   DEFAULT_SINGLE_MARKET_EXPANSION_IMPORT_DEBUG_JSON_PATH,
   type HistoricalExpansionImportExecutorConfig,
 } from "@/lib/data/importJobs/expansionExecutor";
+import {
+  DEFAULT_EXPANSION_IMPORT_SAMPLE_STRATEGY,
+  EXPANSION_IMPORT_SAMPLE_STRATEGIES,
+  type ExpansionImportSampleStrategy,
+} from "@/lib/data/importJobs/expansionExecutor/expansionImportSelectionTypes";
 import { ExpansionExecutorError } from "@/lib/data/importJobs/expansionExecutor/expansionExecutorTypes";
 import { SingleMarketExpansionImportDebugError } from "@/lib/data/importJobs/expansionExecutor/singleMarketExpansionImportDebugTypes";
 
@@ -80,6 +85,23 @@ function readOptionalNumberFlag(argv: readonly string[], flag: string): number |
   return parsed;
 }
 
+function readSampleStrategyFlag(argv: readonly string[]): ExpansionImportSampleStrategy {
+  const raw = readOptionalFlag(argv, "--sample-strategy");
+  if (raw === null) {
+    return DEFAULT_EXPANSION_IMPORT_SAMPLE_STRATEGY;
+  }
+
+  if (
+    !(EXPANSION_IMPORT_SAMPLE_STRATEGIES as readonly string[]).includes(raw)
+  ) {
+    throw new ExecuteExpansionImportCommandError(
+      `Invalid value for --sample-strategy: ${raw}. Expected one of: ${EXPANSION_IMPORT_SAMPLE_STRATEGIES.join(", ")}`,
+    );
+  }
+
+  return raw as ExpansionImportSampleStrategy;
+}
+
 export function parseExecuteExpansionImportConfigFromArgv(
   argv: readonly string[],
 ): HistoricalExpansionImportExecutorConfig {
@@ -142,6 +164,7 @@ export function parseExecuteExpansionImportConfigFromArgv(
     maxRateLimitRetries:
       readOptionalNumberFlag(argv, "--max-rate-limit-retries")
       ?? DEFAULT_EXPANSION_MAX_RATE_LIMIT_RETRIES,
+    sampleStrategy: readSampleStrategyFlag(argv),
   };
 }
 

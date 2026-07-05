@@ -1,4 +1,17 @@
 export {
+  DEFAULT_EXPANSION_IMPORT_SAMPLE_STRATEGY,
+  EXPANSION_IMPORT_SAMPLE_STRATEGIES,
+} from "./expansionImportSelectionTypes";
+export type {
+  ExpansionImportPlanningCategory,
+  ExpansionImportPlanningHistory,
+  ExpansionImportSampleStrategy,
+  ExpansionImportSelectionCounts,
+} from "./expansionImportSelectionTypes";
+export { classifyExpansionImportPlanningCategory } from "./classifyExpansionImportPlanningCategory";
+export { loadExpansionImportPlanningHistory } from "./loadExpansionImportPlanningHistory";
+export { buildPlannedExpansionImportQueue } from "./buildPlannedExpansionImportQueue";
+export {
   buildExpansionMarketImportArtifacts,
 } from "./buildExpansionMarketImportConfig";
 export {
