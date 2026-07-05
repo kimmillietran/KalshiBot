@@ -37,7 +37,8 @@ export type SingleMarketPayloadAvailability = {
 
 export type SingleMarketExpansionImportDebugExpirationValueSource =
   | "detail"
-  | "reconciled-from-list"
+  | "list"
+  | "merged"
   | "missing";
 
 export type SingleMarketExpansionImportDebugReconciliation = {
@@ -63,6 +64,7 @@ export type SingleMarketExpansionImportDebugReport = {
   outputPath: string;
   htmlOutputPath: string;
   jobId: string | null;
+  discoveryPagesFetched: number;
   listPayload: SingleMarketPayloadAvailability;
   detailPayload: SingleMarketPayloadAvailability;
   expirationValueSource: SingleMarketExpansionImportDebugExpirationValueSource;
@@ -108,10 +110,10 @@ export type FetchedSingleMarketDetailWire = {
 };
 
 export type SingleMarketExpansionImportDebugDeps = {
-  fetchListMarketWire: (input: {
+  discoverMarket: (input: {
     marketTicker: string;
     seriesTicker: string;
-  }) => Promise<FetchedSingleMarketListWire>;
+  }) => Promise<import("./discoverSingleExpansionMarket").DiscoverSingleExpansionMarketResult | null>;
   fetchDetailMarketWire: (marketTicker: string) => Promise<FetchedSingleMarketDetailWire>;
   runImport: (config: HistoricalBronzeImportConfig) => Promise<HistoricalBronzeImportJobResult>;
 };

@@ -41,9 +41,11 @@ export { serializeHistoricalExpansionImportSummaryHtml } from "./serializeHistor
 export {
   createSingleMarketExpansionImportDebugDepsFromFetch,
   fetchSingleMarketDetailWire,
-  fetchSingleMarketListWire,
   resolveSeriesTickerFromMarketTicker,
 } from "./fetchSingleMarketExpansionPayloads";
+export { discoverSingleExpansionMarket } from "./discoverSingleExpansionMarket";
+export { evaluateExpansionMarketSchemaReconciliation } from "./evaluateExpansionMarketSchemaReconciliation";
+export { mapDiscoveredMarketToExpansionMarket } from "./mapDiscoveredMarketToExpansionMarket";
 export {
   runSingleMarketExpansionImportDebug,
   serializeSingleMarketExpansionImportDebugReport,

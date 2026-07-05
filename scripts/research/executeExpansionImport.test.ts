@@ -367,6 +367,8 @@ describe("runExecuteExpansionImportCommand", () => {
     expect(discoverMarkets).not.toHaveBeenCalled();
     expect(JSON.parse(stdout).mode).toBe("single-market-smoke");
     expect(JSON.parse(stdout).importStatus).toBe("planned");
+    expect(JSON.parse(stdout).reconciliationSuccess).toBe(true);
+    expect(JSON.parse(stdout).expirationValueSource).toBe("list");
     expect(writes.has("data/research-results/single-market-expansion-import-debug.json")).toBe(
       true,
     );

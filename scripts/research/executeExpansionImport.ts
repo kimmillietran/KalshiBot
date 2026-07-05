@@ -15,6 +15,7 @@ import {
 import { runHistoricalImportFromConfig } from "@/lib/data/importJobs";
 import type { HistoricalImportFetchLike } from "@/lib/data/importJobs";
 import { buildExpansionImportReconciliationTraceCallbacks } from "@/lib/data/importJobs/expansionExecutor/expansionImportReconciliationTrace";
+import { mapDiscoveredMarketToExpansionMarket } from "@/lib/data/importJobs/expansionExecutor/mapDiscoveredMarketToExpansionMarket";
 import type { FetchLike } from "@/lib/data/importers/kalshi";
 import type { ExpansionExecutorDeps } from "@/lib/data/importJobs/expansionExecutor";
 import {
@@ -79,20 +80,7 @@ function createProductionDeps(fetchImpl?: HistoricalImportFetchLike): ExpansionE
         discoveryOptions,
       );
 
-      return result.markets.map((market) => ({
-        marketTicker: market.marketTicker,
-        seriesTicker: market.seriesTicker,
-        eventTicker: market.eventTicker,
-        status: market.status,
-        openTime: market.openTime,
-        closeTime: market.closeTime,
-        settlementTime: market.settlementTime,
-        expirationValue: market.expirationValue,
-        title: market.title,
-        subtitle: market.subtitle,
-        listMarketWire: market.listMarketWire,
-        provenance: market.provenance,
-      }));
+      return result.markets.map((market) => mapDiscoveredMarketToExpansionMarket(market));
     },
     runImport: (config, options) =>
       runHistoricalImportFromConfig({

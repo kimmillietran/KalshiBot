@@ -17,16 +17,14 @@ import {
   saveKalshiMarketDebugArtifact,
 } from "@/lib/data/importers/kalshi/kalshiMarketImportDiagnostics";
 import type { KalshiMarketWireShape } from "@/lib/data/importers/kalshi/kalshiMarketImportDiagnostics";
-import { mergeKalshiMarketWireFromListDetail } from "@/lib/data/importers/kalshi/kalshiMarketSchemaReconciliation";
-import type { HistoricalImportProvenance } from "@/lib/data/importers/kalshi/kalshiHistoricalTypes";
-import { buildHistoricalMarketPath } from "@/lib/data/importers/kalshi/historicalEndpoints";
+import { readKalshiDiscoveryListMarketFromMetadata } from "@/lib/data/importers/kalshi/kalshiMarketSchemaReconciliation";
 
 import { buildExpansionMarketImportArtifacts } from "./buildExpansionMarketImportConfig";
-import type { ExpansionDiscoveredMarket } from "./expansionExecutorTypes";
+import { evaluateExpansionMarketSchemaReconciliation } from "./evaluateExpansionMarketSchemaReconciliation";
 import { resolveSeriesTickerFromMarketTicker } from "./fetchSingleMarketExpansionPayloads";
+import type { ExpansionDiscoveredMarket } from "./expansionExecutorTypes";
 import type {
   RunSingleMarketExpansionImportDebugInput,
-  SingleMarketExpansionImportDebugExpirationValueSource,
   SingleMarketExpansionImportDebugImportStatus,
   SingleMarketExpansionImportDebugReport,
   SingleMarketPayloadAvailability,
@@ -76,56 +74,6 @@ function buildPayloadAvailability(input: {
       ? findMissingKalshiMarketWireFields(input.wire)
       : [],
     unavailableReason: input.unavailableReason,
-  };
-}
-
-function resolveExpirationValueSource(input: {
-  detailWire: KalshiMarketWireShape | null;
-  reconciliationMergedFields: readonly string[];
-}): SingleMarketExpansionImportDebugExpirationValueSource {
-  if (input.detailWire?.expiration_value?.trim()) {
-    return "detail";
-  }
-
-  if (input.reconciliationMergedFields.includes("expiration_value")) {
-    return "reconciled-from-list";
-  }
-
-  return "missing";
-}
-
-function buildDiscoveredMarket(input: {
-  marketTicker: string;
-  listWire: KalshiMarketWireShape | null;
-  detailWire: KalshiMarketWireShape | null;
-  listProvenance: HistoricalImportProvenance | null;
-  generatedAt: string;
-}): ExpansionDiscoveredMarket | null {
-  const wire = input.listWire ?? input.detailWire;
-  if (!wire?.ticker?.trim()) {
-    return null;
-  }
-
-  const provenance = input.listProvenance ?? {
-    source: "kalshi-historical-api",
-    fetchedAt: input.generatedAt,
-    requestPath: buildHistoricalMarketPath(input.marketTicker),
-  };
-
-  return {
-    marketTicker: wire.ticker.trim(),
-    seriesTicker:
-      wire.series_ticker?.trim() || resolveSeriesTickerFromMarketTicker(wire.ticker),
-    eventTicker: wire.event_ticker?.trim() ?? "",
-    status: wire.status?.trim().toLowerCase() ?? "",
-    openTime: wire.open_time ?? null,
-    closeTime: wire.close_time ?? null,
-    settlementTime: wire.settlement_ts ?? null,
-    expirationValue: wire.expiration_value?.trim() ?? null,
-    title: wire.title ?? null,
-    subtitle: wire.subtitle ?? null,
-    listMarketWire: input.listWire ?? wire,
-    provenance,
   };
 }
 
@@ -186,16 +134,20 @@ export async function runSingleMarketExpansionImportDebug(
   }
 
   const debugArtifactPaths: string[] = [];
-  const listFetch = await input.deps.fetchListMarketWire({
+  const discoveryResult = await input.deps.discoverMarket({
     marketTicker,
     seriesTicker,
   });
   const detailFetch = await input.deps.fetchDetailMarketWire(marketTicker);
+  const discoveredMarket: ExpansionDiscoveredMarket | null = discoveryResult?.market ?? null;
+  const listMarketWire = discoveredMarket?.listMarketWire ?? null;
 
   const listPayload = buildPayloadAvailability({
-    wire: listFetch.wire,
-    requestPath: listFetch.requestPath,
-    unavailableReason: listFetch.unavailableReason,
+    wire: listMarketWire,
+    requestPath: discoveredMarket?.provenance.requestPath ?? null,
+    unavailableReason: discoveredMarket
+      ? null
+      : "Market not found in discovery list pages",
   });
   const detailPayload = buildPayloadAvailability({
     wire: detailFetch.wire,
@@ -203,28 +155,16 @@ export async function runSingleMarketExpansionImportDebug(
     unavailableReason: detailFetch.unavailableReason,
   });
 
-  const reconciliation = detailFetch.wire
-    ? mergeKalshiMarketWireFromListDetail({
-        listMarket: listFetch.wire,
-        detailMarket: detailFetch.wire,
-      })
-    : {
-        mergedWire: listFetch.wire ?? {},
-        mergedFields: [],
-        detailMissingRequiredFields: [],
-        listMissingRequiredFields: listFetch.wire
-          ? findMissingKalshiMarketWireFields(listFetch.wire)
-          : [],
-      };
-
-  const mergedMissingRequiredFields = findMissingKalshiMarketWireFields(
-    reconciliation.mergedWire,
-  );
-  const reconciliationSuccess = mergedMissingRequiredFields.length === 0;
-  const expirationValueSource = resolveExpirationValueSource({
-    detailWire: detailFetch.wire,
-    reconciliationMergedFields: reconciliation.mergedFields,
+  const reconciliationEvaluation = evaluateExpansionMarketSchemaReconciliation({
+    listMarketWire,
+    detailMarketWire: detailFetch.wire,
   });
+  const {
+    reconciliation,
+    mergedMissingRequiredFields,
+    reconciliationSuccess,
+    expirationValueSource,
+  } = reconciliationEvaluation;
 
   if (
     detailFetch.wire
@@ -239,7 +179,7 @@ export async function runSingleMarketExpansionImportDebug(
       body: {
         market: reconciliation.mergedWire,
         detailMarket: detailFetch.wire,
-        listMarket: listFetch.wire,
+        listMarket: listMarketWire,
         mergedFields: reconciliation.mergedFields,
       },
       missingRequiredFields: mergedMissingRequiredFields,
@@ -253,60 +193,58 @@ export async function runSingleMarketExpansionImportDebug(
   let configPath: string | null = null;
   let importResultPath: string | null = null;
 
-  if (!detailFetch.wire && !listFetch.wire) {
+  if (!detailFetch.wire && !listMarketWire) {
     failureReason = "Both list and detail payloads are unavailable";
   } else if (!reconciliationSuccess) {
     failureReason = `Schema reconciliation failed: missing ${mergedMissingRequiredFields.join(", ")}`;
+  } else if (!discoveredMarket) {
+    failureReason = "Discovery list payload is unavailable";
+  } else if (!discoveredMarket.openTime || !discoveredMarket.closeTime) {
+    importStatus = "skipped";
+    failureReason = "Discovered market is missing openTime or closeTime";
   } else {
-    const discoveredMarket = buildDiscoveredMarket({
-      marketTicker,
-      listWire: listFetch.wire,
-      detailWire: detailFetch.wire,
-      listProvenance: listFetch.provenance,
-      generatedAt: input.generatedAt,
+    const artifacts = buildExpansionMarketImportArtifacts(job, discoveredMarket, {
+      importConfigsDir: input.config.importConfigsDir,
+      importsDir: input.config.importsDir,
     });
+    configPath = artifacts.configPath;
+    importResultPath = artifacts.importResultPath;
 
-    if (!discoveredMarket?.openTime || !discoveredMarket.closeTime) {
+    const metadataListWire = readKalshiDiscoveryListMarketFromMetadata(
+      artifacts.config.metadata,
+    );
+    if (!metadataListWire?.expiration_value?.trim() && listMarketWire?.expiration_value?.trim()) {
+      failureReason = "Import config metadata dropped discovery list payload";
       importStatus = "skipped";
-      failureReason = "Discovered market is missing openTime or closeTime";
+    } else if (!input.config.execute) {
+      importStatus = "planned";
     } else {
-      const artifacts = buildExpansionMarketImportArtifacts(job, discoveredMarket, {
-        importConfigsDir: input.config.importConfigsDir,
-        importsDir: input.config.importsDir,
-      });
-      configPath = artifacts.configPath;
-      importResultPath = artifacts.importResultPath;
+      try {
+        const importResult = await input.deps.runImport(artifacts.config);
+        const importDir = posix.dirname(artifacts.importResultPath);
 
-      if (!input.config.execute) {
-        importStatus = "planned";
-      } else {
-        try {
-          const importResult = await input.deps.runImport(artifacts.config);
-          const importDir = posix.dirname(artifacts.importResultPath);
+        input.io.mkdirSync(posix.dirname(artifacts.configPath), { recursive: true });
+        input.io.mkdirSync(importDir, { recursive: true });
+        input.io.writeFile(artifacts.configPath, artifacts.serializedConfig);
+        input.io.writeFile(artifacts.importResultPath, importResult.serialized);
+        input.io.writeFile(
+          posix.join(importDir, BATCH_IMPORT_METADATA_FILENAME),
+          serializeImportedMarketMetadata(
+            buildImportedMarketMetadata({
+              config: artifacts.config,
+              importResult,
+            }),
+          ),
+        );
+        input.io.writeFile(
+          posix.join(importDir, BATCH_IMPORT_CONFIG_FILENAME),
+          artifacts.serializedConfig,
+        );
 
-          input.io.mkdirSync(posix.dirname(artifacts.configPath), { recursive: true });
-          input.io.mkdirSync(importDir, { recursive: true });
-          input.io.writeFile(artifacts.configPath, artifacts.serializedConfig);
-          input.io.writeFile(artifacts.importResultPath, importResult.serialized);
-          input.io.writeFile(
-            posix.join(importDir, BATCH_IMPORT_METADATA_FILENAME),
-            serializeImportedMarketMetadata(
-              buildImportedMarketMetadata({
-                config: artifacts.config,
-                importResult,
-              }),
-            ),
-          );
-          input.io.writeFile(
-            posix.join(importDir, BATCH_IMPORT_CONFIG_FILENAME),
-            artifacts.serializedConfig,
-          );
-
-          importStatus = "imported";
-        } catch (error) {
-          importStatus = "failed";
-          failureReason = error instanceof Error ? error.message : "Import failed";
-        }
+        importStatus = "imported";
+      } catch (error) {
+        importStatus = "failed";
+        failureReason = error instanceof Error ? error.message : "Import failed";
       }
     }
   }
@@ -320,6 +258,7 @@ export async function runSingleMarketExpansionImportDebug(
     outputPath: input.config.outputPath,
     htmlOutputPath: input.config.htmlOutputPath,
     jobId: job.jobId,
+    discoveryPagesFetched: discoveryResult?.pagesFetched ?? 0,
     listPayload,
     detailPayload,
     expirationValueSource,

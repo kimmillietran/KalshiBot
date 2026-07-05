@@ -8,11 +8,8 @@ import {
   serializeSingleMarketExpansionImportDebugReport,
 } from "./runSingleMarketExpansionImportDebug";
 import { serializeSingleMarketExpansionImportDebugHtml } from "./serializeSingleMarketExpansionImportDebugHtml";
-import type {
-  FetchedSingleMarketDetailWire,
-  FetchedSingleMarketListWire,
-  SingleMarketExpansionImportDebugDeps,
-} from "./singleMarketExpansionImportDebugTypes";
+import type { SingleMarketExpansionImportDebugDeps } from "./singleMarketExpansionImportDebugTypes";
+import type { DiscoverSingleExpansionMarketResult as DiscoveryResult } from "./discoverSingleExpansionMarket";
 
 const GENERATED_AT = "2026-07-04T04:00:00.000Z";
 const CONFIG_PATH = "data/import-configs/historical-expansion-config.json";
@@ -99,21 +96,39 @@ function createImportResult(): HistoricalBronzeImportJobResult {
   };
 }
 
-function createDeps(
-  overrides?: Partial<SingleMarketExpansionImportDebugDeps>,
-): SingleMarketExpansionImportDebugDeps {
+function createDiscoveryResult(
+  overrides?: Partial<DiscoveryResult["market"]>,
+): DiscoveryResult {
   return {
-    fetchListMarketWire: vi.fn(async (): Promise<FetchedSingleMarketListWire> => ({
-      wire: fixture.listMarket,
-      requestPath: fixture.listEndpoint,
+    pagesFetched: 1,
+    market: {
+      marketTicker: MARKET_TICKER,
+      seriesTicker: "KXBTC15M",
+      eventTicker: "KXBTC15M-25DEC311900",
+      status: "finalized",
+      openTime: fixture.listMarket.open_time ?? null,
+      closeTime: fixture.listMarket.close_time ?? null,
+      settlementTime: fixture.listMarket.settlement_ts ?? null,
+      expirationValue: fixture.listMarket.expiration_value ?? null,
+      title: null,
+      subtitle: null,
+      listMarketWire: fixture.listMarket,
       provenance: {
         source: "kalshi-historical-api",
         fetchedAt: GENERATED_AT,
         requestPath: fixture.listEndpoint,
       },
-      unavailableReason: null,
-    })),
-    fetchDetailMarketWire: vi.fn(async (): Promise<FetchedSingleMarketDetailWire> => ({
+      ...overrides,
+    },
+  };
+}
+
+function createDeps(
+  overrides?: Partial<SingleMarketExpansionImportDebugDeps>,
+): SingleMarketExpansionImportDebugDeps {
+  return {
+    discoverMarket: vi.fn(async () => createDiscoveryResult()),
+    fetchDetailMarketWire: vi.fn(async () => ({
       wire: fixture.detailMarket,
       requestPath: fixture.detailEndpoint,
       httpStatus: 200,
@@ -156,7 +171,8 @@ describe("runSingleMarketExpansionImportDebug", () => {
     expect(report.importStatus).toBe("planned");
     expect(report.execute).toBe(false);
     expect(report.reconciliation.success).toBe(true);
-    expect(report.expirationValueSource).toBe("reconciled-from-list");
+    expect(report.expirationValueSource).toBe("list");
+    expect(report.discoveryPagesFetched).toBe(1);
     expect(runImport).not.toHaveBeenCalled();
     expect(writes.size).toBe(0);
     expect(JSON.parse(serializeSingleMarketExpansionImportDebugReport(report)).marketTicker).toBe(
@@ -194,6 +210,7 @@ describe("runSingleMarketExpansionImportDebug", () => {
     });
 
     expect(report.importStatus).toBe("imported");
+    expect(report.reconciliation.success).toBe(true);
     expect(runImport).toHaveBeenCalledTimes(1);
     expect(
       writes.has(`data/imports/KXBTC15M/${MARKET_TICKER}/import-result.json`),
@@ -203,7 +220,7 @@ describe("runSingleMarketExpansionImportDebug", () => {
     );
   });
 
-  it("reports missing list payload availability without failing detail reconciliation", async () => {
+  it("reports missing list payload availability when discovery cannot find the ticker", async () => {
     const report = await runSingleMarketExpansionImportDebug({
       generatedAt: GENERATED_AT,
       config: {
@@ -224,12 +241,7 @@ describe("runSingleMarketExpansionImportDebug", () => {
         mkdirSync: () => {},
       },
       deps: createDeps({
-        fetchListMarketWire: vi.fn(async () => ({
-          wire: null,
-          requestPath: fixture.listEndpoint,
-          provenance: null,
-          unavailableReason: "Market not found in first list page",
-        })),
+        discoverMarket: vi.fn(async () => null),
       }),
     });
 
@@ -240,7 +252,7 @@ describe("runSingleMarketExpansionImportDebug", () => {
     expect(report.failureReason).toContain("expiration_value");
   });
 
-  it("reports missing detail payload availability", async () => {
+  it("reports missing detail payload availability while list reconciliation can still succeed", async () => {
     const report = await runSingleMarketExpansionImportDebug({
       generatedAt: GENERATED_AT,
       config: {
@@ -274,9 +286,10 @@ describe("runSingleMarketExpansionImportDebug", () => {
     expect(report.listPayload.available).toBe(true);
     expect(report.reconciliation.success).toBe(true);
     expect(report.importStatus).toBe("planned");
+    expect(report.expirationValueSource).toBe("list");
   });
 
-  it("reports reconciliation success when list fills detail gaps", async () => {
+  it("reports reconciliation success for KXBTC15M-25DEC311900-00 with list expiration_value source", async () => {
     const report = await runSingleMarketExpansionImportDebug({
       generatedAt: GENERATED_AT,
       config: {
@@ -301,7 +314,37 @@ describe("runSingleMarketExpansionImportDebug", () => {
 
     expect(report.reconciliation.success).toBe(true);
     expect(report.reconciliation.mergedFields).toEqual(["expiration_value"]);
-    expect(report.expirationValueSource).toBe("reconciled-from-list");
+    expect(report.expirationValueSource).toBe("list");
+    expect(report.reconciliation.mergedMissingRequiredFields).toEqual([]);
+  });
+
+  it("preserves detail fields while filling expiration_value from list payload", async () => {
+    const report = await runSingleMarketExpansionImportDebug({
+      generatedAt: GENERATED_AT,
+      config: {
+        marketTicker: MARKET_TICKER,
+        inputPath: CONFIG_PATH,
+        outputPath: OUTPUT_PATH,
+        htmlOutputPath: HTML_PATH,
+        importConfigsDir: "data/import-configs",
+        importsDir: "data/imports",
+        execute: false,
+        jobId: null,
+      },
+      expansionConfigJson: createManifestJson(),
+      io: {
+        readFile: () => createManifestJson(),
+        fileExists: () => true,
+        writeFile: () => {},
+        mkdirSync: () => {},
+      },
+      deps: createDeps(),
+    });
+
+    expect(report.detailPayload.missingRequiredFields).toContain("expiration_value");
+    expect(report.listPayload.missingRequiredFields).not.toContain("expiration_value");
+    expect(report.reconciliation.detailMissingRequiredFields).toEqual(["expiration_value"]);
+    expect(report.reconciliation.listMissingRequiredFields).toEqual([]);
   });
 
   it("reports reconciliation failure when both payloads omit required fields", async () => {
@@ -336,16 +379,9 @@ describe("runSingleMarketExpansionImportDebug", () => {
         mkdirSync: () => {},
       },
       deps: createDeps({
-        fetchListMarketWire: vi.fn(async () => ({
-          wire: incompleteList,
-          requestPath: fixture.listEndpoint,
-          provenance: {
-            source: "kalshi-historical-api",
-            fetchedAt: GENERATED_AT,
-            requestPath: fixture.listEndpoint,
-          },
-          unavailableReason: null,
-        })),
+        discoverMarket: vi.fn(async () =>
+          createDiscoveryResult({ listMarketWire: incompleteList }),
+        ),
         fetchDetailMarketWire: vi.fn(async () => ({
           wire: incompleteDetail,
           requestPath: fixture.detailEndpoint,
@@ -358,5 +394,38 @@ describe("runSingleMarketExpansionImportDebug", () => {
     expect(report.reconciliation.success).toBe(false);
     expect(report.importStatus).toBe("skipped");
     expect(report.failureReason).toContain("expiration_value");
+    expect(report.expirationValueSource).toBe("missing");
+  });
+
+  it("distinguishes import failure from reconciliation success", async () => {
+    const report = await runSingleMarketExpansionImportDebug({
+      generatedAt: GENERATED_AT,
+      config: {
+        marketTicker: MARKET_TICKER,
+        inputPath: CONFIG_PATH,
+        outputPath: OUTPUT_PATH,
+        htmlOutputPath: HTML_PATH,
+        importConfigsDir: "data/import-configs",
+        importsDir: "data/imports",
+        execute: true,
+        jobId: null,
+      },
+      expansionConfigJson: createManifestJson(),
+      io: {
+        readFile: () => createManifestJson(),
+        fileExists: () => true,
+        writeFile: () => {},
+        mkdirSync: () => {},
+      },
+      deps: createDeps({
+        runImport: vi.fn(async () => {
+          throw new Error("BTC provider unavailable");
+        }),
+      }),
+    });
+
+    expect(report.reconciliation.success).toBe(true);
+    expect(report.importStatus).toBe("failed");
+    expect(report.failureReason).toBe("BTC provider unavailable");
   });
 });

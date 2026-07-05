@@ -71,6 +71,7 @@ export function serializeSingleMarketExpansionImportDebugHtml(
         <tr><th>Ticker</th><td><code>${escapeHtml(report.marketTicker)}</code></td></tr>
         <tr><th>Series</th><td><code>${escapeHtml(report.seriesTicker)}</code></td></tr>
         <tr><th>Expansion job</th><td><code>${escapeHtml(report.jobId ?? "—")}</code></td></tr>
+        <tr><th>Discovery pages fetched</th><td>${report.discoveryPagesFetched}</td></tr>
         <tr><th>Mode</th><td>${report.execute ? "execute" : "dry-run"}</td></tr>
         <tr><th>Import status</th><td>${escapeHtml(report.importStatus)}</td></tr>
         <tr><th>Failure reason</th><td>${escapeHtml(report.failureReason ?? "—")}</td></tr>
