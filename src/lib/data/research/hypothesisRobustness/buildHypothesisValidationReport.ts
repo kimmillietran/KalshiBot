@@ -14,6 +14,10 @@ import {
   computeTimeStabilityMetrics,
 } from "./computeHypothesisRobustnessMetrics";
 import { filterObservationsForAtlasBucket } from "./filterObservationsForAtlasBucket";
+import {
+  buildValidationObservationAccumulators,
+} from "./buildValidationObservationAccumulators";
+import { validateCandidateFromAccumulator } from "./computeHypothesisRobustnessMetricsFromAccumulator";
 import { collectEnrichedMispricingObservations } from "./collectEnrichedMispricingObservations";
 import { parseAtlasHypothesisCandidateId } from "./parseAtlasHypothesisCandidateId";
 import {
@@ -79,7 +83,7 @@ function emptyScoreComponents() {
   };
 }
 
-function validateCandidate(
+export function validateCandidate(
   candidate: HypothesisCandidate,
   observations: BuildHypothesisValidationReportInput["observations"],
   regimeVolatilityByMarket: RegimeVolatilityByMarketKey,
@@ -244,6 +248,68 @@ export function buildHypothesisValidationReport(
 }
 
 export function buildHypothesisValidationReportFromInputs(input: {
+  generatedAt: string;
+  outputPath: string;
+  htmlOutputPath: string;
+  inputPaths: BuildHypothesisValidationReportInput["inputPaths"];
+  candidates: readonly HypothesisCandidate[];
+  io: HypothesisRobustnessIo;
+  config?: Partial<HypothesisValidationConfig>;
+  memoryReport?: boolean;
+}): HypothesisValidationReport {
+  const config = resolveConfig(input.config);
+  const accumulatorIndex = buildValidationObservationAccumulators({
+    candidates: input.candidates,
+    researchResultsDir: input.inputPaths.researchResultsDir,
+    regimeTagsPath: input.inputPaths.regimeTagsPath,
+    io: input.io,
+    memoryReport: input.memoryReport,
+  });
+
+  const validations = [...input.candidates]
+    .sort((left, right) => left.candidateId.localeCompare(right.candidateId))
+    .map((candidate) => {
+      const atlasRef = parseAtlasHypothesisCandidateId(candidate.candidateId);
+      const validated = validateCandidateFromAccumulator({
+        candidate,
+        atlasRef,
+        accumulator: atlasRef
+          ? accumulatorIndex.getAccumulator(atlasRef)
+          : undefined,
+        config,
+      });
+
+      return {
+        hypothesisId: candidate.candidateId,
+        hypothesis: candidate.hypothesis,
+        sourceArtifact: candidate.sourceArtifact,
+        robustnessScore: validated.robustnessScore,
+        passes: validated.passes,
+        reasons: validated.reasons,
+        observationCount: validated.observationCount,
+        timeStability: validated.timeStability,
+        regimeStability: validated.regimeStability,
+        sampleConcentration: validated.sampleConcentration,
+        leaveOnePeriodOut: validated.leaveOnePeriodOut,
+      };
+    });
+
+  return {
+    generatedAt: input.generatedAt,
+    outputPath: input.outputPath,
+    htmlOutputPath: input.htmlOutputPath,
+    inputPaths: input.inputPaths,
+    config,
+    summary: buildSummary(validations),
+    validations,
+    ...(input.memoryReport
+      ? { memoryDiagnostics: accumulatorIndex.memoryDiagnostics }
+      : {}),
+  };
+}
+
+/** @deprecated Prefer accumulator-based validation via buildHypothesisValidationReportFromInputs. */
+export function buildHypothesisValidationReportFromObservations(input: {
   generatedAt: string;
   outputPath: string;
   htmlOutputPath: string;

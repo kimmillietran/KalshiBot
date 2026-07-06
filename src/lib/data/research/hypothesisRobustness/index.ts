@@ -1,14 +1,22 @@
 export {
   buildHypothesisValidationReport,
   buildHypothesisValidationReportFromInputs,
+  buildHypothesisValidationReportFromObservations,
   serializeHypothesisValidationReport,
 } from "./buildHypothesisValidationReport";
+export {
+  buildValidationObservationAccumulators,
+  collectValidationBucketReferences,
+} from "./buildValidationObservationAccumulators";
 export { collectEnrichedMispricingObservations } from "./collectEnrichedMispricingObservations";
 export {
   computeRobustnessScore,
   computeSignedCalibrationError,
   computeTimeStabilityMetrics,
 } from "./computeHypothesisRobustnessMetrics";
+export {
+  validateCandidateFromAccumulator,
+} from "./computeHypothesisRobustnessMetricsFromAccumulator";
 export { filterObservationsForAtlasBucket } from "./filterObservationsForAtlasBucket";
 export {
   assertHypothesisValidationInputFiles,

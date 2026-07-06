@@ -4,6 +4,8 @@ import type {
   RegimeVolatilityByMarketKey,
 } from "@/lib/data/research/mispricingAtlas/mispricingAtlasTypes";
 
+import type { HypothesisValidationMemoryDiagnostics } from "./hypothesisValidationMemoryTypes";
+
 export const HYPOTHESIS_VALIDATION_FILENAME = "hypothesis-validation.json";
 export const DEFAULT_HYPOTHESIS_VALIDATION_OUTPUT_PATH =
   "data/research-results/hypothesis-validation.json";
@@ -135,6 +137,7 @@ export type HypothesisValidationReport = {
   config: HypothesisValidationConfig;
   summary: HypothesisValidationSummary;
   validations: readonly HypothesisValidationEntry[];
+  memoryDiagnostics?: HypothesisValidationMemoryDiagnostics;
 };
 
 export type BuildHypothesisValidationReportInput = {

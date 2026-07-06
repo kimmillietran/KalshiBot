@@ -154,6 +154,7 @@ export const HYPOTHESIS_VALIDATION_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--mispricing-atlas" },
   { flag: "--research-results-dir" },
   { flag: "--regime-tags" },
+  { flag: "--memory-report" },
 ];
 
 export const STRATEGY_SYNTHESIS_ARGV_SCHEMA: readonly NpmArgvField[] = [
@@ -612,7 +613,10 @@ export function normalizeHypothesisCandidatesArgv(argv: readonly string[]): stri
 }
 
 export function normalizeHypothesisValidationArgv(argv: readonly string[]): string[] {
-  return normalizeNpmScriptArgv(argv, HYPOTHESIS_VALIDATION_ARGV_SCHEMA);
+  return mergeNpmBooleanFlags(
+    normalizeNpmScriptArgv(argv, HYPOTHESIS_VALIDATION_ARGV_SCHEMA),
+    ["--memory-report"],
+  );
 }
 
 export function normalizeStrategySynthesisArgv(argv: readonly string[]): string[] {

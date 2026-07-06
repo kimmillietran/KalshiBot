@@ -25,6 +25,7 @@ import {
   HypothesisValidationCommandError,
   parseHtmlOutputPathFromArgv,
   parseInputPathsFromArgv,
+  parseMemoryReportFlag,
   parseOutputPathFromArgv,
 } from "./buildHypothesisValidationTypes";
 import type { HypothesisValidationCommandIo } from "./buildHypothesisValidationTypes";
@@ -51,6 +52,7 @@ export function runHypothesisValidationCommand(
     const outputPath = parseOutputPathFromArgv(normalizedArgv);
     const htmlOutputPath = parseHtmlOutputPathFromArgv(normalizedArgv);
     const inputPaths = parseInputPathsFromArgv(normalizedArgv);
+    const memoryReport = parseMemoryReportFlag(normalizedArgv);
     const generatedAt = options?.generatedAt ?? new Date().toISOString();
 
     assertHypothesisValidationInputFiles(io, {
@@ -70,6 +72,7 @@ export function runHypothesisValidationCommand(
       inputPaths,
       candidates,
       io,
+      memoryReport,
     });
 
     io.mkdirSync(dirname(outputPath), { recursive: true });
@@ -85,6 +88,9 @@ export function runHypothesisValidationCommand(
           totalHypotheses: report.summary.totalHypotheses,
           passingCount: report.summary.passingCount,
           averageRobustnessScore: report.summary.averageRobustnessScore,
+          ...(report.memoryDiagnostics
+            ? { memoryDiagnostics: report.memoryDiagnostics }
+            : {}),
         }),
       ),
     );

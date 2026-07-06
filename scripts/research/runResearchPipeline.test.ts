@@ -61,6 +61,12 @@ describe("runResearchPipelineCommand", () => {
       writeStderr: () => {},
       writeFile: () => {},
       mkdirSync: () => {},
+      dependencyIo: {
+        fileExists: () => true,
+        isDirectory: () => true,
+        getModifiedTimeMs: () => 100,
+        countFilesNamedUnder: () => 1,
+      },
       runner: async (npmScript) => ({
         exitCode: npmScript === "fixtures:batch" ? 1 : 0,
         stdout: "",

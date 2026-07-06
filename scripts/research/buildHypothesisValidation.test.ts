@@ -86,4 +86,47 @@ describe("runHypothesisValidationCommand", () => {
     expect(JSON.parse(stdout).outputPath).toBe(OUTPUT_PATH);
     expect(writes.get(HTML_PATH)).toContain("Hypothesis Robustness Validation");
   });
+
+  it("includes memory diagnostics when --memory-report is passed", () => {
+    let stdout = "";
+
+    const exitCode = runHypothesisValidationCommand(["--memory-report"], {
+      readFile: (path) => {
+        if (path.endsWith("hypothesis-candidates.json")) {
+          return EMPTY_CANDIDATES;
+        }
+
+        if (path.endsWith("mispricing-atlas.json")) {
+          return JSON.stringify({ generatedAt: GENERATED_AT });
+        }
+
+        if (path.endsWith("regime-tags.json")) {
+          return JSON.stringify({ regimes: [] });
+        }
+
+        return "{}";
+      },
+      fileExists: (path) =>
+        path.endsWith("hypothesis-candidates.json")
+        || path.endsWith("mispricing-atlas.json")
+        || path.endsWith("regime-tags.json"),
+      writeStdout: (text) => {
+        stdout += text;
+      },
+      writeStderr: () => {},
+      writeFile: () => {},
+      mkdirSync: () => {},
+      readdir: () => [],
+      isDirectory: (path) => path.replace(/\\/g, "/").endsWith("data/research-results"),
+    }, { generatedAt: GENERATED_AT });
+
+    expect(exitCode).toBe(0);
+    const payload = JSON.parse(stdout);
+    expect(payload.memoryDiagnostics).toEqual(
+      expect.objectContaining({
+        hypothesisCandidateCount: 0,
+        largestIntermediateCollection: "validation-bucket-accumulators",
+      }),
+    );
+  });
 });
