@@ -31,6 +31,14 @@ import { sleepMs } from "@/lib/data/discovery/discoveryRateLimit";
 
 import { buildExpansionMarketImportArtifacts } from "./buildExpansionMarketImportConfig";
 import { buildPlannedExpansionImportQueue } from "./buildPlannedExpansionImportQueue";
+import { selectMarketsUsingBatchPlan } from "./applyExpansionBatchPlan";
+import {
+  createExpansionBatchPlanConsumptionState,
+  ExpansionBatchPlannerError,
+  ExpansionBatchPlannerErrorCode,
+  parseExpansionBatchPlanJson,
+} from "@/lib/data/research/expansionBatchPlanner";
+import type { ExpansionBatchPlan } from "@/lib/data/research/expansionBatchPlanner";
 import {
   createDeltaRefreshDiscoverMarkets,
   createExpansionDiscoveryDeltaRefreshDiagnostics,
@@ -497,6 +505,44 @@ export async function runHistoricalExpansionImport(
     warnings: discoveryWarnings,
   });
 
+  let batchPlan: ExpansionBatchPlan | null = null;
+  let batchPlanRemainingByMonth: Map<string, number> | null = null;
+
+  if (input.config.batchPlanPath) {
+    if (!input.io.fileExists(input.config.batchPlanPath)) {
+      throw new ExpansionExecutorError(
+        `Batch plan not found at ${input.config.batchPlanPath}`,
+        ExpansionExecutorErrorCode.INVALID_EXPANSION_CONFIG,
+      );
+    }
+
+    try {
+      batchPlan = parseExpansionBatchPlanJson(
+        input.io.readFile(input.config.batchPlanPath),
+        input.config.batchPlanPath,
+      );
+    } catch (error) {
+      if (
+        error instanceof ExpansionBatchPlannerError
+        && error.code === ExpansionBatchPlannerErrorCode.INVALID_DOCUMENT
+        && error.message.includes("empty allocations")
+      ) {
+        warnings.push(
+          "Expansion batch plan has no month allocations; falling back to default market selection.",
+        );
+      } else {
+        throw error;
+      }
+    }
+
+    if (batchPlan) {
+      batchPlanRemainingByMonth = createExpansionBatchPlanConsumptionState(batchPlan);
+      warnings.push(
+        `Using expansion batch plan from ${input.config.batchPlanPath} (${batchPlan.allocations.length} month allocation(s)).`,
+      );
+    }
+  }
+
   for (const [jobIndex, job] of sortedScheduledJobs.entries()) {
     if (input.signal?.aborted) {
       interrupted = true;
@@ -513,16 +559,41 @@ export async function runHistoricalExpansionImport(
     );
     const existingTickersAtPlanning = new Set(existingTickers);
     const budgetBeforeJob = remainingMarketBudget;
-    const importPlan = buildPlannedExpansionImportQueue(
-      sortedDiscovered,
-      existingTickers,
-      remainingMarketBudget,
-      {
-        sampleStrategy: input.config.sampleStrategy,
-        planningHistory,
-        selectionSeed: job.jobId,
-      },
-    );
+
+    let alreadyCoveredCount = 0;
+    const eligibleMarkets: typeof sortedDiscovered = [];
+    for (const market of sortedDiscovered) {
+      if (existingTickers.has(market.marketTicker)) {
+        alreadyCoveredCount += 1;
+        continue;
+      }
+
+      eligibleMarkets.push(market);
+    }
+
+    const importPlan =
+      batchPlan && batchPlanRemainingByMonth
+        ? {
+          alreadyCoveredCount,
+          ...selectMarketsUsingBatchPlan({
+            eligibleMarkets,
+            batchPlan,
+            remainingByMonth: batchPlanRemainingByMonth,
+            remainingMarketBudget,
+            planningHistory,
+            selectionSeed: job.jobId,
+          }),
+        }
+        : buildPlannedExpansionImportQueue(
+          sortedDiscovered,
+          existingTickers,
+          remainingMarketBudget,
+          {
+            sampleStrategy: input.config.sampleStrategy,
+            planningHistory,
+            selectionSeed: job.jobId,
+          },
+        );
     const plannedQueue = importPlan.plannedQueue;
     const plannedTickers = new Set(plannedQueue.map((market) => market.marketTicker));
 

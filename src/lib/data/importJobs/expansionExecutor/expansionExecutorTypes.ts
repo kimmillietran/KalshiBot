@@ -172,6 +172,7 @@ export type HistoricalExpansionImportExecutorConfig = {
   useDiscoveryCache: boolean;
   refreshDiscoveryCache: boolean;
   refreshDiscoveryMonth: string | null;
+  batchPlanPath: string | null;
 };
 
 export type ExpansionImportProgressHooks = {

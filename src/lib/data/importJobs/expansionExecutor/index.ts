@@ -11,6 +11,7 @@ export type {
 export { classifyExpansionImportPlanningCategory } from "./classifyExpansionImportPlanningCategory";
 export { loadExpansionImportPlanningHistory } from "./loadExpansionImportPlanningHistory";
 export { buildPlannedExpansionImportQueue } from "./buildPlannedExpansionImportQueue";
+export { selectMarketsUsingBatchPlan } from "./applyExpansionBatchPlan";
 export {
   createDeltaRefreshDiscoverMarkets,
   createExpansionDiscoveryDeltaRefreshDiagnostics,

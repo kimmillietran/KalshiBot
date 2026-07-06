@@ -19,6 +19,7 @@ import {
   DEFAULT_EXPANSION_BACKOFF_MULTIPLIER,
   DEFAULT_EXPANSION_SUCCESS_DECAY_AFTER,
 } from "@/lib/data/importJobs/expansionExecutor/expansionImportAdaptiveThrottle";
+import { DEFAULT_EXPANSION_BATCH_PLAN_OUTPUT_PATH } from "@/lib/data/research/expansionBatchPlanner";
 import {
   DEFAULT_DISCOVERY_CACHE_SEGMENT,
   DEFAULT_DISCOVERY_CACHE_TTL_HOURS,
@@ -78,6 +79,20 @@ function readOptionalFlag(argv: readonly string[], flag: string): string | null 
   }
 
   return null;
+}
+
+function readOptionalBatchPlanPath(argv: readonly string[]): string | null {
+  const flagIndex = argv.indexOf("--batch-plan");
+  if (flagIndex === -1) {
+    return null;
+  }
+
+  const next = argv[flagIndex + 1];
+  if (!next || next.startsWith("-")) {
+    return DEFAULT_EXPANSION_BATCH_PLAN_OUTPUT_PATH;
+  }
+
+  return next;
 }
 
 function readBooleanFlag(argv: readonly string[], flag: string): boolean {
@@ -250,6 +265,7 @@ export function parseExecuteExpansionImportConfigFromArgv(
     useDiscoveryCache: !argv.includes("--no-use-discovery-cache"),
     refreshDiscoveryCache: readBooleanFlag(argv, "--refresh-discovery-cache"),
     refreshDiscoveryMonth: readRefreshDiscoveryMonthFlag(argv),
+    batchPlanPath: readOptionalBatchPlanPath(argv),
   };
 }
 

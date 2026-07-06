@@ -202,6 +202,7 @@ function createBaseConfig(overrides?: Partial<{
     useDiscoveryCache: true,
     refreshDiscoveryCache: false,
     refreshDiscoveryMonth: null,
+    batchPlanPath: null,
     ...overrides,
   };
 }

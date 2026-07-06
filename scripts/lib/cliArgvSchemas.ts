@@ -309,9 +309,24 @@ export const EXECUTE_EXPANSION_IMPORT_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--refresh-discovery-cache" },
   { flag: "--refresh-discovery-month" },
   { flag: "--use-discovery-cache" },
+  { flag: "--batch-plan" },
   { flag: "--execute" },
   { flag: "--resume" },
   { flag: "--skip-failed" },
+];
+
+export const PLAN_EXPANSION_BATCH_ARGV_SCHEMA: readonly NpmArgvField[] = [
+  { flag: "--output" },
+  { flag: "--html-output" },
+  { flag: "--max-markets" },
+  { flag: "--selection-strategy" },
+  { flag: "--selection-seed" },
+  { flag: "--historical-coverage-plan" },
+  { flag: "--historical-expansion-config" },
+  { flag: "--historical-expansion-import-summary" },
+  { flag: "--hypothesis-validation" },
+  { flag: "--coverage-aware-validation" },
+  { flag: "--discovery-result" },
 ];
 
 export const DATA_HEALTH_ARGV_SCHEMA: readonly NpmArgvField[] = [
@@ -631,6 +646,18 @@ export function normalizeHistoricalCoveragePlanArgv(argv: readonly string[]): st
   return normalizeNpmScriptArgv(argv, HISTORICAL_COVERAGE_PLAN_ARGV_SCHEMA);
 }
 
+export function normalizePlanExpansionBatchArgv(argv: readonly string[]): string[] {
+  const expanded = expandEqualsStyleFlags(argv);
+  const withConfigFlags = hasCliFlags(expanded)
+    ? mergeNpmConfigFlags(expanded, PLAN_EXPANSION_BATCH_NPM_CONFIG_FLAGS)
+    : mergeNpmConfigFlags(
+        parsePositionalPlanExpansionBatchArgv(expanded),
+        PLAN_EXPANSION_BATCH_NPM_CONFIG_FLAGS,
+      );
+
+  return attachTrailingMaxMarketsForPlanExpansionBatch(withConfigFlags);
+}
+
 export function normalizeHypothesisLifecycleArgv(argv: readonly string[]): string[] {
   return normalizeNpmScriptArgv(argv, HYPOTHESIS_LIFECYCLE_ARGV_SCHEMA);
 }
@@ -739,6 +766,7 @@ const EXECUTE_EXPANSION_IMPORT_NPM_CONFIG_FLAGS = [
   "--market-ticker",
   "--single-market-output",
   "--single-market-html-output",
+  "--batch-plan",
 ] as const;
 
 const EXECUTE_EXPANSION_IMPORT_BOOLEAN_FLAGS = [
@@ -750,6 +778,61 @@ const EXECUTE_EXPANSION_IMPORT_BOOLEAN_FLAGS = [
   "--retry-unsupported",
   "--verify-resume-artifacts",
 ] as const;
+
+const PLAN_EXPANSION_BATCH_NPM_CONFIG_FLAGS = [
+  "--output",
+  "--html-output",
+  "--max-markets",
+  "--selection-strategy",
+  "--selection-seed",
+  "--historical-coverage-plan",
+  "--historical-expansion-config",
+  "--historical-expansion-import-summary",
+  "--hypothesis-validation",
+  "--coverage-aware-validation",
+  "--discovery-result",
+] as const;
+
+function parsePositionalPlanExpansionBatchArgv(argv: readonly string[]): string[] {
+  const positional = argv.filter((token) => !token.startsWith("-"));
+  if (positional.length === 0) {
+    return [...argv];
+  }
+
+  const [maxMarketsToken, ...restPositional] = positional;
+  if (!maxMarketsToken || !isIntegerToken(maxMarketsToken)) {
+    return [...argv];
+  }
+
+  const withoutPositional = argv.filter((token) => !positional.includes(token));
+  return ["--max-markets", maxMarketsToken, ...withoutPositional, ...restPositional];
+}
+
+function attachTrailingMaxMarketsForPlanExpansionBatch(argv: readonly string[]): string[] {
+  if (argv.includes("--max-markets")) {
+    return [...argv];
+  }
+
+  const merged = [...argv];
+  for (let index = 0; index < argv.length; index += 1) {
+    const token = argv[index];
+    if (!isIntegerToken(token)) {
+      continue;
+    }
+
+    const previous = argv[index - 1];
+    if (previous === "--max-markets") {
+      continue;
+    }
+
+    if (previous?.startsWith("--")) {
+      merged.push("--max-markets", token);
+      break;
+    }
+  }
+
+  return merged;
+}
 
 function looksLikeExpansionImportConfigPath(token: string): boolean {
   return token.endsWith(".json") || token.includes("/") || token.includes("\\");
