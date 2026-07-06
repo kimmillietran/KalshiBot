@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { ExpansionBatchPlan } from "@/lib/data/research/expansionBatchPlanner/expansionBatchPlannerTypes";
+import { createEmptyDiscoveryUniverseFixture } from "@/lib/data/research/expansionBatchPlanner/expansionBatchDiscoveryUniverseTestUtils";
 import { createExpansionBatchPlanConsumptionState } from "@/lib/data/research/expansionBatchPlanner/parseExpansionBatchPlanJson";
 
 import { selectMarketsUsingBatchPlan } from "./applyExpansionBatchPlan";
@@ -41,6 +42,7 @@ const batchPlan: ExpansionBatchPlan = {
     hypothesisValidationPath: "data/research-results/hypothesis-validation.json",
     coverageAwareValidationPath: "data/research-results/coverage-aware-validation.json",
     discoveryResultPath: "discovery-result.json",
+    discoveryCacheDir: "data/research-results/discovery-cache",
   },
   inputStatus: {
     coveragePlanPresent: true,
@@ -49,6 +51,7 @@ const batchPlan: ExpansionBatchPlan = {
     hypothesisValidationPresent: false,
     coverageAwareValidationPresent: false,
     discoveryResultPresent: false,
+    discoveryCachePresent: false,
   },
   summary: {
     totalAllocatedMarkets: 5,
@@ -60,6 +63,11 @@ const batchPlan: ExpansionBatchPlan = {
     rejectedZeroPriorityAllocationCount: 0,
     rejectedAlreadyCoveredAllocationCount: 0,
   },
+  discoveryUniverse: createEmptyDiscoveryUniverseFixture({
+    plannerExhausted: false,
+    universeComplete: false,
+    exhaustionReason: "none",
+  }),
   plannerNotes: [],
   rejectedCandidates: [],
   allocations: [

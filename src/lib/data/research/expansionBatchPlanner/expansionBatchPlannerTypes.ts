@@ -1,6 +1,8 @@
 import type { EstimatedSupportLevel } from "@/lib/data/research/coveragePlanner/importability/importabilityTypes";
 import type { CoverageDepthStatus } from "@/lib/data/research/coveragePlanner/coveragePlannerTypes";
 
+import type { ExpansionBatchDiscoveryUniverseDiagnostics } from "./expansionBatchDiscoveryUniverseTypes";
+
 export const EXPANSION_BATCH_PLAN_SELECTION_STRATEGIES = [
   "research-value",
   "temporal-balance",
@@ -32,6 +34,8 @@ export const DEFAULT_EXPANSION_BATCH_PLAN_HYPOTHESIS_VALIDATION_PATH =
 export const DEFAULT_EXPANSION_BATCH_PLAN_COVERAGE_AWARE_VALIDATION_PATH =
   "data/research-results/coverage-aware-validation.json";
 export const DEFAULT_EXPANSION_BATCH_PLAN_DISCOVERY_RESULT_PATH = "discovery-result.json";
+export const DEFAULT_EXPANSION_BATCH_PLAN_DISCOVERY_CACHE_DIR =
+  "data/research-results/discovery-cache";
 
 export const ExpansionBatchPlannerErrorCode = {
   MISSING_INPUT: "missing-input",
@@ -60,6 +64,7 @@ export type ExpansionBatchPlannerInputPaths = {
   hypothesisValidationPath: string;
   coverageAwareValidationPath: string;
   discoveryResultPath: string;
+  discoveryCacheDir: string;
 };
 
 export type ExpansionBatchPlannerInputStatus = {
@@ -69,6 +74,7 @@ export type ExpansionBatchPlannerInputStatus = {
   hypothesisValidationPresent: boolean;
   coverageAwareValidationPresent: boolean;
   discoveryResultPresent: boolean;
+  discoveryCachePresent: boolean;
 };
 
 export type ExpansionBatchMonthCandidate = {
@@ -157,6 +163,7 @@ export type ExpansionBatchPlan = {
   inputPaths: ExpansionBatchPlannerInputPaths;
   inputStatus: ExpansionBatchPlannerInputStatus;
   summary: ExpansionBatchPlanSummary;
+  discoveryUniverse: ExpansionBatchDiscoveryUniverseDiagnostics;
   plannerNotes: readonly string[];
   allocations: readonly ExpansionBatchAllocation[];
   rejectedCandidates: readonly ExpansionBatchRejectedCandidate[];
@@ -174,6 +181,7 @@ export type ExpansionBatchPlannerConfig = {
 export type ExpansionBatchPlannerIo = {
   readFile: (path: string) => string;
   fileExists: (path: string) => boolean;
+  listDir?: (path: string) => readonly string[];
 };
 
 export type BuildExpansionBatchPlanInput = {

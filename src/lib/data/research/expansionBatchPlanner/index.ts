@@ -22,8 +22,17 @@ export {
   parseExpansionBatchPlanJson,
 } from "./parseExpansionBatchPlanJson";
 export {
+  collectExpandedCandidateMonths,
+  collectKnownCandidateMonths,
+} from "./collectExpansionBatchCandidateMonths";
+export {
+  buildExpansionBatchDiscoveryUniverse,
+  formatDiscoveryUniversePlannerNotes,
+} from "./buildExpansionBatchDiscoveryUniverse";
+export {
   DEFAULT_EXPANSION_BATCH_PLAN_COVERAGE_AWARE_VALIDATION_PATH,
   DEFAULT_EXPANSION_BATCH_PLAN_COVERAGE_PLAN_PATH,
+  DEFAULT_EXPANSION_BATCH_PLAN_DISCOVERY_CACHE_DIR,
   DEFAULT_EXPANSION_BATCH_PLAN_DISCOVERY_RESULT_PATH,
   DEFAULT_EXPANSION_BATCH_PLAN_EXPANSION_CONFIG_PATH,
   DEFAULT_EXPANSION_BATCH_PLAN_EXPANSION_IMPORT_SUMMARY_PATH,

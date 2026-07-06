@@ -1,5 +1,5 @@
 import { dirname } from "node:path";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 
 import {
   buildExpansionBatchPlan,
@@ -32,6 +32,7 @@ export function runPlanExpansionBatchCommand(
       io: {
         readFile: io.readFile,
         fileExists: io.fileExists,
+        listDir: io.listDir,
       },
     });
 
@@ -56,6 +57,14 @@ export function runPlanExpansionBatchCommand(
             plan.summary.rejectedZeroPriorityAllocationCount,
           rejectedAlreadyCoveredAllocationCount:
             plan.summary.rejectedAlreadyCoveredAllocationCount,
+          knownCandidateMonths: plan.discoveryUniverse.knownCandidateMonths.length,
+          undiscoveredCandidateMonths: plan.discoveryUniverse.undiscoveredCandidateMonths.length,
+          discoveryFrontierMonths: plan.discoveryUniverse.discoveryFrontierMonths.length,
+          staleDiscoveryMonths: plan.discoveryUniverse.staleDiscoveryMonths.length,
+          plannerExhausted: plan.discoveryUniverse.plannerExhausted,
+          universeComplete: plan.discoveryUniverse.universeComplete,
+          universeIncomplete: plan.discoveryUniverse.universeIncomplete,
+          exhaustionReason: plan.discoveryUniverse.exhaustionReason,
         }),
       ),
     );
@@ -71,6 +80,7 @@ function main(): void {
   const exitCode = runPlanExpansionBatchCommand(process.argv.slice(2), {
     readFile: (path) => readFileSync(path, "utf8").replace(/^\uFEFF/, ""),
     fileExists: (path) => existsSync(path),
+    listDir: (path) => readdirSync(path),
     writeStdout: (text) => {
       process.stdout.write(text);
     },

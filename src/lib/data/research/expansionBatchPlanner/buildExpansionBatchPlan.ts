@@ -8,6 +8,14 @@ import type {
   ExpansionBatchPlan,
 } from "./expansionBatchPlannerTypes";
 import { ExpansionBatchPlannerError, ExpansionBatchPlannerErrorCode } from "./expansionBatchPlannerTypes";
+import {
+  buildExpansionBatchDiscoveryUniverse,
+  formatDiscoveryUniversePlannerNotes,
+} from "./buildExpansionBatchDiscoveryUniverse";
+import {
+  collectExpandedCandidateMonths,
+  collectKnownCandidateMonths,
+} from "./collectExpansionBatchCandidateMonths";
 import { partitionImportableExpansionBatchCandidates } from "./evaluateExpansionBatchCandidateImportability";
 import { estimateExpansionBatchCandidateImportability } from "./evaluateExpansionBatchCandidateImportability";
 import {
@@ -19,7 +27,7 @@ import { scoreExpansionBatchMonthCandidates } from "./scoreExpansionBatchMonthCa
 function buildPlannerNotes(
   plan: Pick<
     ExpansionBatchPlan,
-    "inputStatus" | "summary" | "selectionStrategy" | "maxMarkets"
+    "inputStatus" | "summary" | "selectionStrategy" | "maxMarkets" | "discoveryUniverse"
   >,
 ): string[] {
   const notes = [
@@ -40,15 +48,27 @@ function buildPlannerNotes(
     );
   }
 
-  if (!plan.inputStatus.discoveryResultPresent) {
+  if (!plan.inputStatus.discoveryResultPresent && !plan.inputStatus.discoveryCachePresent) {
     notes.push(
-      "Discovery cache was not found; allocations ignore discovered market availability caps.",
+      "No discovery artifacts found (discovery-result.json or discovery-cache segments); allocations ignore discovered market availability caps.",
+    );
+  } else if (!plan.inputStatus.discoveryResultPresent) {
+    notes.push(
+      "discovery-result.json was not found; planner uses discovery-cache segment counts where available.",
+    );
+  }
+
+  if (!plan.inputStatus.discoveryCachePresent) {
+    notes.push(
+      "Executor discovery-cache directory was not found; stale-segment detection is limited to discovery-result.json.",
     );
   }
 
   if (plan.summary.allocationCount === 0) {
     notes.push("No importable research-value allocations found.");
   }
+
+  notes.push(...formatDiscoveryUniversePlannerNotes(plan.discoveryUniverse));
 
   return notes;
 }
@@ -66,7 +86,16 @@ export function buildExpansionBatchPlan(
 
   const loaded = loadExpansionBatchPlannerInputs(input.io, input.config.inputPaths);
   const importabilityMarkets = loadExpansionImportMarketRecords(loaded.expansionImportSummary);
-  const candidates = buildExpansionBatchMonthCandidates(loaded, importabilityMarkets);
+  const knownCandidateMonths = collectKnownCandidateMonths(loaded.coveragePlan);
+  const expandedCandidateMonths = collectExpandedCandidateMonths({
+    coveragePlan: loaded.coveragePlan,
+    expansionConfig: loaded.expansionConfig,
+  });
+  const candidates = buildExpansionBatchMonthCandidates(
+    loaded,
+    importabilityMarkets,
+    expandedCandidateMonths,
+  );
   const scoredCandidates = scoreExpansionBatchMonthCandidates(
     candidates,
     input.config.selectionStrategy,
@@ -93,6 +122,15 @@ export function buildExpansionBatchPlan(
   const unsupportedHeavyAllocationCount = allocations.filter(
     (entry) => entry.expectedImportability === "low" || entry.estimatedUnsupportedRate >= 0.4,
   ).length;
+
+  const discoveryUniverse = buildExpansionBatchDiscoveryUniverse({
+    knownCandidateMonths,
+    expandedCandidateMonths,
+    discoverySources: loaded.discoverySourcesByMonth,
+    discoveryResultPresent: loaded.inputStatus.discoveryResultPresent,
+    allocationCount: allocations.length,
+    rejectedCandidateCount: partitioned.rejectedCandidates.length,
+  });
 
   const plan: ExpansionBatchPlan = {
     generatedAt: input.generatedAt,
@@ -121,6 +159,7 @@ export function buildExpansionBatchPlan(
       rejectedAlreadyCoveredAllocationCount:
         partitioned.rejectedAlreadyCoveredAllocationCount,
     },
+    discoveryUniverse,
     plannerNotes: [],
     allocations,
     rejectedCandidates: partitioned.rejectedCandidates,

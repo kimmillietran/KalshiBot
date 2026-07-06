@@ -55,6 +55,23 @@ export function parseExpansionBatchPlanJson(raw: string, path: string): Expansio
     parsed.rejectedCandidates = [];
   }
 
+  if (!parsed.discoveryUniverse || typeof parsed.discoveryUniverse !== "object") {
+    parsed.discoveryUniverse = {
+      knownCandidateMonths: [],
+      expandedCandidateMonths: [],
+      discoveredMonths: [],
+      undiscoveredCandidateMonths: [],
+      discoveryFrontierMonths: [],
+      staleDiscoveryMonths: [],
+      plannerExhausted: parsed.allocations.length === 0,
+      universeComplete: parsed.allocations.length === 0,
+      universeIncomplete: false,
+      exhaustionReason: parsed.allocations.length === 0
+        ? "importability-exhausted"
+        : "none",
+    };
+  }
+
   return parsed as ExpansionBatchPlan;
 }
 

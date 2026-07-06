@@ -430,6 +430,7 @@ describe("buildExpansionBatchPlan", () => {
           hypothesisValidationPath: "data/research-results/hypothesis-validation.json",
           coverageAwareValidationPath: "data/research-results/coverage-aware-validation.json",
           discoveryResultPath: "discovery-result.json",
+          discoveryCacheDir: "data/research-results/discovery-cache",
         },
       },
       io: {
@@ -473,6 +474,7 @@ describe("buildExpansionBatchPlan", () => {
         hypothesisValidationPath: "data/research-results/hypothesis-validation.json",
         coverageAwareValidationPath: "data/research-results/coverage-aware-validation.json",
         discoveryResultPath: "discovery-result.json",
+        discoveryCacheDir: "data/research-results/discovery-cache",
       },
     };
 
@@ -582,6 +584,7 @@ describe("buildExpansionBatchPlan", () => {
           hypothesisValidationPath: "data/research-results/hypothesis-validation.json",
           coverageAwareValidationPath: "data/research-results/coverage-aware-validation.json",
           discoveryResultPath: "discovery-result.json",
+          discoveryCacheDir: "data/research-results/discovery-cache",
         },
       },
       io: {
@@ -636,5 +639,69 @@ describe("buildExpansionBatchPlan", () => {
     expect(plan.allocations).toEqual([]);
     expect(plan.rejectedCandidates.some((entry) => entry.month === "2026-05")).toBe(true);
     expect(plan.plannerNotes).toContain("No importable research-value allocations found.");
+    expect(plan.discoveryUniverse.universeComplete).toBe(true);
+    expect(plan.discoveryUniverse.exhaustionReason).toBe("importability-exhausted");
+    expect(plan.plannerNotes.some((note) => note.includes("Known discovery universe exhausted"))).toBe(
+      true,
+    );
+  });
+
+  it("reports discovery universe incomplete when expanded months lack discovery data", () => {
+    const coveragePlan = createCoveragePlanFixture({
+      recommendations: [
+        {
+          recommendationId: "rec-q1",
+          seriesTicker: "KXBTC15M",
+          startMonth: "2026-01",
+          endMonth: "2026-03",
+          missingMonths: ["2026-03"],
+          priorityScore: 70,
+          targetHypothesisIds: ["hyp-a"],
+          expectedResearchBenefit: "Fill Q1.",
+          estimatedSupportLevel: "high",
+          estimatedUnsupportedRate: 0.05,
+          rationale: "Q1 gap",
+        },
+      ],
+    });
+
+    const plan = buildExpansionBatchPlan({
+      generatedAt: BASE_GENERATED_AT,
+      config: {
+        outputPath: "data/research-results/expansion-batch-plan.json",
+        htmlOutputPath: "data/reports/expansion-batch-plan.html",
+        maxMarkets: 100,
+        selectionStrategy: "research-value",
+        selectionSeed: "seed",
+        inputPaths: {
+          coveragePlanPath: "data/research-results/historical-coverage-plan.json",
+          expansionConfigPath: "data/import-configs/historical-expansion-config.json",
+          expansionImportSummaryPath:
+            "data/research-results/historical-expansion-import-summary.json",
+          hypothesisValidationPath: "data/research-results/hypothesis-validation.json",
+          coverageAwareValidationPath: "data/research-results/coverage-aware-validation.json",
+          discoveryResultPath: "discovery-result.json",
+          discoveryCacheDir: "data/research-results/discovery-cache",
+        },
+      },
+      io: {
+        readFile: (path) => {
+          if (path.endsWith("historical-coverage-plan.json")) {
+            return JSON.stringify(coveragePlan);
+          }
+          return "{}";
+        },
+        fileExists: (path) => path.endsWith("historical-coverage-plan.json"),
+      },
+    });
+
+    expect(plan.discoveryUniverse.universeIncomplete).toBe(true);
+    expect(plan.discoveryUniverse.undiscoveredCandidateMonths.length).toBeGreaterThan(0);
+    expect(plan.plannerNotes.some((note) => note.includes("Discovery universe incomplete"))).toBe(
+      true,
+    );
+    expect(plan.summary.candidateMonthCount).toBeGreaterThan(
+      plan.discoveryUniverse.knownCandidateMonths.length,
+    );
   });
 });

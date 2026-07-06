@@ -1,6 +1,7 @@
 import {
   DEFAULT_EXPANSION_BATCH_PLAN_COVERAGE_AWARE_VALIDATION_PATH,
   DEFAULT_EXPANSION_BATCH_PLAN_COVERAGE_PLAN_PATH,
+  DEFAULT_EXPANSION_BATCH_PLAN_DISCOVERY_CACHE_DIR,
   DEFAULT_EXPANSION_BATCH_PLAN_DISCOVERY_RESULT_PATH,
   DEFAULT_EXPANSION_BATCH_PLAN_EXPANSION_CONFIG_PATH,
   DEFAULT_EXPANSION_BATCH_PLAN_EXPANSION_IMPORT_SUMMARY_PATH,
@@ -23,6 +24,7 @@ export class PlanExpansionBatchCommandError extends Error {
 export type PlanExpansionBatchCommandIo = {
   readFile: (path: string) => string;
   fileExists: (path: string) => boolean;
+  listDir?: (path: string) => readonly string[];
   writeStdout: (text: string) => void;
   writeStderr: (text: string) => void;
   writeFile: (path: string, data: string) => void;
@@ -114,6 +116,11 @@ export function parsePlanExpansionBatchConfigFromArgv(
         argv,
         "--discovery-result",
         DEFAULT_EXPANSION_BATCH_PLAN_DISCOVERY_RESULT_PATH,
+      ),
+      discoveryCacheDir: readFlagValue(
+        argv,
+        "--discovery-cache-dir",
+        DEFAULT_EXPANSION_BATCH_PLAN_DISCOVERY_CACHE_DIR,
       ),
     },
   };

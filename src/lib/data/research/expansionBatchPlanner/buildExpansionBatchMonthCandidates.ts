@@ -8,6 +8,7 @@ import type { CoverageAwareValidationReport } from "@/lib/data/research/coverage
 
 import type { ExpansionBatchMonthCandidate } from "./expansionBatchPlannerTypes";
 import type { LoadedExpansionBatchPlannerInputs } from "./loadExpansionBatchPlannerInputs";
+import { collectExpandedCandidateMonths } from "./collectExpansionBatchCandidateMonths";
 
 function dominantSeries(coveragePlan: HistoricalCoveragePlanReport): string {
   return coveragePlan.snapshot.marketTypeCoverage[0]?.seriesTicker ?? "KXBTC15M";
@@ -152,26 +153,23 @@ function desiredObservationsForMonth(
   return isThin ? Math.max(temporalTarget, marketTarget) : marketTarget;
 }
 
-function collectCandidateMonths(coveragePlan: HistoricalCoveragePlanReport): string[] {
-  const months = new Set<string>([
-    ...coveragePlan.snapshot.missingMonths,
-    ...coveragePlan.snapshot.underCoveredMonths,
-    ...coveragePlan.temporalBalance.hypothesisBalances.flatMap((balance) => balance.thinMonths),
-    ...coveragePlan.recommendations.flatMap((recommendation) => recommendation.missingMonths),
-  ]);
-
-  return [...months].sort();
-}
-
 /** Builds month-level import candidates from coverage and validation artifacts. */
 export function buildExpansionBatchMonthCandidates(
   inputs: LoadedExpansionBatchPlannerInputs,
   importabilityMarkets: readonly ParsedExpansionImportMarketRecord[],
+  candidateMonths?: readonly string[],
 ): ExpansionBatchMonthCandidate[] {
-  const { coveragePlan, coverageAwareValidation, discoveryMarketsByMonth } = inputs;
+  const { coveragePlan, coverageAwareValidation, discoveryMarketsByMonth, expansionConfig } =
+    inputs;
   const seriesTicker = dominantSeries(coveragePlan);
+  const months =
+    candidateMonths
+    ?? collectExpandedCandidateMonths({
+      coveragePlan,
+      expansionConfig,
+    });
 
-  return collectCandidateMonths(coveragePlan).map((month) => {
+  return months.map((month) => {
     const targetHypothesisIds = targetHypothesisIdsForMonth(coveragePlan, month);
     const importability = estimateRecommendationImportability(importabilityMarkets, {
       seriesTicker,

@@ -7,12 +7,18 @@ import { parseExpansionMarketCalendarMonth } from "@/lib/data/research/coverageP
 import { normalizeExpansionImportMarketRecords } from "@/lib/data/research/coveragePlanner/importability/estimateRecommendationImportability";
 
 import {
+  loadExpansionBatchDiscoveryCacheByMonth,
+  mergeExpansionBatchDiscoverySourcesByMonth,
+  mergedDiscoveryCountsByMonth,
+} from "./loadExpansionBatchDiscoveryCache";
+import {
   ExpansionBatchPlannerError,
   ExpansionBatchPlannerErrorCode,
   type ExpansionBatchPlannerInputPaths,
   type ExpansionBatchPlannerInputStatus,
   type ExpansionBatchPlannerIo,
 } from "./expansionBatchPlannerTypes";
+import type { ExpansionBatchDiscoverySourcesByMonth } from "./expansionBatchDiscoveryUniverseTypes";
 
 export type LoadedExpansionBatchPlannerInputs = {
   inputStatus: ExpansionBatchPlannerInputStatus;
@@ -22,6 +28,7 @@ export type LoadedExpansionBatchPlannerInputs = {
   hypothesisValidation: HypothesisValidationReport | null;
   coverageAwareValidation: CoverageAwareValidationReport | null;
   discoveryMarketsByMonth: ReadonlyMap<string, number>;
+  discoverySourcesByMonth: ExpansionBatchDiscoverySourcesByMonth;
 };
 
 function parseJsonDocument<T>(
@@ -124,6 +131,7 @@ export function loadExpansionBatchPlannerInputs(
     hypothesisValidationPresent: io.fileExists(inputPaths.hypothesisValidationPath),
     coverageAwareValidationPresent: io.fileExists(inputPaths.coverageAwareValidationPath),
     discoveryResultPresent: io.fileExists(inputPaths.discoveryResultPath),
+    discoveryCachePresent: io.fileExists(inputPaths.discoveryCacheDir),
   };
 
   const coveragePlan = assertCoveragePlan(
@@ -165,10 +173,20 @@ export function loadExpansionBatchPlannerInputs(
     false,
   );
 
-  const discoveryMarketsByMonth = countDiscoveryMarketsByMonth(
+  const discoveryResultByMonth = countDiscoveryMarketsByMonth(
     io,
     inputPaths.discoveryResultPath,
   );
+  const discoveryCache = loadExpansionBatchDiscoveryCacheByMonth(
+    io,
+    inputPaths.discoveryCacheDir,
+  );
+  const discoverySourcesByMonth = mergeExpansionBatchDiscoverySourcesByMonth({
+    discoveryResultByMonth,
+    discoveryCacheByMonth: discoveryCache.countsByMonth,
+    staleCacheMonths: discoveryCache.staleMonths,
+  });
+  const discoveryMarketsByMonth = mergedDiscoveryCountsByMonth(discoverySourcesByMonth);
 
   return {
     inputStatus,
@@ -178,6 +196,7 @@ export function loadExpansionBatchPlannerInputs(
     hypothesisValidation,
     coverageAwareValidation,
     discoveryMarketsByMonth,
+    discoverySourcesByMonth,
   };
 }
 
