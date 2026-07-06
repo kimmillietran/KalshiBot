@@ -98,3 +98,20 @@ export function quarterLabel(month: string): string {
   const quarter = Math.floor((monthNumber - 1) / 3) + 1;
   return `${yearText}-Q${quarter}`;
 }
+
+const CALENDAR_MONTH_PATTERN = /^\d{4}-(0[1-9]|1[0-2])$/;
+
+/** Validates and returns a YYYY-MM calendar month string. */
+export function parseCalendarMonth(value: string, label = "calendar month"): string {
+  const trimmed = value.trim();
+  if (!CALENDAR_MONTH_PATTERN.test(trimmed)) {
+    throw new Error(`Invalid ${label} "${value}". Expected YYYY-MM.`);
+  }
+
+  return trimmed;
+}
+
+/** Returns the earlier of two YYYY-MM calendar months. */
+export function minCalendarMonth(left: string, right: string): string {
+  return left <= right ? left : right;
+}

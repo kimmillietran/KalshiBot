@@ -21,12 +21,26 @@ export function serializeHistoricalCoveragePlan(
 function buildPlannerNotes(
   report: Pick<
     HistoricalCoveragePlanReport,
-    "snapshot" | "inputStatus" | "recommendations" | "temporalBalance"
+    "snapshot" | "inputStatus" | "recommendations" | "temporalBalance" | "config"
   >,
 ): string[] {
   const notes: string[] = [
     "Read-only planner: does not run imports or mutate replay/research calculations.",
   ];
+
+  if (report.snapshot.coverageHorizon.horizonExpandedByConfig) {
+    notes.push(
+      `Coverage horizon expanded by --earliest-month=${report.config.earliestMonth} (effective earliest ${report.snapshot.coverageHorizon.effectiveEarliestMonth}).`,
+    );
+  } else if (
+    report.config.earliestMonth
+    && report.snapshot.coverageHorizon.observedEarliestMonth
+    && report.config.earliestMonth > report.snapshot.coverageHorizon.observedEarliestMonth
+  ) {
+    notes.push(
+      `Configured --earliest-month=${report.config.earliestMonth} is later than observed earliest ${report.snapshot.coverageHorizon.observedEarliestMonth}; keeping observed horizon start.`,
+    );
+  }
 
   if (!report.inputStatus.hypothesisValidationPresent) {
     notes.push(
@@ -91,6 +105,8 @@ export function buildHistoricalCoveragePlan(
   const snapshot = computeCoverageSnapshot(input.marketRecords, input.scanCounts, {
     minMarketsPerMonth: input.config.minMarketsPerMonth,
     minTradingDaysPerMonth: input.config.minTradingDaysPerMonth,
+  }, {
+    configuredEarliestMonth: input.config.earliestMonth,
   });
 
   const temporalBalance = buildTemporalBalanceDiagnostics({
@@ -122,6 +138,7 @@ export function buildHistoricalCoveragePlan(
       inputStatus: input.inputStatus,
       recommendations,
       temporalBalance,
+      config: input.config,
     }),
   };
 }

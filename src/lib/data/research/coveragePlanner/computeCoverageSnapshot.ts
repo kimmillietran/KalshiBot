@@ -1,8 +1,8 @@
-import { enumerateMonthRange } from "./coveragePlannerDateUtils";
 import {
   classifyMonthCoverageDepth,
   listMonthsByCoverageStatus,
 } from "./computeMonthCoverageDepth";
+import { resolveCoverageHorizonBounds } from "./resolveCoverageHorizonBounds";
 import type {
   CoverageDepthThresholds,
   CoverageMarketRecord,
@@ -150,6 +150,9 @@ export function computeCoverageSnapshot(
     minMarketsPerMonth: 100,
     minTradingDaysPerMonth: 10,
   },
+  options?: {
+    configuredEarliestMonth?: string;
+  },
 ): CoverageSnapshot {
   const uniqueMarkets = new Set(records.map((record) => record.marketTicker));
   const uniqueTradingDays = uniqueSorted(
@@ -157,15 +160,12 @@ export function computeCoverageSnapshot(
   );
   const rawCounts = buildRawMonthCounts(records);
   const observedMonths = [...rawCounts.keys()].sort();
-  const earliestMonth = observedMonths[0] ?? null;
-  const latestMonth = observedMonths.at(-1) ?? null;
+  const horizon = resolveCoverageHorizonBounds({
+    observedMonths,
+    configuredEarliestMonth: options?.configuredEarliestMonth,
+  });
 
-  const horizonMonths =
-    earliestMonth && latestMonth
-      ? enumerateMonthRange(earliestMonth, latestMonth)
-      : [];
-
-  const monthCoverage = buildMonthCoverage(records, thresholds, horizonMonths);
+  const monthCoverage = buildMonthCoverage(records, thresholds, horizon.horizonMonths);
   const missingMonths = listMonthsByCoverageStatus(monthCoverage, "MISSING");
   const underCoveredMonths = listMonthsByCoverageStatus(monthCoverage, "UNDER_COVERED");
   const coveredMonths = listMonthsByCoverageStatus(monthCoverage, "COVERED");
@@ -179,8 +179,12 @@ export function computeCoverageSnapshot(
     coveredMonths,
     depthThresholds: thresholds,
     coverageHorizon: {
-      earliestMonth,
-      latestMonth,
+      earliestMonth: horizon.effectiveEarliestMonth,
+      latestMonth: horizon.latestMonth,
+      configuredEarliestMonth: horizon.configuredEarliestMonth,
+      observedEarliestMonth: horizon.observedEarliestMonth,
+      effectiveEarliestMonth: horizon.effectiveEarliestMonth,
+      horizonExpandedByConfig: horizon.horizonExpandedByConfig,
     },
     volatilityRegimeCoverage: buildVolatilityCoverage(records),
     marketTypeCoverage: buildMarketTypeCoverage(records),

@@ -378,6 +378,66 @@ describe("computeCoverageSnapshot", () => {
     expect(
       snapshot.volatilityRegimeCoverage.find((entry) => entry.regime === "high")?.marketCount,
     ).toBe(1);
+    expect(snapshot.coverageHorizon).toMatchObject({
+      observedEarliestMonth: "2026-01",
+      effectiveEarliestMonth: "2026-01",
+      horizonExpandedByConfig: false,
+    });
+  });
+
+  it("expands the horizon when configured earliest month is earlier than observed data", () => {
+    const records: CoverageMarketRecord[] = [
+      {
+        seriesTicker: "KXBTC15M",
+        marketTicker: "MKT-A",
+        source: "import-config",
+        calendarMonths: ["2026-04"],
+        tradingDays: ["2026-04-10"],
+        volatilityRegime: null,
+      },
+    ];
+
+    const snapshot = computeCoverageSnapshot(
+      records,
+      { importConfigCount: 1, fixtureCount: 0, researchOutputCount: 0 },
+      { minMarketsPerMonth: 1, minTradingDaysPerMonth: 1 },
+      { configuredEarliestMonth: "2025-01" },
+    );
+
+    expect(snapshot.coverageHorizon).toMatchObject({
+      configuredEarliestMonth: "2025-01",
+      observedEarliestMonth: "2026-04",
+      effectiveEarliestMonth: "2025-01",
+      horizonExpandedByConfig: true,
+    });
+    expect(snapshot.missingMonths).toEqual(
+      expect.arrayContaining(["2025-01", "2025-12", "2026-01", "2026-02", "2026-03"]),
+    );
+    expect(snapshot.monthCoverage[0]?.month).toBe("2025-01");
+  });
+
+  it("keeps observed earliest month when configured earliest month is later", () => {
+    const records: CoverageMarketRecord[] = [
+      {
+        seriesTicker: "KXBTC15M",
+        marketTicker: "MKT-A",
+        source: "import-config",
+        calendarMonths: ["2025-06"],
+        tradingDays: ["2025-06-10"],
+        volatilityRegime: null,
+      },
+    ];
+
+    const snapshot = computeCoverageSnapshot(
+      records,
+      { importConfigCount: 1, fixtureCount: 0, researchOutputCount: 0 },
+      { minMarketsPerMonth: 1, minTradingDaysPerMonth: 1 },
+      { configuredEarliestMonth: "2026-01" },
+    );
+
+    expect(snapshot.coverageHorizon.effectiveEarliestMonth).toBe("2025-06");
+    expect(snapshot.coverageHorizon.horizonExpandedByConfig).toBe(false);
+    expect(snapshot.monthCoverage[0]?.month).toBe("2025-06");
   });
 
   it("flags sparse present months as under-covered with default depth thresholds", () => {
@@ -474,6 +534,39 @@ describe("buildCoverageImportRecommendations", () => {
     expect(recommendations[0]?.startMonth).toBe("2026-01");
     expect(recommendations[0]?.endMonth).toBe("2026-01");
     expect(recommendations[0]?.estimatedSupportLevel).toBe("medium");
+  });
+
+  it("includes configured earlier months in coverage-gap recommendations", () => {
+    const snapshot = computeCoverageSnapshot(
+      [
+        {
+          seriesTicker: "KXBTC15M",
+          marketTicker: "MKT-A",
+          source: "import-config",
+          calendarMonths: ["2026-04"],
+          tradingDays: ["2026-04-10"],
+          volatilityRegime: null,
+        },
+      ],
+      { importConfigCount: 1, fixtureCount: 0, researchOutputCount: 0 },
+      { minMarketsPerMonth: 1, minTradingDaysPerMonth: 1 },
+      { configuredEarliestMonth: "2025-01" },
+    );
+
+    const recommendations = buildCoverageImportRecommendations(
+      snapshot,
+      {
+        dataHealth: null,
+        mispricingAtlas: null,
+        hypothesisValidation: null,
+        regimeTags: null,
+      },
+      LOW_THRESHOLD_CONFIG,
+    );
+
+    expect(recommendations.length).toBeGreaterThan(0);
+    expect(recommendations[0]?.startMonth).toBe("2025-01");
+    expect(recommendations.some((entry) => entry.missingMonths.includes("2025-01"))).toBe(true);
   });
 
   it("deprioritizes windows with mostly unsupported prior imports", () => {

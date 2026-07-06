@@ -357,7 +357,25 @@ export const HISTORICAL_COVERAGE_PLAN_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--month-persistence-threshold" },
   { flag: "--min-markets-per-month" },
   { flag: "--min-trading-days-per-month" },
+  { flag: "--earliest-month" },
 ];
+
+const HISTORICAL_COVERAGE_PLAN_NPM_CONFIG_FLAGS = [
+  "--output",
+  "--html-output",
+  "--data-health",
+  "--mispricing-atlas",
+  "--hypothesis-validation",
+  "--regime-tags",
+  "--expansion-import-summary",
+  "--import-configs-dir",
+  "--fixtures-dir",
+  "--research-results-dir",
+  "--month-persistence-threshold",
+  "--min-markets-per-month",
+  "--min-trading-days-per-month",
+  "--earliest-month",
+] as const;
 
 export const HYPOTHESIS_LIFECYCLE_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--output" },
@@ -663,7 +681,13 @@ export function normalizeDataHealthArgv(argv: readonly string[]): string[] {
 }
 
 export function normalizeHistoricalCoveragePlanArgv(argv: readonly string[]): string[] {
-  return normalizeNpmScriptArgv(argv, HISTORICAL_COVERAGE_PLAN_ARGV_SCHEMA);
+  const expanded = expandEqualsStyleFlags(argv);
+  return hasCliFlags(expanded)
+    ? mergeNpmConfigFlags(expanded, HISTORICAL_COVERAGE_PLAN_NPM_CONFIG_FLAGS)
+    : mergeNpmConfigFlags(
+        mapPositionalToFlags(expanded, HISTORICAL_COVERAGE_PLAN_ARGV_SCHEMA),
+        HISTORICAL_COVERAGE_PLAN_NPM_CONFIG_FLAGS,
+      );
 }
 
 export function normalizePlanExpansionBatchArgv(argv: readonly string[]): string[] {

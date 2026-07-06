@@ -57,6 +57,10 @@ export function runHistoricalCoveragePlanCommand(
           marketCount: report.snapshot.marketCount,
           missingMonths: report.snapshot.missingMonths.length,
           recommendationCount: report.recommendations.length,
+          configuredEarliestMonth: report.snapshot.coverageHorizon.configuredEarliestMonth,
+          observedEarliestMonth: report.snapshot.coverageHorizon.observedEarliestMonth,
+          effectiveEarliestMonth: report.snapshot.coverageHorizon.effectiveEarliestMonth,
+          horizonExpandedByConfig: report.snapshot.coverageHorizon.horizonExpandedByConfig,
         }),
       ),
     );

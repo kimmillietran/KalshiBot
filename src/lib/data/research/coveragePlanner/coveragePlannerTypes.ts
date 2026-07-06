@@ -108,6 +108,10 @@ export type CoverageSnapshot = {
   coverageHorizon: {
     earliestMonth: string | null;
     latestMonth: string | null;
+    configuredEarliestMonth: string | null;
+    observedEarliestMonth: string | null;
+    effectiveEarliestMonth: string | null;
+    horizonExpandedByConfig: boolean;
   };
   volatilityRegimeCoverage: readonly VolatilityRegimeCoverageEntry[];
   marketTypeCoverage: readonly MarketTypeCoverageEntry[];
@@ -207,6 +211,7 @@ export type HistoricalCoveragePlanConfig = {
   minMarketsPerMonth: number;
   minTradingDaysPerMonth: number;
   alignImportWindowsToMonthSegments: boolean;
+  earliestMonth?: string;
 };
 
 export type HistoricalCoveragePlanReport = {

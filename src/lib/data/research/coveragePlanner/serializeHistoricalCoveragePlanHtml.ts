@@ -268,7 +268,10 @@ export function serializeHistoricalCoveragePlanHtml(
 
   <section class="panel">
     <h2>Coverage horizon</h2>
-    <p>Earliest month: <strong>${escapeHtml(report.snapshot.coverageHorizon.earliestMonth ?? "—")}</strong></p>
+    <p>Configured earliest month: <strong>${escapeHtml(report.snapshot.coverageHorizon.configuredEarliestMonth ?? "—")}</strong></p>
+    <p>Observed earliest month: <strong>${escapeHtml(report.snapshot.coverageHorizon.observedEarliestMonth ?? "—")}</strong></p>
+    <p>Effective earliest month: <strong>${escapeHtml(report.snapshot.coverageHorizon.effectiveEarliestMonth ?? "—")}</strong></p>
+    <p>Horizon expanded by config: <strong>${report.snapshot.coverageHorizon.horizonExpandedByConfig ? "yes" : "no"}</strong></p>
     <p>Latest month: <strong>${escapeHtml(report.snapshot.coverageHorizon.latestMonth ?? "—")}</strong></p>
     <p>Missing months in horizon: <strong>${escapeHtml(missingMonths)}</strong></p>
     <p>Under-covered months in horizon: <strong>${escapeHtml(underCoveredMonths)}</strong></p>

@@ -14,6 +14,7 @@ import {
   DEFAULT_RESEARCH_RESULTS_DIR,
   type HistoricalCoveragePlanConfig,
 } from "@/lib/data/research/coveragePlanner";
+import { parseCalendarMonth } from "@/lib/data/research/coveragePlanner/coveragePlannerDateUtils";
 import { CoveragePlannerError } from "@/lib/data/research/coveragePlanner/coveragePlannerTypes";
 
 export class HistoricalCoveragePlanCommandError extends Error {
@@ -60,10 +61,31 @@ function readNumberFlagValue(
   return parsed;
 }
 
+function readOptionalCalendarMonthFlag(argv: readonly string[]): string | undefined {
+  const flag = "--earliest-month";
+  for (let index = 0; index < argv.length; index += 1) {
+    if (argv[index] === flag) {
+      const next = argv[index + 1];
+      if (!next || next.startsWith("-")) {
+        throw new HistoricalCoveragePlanCommandError(`Missing value for ${flag} <YYYY-MM>`);
+      }
+      try {
+        return parseCalendarMonth(next, "earliest month");
+      } catch (error) {
+        throw new HistoricalCoveragePlanCommandError(
+          error instanceof Error ? error.message : `Invalid value for ${flag}`,
+        );
+      }
+    }
+  }
+
+  return undefined;
+}
+
 export function parseHistoricalCoveragePlanConfigFromArgv(
   argv: readonly string[],
 ): HistoricalCoveragePlanConfig {
-  return {
+  const config: HistoricalCoveragePlanConfig = {
     outputPath: readFlagValue(argv, "--output", DEFAULT_HISTORICAL_COVERAGE_PLAN_OUTPUT_PATH),
     htmlOutputPath: readFlagValue(
       argv,
@@ -111,6 +133,13 @@ export function parseHistoricalCoveragePlanConfigFromArgv(
     ),
     alignImportWindowsToMonthSegments: !argv.includes("--no-align-import-windows-to-months"),
   };
+
+  const earliestMonth = readOptionalCalendarMonthFlag(argv);
+  if (earliestMonth) {
+    config.earliestMonth = earliestMonth;
+  }
+
+  return config;
 }
 
 export function formatStdoutOutput(serialized: string): string {
