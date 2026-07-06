@@ -31,6 +31,10 @@ import { sleepMs } from "@/lib/data/discovery/discoveryRateLimit";
 
 import { buildExpansionMarketImportArtifacts } from "./buildExpansionMarketImportConfig";
 import { buildPlannedExpansionImportQueue } from "./buildPlannedExpansionImportQueue";
+import {
+  createDeltaRefreshDiscoverMarkets,
+  createExpansionDiscoveryDeltaRefreshDiagnostics,
+} from "./expansionDiscoveryCache";
 import { classifyUnsupportedHistoricalMarket, countUnsupportedHistoricalMarketResults } from "./classifyUnsupportedHistoricalMarket";
 import type { ExpansionImportSelectionCounts } from "./expansionImportSelectionTypes";
 import { loadExpansionImportPlanningHistory } from "./loadExpansionImportPlanningHistory";
@@ -166,6 +170,7 @@ function buildPartialSummary(
   rateLimitState = createExpansionImportRateLimitState(),
   adaptiveThrottle: ExpansionAdaptiveThrottleController | null = null,
   resumeDiagnostics = createExpansionImportResumeDiagnostics(),
+  discoveryDiagnostics = createExpansionDiscoveryDeltaRefreshDiagnostics(),
 ): HistoricalExpansionImportSummary {
   const durationMs = Date.now() - startedAtMs;
   const rateLimitDiagnostics = buildExpansionRateLimitDiagnostics(rateLimitState);
@@ -204,6 +209,7 @@ function buildPartialSummary(
         throttleAdjustmentCount: 0,
       },
     resumeDiagnostics,
+    discoveryDiagnostics,
     summary: aggregateSummary(jobResults, startedAtMs),
     jobs: jobResults,
     warnings,
@@ -478,6 +484,18 @@ export async function runHistoricalExpansionImport(
     input.io,
     planningHistoryPath,
   );
+  const discoveryDiagnostics = createExpansionDiscoveryDeltaRefreshDiagnostics(
+    input.config.useDiscoveryCache,
+  );
+  const discoveryWarnings: string[] = [];
+  const discoverMarkets = createDeltaRefreshDiscoverMarkets({
+    discoverMarkets: input.deps.discoverMarkets,
+    io: input.io,
+    config: input.config,
+    generatedAt: input.generatedAt,
+    diagnostics: discoveryDiagnostics,
+    warnings: discoveryWarnings,
+  });
 
   for (const [jobIndex, job] of sortedScheduledJobs.entries()) {
     if (input.signal?.aborted) {
@@ -488,7 +506,7 @@ export async function runHistoricalExpansionImport(
     const jobStartedAtMs = Date.now();
     const jobWarnings: string[] = [];
     const sampling = toSamplingWindow(job);
-    const discovered = await input.deps.discoverMarkets(job.seriesTicker, sampling);
+    const discovered = await discoverMarkets(job.seriesTicker, sampling);
 
     const sortedDiscovered = [...discovered].sort((left, right) =>
       left.marketTicker.localeCompare(right.marketTicker),
@@ -766,6 +784,7 @@ export async function runHistoricalExpansionImport(
           rateLimitState,
           adaptiveThrottle,
           resumeDiagnostics,
+          discoveryDiagnostics,
         );
 
         persistRunArtifacts(input, partialSummary, {
@@ -863,6 +882,8 @@ export async function runHistoricalExpansionImport(
     }
   }
 
+  warnings.push(...discoveryWarnings);
+
   const { checkpointRunStatus, summaryRunStatus } = finalizeExpansionImportRunStatus({
     interrupted,
     checkpoint,
@@ -886,6 +907,7 @@ export async function runHistoricalExpansionImport(
     rateLimitState,
     adaptiveThrottle,
     resumeDiagnostics,
+    discoveryDiagnostics,
   );
 
   if (input.config.execute) {

@@ -12,6 +12,12 @@ export { classifyExpansionImportPlanningCategory } from "./classifyExpansionImpo
 export { loadExpansionImportPlanningHistory } from "./loadExpansionImportPlanningHistory";
 export { buildPlannedExpansionImportQueue } from "./buildPlannedExpansionImportQueue";
 export {
+  createDeltaRefreshDiscoverMarkets,
+  createExpansionDiscoveryDeltaRefreshDiagnostics,
+  resolveDiscoveryWithDeltaRefresh,
+} from "./expansionDiscoveryCache";
+export type { ExpansionDiscoveryDeltaRefreshDiagnostics } from "./expansionDiscoveryCache";
+export {
   buildExpansionMarketImportArtifacts,
 } from "./buildExpansionMarketImportConfig";
 export {

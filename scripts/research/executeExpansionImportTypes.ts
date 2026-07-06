@@ -20,6 +20,13 @@ import {
   DEFAULT_EXPANSION_SUCCESS_DECAY_AFTER,
 } from "@/lib/data/importJobs/expansionExecutor/expansionImportAdaptiveThrottle";
 import {
+  DEFAULT_DISCOVERY_CACHE_SEGMENT,
+  DEFAULT_DISCOVERY_CACHE_TTL_HOURS,
+  DEFAULT_EXPANSION_DISCOVERY_CACHE_DIR,
+  DISCOVERY_CACHE_SEGMENT_STRATEGIES,
+  type DiscoveryCacheSegmentStrategy,
+} from "@/lib/data/importJobs/expansionExecutor/expansionDiscoveryCache";
+import {
   DEFAULT_EXPANSION_IMPORT_SAMPLE_STRATEGY,
   EXPANSION_IMPORT_SAMPLE_STRATEGIES,
   type ExpansionImportSampleStrategy,
@@ -108,6 +115,52 @@ function readSampleStrategyFlag(argv: readonly string[]): ExpansionImportSampleS
   return raw as ExpansionImportSampleStrategy;
 }
 
+function readDiscoveryCacheSegmentFlag(argv: readonly string[]): DiscoveryCacheSegmentStrategy {
+  const raw = readOptionalFlag(argv, "--discovery-cache-segment");
+  if (raw === null) {
+    return DEFAULT_DISCOVERY_CACHE_SEGMENT;
+  }
+
+  if (!(DISCOVERY_CACHE_SEGMENT_STRATEGIES as readonly string[]).includes(raw)) {
+    throw new ExecuteExpansionImportCommandError(
+      `Invalid value for --discovery-cache-segment: ${raw}. Expected one of: ${DISCOVERY_CACHE_SEGMENT_STRATEGIES.join(", ")}`,
+    );
+  }
+
+  return raw as DiscoveryCacheSegmentStrategy;
+}
+
+function readRefreshDiscoveryMonthFlag(argv: readonly string[]): string | null {
+  const raw = readOptionalFlag(argv, "--refresh-discovery-month");
+  if (raw === null) {
+    return null;
+  }
+
+  if (!/^\d{4}-\d{2}$/.test(raw)) {
+    throw new ExecuteExpansionImportCommandError(
+      `Invalid value for --refresh-discovery-month: ${raw}. Expected YYYY-MM.`,
+    );
+  }
+
+  return raw;
+}
+
+function readDiscoveryCacheTtlHoursFlag(argv: readonly string[]): number | null {
+  const raw = readOptionalFlag(argv, "--discovery-cache-ttl-hours");
+  if (raw === null) {
+    return DEFAULT_DISCOVERY_CACHE_TTL_HOURS;
+  }
+
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    throw new ExecuteExpansionImportCommandError(
+      `Invalid value for --discovery-cache-ttl-hours: ${raw}`,
+    );
+  }
+
+  return parsed;
+}
+
 export function parseExecuteExpansionImportConfigFromArgv(
   argv: readonly string[],
 ): HistoricalExpansionImportExecutorConfig {
@@ -187,6 +240,16 @@ export function parseExecuteExpansionImportConfigFromArgv(
     retryFailed: readBooleanFlag(argv, "--retry-failed"),
     retryUnsupported: readBooleanFlag(argv, "--retry-unsupported"),
     verifyResumeArtifacts: readBooleanFlag(argv, "--verify-resume-artifacts"),
+    discoveryCacheDir: readFlagValue(
+      argv,
+      "--discovery-cache-dir",
+      DEFAULT_EXPANSION_DISCOVERY_CACHE_DIR,
+    ),
+    discoveryCacheSegment: readDiscoveryCacheSegmentFlag(argv),
+    discoveryCacheTtlHours: readDiscoveryCacheTtlHoursFlag(argv),
+    useDiscoveryCache: !argv.includes("--no-use-discovery-cache"),
+    refreshDiscoveryCache: readBooleanFlag(argv, "--refresh-discovery-cache"),
+    refreshDiscoveryMonth: readRefreshDiscoveryMonthFlag(argv),
   };
 }
 

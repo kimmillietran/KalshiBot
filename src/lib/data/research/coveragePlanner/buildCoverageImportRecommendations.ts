@@ -5,6 +5,7 @@ import {
 } from "./computeMonthCoverageDepth";
 import { estimateRecommendationImportability } from "./importability/estimateRecommendationImportability";
 import type { ParsedExpansionImportMarketRecord } from "./importability/importabilityTypes";
+import { splitMonthGapWindowsToMonthSegments } from "./splitMonthGapWindowsToMonthSegments";
 import { isPromisingHypothesis } from "./buildTemporalBalanceDiagnostics";
 import type {
   CoverageImportRecommendation,
@@ -388,6 +389,7 @@ function buildTemporalBalanceRecommendations(
   snapshot: CoverageSnapshot,
   temporalBalance: TemporalBalanceDiagnostics,
   importabilityMarkets: readonly ParsedExpansionImportMarketRecord[],
+  alignImportWindowsToMonthSegments: boolean,
 ): CoverageImportRecommendation[] {
   const seriesTicker = dominantSeries(snapshot);
   const recommendations: CoverageImportRecommendation[] = [];
@@ -396,33 +398,38 @@ function buildTemporalBalanceRecommendations(
     const groups = groupContiguousMonths(hypothesis.thinMonths);
 
     for (const months of groups) {
+      const monthWindows = alignImportWindowsToMonthSegments
+        ? months.map((month) => [month])
+        : [months];
+
+      for (const segmentMonths of monthWindows) {
       const importability = estimateRecommendationImportability(importabilityMarkets, {
         seriesTicker,
-        startMonth: months[0]!,
-        endMonth: months.at(-1)!,
+        startMonth: segmentMonths[0]!,
+        endMonth: segmentMonths.at(-1)!,
       });
 
       recommendations.push({
-        recommendationId: `temporal-balance-${hypothesis.hypothesisId}-${months[0]}`,
+        recommendationId: `temporal-balance-${hypothesis.hypothesisId}-${segmentMonths[0]}`,
         recommendationType: "temporal-balance-import",
         seriesTicker,
-        startMonth: months[0]!,
-        endMonth: months.at(-1)!,
-        missingMonths: months,
-        includesMissing: includesMissingMonths(snapshot.monthCoverage, months),
-        includesUnderCovered: includesUnderCoveredMonths(snapshot.monthCoverage, months),
+        startMonth: segmentMonths[0]!,
+        endMonth: segmentMonths.at(-1)!,
+        missingMonths: segmentMonths,
+        includesMissing: includesMissingMonths(snapshot.monthCoverage, segmentMonths),
+        includesUnderCovered: includesUnderCoveredMonths(snapshot.monthCoverage, segmentMonths),
         priorityScore: scoreTemporalBalanceRecommendation({
           hypothesis,
-          targetMonthCount: months.length,
+          targetMonthCount: segmentMonths.length,
           estimatedSupportLevel: importability.estimatedSupportLevel,
         }),
         rationale: appendImportabilityNote(
           buildTemporalBalanceRationale(
             {
               seriesTicker,
-              startMonth: months[0]!,
-              endMonth: months.at(-1)!,
-              targetMonths: months,
+              startMonth: segmentMonths[0]!,
+              endMonth: segmentMonths.at(-1)!,
+              targetMonths: segmentMonths,
             },
             hypothesis,
           ),
@@ -434,6 +441,7 @@ function buildTemporalBalanceRecommendations(
         estimatedSupportLevel: importability.estimatedSupportLevel,
         estimatedUnsupportedRate: importability.estimatedUnsupportedRate,
       });
+      }
     }
   }
 
@@ -445,7 +453,10 @@ function buildCoverageGapRecommendations(
   artifacts: ParsedCoveragePlannerArtifacts,
   config: Pick<
     HistoricalCoveragePlanConfig,
-    "monthPersistenceThreshold" | "minMarketsPerMonth" | "minTradingDaysPerMonth"
+    | "monthPersistenceThreshold"
+    | "minMarketsPerMonth"
+    | "minTradingDaysPerMonth"
+    | "alignImportWindowsToMonthSegments"
   >,
   importabilityMarkets: readonly ParsedExpansionImportMarketRecord[],
 ): CoverageImportRecommendation[] {
@@ -453,10 +464,14 @@ function buildCoverageGapRecommendations(
     artifacts,
     config.monthPersistenceThreshold,
   );
-  const windows = dedupeWindows([
+  let windows = dedupeWindows([
     ...buildPreHorizonQuarterWindows(snapshot, unstableIds),
     ...buildGapWindows(snapshot),
   ]);
+
+  if (config.alignImportWindowsToMonthSegments) {
+    windows = splitMonthGapWindowsToMonthSegments(windows);
+  }
 
   return windows.map((window, index) => {
     const averageSeverity = averageUnderCoverageSeverity(
@@ -583,7 +598,10 @@ export function buildCoverageImportRecommendations(
   artifacts: ParsedCoveragePlannerArtifacts,
   config: Pick<
     HistoricalCoveragePlanConfig,
-    "monthPersistenceThreshold" | "minMarketsPerMonth" | "minTradingDaysPerMonth"
+    | "monthPersistenceThreshold"
+    | "minMarketsPerMonth"
+    | "minTradingDaysPerMonth"
+    | "alignImportWindowsToMonthSegments"
   >,
   importabilityMarkets: readonly ParsedExpansionImportMarketRecord[] = [],
   temporalBalance?: TemporalBalanceDiagnostics,
@@ -603,6 +621,7 @@ export function buildCoverageImportRecommendations(
     snapshot,
     temporalBalance,
     importabilityMarkets,
+    config.alignImportWindowsToMonthSegments,
   );
 
   return mergeRecommendations([

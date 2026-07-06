@@ -206,6 +206,7 @@ export type HistoricalCoveragePlanConfig = {
   monthPersistenceThreshold: number;
   minMarketsPerMonth: number;
   minTradingDaysPerMonth: number;
+  alignImportWindowsToMonthSegments: boolean;
 };
 
 export type HistoricalCoveragePlanReport = {

@@ -237,6 +237,8 @@ export function computeExpansionImportPerformanceMetrics(input: {
     activeImportTimeMs,
     backoffTimeMs: backoffDurationMs,
     unattributedOverheadMs,
+    discoveryCacheEstimatedSavingsMs: summary.discoveryDiagnostics.estimatedDiscoverySavingsMs,
+    discoveryCacheHitCount: summary.discoveryDiagnostics.discoverySegmentsCacheHit,
   };
 
   const failedCounts = new Map<string, number>();

@@ -41,6 +41,7 @@ const DEFAULT_CONFIG: HistoricalCoveragePlanConfig = {
   monthPersistenceThreshold: 0.67,
   minMarketsPerMonth: 100,
   minTradingDaysPerMonth: 10,
+  alignImportWindowsToMonthSegments: true,
 };
 
 const LOW_THRESHOLD_CONFIG: HistoricalCoveragePlanConfig = {
@@ -460,12 +461,18 @@ describe("buildCoverageImportRecommendations", () => {
       LOW_THRESHOLD_CONFIG,
     );
 
-    expect(recommendations).toHaveLength(1);
-    expect(recommendations[0]?.startMonth).toBe("2026-01");
-    expect(recommendations[0]?.endMonth).toBe("2026-03");
-    expect(recommendations[0]?.recommendationType).toBe("coverage-gap-import");
+    expect(recommendations).toHaveLength(3);
+    expect(recommendations.map((entry) => entry.startMonth)).toEqual([
+      "2026-01",
+      "2026-02",
+      "2026-03",
+    ]);
+    expect(recommendations.every((entry) => entry.recommendationType === "coverage-gap-import")).toBe(
+      true,
+    );
     expect(recommendations[0]?.rationale).toContain("month-stability checks");
-    expect(recommendations[0]?.rationale).toContain("2026-01 through 2026-03");
+    expect(recommendations[0]?.startMonth).toBe("2026-01");
+    expect(recommendations[0]?.endMonth).toBe("2026-01");
     expect(recommendations[0]?.estimatedSupportLevel).toBe("medium");
   });
 

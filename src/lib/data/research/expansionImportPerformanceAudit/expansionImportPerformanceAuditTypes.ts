@@ -105,6 +105,8 @@ export type TimeEstimateBreakdown = {
   activeImportTimeMs: number;
   backoffTimeMs: number;
   unattributedOverheadMs: number;
+  discoveryCacheEstimatedSavingsMs: number;
+  discoveryCacheHitCount: number;
 };
 
 export type ExpansionImportPerformanceSummaryMetrics = {

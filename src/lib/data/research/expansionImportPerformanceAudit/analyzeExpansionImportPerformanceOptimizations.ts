@@ -154,7 +154,11 @@ function buildOptimizationSuggestions(input: {
     });
   }
 
-  if (timeEstimates.dedupeTimeEstimateMs > 0 || timeEstimates.discoveryTimeEstimateMs > 0) {
+  if (
+    timeEstimates.dedupeTimeEstimateMs > 0
+    || timeEstimates.discoveryTimeEstimateMs > 0
+    || timeEstimates.discoveryCacheHitCount > 0
+  ) {
     const dedupedShare =
       summaryMetrics.discoveredMarketCount > 0
         ? summaryMetrics.skippedCount / summaryMetrics.discoveredMarketCount
@@ -165,10 +169,16 @@ function buildOptimizationSuggestions(input: {
       category: "discovery-dedupe",
       title: "Reduce duplicate discovery scans",
       rationale:
-        dedupedShare >= 0.2
-          ? `~${Math.round(dedupedShare * 100)}% of discovered markets were deduped. Cache discovery results per job window and reuse existing ticker scans across resume runs.`
-          : `Estimated discovery overhead is ${timeEstimates.discoveryTimeEstimateMs}ms. Cache per-window discovery responses when resuming or re-running adjacent jobs.`,
-      estimatedImpact: timeEstimates.discoveryTimeEstimateMs >= 60_000 ? "medium" : "low",
+        timeEstimates.discoveryCacheHitCount > 0
+          ? `Discovery cache served ${timeEstimates.discoveryCacheHitCount} month segment(s), avoiding an estimated ${timeEstimates.discoveryCacheEstimatedSavingsMs}ms of list-market paging. Reuse cached segments on subsequent runs.`
+          : dedupedShare >= 0.2
+            ? `~${Math.round(dedupedShare * 100)}% of discovered markets were deduped. Cache discovery results per job window and reuse existing ticker scans across resume runs.`
+            : `Estimated discovery overhead is ${timeEstimates.discoveryTimeEstimateMs}ms. Cache per-month discovery responses when resuming or re-running adjacent jobs.`,
+      estimatedImpact:
+        timeEstimates.discoveryCacheEstimatedSavingsMs >= 60_000
+        || timeEstimates.discoveryTimeEstimateMs >= 60_000
+          ? "medium"
+          : "low",
       safeToApply: true,
     });
   }

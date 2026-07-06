@@ -6,6 +6,7 @@ import {
   createExpansionImportResumeDiagnostics,
   parseExpansionImportCheckpointJson,
 } from "@/lib/data/importJobs/expansionImportSafety";
+import { createExpansionDiscoveryDeltaRefreshDiagnostics } from "@/lib/data/importJobs/expansionExecutor/expansionDiscoveryCache";
 import type { HistoricalExpansionImportCheckpoint } from "@/lib/data/importJobs/expansionImportSafety";
 
 import {
@@ -108,6 +109,19 @@ const summarySchema = z.object({
       resumeRetriedFailed: z.number().finite().int().nonnegative(),
       resumeRetriedTransient: z.number().finite().int().nonnegative(),
       resumeAmbiguousStateCount: z.number().finite().int().nonnegative(),
+    })
+    .optional(),
+  discoveryDiagnostics: z
+    .object({
+      cacheEnabled: z.boolean().optional(),
+      discoverySegmentsRequested: z.number().finite().int().nonnegative(),
+      discoverySegmentsCacheHit: z.number().finite().int().nonnegative(),
+      discoverySegmentsRefreshed: z.number().finite().int().nonnegative(),
+      discoverySegmentsStale: z.number().finite().int().nonnegative(),
+      discoverySegmentsCorrupt: z.number().finite().int().nonnegative().optional(),
+      discoverySegmentPaths: z.array(z.string()),
+      totalDiscoveredFromCacheCount: z.number().finite().int().nonnegative().optional(),
+      estimatedDiscoverySavingsMs: z.number().finite().nonnegative().optional(),
     })
     .optional(),
 });
@@ -236,6 +250,20 @@ export function parseExpansionImportPerformanceAuditSummaryJson(
       data.adaptiveThrottleDiagnostics
       ?? defaultAdaptiveThrottleDiagnostics(data.rateLimitDiagnostics?.backoffDurationMs ?? 0),
     resumeDiagnostics: data.resumeDiagnostics ?? createExpansionImportResumeDiagnostics(),
+    discoveryDiagnostics: data.discoveryDiagnostics
+      ? {
+          cacheEnabled: data.discoveryDiagnostics.cacheEnabled ?? true,
+          discoverySegmentsRequested: data.discoveryDiagnostics.discoverySegmentsRequested,
+          discoverySegmentsCacheHit: data.discoveryDiagnostics.discoverySegmentsCacheHit,
+          discoverySegmentsRefreshed: data.discoveryDiagnostics.discoverySegmentsRefreshed,
+          discoverySegmentsStale: data.discoveryDiagnostics.discoverySegmentsStale,
+          discoverySegmentsCorrupt: data.discoveryDiagnostics.discoverySegmentsCorrupt ?? 0,
+          discoverySegmentPaths: data.discoveryDiagnostics.discoverySegmentPaths,
+          totalDiscoveredFromCacheCount:
+            data.discoveryDiagnostics.totalDiscoveredFromCacheCount ?? 0,
+          estimatedDiscoverySavingsMs: data.discoveryDiagnostics.estimatedDiscoverySavingsMs ?? 0,
+        }
+      : createExpansionDiscoveryDeltaRefreshDiagnostics(),
   };
 }
 

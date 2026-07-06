@@ -109,6 +109,7 @@ export function parseHistoricalCoveragePlanConfigFromArgv(
       "--min-trading-days-per-month",
       DEFAULT_MIN_TRADING_DAYS_PER_MONTH,
     ),
+    alignImportWindowsToMonthSegments: !argv.includes("--no-align-import-windows-to-months"),
   };
 }
 

@@ -196,6 +196,12 @@ function createBaseConfig(overrides?: Partial<{
     retryFailed: false,
     retryUnsupported: false,
     verifyResumeArtifacts: false,
+    discoveryCacheDir: "data/research-results/discovery-cache",
+    discoveryCacheSegment: "month",
+    discoveryCacheTtlHours: 24,
+    useDiscoveryCache: true,
+    refreshDiscoveryCache: false,
+    refreshDiscoveryMonth: null,
     ...overrides,
   };
 }
@@ -573,7 +579,9 @@ describe("runHistoricalExpansionImport safety", () => {
 
     expect(summary.execute).toBe(false);
     expect(summary.summary.plannedCount).toBe(1);
-    expect(io.writes.size).toBe(0);
+    expect(io.writes.has(CHECKPOINT_PATH)).toBe(false);
+    expect(io.writes.has(SUMMARY_PATH)).toBe(false);
+    expect(summary.discoveryDiagnostics.discoverySegmentsRefreshed).toBeGreaterThan(0);
     expect(serializeHistoricalExpansionImportSummaryHtml(summary)).toContain(
       "Historical Expansion Import Summary",
     );

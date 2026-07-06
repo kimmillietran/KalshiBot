@@ -6,6 +6,8 @@ import { DEFAULT_HISTORICAL_EXPANSION_IMPORT_CHECKPOINT_PATH } from "@/lib/data/
 
 import type { ExpansionImportRateLimitDiagnostics } from "./expansionImportRateLimit";
 import type { ExpansionImportAdaptiveThrottleDiagnostics } from "./expansionImportAdaptiveThrottle";
+import type { ExpansionDiscoveryDeltaRefreshDiagnostics } from "./expansionDiscoveryCache/expansionDiscoveryCacheTypes";
+import type { DiscoveryCacheSegmentStrategy } from "./expansionDiscoveryCache/expansionDiscoveryCacheTypes";
 import type { ExpansionImportResumeDiagnostics } from "@/lib/data/importJobs/expansionImportSafety/expansionImportResumeSemantics";
 import type {
   ExpansionImportSampleStrategy,
@@ -23,6 +25,11 @@ export const DEFAULT_EXPANSION_IMPORT_CONFIGS_DIR = "data/import-configs";
 export const DEFAULT_EXPANSION_IMPORTS_DIR = "data/imports";
 export const DEFAULT_EXPANSION_FIXTURES_DIR = "data/fixtures";
 export const DEFAULT_EXPANSION_RESEARCH_RESULTS_DIR = "data/research-results";
+export {
+  DEFAULT_EXPANSION_DISCOVERY_CACHE_DIR,
+  DEFAULT_DISCOVERY_CACHE_SEGMENT,
+  DEFAULT_DISCOVERY_CACHE_TTL_HOURS,
+} from "./expansionDiscoveryCache/expansionDiscoveryCacheTypes";
 export {
   DEFAULT_SINGLE_MARKET_EXPANSION_IMPORT_DEBUG_HTML_PATH,
   DEFAULT_SINGLE_MARKET_EXPANSION_IMPORT_DEBUG_JSON_PATH,
@@ -124,6 +131,7 @@ export type HistoricalExpansionImportSummary = {
   rateLimitDiagnostics: ExpansionImportRateLimitDiagnostics;
   adaptiveThrottleDiagnostics: ExpansionImportAdaptiveThrottleDiagnostics;
   resumeDiagnostics: ExpansionImportResumeDiagnostics;
+  discoveryDiagnostics: ExpansionDiscoveryDeltaRefreshDiagnostics;
 };
 
 export type HistoricalExpansionImportExecutorConfig = {
@@ -158,6 +166,12 @@ export type HistoricalExpansionImportExecutorConfig = {
   maxBackoffMs: number;
   backoffMultiplier: number;
   successDecayAfter: number;
+  discoveryCacheDir: string;
+  discoveryCacheSegment: DiscoveryCacheSegmentStrategy;
+  discoveryCacheTtlHours: number | null;
+  useDiscoveryCache: boolean;
+  refreshDiscoveryCache: boolean;
+  refreshDiscoveryMonth: string | null;
 };
 
 export type ExpansionImportProgressHooks = {

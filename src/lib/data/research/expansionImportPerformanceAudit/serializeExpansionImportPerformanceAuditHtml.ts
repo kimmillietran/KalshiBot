@@ -179,6 +179,7 @@ export function serializeExpansionImportPerformanceAuditHtml(
           <tr><td>Active import API time</td><td>${formatMs(timeEstimates.activeImportTimeMs)}</td></tr>
           <tr><td>Backoff / rate-limit waits</td><td>${formatMs(timeEstimates.backoffTimeMs)} (${formatPercent(summaryMetrics.backoffShareOfElapsed)} of elapsed)</td></tr>
           <tr><td>Discovery time estimate</td><td>${formatMs(timeEstimates.discoveryTimeEstimateMs)}</td></tr>
+          <tr><td>Discovery cache savings</td><td>${formatMs(timeEstimates.discoveryCacheEstimatedSavingsMs)} (${timeEstimates.discoveryCacheHitCount} hit${timeEstimates.discoveryCacheHitCount === 1 ? "" : "s"})</td></tr>
           <tr><td>Dedupe time estimate</td><td>${formatMs(timeEstimates.dedupeTimeEstimateMs)}</td></tr>
           <tr><td>Import write time estimate</td><td>${formatMs(timeEstimates.importWriteTimeEstimateMs)}</td></tr>
           <tr><td>Unattributed overhead</td><td>${formatMs(timeEstimates.unattributedOverheadMs)}</td></tr>

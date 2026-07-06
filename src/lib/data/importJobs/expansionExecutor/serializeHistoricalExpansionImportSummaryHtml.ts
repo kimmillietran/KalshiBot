@@ -157,6 +157,21 @@ export function serializeHistoricalExpansionImportSummaryHtml(
   </section>
 
   <section class="panel">
+    <h2>Discovery cache</h2>
+    <ul>
+      <li>Enabled: ${summary.discoveryDiagnostics.cacheEnabled ? "yes" : "no"}</li>
+      <li>Segments requested: ${summary.discoveryDiagnostics.discoverySegmentsRequested}</li>
+      <li>Cache hits: ${summary.discoveryDiagnostics.discoverySegmentsCacheHit}</li>
+      <li>Refreshed: ${summary.discoveryDiagnostics.discoverySegmentsRefreshed}</li>
+      <li>Stale: ${summary.discoveryDiagnostics.discoverySegmentsStale}</li>
+      <li>Corrupt: ${summary.discoveryDiagnostics.discoverySegmentsCorrupt}</li>
+      <li>Discovered from cache: ${summary.discoveryDiagnostics.totalDiscoveredFromCacheCount}</li>
+      <li>Estimated discovery savings: ${summary.discoveryDiagnostics.estimatedDiscoverySavingsMs} ms</li>
+      <li>Segment paths: ${summary.discoveryDiagnostics.discoverySegmentPaths.map((path) => `<code>${escapeHtml(path)}</code>`).join(", ") || "—"}</li>
+    </ul>
+  </section>
+
+  <section class="panel">
     <h2>Adaptive throttle</h2>
     <ul>
       <li>Enabled: ${summary.adaptiveThrottleDiagnostics.adaptiveThrottleEnabled ? "yes" : "no"}</li>
