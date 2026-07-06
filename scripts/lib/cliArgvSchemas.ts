@@ -144,6 +144,7 @@ export const HYPOTHESIS_CANDIDATES_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--min-sample" },
   { flag: "--min-unique-days" },
   { flag: "--research-input-root" },
+  { flag: "--memory-report" },
 ];
 
 export const HYPOTHESIS_VALIDATION_ARGV_SCHEMA: readonly NpmArgvField[] = [
@@ -604,7 +605,10 @@ export function normalizeEventStudyArgv(argv: readonly string[]): string[] {
 
 
 export function normalizeHypothesisCandidatesArgv(argv: readonly string[]): string[] {
-  return normalizeNpmScriptArgv(argv, HYPOTHESIS_CANDIDATES_ARGV_SCHEMA);
+  return mergeNpmBooleanFlags(
+    normalizeNpmScriptArgv(argv, HYPOTHESIS_CANDIDATES_ARGV_SCHEMA),
+    ["--memory-report"],
+  );
 }
 
 export function normalizeHypothesisValidationArgv(argv: readonly string[]): string[] {

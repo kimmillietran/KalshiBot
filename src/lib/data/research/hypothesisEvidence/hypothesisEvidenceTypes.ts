@@ -3,6 +3,8 @@ import type { LeadLagAnalysis } from "@/lib/data/research/leadLag/leadLagTypes";
 import type { MispricingAtlas } from "@/lib/data/research/mispricingAtlas/mispricingAtlasTypes";
 import type { StatisticalSignificanceReport } from "@/lib/data/research/statisticalSignificance/statisticalSignificanceTypes";
 
+import type { HypothesisEvidenceMemoryDiagnostics } from "./hypothesisEvidenceMemoryTypes";
+
 export const DEFAULT_HYPOTHESIS_EVIDENCE_HTML_PATH =
   "data/reports/research-hypotheses.html";
 
@@ -43,6 +45,7 @@ export type HypothesisEvidenceReport = {
   candidateCount: number;
   noCandidateReasons: readonly string[];
   cards: readonly HypothesisEvidenceCard[];
+  memoryDiagnostics?: HypothesisEvidenceMemoryDiagnostics;
 };
 
 export type BuildHypothesisEvidenceReportInput = {
@@ -55,4 +58,5 @@ export type BuildHypothesisEvidenceReportInput = {
   researchInputRoot: string;
   readFile: (path: string) => string;
   listResearchOutputPaths: (root: string) => readonly string[];
+  memoryReport?: boolean;
 };

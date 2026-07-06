@@ -1,6 +1,9 @@
 export {
-  buildHypothesisEvidenceReport,
-} from "./buildHypothesisEvidenceReport";
+  buildHypothesisEvidenceBucketIndex,
+  collectAtlasBucketReferences,
+} from "./buildHypothesisEvidenceBucketIndex";
+export type { HypothesisEvidenceBucketIndex } from "./buildHypothesisEvidenceBucketIndex";
+export { buildHypothesisEvidenceReport } from "./buildHypothesisEvidenceReport";
 export {
   buildHypothesisConfidenceSummary,
   collectHypothesisExampleMarkets,
@@ -20,6 +23,7 @@ export { serializeHypothesisEvidenceHtml } from "./serializeHypothesisEvidenceHt
 export {
   DEFAULT_HYPOTHESIS_EVIDENCE_HTML_PATH,
 } from "./hypothesisEvidenceTypes";
+export type { HypothesisEvidenceMemoryDiagnostics } from "./hypothesisEvidenceMemoryTypes";
 export type {
   BuildHypothesisEvidenceReportInput,
   HypothesisEvidenceCard,

@@ -8,7 +8,7 @@ import {
   writeFileSync,
 } from "node:fs";
 
-import { scanCalibrationResearchOutputs } from "@/lib/data/research/calibration/scanCalibrationResearchOutputs";
+import { enumerateCalibrationResearchOutputPaths } from "@/lib/data/research/calibration/enumerateCalibrationResearchOutputPaths";
 import {
   buildHypothesisCandidates,
   loadHypothesisCandidateInputs,
@@ -28,6 +28,7 @@ import {
   parseHtmlOutputPathFromArgv,
   parseMinSampleFromArgv,
   parseMinUniqueTradingDaysFromArgv,
+  parseMemoryReportFlag,
   parseOutputPathFromArgv,
   parseResearchInputRootFromArgv,
 } from "./buildHypothesisCandidatesTypes";
@@ -36,7 +37,12 @@ import type { HypothesisCandidatesCommandIo } from "./buildHypothesisCandidatesT
 function resolveResearchInputRoot(
   inputs: Awaited<ReturnType<typeof loadHypothesisCandidateInputs>>["inputs"],
   cliRoot: string,
+  explicitCliRoot: boolean,
 ): string {
+  if (explicitCliRoot) {
+    return cliRoot;
+  }
+
   return (
     inputs.mispricingAtlas?.inputRoot
     ?? inputs.leadLagAnalysis?.inputRoot
@@ -46,7 +52,7 @@ function resolveResearchInputRoot(
 
 function listResearchOutputPaths(root: string, io: HypothesisCandidatesCommandIo): string[] {
   try {
-    const scanned = scanCalibrationResearchOutputs(root, {
+    const refs = enumerateCalibrationResearchOutputPaths(root, {
       readFile: io.readFile,
       fileExists: io.fileExists,
       isDirectory: (path) => {
@@ -59,7 +65,7 @@ function listResearchOutputPaths(root: string, io: HypothesisCandidatesCommandIo
       readdir: (path) => readdirSync(path),
     });
 
-    return scanned.map((entry) => entry.outputPath);
+    return refs.map((entry) => entry.outputPath);
   } catch {
     return [];
   }
@@ -78,6 +84,7 @@ export function runHypothesisCandidatesCommand(
     const artifactPaths = parseArtifactPathsFromArgv(normalizedArgv);
     const minSampleSize = parseMinSampleFromArgv(normalizedArgv);
     const minUniqueTradingDays = parseMinUniqueTradingDaysFromArgv(normalizedArgv);
+    const memoryReport = parseMemoryReportFlag(normalizedArgv);
     const generatedAt = options?.generatedAt ?? new Date().toISOString();
 
     const { inputs, inputStatus } = loadHypothesisCandidateInputs(io, artifactPaths);
@@ -88,6 +95,7 @@ export function runHypothesisCandidatesCommand(
       inputs,
       inputStatus,
       config: { minSampleSize, minUniqueTradingDays },
+      memoryReport,
     });
 
     io.mkdirSync(dirname(outputPath), { recursive: true });
@@ -96,6 +104,7 @@ export function runHypothesisCandidatesCommand(
     const resolvedResearchRoot = resolveResearchInputRoot(
       inputs,
       researchInputRoot,
+      normalizedArgv.includes("--research-input-root"),
     );
     const evidenceReport = buildHypothesisEvidenceReport({
       generatedAt,
@@ -107,6 +116,7 @@ export function runHypothesisCandidatesCommand(
       researchInputRoot: resolvedResearchRoot,
       readFile: io.readFile,
       listResearchOutputPaths: (root) => listResearchOutputPaths(root, io),
+      memoryReport,
     });
     const html = serializeHypothesisEvidenceHtml(evidenceReport);
 
@@ -120,6 +130,10 @@ export function runHypothesisCandidatesCommand(
           htmlOutputPath,
           candidateCount: report.summary.candidateCount,
           noCandidateReasons: report.summary.noCandidateReasons,
+          ...(report.memoryDiagnostics ? { memoryDiagnostics: report.memoryDiagnostics } : {}),
+          ...(evidenceReport.memoryDiagnostics
+            ? { evidenceMemoryDiagnostics: evidenceReport.memoryDiagnostics }
+            : {}),
         }),
       ),
     );
@@ -162,6 +176,7 @@ export {
   parseHtmlOutputPathFromArgv,
   parseMinSampleFromArgv,
   parseMinUniqueTradingDaysFromArgv,
+  parseMemoryReportFlag,
   parseOutputPathFromArgv,
   parseResearchInputRootFromArgv,
   HypothesisCandidatesCommandError,

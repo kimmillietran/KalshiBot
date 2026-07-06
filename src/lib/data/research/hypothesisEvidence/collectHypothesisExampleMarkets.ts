@@ -6,6 +6,7 @@ import { extractMispricingObservationsFromResearchOutput } from "@/lib/data/rese
 import type { StatisticalSignificanceReport } from "@/lib/data/research/statisticalSignificance/statisticalSignificanceTypes";
 
 import type { HypothesisExampleMarket } from "./hypothesisEvidenceTypes";
+import type { HypothesisEvidenceBucketIndex } from "./buildHypothesisEvidenceBucketIndex";
 import { observationMatchesAtlasBucket } from "./observationMatchesAtlasBucket";
 import {
   parseAtlasCandidateReference,
@@ -163,8 +164,17 @@ export function collectHypothesisExampleMarkets(input: {
   leadLagAnalysis: LeadLagAnalysis | null;
   researchOutputPaths: readonly string[];
   readFile: (path: string) => string;
+  bucketIndex?: HypothesisEvidenceBucketIndex | null;
 }): HypothesisExampleMarket[] {
   if (input.candidate.sourceArtifact === "mispricing-atlas.json" && input.mispricingAtlas) {
+    const reference = parseAtlasCandidateReference(input.candidate.candidateId);
+    if (input.bucketIndex && reference) {
+      return [...input.bucketIndex.getExampleMarkets({
+        groupId: reference.groupId,
+        bucketId: reference.bucketId,
+      })];
+    }
+
     return collectAtlasExampleMarkets({
       candidate: input.candidate,
       atlas: input.mispricingAtlas,
@@ -291,8 +301,17 @@ export function countUniqueTradingDaysForCandidate(input: {
   leadLagAnalysis: LeadLagAnalysis | null;
   researchOutputPaths: readonly string[];
   readFile: (path: string) => string;
+  bucketIndex?: HypothesisEvidenceBucketIndex | null;
 }): number {
   if (input.candidate.sourceArtifact === "mispricing-atlas.json") {
+    const reference = parseAtlasCandidateReference(input.candidate.candidateId);
+    if (input.bucketIndex && reference) {
+      return input.bucketIndex.getUniqueTradingDays({
+        groupId: reference.groupId,
+        bucketId: reference.bucketId,
+      });
+    }
+
     return countAtlasUniqueTradingDays({
       candidate: input.candidate,
       researchOutputPaths: input.researchOutputPaths,

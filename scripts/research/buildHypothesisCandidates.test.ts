@@ -75,4 +75,108 @@ describe("runHypothesisCandidatesCommand", () => {
     expect(parsed.config.minSampleSize).toBe(10);
     expect(parsed.inputs.mispricingAtlasPath).toBe("custom/mispricing-atlas.json");
   });
+
+  it("includes memory diagnostics when --memory-report is passed", () => {
+    let stdout = "";
+
+    const exitCode = runHypothesisCandidatesCommand(["--memory-report"], {
+      readFile: () => {
+        throw new Error("should not read");
+      },
+      fileExists: () => false,
+      writeStdout: (text) => {
+        stdout += text;
+      },
+      writeStderr: () => {},
+      writeFile: () => {},
+      mkdirSync: () => {},
+    }, { generatedAt: GENERATED_AT });
+
+    expect(exitCode).toBe(0);
+    const stdoutPayload = JSON.parse(stdout);
+    expect(stdoutPayload.memoryDiagnostics).toEqual(
+      expect.objectContaining({
+        candidateCount: 0,
+        largestIntermediateCollection: "mispricing-atlas-input",
+      }),
+    );
+  });
+
+  it("enumerates research output paths without reading file contents", () => {
+    const root = "data/research-results";
+    let readCount = 0;
+
+    const exitCode = runHypothesisCandidatesCommand(
+      [
+        "--memory-report",
+        "--research-input-root",
+        root,
+        "--mispricing-atlas",
+        `${root}/mispricing-atlas.json`,
+      ],
+      {
+        readFile: (path) => {
+          readCount += 1;
+          if (path.endsWith("mispricing-atlas.json")) {
+            return JSON.stringify({
+              generatedAt: GENERATED_AT,
+              inputRoot: root,
+              outputPath: `${root}/mispricing-atlas.json`,
+              sampleCounts: {
+                totalObservations: 0,
+                marketCount: 0,
+                skippedMissingSettlement: 0,
+                skippedMissingProbability: 0,
+                skippedMissingContext: 0,
+              },
+              overallCalibration: {
+                bucketId: "overall",
+                bucketLabel: "Overall",
+                observations: 0,
+                averageImpliedProbability: null,
+                realizedFrequency: null,
+                calibrationError: null,
+                brierScore: null,
+                averageAbsoluteError: null,
+              },
+              probabilityBuckets: [],
+              timeRemainingBuckets: [],
+              moneynessBuckets: [],
+              volatilityBuckets: [],
+              coarseBuckets: {
+                probabilityOnly: [],
+                probabilityTime: [],
+                probabilityRegime: [],
+                probabilityMoneyness: [],
+                moneynessTime: [],
+                volatilityMoneyness: [],
+                volatilityProbabilityTime: [],
+              },
+              warnings: [],
+            });
+          }
+
+          if (path.endsWith("research-output.json")) {
+            return "{}";
+          }
+
+          throw new Error(`unexpected read: ${path}`);
+        },
+        fileExists: (path) =>
+          path.endsWith("mispricing-atlas.json")
+          || path.endsWith("research-output.json")
+          || path.endsWith("KXBTC15M")
+          || path.endsWith("noop")
+          || path === root,
+        writeStdout: () => {},
+        writeStderr: () => {},
+        writeFile: () => {},
+        mkdirSync: () => {},
+      },
+      { generatedAt: GENERATED_AT },
+    );
+
+    expect(exitCode).toBe(0);
+    expect(readCount).toBe(1);
+  });
 });

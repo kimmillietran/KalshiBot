@@ -4,7 +4,7 @@ import type { MispricingAtlasBucketSummary } from "@/lib/data/research/mispricin
 import type { MispricingAtlasCoverageDiagnostics } from "@/lib/data/research/mispricingAtlas/mispricingAtlasTypes";
 import type { LeadLagLagMetrics } from "@/lib/data/research/leadLag/leadLagTypes";
 
-import { normalizeMispricingAtlas } from "./normalizeMispricingAtlas";
+import { normalizeMispricingAtlas, type NormalizedMispricingAtlas } from "./normalizeMispricingAtlas";
 
 import {
   DEFAULT_HYPOTHESIS_MIN_SAMPLE_SIZE,
@@ -266,12 +266,9 @@ function buildAtlasCandidatesForBucket(options: {
   return candidates;
 }
 
-function collectAtlasBucketGroups(
-  atlas: NonNullable<ParsedHypothesisCandidateInputs["mispricingAtlas"]>,
-  minSampleSize: number,
+function collectAtlasBucketGroupsFromNormalized(
+  normalizedAtlas: NormalizedMispricingAtlas,
 ): AtlasBucketGroup[] {
-  const normalizedAtlas = normalizeMispricingAtlas(atlas, minSampleSize);
-
   return [
     {
       groupId: "probabilityOnly",
@@ -311,15 +308,20 @@ function collectAtlasBucketGroups(
 function resolveAtlasCoverageDiagnostics(
   atlas: NonNullable<ParsedHypothesisCandidateInputs["mispricingAtlas"]>,
   config: HypothesisCandidateConfig,
+  normalizedAtlas?: NormalizedMispricingAtlas,
 ): MispricingAtlasCoverageDiagnostics {
-  return normalizeMispricingAtlas(atlas, config.minSampleSize).coverageDiagnostics;
+  return (
+    normalizedAtlas?.coverageDiagnostics
+    ?? normalizeMispricingAtlas(atlas, config.minSampleSize).coverageDiagnostics
+  );
 }
 
 function buildAtlasNoCandidateReasons(
   atlas: NonNullable<ParsedHypothesisCandidateInputs["mispricingAtlas"]>,
   config: HypothesisCandidateConfig,
+  normalizedAtlas?: NormalizedMispricingAtlas,
 ): string[] {
-  const coverage = resolveAtlasCoverageDiagnostics(atlas, config);
+  const coverage = resolveAtlasCoverageDiagnostics(atlas, config, normalizedAtlas);
   const reasons: string[] = [];
 
   if (coverage.totalAtlasObservations === 0) {
@@ -358,8 +360,9 @@ function buildAtlasNoCandidateReasons(
 function buildAtlasCandidates(
   inputs: ParsedHypothesisCandidateInputs,
   config: HypothesisCandidateConfig,
+  normalizedAtlas: NormalizedMispricingAtlas | null,
 ): HypothesisCandidate[] {
-  if (inputs.mispricingAtlas === null) {
+  if (inputs.mispricingAtlas === null || normalizedAtlas === null) {
     return [];
   }
 
@@ -372,7 +375,7 @@ function buildAtlasCandidates(
 
   const candidates: HypothesisCandidate[] = [];
 
-  for (const group of collectAtlasBucketGroups(inputs.mispricingAtlas, config.minSampleSize)) {
+  for (const group of collectAtlasBucketGroupsFromNormalized(normalizedAtlas)) {
     for (const bucket of group.buckets) {
       const bucketCandidates = buildAtlasCandidatesForBucket({
         groupId: group.groupId,
@@ -492,11 +495,16 @@ function buildSummary(
   candidates: readonly HypothesisCandidate[],
   inputs: ParsedHypothesisCandidateInputs,
   config: HypothesisCandidateConfig,
+  normalizedAtlas: NormalizedMispricingAtlas | null,
 ): HypothesisCandidatesSummary {
   const atlasCoverageDiagnostics =
     inputs.mispricingAtlas === null
       ? null
-      : resolveAtlasCoverageDiagnostics(inputs.mispricingAtlas, config);
+      : resolveAtlasCoverageDiagnostics(
+          inputs.mispricingAtlas,
+          config,
+          normalizedAtlas ?? undefined,
+        );
 
   if (candidates.length > 0) {
     return {
@@ -515,7 +523,13 @@ function buildSummary(
     reasons.push("No candidate: missing mispricing-atlas.json and lead-lag-analysis.json inputs.");
   } else {
     if (inputs.mispricingAtlas !== null) {
-      reasons.push(...buildAtlasNoCandidateReasons(inputs.mispricingAtlas, config));
+      reasons.push(
+        ...buildAtlasNoCandidateReasons(
+          inputs.mispricingAtlas,
+          config,
+          normalizedAtlas ?? undefined,
+        ),
+      );
     }
 
     if (inputs.leadLagAnalysis !== null) {
@@ -549,12 +563,32 @@ export function buildHypothesisCandidates(
   input: BuildHypothesisCandidatesInput,
 ): HypothesisCandidatesReport {
   const config = resolveConfig(input.config);
-  const atlasCandidates = buildAtlasCandidates(input.inputs, config);
+  const normalizedAtlas = input.inputs.mispricingAtlas
+    ? normalizeMispricingAtlas(input.inputs.mispricingAtlas, config.minSampleSize)
+    : null;
+  const atlasCandidates = buildAtlasCandidates(
+    input.inputs,
+    config,
+    normalizedAtlas,
+  );
   const leadLagCandidate = buildLeadLagCandidate(input.inputs, config);
   const candidates = sortCandidates([
     ...atlasCandidates,
     ...(leadLagCandidate ? [leadLagCandidate] : []),
   ]);
+
+  const memoryDiagnostics = input.memoryReport
+    ? {
+        atlasObservationCount:
+          input.inputs.mispricingAtlas?.sampleCounts.totalObservations ?? 0,
+        candidateCount: candidates.length,
+        peakRetainedCandidateCount: candidates.length,
+        atlasBucketGroupCount: normalizedAtlas
+          ? collectAtlasBucketGroupsFromNormalized(normalizedAtlas).length
+          : 0,
+        largestIntermediateCollection: "mispricing-atlas-input",
+      }
+    : undefined;
 
   return {
     generatedAt: input.generatedAt,
@@ -562,7 +596,8 @@ export function buildHypothesisCandidates(
     config,
     inputs: input.inputStatus,
     candidates,
-    summary: buildSummary(candidates, input.inputs, config),
+    summary: buildSummary(candidates, input.inputs, config, normalizedAtlas),
+    ...(memoryDiagnostics ? { memoryDiagnostics } : {}),
   };
 }
 

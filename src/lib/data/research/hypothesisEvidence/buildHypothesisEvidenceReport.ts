@@ -13,6 +13,12 @@ import type {
   HypothesisEvidenceCard,
   HypothesisEvidenceReport,
 } from "./hypothesisEvidenceTypes";
+import type { HypothesisEvidenceMemoryDiagnostics } from "./hypothesisEvidenceMemoryTypes";
+import {
+  buildHypothesisEvidenceBucketIndex,
+  collectAtlasBucketReferences,
+  type HypothesisEvidenceBucketIndex,
+} from "./buildHypothesisEvidenceBucketIndex";
 import {
   parseAtlasCandidateReference,
   parseBucketAxisLabels,
@@ -43,6 +49,7 @@ function buildAtlasEvidenceCard(input: {
   statisticalSignificance: StatisticalSignificanceReport | null;
   researchOutputPaths: readonly string[];
   readFile: (path: string) => string;
+  bucketIndex: HypothesisEvidenceBucketIndex | null;
 }): HypothesisEvidenceCard {
   const reference = parseAtlasCandidateReference(input.candidate.candidateId);
   const bucket =
@@ -71,6 +78,7 @@ function buildAtlasEvidenceCard(input: {
     leadLagAnalysis: null,
     researchOutputPaths: input.researchOutputPaths,
     readFile: input.readFile,
+    bucketIndex: input.bucketIndex,
   });
   const uniqueTradingDays = countUniqueTradingDaysForCandidate({
     candidate: input.candidate,
@@ -78,6 +86,7 @@ function buildAtlasEvidenceCard(input: {
     leadLagAnalysis: null,
     researchOutputPaths: input.researchOutputPaths,
     readFile: input.readFile,
+    bucketIndex: input.bucketIndex,
   });
 
   return {
@@ -187,6 +196,7 @@ function buildEvidenceCard(
   candidate: HypothesisCandidate,
   input: Omit<BuildHypothesisEvidenceReportInput, "candidatesReport" | "generatedAt" | "htmlOutputPath"> & {
     researchOutputPaths: readonly string[];
+    bucketIndex: HypothesisEvidenceBucketIndex | null;
   },
 ): HypothesisEvidenceCard {
   if (candidate.sourceArtifact === "mispricing-atlas.json" && input.mispricingAtlas) {
@@ -196,6 +206,7 @@ function buildEvidenceCard(
       statisticalSignificance: input.statisticalSignificance,
       researchOutputPaths: input.researchOutputPaths,
       readFile: input.readFile,
+      bucketIndex: input.bucketIndex,
     });
   }
 
@@ -242,6 +253,16 @@ export function buildHypothesisEvidenceReport(
   input: BuildHypothesisEvidenceReportInput,
 ): HypothesisEvidenceReport {
   const researchOutputPaths = input.listResearchOutputPaths(input.researchInputRoot);
+  const atlasReferences = collectAtlasBucketReferences(input.candidatesReport.candidates);
+  const bucketIndex =
+    input.mispricingAtlas && atlasReferences.length > 0
+      ? buildHypothesisEvidenceBucketIndex({
+          references: atlasReferences,
+          researchOutputPaths,
+          readFile: input.readFile,
+          memoryReport: input.memoryReport,
+        })
+      : null;
 
   const cards = input.candidatesReport.candidates.map((candidate) =>
     buildEvidenceCard(candidate, {
@@ -252,8 +273,12 @@ export function buildHypothesisEvidenceReport(
       readFile: input.readFile,
       listResearchOutputPaths: input.listResearchOutputPaths,
       researchOutputPaths,
+      bucketIndex,
     }),
   );
+
+  const memoryDiagnostics: HypothesisEvidenceMemoryDiagnostics | undefined =
+    bucketIndex?.memoryDiagnostics;
 
   return {
     generatedAt: input.generatedAt,
@@ -262,5 +287,6 @@ export function buildHypothesisEvidenceReport(
     candidateCount: cards.length,
     noCandidateReasons: input.candidatesReport.summary.noCandidateReasons,
     cards,
+    ...(memoryDiagnostics ? { memoryDiagnostics } : {}),
   };
 }

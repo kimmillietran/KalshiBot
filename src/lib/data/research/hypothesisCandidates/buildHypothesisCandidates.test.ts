@@ -182,7 +182,10 @@ function createLeadLagAnalysis(metrics: Array<{
   };
 }
 
-function buildReport(inputs: ParsedHypothesisCandidateInputs, config?: { minSampleSize?: number }) {
+function buildReport(
+  inputs: ParsedHypothesisCandidateInputs,
+  config?: { minSampleSize?: number; memoryReport?: boolean },
+) {
   return buildHypothesisCandidates({
     generatedAt: GENERATED_AT,
     outputPath: OUTPUT_PATH,
@@ -194,6 +197,7 @@ function buildReport(inputs: ParsedHypothesisCandidateInputs, config?: { minSamp
       regimeTagsPresent: inputs.regimeTags !== null,
     }),
     config,
+    memoryReport: config?.memoryReport,
   });
 }
 
@@ -562,6 +566,34 @@ describe("buildHypothesisCandidates", () => {
       "atlas-probabilityMoneyness-coarse-prob-1-moneyness-near-above-over",
     );
     expect(report.candidates[0]?.bucketMetadata?.groupId).toBe("probabilityMoneyness");
+  });
+
+  it("records candidate memory diagnostics when memoryReport is enabled", () => {
+    const report = buildReport(
+      {
+        mispricingAtlas: createMispricingAtlasWithBucket({
+          bucketId: "coarse-prob-1",
+          bucketLabel: "[0.2, 0.4)",
+          observations: 40,
+          calibrationError: 0.1,
+          group: "probabilityOnly",
+        }),
+        leadLagAnalysis: null,
+        statisticalSignificance: null,
+        regimeTags: null,
+        strategyLeaderboard: null,
+      },
+      { memoryReport: true },
+    );
+
+    expect(report.memoryDiagnostics).toEqual(
+      expect.objectContaining({
+        atlasObservationCount: 40,
+        candidateCount: 1,
+        peakRetainedCandidateCount: 1,
+        largestIntermediateCollection: "mispricing-atlas-input",
+      }),
+    );
   });
 
   it("requires a higher sample threshold for triple-axis buckets by default", () => {

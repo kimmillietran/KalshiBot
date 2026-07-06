@@ -200,6 +200,10 @@ export function parseArtifactPathsFromArgv(argv: readonly string[]): {
   };
 }
 
+export function parseMemoryReportFlag(argv: readonly string[]): boolean {
+  return argv.includes("--memory-report");
+}
+
 export function formatStdoutOutput(serialized: string): string {
   return serialized.endsWith("\n") ? serialized : `${serialized}\n`;
 }

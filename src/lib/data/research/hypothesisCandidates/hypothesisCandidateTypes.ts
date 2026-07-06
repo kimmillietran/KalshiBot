@@ -133,6 +133,14 @@ export type HypothesisCandidatesSummary = {
   atlasCoverageDiagnostics: MispricingAtlasCoverageDiagnostics | null;
 };
 
+export type HypothesisCandidateMemoryDiagnostics = {
+  atlasObservationCount: number;
+  candidateCount: number;
+  peakRetainedCandidateCount: number;
+  atlasBucketGroupCount: number;
+  largestIntermediateCollection: string;
+};
+
 export type HypothesisCandidatesReport = {
   generatedAt: string;
   outputPath: string;
@@ -140,6 +148,7 @@ export type HypothesisCandidatesReport = {
   inputs: HypothesisCandidateInputStatus;
   candidates: readonly HypothesisCandidate[];
   summary: HypothesisCandidatesSummary;
+  memoryDiagnostics?: HypothesisCandidateMemoryDiagnostics;
 };
 
 export type ParsedHypothesisCandidateInputs = {
@@ -156,6 +165,7 @@ export type BuildHypothesisCandidatesInput = {
   inputs: ParsedHypothesisCandidateInputs;
   inputStatus: HypothesisCandidateInputStatus;
   config?: Partial<HypothesisCandidateConfig>;
+  memoryReport?: boolean;
 };
 
 export type HypothesisCandidateIo = {

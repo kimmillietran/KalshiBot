@@ -157,4 +157,58 @@ describe("buildHypothesisEvidenceReport", () => {
     expect(card.exampleMarkets[0]?.settlement).toBe("yes");
     expect(card.confidenceSummary).toContain("40 historical observations");
   });
+
+  it("includes evidence memory diagnostics when memoryReport is enabled", () => {
+    const atlas = createAtlasWithProbabilityBucket();
+    const candidatesReport = buildHypothesisCandidates({
+      generatedAt: GENERATED_AT,
+      outputPath: "data/research-results/hypothesis-candidates.json",
+      inputs: {
+        mispricingAtlas: atlas,
+        leadLagAnalysis: null,
+        statisticalSignificance: null,
+        regimeTags: null,
+        strategyLeaderboard: null,
+      },
+      inputStatus: {
+        mispricingAtlasPath: atlas.outputPath,
+        leadLagAnalysisPath: "data/research-results/lead-lag-analysis.json",
+        statisticalSignificancePath: "data/research-results/statistical-significance.json",
+        regimeTagsPath: "data/research-results/regime-tags.json",
+        strategyLeaderboardPath: "data/leaderboards/strategy-leaderboard.json",
+        mispricingAtlasPresent: true,
+        leadLagAnalysisPresent: false,
+        statisticalSignificancePresent: false,
+        regimeTagsPresent: false,
+        strategyLeaderboardPresent: false,
+      },
+      config: { minSampleSize: 30 },
+    });
+
+    const outputPath = `${INPUT_ROOT}/${STRATEGY_ID}/${SERIES_TICKER}/${MARKET_A}/research-output.json`;
+    const files = new Map<string, string>([
+      [outputPath, createReplayResearchOutputJson()],
+    ]);
+    let readCount = 0;
+
+    const report = buildHypothesisEvidenceReport({
+      generatedAt: GENERATED_AT,
+      htmlOutputPath: "data/reports/research-hypotheses.html",
+      candidatesReport,
+      mispricingAtlas: atlas,
+      leadLagAnalysis: null,
+      statisticalSignificance: null,
+      researchInputRoot: INPUT_ROOT,
+      readFile: (path) => {
+        readCount += 1;
+        return files.get(path) ?? "";
+      },
+      listResearchOutputPaths: () => [outputPath],
+      memoryReport: true,
+    });
+
+    expect(report.memoryDiagnostics?.researchOutputFilesScanned).toBe(1);
+    expect(report.memoryDiagnostics?.atlasBucketReferenceCount).toBe(1);
+    expect(readCount).toBe(1);
+  });
 });
