@@ -29,9 +29,30 @@ function renderSummaryCards(plan: ExpansionBatchPlan): string {
       <div class="summary-card"><div class="summary-label">Allocations</div><div class="summary-value">${plan.summary.allocationCount}</div></div>
       <div class="summary-card"><div class="summary-label">Candidate months</div><div class="summary-value">${plan.summary.candidateMonthCount}</div></div>
       <div class="summary-card"><div class="summary-label">Scheduled jobs</div><div class="summary-value">${plan.summary.scheduledJobCount}</div></div>
-      <div class="summary-card"><div class="summary-label">Unsupported-heavy</div><div class="summary-value" style="color:${theme.warning}">${plan.summary.unsupportedHeavyAllocationCount}</div></div>
+      <div class="summary-card"><div class="summary-label">Rejected unsupported-heavy</div><div class="summary-value" style="color:${theme.warning}">${plan.summary.rejectedUnsupportedHeavyAllocationCount}</div></div>
+      <div class="summary-card"><div class="summary-label">Rejected zero priority</div><div class="summary-value">${plan.summary.rejectedZeroPriorityAllocationCount}</div></div>
+      <div class="summary-card"><div class="summary-label">Rejected already covered</div><div class="summary-value">${plan.summary.rejectedAlreadyCoveredAllocationCount}</div></div>
       <div class="summary-card"><div class="summary-label">Strategy</div><div class="summary-value">${escapeHtml(plan.selectionStrategy)}</div></div>
     </section>`;
+}
+
+function renderRejectedRows(plan: ExpansionBatchPlan): string {
+  return plan.rejectedCandidates
+    .map(
+      (candidate) => `
+      <tr>
+        <td><strong>${escapeHtml(candidate.month)}</strong></td>
+        <td>${escapeHtml(candidate.rejectionReason)}</td>
+        <td>${candidate.priorityScore.toFixed(1)}</td>
+        <td>${supportLevelBadge(candidate.expectedImportability)}</td>
+        <td>${Math.round(candidate.estimatedUnsupportedRate * 100)}%</td>
+        <td>${candidate.estimatedImportableMarketCount}</td>
+        <td>${candidate.currentMarketCount}</td>
+        <td>${candidate.discoveryAvailableCount ?? "—"}</td>
+        <td>${escapeHtml(candidate.rationale)}</td>
+      </tr>`,
+    )
+    .join("");
 }
 
 function renderAllocationRows(plan: ExpansionBatchPlan): string {
@@ -145,6 +166,27 @@ export function serializeExpansionBatchPlanHtml(plan: ExpansionBatchPlan): strin
         </thead>
         <tbody>
           ${renderAllocationRows(plan)}
+        </tbody>
+      </table>
+    </section>
+    <section>
+      <h2>Rejected candidate months</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Month</th>
+            <th>Reason</th>
+            <th>Priority</th>
+            <th>Importability</th>
+            <th>Unsupported</th>
+            <th>Importable est.</th>
+            <th>Covered</th>
+            <th>Discovery</th>
+            <th>Rationale</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${renderRejectedRows(plan)}
         </tbody>
       </table>
     </section>

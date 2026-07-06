@@ -68,12 +68,28 @@ function capByDiscovery(
   return Math.min(marketCount, candidate.discoveryAvailableCount);
 }
 
+function capAllocationCount(
+  candidate: ScoredExpansionBatchMonthCandidate,
+  marketCount: number,
+  importableCapByMonth?: ReadonlyMap<string, number>,
+): number {
+  let capped = capByDiscovery(candidate, marketCount);
+
+  const importableCap = importableCapByMonth?.get(candidate.month);
+  if (importableCap !== undefined) {
+    capped = Math.min(capped, importableCap);
+  }
+
+  return capped;
+}
+
 /** Allocates the market budget across scored month candidates deterministically. */
 export function allocateExpansionBatchBudget(input: {
   maxMarkets: number;
   candidates: readonly ScoredExpansionBatchMonthCandidate[];
+  importableCapByMonth?: ReadonlyMap<string, number>;
 }): ExpansionBatchAllocation[] {
-  const { maxMarkets, candidates } = input;
+  const { maxMarkets, candidates, importableCapByMonth } = input;
 
   if (maxMarkets <= 0) {
     return [];
@@ -84,7 +100,11 @@ export function allocateExpansionBatchBudget(input: {
   }
 
   const eligible = candidates.filter((candidate) => candidate.score > 0);
-  const pool = eligible.length > 0 ? eligible : [...candidates];
+  const pool = eligible;
+
+  if (pool.length === 0) {
+    return [];
+  }
 
   const totalScore = pool.reduce((sum, candidate) => sum + candidate.score, 0);
   const rawShares = pool.map((candidate) => ({
@@ -125,7 +145,11 @@ export function allocateExpansionBatchBudget(input: {
       continue;
     }
 
-    const cappedCount = capByDiscovery(entry.candidate, entry.allocated);
+    const cappedCount = capAllocationCount(
+      entry.candidate,
+      entry.allocated,
+      importableCapByMonth,
+    );
     if (cappedCount <= 0) {
       continue;
     }
@@ -170,7 +194,11 @@ export function allocateExpansionBatchBudget(input: {
     for (const candidate of redistributionPool) {
       const allocation = allocations.find((entry) => entry.month === candidate.month);
       const currentCount = allocation?.marketCount ?? 0;
-      const nextCount = capByDiscovery(candidate, currentCount + 1);
+      const nextCount = capAllocationCount(
+        candidate,
+        currentCount + 1,
+        importableCapByMonth,
+      );
 
       if (nextCount <= currentCount) {
         continue;

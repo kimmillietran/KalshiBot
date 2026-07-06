@@ -11,7 +11,11 @@ export {
   loadExpansionBatchPlannerInputs,
   loadExpansionImportMarketRecords,
 } from "./loadExpansionBatchPlannerInputs";
-export { scoreExpansionBatchMonthCandidates } from "./scoreExpansionBatchMonthCandidates";
+export {
+  partitionImportableExpansionBatchCandidates,
+  estimateExpansionBatchCandidateImportability,
+  classifyExpansionBatchCandidateRejection,
+} from "./evaluateExpansionBatchCandidateImportability";
 export { serializeExpansionBatchPlanHtml } from "./serializeExpansionBatchPlanHtml";
 export {
   createExpansionBatchPlanConsumptionState,
@@ -32,6 +36,7 @@ export {
   ExpansionBatchPlannerError,
   ExpansionBatchPlannerErrorCode,
 } from "./expansionBatchPlannerTypes";
+export { scoreExpansionBatchMonthCandidates } from "./scoreExpansionBatchMonthCandidates";
 export type {
   BuildExpansionBatchPlanInput,
   ExpansionBatchAllocation,

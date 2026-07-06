@@ -111,12 +111,40 @@ export type ExpansionBatchAllocation = {
   priorityScore: number;
 };
 
+export type ExpansionBatchRejectedCandidate = {
+  month: string;
+  seriesTicker: string;
+  rejectionReason: ExpansionBatchRejectionReason;
+  priorityScore: number;
+  expectedImportability: EstimatedSupportLevel;
+  estimatedUnsupportedRate: number;
+  estimatedImportableMarketCount: number;
+  discoveryAvailableCount: number | null;
+  currentMarketCount: number;
+  rationale: string;
+};
+
+export type ExpansionBatchRejectionReason =
+  | "unsupported-heavy"
+  | "zero-priority"
+  | "already-covered"
+  | "low-importability";
+
+export type ExpansionBatchCandidateImportability = {
+  estimatedImportableMarketCount: number;
+  uncoveredDiscoveryCount: number | null;
+  hasSupportedImportEstimate: boolean;
+};
+
 export type ExpansionBatchPlanSummary = {
   totalAllocatedMarkets: number;
   allocationCount: number;
   scheduledJobCount: number;
   candidateMonthCount: number;
   unsupportedHeavyAllocationCount: number;
+  rejectedUnsupportedHeavyAllocationCount: number;
+  rejectedZeroPriorityAllocationCount: number;
+  rejectedAlreadyCoveredAllocationCount: number;
 };
 
 export type ExpansionBatchPlan = {
@@ -131,6 +159,7 @@ export type ExpansionBatchPlan = {
   summary: ExpansionBatchPlanSummary;
   plannerNotes: readonly string[];
   allocations: readonly ExpansionBatchAllocation[];
+  rejectedCandidates: readonly ExpansionBatchRejectedCandidate[];
 };
 
 export type ExpansionBatchPlannerConfig = {

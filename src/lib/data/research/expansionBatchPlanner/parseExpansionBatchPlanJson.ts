@@ -51,11 +51,8 @@ export function parseExpansionBatchPlanJson(raw: string, path: string): Expansio
     );
   }
 
-  if (parsed.allocations.length === 0) {
-    throw new ExpansionBatchPlannerError(
-      `${path} has an empty allocations array; run npm run research:plan-expansion-batch to generate a plan`,
-      ExpansionBatchPlannerErrorCode.INVALID_DOCUMENT,
-    );
+  if (!Array.isArray(parsed.rejectedCandidates)) {
+    parsed.rejectedCandidates = [];
   }
 
   return parsed as ExpansionBatchPlan;

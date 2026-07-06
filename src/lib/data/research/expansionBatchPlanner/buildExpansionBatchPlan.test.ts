@@ -508,4 +508,133 @@ describe("buildExpansionBatchPlan", () => {
 
     expect(first).toEqual(second);
   });
+
+  it("returns an empty executable plan when only unimportable months remain", () => {
+    const coveragePlan = createCoveragePlanFixture({
+      snapshot: {
+        ...createCoveragePlanFixture().snapshot,
+        monthCoverage: [
+          {
+            month: "2026-05",
+            marketCount: 478,
+            tradingDayCount: 20,
+            coverageStatus: "UNDER_COVERED",
+            thresholds: {
+              minMarketsPerMonth: 100,
+              minTradingDaysPerMonth: 10,
+              marketsMet: true,
+              tradingDaysMet: true,
+            },
+          },
+        ],
+        missingMonths: [],
+        underCoveredMonths: ["2026-05"],
+      },
+      recommendations: [
+        {
+          recommendationId: "rec-may",
+          recommendationType: "coverage-gap-import",
+          seriesTicker: "KXBTC15M",
+          startMonth: "2026-05",
+          endMonth: "2026-05",
+          missingMonths: [],
+          includesMissing: false,
+          includesUnderCovered: true,
+          priorityScore: 0,
+          rationale: "May is under-covered but unsupported.",
+          expectedResearchBenefit: "No importable markets remain.",
+          supportingHypothesisIds: [],
+          targetHypothesisIds: [],
+          estimatedSupportLevel: "low",
+          estimatedUnsupportedRate: 1,
+        },
+      ],
+      temporalBalance: {
+        ...createCoveragePlanFixture().temporalBalance,
+        monthDiagnostics: [
+          {
+            month: "2026-05",
+            marketCount: 478,
+            researchObservationCount: 6,
+            qualifyingHypothesisObservationCount: 4,
+          },
+        ],
+        hypothesisBalances: [],
+        unevenHypothesisCount: 0,
+        thinMonthCount: 0,
+        targetMinimumObservationsPerMonth: 20,
+      },
+    });
+
+    const plan = buildExpansionBatchPlan({
+      generatedAt: BASE_GENERATED_AT,
+      config: {
+        outputPath: "data/research-results/expansion-batch-plan.json",
+        htmlOutputPath: "data/reports/expansion-batch-plan.html",
+        maxMarkets: 176,
+        selectionStrategy: "research-value",
+        selectionSeed: "seed",
+        inputPaths: {
+          coveragePlanPath: "data/research-results/historical-coverage-plan.json",
+          expansionConfigPath: "data/import-configs/historical-expansion-config.json",
+          expansionImportSummaryPath:
+            "data/research-results/historical-expansion-import-summary.json",
+          hypothesisValidationPath: "data/research-results/hypothesis-validation.json",
+          coverageAwareValidationPath: "data/research-results/coverage-aware-validation.json",
+          discoveryResultPath: "discovery-result.json",
+        },
+      },
+      io: {
+        readFile: (path) => {
+          if (path.endsWith("historical-coverage-plan.json")) {
+            return JSON.stringify(coveragePlan);
+          }
+          if (path.endsWith("historical-expansion-import-summary.json")) {
+            return JSON.stringify({
+              generatedAt: BASE_GENERATED_AT,
+              inputPath: "data/import-configs/historical-expansion-config.json",
+              outputPath: "data/research-results/historical-expansion-import-summary.json",
+              execute: true,
+              jobs: [
+                {
+                  jobId: "job-may",
+                  seriesTicker: "KXBTC15M",
+                  markets: Array.from({ length: 10 }, (_, index) => ({
+                    marketTicker: `KXBTC15M-26MAY0100${index.toString().padStart(2, "0")}-00`,
+                    seriesTicker: "KXBTC15M",
+                    status: "failed",
+                    errorMessage: "Kalshi historical market response missing expiration_value",
+                    skipReason: null,
+                  })),
+                },
+              ],
+            });
+          }
+          if (path.endsWith("discovery-result.json")) {
+            return JSON.stringify({
+              markets: Array.from({ length: 479 }, (_, index) => ({
+                marketTicker: `KXBTC15M-26MAY0100${index.toString().padStart(2, "0")}-00`,
+              })),
+            });
+          }
+          if (path.endsWith("historical-expansion-config.json")) {
+            return JSON.stringify(createLoadedInputs(coveragePlan).expansionConfig);
+          }
+          return "{}";
+        },
+        fileExists: (path) =>
+          path.endsWith("historical-coverage-plan.json")
+          || path.endsWith("historical-expansion-import-summary.json")
+          || path.endsWith("discovery-result.json")
+          || path.endsWith("historical-expansion-config.json"),
+      },
+    });
+
+    expect(plan.summary.totalAllocatedMarkets).toBe(0);
+    expect(plan.summary.allocationCount).toBe(0);
+    expect(plan.summary.scheduledJobCount).toBe(0);
+    expect(plan.allocations).toEqual([]);
+    expect(plan.rejectedCandidates.some((entry) => entry.month === "2026-05")).toBe(true);
+    expect(plan.plannerNotes).toContain("No importable research-value allocations found.");
+  });
 });

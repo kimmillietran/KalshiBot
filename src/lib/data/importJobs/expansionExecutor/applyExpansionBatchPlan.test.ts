@@ -56,8 +56,12 @@ const batchPlan: ExpansionBatchPlan = {
     scheduledJobCount: 1,
     candidateMonthCount: 2,
     unsupportedHeavyAllocationCount: 0,
+    rejectedUnsupportedHeavyAllocationCount: 0,
+    rejectedZeroPriorityAllocationCount: 0,
+    rejectedAlreadyCoveredAllocationCount: 0,
   },
   plannerNotes: [],
+  rejectedCandidates: [],
   allocations: [
     {
       allocationId: "batch-2026-03-1",

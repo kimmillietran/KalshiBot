@@ -8,6 +8,8 @@ import type {
   ExpansionBatchPlan,
 } from "./expansionBatchPlannerTypes";
 import { ExpansionBatchPlannerError, ExpansionBatchPlannerErrorCode } from "./expansionBatchPlannerTypes";
+import { partitionImportableExpansionBatchCandidates } from "./evaluateExpansionBatchCandidateImportability";
+import { estimateExpansionBatchCandidateImportability } from "./evaluateExpansionBatchCandidateImportability";
 import {
   loadExpansionBatchPlannerInputs,
   loadExpansionImportMarketRecords,
@@ -45,7 +47,7 @@ function buildPlannerNotes(
   }
 
   if (plan.summary.allocationCount === 0) {
-    notes.push("No month allocations were produced; verify coverage-plan gaps and budget.");
+    notes.push("No importable research-value allocations found.");
   }
 
   return notes;
@@ -70,9 +72,21 @@ export function buildExpansionBatchPlan(
     input.config.selectionStrategy,
     input.config.selectionSeed,
   );
+  const partitioned = partitionImportableExpansionBatchCandidates({
+    candidates: scoredCandidates,
+    importabilityMarkets,
+  });
+  const importableCapByMonth = new Map(
+    partitioned.importableCandidates.map((candidate) => [
+      candidate.month,
+      estimateExpansionBatchCandidateImportability(candidate, importabilityMarkets)
+        .estimatedImportableMarketCount,
+    ]),
+  );
   const allocations = allocateExpansionBatchBudget({
     maxMarkets: input.config.maxMarkets,
-    candidates: scoredCandidates,
+    candidates: partitioned.importableCandidates,
+    importableCapByMonth,
   });
 
   const totalAllocatedMarkets = expansionBatchAllocationTotal(allocations);
@@ -93,14 +107,23 @@ export function buildExpansionBatchPlan(
       totalAllocatedMarkets,
       allocationCount: allocations.length,
       scheduledJobCount:
-        loaded.expansionConfig?.summary.scheduledJobCount
-        ?? loaded.expansionConfig?.jobs.filter((job) => job.status === "scheduled").length
-        ?? 0,
+        allocations.length === 0
+          ? 0
+          : loaded.expansionConfig?.summary.scheduledJobCount
+            ?? loaded.expansionConfig?.jobs.filter((job) => job.status === "scheduled").length
+            ?? 0,
       candidateMonthCount: candidates.length,
       unsupportedHeavyAllocationCount,
+      rejectedUnsupportedHeavyAllocationCount:
+        partitioned.rejectedUnsupportedHeavyAllocationCount,
+      rejectedZeroPriorityAllocationCount:
+        partitioned.rejectedZeroPriorityAllocationCount,
+      rejectedAlreadyCoveredAllocationCount:
+        partitioned.rejectedAlreadyCoveredAllocationCount,
     },
     plannerNotes: [],
     allocations,
+    rejectedCandidates: partitioned.rejectedCandidates,
   };
 
   plan.plannerNotes = buildPlannerNotes(plan);

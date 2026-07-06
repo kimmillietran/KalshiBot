@@ -34,8 +34,6 @@ import { buildPlannedExpansionImportQueue } from "./buildPlannedExpansionImportQ
 import { selectMarketsUsingBatchPlan } from "./applyExpansionBatchPlan";
 import {
   createExpansionBatchPlanConsumptionState,
-  ExpansionBatchPlannerError,
-  ExpansionBatchPlannerErrorCode,
   parseExpansionBatchPlanJson,
 } from "@/lib/data/research/expansionBatchPlanner";
 import type { ExpansionBatchPlan } from "@/lib/data/research/expansionBatchPlanner";
@@ -516,31 +514,20 @@ export async function runHistoricalExpansionImport(
       );
     }
 
-    try {
-      batchPlan = parseExpansionBatchPlanJson(
-        input.io.readFile(input.config.batchPlanPath),
-        input.config.batchPlanPath,
-      );
-    } catch (error) {
-      if (
-        error instanceof ExpansionBatchPlannerError
-        && error.code === ExpansionBatchPlannerErrorCode.INVALID_DOCUMENT
-        && error.message.includes("empty allocations")
-      ) {
-        warnings.push(
-          "Expansion batch plan has no month allocations; falling back to default market selection.",
-        );
-      } else {
-        throw error;
-      }
-    }
-
-    if (batchPlan) {
-      batchPlanRemainingByMonth = createExpansionBatchPlanConsumptionState(batchPlan);
-      warnings.push(
-        `Using expansion batch plan from ${input.config.batchPlanPath} (${batchPlan.allocations.length} month allocation(s)).`,
-      );
-    }
+  batchPlan = parseExpansionBatchPlanJson(
+    input.io.readFile(input.config.batchPlanPath),
+    input.config.batchPlanPath,
+  );
+  batchPlanRemainingByMonth = createExpansionBatchPlanConsumptionState(batchPlan);
+  if (batchPlan.allocations.length === 0) {
+    warnings.push(
+      `Using expansion batch plan from ${input.config.batchPlanPath} (no importable month allocations).`,
+    );
+  } else {
+    warnings.push(
+      `Using expansion batch plan from ${input.config.batchPlanPath} (${batchPlan.allocations.length} month allocation(s)).`,
+    );
+  }
   }
 
   for (const [jobIndex, job] of sortedScheduledJobs.entries()) {

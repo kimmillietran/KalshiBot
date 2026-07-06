@@ -48,7 +48,14 @@ export function runPlanExpansionBatchCommand(
           maxMarkets: plan.maxMarkets,
           totalAllocatedMarkets: plan.summary.totalAllocatedMarkets,
           allocationCount: plan.summary.allocationCount,
+          scheduledJobCount: plan.summary.scheduledJobCount,
           selectionStrategy: plan.selectionStrategy,
+          rejectedUnsupportedHeavyAllocationCount:
+            plan.summary.rejectedUnsupportedHeavyAllocationCount,
+          rejectedZeroPriorityAllocationCount:
+            plan.summary.rejectedZeroPriorityAllocationCount,
+          rejectedAlreadyCoveredAllocationCount:
+            plan.summary.rejectedAlreadyCoveredAllocationCount,
         }),
       ),
     );
