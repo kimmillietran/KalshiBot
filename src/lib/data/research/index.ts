@@ -558,6 +558,31 @@ export type {
 } from "./expansionImportPerformanceAudit";
 
 export {
+  buildExpansionRunHistoryReport,
+  buildExpansionRunHistoryRun,
+  analyzeExpansionRunHistory,
+  loadExpansionRunHistoryInputs,
+  parseExpansionRunHistoryPathsFromArgv,
+  serializeExpansionRunHistoryHtml,
+  appendExpansionRunHistoryRun,
+  pruneExpansionRunHistoryRuns,
+  tryLoadExpansionRunHistoryDocument,
+  DEFAULT_EXPANSION_RUN_HISTORY_OUTPUT_PATH,
+  DEFAULT_EXPANSION_RUN_HISTORY_HTML_PATH,
+  DEFAULT_EXPANSION_RUN_HISTORY_MAX_RUNS,
+  ExpansionRunHistoryError,
+} from "./expansionRunHistory";
+export type {
+  ExpansionRunHistoryDocument,
+  ExpansionRunHistoryHighlights,
+  ExpansionRunHistoryInputPaths,
+  ExpansionRunHistoryIo,
+  ExpansionRunHistoryReport,
+  ExpansionRunHistoryRun,
+  ExpansionRunHistoryTrends,
+} from "./expansionRunHistory";
+
+export {
   buildHypothesisLifecycleReport,
   buildHypothesisLifecycleReportFromInputs,
   loadHypothesisLifecycleInputs,

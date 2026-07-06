@@ -1,4 +1,5 @@
 import { buildCoveragePhaseSection } from "./buildCoveragePhaseSection";
+import { buildExpansionRunHistorySection } from "./buildExpansionRunHistorySection";
 import { buildHypothesisEvolutionSection } from "./buildHypothesisEvolutionSection";
 import { buildHistoricalImportabilitySection } from "./buildHistoricalImportabilitySection";
 import type {
@@ -217,6 +218,7 @@ export function buildPipelineDashboardReport(
       expansionImportSummary: input.inputs.historicalExpansionImportSummary,
     }),
     hypothesisEvolution: buildHypothesisEvolutionSection(input.inputs.hypothesisHistory),
+    expansionRunHistory: buildExpansionRunHistorySection(input.inputs.expansionRunHistory),
   };
 }
 

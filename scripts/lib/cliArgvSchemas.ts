@@ -407,6 +407,17 @@ export const EXPANSION_IMPORT_PERFORMANCE_AUDIT_ARGV_SCHEMA: readonly NpmArgvFie
   { flag: "--imports-dir" },
 ];
 
+export const EXPANSION_RUN_HISTORY_ARGV_SCHEMA: readonly NpmArgvField[] = [
+  { flag: "--output" },
+  { flag: "--html-output" },
+  { flag: "--expansion-import-summary" },
+  { flag: "--expansion-import-checkpoint" },
+  { flag: "--expansion-rebuild-summary" },
+  { flag: "--experiment-index" },
+  { flag: "--import-configs-dir" },
+  { flag: "--imports-dir" },
+];
+
 export const RESEARCH_PIPELINE_DASHBOARD_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--output" },
   { flag: "--pipeline-summary" },
@@ -425,6 +436,7 @@ export const RESEARCH_PIPELINE_DASHBOARD_ARGV_SCHEMA: readonly NpmArgvField[] = 
   { flag: "--historical-expansion-import-summary" },
   { flag: "--expansion-rebuild-summary" },
   { flag: "--hypothesis-history" },
+  { flag: "--expansion-run-history" },
 ];
 
 export const RESEARCH_EXPERIMENT_ARGV_SCHEMA: readonly NpmArgvField[] = [
@@ -676,6 +688,10 @@ export function normalizeResearchPipelineDashboardArgv(argv: readonly string[]):
 
 export function normalizeResearchPerformanceAuditArgv(argv: readonly string[]): string[] {
   return normalizeNpmScriptArgv(argv, RESEARCH_PERFORMANCE_AUDIT_ARGV_SCHEMA);
+}
+
+export function normalizeExpansionRunHistoryArgv(argv: readonly string[]): string[] {
+  return normalizeNpmScriptArgv(argv, EXPANSION_RUN_HISTORY_ARGV_SCHEMA);
 }
 
 export function normalizeExpansionImportPerformanceAuditArgv(

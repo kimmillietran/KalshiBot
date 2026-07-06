@@ -389,6 +389,39 @@ function renderHypothesisEvolution(report: PipelineDashboardReport): string {
     </section>`;
 }
 
+function renderExpansionRunHistory(report: PipelineDashboardReport): string {
+  const section = report.expansionRunHistory;
+  const efficiencyLabel =
+    section.efficiencyImproving === null
+      ? "insufficient data"
+      : section.efficiencyImproving
+        ? "improving"
+        : "declining";
+  const efficiencyTone =
+    section.efficiencyImproving === true
+      ? theme.bullish
+      : section.efficiencyImproving === false
+        ? theme.bearish
+        : theme.textMuted;
+
+  return `
+    <section class="panel">
+      <h2>Expansion Run History</h2>
+      <p class="muted">Longitudinal expansion import comparison · source <code>${escapeHtml(section.historyPath)}</code></p>
+      <div class="stat-grid">
+        ${renderStat("Runs tracked", escapeHtml(String(section.runCount)))}
+        ${renderStat("Latest run", formatTimestamp(section.latestRunGeneratedAt))}
+        ${renderStat("Latest imported", escapeHtml(String(section.latestImportedCount ?? "—")), theme.bullish)}
+        ${renderStat("Latest throughput", escapeHtml(section.latestImportsPerMinute?.toString() ?? "—"))}
+        ${renderStat("Best throughput", escapeHtml(section.bestThroughputImportsPerMinute?.toString() ?? "—"), theme.bullish)}
+        ${renderStat("Worst discovery share", formatPercent(section.worstBottleneckDiscoveryShare !== null ? section.worstBottleneckDiscoveryShare * 100 : null), section.worstBottleneckDiscoveryShare !== null && section.worstBottleneckDiscoveryShare > 0.5 ? theme.bearish : undefined)}
+        ${renderStat("Efficiency trend", escapeHtml(efficiencyLabel), efficiencyTone)}
+      </div>
+      <p><strong>Best throughput run:</strong> ${formatTimestamp(section.bestThroughputGeneratedAt)}</p>
+      <p><strong>Worst bottleneck run:</strong> ${formatTimestamp(section.worstBottleneckGeneratedAt)}</p>
+    </section>`;
+}
+
 function renderQuickLinks(report: PipelineDashboardReport): string {
   const links = [
     report.inputPaths.pipelineSummaryPath,
@@ -405,6 +438,7 @@ function renderQuickLinks(report: PipelineDashboardReport): string {
     report.coveragePhase.coverageValidation.path,
     "data/reports/research-hypothesis-lifecycle.html",
     "data/reports/hypothesis-evolution.html",
+    "data/reports/expansion-run-history.html",
     "data/reports/research-report.html",
   ];
 
@@ -443,6 +477,7 @@ export function serializePipelineDashboardHtml(
       ${renderPipelineStatus(report)}
       ${renderCoveragePhase(report)}
       ${renderHistoricalImportability(report)}
+      ${renderExpansionRunHistory(report)}
       ${renderHypothesisEvolution(report)}
       <div class="grid-2">
         ${renderArtifactHealth(report)}

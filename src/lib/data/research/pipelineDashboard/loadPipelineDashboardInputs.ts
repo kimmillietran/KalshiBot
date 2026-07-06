@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { parseExpansionImportSummaryJson } from "@/lib/data/research/coveragePlanner/importability";
 import { parseHypothesisHistoryDocument } from "@/lib/data/research/hypothesisEvolution";
+import { tryLoadExpansionRunHistoryDocument } from "@/lib/data/research/expansionRunHistory/expansionRunHistoryDocument";
 
 import {
   PipelineDashboardError,
@@ -461,6 +462,14 @@ function readHypothesisHistory(
   }
 }
 
+function readExpansionRunHistory(
+  io: PipelineDashboardIo,
+  path: string,
+): ParsedPipelineDashboardInputs["expansionRunHistory"] {
+  const loaded = tryLoadExpansionRunHistoryDocument(io, path);
+  return loaded.document;
+}
+
 /** Loads optional pipeline dashboard artifacts without mutating data. */
 export function loadPipelineDashboardInputs(
   io: PipelineDashboardIo,
@@ -522,5 +531,6 @@ export function loadPipelineDashboardInputs(
     ),
     expansionRebuildSummary: readGeneratedArtifact(io, inputPaths.expansionRebuildSummaryPath),
     hypothesisHistory: readHypothesisHistory(io, inputPaths.hypothesisHistoryPath),
+    expansionRunHistory: readExpansionRunHistory(io, inputPaths.expansionRunHistoryPath),
   };
 }

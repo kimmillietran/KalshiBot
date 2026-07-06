@@ -115,6 +115,19 @@ const REPORT: PipelineDashboardReport = {
     strengtheningCount: 0,
     weakeningCount: 0,
   },
+  expansionRunHistory: {
+    historyPath: "data/research-results/expansion-run-history.json",
+    historyPresent: true,
+    runCount: 2,
+    latestRunGeneratedAt: "2026-07-05T12:00:00.000Z",
+    latestImportedCount: 984,
+    latestImportsPerMinute: 118,
+    bestThroughputImportsPerMinute: 118,
+    bestThroughputGeneratedAt: "2026-07-05T12:00:00.000Z",
+    worstBottleneckDiscoveryShare: 0.83,
+    worstBottleneckGeneratedAt: "2026-07-01T10:00:00.000Z",
+    efficiencyImproving: true,
+  },
 };
 
 describe("serializePipelineDashboardHtml", () => {
@@ -150,5 +163,13 @@ describe("serializePipelineDashboardHtml", () => {
     expect(html).toContain("Historical Importability");
     expect(html).toContain("Supported windows");
     expect(html).toContain("67%");
+  });
+
+  it("renders the expansion run history section", () => {
+    const html = serializePipelineDashboardHtml(REPORT);
+
+    expect(html).toContain("Expansion Run History");
+    expect(html).toContain("984");
+    expect(html).toContain("improving");
   });
 });

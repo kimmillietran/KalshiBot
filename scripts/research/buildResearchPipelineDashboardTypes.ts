@@ -164,6 +164,14 @@ export function parseHypothesisHistoryPathFromArgv(argv: readonly string[]): str
   );
 }
 
+export function parseExpansionRunHistoryPathFromArgv(argv: readonly string[]): string {
+  return readFlagValue(
+    argv,
+    "--expansion-run-history",
+    DEFAULT_PIPELINE_DASHBOARD_INPUT_PATHS.expansionRunHistoryPath,
+  );
+}
+
 export function formatStdoutOutput(payload: string): string {
   return `${payload}\n`;
 }

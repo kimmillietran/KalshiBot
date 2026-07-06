@@ -9,6 +9,7 @@ import {
 } from "@/lib/data/research/fullOrchestrator/coveragePhasePaths";
 import { DEFAULT_HYPOTHESIS_CANDIDATES_OUTPUT_PATH } from "@/lib/data/research/hypothesisCandidates/hypothesisCandidateTypes";
 import { DEFAULT_HYPOTHESIS_HISTORY_OUTPUT_PATH } from "@/lib/data/research/hypothesisEvolution/hypothesisEvolutionTypes";
+import { DEFAULT_EXPANSION_RUN_HISTORY_OUTPUT_PATH } from "@/lib/data/research/expansionRunHistory/expansionRunHistoryTypes";
 import { DEFAULT_HYPOTHESIS_VALIDATION_OUTPUT_PATH } from "@/lib/data/research/hypothesisRobustness/hypothesisRobustnessTypes";
 import { DEFAULT_STRATEGY_LEADERBOARD_OUTPUT_PATH } from "@/lib/data/research/leaderboard/strategyLeaderboardTypes";
 import { DEFAULT_RESEARCH_PIPELINE_SUMMARY_PATH } from "@/lib/data/research/pipeline/researchPipelineTypes";
@@ -41,6 +42,7 @@ export type PipelineDashboardInputPaths = {
   historicalExpansionImportSummaryPath: string;
   expansionRebuildSummaryPath: string;
   hypothesisHistoryPath: string;
+  expansionRunHistoryPath: string;
 };
 
 export const DEFAULT_PIPELINE_DASHBOARD_INPUT_PATHS: PipelineDashboardInputPaths = {
@@ -60,6 +62,7 @@ export const DEFAULT_PIPELINE_DASHBOARD_INPUT_PATHS: PipelineDashboardInputPaths
   historicalExpansionImportSummaryPath: HISTORICAL_EXPANSION_IMPORT_SUMMARY_PATH,
   expansionRebuildSummaryPath: EXPANSION_REBUILD_SUMMARY_PATH,
   hypothesisHistoryPath: DEFAULT_HYPOTHESIS_HISTORY_OUTPUT_PATH,
+  expansionRunHistoryPath: DEFAULT_EXPANSION_RUN_HISTORY_OUTPUT_PATH,
 };
 
 export type PipelineStatusSection = {
@@ -160,6 +163,20 @@ export type HypothesisEvolutionSection = {
   weakeningCount: number;
 };
 
+export type ExpansionRunHistorySection = {
+  historyPath: string;
+  historyPresent: boolean;
+  runCount: number;
+  latestRunGeneratedAt: string | null;
+  latestImportedCount: number | null;
+  latestImportsPerMinute: number | null;
+  bestThroughputImportsPerMinute: number | null;
+  bestThroughputGeneratedAt: string | null;
+  worstBottleneckDiscoveryShare: number | null;
+  worstBottleneckGeneratedAt: string | null;
+  efficiencyImproving: boolean | null;
+};
+
 export type PipelineDashboardReport = {
   generatedAt: string;
   outputPath: string;
@@ -172,6 +189,7 @@ export type PipelineDashboardReport = {
   coveragePhase: CoveragePhaseSection;
   historicalImportability: HistoricalImportabilitySection;
   hypothesisEvolution: HypothesisEvolutionSection;
+  expansionRunHistory: ExpansionRunHistorySection;
 };
 
 export type BuildPipelineDashboardReportInput = {
@@ -339,6 +357,7 @@ export type ParsedPipelineDashboardInputs = {
   historicalExpansionImportSummary: ParsedExpansionImportSummary | null;
   expansionRebuildSummary: { generatedAt: string } | null;
   hypothesisHistory: import("@/lib/data/research/hypothesisEvolution/hypothesisEvolutionTypes").HypothesisHistoryDocument | null;
+  expansionRunHistory: import("@/lib/data/research/expansionRunHistory/expansionRunHistoryTypes").ExpansionRunHistoryDocument | null;
 };
 
 export type PipelineDashboardIo = {

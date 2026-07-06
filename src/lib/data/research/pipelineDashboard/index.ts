@@ -2,6 +2,7 @@ export {
   buildPipelineDashboardReport,
   buildPipelineDashboardReportFromInputs,
 } from "./buildPipelineDashboardReport";
+export { buildExpansionRunHistorySection } from "./buildExpansionRunHistorySection";
 export { buildHypothesisEvolutionSection } from "./buildHypothesisEvolutionSection";
 export { loadPipelineDashboardInputs } from "./loadPipelineDashboardInputs";
 export { serializePipelineDashboardHtml } from "./serializePipelineDashboardHtml";
