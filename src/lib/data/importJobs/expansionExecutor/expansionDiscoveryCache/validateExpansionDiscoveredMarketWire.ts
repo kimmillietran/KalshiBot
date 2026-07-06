@@ -35,7 +35,7 @@ export function validateExpansionDiscoveredMarkets(
   markets: readonly ExpansionDiscoveredMarket[],
 ): string | null {
   if (markets.length === 0) {
-    return "discovery cache segment has no markets";
+    return null;
   }
 
   for (const market of markets) {

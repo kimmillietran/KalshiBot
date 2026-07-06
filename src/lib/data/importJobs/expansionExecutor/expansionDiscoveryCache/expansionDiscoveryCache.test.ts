@@ -12,6 +12,7 @@ import {
   resolveDiscoveryWithDeltaRefresh,
   serializeExpansionDiscoveryCacheSegment,
   validateExpansionDiscoveredMarketWire,
+  validateExpansionDiscoveredMarkets,
 } from "./index";
 
 const GENERATED_AT = "2026-07-05T18:00:00.000Z";
@@ -108,6 +109,10 @@ describe("validateExpansionDiscoveredMarketWire", () => {
     const market = createMarket("KXBTC15M-26JAN151215-00", "2026-01-15T12:15:00.000Z");
     expect(validateExpansionDiscoveredMarketWire(market)).toBeNull();
   });
+
+  it("accepts empty discovery segments", () => {
+    expect(validateExpansionDiscoveredMarkets([])).toBeNull();
+  });
 });
 
 describe("parseExpansionDiscoveryCacheSegmentJson", () => {
@@ -129,6 +134,26 @@ describe("parseExpansionDiscoveryCacheSegmentJson", () => {
     expect(parsed.ok).toBe(false);
     if (!parsed.ok) {
       expect(parsed.reason).toContain("checksum");
+    }
+  });
+
+  it("accepts empty market segments", () => {
+    const document = buildExpansionDiscoveryCacheSegmentDocument({
+      seriesTicker: SERIES,
+      calendarMonth: "2025-01",
+      generatedAt: GENERATED_AT,
+      sampling: calendarMonthToDiscoverySamplingWindow("2025-01"),
+      markets: [],
+    });
+
+    const parsed = parseExpansionDiscoveryCacheSegmentJson(
+      "segment.json",
+      serializeExpansionDiscoveryCacheSegment(document),
+    );
+    expect(parsed.ok).toBe(true);
+    if (parsed.ok) {
+      expect(parsed.entry.marketCount).toBe(0);
+      expect(parsed.entry.markets).toEqual([]);
     }
   });
 });
@@ -308,5 +333,45 @@ describe("resolveDiscoveryWithDeltaRefresh", () => {
 
     expect(discoverMarkets).toHaveBeenCalledTimes(1);
     expect(diagnostics.discoverySegmentsCacheHit).toBe(0);
+  });
+
+  it("persists zero-market discovery results to cache", async () => {
+    const mock = createMockIo();
+    const discoverMarkets = vi.fn(async () => []);
+    const diagnostics = createExpansionDiscoveryDeltaRefreshDiagnostics();
+    const warnings: string[] = [];
+    const segmentPath = buildDiscoveryCacheSegmentPath({
+      cacheDir: CACHE_DIR,
+      seriesTicker: SERIES,
+      calendarMonth: "2025-01",
+    });
+
+    const markets = await resolveDiscoveryWithDeltaRefresh({
+      seriesTicker: SERIES,
+      sampling: calendarMonthToDiscoverySamplingWindow("2025-01"),
+      discoverMarkets,
+      io: mock.io,
+      config: {
+        discoveryCacheDir: CACHE_DIR,
+        discoveryCacheSegment: "month",
+        discoveryCacheTtlHours: 24,
+        refreshDiscoveryMonth: null,
+        refreshDiscoveryCache: false,
+        useDiscoveryCache: true,
+      },
+      generatedAt: GENERATED_AT,
+      diagnostics,
+      warnings,
+      nowMs: Date.parse(GENERATED_AT),
+    });
+
+    expect(markets).toEqual([]);
+    expect(warnings).toEqual([]);
+    expect(mock.writes[segmentPath]).toBeDefined();
+    const parsed = parseExpansionDiscoveryCacheSegmentJson(segmentPath, mock.writes[segmentPath]!);
+    expect(parsed.ok).toBe(true);
+    if (parsed.ok) {
+      expect(parsed.entry.marketCount).toBe(0);
+    }
   });
 });

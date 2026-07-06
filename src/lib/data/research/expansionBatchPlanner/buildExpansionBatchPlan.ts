@@ -127,7 +127,6 @@ export function buildExpansionBatchPlan(
     knownCandidateMonths,
     expandedCandidateMonths,
     discoverySources: loaded.discoverySourcesByMonth,
-    discoveryResultPresent: loaded.inputStatus.discoveryResultPresent,
     allocationCount: allocations.length,
     rejectedCandidateCount: partitioned.rejectedCandidates.length,
   });

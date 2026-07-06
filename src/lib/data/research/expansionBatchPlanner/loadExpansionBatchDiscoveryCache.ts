@@ -10,6 +10,7 @@ import type {
   ExpansionBatchDiscoverySourcesByMonth,
 } from "./expansionBatchDiscoveryUniverseTypes";
 import type { ExpansionBatchPlannerIo } from "./expansionBatchPlannerTypes";
+import { resolveExpansionBatchMonthDiscoveryStatus } from "./resolveExpansionBatchMonthDiscoveryStatus";
 
 export type ExpansionBatchDiscoveryCacheIo = ExpansionBatchPlannerIo & {
   listDir?: (path: string) => readonly string[];
@@ -124,6 +125,12 @@ export function mergeExpansionBatchDiscoverySourcesByMonth(input: {
       mergedDiscoveryCount: Math.max(discoveryResultCount, discoveryCacheCount),
       cacheSegmentPresent,
       cacheSegmentStale: staleSet.has(month),
+      discoveryStatus: resolveExpansionBatchMonthDiscoveryStatus({
+        discoveryResultCount,
+        discoveryCacheCount,
+        cacheSegmentPresent,
+        cacheSegmentStale: staleSet.has(month),
+      }),
     });
   }
 
@@ -136,9 +143,11 @@ export function mergedDiscoveryCountsByMonth(
 ): ReadonlyMap<string, number> {
   const counts = new Map<string, number>();
   for (const [month, source] of sources.entries()) {
-    if (source.mergedDiscoveryCount > 0) {
-      counts.set(month, source.mergedDiscoveryCount);
+    if (source.discoveryStatus === "unknown") {
+      continue;
     }
+
+    counts.set(month, source.mergedDiscoveryCount);
   }
   return counts;
 }

@@ -1,8 +1,10 @@
 import type {
   ExpansionBatchDiscoverySourcesByMonth,
   ExpansionBatchDiscoveryUniverseDiagnostics,
+  ExpansionBatchMonthDiscoveryStatus,
   ExpansionBatchUniverseExhaustionReason,
 } from "./expansionBatchDiscoveryUniverseTypes";
+import { isExpansionBatchMonthDiscoveryProbed } from "./resolveExpansionBatchMonthDiscoveryStatus";
 
 function previousCalendarMonth(month: string): string | null {
   const [yearText, monthText] = month.split("-");
@@ -38,22 +40,35 @@ function sortUnique(months: Iterable<string>): string[] {
   return [...new Set(months)].sort();
 }
 
+function monthsByDiscoveryStatus(
+  discoverySources: ExpansionBatchDiscoverySourcesByMonth,
+  status: ExpansionBatchMonthDiscoveryStatus,
+): string[] {
+  return sortUnique(
+    [...discoverySources.entries()]
+      .filter(([, source]) => source.discoveryStatus === status)
+      .map(([month]) => month),
+  );
+}
+
 function computeDiscoveredMonths(
   discoverySources: ExpansionBatchDiscoverySourcesByMonth,
 ): string[] {
   return sortUnique(
     [...discoverySources.entries()]
-      .filter(([, source]) => source.mergedDiscoveryCount > 0)
+      .filter(([, source]) => isExpansionBatchMonthDiscoveryProbed(source.discoveryStatus))
       .map(([month]) => month),
   );
 }
 
 function computeUndiscoveredCandidateMonths(
   candidateMonths: readonly string[],
-  discoveredMonths: readonly string[],
+  discoverySources: ExpansionBatchDiscoverySourcesByMonth,
 ): string[] {
-  const discovered = new Set(discoveredMonths);
-  return candidateMonths.filter((month) => !discovered.has(month));
+  return candidateMonths.filter((month) => {
+    const source = discoverySources.get(month);
+    return !source || source.discoveryStatus === "unknown";
+  });
 }
 
 function computeDiscoveryFrontierMonths(input: {
@@ -84,20 +99,16 @@ function computeDiscoveryFrontierMonths(input: {
 function computeStaleDiscoveryMonths(input: {
   candidateMonths: readonly string[];
   discoverySources: ExpansionBatchDiscoverySourcesByMonth;
-  discoveryResultPresent: boolean;
 }): string[] {
   const stale: string[] = [];
 
   for (const month of input.candidateMonths) {
     const source = input.discoverySources.get(month);
     if (!source) {
-      if (input.discoveryResultPresent) {
-        stale.push(month);
-      }
       continue;
     }
 
-    if (source.cacheSegmentStale) {
+    if (source.discoveryStatus === "stale") {
       stale.push(month);
       continue;
     }
@@ -144,14 +155,21 @@ export function buildExpansionBatchDiscoveryUniverse(input: {
   knownCandidateMonths: readonly string[];
   expandedCandidateMonths: readonly string[];
   discoverySources: ExpansionBatchDiscoverySourcesByMonth;
-  discoveryResultPresent: boolean;
   allocationCount: number;
   rejectedCandidateCount: number;
 }): ExpansionBatchDiscoveryUniverseDiagnostics {
   const discoveredMonths = computeDiscoveredMonths(input.discoverySources);
+  const discoveredEmptyMonths = monthsByDiscoveryStatus(
+    input.discoverySources,
+    "discovered-empty",
+  );
+  const discoveredNonEmptyMonths = monthsByDiscoveryStatus(
+    input.discoverySources,
+    "discovered-nonempty",
+  );
   const undiscoveredCandidateMonths = computeUndiscoveredCandidateMonths(
     input.expandedCandidateMonths,
-    discoveredMonths,
+    input.discoverySources,
   );
   const discoveryFrontierMonths = computeDiscoveryFrontierMonths({
     knownCandidateMonths: input.knownCandidateMonths,
@@ -162,20 +180,21 @@ export function buildExpansionBatchDiscoveryUniverse(input: {
   const staleDiscoveryMonths = computeStaleDiscoveryMonths({
     candidateMonths: input.expandedCandidateMonths,
     discoverySources: input.discoverySources,
-    discoveryResultPresent: input.discoveryResultPresent,
   });
 
   const plannerExhausted = input.allocationCount === 0;
   const universeIncomplete =
     undiscoveredCandidateMonths.length > 0
-    || staleDiscoveryMonths.length > 0
-    || discoveryFrontierMonths.length > 0;
+    || staleDiscoveryMonths.length > 0;
   const universeComplete = plannerExhausted && !universeIncomplete;
 
   return {
     knownCandidateMonths: input.knownCandidateMonths,
     expandedCandidateMonths: input.expandedCandidateMonths,
     discoveredMonths,
+    discoveredEmptyMonths,
+    discoveredNonEmptyMonths,
+    emptyDiscoveryCount: discoveredEmptyMonths.length,
     undiscoveredCandidateMonths,
     discoveryFrontierMonths,
     staleDiscoveryMonths,
@@ -202,6 +221,12 @@ export function formatDiscoveryUniversePlannerNotes(
   );
     notes.push(
       `Expanded candidate universe by ${added.length} month(s) from recommendation windows and scheduled expansion jobs.`,
+    );
+  }
+
+  if (diagnostics.discoveredEmptyMonths.length > 0) {
+    notes.push(
+      `Discovered-empty months (${diagnostics.emptyDiscoveryCount}): ${diagnostics.discoveredEmptyMonths.join(", ")}.`,
     );
   }
 

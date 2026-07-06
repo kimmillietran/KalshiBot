@@ -1,3 +1,9 @@
+export type ExpansionBatchMonthDiscoveryStatus =
+  | "unknown"
+  | "discovered-empty"
+  | "discovered-nonempty"
+  | "stale";
+
 export type ExpansionBatchUniverseExhaustionReason =
   | "none"
   | "coverage-exhausted"
@@ -8,6 +14,9 @@ export type ExpansionBatchDiscoveryUniverseDiagnostics = {
   knownCandidateMonths: readonly string[];
   expandedCandidateMonths: readonly string[];
   discoveredMonths: readonly string[];
+  discoveredEmptyMonths: readonly string[];
+  discoveredNonEmptyMonths: readonly string[];
+  emptyDiscoveryCount: number;
   undiscoveredCandidateMonths: readonly string[];
   discoveryFrontierMonths: readonly string[];
   staleDiscoveryMonths: readonly string[];
@@ -23,6 +32,7 @@ export type ExpansionBatchDiscoveryMonthSource = {
   mergedDiscoveryCount: number;
   cacheSegmentPresent: boolean;
   cacheSegmentStale: boolean;
+  discoveryStatus: ExpansionBatchMonthDiscoveryStatus;
 };
 
 export type ExpansionBatchDiscoverySourcesByMonth = ReadonlyMap<

@@ -58,6 +58,8 @@ export function runPlanExpansionBatchCommand(
           rejectedAlreadyCoveredAllocationCount:
             plan.summary.rejectedAlreadyCoveredAllocationCount,
           knownCandidateMonths: plan.discoveryUniverse.knownCandidateMonths.length,
+          discoveredEmptyMonths: plan.discoveryUniverse.discoveredEmptyMonths.length,
+          emptyDiscoveryCount: plan.discoveryUniverse.emptyDiscoveryCount,
           undiscoveredCandidateMonths: plan.discoveryUniverse.undiscoveredCandidateMonths.length,
           discoveryFrontierMonths: plan.discoveryUniverse.discoveryFrontierMonths.length,
           staleDiscoveryMonths: plan.discoveryUniverse.staleDiscoveryMonths.length,

@@ -35,6 +35,7 @@ function renderSummaryCards(plan: ExpansionBatchPlan): string {
       <div class="summary-card"><div class="summary-label">Strategy</div><div class="summary-value">${escapeHtml(plan.selectionStrategy)}</div></div>
       <div class="summary-card"><div class="summary-label">Known candidates</div><div class="summary-value">${plan.discoveryUniverse.knownCandidateMonths.length}</div></div>
       <div class="summary-card"><div class="summary-label">Expanded candidates</div><div class="summary-value">${plan.discoveryUniverse.expandedCandidateMonths.length}</div></div>
+      <div class="summary-card"><div class="summary-label">Discovered empty</div><div class="summary-value">${plan.discoveryUniverse.emptyDiscoveryCount}</div></div>
       <div class="summary-card"><div class="summary-label">Undiscovered</div><div class="summary-value" style="color:${plan.discoveryUniverse.undiscoveredCandidateMonths.length > 0 ? theme.warning : theme.text}">${plan.discoveryUniverse.undiscoveredCandidateMonths.length}</div></div>
       <div class="summary-card"><div class="summary-label">Universe complete</div><div class="summary-value">${plan.discoveryUniverse.universeComplete ? "yes" : "no"}</div></div>
       <div class="summary-card"><div class="summary-label">Exhaustion</div><div class="summary-value">${escapeHtml(plan.discoveryUniverse.exhaustionReason)}</div></div>
@@ -202,6 +203,9 @@ export function serializeExpansionBatchPlanHtml(plan: ExpansionBatchPlan): strin
           <tr><th>Known candidate months</th><td>${escapeHtml(plan.discoveryUniverse.knownCandidateMonths.join(", ") || "—")}</td></tr>
           <tr><th>Expanded candidate months</th><td>${escapeHtml(plan.discoveryUniverse.expandedCandidateMonths.join(", ") || "—")}</td></tr>
           <tr><th>Discovered months</th><td>${escapeHtml(plan.discoveryUniverse.discoveredMonths.join(", ") || "—")}</td></tr>
+          <tr><th>Discovered-empty months</th><td>${escapeHtml(plan.discoveryUniverse.discoveredEmptyMonths.join(", ") || "—")}</td></tr>
+          <tr><th>Discovered-nonempty months</th><td>${escapeHtml(plan.discoveryUniverse.discoveredNonEmptyMonths.join(", ") || "—")}</td></tr>
+          <tr><th>Empty discovery count</th><td>${plan.discoveryUniverse.emptyDiscoveryCount}</td></tr>
           <tr><th>Undiscovered candidate months</th><td>${escapeHtml(plan.discoveryUniverse.undiscoveredCandidateMonths.join(", ") || "—")}</td></tr>
           <tr><th>Discovery frontier months</th><td>${escapeHtml(plan.discoveryUniverse.discoveryFrontierMonths.join(", ") || "—")}</td></tr>
           <tr><th>Stale discovery months</th><td>${escapeHtml(plan.discoveryUniverse.staleDiscoveryMonths.join(", ") || "—")}</td></tr>
