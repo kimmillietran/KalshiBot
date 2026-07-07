@@ -548,6 +548,17 @@ export const RESEARCH_DIMENSION_EXPLORER_ARGV_SCHEMA: readonly NpmArgvField[] = 
   { flag: "--hypothesis-validation" },
 ];
 
+export const RESEARCH_RECOMMENDATION_ENGINE_ARGV_SCHEMA: readonly NpmArgvField[] = [
+  { flag: "--output" },
+  { flag: "--html-output" },
+  { flag: "--portfolio-analytics" },
+  { flag: "--roi-analysis" },
+  { flag: "--interaction-analysis" },
+  { flag: "--dimension-explorer" },
+  { flag: "--failure-analysis" },
+  { flag: "--month-regime-analysis" },
+];
+
 export const RESEARCH_PIPELINE_DASHBOARD_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--output" },
   { flag: "--pipeline-summary" },
@@ -876,6 +887,12 @@ export function normalizeResearchDimensionExplorerArgv(
   argv: readonly string[],
 ): string[] {
   return normalizeNpmScriptArgv(argv, RESEARCH_DIMENSION_EXPLORER_ARGV_SCHEMA);
+}
+
+export function normalizeResearchRecommendationEngineArgv(
+  argv: readonly string[],
+): string[] {
+  return normalizeNpmScriptArgv(argv, RESEARCH_RECOMMENDATION_ENGINE_ARGV_SCHEMA);
 }
 
 export function normalizeExpansionImportPerformanceAuditArgv(

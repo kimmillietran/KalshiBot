@@ -836,6 +836,24 @@ export type {
 } from "./researchPortfolioAnalytics";
 
 export {
+  buildResearchRecommendationEngineReport,
+  buildResearchRecommendations,
+  loadResearchRecommendationInputs,
+  parseResearchRecommendationEnginePathsFromArgv,
+  serializeResearchRecommendationEngineHtml,
+  serializeResearchRecommendationEngineReport,
+  DEFAULT_RESEARCH_RECOMMENDATIONS_HTML_PATH,
+  DEFAULT_RESEARCH_RECOMMENDATION_ENGINE_INPUT_PATHS,
+  DEFAULT_RESEARCH_RECOMMENDATIONS_OUTPUT_PATH,
+  ResearchRecommendationEngineError,
+} from "./researchRecommendationEngine";
+export type {
+  ResearchRecommendationEngineReport,
+  ResearchRecommendationEntry,
+  ResearchRecommendationKind,
+} from "./researchRecommendationEngine";
+
+export {
   buildHypothesisLifecycleReport,
   buildHypothesisLifecycleReportFromInputs,
   loadHypothesisLifecycleInputs,
