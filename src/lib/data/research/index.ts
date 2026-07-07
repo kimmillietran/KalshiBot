@@ -752,6 +752,23 @@ export type {
 } from "./researchWorkflow";
 
 export {
+  buildResearchDimensionExplorerReport,
+  loadResearchDimensionExplorerInputs,
+  parseResearchDimensionExplorerPathsFromArgv,
+  serializeResearchDimensionExplorerHtml,
+  serializeResearchDimensionExplorerReport,
+  DEFAULT_RESEARCH_DIMENSION_EXPLORER_HTML_PATH,
+  DEFAULT_RESEARCH_DIMENSION_EXPLORER_INPUT_PATHS,
+  DEFAULT_RESEARCH_DIMENSION_EXPLORER_OUTPUT_PATH,
+  ResearchDimensionExplorerError,
+} from "./researchDimensionExplorer";
+export type {
+  ResearchDimensionExplorerAxisGroupEntry,
+  ResearchDimensionExplorerDimensionEntry,
+  ResearchDimensionExplorerReport,
+} from "./researchDimensionExplorer";
+
+export {
   buildHypothesisLifecycleReport,
   buildHypothesisLifecycleReportFromInputs,
   loadHypothesisLifecycleInputs,
