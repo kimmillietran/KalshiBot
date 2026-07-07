@@ -157,11 +157,52 @@ function renderStyles(): string {
   `;
 }
 
+function renderStrategySelection(
+  selection: NonNullable<HarnessResultsReport["summary"]["strategySelection"]>,
+): string {
+  if (selection.length === 0) {
+    return "";
+  }
+
+  const rows = selection
+    .map(
+      (entry) => `
+    <tr>
+      <td><code>${escapeHtml(entry.strategyId)}</code></td>
+      <td>${escapeHtml(entry.promotionStatus)}</td>
+      <td>${escapeHtml(entry.decision)}</td>
+      <td>${escapeHtml(entry.reason)}</td>
+    </tr>`,
+    )
+    .join("");
+
+  return `
+      <section class="panel">
+        <h2>Rejected strategy selection</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Strategy</th>
+              <th>Promotion status</th>
+              <th>Decision</th>
+              <th>Reason</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </section>`;
+}
+
 /** Serializes harness results to static HTML. */
 export function serializeHarnessResultsHtml(report: HarnessResultsReport): string {
   const summary = report.summary;
   const tableRows = report.strategies.map(renderStrategyRow).join("");
   const cards = report.strategies.map(renderStrategyCard).join("");
+  const researchOnlyBanner =
+    summary.researchOnlyBacktest
+      ? `<p class="warnings" style="list-style:none;padding:12px;border-radius:8px;background:${theme.panelInset};">Research-only backtest: results are diagnostic and not promotion-eligible.</p>`
+      : "";
+  const runModeLabel = summary.runMode === "research-only" ? "Research-only" : "Production";
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -178,17 +219,22 @@ export function serializeHarnessResultsHtml(report: HarnessResultsReport): strin
         <p class="muted">Generated at ${escapeHtml(report.generatedAt)}</p>
         <p class="muted">Synthesis: <code>${escapeHtml(report.inputPaths.synthesisPath)}</code></p>
         <p class="muted">Harness summary: <code>${escapeHtml(report.inputPaths.harnessSummaryPath)}</code></p>
+        ${researchOnlyBanner}
       </header>
       <section class="panel">
         <h2>Summary</h2>
         <dl class="summary-grid">
+          <div class="summary-card"><dt>Run mode</dt><dd>${escapeHtml(runModeLabel)}</dd></div>
           <div class="summary-card"><dt>Total strategies</dt><dd>${summary.totalStrategies}</dd></div>
           <div class="summary-card"><dt>Evaluated</dt><dd>${summary.evaluatedCount}</dd></div>
+          <div class="summary-card"><dt>Skipped rejected</dt><dd>${summary.skippedRejectedStrategyCount ?? 0}</dd></div>
+          <div class="summary-card"><dt>Promotion eligible</dt><dd>${summary.promotionEligible === false ? "No" : "Yes"}</dd></div>
           <div class="summary-card"><dt>Candidates</dt><dd>${summary.recommendationCounts.candidate}</dd></div>
           <div class="summary-card"><dt>Needs more data</dt><dd>${summary.recommendationCounts.needsMoreData}</dd></div>
           <div class="summary-card"><dt>Rejected</dt><dd>${summary.recommendationCounts.reject}</dd></div>
         </dl>
       </section>
+      ${summary.strategySelection ? renderStrategySelection(summary.strategySelection) : ""}
       <section class="panel">
         <h2>Strategy metrics</h2>
         <table>

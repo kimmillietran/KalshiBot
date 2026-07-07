@@ -1,17 +1,29 @@
 import {
   StrategyHarnessError,
-  SYNTHESIZED_PROMOTION_STATUSES,
   type StrategyHarnessIo,
   type StrategySynthesisCandidatesReport,
-  type SynthesizedPromotionStatus,
   type SynthesizedStrategySpec,
 } from "./strategyHarnessTypes";
+import { loadHypothesisFailureAnalysisForHarness } from "./loadHypothesisFailureAnalysisForHarness";
 import {
-  normalizeSynthesizedStrategySpec,
   parseRawStrategySynthesisCandidatesReport,
   parseStrategySynthesisCandidatesReport,
   type RawSynthesizedStrategySpec,
 } from "./normalizeSynthesizedStrategySpec";
+import {
+  resolveHarnessStrategySelection,
+  type HarnessStrategySelectionResult,
+  type ResolveHarnessStrategySelectionOptions,
+} from "./resolveHarnessStrategySelection";
+
+export { HARNESS_DEFAULT_PROMOTION_STATUSES } from "./strategyHarnessTypes";
+
+export const HARNESS_NO_MATCH_WARNING =
+  "No synthesized strategies matched harness filters; wrote empty strategy-harness-summary.json";
+
+export type LoadHarnessStrategySpecsOptions = ResolveHarnessStrategySelectionOptions & {
+  failureAnalysisPath?: string;
+};
 
 function parseJson(path: string, json: string): unknown {
   try {
@@ -20,14 +32,6 @@ function parseJson(path: string, json: string): unknown {
     throw new StrategyHarnessError(`Invalid JSON in ${path}`);
   }
 }
-
-export const HARNESS_DEFAULT_PROMOTION_STATUSES = [
-  "experimental",
-  "candidate",
-] as const satisfies readonly SynthesizedPromotionStatus[];
-
-export const HARNESS_NO_MATCH_WARNING =
-  "No synthesized strategies matched harness filters; wrote empty strategy-harness-summary.json";
 
 export function loadStrategySynthesisCandidatesReport(
   io: StrategyHarnessIo,
@@ -41,87 +45,57 @@ export function loadStrategySynthesisCandidatesReport(
   return parseStrategySynthesisCandidatesReport(path, parsed);
 }
 
-function isHarnessPromotionEligible(
-  promotionStatus: SynthesizedPromotionStatus,
-  includeRejected: boolean,
-): boolean {
-  if (includeRejected) {
-    return SYNTHESIZED_PROMOTION_STATUSES.includes(promotionStatus);
-  }
-
-  return HARNESS_DEFAULT_PROMOTION_STATUSES.includes(
-    promotionStatus as (typeof HARNESS_DEFAULT_PROMOTION_STATUSES)[number],
-  );
-}
-
 /** Resolves harness-eligible specs after promotion gate and CLI filters, without validating rejected rows. */
 export function resolveHarnessStrategySpecs(
   strategies: readonly RawSynthesizedStrategySpec[],
-  options?: {
-    strategyFamily?: string;
-    synthesizedStrategyId?: string;
-    includeRejected?: boolean;
-  },
+  options?: ResolveHarnessStrategySelectionOptions,
 ): SynthesizedStrategySpec[] {
-  const includeRejected = options?.includeRejected === true;
-  const specs: SynthesizedStrategySpec[] = [];
-
-  for (const rawStrategy of strategies) {
-    if (
-      options?.strategyFamily
-      && rawStrategy.strategyFamily !== options.strategyFamily
-    ) {
-      continue;
-    }
-
-    if (
-      options?.synthesizedStrategyId
-      && rawStrategy.strategyId !== options.synthesizedStrategyId
-    ) {
-      continue;
-    }
-
-    if (!isHarnessPromotionEligible(rawStrategy.promotionStatus, includeRejected)) {
-      continue;
-    }
-
-    try {
-      specs.push(normalizeSynthesizedStrategySpec(rawStrategy));
-    } catch {
-      continue;
-    }
-  }
-
-  return specs.sort((left, right) => left.strategyId.localeCompare(right.strategyId));
+  return resolveHarnessStrategySelection(strategies, options).specs;
 }
 
-export function loadHarnessStrategySpecs(
+export function resolveHarnessStrategySpecsWithSelection(
+  strategies: readonly RawSynthesizedStrategySpec[],
+  options?: ResolveHarnessStrategySelectionOptions,
+): HarnessStrategySelectionResult {
+  return resolveHarnessStrategySelection(strategies, options);
+}
+
+export function loadHarnessStrategySelection(
   io: StrategyHarnessIo,
   path: string,
-  options?: {
-    strategyFamily?: string;
-    synthesizedStrategyId?: string;
-    includeRejected?: boolean;
-  },
-): SynthesizedStrategySpec[] {
+  options?: LoadHarnessStrategySpecsOptions,
+): HarnessStrategySelectionResult {
   if (!io.fileExists(path)) {
     throw new StrategyHarnessError(`Missing strategy synthesis file: ${path}`);
   }
 
   const parsed = parseJson(path, io.readFile(path));
   const report = parseRawStrategySynthesisCandidatesReport(path, parsed);
+  const failureAnalysisByHypothesisId = options?.researchOnlyBacktest
+    ? loadHypothesisFailureAnalysisForHarness(
+        io,
+        options.failureAnalysisPath,
+      )
+    : null;
 
-  return resolveHarnessStrategySpecs(report.strategies, options);
+  return resolveHarnessStrategySelection(report.strategies, {
+    ...options,
+    failureAnalysisByHypothesisId,
+  });
+}
+
+export function loadHarnessStrategySpecs(
+  io: StrategyHarnessIo,
+  path: string,
+  options?: LoadHarnessStrategySpecsOptions,
+): SynthesizedStrategySpec[] {
+  return loadHarnessStrategySelection(io, path, options).specs;
 }
 
 /** @deprecated Use resolveHarnessStrategySpecs after raw synthesis parse. */
 export function filterHarnessStrategySpecs(
   strategies: readonly SynthesizedStrategySpec[],
-  options?: {
-    strategyFamily?: string;
-    synthesizedStrategyId?: string;
-    includeRejected?: boolean;
-  },
+  options?: ResolveHarnessStrategySelectionOptions,
 ): SynthesizedStrategySpec[] {
   return resolveHarnessStrategySpecs(
     strategies.map((spec) => ({

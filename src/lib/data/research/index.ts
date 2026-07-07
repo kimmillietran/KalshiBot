@@ -351,6 +351,23 @@ export type {
 } from "./hypothesisRefinementGenerator";
 
 export {
+  buildDefaultRefinementHypothesisRegistrationInputPaths,
+  buildRefinementHypothesisCandidatesReport,
+  loadRefinementHypothesisRegistrationInputs,
+  registerRefinementHypothesisCandidates,
+  serializeRefinementHypothesisCandidatesHtml,
+  serializeRefinementHypothesisCandidatesReport,
+  DEFAULT_REFINEMENT_HYPOTHESIS_CANDIDATES_HTML_PATH,
+  DEFAULT_REFINEMENT_HYPOTHESIS_CANDIDATES_OUTPUT_PATH,
+  REFINEMENT_HYPOTHESIS_CANDIDATES_FILENAME,
+  RefinementHypothesisRegistrationError,
+} from "./refinementHypothesisRegistration";
+export type {
+  RefinementHypothesisCandidatesReport,
+  RegisteredRefinementHypothesisCandidate,
+} from "./refinementHypothesisRegistration";
+
+export {
   buildStrategySynthesisDebugReport,
   loadStrategySynthesisDebugInputs,
   serializeStrategySynthesisDebugHtml,
@@ -366,6 +383,24 @@ export type {
   StrategySynthesisFunnelCounts,
   StrategySynthesisDiagnosis,
 } from "./strategySynthesisDebug";
+
+export {
+  analyzeMonthRegimeStability,
+  buildMonthRegimeAnalysisReport,
+  buildMonthRegimeObservationIndex,
+  loadMonthRegimeAnalysisInputs,
+  serializeMonthRegimeAnalysisHtml,
+  serializeMonthRegimeAnalysisReport,
+  DEFAULT_MONTH_REGIME_ANALYSIS_HTML_PATH,
+  DEFAULT_MONTH_REGIME_ANALYSIS_OUTPUT_PATH,
+  MONTH_REGIME_ANALYSIS_FILENAME,
+  MonthRegimeAnalysisError,
+} from "./monthRegimeAnalysis";
+export type {
+  BuildMonthRegimeAnalysisReportInput,
+  MonthRegimeAnalysisReport,
+  MonthRegimeHypothesisAnalysis,
+} from "./monthRegimeAnalysis";
 
 export {
   buildStatisticalSignificanceFromDirectories,

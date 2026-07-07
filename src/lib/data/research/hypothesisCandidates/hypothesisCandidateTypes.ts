@@ -92,6 +92,17 @@ export type HypothesisCandidate = {
   confidence: HypothesisConfidence;
   warnings: readonly string[];
   bucketMetadata?: HypothesisBucketMetadata | null;
+  refinementRegistration?: RefinementHypothesisRegistrationMetadata;
+};
+
+export type RefinementHypothesisRegistrationMetadata = {
+  parentHypothesisId: string;
+  refinementType: string;
+  generatedFromFailureAnalysis: boolean;
+  suggestedFilters: Record<string, unknown>;
+  generationReason: string;
+  refinementRank: number;
+  status: "candidate-refinement";
 };
 
 export type RegimeTagEntry = {

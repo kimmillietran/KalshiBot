@@ -4,6 +4,8 @@ export const STRATEGY_SYNTHESIS_CANDIDATES_FILENAME = "strategy-synthesis-candid
 export const DEFAULT_STRATEGY_SYNTHESIS_CANDIDATES_PATH =
   "data/research-results/strategy-synthesis-candidates.json";
 export const DEFAULT_STRATEGY_HARNESS_OUTPUT_DIR = "data/research-results/harness";
+export const DEFAULT_STRATEGY_HARNESS_RESEARCH_ONLY_OUTPUT_DIR =
+  "data/research-results/harness-research-only";
 export const DEFAULT_STRATEGY_HARNESS_SUMMARY_FILENAME = "strategy-harness-summary.json";
 export const STRATEGY_HARNESS_OUTPUT_FILENAME = "research-output.json";
 
@@ -30,6 +32,11 @@ export type SupportedStrategyHarnessFamily =
 
 export type SynthesizedPromotionStatus =
   (typeof SYNTHESIZED_PROMOTION_STATUSES)[number];
+
+export const HARNESS_DEFAULT_PROMOTION_STATUSES = [
+  "experimental",
+  "candidate",
+] as const satisfies readonly SynthesizedPromotionStatus[];
 
 export type SynthesizedStrategyEntryConditions = {
   yesMidThresholdCents: number;
@@ -85,6 +92,16 @@ export type StrategyHarnessMarketResult = {
   runId: string | null;
 };
 
+export type StrategyHarnessRunMode = "production" | "research-only";
+
+export type HarnessStrategySelectionEntry = {
+  strategyId: string;
+  hypothesisId: string;
+  promotionStatus: SynthesizedPromotionStatus;
+  decision: "included" | "skipped";
+  reason: string;
+};
+
 export type StrategyHarnessSummary = {
   synthesisPath: string;
   registryDir: string;
@@ -94,7 +111,13 @@ export type StrategyHarnessSummary = {
   completedAt: string;
   durationMs: number;
   includeRejected: boolean;
+  runMode: StrategyHarnessRunMode;
+  researchOnlyBacktest: boolean;
+  includedRejectedStrategies: boolean;
+  promotionEligible: boolean;
   evaluatedStrategies: number;
+  skippedRejectedStrategyCount: number;
+  strategySelection: readonly HarnessStrategySelectionEntry[];
   totalRuns: number;
   successfulRuns: number;
   failedRuns: number;

@@ -38,6 +38,17 @@ const hypothesisCandidateSchema = z.object({
     })
     .nullable()
     .optional(),
+  refinementRegistration: z
+    .object({
+      parentHypothesisId: z.string().trim().min(1),
+      refinementType: z.string().trim().min(1),
+      generatedFromFailureAnalysis: z.boolean(),
+      suggestedFilters: z.record(z.string(), z.unknown()),
+      generationReason: z.string().trim().min(1),
+      refinementRank: z.number().finite(),
+      status: z.literal("candidate-refinement"),
+    })
+    .optional(),
 });
 
 const hypothesisCandidatesReportSchema = z.object({

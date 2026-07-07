@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { runHypothesisValidationCommand } from "./buildHypothesisValidation";
+import { parseInputPathsFromArgv } from "./buildHypothesisValidationTypes";
 
 const GENERATED_AT = "2026-07-02T12:00:00.000Z";
 const OUTPUT_PATH = "data/research-results/hypothesis-validation.json";
@@ -127,6 +128,17 @@ describe("runHypothesisValidationCommand", () => {
         hypothesisCandidateCount: 0,
         largestIntermediateCollection: "validation-bucket-accumulators",
       }),
+    );
+  });
+
+  it("accepts --input refinement-hypothesis-candidates.json", () => {
+    const paths = parseInputPathsFromArgv([
+      "--input",
+      "refinement-hypothesis-candidates.json",
+    ]);
+
+    expect(paths.hypothesisCandidatesPath).toBe(
+      "data/research-results/refinement-hypothesis-candidates.json",
     );
   });
 });

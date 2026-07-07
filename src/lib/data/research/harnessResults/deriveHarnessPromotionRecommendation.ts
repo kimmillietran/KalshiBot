@@ -72,7 +72,12 @@ export function deriveHarnessPromotionRecommendation(input: {
   winRatePct: number;
   totalPnlCents: number;
   config: HarnessResultsConfig;
+  researchOnlyBacktest?: boolean;
 }): HarnessPromotionRecommendation {
+  if (input.researchOnlyBacktest) {
+    return "reject";
+  }
+
   if (
     input.strategy.promotionStatus === "rejected"
     || input.runStatus === "not-run"
@@ -131,8 +136,15 @@ function collectWarnings(input: {
   runStatus: HarnessRunStatus;
   counts: HarnessStrategyRunCounts;
   leaderboardStrategyIds: ReadonlySet<string>;
+  researchOnlyBacktest?: boolean;
 }): string[] {
   const warnings = [...input.strategy.riskNotes];
+
+  if (input.researchOnlyBacktest) {
+    warnings.push(
+      "Research-only backtest: results are diagnostic and not promotion-eligible.",
+    );
+  }
 
   if (input.runStatus === "not-run") {
     warnings.push("Harness did not evaluate this synthesized strategy.");
@@ -194,6 +206,7 @@ export function buildHarnessStrategyResult(input: {
   leaderboardStrategyIds: ReadonlySet<string>;
   readFile: (path: string) => string;
   config: HarnessResultsConfig;
+  researchOnlyBacktest?: boolean;
 }): HarnessStrategyResult {
   const counts: HarnessStrategyRunCounts = {
     total: input.harnessResults.length,
@@ -221,6 +234,7 @@ export function buildHarnessStrategyResult(input: {
     winRatePct: performance.winRatePct,
     totalPnlCents: performance.totalPnlCents,
     config: input.config,
+    researchOnlyBacktest: input.researchOnlyBacktest,
   });
 
   return {
@@ -243,6 +257,7 @@ export function buildHarnessStrategyResult(input: {
       runStatus,
       counts,
       leaderboardStrategyIds: input.leaderboardStrategyIds,
+      researchOnlyBacktest: input.researchOnlyBacktest,
     }),
     promotionRecommendation,
     harnessRuns: counts,

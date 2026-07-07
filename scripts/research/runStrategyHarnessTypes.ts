@@ -3,6 +3,7 @@ import {
 } from "@/lib/data/research/batchResearch/batchResearchTypes";
 import {
   DEFAULT_STRATEGY_HARNESS_OUTPUT_DIR,
+  DEFAULT_STRATEGY_HARNESS_RESEARCH_ONLY_OUTPUT_DIR,
   DEFAULT_STRATEGY_SYNTHESIS_CANDIDATES_PATH,
 } from "@/lib/data/research/strategyHarness/strategyHarnessTypes";
 
@@ -60,8 +61,18 @@ export function parseRegistryDirFromArgv(
 export function parseOutputDirFromArgv(
   argv: readonly string[],
   defaultDir = DEFAULT_STRATEGY_HARNESS_OUTPUT_DIR,
+  researchOnlyDefaultDir = DEFAULT_STRATEGY_HARNESS_RESEARCH_ONLY_OUTPUT_DIR,
 ): string {
-  return readFlagValue(argv, "--output-dir") ?? defaultDir;
+  const explicit = readFlagValue(argv, "--output-dir");
+  if (explicit) {
+    return explicit;
+  }
+
+  if (parseResearchOnlyBacktestFromArgv(argv)) {
+    return researchOnlyDefaultDir;
+  }
+
+  return defaultDir;
 }
 
 export function parseStrategyFamilyFromArgv(argv: readonly string[]): string | undefined {
@@ -74,6 +85,14 @@ export function parseSynthesizedStrategyIdFromArgv(argv: readonly string[]): str
 
 export function parseIncludeRejectedFromArgv(argv: readonly string[]): boolean {
   return readBooleanFlag(argv, "--include-rejected");
+}
+
+export function parseResearchOnlyBacktestFromArgv(argv: readonly string[]): boolean {
+  return readBooleanFlag(argv, "--research-only-backtest");
+}
+
+export function parseFailureAnalysisPathFromArgv(argv: readonly string[]): string | undefined {
+  return readFlagValue(argv, "--failure-analysis");
 }
 
 export function parseConcurrencyFromArgv(argv: readonly string[]): number {
