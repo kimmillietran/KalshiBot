@@ -296,6 +296,15 @@ export const MONTH_REGIME_ANALYSIS_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--research-results-dir" },
 ];
 
+export const DIMENSION_INTERACTION_ANALYTICS_ARGV_SCHEMA: readonly NpmArgvField[] = [
+  { flag: "--output" },
+  { flag: "--html-output" },
+  { flag: "--hypothesis-candidates" },
+  { flag: "--hypothesis-validation" },
+  { flag: "--mispricing-atlas" },
+  { flag: "--hypothesis-failure-analysis" },
+];
+
 export const OVERFITTING_DIAGNOSTICS_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--input-dir" },
   { flag: "--experiments-root" },
@@ -795,6 +804,10 @@ export function normalizeStrategySynthesisDebugArgv(argv: readonly string[]): st
 
 export function normalizeMonthRegimeAnalysisArgv(argv: readonly string[]): string[] {
   return normalizeNpmScriptArgv(argv, MONTH_REGIME_ANALYSIS_ARGV_SCHEMA);
+}
+
+export function normalizeDimensionInteractionAnalyticsArgv(argv: readonly string[]): string[] {
+  return normalizeNpmScriptArgv(argv, DIMENSION_INTERACTION_ANALYTICS_ARGV_SCHEMA);
 }
 
 export function normalizePowerAnalysisArgv(argv: readonly string[]): string[] {

@@ -442,6 +442,27 @@ export type {
 } from "./monthRegimeAnalysis";
 
 export {
+  analyzeDimensionInteractions,
+  buildDimensionInteractionAnalyticsReport,
+  computeBucketSparsity,
+  computeCoverageQuality,
+  computeInteractionScore,
+  loadDimensionInteractionAnalyticsInputs,
+  serializeDimensionInteractionAnalyticsHtml,
+  serializeDimensionInteractionAnalyticsReport,
+  DEFAULT_DIMENSION_INTERACTION_ANALYSIS_HTML_PATH,
+  DEFAULT_DIMENSION_INTERACTION_ANALYSIS_OUTPUT_PATH,
+  DIMENSION_INTERACTION_ANALYSIS_FILENAME,
+  DimensionInteractionAnalysisError,
+} from "./dimensionInteractionAnalytics";
+export type {
+  BuildDimensionInteractionAnalyticsReportInput,
+  DimensionInteractionAnalysisReport,
+  DimensionInteractionMetrics,
+  DimensionInteractionRankings,
+} from "./dimensionInteractionAnalytics";
+
+export {
   buildStatisticalSignificanceFromDirectories,
   buildStatisticalSignificanceReport,
   bootstrapMeanConfidenceInterval,
