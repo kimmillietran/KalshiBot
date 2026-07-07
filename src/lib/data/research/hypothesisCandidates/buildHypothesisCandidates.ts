@@ -1,5 +1,6 @@
 import { stableStringify } from "@/lib/trading/config/hashConfig";
 
+import { collectAtlasBucketGroupsFromNormalizedAtlas } from "@/lib/data/research/dimensions";
 import type { MispricingAtlasBucketSummary } from "@/lib/data/research/mispricingAtlas/mispricingAtlasTypes";
 import type { MispricingAtlasCoverageDiagnostics } from "@/lib/data/research/mispricingAtlas/mispricingAtlasTypes";
 import type { LeadLagLagMetrics } from "@/lib/data/research/leadLag/leadLagTypes";
@@ -269,40 +270,7 @@ function buildAtlasCandidatesForBucket(options: {
 function collectAtlasBucketGroupsFromNormalized(
   normalizedAtlas: NormalizedMispricingAtlas,
 ): AtlasBucketGroup[] {
-  return [
-    {
-      groupId: "probabilityOnly",
-      buckets: normalizedAtlas.coarseBuckets.probabilityOnly,
-    },
-    {
-      groupId: "probabilityTime",
-      buckets: normalizedAtlas.coarseBuckets.probabilityTime,
-    },
-    {
-      groupId: "probabilityRegime",
-      buckets: normalizedAtlas.coarseBuckets.probabilityRegime,
-    },
-    {
-      groupId: "probabilityMoneyness",
-      buckets: normalizedAtlas.coarseBuckets.probabilityMoneyness,
-    },
-    {
-      groupId: "moneynessTime",
-      buckets: normalizedAtlas.coarseBuckets.moneynessTime,
-    },
-    {
-      groupId: "volatilityMoneyness",
-      buckets: normalizedAtlas.coarseBuckets.volatilityMoneyness,
-    },
-    {
-      groupId: "volatilityProbabilityTime",
-      buckets: normalizedAtlas.coarseBuckets.volatilityProbabilityTime,
-    },
-    { groupId: "probability", buckets: normalizedAtlas.probabilityBuckets },
-    { groupId: "timeRemaining", buckets: normalizedAtlas.timeRemainingBuckets },
-    { groupId: "moneyness", buckets: normalizedAtlas.moneynessBuckets },
-    { groupId: "volatility", buckets: normalizedAtlas.volatilityBuckets },
-  ];
+  return collectAtlasBucketGroupsFromNormalizedAtlas(normalizedAtlas);
 }
 
 function resolveAtlasCoverageDiagnostics(

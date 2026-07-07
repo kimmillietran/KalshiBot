@@ -131,6 +131,23 @@ export type {
 } from "./mispricingAtlas";
 
 export {
+  assertResearchAxisGroupRegistryMatchesHypothesisGroups,
+  buildCompositeBucketTemplates,
+  collectAtlasBucketGroupsFromNormalizedAtlas,
+  getResearchAxisGroup,
+  getResearchDimension,
+  listResearchAxisGroups,
+  observationMatchesResearchAxisGroupBucket,
+  RESEARCH_AXIS_GROUPS,
+  RESEARCH_DIMENSIONS,
+} from "./dimensions";
+export type {
+  ResearchAxisGroup,
+  ResearchDimension,
+  ResearchDimensionId,
+} from "./dimensions";
+
+export {
   buildLeadLagAnalysis,
   buildLeadLagAnalysisFromDirectories,
   computeAggregateLeadLagMetrics,

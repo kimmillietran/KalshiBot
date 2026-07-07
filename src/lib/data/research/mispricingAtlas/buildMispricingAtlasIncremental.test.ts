@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 
+import { assertResearchAxisGroupRegistryMatchesHypothesisGroups } from "@/lib/data/research/dimensions";
+
 import { buildMispricingAtlas, buildMispricingAtlasFromDirectories, serializeMispricingAtlas } from "./buildMispricingAtlas";
 import { buildMispricingAtlasFromScannedLegacy } from "./buildMispricingAtlasLegacy";
 import {
@@ -263,5 +265,11 @@ describe("buildMispricingAtlas incremental file processing", () => {
     expect(atlas.sampleCounts.totalObservations).toBe(25);
     expect(maxInFlightReads).toBe(1);
     expect(atlas.memoryDiagnostics?.filesProcessed).toBe(25);
+  });
+});
+
+describe("research dimension registry integration", () => {
+  it("keeps axis group registry aligned with hypothesis atlas groups", () => {
+    expect(() => assertResearchAxisGroupRegistryMatchesHypothesisGroups()).not.toThrow();
   });
 });

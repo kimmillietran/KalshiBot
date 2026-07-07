@@ -5,6 +5,7 @@ import {
   type HypothesisBucketSampleThresholds,
   type HypothesisCandidateConfig,
 } from "./hypothesisCandidateTypes";
+import { resolveAxisGroupSampleThreshold } from "@/lib/data/research/dimensions";
 
 /** Resolves the minimum observation threshold for an atlas bucket group. */
 export function resolveMinSampleSizeForGroup(
@@ -16,11 +17,7 @@ export function resolveMinSampleSizeForGroup(
     return override;
   }
 
-  if (groupId === "volatilityProbabilityTime") {
-    return DEFAULT_TRIPLE_AXIS_MIN_SAMPLE_SIZE;
-  }
-
-  return config.minSampleSize;
+  return resolveAxisGroupSampleThreshold(groupId, config.minSampleSize);
 }
 
 export function createDefaultHypothesisBucketSampleThresholds(): HypothesisBucketSampleThresholds {
