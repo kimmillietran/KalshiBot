@@ -1,7 +1,19 @@
 import { DEFAULT_BATCH_IMPORT_FAILURE_ANALYSIS_OUTPUT_PATH } from "@/lib/data/importJobs/batchImport/batchImportFailureAnalysisTypes";
 import { DEFAULT_HYPOTHESIS_CANDIDATES_OUTPUT_PATH } from "@/lib/data/research/hypothesisCandidates/hypothesisCandidateTypes";
 import { DEFAULT_HYPOTHESIS_EVIDENCE_HTML_PATH } from "@/lib/data/research/hypothesisEvidence/hypothesisEvidenceTypes";
+import {
+  DEFAULT_HYPOTHESIS_FAILURE_ANALYSIS_HTML_PATH,
+  DEFAULT_HYPOTHESIS_FAILURE_ANALYSIS_OUTPUT_PATH,
+} from "@/lib/data/research/hypothesisFailureAnalysis/hypothesisFailureAnalysisTypes";
 import { DEFAULT_HYPOTHESIS_VALIDATION_HTML_PATH, DEFAULT_HYPOTHESIS_VALIDATION_OUTPUT_PATH } from "@/lib/data/research/hypothesisRobustness/hypothesisRobustnessTypes";
+import {
+  DEFAULT_DERIVED_SETTLEMENT_SENSITIVITY_HTML_PATH,
+  DEFAULT_DERIVED_SETTLEMENT_SENSITIVITY_OUTPUT_PATH,
+  DEFAULT_HYPOTHESIS_REFINEMENTS_HTML_PATH,
+  DEFAULT_HYPOTHESIS_REFINEMENTS_OUTPUT_PATH,
+  DEFAULT_STRATEGY_SYNTHESIS_DEBUG_HTML_PATH,
+  DEFAULT_STRATEGY_SYNTHESIS_DEBUG_OUTPUT_PATH,
+} from "@/lib/data/research/researchDiagnostics/researchDiagnosticsTypes";
 import { DEFAULT_RESEARCH_PIPELINE_SUMMARY_PATH } from "@/lib/data/research/pipeline/researchPipelineTypes";
 import { DEFAULT_DATA_HEALTH_OUTPUT_PATH } from "@/lib/data/research/dataHealth/dataHealthTypes";
 import {
@@ -247,6 +259,62 @@ export function buildResearchArtifactCatalog(
       DEFAULT_HYPOTHESIS_VALIDATION_HTML_PATH,
       "hypothesis-validation",
       ["hypothesis-validation"],
+    ),
+    fileEntry(
+      "hypothesis-failure-analysis",
+      "Hypothesis failure analysis",
+      DEFAULT_HYPOTHESIS_FAILURE_ANALYSIS_OUTPUT_PATH,
+      "hypothesis-failure-analysis",
+      ["hypothesis-validation", "hypothesis-candidates"],
+    ),
+    fileEntry(
+      "hypothesis-failure-analysis-html",
+      "Hypothesis failure analysis HTML",
+      DEFAULT_HYPOTHESIS_FAILURE_ANALYSIS_HTML_PATH,
+      "hypothesis-failure-analysis",
+      ["hypothesis-failure-analysis"],
+    ),
+    fileEntry(
+      "derived-settlement-sensitivity",
+      "Derived settlement sensitivity",
+      DEFAULT_DERIVED_SETTLEMENT_SENSITIVITY_OUTPUT_PATH,
+      "derived-settlement-sensitivity",
+      ["hypothesis-validation", "mispricing-atlas"],
+    ),
+    fileEntry(
+      "derived-settlement-sensitivity-html",
+      "Derived settlement sensitivity HTML",
+      DEFAULT_DERIVED_SETTLEMENT_SENSITIVITY_HTML_PATH,
+      "derived-settlement-sensitivity",
+      ["derived-settlement-sensitivity"],
+    ),
+    fileEntry(
+      "hypothesis-refinements",
+      "Hypothesis refinements",
+      DEFAULT_HYPOTHESIS_REFINEMENTS_OUTPUT_PATH,
+      "hypothesis-refinements",
+      ["hypothesis-failure-analysis", "hypothesis-validation"],
+    ),
+    fileEntry(
+      "hypothesis-refinements-html",
+      "Hypothesis refinements HTML",
+      DEFAULT_HYPOTHESIS_REFINEMENTS_HTML_PATH,
+      "hypothesis-refinements",
+      ["hypothesis-refinements"],
+    ),
+    fileEntry(
+      "strategy-synthesis-debug",
+      "Strategy synthesis debug",
+      DEFAULT_STRATEGY_SYNTHESIS_DEBUG_OUTPUT_PATH,
+      "strategy-synthesis-debug",
+      ["strategy-synthesis", "hypothesis-validation"],
+    ),
+    fileEntry(
+      "strategy-synthesis-debug-html",
+      "Strategy synthesis debug HTML",
+      DEFAULT_STRATEGY_SYNTHESIS_DEBUG_HTML_PATH,
+      "strategy-synthesis-debug",
+      ["strategy-synthesis-debug"],
     ),
     fileEntry(
       "settlement-audit",

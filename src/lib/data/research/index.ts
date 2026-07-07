@@ -648,6 +648,16 @@ export type {
 } from "./expansionRunHistory";
 
 export {
+  buildResearchDiagnosticsSection,
+  loadResearchDiagnosticsInputs,
+  DEFAULT_RESEARCH_DIAGNOSTICS_INPUT_PATHS,
+} from "./researchDiagnostics";
+export type {
+  ResearchDiagnosticArtifactCard,
+  ResearchDiagnosticsSection,
+} from "./researchDiagnostics";
+
+export {
   buildHypothesisLifecycleReport,
   buildHypothesisLifecycleReportFromInputs,
   loadHypothesisLifecycleInputs,

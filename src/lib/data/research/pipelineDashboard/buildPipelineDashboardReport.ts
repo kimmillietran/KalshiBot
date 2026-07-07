@@ -2,6 +2,7 @@ import { buildCoveragePhaseSection } from "./buildCoveragePhaseSection";
 import { buildExpansionRunHistorySection } from "./buildExpansionRunHistorySection";
 import { buildHypothesisEvolutionSection } from "./buildHypothesisEvolutionSection";
 import { buildHistoricalImportabilitySection } from "./buildHistoricalImportabilitySection";
+import { buildResearchDiagnosticsSection } from "@/lib/data/research/researchDiagnostics";
 import type {
   ArtifactHealthEntry,
   ArtifactHealthSection,
@@ -219,6 +220,10 @@ export function buildPipelineDashboardReport(
     }),
     hypothesisEvolution: buildHypothesisEvolutionSection(input.inputs.hypothesisHistory),
     expansionRunHistory: buildExpansionRunHistorySection(input.inputs.expansionRunHistory),
+    researchDiagnostics: buildResearchDiagnosticsSection({
+      inputPaths: input.inputPaths.researchDiagnosticsPaths,
+      loaded: input.inputs.loadedResearchDiagnostics,
+    }),
   };
 }
 

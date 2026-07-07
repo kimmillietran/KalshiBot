@@ -80,6 +80,20 @@ describe("buildResearchArtifactCatalog", () => {
     ]);
     expect(downstream.get("mispricing-atlas")).toContain("hypothesis-candidates");
   });
+
+  it("includes optional research diagnostic artifacts", () => {
+    const catalog = buildResearchArtifactCatalog(DEFAULT_CONFIG);
+    const diagnosticIds = [
+      "hypothesis-failure-analysis",
+      "derived-settlement-sensitivity",
+      "hypothesis-refinements",
+      "strategy-synthesis-debug",
+    ];
+
+    for (const artifactId of diagnosticIds) {
+      expect(catalog.some((entry) => entry.artifactId === artifactId)).toBe(true);
+    }
+  });
 });
 
 describe("buildResearchArtifactIndex", () => {

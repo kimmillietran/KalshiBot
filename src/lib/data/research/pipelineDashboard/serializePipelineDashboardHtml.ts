@@ -123,6 +123,33 @@ function renderStyles(): string {
       padding: 12px;
       background: ${theme.pageBg};
     }
+    .diagnostic-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 12px;
+      margin-top: 16px;
+    }
+    .diagnostic-card {
+      border: 1px solid ${theme.panelBorder};
+      border-radius: 10px;
+      padding: 14px;
+      background: ${theme.pageBg};
+    }
+    .diagnostic-card-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: flex-start;
+      margin-bottom: 8px;
+    }
+    .diagnostic-card h3 {
+      margin: 0;
+      font-size: 16px;
+    }
+    .diagnostic-metrics {
+      margin: 0 0 12px;
+      padding-left: 18px;
+    }
     .stat-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
@@ -422,6 +449,87 @@ function renderExpansionRunHistory(report: PipelineDashboardReport): string {
     </section>`;
 }
 
+function artifactHref(path: string): string {
+  return `../${escapeHtml(path.replace(/^data\//, ""))}`;
+}
+
+function renderResearchDiagnostics(report: PipelineDashboardReport): string {
+  const section = report.researchDiagnostics;
+
+  const summaryStats = [
+    renderStat(
+      "Diagnostics available",
+      escapeHtml(`${section.availableCount}/${section.totalCount}`),
+    ),
+    renderStat(
+      "Near-promising",
+      escapeHtml(section.nearPromisingHypothesisCount?.toString() ?? "—"),
+      section.nearPromisingHypothesisCount !== null ? theme.bullish : undefined,
+    ),
+    renderStat(
+      "Highest robustness",
+      escapeHtml(section.highestRobustnessScore?.toString() ?? "—"),
+    ),
+    renderStat(
+      "Derived-sensitive",
+      escapeHtml(section.derivedSensitiveHypothesisCount?.toString() ?? "—"),
+    ),
+    renderStat(
+      "Refinement candidates",
+      escapeHtml(section.refinementCandidateCount?.toString() ?? "—"),
+    ),
+    renderStat(
+      "Synthesis funnel",
+      escapeHtml(section.strategySynthesisFunnelStatus ?? "—"),
+    ),
+    renderStat(
+      "Harness candidates",
+      escapeHtml(section.harnessCandidateCount?.toString() ?? "—"),
+    ),
+  ].join("");
+
+  const cards = section.cards
+    .map((card) => {
+      const statusLabel = card.present ? "available" : "not generated";
+      const statusTone = card.present ? theme.bullish : theme.textMuted;
+      const metrics = card.metrics
+        .map(
+          (metric) =>
+            `<li><strong>${escapeHtml(metric.label)}:</strong> ${escapeHtml(metric.value)}</li>`,
+        )
+        .join("");
+
+      return `
+        <article class="diagnostic-card">
+          <div class="diagnostic-card-header">
+            <h3>${escapeHtml(card.label)}</h3>
+            <span class="status-pill" style="color:${statusTone}; border:1px solid ${statusTone}">
+              ${escapeHtml(statusLabel)}
+            </span>
+          </div>
+          <p class="muted">Generated ${formatTimestamp(card.generatedAt)}</p>
+          ${metrics ? `<ul class="diagnostic-metrics">${metrics}</ul>` : `<p class="muted">Run the optional diagnostic CLI to populate this artifact.</p>`}
+          <div class="links">
+            <a href="${artifactHref(card.jsonPath)}"><code>${escapeHtml(card.jsonPath)}</code></a>
+            <a href="${artifactHref(card.htmlPath)}"><code>${escapeHtml(card.htmlPath)}</code></a>
+          </div>
+        </article>`;
+    })
+    .join("");
+
+  return `
+    <section class="panel">
+      <h2>Research Diagnostics</h2>
+      <p class="muted">Optional read-only hypothesis and synthesis diagnostics</p>
+      <div class="stat-grid">
+        ${summaryStats}
+      </div>
+      <div class="diagnostic-grid">
+        ${cards}
+      </div>
+    </section>`;
+}
+
 function renderQuickLinks(report: PipelineDashboardReport): string {
   const links = [
     report.inputPaths.pipelineSummaryPath,
@@ -439,6 +547,10 @@ function renderQuickLinks(report: PipelineDashboardReport): string {
     "data/reports/research-hypothesis-lifecycle.html",
     "data/reports/hypothesis-evolution.html",
     "data/reports/expansion-run-history.html",
+    "data/reports/hypothesis-failure-analysis.html",
+    "data/reports/derived-settlement-sensitivity.html",
+    "data/reports/hypothesis-refinements.html",
+    "data/reports/strategy-synthesis-debug.html",
     "data/reports/research-report.html",
   ];
 
@@ -479,6 +591,7 @@ export function serializePipelineDashboardHtml(
       ${renderHistoricalImportability(report)}
       ${renderExpansionRunHistory(report)}
       ${renderHypothesisEvolution(report)}
+      ${renderResearchDiagnostics(report)}
       <div class="grid-2">
         ${renderArtifactHealth(report)}
         ${renderHypothesisSummary(report)}

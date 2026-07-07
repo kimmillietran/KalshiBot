@@ -8,6 +8,7 @@ import {
 
 import {
   buildPipelineDashboardReportFromInputs,
+  DEFAULT_PIPELINE_DASHBOARD_INPUT_PATHS,
   loadPipelineDashboardInputs,
   PipelineDashboardError,
   serializePipelineDashboardHtml,
@@ -67,6 +68,7 @@ export function runResearchPipelineDashboardCommand(
       expansionRebuildSummaryPath: parseExpansionRebuildSummaryPathFromArgv(normalizedArgv),
       hypothesisHistoryPath: parseHypothesisHistoryPathFromArgv(normalizedArgv),
       expansionRunHistoryPath: parseExpansionRunHistoryPathFromArgv(normalizedArgv),
+      researchDiagnosticsPaths: DEFAULT_PIPELINE_DASHBOARD_INPUT_PATHS.researchDiagnosticsPaths,
     };
     const generatedAt = options?.generatedAt ?? new Date().toISOString();
 
