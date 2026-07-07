@@ -93,6 +93,18 @@ export type HarnessResultsSummary = {
     needsMoreData: number;
     candidate: number;
   };
+  runMode?: "production" | "research-only";
+  researchOnlyBacktest?: boolean;
+  includedRejectedStrategies?: boolean;
+  promotionEligible?: boolean;
+  skippedRejectedStrategyCount?: number;
+  strategySelection?: readonly {
+    strategyId: string;
+    hypothesisId: string;
+    promotionStatus: string;
+    decision: "included" | "skipped";
+    reason: string;
+  }[];
 };
 
 export type HarnessResultsReport = {
@@ -125,6 +137,18 @@ export type ParsedStrategyHarnessSummary = {
   successfulRuns: number;
   failedRuns: number;
   skippedRuns: number;
+  runMode: "production" | "research-only";
+  researchOnlyBacktest: boolean;
+  includedRejectedStrategies: boolean;
+  promotionEligible: boolean;
+  skippedRejectedStrategyCount: number;
+  strategySelection: readonly {
+    strategyId: string;
+    hypothesisId: string;
+    promotionStatus: string;
+    decision: "included" | "skipped";
+    reason: string;
+  }[];
   results: readonly ParsedHarnessMarketResult[];
 };
 

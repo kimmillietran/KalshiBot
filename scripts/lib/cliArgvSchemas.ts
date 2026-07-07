@@ -172,6 +172,8 @@ export const STRATEGY_HARNESS_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--strategy-id" },
   { flag: "--concurrency" },
   { flag: "--include-rejected" },
+  { flag: "--research-only-backtest" },
+  { flag: "--failure-analysis" },
 ];
 
 export const HARNESS_RESULTS_ARGV_SCHEMA: readonly NpmArgvField[] = [
@@ -694,7 +696,7 @@ export function normalizeStrategySynthesisArgv(argv: readonly string[]): string[
 export function normalizeStrategyHarnessArgv(argv: readonly string[]): string[] {
   return mergeNpmBooleanFlags(
     normalizeNpmScriptArgv(argv, STRATEGY_HARNESS_ARGV_SCHEMA),
-    ["--include-rejected"],
+    ["--include-rejected", "--research-only-backtest"],
   );
 }
 
