@@ -329,6 +329,23 @@ export type {
 } from "./hypothesisRefinementGenerator";
 
 export {
+  buildStrategySynthesisDebugReport,
+  loadStrategySynthesisDebugInputs,
+  serializeStrategySynthesisDebugHtml,
+  serializeStrategySynthesisDebugReport,
+  DEFAULT_STRATEGY_SYNTHESIS_DEBUG_HTML_PATH,
+  DEFAULT_STRATEGY_SYNTHESIS_DEBUG_OUTPUT_PATH,
+  STRATEGY_SYNTHESIS_DEBUG_FILENAME,
+  StrategySynthesisDebugError,
+} from "./strategySynthesisDebug";
+export type {
+  BuildStrategySynthesisDebugReportInput,
+  StrategySynthesisDebugReport,
+  StrategySynthesisFunnelCounts,
+  StrategySynthesisDiagnosis,
+} from "./strategySynthesisDebug";
+
+export {
   buildStatisticalSignificanceFromDirectories,
   buildStatisticalSignificanceReport,
   bootstrapMeanConfidenceInterval,

@@ -246,6 +246,16 @@ export const HYPOTHESIS_REFINEMENTS_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--cross-validation" },
 ];
 
+export const STRATEGY_SYNTHESIS_DEBUG_ARGV_SCHEMA: readonly NpmArgvField[] = [
+  { flag: "--output" },
+  { flag: "--html-output" },
+  { flag: "--hypothesis-candidates" },
+  { flag: "--hypothesis-validation" },
+  { flag: "--strategy-synthesis" },
+  { flag: "--harness-summary" },
+  { flag: "--harness-results" },
+];
+
 export const OVERFITTING_DIAGNOSTICS_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--input-dir" },
   { flag: "--experiments-root" },
@@ -705,6 +715,10 @@ export function normalizeHypothesisFailureAnalysisArgv(argv: readonly string[]):
 
 export function normalizeHypothesisRefinementsArgv(argv: readonly string[]): string[] {
   return normalizeNpmScriptArgv(argv, HYPOTHESIS_REFINEMENTS_ARGV_SCHEMA);
+}
+
+export function normalizeStrategySynthesisDebugArgv(argv: readonly string[]): string[] {
+  return normalizeNpmScriptArgv(argv, STRATEGY_SYNTHESIS_DEBUG_ARGV_SCHEMA);
 }
 
 export function normalizePowerAnalysisArgv(argv: readonly string[]): string[] {
