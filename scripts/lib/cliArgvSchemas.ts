@@ -237,6 +237,15 @@ export const HYPOTHESIS_FAILURE_ANALYSIS_ARGV_SCHEMA: readonly NpmArgvField[] = 
   { flag: "--hypothesis-history" },
 ];
 
+export const HYPOTHESIS_REFINEMENTS_ARGV_SCHEMA: readonly NpmArgvField[] = [
+  { flag: "--output" },
+  { flag: "--html-output" },
+  { flag: "--hypothesis-failure-analysis" },
+  { flag: "--hypothesis-validation" },
+  { flag: "--mispricing-atlas" },
+  { flag: "--cross-validation" },
+];
+
 export const OVERFITTING_DIAGNOSTICS_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--input-dir" },
   { flag: "--experiments-root" },
@@ -692,6 +701,10 @@ export function normalizeCoverageAwareValidationArgv(argv: readonly string[]): s
 
 export function normalizeHypothesisFailureAnalysisArgv(argv: readonly string[]): string[] {
   return normalizeNpmScriptArgv(argv, HYPOTHESIS_FAILURE_ANALYSIS_ARGV_SCHEMA);
+}
+
+export function normalizeHypothesisRefinementsArgv(argv: readonly string[]): string[] {
+  return normalizeNpmScriptArgv(argv, HYPOTHESIS_REFINEMENTS_ARGV_SCHEMA);
 }
 
 export function normalizePowerAnalysisArgv(argv: readonly string[]): string[] {

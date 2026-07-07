@@ -308,6 +308,27 @@ export type {
 } from "./hypothesisFailureAnalysis";
 
 export {
+  buildDefaultHypothesisRefinementInputPaths,
+  buildHypothesisRefinementReport,
+  generateHypothesisRefinements,
+  loadHypothesisRefinementInputs,
+  parseParentHypothesisId,
+  serializeHypothesisRefinementReport,
+  serializeHypothesisRefinementsHtml,
+  DEFAULT_HYPOTHESIS_REFINEMENTS_HTML_PATH,
+  DEFAULT_HYPOTHESIS_REFINEMENTS_OUTPUT_PATH,
+  HYPOTHESIS_REFINEMENTS_FILENAME,
+  HYPOTHESIS_REFINEMENT_DISCLAIMER,
+  HypothesisRefinementError,
+} from "./hypothesisRefinementGenerator";
+export type {
+  BuildHypothesisRefinementReportInput,
+  HypothesisRefinementCandidate,
+  HypothesisRefinementReport,
+  HypothesisRefinementType,
+} from "./hypothesisRefinementGenerator";
+
+export {
   buildStatisticalSignificanceFromDirectories,
   buildStatisticalSignificanceReport,
   bootstrapMeanConfidenceInterval,
