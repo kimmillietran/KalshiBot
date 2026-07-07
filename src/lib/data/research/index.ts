@@ -325,6 +325,28 @@ export type {
 } from "./hypothesisFailureAnalysis";
 
 export {
+  buildDefaultResearchRoiAnalysisInputPaths,
+  buildResearchRoiAnalysisReport,
+  computeResearchRoiMetrics,
+  loadResearchRoiAnalysisInputs,
+  serializeResearchRoiAnalysisHtml,
+  serializeResearchRoiAnalysisReport,
+  DEFAULT_RESEARCH_ROI_ANALYSIS_HTML_PATH,
+  DEFAULT_RESEARCH_ROI_ANALYSIS_OUTPUT_PATH,
+  RESEARCH_ROI_ANALYSIS_FILENAME,
+  ResearchRoiAnalysisError,
+} from "./researchRoiAnalysis";
+export type {
+  BuildResearchRoiAnalysisReportInput,
+  ResearchRoiAnalysisReport,
+  ResearchRoiAnalysisSummary,
+  ResearchRoiDimensionId,
+  ResearchRoiOverallMetrics,
+  ResearchRoiRankings,
+  ResearchRoiSliceMetrics,
+} from "./researchRoiAnalysis";
+
+export {
   analyzeDerivedSettlementSensitivity,
   buildDefaultDerivedSettlementSensitivityInputPaths,
   buildDerivedSettlementSensitivityReport,

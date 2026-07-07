@@ -50,6 +50,7 @@
     "research:register-refinements": "tsx scripts/research/registerRefinementHypotheses.ts",
     "research:strategy-synthesis-debug": "tsx scripts/research/buildStrategySynthesisDebug.ts",
     "research:month-regime-analysis": "tsx scripts/research/buildMonthRegimeAnalysis.ts",
+    "research:roi-analysis": "tsx scripts/research/buildResearchRoiAnalysis.ts",
     "research:artifact-index": "tsx scripts/research/buildResearchArtifactIndex.ts",
     "research:dashboard": "tsx scripts/research/buildResearchPipelineDashboard.ts",
     "research:full": "tsx scripts/research/runFullResearchOrchestrator.ts",

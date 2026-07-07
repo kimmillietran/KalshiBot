@@ -258,6 +258,17 @@ export const HYPOTHESIS_REFINEMENTS_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--cross-validation" },
 ];
 
+export const RESEARCH_ROI_ANALYSIS_ARGV_SCHEMA: readonly NpmArgvField[] = [
+  { flag: "--output" },
+  { flag: "--html-output" },
+  { flag: "--hypothesis-candidates" },
+  { flag: "--hypothesis-validation" },
+  { flag: "--hypothesis-failure-analysis" },
+  { flag: "--hypothesis-refinements" },
+  { flag: "--refinement-hypothesis-candidates" },
+  { flag: "--mispricing-atlas" },
+];
+
 export const REGISTER_REFINEMENT_HYPOTHESES_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--output" },
   { flag: "--html-output" },
@@ -768,6 +779,10 @@ export function normalizeDerivedSettlementSensitivityArgv(argv: readonly string[
 
 export function normalizeHypothesisRefinementsArgv(argv: readonly string[]): string[] {
   return normalizeNpmScriptArgv(argv, HYPOTHESIS_REFINEMENTS_ARGV_SCHEMA);
+}
+
+export function normalizeResearchRoiAnalysisArgv(argv: readonly string[]): string[] {
+  return normalizeNpmScriptArgv(argv, RESEARCH_ROI_ANALYSIS_ARGV_SCHEMA);
 }
 
 export function normalizeRegisterRefinementHypothesesArgv(argv: readonly string[]): string[] {
