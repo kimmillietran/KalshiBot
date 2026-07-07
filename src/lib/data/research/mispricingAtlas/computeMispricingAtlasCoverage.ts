@@ -14,6 +14,7 @@ export function collectMispricingAtlasBucketGroups(input: {
   timeRemainingBuckets: readonly MispricingAtlasBucketSummary[];
   moneynessBuckets: readonly MispricingAtlasBucketSummary[];
   volatilityBuckets: readonly MispricingAtlasBucketSummary[];
+  momentumBuckets?: readonly MispricingAtlasBucketSummary[];
   coarseBuckets?: {
     probabilityOnly: readonly MispricingAtlasBucketSummary[];
     probabilityTime: readonly MispricingAtlasBucketSummary[];
@@ -22,6 +23,10 @@ export function collectMispricingAtlasBucketGroups(input: {
     moneynessTime?: readonly MispricingAtlasBucketSummary[];
     volatilityMoneyness?: readonly MispricingAtlasBucketSummary[];
     volatilityProbabilityTime?: readonly MispricingAtlasBucketSummary[];
+    probabilityMomentum?: readonly MispricingAtlasBucketSummary[];
+    momentumTime?: readonly MispricingAtlasBucketSummary[];
+    momentumVolatility?: readonly MispricingAtlasBucketSummary[];
+    probabilityMomentumTime?: readonly MispricingAtlasBucketSummary[];
   };
 }): MispricingAtlasBucketGroup[] {
   const groups: MispricingAtlasBucketGroup[] = [
@@ -30,6 +35,10 @@ export function collectMispricingAtlasBucketGroups(input: {
     { dimension: "moneyness", buckets: input.moneynessBuckets },
     { dimension: "volatility", buckets: input.volatilityBuckets },
   ];
+
+  if (input.momentumBuckets) {
+    groups.push({ dimension: "momentum", buckets: input.momentumBuckets });
+  }
 
   if (input.coarseBuckets) {
     groups.push(
@@ -48,6 +57,19 @@ export function collectMispricingAtlasBucketGroups(input: {
       {
         dimension: "volatilityProbabilityTime",
         buckets: input.coarseBuckets.volatilityProbabilityTime ?? [],
+      },
+      {
+        dimension: "probabilityMomentum",
+        buckets: input.coarseBuckets.probabilityMomentum ?? [],
+      },
+      { dimension: "momentumTime", buckets: input.coarseBuckets.momentumTime ?? [] },
+      {
+        dimension: "momentumVolatility",
+        buckets: input.coarseBuckets.momentumVolatility ?? [],
+      },
+      {
+        dimension: "probabilityMomentumTime",
+        buckets: input.coarseBuckets.probabilityMomentumTime ?? [],
       },
     );
   }

@@ -20,6 +20,7 @@ function createObservation(
     timeRemainingMs: 4 * 60 * 1_000,
     moneynessPercent: -1,
     annualizedVolatility: 0.7,
+    momentumPercent: null,
     tradingDayUtc: "2026-06-01",
     ...overrides,
   };
@@ -34,6 +35,7 @@ describe("parseMultiAxisBucketId", () => {
       moneynessBucketId: "moneyness-near-below",
       timeBucketId: null,
       volatilityBucketId: null,
+      momentumBucketId: null,
     });
   });
 
@@ -44,6 +46,31 @@ describe("parseMultiAxisBucketId", () => {
       volatilityBucketId: "vol-high",
       probabilityBucketId: "coarse-prob-2",
       timeBucketId: "coarse-time-late",
+      moneynessBucketId: null,
+      momentumBucketId: null,
+    });
+  });
+
+  it("parses probability × momentum × time bucket ids", () => {
+    expect(
+      parseMultiAxisBucketId(
+        "coarse-prob-1-momentum-moderate-up-coarse-time-late",
+      ),
+    ).toEqual({
+      probabilityBucketId: "coarse-prob-1",
+      momentumBucketId: "momentum-moderate-up",
+      timeBucketId: "coarse-time-late",
+      moneynessBucketId: null,
+      volatilityBucketId: null,
+    });
+  });
+
+  it("parses momentum × volatility bucket ids", () => {
+    expect(parseMultiAxisBucketId("vol-high-momentum-strong-down")).toEqual({
+      volatilityBucketId: "vol-high",
+      momentumBucketId: "momentum-strong-down",
+      probabilityBucketId: null,
+      timeBucketId: null,
       moneynessBucketId: null,
     });
   });
@@ -66,6 +93,16 @@ describe("observationMatchesMultiAxisBucket", () => {
         "moneyness-near-below-time-0-5m",
         createObservation(),
         ["moneyness", "time"],
+      ),
+    ).toBe(true);
+  });
+
+  it("matches probability × momentum cells", () => {
+    expect(
+      observationMatchesMultiAxisBucket(
+        "coarse-prob-1-momentum-moderate-up",
+        createObservation({ momentumPercent: 0.25 }),
+        ["probability", "momentum"],
       ),
     ).toBe(true);
   });

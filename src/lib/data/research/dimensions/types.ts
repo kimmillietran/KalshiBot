@@ -15,14 +15,16 @@ export type ResearchDimensionId =
   | "timeRemaining"
   | "coarseTimeRemaining"
   | "moneyness"
-  | "volatility";
+  | "volatility"
+  | "momentum15m";
 
 /** Legacy multi-axis matcher labels used by composite bucket parsing. */
 export type ResearchMatcherAxisId =
   | "probability"
   | "time"
   | "moneyness"
-  | "volatility";
+  | "volatility"
+  | "momentum";
 
 export type ResearchDimension = {
   id: ResearchDimensionId;
@@ -39,7 +41,8 @@ export type ResearchAxisGroupAtlasSource =
         | "probabilityBuckets"
         | "timeRemainingBuckets"
         | "moneynessBuckets"
-        | "volatilityBuckets";
+        | "volatilityBuckets"
+        | "momentumBuckets";
     }
   | {
       kind: "coarse";
@@ -50,7 +53,11 @@ export type ResearchAxisGroupAtlasSource =
         | "probabilityMoneyness"
         | "moneynessTime"
         | "volatilityMoneyness"
-        | "volatilityProbabilityTime";
+        | "volatilityProbabilityTime"
+        | "probabilityMomentum"
+        | "momentumTime"
+        | "momentumVolatility"
+        | "probabilityMomentumTime";
       stateKey:
         | "coarseProbabilityOnly"
         | "coarseProbabilityTime"
@@ -58,7 +65,11 @@ export type ResearchAxisGroupAtlasSource =
         | "coarseProbabilityMoneyness"
         | "coarseMoneynessTime"
         | "coarseVolatilityMoneyness"
-        | "coarseVolatilityProbabilityTime";
+        | "coarseVolatilityProbabilityTime"
+        | "coarseProbabilityMomentum"
+        | "coarseMomentumTime"
+        | "coarseMomentumVolatility"
+        | "coarseProbabilityMomentumTime";
     };
 
 export type ResearchAxisGroup = {

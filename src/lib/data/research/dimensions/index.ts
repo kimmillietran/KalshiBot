@@ -27,6 +27,18 @@ export {
 export { extractDimensionValue } from "./extractors";
 
 export {
+  computeResearchObservationMomentumPercent,
+} from "./momentum/computeResearchObservationMomentumPercent";
+export {
+  MOMENTUM_BUCKET_DEFINITIONS,
+} from "./momentum/momentumBucketDefinitions";
+export {
+  DEFAULT_RESEARCH_MOMENTUM_LOOKBACK_BARS,
+  MOMENTUM_MODERATE_THRESHOLD_PERCENT,
+  MOMENTUM_STRONG_THRESHOLD_PERCENT,
+} from "./momentum/momentumResearchTypes";
+
+export {
   buildCompositeBucketIdentity,
   observationMatchesDimensionBuckets,
   observationMatchesMultiAxisBucket,

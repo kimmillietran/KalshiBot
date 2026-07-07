@@ -5,11 +5,27 @@ import {
 import {
   computeCoarseMispricingBucketSummaries,
 } from "@/lib/data/research/mispricingAtlas/computeMispricingBucketMetrics";
+import { getResearchDimension } from "@/lib/data/research/dimensions";
 import type { MispricingAtlas } from "@/lib/data/research/mispricingAtlas/mispricingAtlasTypes";
 import type {
+  MispricingAtlasBucketSummary,
   MispricingAtlasCoarseBuckets,
   MispricingAtlasCoverageDiagnostics,
 } from "@/lib/data/research/mispricingAtlas/mispricingAtlasTypes";
+
+function createEmptyMomentumBucketSummaries(): MispricingAtlasBucketSummary[] {
+  return getResearchDimension("momentum15m").getBuckets().map((definition) => ({
+    bucketId: definition.bucketId,
+    bucketLabel: definition.bucketLabel,
+    observations: 0,
+    uniqueTradingDays: null,
+    averageImpliedProbability: null,
+    realizedFrequency: null,
+    calibrationError: null,
+    brierScore: null,
+    averageAbsoluteError: null,
+  }));
+}
 
 export type NormalizedMispricingAtlas = MispricingAtlas & {
   coarseBuckets: MispricingAtlasCoarseBuckets;
@@ -21,23 +37,19 @@ export function normalizeMispricingAtlas(
   atlas: MispricingAtlas,
   minSampleThreshold: number,
 ): NormalizedMispricingAtlas {
-  const coarseBuckets = atlas.coarseBuckets ?? {
-    probabilityOnly: [],
-    probabilityTime: [],
-    probabilityRegime: [],
-    probabilityMoneyness: [],
-    moneynessTime: [],
-    volatilityMoneyness: [],
-    volatilityProbabilityTime: [],
-  };
+  const source = atlas.coarseBuckets;
   const normalizedCoarseBuckets: MispricingAtlasCoarseBuckets = {
-    probabilityOnly: coarseBuckets.probabilityOnly,
-    probabilityTime: coarseBuckets.probabilityTime,
-    probabilityRegime: coarseBuckets.probabilityRegime,
-    probabilityMoneyness: coarseBuckets.probabilityMoneyness ?? [],
-    moneynessTime: coarseBuckets.moneynessTime ?? [],
-    volatilityMoneyness: coarseBuckets.volatilityMoneyness ?? [],
-    volatilityProbabilityTime: coarseBuckets.volatilityProbabilityTime ?? [],
+    probabilityOnly: source?.probabilityOnly ?? [],
+    probabilityTime: source?.probabilityTime ?? [],
+    probabilityRegime: source?.probabilityRegime ?? [],
+    probabilityMoneyness: source?.probabilityMoneyness ?? [],
+    moneynessTime: source?.moneynessTime ?? [],
+    volatilityMoneyness: source?.volatilityMoneyness ?? [],
+    volatilityProbabilityTime: source?.volatilityProbabilityTime ?? [],
+    probabilityMomentum: source?.probabilityMomentum ?? [],
+    momentumTime: source?.momentumTime ?? [],
+    momentumVolatility: source?.momentumVolatility ?? [],
+    probabilityMomentumTime: source?.probabilityMomentumTime ?? [],
   };
   const coverageDiagnostics =
     atlas.coverageDiagnostics
@@ -47,6 +59,7 @@ export function normalizeMispricingAtlas(
         timeRemainingBuckets: atlas.timeRemainingBuckets,
         moneynessBuckets: atlas.moneynessBuckets,
         volatilityBuckets: atlas.volatilityBuckets,
+        momentumBuckets: atlas.momentumBuckets ?? createEmptyMomentumBucketSummaries(),
         coarseBuckets: normalizedCoarseBuckets,
       }),
       sampleCounts: atlas.sampleCounts,
@@ -55,6 +68,7 @@ export function normalizeMispricingAtlas(
 
   return {
     ...atlas,
+    momentumBuckets: atlas.momentumBuckets ?? createEmptyMomentumBucketSummaries(),
     coarseBuckets: normalizedCoarseBuckets,
     coverageDiagnostics,
   };

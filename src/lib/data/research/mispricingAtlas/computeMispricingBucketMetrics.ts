@@ -453,5 +453,9 @@ export function computeCoarseMispricingBucketSummaries(
     moneynessTime: computeMoneynessTimeBucketSummaries(observations),
     volatilityMoneyness: computeVolatilityMoneynessBucketSummaries(observations),
     volatilityProbabilityTime: computeVolatilityProbabilityTimeBucketSummaries(observations),
+    probabilityMomentum: [],
+    momentumTime: [],
+    momentumVolatility: [],
+    probabilityMomentumTime: [],
   };
 }

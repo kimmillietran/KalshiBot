@@ -223,6 +223,11 @@ export type MispricingAtlasIncrementalState = {
   coarseMoneynessTime: MispricingBucketAccumulator[];
   coarseVolatilityMoneyness: MispricingBucketAccumulator[];
   coarseVolatilityProbabilityTime: MispricingBucketAccumulator[];
+  coarseProbabilityMomentum: MispricingBucketAccumulator[];
+  coarseMomentumTime: MispricingBucketAccumulator[];
+  coarseMomentumVolatility: MispricingBucketAccumulator[];
+  coarseProbabilityMomentumTime: MispricingBucketAccumulator[];
+  momentumBuckets: MispricingBucketAccumulator[];
   warnings: MispricingAtlasWarning[];
   seenMarkets: Set<string>;
   totalObservations: number;
@@ -261,6 +266,18 @@ export function createMispricingAtlasIncrementalState(input?: {
       "coarseProbabilityAxis",
       "coarseTimeRemaining",
     ]),
+    coarseProbabilityMomentum: createCompositeAccumulators([
+      "coarseProbabilityAxis",
+      "momentum15m",
+    ]),
+    coarseMomentumTime: createCompositeAccumulators(["momentum15m", "coarseTimeRemaining"]),
+    coarseMomentumVolatility: createCompositeAccumulators(["volatility", "momentum15m"]),
+    coarseProbabilityMomentumTime: createCompositeAccumulators([
+      "coarseProbabilityAxis",
+      "momentum15m",
+      "coarseTimeRemaining",
+    ]),
+    momentumBuckets: createSingleDimensionAccumulators("momentum15m"),
     warnings: [],
     seenMarkets: new Set<string>(),
     totalObservations: 0,
@@ -347,6 +364,31 @@ export function ingestMispricingObservation(
     observation,
     metrics,
   );
+  ingestSingleDimensionBuckets(state.momentumBuckets, "momentum15m", observation, metrics);
+  ingestCompositeDimensionBuckets(
+    state.coarseProbabilityMomentum,
+    ["coarseProbabilityAxis", "momentum15m"],
+    observation,
+    metrics,
+  );
+  ingestCompositeDimensionBuckets(
+    state.coarseMomentumTime,
+    ["momentum15m", "coarseTimeRemaining"],
+    observation,
+    metrics,
+  );
+  ingestCompositeDimensionBuckets(
+    state.coarseMomentumVolatility,
+    ["volatility", "momentum15m"],
+    observation,
+    metrics,
+  );
+  ingestCompositeDimensionBuckets(
+    state.coarseProbabilityMomentumTime,
+    ["coarseProbabilityAxis", "momentum15m", "coarseTimeRemaining"],
+    observation,
+    metrics,
+  );
 }
 
 export function ingestMispricingMarketExtraction(
@@ -388,6 +430,7 @@ export function finalizeMispricingAtlasIncrementalState(
   timeRemainingBuckets: MispricingAtlasBucketSummary[];
   moneynessBuckets: MispricingAtlasBucketSummary[];
   volatilityBuckets: MispricingAtlasBucketSummary[];
+  momentumBuckets: MispricingAtlasBucketSummary[];
   coarseBuckets: MispricingAtlasCoarseBuckets;
   warnings: MispricingAtlasWarning[];
 } {
@@ -404,6 +447,7 @@ export function finalizeMispricingAtlasIncrementalState(
     timeRemainingBuckets: finalizeAccumulatorList(state.timeRemainingBuckets),
     moneynessBuckets: finalizeAccumulatorList(state.moneynessBuckets),
     volatilityBuckets: finalizeAccumulatorList(state.volatilityBuckets),
+    momentumBuckets: finalizeAccumulatorList(state.momentumBuckets),
     coarseBuckets: {
       probabilityOnly: finalizeAccumulatorList(state.coarseProbabilityOnly),
       probabilityTime: finalizeAccumulatorList(state.coarseProbabilityTime),
@@ -413,6 +457,12 @@ export function finalizeMispricingAtlasIncrementalState(
       volatilityMoneyness: finalizeAccumulatorList(state.coarseVolatilityMoneyness),
       volatilityProbabilityTime: finalizeAccumulatorList(
         state.coarseVolatilityProbabilityTime,
+      ),
+      probabilityMomentum: finalizeAccumulatorList(state.coarseProbabilityMomentum),
+      momentumTime: finalizeAccumulatorList(state.coarseMomentumTime),
+      momentumVolatility: finalizeAccumulatorList(state.coarseMomentumVolatility),
+      probabilityMomentumTime: finalizeAccumulatorList(
+        state.coarseProbabilityMomentumTime,
       ),
     },
     warnings: sortMispricingAtlasWarnings(state.warnings),

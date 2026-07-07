@@ -16,6 +16,7 @@ import {
   type MispricingAtlasWarning,
   type MispricingObservation,
 } from "./mispricingAtlasTypes";
+import { computeResearchObservationMomentumPercent } from "@/lib/data/research/dimensions/momentum/computeResearchObservationMomentumPercent";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -130,6 +131,10 @@ function buildObservation(input: {
     moneynessPercent,
     annualizedVolatility:
       input.candles.length > 0 ? readAnnualizedVolatility(input.candles) : null,
+    momentumPercent:
+      input.candles.length > 0
+        ? computeResearchObservationMomentumPercent(input.candles)
+        : null,
     tradingDayUtc:
       input.observationTimestampMs !== undefined
       && input.observationTimestampMs !== null

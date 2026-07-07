@@ -100,6 +100,26 @@ function stripMemoryDiagnostics(value: { memoryDiagnostics?: unknown }) {
   return rest;
 }
 
+function stripMomentumAtlasFields(atlas: ReturnType<typeof buildMispricingAtlas>) {
+  const { momentumBuckets: _momentumBuckets, coarseBuckets, ...rest } = atlas;
+  if (!coarseBuckets) {
+    return rest;
+  }
+
+  const {
+    probabilityMomentum: _probabilityMomentum,
+    momentumTime: _momentumTime,
+    momentumVolatility: _momentumVolatility,
+    probabilityMomentumTime: _probabilityMomentumTime,
+    ...legacyCoarseBuckets
+  } = coarseBuckets;
+
+  return {
+    ...rest,
+    coarseBuckets: legacyCoarseBuckets,
+  };
+}
+
 describe("mispricing atlas incremental accumulator", () => {
   it("matches legacy bucket summary metrics", () => {
     const observations = [
@@ -114,6 +134,7 @@ describe("mispricing atlas incremental accumulator", () => {
         timeRemainingMs: 600_000,
         moneynessPercent: 1,
         annualizedVolatility: 0.4,
+        momentumPercent: 0.1,
       },
       {
         strategyId: STRATEGY_ID,
@@ -126,6 +147,7 @@ describe("mispricing atlas incremental accumulator", () => {
         timeRemainingMs: 600_000,
         moneynessPercent: -1,
         annualizedVolatility: 0.4,
+        momentumPercent: -0.2,
       },
     ];
 
@@ -192,9 +214,17 @@ describe("buildMispricingAtlas incremental parity", () => {
     const incremental = buildMispricingAtlas(baseInput);
     const legacy = buildMispricingAtlasFromScannedLegacy(baseInput);
 
+    const stripForLegacyParity = (
+      atlas: ReturnType<typeof buildMispricingAtlas>,
+    ) => {
+      const stripped = stripMomentumAtlasFields(stripMemoryDiagnostics(atlas));
+      delete stripped.coverageDiagnostics;
+      return stripped;
+    };
+
     expect(
-      serializeMispricingAtlas(stripMemoryDiagnostics(incremental)),
-    ).toBe(serializeMispricingAtlas(stripMemoryDiagnostics(legacy)));
+      serializeMispricingAtlas(stripForLegacyParity(incremental)),
+    ).toBe(serializeMispricingAtlas(stripForLegacyParity(legacy)));
   });
 
   it("records memory diagnostics when memoryReport is enabled", () => {

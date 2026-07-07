@@ -129,6 +129,7 @@ describe("computeMispricingBucketSummary", () => {
         timeRemainingMs: 600_000,
         moneynessPercent: 1,
         annualizedVolatility: 0.4,
+        momentumPercent: 0.1,
       },
       {
         strategyId: STRATEGY_ID,
@@ -141,6 +142,7 @@ describe("computeMispricingBucketSummary", () => {
         timeRemainingMs: 600_000,
         moneynessPercent: -1,
         annualizedVolatility: 0.4,
+        momentumPercent: -0.2,
       },
     ]);
 
@@ -360,6 +362,7 @@ describe("buildMispricingAtlas", () => {
     ]);
     expect(atlas.moneynessBuckets).toHaveLength(4);
     expect(atlas.volatilityBuckets).toHaveLength(3);
+    expect(atlas.momentumBuckets).toHaveLength(5);
     expect(atlas.probabilityBuckets[0]?.bucketId).toBe("prob-0");
     expect(atlas.coarseBuckets?.probabilityOnly).toHaveLength(5);
     expect(atlas.coarseBuckets?.probabilityTime).toHaveLength(6);
@@ -367,6 +370,10 @@ describe("buildMispricingAtlas", () => {
     expect(atlas.coarseBuckets?.moneynessTime).toHaveLength(16);
     expect(atlas.coarseBuckets?.volatilityMoneyness).toHaveLength(12);
     expect(atlas.coarseBuckets?.volatilityProbabilityTime).toHaveLength(18);
+    expect(atlas.coarseBuckets?.probabilityMomentum).toHaveLength(15);
+    expect(atlas.coarseBuckets?.momentumTime).toHaveLength(10);
+    expect(atlas.coarseBuckets?.momentumVolatility).toHaveLength(15);
+    expect(atlas.coarseBuckets?.probabilityMomentumTime).toHaveLength(30);
     expect(atlas.coverageDiagnostics?.totalAtlasObservations).toBe(3);
     expect(atlas.coverageDiagnostics?.nonEmptyBuckets).toBeGreaterThan(0);
     expect(serializeMispricingAtlas(atlas)).toBe(serializeMispricingAtlas(atlas));

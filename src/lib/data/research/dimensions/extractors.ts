@@ -19,6 +19,8 @@ export function extractDimensionValue(
       return observation.moneynessPercent;
     case "volatility":
       return observation.annualizedVolatility;
+    case "momentum15m":
+      return observation.momentumPercent;
     default:
       return null;
   }

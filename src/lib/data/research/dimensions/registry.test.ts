@@ -9,6 +9,7 @@ import {
   getResearchDimension,
   listResearchAxisGroups,
   MONEYNESS_BUCKET_DEFINITIONS,
+  MOMENTUM_BUCKET_DEFINITIONS,
   observationMatchesDimensionBuckets,
   observationMatchesMultiAxisBucket,
   observationMatchesSingleDimensionBucket,
@@ -33,6 +34,7 @@ function createObservation(
     timeRemainingMs: 10 * 60 * 1_000,
     moneynessPercent: 1.5,
     annualizedVolatility: 0.45,
+    momentumPercent: 0.25,
     tradingDayUtc: "2026-06-01",
     ...overrides,
   };
@@ -41,7 +43,7 @@ function createObservation(
 describe("research dimension registry", () => {
   it("matches hypothesis atlas group ids exactly", () => {
     expect(() => assertResearchAxisGroupRegistryMatchesHypothesisGroups()).not.toThrow();
-    expect(RESEARCH_AXIS_GROUPS).toHaveLength(11);
+    expect(RESEARCH_AXIS_GROUPS).toHaveLength(16);
   });
 
   it("lists dimensions in deterministic order", () => {
@@ -53,6 +55,7 @@ describe("research dimension registry", () => {
       "coarseTimeRemaining",
       "moneyness",
       "volatility",
+      "momentum15m",
     ]);
   });
 
@@ -118,11 +121,36 @@ describe("research dimension registry", () => {
       "moneynessTime",
       "volatilityMoneyness",
       "volatilityProbabilityTime",
+      "probabilityMomentumTime",
+      "probabilityMomentum",
+      "momentumVolatility",
+      "momentumTime",
+      "momentum",
       "probability",
       "timeRemaining",
       "moneyness",
       "volatility",
     ]);
+  });
+
+  it("builds momentum composite bucket counts", () => {
+    const templates = buildCompositeBucketTemplates(["coarseProbabilityAxis", "momentum15m"]);
+    expect(templates).toHaveLength(
+      buildCoarseProbabilityAxisDefinitions().length * MOMENTUM_BUCKET_DEFINITIONS.length,
+    );
+    expect(templates[0]?.bucketId).toBe("coarse-prob-0-momentum-strong-down");
+  });
+
+  it("matches momentum multi-axis buckets via matcher axes", () => {
+    const observation = createObservation({ momentumPercent: 0.25 });
+    const bucketId = "coarse-prob-1-momentum-moderate-up";
+
+    expect(
+      observationMatchesMultiAxisBucket(bucketId, observation, [
+        "probability",
+        "momentum",
+      ]),
+    ).toBe(true);
   });
 
   it("resolves volatility dimension buckets", () => {

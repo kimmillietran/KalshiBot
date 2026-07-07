@@ -20,6 +20,7 @@ import {
   valueFitsBucket,
   VOLATILITY_BUCKET_DEFINITIONS,
 } from "./bucketDefinitions";
+import { MOMENTUM_BUCKET_DEFINITIONS } from "./momentum/momentumBucketDefinitions";
 import { extractDimensionValue } from "./extractors";
 import {
   observationMatchesDimensionBuckets,
@@ -41,6 +42,7 @@ export const MATCHER_AXIS_TO_DIMENSION_ID: Record<
   time: "coarseTimeRemaining",
   moneyness: "moneyness",
   volatility: "volatility",
+  momentum: "momentum15m",
 };
 
 const RESEARCH_DIMENSIONS_INTERNAL: readonly ResearchDimension[] = [
@@ -93,6 +95,13 @@ const RESEARCH_DIMENSIONS_INTERNAL: readonly ResearchDimension[] = [
     label: "Volatility",
     getBuckets: () => VOLATILITY_BUCKET_DEFINITIONS,
     extractValue: (observation) => extractDimensionValue("volatility", observation),
+    valueFitsBucket: valueFitsBucket,
+  },
+  {
+    id: "momentum15m",
+    label: "15-minute momentum",
+    getBuckets: () => MOMENTUM_BUCKET_DEFINITIONS,
+    extractValue: (observation) => extractDimensionValue("momentum15m", observation),
     valueFitsBucket: valueFitsBucket,
   },
 ];
@@ -173,6 +182,52 @@ export const RESEARCH_AXIS_GROUPS: readonly ResearchAxisGroup[] = [
     matcherAxes: ["volatility", "probability", "time"],
   },
   {
+    groupId: "probabilityMomentumTime",
+    dimensionIds: ["coarseProbabilityAxis", "momentum15m", "coarseTimeRemaining"],
+    atlasSource: {
+      kind: "coarse",
+      coarseBucketsKey: "probabilityMomentumTime",
+      stateKey: "coarseProbabilityMomentumTime",
+    },
+    matcherAxes: ["probability", "momentum", "time"],
+  },
+  {
+    groupId: "probabilityMomentum",
+    dimensionIds: ["coarseProbabilityAxis", "momentum15m"],
+    atlasSource: {
+      kind: "coarse",
+      coarseBucketsKey: "probabilityMomentum",
+      stateKey: "coarseProbabilityMomentum",
+    },
+    matcherAxes: ["probability", "momentum"],
+  },
+  {
+    groupId: "momentumVolatility",
+    dimensionIds: ["volatility", "momentum15m"],
+    atlasSource: {
+      kind: "coarse",
+      coarseBucketsKey: "momentumVolatility",
+      stateKey: "coarseMomentumVolatility",
+    },
+    matcherAxes: ["volatility", "momentum"],
+  },
+  {
+    groupId: "momentumTime",
+    dimensionIds: ["momentum15m", "coarseTimeRemaining"],
+    atlasSource: {
+      kind: "coarse",
+      coarseBucketsKey: "momentumTime",
+      stateKey: "coarseMomentumTime",
+    },
+    matcherAxes: ["momentum", "time"],
+  },
+  {
+    groupId: "momentum",
+    dimensionIds: ["momentum15m"],
+    atlasSource: { kind: "singleAxis", stateKey: "momentumBuckets" },
+    matcherAxes: ["momentum"],
+  },
+  {
     groupId: "probability",
     dimensionIds: ["probability"],
     atlasSource: { kind: "singleAxis", stateKey: "probabilityBuckets" },
@@ -245,7 +300,7 @@ export function resolveAxisGroupSampleThreshold(
   groupId: HypothesisAtlasGroupId,
   minSampleSize: number = DEFAULT_HYPOTHESIS_MIN_SAMPLE_SIZE,
 ): number {
-  if (groupId === "volatilityProbabilityTime") {
+  if (groupId === "volatilityProbabilityTime" || groupId === "probabilityMomentumTime") {
     return DEFAULT_TRIPLE_AXIS_MIN_SAMPLE_SIZE;
   }
 
@@ -300,9 +355,15 @@ export function collectAtlasBucketGroupsFromNormalizedAtlas(
 }> {
   return RESEARCH_AXIS_GROUPS.map((group) => {
     if (group.atlasSource.kind === "singleAxis") {
+      const stateKey = group.atlasSource.stateKey;
+      const buckets =
+        stateKey === "momentumBuckets"
+          ? (normalizedAtlas.momentumBuckets ?? [])
+          : normalizedAtlas[stateKey];
+
       return {
         groupId: group.groupId,
-        buckets: normalizedAtlas[group.atlasSource.stateKey],
+        buckets,
       };
     }
 

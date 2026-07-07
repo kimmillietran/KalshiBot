@@ -28,6 +28,7 @@ export function lookupAtlasBucketSupport(
   }
 
   for (const buckets of [
+    atlas.momentumBuckets ?? [],
     atlas.probabilityBuckets,
     atlas.timeRemainingBuckets,
     atlas.moneynessBuckets,

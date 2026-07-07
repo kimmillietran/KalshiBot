@@ -36,6 +36,8 @@ export type MispricingObservation = {
   timeRemainingMs: number | null;
   moneynessPercent: number | null;
   annualizedVolatility: number | null;
+  /** 15-minute BTC percent change at observation time; null when candle history is insufficient. */
+  momentumPercent: number | null;
   /** UTC trading day (YYYY-MM-DD) when the observation timestamp is known. */
   tradingDayUtc?: string | null;
 };
@@ -92,6 +94,10 @@ export type MispricingAtlasCoarseBuckets = {
   moneynessTime: readonly MispricingAtlasBucketSummary[];
   volatilityMoneyness: readonly MispricingAtlasBucketSummary[];
   volatilityProbabilityTime: readonly MispricingAtlasBucketSummary[];
+  probabilityMomentum: readonly MispricingAtlasBucketSummary[];
+  momentumTime: readonly MispricingAtlasBucketSummary[];
+  momentumVolatility: readonly MispricingAtlasBucketSummary[];
+  probabilityMomentumTime: readonly MispricingAtlasBucketSummary[];
 };
 
 export type MispricingAtlasWarning = {
@@ -118,6 +124,7 @@ export type MispricingAtlas = {
   timeRemainingBuckets: readonly MispricingAtlasBucketSummary[];
   moneynessBuckets: readonly MispricingAtlasBucketSummary[];
   volatilityBuckets: readonly MispricingAtlasBucketSummary[];
+  momentumBuckets?: readonly MispricingAtlasBucketSummary[];
   coarseBuckets?: MispricingAtlasCoarseBuckets;
   coverageDiagnostics?: MispricingAtlasCoverageDiagnostics;
   memoryDiagnostics?: MispricingAtlasMemoryDiagnostics;
