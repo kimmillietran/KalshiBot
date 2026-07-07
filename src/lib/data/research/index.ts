@@ -308,6 +308,28 @@ export type {
 } from "./hypothesisFailureAnalysis";
 
 export {
+  analyzeDerivedSettlementSensitivity,
+  buildDefaultDerivedSettlementSensitivityInputPaths,
+  buildDerivedSettlementSensitivityReport,
+  classifyDerivedSensitivityRecommendation,
+  computeOfficialOnlyValidations,
+  discoverDerivedSettlementMarketKeys,
+  loadDerivedSettlementSensitivityComputation,
+  serializeDerivedSettlementSensitivityHtml,
+  serializeDerivedSettlementSensitivityReport,
+  DEFAULT_DERIVED_SETTLEMENT_SENSITIVITY_HTML_PATH,
+  DEFAULT_DERIVED_SETTLEMENT_SENSITIVITY_OUTPUT_PATH,
+  DERIVED_SETTLEMENT_SENSITIVITY_FILENAME,
+  DerivedSettlementSensitivityError,
+} from "./derivedSettlementSensitivity";
+export type {
+  BuildDerivedSettlementSensitivityReportInput,
+  DerivedSensitivityRecommendation,
+  DerivedSettlementSensitivityEntry,
+  DerivedSettlementSensitivityReport,
+} from "./derivedSettlementSensitivity";
+
+export {
   buildDefaultHypothesisRefinementInputPaths,
   buildHypothesisRefinementReport,
   generateHypothesisRefinements,

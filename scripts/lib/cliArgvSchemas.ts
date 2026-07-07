@@ -237,6 +237,15 @@ export const HYPOTHESIS_FAILURE_ANALYSIS_ARGV_SCHEMA: readonly NpmArgvField[] = 
   { flag: "--hypothesis-history" },
 ];
 
+export const DERIVED_SETTLEMENT_SENSITIVITY_ARGV_SCHEMA: readonly NpmArgvField[] = [
+  { flag: "--output" },
+  { flag: "--html-output" },
+  { flag: "--hypothesis-candidates" },
+  { flag: "--hypothesis-validation" },
+  { flag: "--research-results-dir" },
+  { flag: "--regime-tags" },
+];
+
 export const HYPOTHESIS_REFINEMENTS_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--output" },
   { flag: "--html-output" },
@@ -711,6 +720,10 @@ export function normalizeCoverageAwareValidationArgv(argv: readonly string[]): s
 
 export function normalizeHypothesisFailureAnalysisArgv(argv: readonly string[]): string[] {
   return normalizeNpmScriptArgv(argv, HYPOTHESIS_FAILURE_ANALYSIS_ARGV_SCHEMA);
+}
+
+export function normalizeDerivedSettlementSensitivityArgv(argv: readonly string[]): string[] {
+  return normalizeNpmScriptArgv(argv, DERIVED_SETTLEMENT_SENSITIVITY_ARGV_SCHEMA);
 }
 
 export function normalizeHypothesisRefinementsArgv(argv: readonly string[]): string[] {

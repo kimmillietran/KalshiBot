@@ -1,9 +1,14 @@
 import { describe, expect, it } from "vitest";
 
+import { DataQualityFlag } from "@/lib/data/schemas";
+
 import {
+  findDerivedExpirationValueInDatasetSnapshots,
   findSettlementInDatasetSnapshots,
   formatMissingSettlementDiagnostic,
   readSettlementOutcomeFromRecord,
+  readSettlementQualityFlagsFromRecord,
+  settlementHasDerivedExpirationValue,
 } from "./readResearchOutputSettlement";
 
 describe("readSettlementOutcomeFromRecord", () => {
@@ -64,5 +69,44 @@ describe("formatMissingSettlementDiagnostic", () => {
     expect(formatMissingSettlementDiagnostic("KXBTC15M-MARKET-A", 15)).toContain(
       "dataset.snapshots[0..14].settlement.result",
     );
+  });
+});
+
+describe("readSettlementQualityFlagsFromRecord", () => {
+  it("reads qualityFlags and quality_flags aliases", () => {
+    expect(
+      readSettlementQualityFlagsFromRecord({
+        qualityFlags: ["derived-expiration-value"],
+      }),
+    ).toEqual(["derived-expiration-value"]);
+    expect(
+      readSettlementQualityFlagsFromRecord({
+        quality_flags: ["missing-bid-ask"],
+      }),
+    ).toEqual(["missing-bid-ask"]);
+  });
+});
+
+describe("findDerivedExpirationValueInDatasetSnapshots", () => {
+  it("detects derived expiration_value on the resolved settlement snapshot", () => {
+    const snapshots = [
+      { settlement: null },
+      {
+        settlement: {
+          result: "yes",
+          qualityFlags: [DataQualityFlag.DERIVED_EXPIRATION_VALUE],
+        },
+      },
+    ];
+
+    expect(
+      findDerivedExpirationValueInDatasetSnapshots(
+        snapshots,
+        DataQualityFlag.DERIVED_EXPIRATION_VALUE,
+      ),
+    ).toBe(true);
+    expect(
+      settlementHasDerivedExpirationValue(snapshots[1]?.settlement, DataQualityFlag.DERIVED_EXPIRATION_VALUE),
+    ).toBe(true);
   });
 });
