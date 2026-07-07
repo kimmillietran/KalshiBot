@@ -18,6 +18,7 @@ export {
   validateCandidateFromAccumulator,
 } from "./computeHypothesisRobustnessMetricsFromAccumulator";
 export { filterObservationsForAtlasBucket } from "./filterObservationsForAtlasBucket";
+export { applyRefinementSuggestedFilters } from "./applyRefinementSuggestedFilters";
 export {
   assertHypothesisValidationInputFiles,
   buildDefaultHypothesisValidationInputPaths,

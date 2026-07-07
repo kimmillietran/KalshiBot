@@ -150,6 +150,7 @@ export const HYPOTHESIS_CANDIDATES_ARGV_SCHEMA: readonly NpmArgvField[] = [
 export const HYPOTHESIS_VALIDATION_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--output" },
   { flag: "--html-output" },
+  { flag: "--input" },
   { flag: "--hypothesis-candidates" },
   { flag: "--mispricing-atlas" },
   { flag: "--research-results-dir" },
@@ -244,6 +245,14 @@ export const HYPOTHESIS_REFINEMENTS_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--hypothesis-validation" },
   { flag: "--mispricing-atlas" },
   { flag: "--cross-validation" },
+];
+
+export const REGISTER_REFINEMENT_HYPOTHESES_ARGV_SCHEMA: readonly NpmArgvField[] = [
+  { flag: "--output" },
+  { flag: "--html-output" },
+  { flag: "--hypothesis-refinements" },
+  { flag: "--hypothesis-candidates" },
+  { flag: "--hypothesis-failure-analysis" },
 ];
 
 export const OVERFITTING_DIAGNOSTICS_ARGV_SCHEMA: readonly NpmArgvField[] = [
@@ -705,6 +714,10 @@ export function normalizeHypothesisFailureAnalysisArgv(argv: readonly string[]):
 
 export function normalizeHypothesisRefinementsArgv(argv: readonly string[]): string[] {
   return normalizeNpmScriptArgv(argv, HYPOTHESIS_REFINEMENTS_ARGV_SCHEMA);
+}
+
+export function normalizeRegisterRefinementHypothesesArgv(argv: readonly string[]): string[] {
+  return normalizeNpmScriptArgv(argv, REGISTER_REFINEMENT_HYPOTHESES_ARGV_SCHEMA);
 }
 
 export function normalizePowerAnalysisArgv(argv: readonly string[]): string[] {

@@ -46,6 +46,7 @@
     "research:hypothesis-history": "tsx scripts/research/buildHypothesisHistory.ts",
     "research:hypothesis-failure-analysis": "tsx scripts/research/buildHypothesisFailureAnalysis.ts",
     "research:hypothesis-refinements": "tsx scripts/research/buildHypothesisRefinements.ts",
+    "research:register-refinements": "tsx scripts/research/registerRefinementHypotheses.ts",
     "research:artifact-index": "tsx scripts/research/buildResearchArtifactIndex.ts",
     "research:dashboard": "tsx scripts/research/buildResearchPipelineDashboard.ts",
     "research:full": "tsx scripts/research/runFullResearchOrchestrator.ts",
