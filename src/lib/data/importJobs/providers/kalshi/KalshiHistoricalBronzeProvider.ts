@@ -13,6 +13,11 @@ import {
   findMissingKalshiMarketRecordFields,
   KalshiMarketImportCompatibilityError,
 } from "@/lib/data/importers/kalshi/kalshiMarketImportDiagnostics";
+import {
+  buildKalshiHistoricalCandlestickWire,
+  hasRecoverableKalshiHistoricalCandlestickPrice,
+  type KalshiHistoricalCandlestickWireShape,
+} from "@/lib/data/importers/kalshi/kalshiHistoricalCandlestickWire";
 import type {
   HistoricalCandlestickInterval,
   HistoricalCandlestickRecord,
@@ -20,14 +25,13 @@ import type {
   HistoricalMarketRecord,
   HistoricalSettlementResult,
 } from "@/lib/data/importers/kalshi/kalshiHistoricalTypes";
-import type { RawHistoricalRecord } from "@/lib/data/types";
 import { DataQualityFlag } from "@/lib/data/schemas";
 import type {
   CollectionTime,
   EventTime,
   ObservedAt,
 } from "@/lib/data/timestamps";
-
+import type { RawHistoricalRecord } from "@/lib/data/types";
 import type { KalshiHistoricalBronzeProvider } from "../../historicalBronzeImportJobTypes";
 import type {
   CreateKalshiHistoricalBronzeProviderInput,
@@ -49,12 +53,7 @@ type KalshiMarketWire = {
   quality_flags?: readonly string[];
 };
 
-type KalshiCandlestickWire = {
-  end_period_ts: number;
-  volume: string;
-  open_interest: string;
-  price?: { close?: string | null };
-};
+type KalshiCandlestickWire = KalshiHistoricalCandlestickWireShape;
 
 const CANDLESTICK_INTERVAL: HistoricalCandlestickInterval = 1;
 
@@ -176,16 +175,7 @@ function settlementResultToWire(
 }
 
 function candlestickRecordToWire(candle: HistoricalCandlestickRecord): KalshiCandlestickWire {
-  if (!Number.isFinite(candle.endPeriodTs)) {
-    throw new Error("Kalshi historical candlestick response is missing end_period_ts");
-  }
-
-  return {
-    end_period_ts: candle.endPeriodTs,
-    volume: candle.volume,
-    open_interest: candle.openInterest,
-    price: candle.priceClose === null ? undefined : { close: candle.priceClose },
-  };
+  return buildKalshiHistoricalCandlestickWire(candle);
 }
 
 function mapMarketRecordToBronze(
@@ -278,9 +268,9 @@ function importKalshiCandleRecords(
   );
 
   return sortBronzeRecords(
-    result.candlesticks.map((candle) =>
-      mapCandlestickRecordToBronze(candle, input, requestPath),
-    ),
+    result.candlesticks
+      .filter(hasRecoverableKalshiHistoricalCandlestickPrice)
+      .map((candle) => mapCandlestickRecordToBronze(candle, input, requestPath)),
   );
 }
 

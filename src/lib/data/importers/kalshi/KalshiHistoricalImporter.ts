@@ -13,6 +13,7 @@ import {
   KalshiMarketImportCompatibilityError,
   saveKalshiMarketDebugArtifact,
 } from "./kalshiMarketImportDiagnostics";
+import { resolveKalshiHistoricalCandlestickPriceClose } from "./kalshiHistoricalCandlestickWire";
 import { mergeKalshiMarketWireFromListDetail } from "./kalshiMarketSchemaReconciliation";
 import type { KalshiHistoricalMarketFetchOptions } from "./HistoricalImporter";
 import type { HistoricalImporter } from "./HistoricalImporter";
@@ -334,7 +335,7 @@ export class KalshiHistoricalImporter implements HistoricalImporter {
         endPeriodTs: candle.end_period_ts,
         volume: candle.volume,
         openInterest: candle.open_interest,
-        priceClose: candle.price?.close ?? null,
+        priceClose: resolveKalshiHistoricalCandlestickPriceClose(candle),
       })),
       provenance: buildProvenance(requestPath, fetchedAt),
     };

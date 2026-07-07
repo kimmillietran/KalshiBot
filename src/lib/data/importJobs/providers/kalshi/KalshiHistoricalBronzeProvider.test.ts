@@ -20,6 +20,9 @@ import type {
   KalshiHistoricalBronzeImporter,
   KalshiHistoricalBronzeProviderMethodInput,
 } from "./kalshiHistoricalBronzeProviderTypes";
+import { serializeHistoricalBronzeImportResult } from "../../HistoricalBronzeImportJob";
+import { buildKalshiHistoricalCandlestickWire } from "@/lib/data/importers/kalshi/kalshiHistoricalCandlestickWire";
+import { stableStringify } from "@/lib/trading/config/hashConfig";
 
 const COLLECTION_TIME = "2026-06-27T01:00:00.000Z";
 const OBSERVED_AT = "2026-06-27T01:00:05.000Z";
@@ -152,6 +155,68 @@ describe("createKalshiHistoricalBronzeProvider", () => {
     expect(records[0]?.eventTime).toBe(
       kalshiUnixSecondsToEventTime(SAMPLE_CANDLESTICKS.candlesticks[0]!.endPeriodTs),
     );
+  });
+
+  it("skips Dec 2025-style candlesticks missing price.close instead of serializing price: undefined", () => {
+    const mixedCandles: HistoricalCandlesticksResult = {
+      ...SAMPLE_CANDLESTICKS,
+      candlesticks: [
+        {
+          endPeriodTs: 1_735_670_400,
+          volume: "0.00",
+          openInterest: "12.00",
+          priceClose: null,
+        },
+        SAMPLE_CANDLESTICKS.candlesticks[0]!,
+      ],
+    };
+    const provider = createProvider(
+      createImporter({
+        getMarketCandlesticks: vi.fn(() => mixedCandles),
+      }),
+    );
+
+    const records = provider.importKalshiCandleRecords(providerInput());
+
+    expect(records).toHaveLength(1);
+    expect(records[0]?.payload).toEqual(
+      buildKalshiHistoricalCandlestickWire(SAMPLE_CANDLESTICKS.candlesticks[0]!),
+    );
+    expect(stableStringify(records[0]?.payload)).not.toContain("undefined");
+  });
+
+  it("serializes import results without invalid undefined candlestick fields", () => {
+    const provider = createProvider();
+    const records = provider.importKalshiCandleRecords(providerInput());
+    const serialized = serializeHistoricalBronzeImportResult({
+      jobId: "job-1",
+      bronzeRecords: records,
+      validationResult: {
+        valid: true,
+        errors: [],
+        warnings: [],
+        statistics: {
+          totalRecords: records.length,
+          marketCount: 0,
+          btcBarCount: 0,
+          settlementCount: 0,
+          duplicateCount: 0,
+        },
+      },
+      metadata: {
+        jobId: "job-1",
+        marketTicker: MARKET_TICKER,
+        startTime: START_TIME,
+        endTime: END_TIME,
+        collectionTime: COLLECTION_TIME,
+        observedAt: OBSERVED_AT,
+        bronzeRecordCount: records.length,
+        valid: true,
+      },
+    });
+
+    expect(serialized).not.toContain("undefined");
+    expect(() => JSON.parse(serialized)).not.toThrow();
   });
 
   it("imports and maps settlement records", () => {

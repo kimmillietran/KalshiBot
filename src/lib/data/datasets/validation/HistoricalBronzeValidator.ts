@@ -1,4 +1,5 @@
 import { bronzeRecordsAreIdentical } from "@/lib/data/bronze";
+import { resolveKalshiHistoricalCandlestickPriceClose } from "@/lib/data/importers/kalshi/kalshiHistoricalCandlestickWire";
 import { rawHistoricalRecordSchema } from "@/lib/data/schemas";
 import { SILVER_BRONZE_CONTENT_TYPE } from "@/lib/data/silver";
 import { isUtcIsoTimestamp } from "@/lib/data/timestamps";
@@ -366,6 +367,26 @@ function validatePayload(
             record,
           ),
         );
+      }
+      const endPeriodTs = readNumber(payload, "end_period_ts", "endPeriodTs");
+      const hasLegacyBidAsk =
+        readNumber(payload, "yes_bid_cents", "yesBidCents") !== undefined
+        || readNumber(payload, "yes_ask_cents", "yesAskCents") !== undefined;
+      if (endPeriodTs !== undefined && !hasLegacyBidAsk) {
+        const pricePayload = isRecord(payload.price) ? payload.price : {};
+        const priceClose = resolveKalshiHistoricalCandlestickPriceClose({
+          price: pricePayload,
+        });
+        if (!priceClose) {
+          issues.push(
+            createIssue(
+              HistoricalBronzeValidationErrorCode.MALFORMED_PAYLOAD,
+              "warning",
+              `historical candlestick payload is missing price.close for end_period_ts=${endPeriodTs}`,
+              record,
+            ),
+          );
+        }
       }
       break;
     }

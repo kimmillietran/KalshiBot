@@ -7,6 +7,10 @@ const CONFIG_HASH_PREFIX = "cfg-v1";
  * Keys are sorted recursively so equivalent configs always produce the same string.
  */
 export function stableStringify(value: unknown): string {
+  if (value === undefined) {
+    return "null";
+  }
+
   if (value === null || typeof value !== "object") {
     return JSON.stringify(value);
   }
@@ -16,7 +20,9 @@ export function stableStringify(value: unknown): string {
   }
 
   const record = value as Record<string, unknown>;
-  const keys = Object.keys(record).sort();
+  const keys = Object.keys(record)
+    .filter((key) => record[key] !== undefined)
+    .sort();
   const entries = keys.map(
     (key) => `${JSON.stringify(key)}:${stableStringify(record[key])}`,
   );

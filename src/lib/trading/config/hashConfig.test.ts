@@ -14,6 +14,20 @@ describe("stableStringify", () => {
     const b = stableStringify({ a: 2, z: 1 });
     expect(a).toBe(b);
   });
+
+  it("omits undefined object properties instead of emitting invalid JSON", () => {
+    const serialized = stableStringify({
+      end_period_ts: 1_735_670_400,
+      price: undefined,
+      volume: "12.00",
+    });
+
+    expect(serialized).not.toContain("undefined");
+    expect(JSON.parse(serialized)).toEqual({
+      end_period_ts: 1_735_670_400,
+      volume: "12.00",
+    });
+  });
 });
 
 describe("fnv1a32", () => {

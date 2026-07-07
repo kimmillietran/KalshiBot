@@ -242,6 +242,49 @@ describe("KalshiHistoricalImporter", () => {
     expect(result.candlesticks[0]?.priceClose).toBe("0.5500");
   });
 
+  it("parses candlesticks with missing or blank price.close as null", async () => {
+    const client = createFakeClient(() => ({
+      status: 200,
+      body: {
+        ticker: "KXBTC15M-25DEC311900-00",
+        candlesticks: [
+          {
+            end_period_ts: 1_735_670_400,
+            volume: "0.00",
+            open_interest: "12.00",
+          },
+          {
+            end_period_ts: 1_735_670_460,
+            volume: "8.00",
+            open_interest: "10.00",
+            price: { close: "" },
+          },
+        ],
+      },
+    }));
+
+    const importer = createImporter(client);
+    const result = await importer.getMarketCandlesticks("KXBTC15M-25DEC311900-00", 1, {
+      startTs: 1_735_670_300,
+      endTs: 1_735_670_500,
+    });
+
+    expect(result.candlesticks).toEqual([
+      {
+        endPeriodTs: 1_735_670_400,
+        volume: "0.00",
+        openInterest: "12.00",
+        priceClose: null,
+      },
+      {
+        endPeriodTs: 1_735_670_460,
+        volume: "8.00",
+        openInterest: "10.00",
+        priceClose: null,
+      },
+    ]);
+  });
+
   it("parses historical cutoff timestamps", async () => {
     const client = createFakeClient((url) => {
       expect(url).toBe("https://example.test/trade-api/v2/historical/cutoff");
