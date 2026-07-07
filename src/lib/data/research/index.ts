@@ -281,6 +281,33 @@ export type {
 } from "./coverageAwareValidation";
 
 export {
+  analyzeHypothesisFailure,
+  buildDefaultHypothesisFailureAnalysisInputPaths,
+  buildHypothesisFailureAnalysisReport,
+  classifyHypothesisPriorityCategory,
+  computeHypothesisPriorityScore,
+  loadHypothesisFailureAnalysisInputs,
+  rankHypothesisFailureAnalyses,
+  resolveRecommendedNextAction,
+  serializeHypothesisFailureAnalysisHtml,
+  serializeHypothesisFailureAnalysisReport,
+  DEFAULT_HYPOTHESIS_FAILURE_ANALYSIS_HTML_PATH,
+  DEFAULT_HYPOTHESIS_FAILURE_ANALYSIS_OUTPUT_PATH,
+  HYPOTHESIS_FAILURE_ANALYSIS_FILENAME,
+  HypothesisFailureAnalysisError,
+} from "./hypothesisFailureAnalysis";
+export type {
+  BuildHypothesisFailureAnalysisReportInput,
+  HypothesisFailureAnalysisEntry,
+  HypothesisFailureAnalysisReport,
+  HypothesisFailureReason,
+  HypothesisFailureReasonCategory,
+  HypothesisPriorityCategory,
+  HypothesisRecommendedNextAction,
+  HypothesisStabilityDiagnostics,
+} from "./hypothesisFailureAnalysis";
+
+export {
   buildStatisticalSignificanceFromDirectories,
   buildStatisticalSignificanceReport,
   bootstrapMeanConfidenceInterval,

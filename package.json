@@ -44,6 +44,7 @@
     "research:coverage-plan": "tsx scripts/research/buildHistoricalCoveragePlan.ts",
     "research:hypothesis-lifecycle": "tsx scripts/research/buildHypothesisLifecycleDashboard.ts",
     "research:hypothesis-history": "tsx scripts/research/buildHypothesisHistory.ts",
+    "research:hypothesis-failure-analysis": "tsx scripts/research/buildHypothesisFailureAnalysis.ts",
     "research:artifact-index": "tsx scripts/research/buildResearchArtifactIndex.ts",
     "research:dashboard": "tsx scripts/research/buildResearchPipelineDashboard.ts",
     "research:full": "tsx scripts/research/runFullResearchOrchestrator.ts",
