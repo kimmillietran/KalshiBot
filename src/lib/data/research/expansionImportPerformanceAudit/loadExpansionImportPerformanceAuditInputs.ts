@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import type { ExpansionImportAdaptiveThrottleDiagnostics } from "@/lib/data/importJobs/expansionExecutor/expansionImportAdaptiveThrottle";
 import type { HistoricalExpansionImportSummary } from "@/lib/data/importJobs/expansionExecutor/expansionExecutorTypes";
+import type { DerivedExpirationValueProvenance } from "@/lib/data/importers/kalshi/kalshiDerivedExpirationValueTypes";
 import {
   createExpansionImportResumeDiagnostics,
   parseExpansionImportCheckpointJson,
@@ -56,6 +57,7 @@ const jobSchema = z.object({
 const summarySchema = z.object({
   generatedAt: z.string().trim().min(1),
   execute: z.boolean(),
+  allowDerivedExpirationValue: z.boolean().optional(),
   inputPath: z.string().trim().min(1),
   outputPath: z.string().trim().min(1),
   htmlOutputPath: z.string().trim().min(1).optional(),
@@ -86,7 +88,24 @@ const summarySchema = z.object({
     unsupportedCount: z.number().finite().nonnegative().optional(),
     skippedUnsupportedCount: z.number().finite().nonnegative().optional(),
     durationMs: z.number().finite().nonnegative(),
+    derivedExpirationValueCount: z.number().finite().nonnegative().optional(),
+    derivedExpirationValueFailedCount: z.number().finite().nonnegative().optional(),
   }),
+  derivedExpirationValueMarkets: z
+    .array(
+      z.object({
+        marketTicker: z.string().trim().min(1),
+        provenance: z.object({
+          source: z.string().trim().min(1),
+          interval: z.string().trim().min(1),
+          derivedAt: z.string().trim().min(1),
+          sourceTimestamp: z.string().trim().min(1),
+          derivationRuleVersion: z.string().trim().min(1),
+          expirationValue: z.string().trim().min(1),
+        }),
+      }),
+    )
+    .optional(),
   jobs: z.array(jobSchema),
   adaptiveThrottleDiagnostics: z
     .object({
@@ -172,6 +191,7 @@ export function parseExpansionImportPerformanceAuditSummaryJson(
   return {
     generatedAt: data.generatedAt,
     execute: data.execute,
+    allowDerivedExpirationValue: data.allowDerivedExpirationValue ?? false,
     inputPath: data.inputPath,
     outputPath: data.outputPath,
     htmlOutputPath: data.htmlOutputPath ?? "data/reports/historical-expansion-import-summary.html",
@@ -204,7 +224,13 @@ export function parseExpansionImportPerformanceAuditSummaryJson(
       selectedUnknownMarkets: 0,
       selectedUnsupportedMarkets: 0,
       durationMs: data.summary.durationMs,
+      derivedExpirationValueCount: data.summary.derivedExpirationValueCount ?? 0,
+      derivedExpirationValueFailedCount: data.summary.derivedExpirationValueFailedCount ?? 0,
     },
+    derivedExpirationValueMarkets: (data.derivedExpirationValueMarkets ?? []).map((entry) => ({
+      marketTicker: entry.marketTicker,
+      provenance: entry.provenance as DerivedExpirationValueProvenance,
+    })),
     jobs: data.jobs.map((job) => ({
       jobId: job.jobId,
       seriesTicker: job.seriesTicker,

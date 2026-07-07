@@ -1,4 +1,7 @@
 import type { ExpansionDiscoveredMarket } from "./expansionExecutorTypes";
+import type {
+  ClassifyExpansionImportPlanningCategoryOptions,
+} from "./classifyExpansionImportPlanningCategory";
 import {
   classifyExpansionImportPlanningCategory,
   countExpansionImportSelectionByCategory,
@@ -101,6 +104,7 @@ function selectEvenlySpaced<T>(items: readonly T[], count: number): T[] {
 function groupMarketsByPlanningCategory(
   markets: readonly ExpansionDiscoveredMarket[],
   history: ExpansionImportPlanningHistory,
+  options?: ClassifyExpansionImportPlanningCategoryOptions,
 ): Record<ExpansionImportPlanningCategory, ExpansionDiscoveredMarket[]> {
   const grouped: Record<ExpansionImportPlanningCategory, ExpansionDiscoveredMarket[]> = {
     "likely-supported": [],
@@ -109,7 +113,7 @@ function groupMarketsByPlanningCategory(
   };
 
   for (const market of markets) {
-    const category = classifyExpansionImportPlanningCategory(market, history);
+    const category = classifyExpansionImportPlanningCategory(market, history, options);
     grouped[category].push(market);
   }
 
@@ -148,13 +152,18 @@ export function planExpansionImportCandidateQueue(input: {
   sampleStrategy: ExpansionImportSampleStrategy;
   planningHistory: ExpansionImportPlanningHistory;
   selectionSeed: string;
+  allowDerivedExpirationValue?: boolean;
 }): {
   plannedQueue: ExpansionDiscoveredMarket[];
   selection: ExpansionImportSelectionCounts;
 } {
+  const planningOptions: ClassifyExpansionImportPlanningCategoryOptions = {
+    allowDerivedExpirationValue: input.allowDerivedExpirationValue,
+  };
   const grouped = groupMarketsByPlanningCategory(
     input.eligibleMarkets,
     input.planningHistory,
+    planningOptions,
   );
 
   const plannedQueue: ExpansionDiscoveredMarket[] = [];
@@ -188,6 +197,7 @@ export function planExpansionImportCandidateQueue(input: {
     selection: buildExpansionImportSelectionCounts(
       plannedQueue,
       input.planningHistory,
+      planningOptions,
     ),
   };
 }
@@ -195,10 +205,12 @@ export function planExpansionImportCandidateQueue(input: {
 export function buildExpansionImportSelectionCounts(
   plannedQueue: readonly ExpansionDiscoveredMarket[],
   planningHistory: ExpansionImportPlanningHistory,
+  options?: ClassifyExpansionImportPlanningCategoryOptions,
 ): ExpansionImportSelectionCounts {
   const counts = countExpansionImportSelectionByCategory(
     plannedQueue,
     planningHistory,
+    options,
   );
 
   return {

@@ -17,6 +17,7 @@ export type BuildPlannedExpansionImportQueueOptions = {
   sampleStrategy?: ExpansionImportSampleStrategy;
   planningHistory?: ExpansionImportPlanningHistory | null;
   selectionSeed?: string;
+  allowDerivedExpirationValue?: boolean;
 };
 
 /** Builds the explicit post-dedupe import queue with optional global cap and selection policy. */
@@ -51,6 +52,7 @@ export function buildPlannedExpansionImportQueue(
     sampleStrategy: options?.sampleStrategy ?? DEFAULT_EXPANSION_IMPORT_SAMPLE_STRATEGY,
     planningHistory,
     selectionSeed: options?.selectionSeed ?? "expansion-import",
+    allowDerivedExpirationValue: options?.allowDerivedExpirationValue,
   });
 
   return { alreadyCoveredCount, plannedQueue, selection };

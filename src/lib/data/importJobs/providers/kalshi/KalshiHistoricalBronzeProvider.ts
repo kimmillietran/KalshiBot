@@ -21,6 +21,7 @@ import type {
   HistoricalSettlementResult,
 } from "@/lib/data/importers/kalshi/kalshiHistoricalTypes";
 import type { RawHistoricalRecord } from "@/lib/data/types";
+import { DataQualityFlag } from "@/lib/data/schemas";
 import type {
   CollectionTime,
   EventTime,
@@ -45,6 +46,7 @@ type KalshiMarketWire = {
   settlement_value_dollars?: string | null;
   expiration_value: string;
   floor_strike?: number | null;
+  quality_flags?: readonly string[];
 };
 
 type KalshiCandlestickWire = {
@@ -144,6 +146,7 @@ function marketRecordToWire(
 
 function settlementResultToWire(
   settlement: HistoricalSettlementResult,
+  settlementQualityFlags: readonly DataQualityFlag[] = [],
 ): KalshiMarketWire {
   if (
     !settlement.ticker.trim()
@@ -166,6 +169,9 @@ function settlementResultToWire(
     settlement_value_dollars: settlement.settlementValueDollars,
     expiration_value: settlement.expirationValue,
     floor_strike: null,
+    ...(settlementQualityFlags.length > 0
+      ? { quality_flags: [...settlementQualityFlags] }
+      : {}),
   };
 }
 
@@ -222,8 +228,9 @@ function mapSettlementRecordToBronze(
   settlement: HistoricalSettlementResult,
   input: KalshiHistoricalBronzeProviderMethodInput,
   requestPath: string,
+  settlementQualityFlags: readonly DataQualityFlag[] = [],
 ): RawHistoricalRecord {
-  const wire = settlementResultToWire(settlement);
+  const wire = settlementResultToWire(settlement, settlementQualityFlags);
 
   return mapKalshiSettlementPayloadToBronzeRecord({
     ticker: input.marketTicker,
@@ -280,6 +287,7 @@ function importKalshiCandleRecords(
 function importKalshiSettlementRecords(
   importer: KalshiHistoricalBronzeImporter,
   input: KalshiHistoricalBronzeProviderMethodInput,
+  settlementQualityFlags: readonly DataQualityFlag[] = [],
 ): readonly RawHistoricalRecord[] {
   const settlement = importer.getSettlementResult(input.marketTicker);
   if (settlement === null) {
@@ -288,7 +296,12 @@ function importKalshiSettlementRecords(
 
   const requestPath = buildHistoricalMarketPath(input.marketTicker);
   return sortBronzeRecords([
-    mapSettlementRecordToBronze(settlement, input, requestPath),
+    mapSettlementRecordToBronze(
+      settlement,
+      input,
+      requestPath,
+      settlementQualityFlags,
+    ),
   ]);
 }
 
@@ -299,13 +312,13 @@ function importKalshiSettlementRecords(
 export function createKalshiHistoricalBronzeProvider(
   config: CreateKalshiHistoricalBronzeProviderInput,
 ): KalshiHistoricalBronzeProvider {
-  const { importer } = config;
+  const { importer, settlementQualityFlags = [] } = config;
 
   return Object.freeze({
     importKalshiMarketRecords: (input) => importKalshiMarketRecords(importer, input),
     importKalshiCandleRecords: (input) => importKalshiCandleRecords(importer, input),
     importKalshiSettlementRecords: (input) =>
-      importKalshiSettlementRecords(importer, input),
+      importKalshiSettlementRecords(importer, input, settlementQualityFlags),
   });
 }
 

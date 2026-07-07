@@ -33,6 +33,8 @@ export type PrefetchedKalshiHistoricalBronzeState = {
   settlement: HistoricalSettlementResult | null;
 };
 
+import type { DataQualityFlag } from "@/lib/data/schemas";
+
 export type CreatePrefetchedKalshiHistoricalBronzeProviderInput = {
   importer: HistoricalImporter;
   marketTicker: string;
@@ -42,4 +44,5 @@ export type CreatePrefetchedKalshiHistoricalBronzeProviderInput = {
   observedAt: string;
   listMarketWire?: KalshiMarketWireShape | null;
   reconciliationTrace?: PrefetchKalshiHistoricalReconciliationTraceCallbacks | null;
+  settlementQualityFlags?: readonly DataQualityFlag[];
 };

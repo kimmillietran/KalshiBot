@@ -108,4 +108,27 @@ describe("classifyExpansionImportPlanningCategory", () => {
       ),
     ).toBe("known-unsupported");
   });
+
+  it("classifies derivation-eligible missing expiration_value markets as unknown when opt-in", () => {
+    expect(
+      classifyExpansionImportPlanningCategory(
+        createMarket({
+          marketTicker: "KXBTC15M-25DEC311900-00",
+          expirationValue: "",
+          listMarketWire: {
+            ticker: "KXBTC15M-25DEC311900-00",
+            event_ticker: "KXBTC15M-25DEC311900",
+            series_ticker: "KXBTC15M",
+            status: "finalized",
+            result: "yes",
+            open_time: "2025-12-31T18:45:00.000Z",
+            close_time: "2025-12-31T19:00:00.000Z",
+            floor_strike: 94180.12,
+          },
+        }),
+        createHistory(),
+        { allowDerivedExpirationValue: true },
+      ),
+    ).toBe("unknown");
+  });
 });

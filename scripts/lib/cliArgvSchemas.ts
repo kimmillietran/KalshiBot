@@ -427,6 +427,17 @@ export const EXPANSION_IMPORT_PERFORMANCE_AUDIT_ARGV_SCHEMA: readonly NpmArgvFie
   { flag: "--imports-dir" },
 ];
 
+export const HISTORICAL_CORPUS_AUDIT_ARGV_SCHEMA: readonly NpmArgvField[] = [
+  { flag: "--output" },
+  { flag: "--html-output" },
+  { flag: "--series" },
+  { flag: "--coverage-plan" },
+  { flag: "--expansion-import-summary" },
+  { flag: "--discovery-result" },
+  { flag: "--discovery-cache-dir" },
+  { flag: "--expansion-batch-plan" },
+];
+
 export const EXPANSION_RUN_HISTORY_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--output" },
   { flag: "--html-output" },
@@ -732,6 +743,10 @@ export function normalizeExpansionImportPerformanceAuditArgv(
   return normalizeNpmScriptArgv(argv, EXPANSION_IMPORT_PERFORMANCE_AUDIT_ARGV_SCHEMA);
 }
 
+export function normalizeHistoricalCorpusAuditArgv(argv: readonly string[]): string[] {
+  return normalizeNpmScriptArgv(argv, HISTORICAL_CORPUS_AUDIT_ARGV_SCHEMA);
+}
+
 export function normalizeFullResearchOrchestratorArgv(argv: readonly string[]): string[] {
   return mergeNpmBooleanFlags(
     normalizeNpmScriptArgv(argv, FULL_RESEARCH_ORCHESTRATOR_ARGV_SCHEMA),
@@ -825,6 +840,7 @@ const EXECUTE_EXPANSION_IMPORT_BOOLEAN_FLAGS = [
   "--retry-failed",
   "--retry-unsupported",
   "--verify-resume-artifacts",
+  "--allow-derived-expiration-value",
 ] as const;
 
 const PLAN_EXPANSION_BATCH_NPM_CONFIG_FLAGS = [

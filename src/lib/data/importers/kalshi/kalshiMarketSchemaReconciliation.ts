@@ -1,4 +1,5 @@
 import type { DiscoveredMarket } from "@/lib/data/discovery/discoveryTypes";
+import type { DerivedExpirationValueProvenance } from "./kalshiDerivedExpirationValueTypes";
 import type {
   HistoricalImportProvenance,
   HistoricalMarketRecord,
@@ -12,6 +13,8 @@ import {
 export const KALSHI_DISCOVERY_LIST_MARKET_METADATA_KEY = "kalshiDiscoveryListMarket";
 export const KALSHI_DISCOVERY_LIST_MARKET_PROVENANCE_METADATA_KEY =
   "kalshiDiscoveryListMarketProvenance";
+export const KALSHI_DERIVED_EXPIRATION_VALUE_PROVENANCE_METADATA_KEY =
+  "kalshiDerivedExpirationValueProvenance";
 export const KALSHI_SCHEMA_RECONCILIATION_METADATA_KEY = "kalshiSchemaReconciliation";
 
 export const KALSHI_MARKET_SCHEMA_RECONCILIATION_FIELDS = [
@@ -204,6 +207,18 @@ export function readKalshiDiscoveryListMarketProvenanceFromMetadata(
   }
 
   return value as HistoricalImportProvenance;
+}
+
+/** Reads derived expiration_value provenance from import config metadata. */
+export function readDerivedExpirationValueProvenanceFromMetadata(
+  metadata: Record<string, unknown> | undefined,
+): DerivedExpirationValueProvenance | null {
+  const value = metadata?.[KALSHI_DERIVED_EXPIRATION_VALUE_PROVENANCE_METADATA_KEY];
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+
+  return value as DerivedExpirationValueProvenance;
 }
 
 export function buildKalshiSchemaReconciliationMetadata(input: {

@@ -225,6 +225,17 @@ describe("runExecuteExpansionImportCommand", () => {
     vi.unstubAllEnvs();
   });
 
+  it("parses --allow-derived-expiration-value", () => {
+    expect(
+      parseExecuteExpansionImportConfigFromArgv(
+        normalizeExecuteExpansionImportArgv([
+          "--execute",
+          "--allow-derived-expiration-value",
+        ]),
+      ).allowDerivedExpirationValue,
+    ).toBe(true);
+  });
+
   it("parses --sample-strategy with supported-first as default", () => {
     expect(
       parseExecuteExpansionImportConfigFromArgv(

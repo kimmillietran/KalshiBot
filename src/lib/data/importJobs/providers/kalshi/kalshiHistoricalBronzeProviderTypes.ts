@@ -25,10 +25,13 @@ export type KalshiHistoricalBronzeImporter = {
   getSettlementResult(ticker: string): HistoricalSettlementResult | null;
 };
 
+import type { DataQualityFlag } from "@/lib/data/schemas";
+
 export type CreateKalshiHistoricalBronzeProviderInput = {
   importer: KalshiHistoricalBronzeImporter;
   collectionTime: string;
   observedAt: string;
+  settlementQualityFlags?: readonly DataQualityFlag[];
 };
 
 export type KalshiHistoricalBronzeProviderContext = {

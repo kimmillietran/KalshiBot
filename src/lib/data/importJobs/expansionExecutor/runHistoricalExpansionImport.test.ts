@@ -12,7 +12,10 @@ import {
   serializeExpansionImportCheckpoint,
 } from "@/lib/data/importJobs/expansionImportSafety";
 
-import { KALSHI_DISCOVERY_LIST_MARKET_METADATA_KEY } from "@/lib/data/importers/kalshi/kalshiMarketSchemaReconciliation";
+import {
+  KALSHI_DERIVED_EXPIRATION_VALUE_PROVENANCE_METADATA_KEY,
+  KALSHI_DISCOVERY_LIST_MARKET_METADATA_KEY,
+} from "@/lib/data/importers/kalshi/kalshiMarketSchemaReconciliation";
 
 import { buildExpansionMarketImportArtifacts } from "./buildExpansionMarketImportConfig";
 import { EXPANSION_IMPORT_CIRCUIT_BREAKER_WINDOW } from "./expansionImportCircuitBreaker";
@@ -162,6 +165,8 @@ function createBaseConfig(overrides?: Partial<{
   maxMarkets: number | null;
   rateLimitBackoffMs: number;
   maxRateLimitRetries: number;
+  allowDerivedExpirationValue: boolean;
+  useDiscoveryCache: boolean;
 }>) {
   return {
     inputPath: CONFIG_PATH,
@@ -203,6 +208,7 @@ function createBaseConfig(overrides?: Partial<{
     refreshDiscoveryCache: false,
     refreshDiscoveryMonth: null,
     batchPlanPath: null,
+    allowDerivedExpirationValue: false,
     ...overrides,
   };
 }
@@ -1098,5 +1104,145 @@ describe("runHistoricalExpansionImport cap enforcement", () => {
     expect(summary.selection.selectedUnknownMarkets).toBe(0);
     expect(summary.selection.selectedUnsupportedMarkets).toBe(0);
     expect(summary.summary.selectedSupportedMarkets).toBe(1);
+  });
+
+  it("imports Dec 2025 markets when derived expiration_value is enabled and Coinbase is available", async () => {
+    const decMarket = createExpansionDiscoveredMarket({
+      marketTicker: "KXBTC15M-25DEC311900-00",
+      openTime: "2025-12-31T18:45:00.000Z",
+      closeTime: "2025-12-31T19:00:00.000Z",
+      expirationValue: "",
+      listMarketWire: {
+        ticker: "KXBTC15M-25DEC311900-00",
+        event_ticker: "KXBTC15M-25DEC311900",
+        series_ticker: "KXBTC15M",
+        status: "finalized",
+        result: "yes",
+        open_time: "2025-12-31T18:45:00.000Z",
+        close_time: "2025-12-31T19:00:00.000Z",
+        floor_strike: 94180.12,
+      },
+    });
+    const mock: MockFs = { files: {}, directories: new Set(["data"]) };
+    const io = createIo(mock);
+    const runImport = vi.fn(async (config) => createImportResult(config.marketTicker));
+
+    const summary = await runHistoricalExpansionImport({
+      generatedAt: GENERATED_AT,
+      config: createBaseConfig({
+        execute: true,
+        maxMarkets: 1,
+        allowDerivedExpirationValue: true,
+        useDiscoveryCache: false,
+      }),
+      expansionConfigJson: createManifestJson(),
+      io,
+      deps: {
+        discoverMarkets: vi.fn(async () => [decMarket]),
+        runImport,
+        fetchCoinbaseCloseUsdAtCloseTime: vi.fn(async () => ({
+          closeUsd: 94210.55,
+          sourceTimestamp: "2025-12-31T19:00:00.000Z",
+        })),
+      },
+    });
+
+    expect(summary.summary.plannedCount).toBe(1);
+    expect(summary.allowDerivedExpirationValue).toBe(true);
+    expect(summary.summary.derivedExpirationValueCount).toBe(1);
+    expect(summary.summary.derivedExpirationValueFailedCount).toBe(0);
+    expect(summary.derivedExpirationValueMarkets).toHaveLength(1);
+    expect(summary.jobs[0]?.markets[0]?.status).toBe("imported");
+    expect(runImport).toHaveBeenCalledTimes(1);
+    expect(summary.jobs[0]?.markets[0]?.derivedExpirationValue).toBe(true);
+
+    const configMetadata = runImport.mock.calls[0]?.[0].metadata as Record<string, unknown>;
+    expect(configMetadata[KALSHI_DERIVED_EXPIRATION_VALUE_PROVENANCE_METADATA_KEY]).toMatchObject({
+      source: "coinbase-spot",
+      interval: "1m",
+      expirationValue: "94210.55",
+    });
+    expect(
+      (configMetadata[KALSHI_DISCOVERY_LIST_MARKET_METADATA_KEY] as { expiration_value?: string })
+        .expiration_value,
+    ).toBe("94210.55");
+  });
+
+  it("keeps Dec 2025 markets unsupported when derived fetch fails", async () => {
+    const decMarket = createExpansionDiscoveredMarket({
+      marketTicker: "KXBTC15M-25DEC311900-00",
+      openTime: "2025-12-31T18:45:00.000Z",
+      closeTime: "2025-12-31T19:00:00.000Z",
+      expirationValue: "",
+      listMarketWire: {
+        ticker: "KXBTC15M-25DEC311900-00",
+        event_ticker: "KXBTC15M-25DEC311900",
+        series_ticker: "KXBTC15M",
+        status: "finalized",
+        result: "yes",
+        open_time: "2025-12-31T18:45:00.000Z",
+        close_time: "2025-12-31T19:00:00.000Z",
+        floor_strike: 94180.12,
+      },
+    });
+    const mock: MockFs = { files: {}, directories: new Set(["data"]) };
+    const io = createIo(mock);
+    const runImport = vi.fn(async (config) => createImportResult(config.marketTicker));
+
+    const summary = await runHistoricalExpansionImport({
+      generatedAt: GENERATED_AT,
+      config: createBaseConfig({
+        execute: true,
+        maxMarkets: 1,
+        allowDerivedExpirationValue: true,
+        useDiscoveryCache: false,
+      }),
+      expansionConfigJson: createManifestJson(),
+      io,
+      deps: {
+        discoverMarkets: vi.fn(async () => [decMarket]),
+        runImport,
+        fetchCoinbaseCloseUsdAtCloseTime: vi.fn(async () => null),
+      },
+    });
+
+    expect(runImport).not.toHaveBeenCalled();
+    expect(summary.summary.derivedExpirationValueCount).toBe(0);
+    expect(summary.summary.derivedExpirationValueFailedCount).toBe(1);
+    expect(summary.jobs[0]?.markets[0]?.status).toBe("skipped");
+  });
+
+  it("preserves official expiration_value without derived metadata", async () => {
+    const officialMarket = createExpansionDiscoveredMarket({
+      marketTicker: "KXBTC15M-26JAN151215-00",
+    });
+    const mock: MockFs = { files: {}, directories: new Set(["data"]) };
+    const io = createIo(mock);
+    const runImport = vi.fn(async (config) => createImportResult(config.marketTicker));
+    const fetchCoinbaseCloseUsdAtCloseTime = vi.fn(async () => ({
+      closeUsd: 1,
+      sourceTimestamp: "2026-01-15T12:15:00.000Z",
+    }));
+
+    const summary = await runHistoricalExpansionImport({
+      generatedAt: GENERATED_AT,
+      config: createBaseConfig({
+        execute: true,
+        maxMarkets: 1,
+        allowDerivedExpirationValue: true,
+        useDiscoveryCache: false,
+      }),
+      expansionConfigJson: createManifestJson(),
+      io,
+      deps: {
+        discoverMarkets: vi.fn(async () => [officialMarket]),
+        runImport,
+        fetchCoinbaseCloseUsdAtCloseTime,
+      },
+    });
+
+    expect(fetchCoinbaseCloseUsdAtCloseTime).not.toHaveBeenCalled();
+    expect(summary.summary.derivedExpirationValueCount).toBe(0);
+    expect(summary.jobs[0]?.markets[0]?.derivedExpirationValue).toBeUndefined();
   });
 });

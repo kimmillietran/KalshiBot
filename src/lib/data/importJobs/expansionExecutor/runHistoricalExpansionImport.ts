@@ -42,6 +42,11 @@ import {
   createExpansionDiscoveryDeltaRefreshDiagnostics,
 } from "./expansionDiscoveryCache";
 import { classifyUnsupportedHistoricalMarket, countUnsupportedHistoricalMarketResults } from "./classifyUnsupportedHistoricalMarket";
+import {
+  deriveMissingExpirationValue,
+  isDerivedExpirationValueEligible,
+  isOnlyMissingExpirationValue,
+} from "./deriveMissingExpirationValue";
 import type { ExpansionImportSelectionCounts } from "./expansionImportSelectionTypes";
 import { loadExpansionImportPlanningHistory } from "./loadExpansionImportPlanningHistory";
 import {
@@ -77,9 +82,11 @@ import {
   type ExpansionImportRateLimitConfig,
   type ExpansionImportRateLimitState,
 } from "./expansionImportRateLimit";
+import type { DerivedExpirationValueProvenance } from "@/lib/data/importers/kalshi/kalshiDerivedExpirationValueTypes";
 import {
   ExpansionExecutorError,
   ExpansionExecutorErrorCode,
+  type DerivedExpirationValueDiagnostics,
   type ExpansionImportJobResult,
   type ExpansionImportMarketResult,
   type HistoricalExpansionImportSummary,
@@ -139,11 +146,46 @@ function aggregateSelection(
   };
 }
 
+function aggregateDerivedExpirationValueDiagnostics(
+  jobs: readonly ExpansionImportJobResult[],
+): DerivedExpirationValueDiagnostics {
+  const derivedExpirationValueMarkets: Array<{
+    marketTicker: string;
+    provenance: DerivedExpirationValueProvenance;
+  }> = [];
+  let derivedExpirationValueCount = 0;
+  let derivedExpirationValueFailedCount = 0;
+
+  for (const job of jobs) {
+    for (const market of job.markets) {
+      if (market.derivedExpirationValue && market.derivedExpirationValueProvenance) {
+        derivedExpirationValueCount += 1;
+        derivedExpirationValueMarkets.push({
+          marketTicker: market.marketTicker,
+          provenance: market.derivedExpirationValueProvenance,
+        });
+        continue;
+      }
+
+      if (market.derivedExpirationValue === false) {
+        derivedExpirationValueFailedCount += 1;
+      }
+    }
+  }
+
+  return {
+    derivedExpirationValueCount,
+    derivedExpirationValueFailedCount,
+    derivedExpirationValueMarkets,
+  };
+}
+
 function aggregateSummary(
   jobs: readonly ExpansionImportJobResult[],
   startedAtMs: number,
 ): HistoricalExpansionImportSummary["summary"] {
   const selection = aggregateSelection(jobs);
+  const derivedDiagnostics = aggregateDerivedExpirationValueDiagnostics(jobs);
   return {
     jobCount: jobs.length,
     discoveredMarketCount: jobs.reduce(
@@ -163,6 +205,8 @@ function aggregateSummary(
     selectedUnknownMarkets: selection.selectedUnknownMarkets,
     selectedUnsupportedMarkets: selection.selectedUnsupportedMarkets,
     durationMs: Date.now() - startedAtMs,
+    derivedExpirationValueCount: derivedDiagnostics.derivedExpirationValueCount,
+    derivedExpirationValueFailedCount: derivedDiagnostics.derivedExpirationValueFailedCount,
   };
 }
 
@@ -180,10 +224,12 @@ function buildPartialSummary(
 ): HistoricalExpansionImportSummary {
   const durationMs = Date.now() - startedAtMs;
   const rateLimitDiagnostics = buildExpansionRateLimitDiagnostics(rateLimitState);
+  const derivedDiagnostics = aggregateDerivedExpirationValueDiagnostics(jobResults);
 
   return {
     generatedAt: input.generatedAt,
     execute: input.config.execute,
+    allowDerivedExpirationValue: input.config.allowDerivedExpirationValue,
     inputPath: input.config.inputPath,
     outputPath: input.config.outputPath,
     htmlOutputPath: input.config.htmlOutputPath,
@@ -217,6 +263,7 @@ function buildPartialSummary(
     resumeDiagnostics,
     discoveryDiagnostics,
     summary: aggregateSummary(jobResults, startedAtMs),
+    derivedExpirationValueMarkets: derivedDiagnostics.derivedExpirationValueMarkets,
     jobs: jobResults,
     warnings,
   };
@@ -245,40 +292,78 @@ async function executeMarketImport(
   adaptiveThrottle: ExpansionAdaptiveThrottleController | null,
 ): Promise<ExpansionImportMarketResult> {
   const startedAtMs = Date.now();
+  const buildMarketResultBase = (
+    overrides: Partial<ExpansionImportMarketResult>,
+  ): ExpansionImportMarketResult => ({
+    marketTicker: market.marketTicker,
+    seriesTicker: market.seriesTicker,
+    status: "skipped",
+    configPath: null,
+    importResultPath: null,
+    errorMessage: null,
+    skipReason: null,
+    durationMs: Date.now() - startedAtMs,
+    ...overrides,
+  });
 
   if (!market.openTime || !market.closeTime) {
-    return {
-      marketTicker: market.marketTicker,
-      seriesTicker: market.seriesTicker,
-      status: "skipped",
-      configPath: null,
-      importResultPath: null,
-      errorMessage: null,
+    return buildMarketResultBase({
       skipReason: "Discovered market is missing openTime or closeTime",
-      durationMs: Date.now() - startedAtMs,
-    };
+    });
   }
 
-  const unsupported = classifyUnsupportedHistoricalMarket({
+  let marketForImport = market;
+  let derivedExpirationValueProvenance: DerivedExpirationValueProvenance | null = null;
+  let derivedExpirationValueAttemptFailed = false;
+
+  const initialUnsupported = classifyUnsupportedHistoricalMarket({
     listMarketWire: market.listMarketWire,
     detailMarketWire: null,
   });
-  if (unsupported.support === "unsupported") {
-    return {
-      marketTicker: market.marketTicker,
-      seriesTicker: market.seriesTicker,
-      status: "skipped",
-      configPath: null,
-      importResultPath: null,
-      errorMessage: null,
-      skipReason: unsupported.skipReason,
-      durationMs: Date.now() - startedAtMs,
-    };
+
+  if (
+    initialUnsupported.support === "unsupported"
+    && input.config.allowDerivedExpirationValue
+    && isOnlyMissingExpirationValue(initialUnsupported.missingRequiredFields)
+    && isDerivedExpirationValueEligible(market)
+  ) {
+    const fetchCoinbaseCloseUsdAtCloseTime = input.deps.fetchCoinbaseCloseUsdAtCloseTime;
+    if (!fetchCoinbaseCloseUsdAtCloseTime) {
+      derivedExpirationValueAttemptFailed = true;
+    } else {
+      const derivation = await deriveMissingExpirationValue({
+        market,
+        derivedAt: input.generatedAt,
+        fetchCoinbaseCloseUsdAtCloseTime,
+      });
+
+      if (derivation.ok) {
+        marketForImport = derivation.market;
+        derivedExpirationValueProvenance = derivation.provenance;
+      } else {
+        derivedExpirationValueAttemptFailed = true;
+      }
+    }
   }
 
-  const artifacts = buildExpansionMarketImportArtifacts(job, market, {
+  const unsupported = classifyUnsupportedHistoricalMarket({
+    listMarketWire: marketForImport.listMarketWire,
+    detailMarketWire: null,
+  });
+  if (unsupported.support === "unsupported") {
+    return buildMarketResultBase({
+      skipReason: unsupported.skipReason,
+      ...(derivedExpirationValueAttemptFailed
+        ? { derivedExpirationValue: false }
+        : {}),
+    });
+  }
+
+  const artifacts = buildExpansionMarketImportArtifacts(job, marketForImport, {
     importConfigsDir: input.config.importConfigsDir,
     importsDir: input.config.importsDir,
+  }, {
+    derivedExpirationValueProvenance,
   });
   const listMarketWire = readKalshiDiscoveryListMarketFromMetadata(artifacts.config.metadata);
 
@@ -299,16 +384,17 @@ async function executeMarketImport(
   });
 
   if (!input.config.execute) {
-    return {
-      marketTicker: market.marketTicker,
-      seriesTicker: market.seriesTicker,
+    return buildMarketResultBase({
       status: "planned",
       configPath: artifacts.configPath,
       importResultPath: artifacts.importResultPath,
-      errorMessage: null,
-      skipReason: null,
-      durationMs: Date.now() - startedAtMs,
-    };
+      ...(derivedExpirationValueProvenance
+        ? {
+            derivedExpirationValue: true,
+            derivedExpirationValueProvenance,
+          }
+        : {}),
+    });
   }
 
   try {
@@ -347,32 +433,35 @@ async function executeMarketImport(
 
     adaptiveThrottle?.onSuccessfulImport(hadRateLimitRetry);
 
-    return {
-      marketTicker: market.marketTicker,
-      seriesTicker: market.seriesTicker,
+    return buildMarketResultBase({
       status: "imported",
       configPath: artifacts.configPath,
       importResultPath: artifacts.importResultPath,
-      errorMessage: null,
-      skipReason: null,
-      durationMs: Date.now() - startedAtMs,
-    };
+      ...(derivedExpirationValueProvenance
+        ? {
+            derivedExpirationValue: true,
+            derivedExpirationValueProvenance,
+          }
+        : {}),
+    });
   } catch (error) {
     if (input.config.execute) {
       input.io.mkdirSync(posix.dirname(artifacts.configPath), { recursive: true });
       input.io.writeFile(artifacts.configPath, artifacts.serializedConfig);
     }
 
-    return {
-      marketTicker: market.marketTicker,
-      seriesTicker: market.seriesTicker,
+    return buildMarketResultBase({
       status: "failed",
       configPath: artifacts.configPath,
       importResultPath: artifacts.importResultPath,
       errorMessage: error instanceof Error ? error.message : "Import failed",
-      skipReason: null,
-      durationMs: Date.now() - startedAtMs,
-    };
+      ...(derivedExpirationValueProvenance
+        ? {
+            derivedExpirationValue: true,
+            derivedExpirationValueProvenance,
+          }
+        : {}),
+    });
   }
 }
 
@@ -569,6 +658,7 @@ export async function runHistoricalExpansionImport(
             remainingMarketBudget,
             planningHistory,
             selectionSeed: job.jobId,
+            allowDerivedExpirationValue: input.config.allowDerivedExpirationValue,
           }),
         }
         : buildPlannedExpansionImportQueue(
@@ -579,6 +669,7 @@ export async function runHistoricalExpansionImport(
             sampleStrategy: input.config.sampleStrategy,
             planningHistory,
             selectionSeed: job.jobId,
+            allowDerivedExpirationValue: input.config.allowDerivedExpirationValue,
           },
         );
     const plannedQueue = importPlan.plannedQueue;

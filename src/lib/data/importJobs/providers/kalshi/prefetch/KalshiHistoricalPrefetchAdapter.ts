@@ -162,6 +162,7 @@ export async function createPrefetchedKalshiHistoricalBronzeProvider(
     observedAt,
     listMarketWire,
     reconciliationTrace,
+    settlementQualityFlags,
   } = input;
   const bronzeImporter = await prefetchKalshiHistoricalBronzeImporter({
     importer,
@@ -176,6 +177,7 @@ export async function createPrefetchedKalshiHistoricalBronzeProvider(
     importer: bronzeImporter,
     collectionTime,
     observedAt,
+    settlementQualityFlags,
   });
 }
 

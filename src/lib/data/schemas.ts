@@ -10,6 +10,7 @@ export const DataQualityFlag = {
   PARTIAL_WINDOW: "partial-window",
   INTERPOLATED: "interpolated",
   SOURCE_DEGRADED: "source-degraded",
+  DERIVED_EXPIRATION_VALUE: "derived-expiration-value",
 } as const;
 
 export type DataQualityFlag =
@@ -21,6 +22,7 @@ export const dataQualityFlagSchema = z.enum([
   DataQualityFlag.PARTIAL_WINDOW,
   DataQualityFlag.INTERPOLATED,
   DataQualityFlag.SOURCE_DEGRADED,
+  DataQualityFlag.DERIVED_EXPIRATION_VALUE,
 ]);
 
 export const datasetVersionSchema = z.literal(DATA_CONTRACT_VERSION);

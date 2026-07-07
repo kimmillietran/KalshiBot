@@ -33,6 +33,7 @@ export function selectMarketsUsingBatchPlan(input: {
   remainingMarketBudget: number | null;
   planningHistory: ExpansionImportPlanningHistory;
   selectionSeed: string;
+  allowDerivedExpirationValue?: boolean;
 }): {
   plannedQueue: ExpansionDiscoveredMarket[];
   selection: ExpansionImportSelectionCounts;
@@ -90,6 +91,7 @@ export function selectMarketsUsingBatchPlan(input: {
       sampleStrategy,
       planningHistory: input.planningHistory,
       selectionSeed: `${input.selectionSeed}:${allocation.month}`,
+      allowDerivedExpirationValue: input.allowDerivedExpirationValue,
     });
 
     plannedQueue.push(...monthQueue);

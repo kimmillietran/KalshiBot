@@ -266,6 +266,7 @@ export function parseExecuteExpansionImportConfigFromArgv(
     refreshDiscoveryCache: readBooleanFlag(argv, "--refresh-discovery-cache"),
     refreshDiscoveryMonth: readRefreshDiscoveryMonthFlag(argv),
     batchPlanPath: readOptionalBatchPlanPath(argv),
+    allowDerivedExpirationValue: readBooleanFlag(argv, "--allow-derived-expiration-value"),
   };
 }
 

@@ -16,7 +16,8 @@ import {
   KalshiHistoricalHttpAdapter,
   KalshiHistoricalImporter,
 } from "@/lib/data/importers/kalshi";
-import { readKalshiDiscoveryListMarketFromMetadata } from "@/lib/data/importers/kalshi/kalshiMarketSchemaReconciliation";
+import { readKalshiDiscoveryListMarketFromMetadata, readDerivedExpirationValueProvenanceFromMetadata } from "@/lib/data/importers/kalshi/kalshiMarketSchemaReconciliation";
+import { DataQualityFlag } from "@/lib/data/schemas";
 
 import {
   HistoricalBronzeImportBtcInterval,
@@ -143,6 +144,12 @@ async function createKalshiProviderFromConfig(
   });
 
   const listMarketWire = readKalshiDiscoveryListMarketFromMetadata(config.metadata);
+  const derivedExpirationValueProvenance = readDerivedExpirationValueProvenanceFromMetadata(
+    config.metadata,
+  );
+  const settlementQualityFlags = derivedExpirationValueProvenance
+    ? [DataQualityFlag.DERIVED_EXPIRATION_VALUE]
+    : [];
   reconciliationTrace?.onBootstrapListMarketWire?.({
     ticker: config.marketTicker,
     listMarketWire,
@@ -162,6 +169,7 @@ async function createKalshiProviderFromConfig(
           importerTrace: reconciliationTrace.importerTrace,
         }
       : null,
+    settlementQualityFlags,
   });
 }
 

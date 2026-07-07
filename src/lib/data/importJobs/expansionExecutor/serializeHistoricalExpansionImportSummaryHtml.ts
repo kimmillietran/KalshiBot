@@ -114,6 +114,45 @@ export function serializeHistoricalExpansionImportSummaryHtml(
     <div class="summary-card"><div class="summary-label">Selected supported</div><div class="summary-value">${summary.selection.selectedSupportedMarkets}</div></div>
     <div class="summary-card"><div class="summary-label">Selected unknown</div><div class="summary-value">${summary.selection.selectedUnknownMarkets}</div></div>
     <div class="summary-card"><div class="summary-label">Selected unsupported</div><div class="summary-value">${summary.selection.selectedUnsupportedMarkets}</div></div>
+    <div class="summary-card"><div class="summary-label">Derived expiration values</div><div class="summary-value">${summary.summary.derivedExpirationValueCount}</div></div>
+    <div class="summary-card"><div class="summary-label">Derived failures</div><div class="summary-value">${summary.summary.derivedExpirationValueFailedCount}</div></div>
+  </section>
+
+  <section class="panel">
+    <h2>Derived expiration value</h2>
+    <p class="muted">Opt-in mode: ${summary.allowDerivedExpirationValue ? "enabled" : "disabled"}</p>
+    ${
+      summary.summary.derivedExpirationValueCount > 0
+        ? `<p>${summary.summary.derivedExpirationValueCount} market(s) imported with Coinbase-derived expiration_value.</p>`
+        : "<p>No derived expiration values were used.</p>"
+    }
+    ${
+      summary.derivedExpirationValueMarkets.length > 0
+        ? `<table>
+      <thead>
+        <tr>
+          <th>Market</th>
+          <th>Derived value</th>
+          <th>Source timestamp</th>
+          <th>Rule version</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${summary.derivedExpirationValueMarkets
+          .map(
+            (entry) => `
+        <tr>
+          <td><code>${escapeHtml(entry.marketTicker)}</code></td>
+          <td>${escapeHtml(entry.provenance.expirationValue)}</td>
+          <td>${escapeHtml(entry.provenance.sourceTimestamp)}</td>
+          <td><code>${escapeHtml(entry.provenance.derivationRuleVersion)}</code></td>
+        </tr>`,
+          )
+          .join("")}
+      </tbody>
+    </table>`
+        : ""
+    }
   </section>
 
   <section class="panel">

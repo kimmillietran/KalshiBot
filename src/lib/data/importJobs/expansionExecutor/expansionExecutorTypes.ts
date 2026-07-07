@@ -2,6 +2,7 @@ import type { HistoricalBronzeImportConfig } from "@/lib/data/importJobs/config"
 import type { HistoricalBronzeImportJobResult } from "@/lib/data/importJobs/historicalBronzeImportJobTypes";
 import type { MarketDiscoveryProvenance } from "@/lib/data/discovery/discoveryTypes";
 import type { HistoricalExpansionImportJob } from "@/lib/data/importJobs/expansionConfig";
+import type { DerivedExpirationValueProvenance } from "@/lib/data/importers/kalshi/kalshiDerivedExpirationValueTypes";
 import { DEFAULT_HISTORICAL_EXPANSION_IMPORT_CHECKPOINT_PATH } from "@/lib/data/importJobs/expansionImportSafety/expansionImportSafetyTypes";
 
 import type { ExpansionImportRateLimitDiagnostics } from "./expansionImportRateLimit";
@@ -70,6 +71,17 @@ export type ExpansionImportMarketResult = {
   errorMessage: string | null;
   skipReason: string | null;
   durationMs: number | null;
+  derivedExpirationValue?: boolean;
+  derivedExpirationValueProvenance?: DerivedExpirationValueProvenance | null;
+};
+
+export type DerivedExpirationValueDiagnostics = {
+  derivedExpirationValueCount: number;
+  derivedExpirationValueFailedCount: number;
+  derivedExpirationValueMarkets: readonly {
+    marketTicker: string;
+    provenance: DerivedExpirationValueProvenance;
+  }[];
 };
 
 export type ExpansionImportJobRunStatus = "completed" | "skipped" | "failed";
@@ -99,6 +111,7 @@ export type ExpansionImportSummaryRunStatus =
 export type HistoricalExpansionImportSummary = {
   generatedAt: string;
   execute: boolean;
+  allowDerivedExpirationValue: boolean;
   inputPath: string;
   outputPath: string;
   htmlOutputPath: string;
@@ -125,7 +138,10 @@ export type HistoricalExpansionImportSummary = {
     selectedUnknownMarkets: number;
     selectedUnsupportedMarkets: number;
     durationMs: number;
+    derivedExpirationValueCount: number;
+    derivedExpirationValueFailedCount: number;
   };
+  derivedExpirationValueMarkets: DerivedExpirationValueDiagnostics["derivedExpirationValueMarkets"];
   jobs: readonly ExpansionImportJobResult[];
   warnings: readonly string[];
   rateLimitDiagnostics: ExpansionImportRateLimitDiagnostics;
@@ -173,6 +189,7 @@ export type HistoricalExpansionImportExecutorConfig = {
   refreshDiscoveryCache: boolean;
   refreshDiscoveryMonth: string | null;
   batchPlanPath: string | null;
+  allowDerivedExpirationValue: boolean;
 };
 
 export type ExpansionImportProgressHooks = {
@@ -247,6 +264,7 @@ export type ExpansionExecutorDeps = {
       reconciliationTrace?: import("./expansionImportReconciliationTrace").ExpansionImportReconciliationTracer | null;
     },
   ) => Promise<HistoricalBronzeImportJobResult>;
+  fetchCoinbaseCloseUsdAtCloseTime?: import("@/lib/data/importers/kalshi/kalshiDerivedExpirationValueTypes").FetchCoinbaseCloseUsdAtCloseTime;
 };
 
 export type PlannedExpansionMarket = {

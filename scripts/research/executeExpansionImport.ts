@@ -15,6 +15,7 @@ import {
 import { runHistoricalImportFromConfig } from "@/lib/data/importJobs";
 import type { HistoricalImportFetchLike } from "@/lib/data/importJobs";
 import { buildExpansionImportReconciliationTraceCallbacks } from "@/lib/data/importJobs/expansionExecutor/expansionImportReconciliationTrace";
+import { fetchCoinbaseCloseUsdAtCloseTime } from "@/lib/data/importJobs/expansionExecutor/fetchCoinbaseCloseUsdAtCloseTime";
 import { mapDiscoveredMarketToExpansionMarket } from "@/lib/data/importJobs/expansionExecutor/mapDiscoveredMarketToExpansionMarket";
 import type { FetchLike } from "@/lib/data/importers/kalshi";
 import type { ExpansionExecutorDeps } from "@/lib/data/importJobs/expansionExecutor";
@@ -90,6 +91,8 @@ function createProductionDeps(fetchImpl?: HistoricalImportFetchLike): ExpansionE
           options?.reconciliationTrace ?? null,
         ),
       }),
+    fetchCoinbaseCloseUsdAtCloseTime: (closeTime) =>
+      fetchCoinbaseCloseUsdAtCloseTime(closeTime, resolveFetchImpl(fetchImpl)),
   };
 }
 

@@ -10,9 +10,11 @@ import { deriveImportWindowFromDiscoveredMarket } from "@/lib/data/importJobs/ba
 import type { HistoricalExpansionImportJob } from "@/lib/data/importJobs/expansionConfig";
 import {
   discoveredMarketToKalshiListWireShape,
+  KALSHI_DERIVED_EXPIRATION_VALUE_PROVENANCE_METADATA_KEY,
   KALSHI_DISCOVERY_LIST_MARKET_METADATA_KEY,
   KALSHI_DISCOVERY_LIST_MARKET_PROVENANCE_METADATA_KEY,
 } from "@/lib/data/importers/kalshi/kalshiMarketSchemaReconciliation";
+import type { DerivedExpirationValueProvenance } from "@/lib/data/importers/kalshi/kalshiDerivedExpirationValueTypes";
 import type { KalshiMarketWireShape } from "@/lib/data/importers/kalshi/kalshiMarketImportDiagnostics";
 import {
   BATCH_IMPORT_CONFIG_FILENAME,
@@ -57,6 +59,9 @@ export function buildExpansionMarketImportArtifacts(
     importConfigsDir: string;
     importsDir: string;
   },
+  options?: {
+    derivedExpirationValueProvenance?: DerivedExpirationValueProvenance | null;
+  },
 ): ExpansionMarketImportArtifacts {
   const window = deriveImportWindowFromDiscoveredMarket(market as DiscoveredMarket);
   const safeSeries = assertSafePathSegment(market.seriesTicker, "seriesTicker");
@@ -78,6 +83,12 @@ export function buildExpansionMarketImportArtifacts(
     metadata: {
       [KALSHI_DISCOVERY_LIST_MARKET_METADATA_KEY]: listMarketWire,
       [KALSHI_DISCOVERY_LIST_MARKET_PROVENANCE_METADATA_KEY]: market.provenance,
+      ...(options?.derivedExpirationValueProvenance
+        ? {
+            [KALSHI_DERIVED_EXPIRATION_VALUE_PROVENANCE_METADATA_KEY]:
+              options.derivedExpirationValueProvenance,
+          }
+        : {}),
     },
   };
 
