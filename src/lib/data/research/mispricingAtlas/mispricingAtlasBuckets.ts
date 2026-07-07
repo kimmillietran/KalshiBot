@@ -12,5 +12,6 @@ export {
   TIME_REMAINING_BUCKET_DEFINITIONS,
   valueFitsBucket,
   VOLATILITY_BUCKET_DEFINITIONS,
-  type NumericBucketDefinition,
 } from "@/lib/data/research/dimensions/bucketDefinitions";
+
+export type { NumericBucketDefinition } from "@/lib/data/research/dimensions/types";

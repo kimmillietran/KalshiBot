@@ -9,6 +9,8 @@ import {
   formatMissingSettlementDiagnostic,
 } from "@/lib/data/research/settlement";
 
+import { computeResearchObservationMomentumPercent } from "@/lib/data/research/dimensions/momentum/computeResearchObservationMomentumPercent";
+
 import {
   DEFAULT_MISPRICING_VOLATILITY_LOOKBACK_BARS,
   MispricingAtlasError,
@@ -16,7 +18,6 @@ import {
   type MispricingAtlasWarning,
   type MispricingObservation,
 } from "./mispricingAtlasTypes";
-import { computeResearchObservationMomentumPercent } from "@/lib/data/research/dimensions/momentum/computeResearchObservationMomentumPercent";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -140,6 +141,12 @@ function buildObservation(input: {
       && input.observationTimestampMs !== null
       && Number.isFinite(input.observationTimestampMs)
         ? toTradingDayUtc(input.observationTimestampMs)
+        : null,
+    timestampMs:
+      input.observationTimestampMs !== undefined
+      && input.observationTimestampMs !== null
+      && Number.isFinite(input.observationTimestampMs)
+        ? input.observationTimestampMs
         : null,
   };
 }

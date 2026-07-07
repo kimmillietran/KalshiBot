@@ -24,7 +24,26 @@ export {
   VOLATILITY_BUCKET_DEFINITIONS,
 } from "./bucketDefinitions";
 
-export { extractDimensionValue } from "./extractors";
+export { extractDimensionValue, integerFitsBucket } from "./extractors";
+
+export {
+  DAY_OF_WEEK_UTC_BUCKET_DEFINITIONS,
+  extractDayOfWeekUtc,
+  extractHourUtc,
+  extractSessionBucketCode,
+  extractWeekendFlag,
+  HOUR_UTC_BUCKET_DEFINITIONS,
+  SESSION_BUCKET_DEFINITIONS,
+  WEEKEND_FLAG_BUCKET_DEFINITIONS,
+} from "./temporalBucketDefinitions";
+
+export {
+  createAccumulatorsForAxisGroup,
+  dimensionIdsForGroup,
+  ingestObservationForAxisGroup,
+  listRegistryAxisGroupsForAtlas,
+  resolveAxisGroupByStateKey,
+} from "./registryAtlasIntegration";
 
 export {
   computeResearchObservationMomentumPercent,

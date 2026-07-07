@@ -12,6 +12,7 @@ import {
   buildMispricingAtlasFromDirectories,
   serializeMispricingAtlas,
 } from "@/lib/data/research/mispricingAtlas";
+import { serializeTemporalCalibrationHeatmapHtml } from "@/lib/data/research/mispricingAtlas/serializeTemporalCalibrationHeatmapHtml";
 
 import { normalizeMispricingAtlasArgv } from "../lib/cliArgvSchemas";
 
@@ -46,11 +47,23 @@ export function runMispricingAtlasCommand(
     io.mkdirSync(dirname(outputPath), { recursive: true });
     io.writeFile(outputPath, serializeMispricingAtlas(atlas));
 
+    const htmlOutputPath = outputPath.includes("research-results")
+      ? outputPath.replace("research-results", "reports").replace(
+          "mispricing-atlas.json",
+          "mispricing-atlas-temporal-heatmaps.html",
+        )
+      : `${dirname(outputPath)}/mispricing-atlas-temporal-heatmaps.html`;
+    if (htmlOutputPath !== outputPath) {
+      io.mkdirSync(dirname(htmlOutputPath), { recursive: true });
+      io.writeFile(htmlOutputPath, serializeTemporalCalibrationHeatmapHtml(atlas));
+    }
+
     io.writeStdout(
       formatStdoutOutput(
         JSON.stringify({
           inputRoot,
           outputPath,
+          htmlOutputPath: htmlOutputPath !== outputPath ? htmlOutputPath : null,
           totalObservations: atlas.sampleCounts.totalObservations,
           marketCount: atlas.sampleCounts.marketCount,
           warningCount: atlas.warnings.length,

@@ -1,7 +1,5 @@
 import { describe, expect, it } from "vitest";
 
-import { assertResearchAxisGroupRegistryMatchesHypothesisGroups } from "@/lib/data/research/dimensions";
-
 import { buildMispricingAtlas, buildMispricingAtlasFromDirectories, serializeMispricingAtlas } from "./buildMispricingAtlas";
 import { buildMispricingAtlasFromScannedLegacy } from "./buildMispricingAtlasLegacy";
 import {
@@ -120,6 +118,38 @@ function stripMomentumAtlasFields(atlas: ReturnType<typeof buildMispricingAtlas>
   };
 }
 
+function stripTemporalAtlasFields<T extends {
+  hourUtcBuckets?: unknown;
+  dayOfWeekUtcBuckets?: unknown;
+  sessionBucketBuckets?: unknown;
+  weekendFlagBuckets?: unknown;
+  coarseBuckets?: Record<string, unknown>;
+  coverageDiagnostics?: unknown;
+}>(value: T) {
+  const rest = stripMemoryDiagnostics(value) as T & {
+    coarseBuckets?: Record<string, unknown>;
+  };
+  delete rest.hourUtcBuckets;
+  delete rest.dayOfWeekUtcBuckets;
+  delete rest.sessionBucketBuckets;
+  delete rest.weekendFlagBuckets;
+  delete rest.coverageDiagnostics;
+
+  if (rest.coarseBuckets) {
+    rest.coarseBuckets = {
+      probabilityOnly: rest.coarseBuckets.probabilityOnly ?? [],
+      probabilityTime: rest.coarseBuckets.probabilityTime ?? [],
+      probabilityRegime: rest.coarseBuckets.probabilityRegime ?? [],
+      probabilityMoneyness: rest.coarseBuckets.probabilityMoneyness ?? [],
+      moneynessTime: rest.coarseBuckets.moneynessTime ?? [],
+      volatilityMoneyness: rest.coarseBuckets.volatilityMoneyness ?? [],
+      volatilityProbabilityTime: rest.coarseBuckets.volatilityProbabilityTime ?? [],
+    };
+  }
+
+  return rest;
+}
+
 describe("mispricing atlas incremental accumulator", () => {
   it("matches legacy bucket summary metrics", () => {
     const observations = [
@@ -134,7 +164,6 @@ describe("mispricing atlas incremental accumulator", () => {
         timeRemainingMs: 600_000,
         moneynessPercent: 1,
         annualizedVolatility: 0.4,
-        momentumPercent: 0.1,
       },
       {
         strategyId: STRATEGY_ID,
@@ -147,7 +176,6 @@ describe("mispricing atlas incremental accumulator", () => {
         timeRemainingMs: 600_000,
         moneynessPercent: -1,
         annualizedVolatility: 0.4,
-        momentumPercent: -0.2,
       },
     ];
 
@@ -216,11 +244,7 @@ describe("buildMispricingAtlas incremental parity", () => {
 
     const stripForLegacyParity = (
       atlas: ReturnType<typeof buildMispricingAtlas>,
-    ) => {
-      const stripped = stripMomentumAtlasFields(stripMemoryDiagnostics(atlas));
-      delete stripped.coverageDiagnostics;
-      return stripped;
-    };
+    ) => stripMomentumAtlasFields(stripTemporalAtlasFields(atlas));
 
     expect(
       serializeMispricingAtlas(stripForLegacyParity(incremental)),
@@ -295,11 +319,5 @@ describe("buildMispricingAtlas incremental file processing", () => {
     expect(atlas.sampleCounts.totalObservations).toBe(25);
     expect(maxInFlightReads).toBe(1);
     expect(atlas.memoryDiagnostics?.filesProcessed).toBe(25);
-  });
-});
-
-describe("research dimension registry integration", () => {
-  it("keeps axis group registry aligned with hypothesis atlas groups", () => {
-    expect(() => assertResearchAxisGroupRegistryMatchesHypothesisGroups()).not.toThrow();
   });
 });

@@ -40,6 +40,8 @@ export type MispricingObservation = {
   momentumPercent: number | null;
   /** UTC trading day (YYYY-MM-DD) when the observation timestamp is known. */
   tradingDayUtc?: string | null;
+  /** UTC epoch milliseconds for clock-time temporal dimensions. */
+  timestampMs?: number | null;
 };
 
 export type MispricingAtlasBucketSummary = {
@@ -98,6 +100,10 @@ export type MispricingAtlasCoarseBuckets = {
   momentumTime: readonly MispricingAtlasBucketSummary[];
   momentumVolatility: readonly MispricingAtlasBucketSummary[];
   probabilityMomentumTime: readonly MispricingAtlasBucketSummary[];
+  probabilityHour: readonly MispricingAtlasBucketSummary[];
+  probabilityWeekday: readonly MispricingAtlasBucketSummary[];
+  momentumHour: readonly MispricingAtlasBucketSummary[];
+  timeRemainingHour: readonly MispricingAtlasBucketSummary[];
 };
 
 export type MispricingAtlasWarning = {
@@ -125,6 +131,10 @@ export type MispricingAtlas = {
   moneynessBuckets: readonly MispricingAtlasBucketSummary[];
   volatilityBuckets: readonly MispricingAtlasBucketSummary[];
   momentumBuckets?: readonly MispricingAtlasBucketSummary[];
+  hourUtcBuckets?: readonly MispricingAtlasBucketSummary[];
+  dayOfWeekUtcBuckets?: readonly MispricingAtlasBucketSummary[];
+  sessionBucketBuckets?: readonly MispricingAtlasBucketSummary[];
+  weekendFlagBuckets?: readonly MispricingAtlasBucketSummary[];
   coarseBuckets?: MispricingAtlasCoarseBuckets;
   coverageDiagnostics?: MispricingAtlasCoverageDiagnostics;
   memoryDiagnostics?: MispricingAtlasMemoryDiagnostics;

@@ -43,7 +43,7 @@ function createObservation(
 describe("research dimension registry", () => {
   it("matches hypothesis atlas group ids exactly", () => {
     expect(() => assertResearchAxisGroupRegistryMatchesHypothesisGroups()).not.toThrow();
-    expect(RESEARCH_AXIS_GROUPS).toHaveLength(16);
+    expect(RESEARCH_AXIS_GROUPS).toHaveLength(24);
   });
 
   it("lists dimensions in deterministic order", () => {
@@ -56,6 +56,10 @@ describe("research dimension registry", () => {
       "moneyness",
       "volatility",
       "momentum15m",
+      "hourUtc",
+      "dayOfWeekUtc",
+      "sessionBucket",
+      "weekendFlag",
     ]);
   });
 
@@ -126,10 +130,18 @@ describe("research dimension registry", () => {
       "momentumVolatility",
       "momentumTime",
       "momentum",
+      "probabilityHour",
+      "probabilityWeekday",
+      "momentumHour",
+      "timeRemainingHour",
       "probability",
       "timeRemaining",
       "moneyness",
       "volatility",
+      "hourUtc",
+      "dayOfWeekUtc",
+      "sessionBucket",
+      "weekendFlag",
     ]);
   });
 

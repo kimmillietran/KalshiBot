@@ -1,23 +1,11 @@
+import type { HypothesisAtlasGroupId } from "@/lib/data/research/hypothesisCandidates/hypothesisCandidateTypes";
+import { HYPOTHESIS_ATLAS_GROUP_IDS } from "@/lib/data/research/hypothesisCandidates/hypothesisCandidateTypes";
+
 import type { ParsedAtlasHypothesisRef } from "./hypothesisRobustnessTypes";
 
-const ATLAS_GROUP_IDS = [
-  "probabilityMomentumTime",
-  "volatilityProbabilityTime",
-  "probabilityMomentum",
-  "momentumVolatility",
-  "momentumTime",
-  "probabilityMoneyness",
-  "volatilityMoneyness",
-  "moneynessTime",
-  "probabilityRegime",
-  "probabilityOnly",
-  "probabilityTime",
-  "momentum",
-  "timeRemaining",
-  "probability",
-  "moneyness",
-  "volatility",
-] as const satisfies readonly ParsedAtlasHypothesisRef["groupId"][];
+const ATLAS_GROUP_IDS = [...HYPOTHESIS_ATLAS_GROUP_IDS].sort(
+  (left, right) => right.length - left.length,
+) as readonly ParsedAtlasHypothesisRef["groupId"][];
 
 /** Parses atlas-{groupId}-{bucketId}-{over|under} candidate IDs. */
 export function parseAtlasHypothesisCandidateId(
@@ -43,7 +31,7 @@ export function parseAtlasHypothesisCandidateId(
         return null;
       }
 
-      return { groupId, bucketId, direction };
+      return { groupId: groupId as HypothesisAtlasGroupId, bucketId, direction };
     }
   }
 

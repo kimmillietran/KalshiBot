@@ -40,10 +40,18 @@ export const HYPOTHESIS_ATLAS_GROUP_IDS = [
   "momentumVolatility",
   "momentumTime",
   "momentum",
+  "probabilityHour",
+  "probabilityWeekday",
+  "momentumHour",
+  "timeRemainingHour",
   "probability",
   "timeRemaining",
   "moneyness",
   "volatility",
+  "hourUtc",
+  "dayOfWeekUtc",
+  "sessionBucket",
+  "weekendFlag",
 ] as const;
 
 export type HypothesisAtlasGroupId = (typeof HYPOTHESIS_ATLAS_GROUP_IDS)[number];

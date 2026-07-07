@@ -9,6 +9,12 @@ import {
   VOLATILITY_BUCKET_DEFINITIONS,
 } from "./bucketDefinitions";
 import { MOMENTUM_BUCKET_DEFINITIONS } from "./momentum/momentumBucketDefinitions";
+import {
+  DAY_OF_WEEK_UTC_BUCKET_DEFINITIONS,
+  HOUR_UTC_BUCKET_DEFINITIONS,
+  SESSION_BUCKET_DEFINITIONS,
+  WEEKEND_FLAG_BUCKET_DEFINITIONS,
+} from "./temporalBucketDefinitions";
 import { extractDimensionValue } from "./extractors";
 import { getResearchDimension, MATCHER_AXIS_TO_DIMENSION_ID } from "./registry";
 import type {
@@ -23,7 +29,21 @@ export type ParsedMultiAxisBucketParts = {
   moneynessBucketId: string | null;
   volatilityBucketId: string | null;
   momentumBucketId: string | null;
+  hourBucketId: string | null;
+  dayOfWeekBucketId: string | null;
+  sessionBucketId: string | null;
+  weekendBucketId: string | null;
 };
+
+const NULL_TEMPORAL_AXIS_PARTS = {
+  hourBucketId: null,
+  dayOfWeekBucketId: null,
+  sessionBucketId: null,
+  weekendBucketId: null,
+} as const satisfies Pick<
+  ParsedMultiAxisBucketParts,
+  "hourBucketId" | "dayOfWeekBucketId" | "sessionBucketId" | "weekendBucketId"
+>;
 
 function findMoneynessBucketId(bucketId: string): string | null {
   const match = MONEYNESS_BUCKET_DEFINITIONS.find((definition) =>
@@ -60,6 +80,34 @@ function findMomentumBucketId(bucketId: string): string | null {
   return match?.bucketId ?? null;
 }
 
+function findHourBucketId(bucketId: string): string | null {
+  const match = HOUR_UTC_BUCKET_DEFINITIONS.find((definition) =>
+    bucketId.includes(definition.bucketId),
+  );
+  return match?.bucketId ?? null;
+}
+
+function findDayOfWeekBucketId(bucketId: string): string | null {
+  const match = DAY_OF_WEEK_UTC_BUCKET_DEFINITIONS.find((definition) =>
+    bucketId.includes(definition.bucketId),
+  );
+  return match?.bucketId ?? null;
+}
+
+function findSessionBucketId(bucketId: string): string | null {
+  const match = SESSION_BUCKET_DEFINITIONS.find((definition) =>
+    bucketId.includes(definition.bucketId),
+  );
+  return match?.bucketId ?? null;
+}
+
+function findWeekendBucketId(bucketId: string): string | null {
+  const match = WEEKEND_FLAG_BUCKET_DEFINITIONS.find((definition) =>
+    bucketId.includes(definition.bucketId),
+  );
+  return match?.bucketId ?? null;
+}
+
 /** Parses composite bucket ids for multi-axis atlas cells. */
 export function parseMultiAxisBucketId(bucketId: string): ParsedMultiAxisBucketParts {
   const probabilityMomentumTimeMatch =
@@ -73,6 +121,7 @@ export function parseMultiAxisBucketId(bucketId: string): ParsedMultiAxisBucketP
       timeBucketId: probabilityMomentumTimeMatch[3] ?? null,
       moneynessBucketId: null,
       volatilityBucketId: null,
+      ...NULL_TEMPORAL_AXIS_PARTS,
     };
   }
 
@@ -87,6 +136,7 @@ export function parseMultiAxisBucketId(bucketId: string): ParsedMultiAxisBucketP
       probabilityBucketId: null,
       timeBucketId: null,
       moneynessBucketId: null,
+      ...NULL_TEMPORAL_AXIS_PARTS,
     };
   }
 
@@ -101,6 +151,7 @@ export function parseMultiAxisBucketId(bucketId: string): ParsedMultiAxisBucketP
       timeBucketId: null,
       moneynessBucketId: null,
       volatilityBucketId: null,
+      ...NULL_TEMPORAL_AXIS_PARTS,
     };
   }
 
@@ -115,6 +166,7 @@ export function parseMultiAxisBucketId(bucketId: string): ParsedMultiAxisBucketP
       probabilityBucketId: null,
       moneynessBucketId: null,
       volatilityBucketId: null,
+      ...NULL_TEMPORAL_AXIS_PARTS,
     };
   }
 
@@ -129,6 +181,7 @@ export function parseMultiAxisBucketId(bucketId: string): ParsedMultiAxisBucketP
       timeBucketId: volatilityProbabilityTimeMatch[3] ?? null,
       moneynessBucketId: null,
       momentumBucketId: null,
+      ...NULL_TEMPORAL_AXIS_PARTS,
     };
   }
 
@@ -141,6 +194,7 @@ export function parseMultiAxisBucketId(bucketId: string): ParsedMultiAxisBucketP
       probabilityBucketId: null,
       timeBucketId: null,
       momentumBucketId: null,
+      ...NULL_TEMPORAL_AXIS_PARTS,
     };
   }
 
@@ -153,6 +207,7 @@ export function parseMultiAxisBucketId(bucketId: string): ParsedMultiAxisBucketP
       timeBucketId: null,
       volatilityBucketId: null,
       momentumBucketId: null,
+      ...NULL_TEMPORAL_AXIS_PARTS,
     };
   }
 
@@ -164,6 +219,7 @@ export function parseMultiAxisBucketId(bucketId: string): ParsedMultiAxisBucketP
       probabilityBucketId: null,
       volatilityBucketId: null,
       momentumBucketId: null,
+      ...NULL_TEMPORAL_AXIS_PARTS,
     };
   }
 
@@ -173,6 +229,10 @@ export function parseMultiAxisBucketId(bucketId: string): ParsedMultiAxisBucketP
     moneynessBucketId: findMoneynessBucketId(bucketId),
     volatilityBucketId: findVolatilityBucketId(bucketId),
     momentumBucketId: findMomentumBucketId(bucketId),
+    hourBucketId: findHourBucketId(bucketId),
+    dayOfWeekBucketId: findDayOfWeekBucketId(bucketId),
+    sessionBucketId: findSessionBucketId(bucketId),
+    weekendBucketId: findWeekendBucketId(bucketId),
   };
 }
 
@@ -238,7 +298,15 @@ export function observationMatchesMultiAxisBucket(
             ? parts.moneynessBucketId
             : axis === "momentum"
               ? parts.momentumBucketId
-              : parts.volatilityBucketId;
+              : axis === "hour"
+                ? parts.hourBucketId
+                : axis === "dayOfWeek"
+                  ? parts.dayOfWeekBucketId
+                  : axis === "session"
+                    ? parts.sessionBucketId
+                    : axis === "weekend"
+                      ? parts.weekendBucketId
+                      : parts.volatilityBucketId;
 
     return observationMatchesMatcherAxis(observation, axis, axisBucketId);
   });

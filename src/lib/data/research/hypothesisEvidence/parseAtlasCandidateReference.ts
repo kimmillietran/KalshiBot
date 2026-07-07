@@ -1,23 +1,10 @@
-export const ATLAS_CANDIDATE_GROUP_IDS = [
-  "probabilityMomentumTime",
-  "volatilityProbabilityTime",
-  "probabilityMomentum",
-  "momentumVolatility",
-  "momentumTime",
-  "probabilityMoneyness",
-  "volatilityMoneyness",
-  "moneynessTime",
-  "probabilityOnly",
-  "probabilityTime",
-  "probabilityRegime",
-  "momentum",
-  "volatility",
-  "timeRemaining",
-  "moneyness",
-  "probability",
-] as const;
+import { HYPOTHESIS_ATLAS_GROUP_IDS } from "@/lib/data/research/hypothesisCandidates/hypothesisCandidateTypes";
 
-export type AtlasCandidateGroupId = (typeof ATLAS_CANDIDATE_GROUP_IDS)[number];
+export const ATLAS_CANDIDATE_GROUP_IDS = [...HYPOTHESIS_ATLAS_GROUP_IDS].sort(
+  (left, right) => right.length - left.length,
+) as unknown as readonly (typeof HYPOTHESIS_ATLAS_GROUP_IDS)[number][];
+
+export type AtlasCandidateGroupId = (typeof HYPOTHESIS_ATLAS_GROUP_IDS)[number];
 
 export type AtlasCandidateReference = {
   groupId: AtlasCandidateGroupId;

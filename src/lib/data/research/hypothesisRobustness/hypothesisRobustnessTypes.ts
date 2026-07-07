@@ -1,4 +1,7 @@
-import type { HypothesisCandidate } from "@/lib/data/research/hypothesisCandidates/hypothesisCandidateTypes";
+import type {
+  HypothesisAtlasGroupId,
+  HypothesisCandidate,
+} from "@/lib/data/research/hypothesisCandidates/hypothesisCandidateTypes";
 import type {
   MispricingObservation,
   RegimeVolatilityByMarketKey,
@@ -27,23 +30,7 @@ export type EnrichedMispricingObservation = MispricingObservation & {
 };
 
 export type ParsedAtlasHypothesisRef = {
-  groupId:
-    | "probabilityOnly"
-    | "probabilityTime"
-    | "probabilityRegime"
-    | "probabilityMoneyness"
-    | "moneynessTime"
-    | "volatilityMoneyness"
-    | "volatilityProbabilityTime"
-    | "probabilityMomentumTime"
-    | "probabilityMomentum"
-    | "momentumVolatility"
-    | "momentumTime"
-    | "momentum"
-    | "probability"
-    | "timeRemaining"
-    | "moneyness"
-    | "volatility";
+  groupId: HypothesisAtlasGroupId;
   bucketId: string;
   direction: "over" | "under";
 };

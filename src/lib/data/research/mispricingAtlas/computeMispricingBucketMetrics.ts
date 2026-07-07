@@ -457,5 +457,9 @@ export function computeCoarseMispricingBucketSummaries(
     momentumTime: [],
     momentumVolatility: [],
     probabilityMomentumTime: [],
+    probabilityHour: [],
+    probabilityWeekday: [],
+    momentumHour: [],
+    timeRemainingHour: [],
   };
 }

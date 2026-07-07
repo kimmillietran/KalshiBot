@@ -1,13 +1,9 @@
 import {
-  buildCompositeBucketTemplates,
-  COARSE_VOLATILITY_REGIME_DEFINITIONS,
-  getResearchDimension,
-  listResearchAxisGroups,
-  observationMatchesCompositeTemplate,
-  RESEARCH_AXIS_GROUPS,
-} from "@/lib/data/research/dimensions";
-import { buildCoarseProbabilityAxisDefinitions } from "@/lib/data/research/dimensions/bucketDefinitions";
-import { probabilityFitsBucket } from "@/lib/data/research/dimensions/bucketDefinitions";
+  createAccumulatorsForAxisGroup,
+  ingestObservationForAxisGroup,
+  listRegistryAxisGroupsForAtlas,
+} from "@/lib/data/research/dimensions/registryAtlasIntegration";
+import { RESEARCH_AXIS_GROUPS } from "@/lib/data/research/dimensions";
 import type {
   MispricingAtlasBucketSummary,
   MispricingAtlasCoarseBuckets,
@@ -112,122 +108,9 @@ function finalizeAccumulatorList(
   );
 }
 
-function marketJoinKey(observation: MispricingObservation): string {
-  return `${observation.strategyId}/${observation.seriesTicker}/${observation.marketTicker}`;
-}
-
-function createSingleDimensionAccumulators(
-  dimensionId: import("@/lib/data/research/dimensions").ResearchDimensionId,
-): MispricingBucketAccumulator[] {
-  const dimension = getResearchDimension(dimensionId);
-  return dimension.getBuckets().map((definition) =>
-    createMispricingBucketAccumulator(definition.bucketId, definition.bucketLabel),
-  );
-}
-
-function createCompositeAccumulators(
-  dimensionIds: readonly import("@/lib/data/research/dimensions").ResearchDimensionId[],
-): MispricingBucketAccumulator[] {
-  return buildCompositeBucketTemplates(dimensionIds).map((template) =>
-    createMispricingBucketAccumulator(template.bucketId, template.bucketLabel),
-  );
-}
-
-function createProbabilityRegimeAccumulators(): MispricingBucketAccumulator[] {
-  const accumulators: MispricingBucketAccumulator[] = [];
-
-  for (const probabilityDefinition of buildCoarseProbabilityAxisDefinitions()) {
-    for (const regimeDefinition of COARSE_VOLATILITY_REGIME_DEFINITIONS) {
-      accumulators.push(
-        createMispricingBucketAccumulator(
-          `${probabilityDefinition.bucketId}-${regimeDefinition.bucketId}`,
-          `${probabilityDefinition.bucketLabel} × ${regimeDefinition.bucketLabel}`,
-        ),
-      );
-    }
-  }
-
-  return accumulators;
-}
-
-function ingestSingleDimensionBuckets(
-  accumulators: readonly MispricingBucketAccumulator[],
-  dimensionId: import("@/lib/data/research/dimensions").ResearchDimensionId,
-  observation: MispricingObservation,
-  metrics: ObservationMetrics,
-): void {
-  const dimension = getResearchDimension(dimensionId);
-  const value = dimension.extractValue(observation);
-
-  dimension.getBuckets().forEach((definition, index) => {
-    if (value !== null && dimension.valueFitsBucket(value, definition)) {
-      addObservationToMispricingBucket(accumulators[index]!, metrics);
-    }
-  });
-}
-
-function ingestCompositeDimensionBuckets(
-  accumulators: readonly MispricingBucketAccumulator[],
-  dimensionIds: readonly import("@/lib/data/research/dimensions").ResearchDimensionId[],
-  observation: MispricingObservation,
-  metrics: ObservationMetrics,
-): void {
-  const templates = buildCompositeBucketTemplates(dimensionIds);
-
-  templates.forEach((template, index) => {
-    if (
-      observationMatchesCompositeTemplate(
-        observation,
-        dimensionIds,
-        template.bucketDefinitions,
-      )
-    ) {
-      addObservationToMispricingBucket(accumulators[index]!, metrics);
-    }
-  });
-}
-
-function ingestProbabilityRegimeBuckets(
-  accumulators: readonly MispricingBucketAccumulator[],
-  observation: MispricingObservation,
-  metrics: ObservationMetrics,
-  regimeVolatilityByMarket: RegimeVolatilityByMarketKey,
-): void {
-  const regimeTag = regimeVolatilityByMarket.get(marketJoinKey(observation));
-  let index = 0;
-
-  for (const probabilityDefinition of buildCoarseProbabilityAxisDefinitions()) {
-    for (const regimeDefinition of COARSE_VOLATILITY_REGIME_DEFINITIONS) {
-      if (
-        regimeTag === regimeDefinition.regimeTag
-        && probabilityFitsBucket(observation.predictedProbability, probabilityDefinition)
-      ) {
-        addObservationToMispricingBucket(accumulators[index]!, metrics);
-      }
-
-      index += 1;
-    }
-  }
-}
-
 export type MispricingAtlasIncrementalState = {
   overall: MispricingBucketAccumulator;
-  probabilityBuckets: MispricingBucketAccumulator[];
-  timeRemainingBuckets: MispricingBucketAccumulator[];
-  moneynessBuckets: MispricingBucketAccumulator[];
-  volatilityBuckets: MispricingBucketAccumulator[];
-  coarseProbabilityOnly: MispricingBucketAccumulator[];
-  coarseProbabilityTime: MispricingBucketAccumulator[];
-  coarseProbabilityRegime: MispricingBucketAccumulator[];
-  coarseProbabilityMoneyness: MispricingBucketAccumulator[];
-  coarseMoneynessTime: MispricingBucketAccumulator[];
-  coarseVolatilityMoneyness: MispricingBucketAccumulator[];
-  coarseVolatilityProbabilityTime: MispricingBucketAccumulator[];
-  coarseProbabilityMomentum: MispricingBucketAccumulator[];
-  coarseMomentumTime: MispricingBucketAccumulator[];
-  coarseMomentumVolatility: MispricingBucketAccumulator[];
-  coarseProbabilityMomentumTime: MispricingBucketAccumulator[];
-  momentumBuckets: MispricingBucketAccumulator[];
+  axisAccumulators: Map<string, MispricingBucketAccumulator[]>;
   warnings: MispricingAtlasWarning[];
   seenMarkets: Set<string>;
   totalObservations: number;
@@ -236,48 +119,31 @@ export type MispricingAtlasIncrementalState = {
   skippedMissingContext: number;
 };
 
+function axisStateKey(group: (typeof RESEARCH_AXIS_GROUPS)[number]): string {
+  return group.atlasSource.stateKey;
+}
+
 export function createMispricingAtlasIncrementalState(input?: {
   regimeVolatilityByMarket?: RegimeVolatilityByMarketKey;
 }): MispricingAtlasIncrementalState {
   const regimeVolatilityByMarket = input?.regimeVolatilityByMarket;
+  const axisAccumulators = new Map<string, MispricingBucketAccumulator[]>();
+
+  for (const group of listRegistryAxisGroupsForAtlas()) {
+    if (group.requiresRegimeVolatility && !regimeVolatilityByMarket) {
+      axisAccumulators.set(axisStateKey(group), []);
+      continue;
+    }
+
+    axisAccumulators.set(
+      axisStateKey(group),
+      createAccumulatorsForAxisGroup(group) as MispricingBucketAccumulator[],
+    );
+  }
 
   return {
     overall: createMispricingBucketAccumulator("overall", "Overall calibration"),
-    probabilityBuckets: createSingleDimensionAccumulators("probability"),
-    timeRemainingBuckets: createSingleDimensionAccumulators("timeRemaining"),
-    moneynessBuckets: createSingleDimensionAccumulators("moneyness"),
-    volatilityBuckets: createSingleDimensionAccumulators("volatility"),
-    coarseProbabilityOnly: createSingleDimensionAccumulators("coarseProbability"),
-    coarseProbabilityTime: createCompositeAccumulators([
-      "coarseProbabilityAxis",
-      "coarseTimeRemaining",
-    ]),
-    coarseProbabilityRegime: regimeVolatilityByMarket
-      ? createProbabilityRegimeAccumulators()
-      : [],
-    coarseProbabilityMoneyness: createCompositeAccumulators([
-      "coarseProbabilityAxis",
-      "moneyness",
-    ]),
-    coarseMoneynessTime: createCompositeAccumulators(["moneyness", "timeRemaining"]),
-    coarseVolatilityMoneyness: createCompositeAccumulators(["volatility", "moneyness"]),
-    coarseVolatilityProbabilityTime: createCompositeAccumulators([
-      "volatility",
-      "coarseProbabilityAxis",
-      "coarseTimeRemaining",
-    ]),
-    coarseProbabilityMomentum: createCompositeAccumulators([
-      "coarseProbabilityAxis",
-      "momentum15m",
-    ]),
-    coarseMomentumTime: createCompositeAccumulators(["momentum15m", "coarseTimeRemaining"]),
-    coarseMomentumVolatility: createCompositeAccumulators(["volatility", "momentum15m"]),
-    coarseProbabilityMomentumTime: createCompositeAccumulators([
-      "coarseProbabilityAxis",
-      "momentum15m",
-      "coarseTimeRemaining",
-    ]),
-    momentumBuckets: createSingleDimensionAccumulators("momentum15m"),
+    axisAccumulators,
     warnings: [],
     seenMarkets: new Set<string>(),
     totalObservations: 0,
@@ -298,97 +164,25 @@ export function ingestMispricingObservation(
   addObservationToMispricingBucket(state.overall, metrics);
   state.totalObservations += 1;
 
-  ingestSingleDimensionBuckets(
-    state.probabilityBuckets,
-    "probability",
-    observation,
-    metrics,
-  );
-  ingestSingleDimensionBuckets(
-    state.timeRemainingBuckets,
-    "timeRemaining",
-    observation,
-    metrics,
-  );
-  ingestSingleDimensionBuckets(state.moneynessBuckets, "moneyness", observation, metrics);
-  ingestSingleDimensionBuckets(
-    state.volatilityBuckets,
-    "volatility",
-    observation,
-    metrics,
-  );
-  ingestSingleDimensionBuckets(
-    state.coarseProbabilityOnly,
-    "coarseProbability",
-    observation,
-    metrics,
-  );
+  for (const group of listRegistryAxisGroupsForAtlas()) {
+    if (group.requiresRegimeVolatility && !regimeVolatilityByMarket) {
+      continue;
+    }
 
-  ingestCompositeDimensionBuckets(
-    state.coarseProbabilityTime,
-    ["coarseProbabilityAxis", "coarseTimeRemaining"],
-    observation,
-    metrics,
-  );
+    const accumulators = state.axisAccumulators.get(axisStateKey(group));
+    if (!accumulators || accumulators.length === 0) {
+      continue;
+    }
 
-  if (regimeVolatilityByMarket) {
-    ingestProbabilityRegimeBuckets(
-      state.coarseProbabilityRegime,
+    ingestObservationForAxisGroup({
+      group,
+      accumulators,
       observation,
       metrics,
+      addObservation: addObservationToMispricingBucket,
       regimeVolatilityByMarket,
-    );
+    });
   }
-
-  ingestCompositeDimensionBuckets(
-    state.coarseProbabilityMoneyness,
-    ["coarseProbabilityAxis", "moneyness"],
-    observation,
-    metrics,
-  );
-  ingestCompositeDimensionBuckets(
-    state.coarseMoneynessTime,
-    ["moneyness", "timeRemaining"],
-    observation,
-    metrics,
-  );
-  ingestCompositeDimensionBuckets(
-    state.coarseVolatilityMoneyness,
-    ["volatility", "moneyness"],
-    observation,
-    metrics,
-  );
-  ingestCompositeDimensionBuckets(
-    state.coarseVolatilityProbabilityTime,
-    ["volatility", "coarseProbabilityAxis", "coarseTimeRemaining"],
-    observation,
-    metrics,
-  );
-  ingestSingleDimensionBuckets(state.momentumBuckets, "momentum15m", observation, metrics);
-  ingestCompositeDimensionBuckets(
-    state.coarseProbabilityMomentum,
-    ["coarseProbabilityAxis", "momentum15m"],
-    observation,
-    metrics,
-  );
-  ingestCompositeDimensionBuckets(
-    state.coarseMomentumTime,
-    ["momentum15m", "coarseTimeRemaining"],
-    observation,
-    metrics,
-  );
-  ingestCompositeDimensionBuckets(
-    state.coarseMomentumVolatility,
-    ["volatility", "momentum15m"],
-    observation,
-    metrics,
-  );
-  ingestCompositeDimensionBuckets(
-    state.coarseProbabilityMomentumTime,
-    ["coarseProbabilityAxis", "momentum15m", "coarseTimeRemaining"],
-    observation,
-    metrics,
-  );
 }
 
 export function ingestMispricingMarketExtraction(
@@ -421,6 +215,13 @@ export function ingestMispricingMarketExtraction(
   }
 }
 
+function readAxisSummaries(
+  state: MispricingAtlasIncrementalState,
+  stateKey: string,
+): MispricingAtlasBucketSummary[] {
+  return finalizeAccumulatorList(state.axisAccumulators.get(stateKey) ?? []);
+}
+
 export function finalizeMispricingAtlasIncrementalState(
   state: MispricingAtlasIncrementalState,
 ): {
@@ -431,6 +232,10 @@ export function finalizeMispricingAtlasIncrementalState(
   moneynessBuckets: MispricingAtlasBucketSummary[];
   volatilityBuckets: MispricingAtlasBucketSummary[];
   momentumBuckets: MispricingAtlasBucketSummary[];
+  hourUtcBuckets: MispricingAtlasBucketSummary[];
+  dayOfWeekUtcBuckets: MispricingAtlasBucketSummary[];
+  sessionBucketBuckets: MispricingAtlasBucketSummary[];
+  weekendFlagBuckets: MispricingAtlasBucketSummary[];
   coarseBuckets: MispricingAtlasCoarseBuckets;
   warnings: MispricingAtlasWarning[];
 } {
@@ -443,27 +248,31 @@ export function finalizeMispricingAtlasIncrementalState(
       skippedMissingContext: state.skippedMissingContext,
     },
     overallCalibration: finalizeMispricingBucketAccumulator(state.overall),
-    probabilityBuckets: finalizeAccumulatorList(state.probabilityBuckets),
-    timeRemainingBuckets: finalizeAccumulatorList(state.timeRemainingBuckets),
-    moneynessBuckets: finalizeAccumulatorList(state.moneynessBuckets),
-    volatilityBuckets: finalizeAccumulatorList(state.volatilityBuckets),
-    momentumBuckets: finalizeAccumulatorList(state.momentumBuckets),
+    probabilityBuckets: readAxisSummaries(state, "probabilityBuckets"),
+    timeRemainingBuckets: readAxisSummaries(state, "timeRemainingBuckets"),
+    moneynessBuckets: readAxisSummaries(state, "moneynessBuckets"),
+    volatilityBuckets: readAxisSummaries(state, "volatilityBuckets"),
+    momentumBuckets: readAxisSummaries(state, "momentumBuckets"),
+    hourUtcBuckets: readAxisSummaries(state, "hourUtcBuckets"),
+    dayOfWeekUtcBuckets: readAxisSummaries(state, "dayOfWeekUtcBuckets"),
+    sessionBucketBuckets: readAxisSummaries(state, "sessionBucketBuckets"),
+    weekendFlagBuckets: readAxisSummaries(state, "weekendFlagBuckets"),
     coarseBuckets: {
-      probabilityOnly: finalizeAccumulatorList(state.coarseProbabilityOnly),
-      probabilityTime: finalizeAccumulatorList(state.coarseProbabilityTime),
-      probabilityRegime: finalizeAccumulatorList(state.coarseProbabilityRegime),
-      probabilityMoneyness: finalizeAccumulatorList(state.coarseProbabilityMoneyness),
-      moneynessTime: finalizeAccumulatorList(state.coarseMoneynessTime),
-      volatilityMoneyness: finalizeAccumulatorList(state.coarseVolatilityMoneyness),
-      volatilityProbabilityTime: finalizeAccumulatorList(
-        state.coarseVolatilityProbabilityTime,
-      ),
-      probabilityMomentum: finalizeAccumulatorList(state.coarseProbabilityMomentum),
-      momentumTime: finalizeAccumulatorList(state.coarseMomentumTime),
-      momentumVolatility: finalizeAccumulatorList(state.coarseMomentumVolatility),
-      probabilityMomentumTime: finalizeAccumulatorList(
-        state.coarseProbabilityMomentumTime,
-      ),
+      probabilityOnly: readAxisSummaries(state, "coarseProbabilityOnly"),
+      probabilityTime: readAxisSummaries(state, "coarseProbabilityTime"),
+      probabilityRegime: readAxisSummaries(state, "coarseProbabilityRegime"),
+      probabilityMoneyness: readAxisSummaries(state, "coarseProbabilityMoneyness"),
+      moneynessTime: readAxisSummaries(state, "coarseMoneynessTime"),
+      volatilityMoneyness: readAxisSummaries(state, "coarseVolatilityMoneyness"),
+      volatilityProbabilityTime: readAxisSummaries(state, "coarseVolatilityProbabilityTime"),
+      probabilityMomentum: readAxisSummaries(state, "coarseProbabilityMomentum"),
+      momentumTime: readAxisSummaries(state, "coarseMomentumTime"),
+      momentumVolatility: readAxisSummaries(state, "coarseMomentumVolatility"),
+      probabilityMomentumTime: readAxisSummaries(state, "coarseProbabilityMomentumTime"),
+      probabilityHour: readAxisSummaries(state, "coarseProbabilityHour"),
+      probabilityWeekday: readAxisSummaries(state, "coarseProbabilityWeekday"),
+      momentumHour: readAxisSummaries(state, "coarseMomentumHour"),
+      timeRemainingHour: readAxisSummaries(state, "coarseTimeRemainingHour"),
     },
     warnings: sortMispricingAtlasWarnings(state.warnings),
   };
@@ -484,6 +293,4 @@ function sortMispricingAtlasWarnings(
   });
 }
 
-// Registry alignment guard for tests.
 export const RESEARCH_AXIS_GROUP_COUNT = RESEARCH_AXIS_GROUPS.length;
-export const RESEARCH_AXIS_GROUP_LIST = listResearchAxisGroups();

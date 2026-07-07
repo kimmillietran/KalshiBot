@@ -6,6 +6,13 @@ import {
 } from "./matchMultiAxisBucket";
 import type { MispricingObservation } from "./mispricingAtlasTypes";
 
+const NULL_TEMPORAL_AXIS_PARTS = {
+  hourBucketId: null,
+  dayOfWeekBucketId: null,
+  sessionBucketId: null,
+  weekendBucketId: null,
+} as const;
+
 function createObservation(
   overrides: Partial<MispricingObservation> = {},
 ): MispricingObservation {
@@ -36,6 +43,7 @@ describe("parseMultiAxisBucketId", () => {
       timeBucketId: null,
       volatilityBucketId: null,
       momentumBucketId: null,
+      ...NULL_TEMPORAL_AXIS_PARTS,
     });
   });
 
@@ -48,6 +56,7 @@ describe("parseMultiAxisBucketId", () => {
       timeBucketId: "coarse-time-late",
       moneynessBucketId: null,
       momentumBucketId: null,
+      ...NULL_TEMPORAL_AXIS_PARTS,
     });
   });
 
@@ -62,6 +71,7 @@ describe("parseMultiAxisBucketId", () => {
       timeBucketId: "coarse-time-late",
       moneynessBucketId: null,
       volatilityBucketId: null,
+      ...NULL_TEMPORAL_AXIS_PARTS,
     });
   });
 
@@ -72,6 +82,7 @@ describe("parseMultiAxisBucketId", () => {
       probabilityBucketId: null,
       timeBucketId: null,
       moneynessBucketId: null,
+      ...NULL_TEMPORAL_AXIS_PARTS,
     });
   });
 });

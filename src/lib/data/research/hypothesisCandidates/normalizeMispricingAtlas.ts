@@ -1,3 +1,4 @@
+import { getResearchDimension } from "@/lib/data/research/dimensions";
 import {
   collectMispricingAtlasBucketGroups,
   computeMispricingAtlasCoverageDiagnostics,
@@ -5,7 +6,6 @@ import {
 import {
   computeCoarseMispricingBucketSummaries,
 } from "@/lib/data/research/mispricingAtlas/computeMispricingBucketMetrics";
-import { getResearchDimension } from "@/lib/data/research/dimensions";
 import type { MispricingAtlas } from "@/lib/data/research/mispricingAtlas/mispricingAtlasTypes";
 import type {
   MispricingAtlasBucketSummary,
@@ -50,6 +50,10 @@ export function normalizeMispricingAtlas(
     momentumTime: source?.momentumTime ?? [],
     momentumVolatility: source?.momentumVolatility ?? [],
     probabilityMomentumTime: source?.probabilityMomentumTime ?? [],
+    probabilityHour: source?.probabilityHour ?? [],
+    probabilityWeekday: source?.probabilityWeekday ?? [],
+    momentumHour: source?.momentumHour ?? [],
+    timeRemainingHour: source?.timeRemainingHour ?? [],
   };
   const coverageDiagnostics =
     atlas.coverageDiagnostics
@@ -60,6 +64,10 @@ export function normalizeMispricingAtlas(
         moneynessBuckets: atlas.moneynessBuckets,
         volatilityBuckets: atlas.volatilityBuckets,
         momentumBuckets: atlas.momentumBuckets ?? createEmptyMomentumBucketSummaries(),
+        hourUtcBuckets: atlas.hourUtcBuckets,
+        dayOfWeekUtcBuckets: atlas.dayOfWeekUtcBuckets,
+        sessionBucketBuckets: atlas.sessionBucketBuckets,
+        weekendFlagBuckets: atlas.weekendFlagBuckets,
         coarseBuckets: normalizedCoarseBuckets,
       }),
       sampleCounts: atlas.sampleCounts,
@@ -69,6 +77,10 @@ export function normalizeMispricingAtlas(
   return {
     ...atlas,
     momentumBuckets: atlas.momentumBuckets ?? createEmptyMomentumBucketSummaries(),
+    hourUtcBuckets: atlas.hourUtcBuckets ?? [],
+    dayOfWeekUtcBuckets: atlas.dayOfWeekUtcBuckets ?? [],
+    sessionBucketBuckets: atlas.sessionBucketBuckets ?? [],
+    weekendFlagBuckets: atlas.weekendFlagBuckets ?? [],
     coarseBuckets: normalizedCoarseBuckets,
     coverageDiagnostics,
   };

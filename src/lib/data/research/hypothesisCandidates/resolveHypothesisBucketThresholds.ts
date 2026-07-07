@@ -23,7 +23,6 @@ export function resolveMinSampleSizeForGroup(
 export function createDefaultHypothesisBucketSampleThresholds(): HypothesisBucketSampleThresholds {
   return {
     volatilityProbabilityTime: DEFAULT_TRIPLE_AXIS_MIN_SAMPLE_SIZE,
-    probabilityMomentumTime: DEFAULT_TRIPLE_AXIS_MIN_SAMPLE_SIZE,
   };
 }
 

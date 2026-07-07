@@ -16,15 +16,23 @@ export type ResearchDimensionId =
   | "coarseTimeRemaining"
   | "moneyness"
   | "volatility"
-  | "momentum15m";
+  | "momentum15m"
+  | "hourUtc"
+  | "dayOfWeekUtc"
+  | "sessionBucket"
+  | "weekendFlag";
 
-/** Legacy multi-axis matcher labels used by composite bucket parsing. */
+/** Legacy and temporal matcher labels used by composite bucket parsing. */
 export type ResearchMatcherAxisId =
   | "probability"
   | "time"
   | "moneyness"
   | "volatility"
-  | "momentum";
+  | "momentum"
+  | "hour"
+  | "dayOfWeek"
+  | "session"
+  | "weekend";
 
 export type ResearchDimension = {
   id: ResearchDimensionId;
@@ -34,42 +42,65 @@ export type ResearchDimension = {
   valueFitsBucket: (value: number, bucket: NumericBucketDefinition) => boolean;
 };
 
+export type SingleAxisStateKey =
+  | "probabilityBuckets"
+  | "timeRemainingBuckets"
+  | "moneynessBuckets"
+  | "volatilityBuckets"
+  | "momentumBuckets"
+  | "hourUtcBuckets"
+  | "dayOfWeekUtcBuckets"
+  | "sessionBucketBuckets"
+  | "weekendFlagBuckets";
+
+export type CoarseAxisStateKey =
+  | "coarseProbabilityOnly"
+  | "coarseProbabilityTime"
+  | "coarseProbabilityRegime"
+  | "coarseProbabilityMoneyness"
+  | "coarseMoneynessTime"
+  | "coarseVolatilityMoneyness"
+  | "coarseVolatilityProbabilityTime"
+  | "coarseProbabilityMomentumTime"
+  | "coarseProbabilityMomentum"
+  | "coarseMomentumVolatility"
+  | "coarseMomentumTime"
+  | "coarseProbabilityHour"
+  | "coarseProbabilityWeekday"
+  | "coarseMomentumHour"
+  | "coarseTimeRemainingHour";
+
+export type CoarseBucketsKey =
+  | "probabilityOnly"
+  | "probabilityTime"
+  | "probabilityRegime"
+  | "probabilityMoneyness"
+  | "moneynessTime"
+  | "volatilityMoneyness"
+  | "volatilityProbabilityTime"
+  | "probabilityMomentumTime"
+  | "probabilityMomentum"
+  | "momentumVolatility"
+  | "momentumTime"
+  | "probabilityHour"
+  | "probabilityWeekday"
+  | "momentumHour"
+  | "timeRemainingHour";
+
 export type ResearchAxisGroupAtlasSource =
   | {
       kind: "singleAxis";
-      stateKey:
-        | "probabilityBuckets"
-        | "timeRemainingBuckets"
-        | "moneynessBuckets"
-        | "volatilityBuckets"
-        | "momentumBuckets";
+      stateKey: SingleAxisStateKey;
     }
   | {
       kind: "coarse";
-      coarseBucketsKey:
-        | "probabilityOnly"
-        | "probabilityTime"
-        | "probabilityRegime"
-        | "probabilityMoneyness"
-        | "moneynessTime"
-        | "volatilityMoneyness"
-        | "volatilityProbabilityTime"
-        | "probabilityMomentum"
-        | "momentumTime"
-        | "momentumVolatility"
-        | "probabilityMomentumTime";
-      stateKey:
-        | "coarseProbabilityOnly"
-        | "coarseProbabilityTime"
-        | "coarseProbabilityRegime"
-        | "coarseProbabilityMoneyness"
-        | "coarseMoneynessTime"
-        | "coarseVolatilityMoneyness"
-        | "coarseVolatilityProbabilityTime"
-        | "coarseProbabilityMomentum"
-        | "coarseMomentumTime"
-        | "coarseMomentumVolatility"
-        | "coarseProbabilityMomentumTime";
+      coarseBucketsKey: CoarseBucketsKey;
+      stateKey: CoarseAxisStateKey;
+    }
+  | {
+      kind: "probabilityRegime";
+      coarseBucketsKey: "probabilityRegime";
+      stateKey: "coarseProbabilityRegime";
     };
 
 export type ResearchAxisGroup = {

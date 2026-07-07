@@ -1,4 +1,8 @@
+import { RESEARCH_AXIS_GROUPS } from "@/lib/data/research/dimensions";
+import type { SingleAxisStateKey } from "@/lib/data/research/dimensions/types";
+
 import type {
+  MispricingAtlas,
   MispricingAtlasBucketSummary,
   MispricingAtlasCoverageDiagnostics,
   MispricingAtlasSampleCounts,
@@ -9,72 +13,45 @@ export type MispricingAtlasBucketGroup = {
   buckets: readonly MispricingAtlasBucketSummary[];
 };
 
+function readSingleAxisBuckets(
+  atlas: MispricingAtlas,
+  stateKey: SingleAxisStateKey,
+): readonly MispricingAtlasBucketSummary[] {
+  if (stateKey === "momentumBuckets") {
+    return atlas.momentumBuckets ?? [];
+  }
+
+  return atlas[stateKey] ?? [];
+}
+
+/** Collects bucket groups from atlas output using the dimension registry. */
 export function collectMispricingAtlasBucketGroups(input: {
   probabilityBuckets: readonly MispricingAtlasBucketSummary[];
   timeRemainingBuckets: readonly MispricingAtlasBucketSummary[];
   moneynessBuckets: readonly MispricingAtlasBucketSummary[];
   volatilityBuckets: readonly MispricingAtlasBucketSummary[];
   momentumBuckets?: readonly MispricingAtlasBucketSummary[];
-  coarseBuckets?: {
-    probabilityOnly: readonly MispricingAtlasBucketSummary[];
-    probabilityTime: readonly MispricingAtlasBucketSummary[];
-    probabilityRegime: readonly MispricingAtlasBucketSummary[];
-    probabilityMoneyness?: readonly MispricingAtlasBucketSummary[];
-    moneynessTime?: readonly MispricingAtlasBucketSummary[];
-    volatilityMoneyness?: readonly MispricingAtlasBucketSummary[];
-    volatilityProbabilityTime?: readonly MispricingAtlasBucketSummary[];
-    probabilityMomentum?: readonly MispricingAtlasBucketSummary[];
-    momentumTime?: readonly MispricingAtlasBucketSummary[];
-    momentumVolatility?: readonly MispricingAtlasBucketSummary[];
-    probabilityMomentumTime?: readonly MispricingAtlasBucketSummary[];
-  };
+  hourUtcBuckets?: readonly MispricingAtlasBucketSummary[];
+  dayOfWeekUtcBuckets?: readonly MispricingAtlasBucketSummary[];
+  sessionBucketBuckets?: readonly MispricingAtlasBucketSummary[];
+  weekendFlagBuckets?: readonly MispricingAtlasBucketSummary[];
+  coarseBuckets?: MispricingAtlas["coarseBuckets"];
 }): MispricingAtlasBucketGroup[] {
-  const groups: MispricingAtlasBucketGroup[] = [
-    { dimension: "probability", buckets: input.probabilityBuckets },
-    { dimension: "timeRemaining", buckets: input.timeRemainingBuckets },
-    { dimension: "moneyness", buckets: input.moneynessBuckets },
-    { dimension: "volatility", buckets: input.volatilityBuckets },
-  ];
+  const atlasLike = input as MispricingAtlas;
 
-  if (input.momentumBuckets) {
-    groups.push({ dimension: "momentum", buckets: input.momentumBuckets });
-  }
+  return RESEARCH_AXIS_GROUPS.map((group) => {
+    if (group.atlasSource.kind === "singleAxis") {
+      return {
+        dimension: group.groupId,
+        buckets: readSingleAxisBuckets(atlasLike, group.atlasSource.stateKey),
+      };
+    }
 
-  if (input.coarseBuckets) {
-    groups.push(
-      { dimension: "probabilityOnly", buckets: input.coarseBuckets.probabilityOnly },
-      { dimension: "probabilityTime", buckets: input.coarseBuckets.probabilityTime },
-      { dimension: "probabilityRegime", buckets: input.coarseBuckets.probabilityRegime },
-      {
-        dimension: "probabilityMoneyness",
-        buckets: input.coarseBuckets.probabilityMoneyness ?? [],
-      },
-      { dimension: "moneynessTime", buckets: input.coarseBuckets.moneynessTime ?? [] },
-      {
-        dimension: "volatilityMoneyness",
-        buckets: input.coarseBuckets.volatilityMoneyness ?? [],
-      },
-      {
-        dimension: "volatilityProbabilityTime",
-        buckets: input.coarseBuckets.volatilityProbabilityTime ?? [],
-      },
-      {
-        dimension: "probabilityMomentum",
-        buckets: input.coarseBuckets.probabilityMomentum ?? [],
-      },
-      { dimension: "momentumTime", buckets: input.coarseBuckets.momentumTime ?? [] },
-      {
-        dimension: "momentumVolatility",
-        buckets: input.coarseBuckets.momentumVolatility ?? [],
-      },
-      {
-        dimension: "probabilityMomentumTime",
-        buckets: input.coarseBuckets.probabilityMomentumTime ?? [],
-      },
-    );
-  }
-
-  return groups;
+    return {
+      dimension: group.groupId,
+      buckets: input.coarseBuckets?.[group.atlasSource.coarseBucketsKey] ?? [],
+    };
+  });
 }
 
 export function computeMispricingAtlasCoverageDiagnostics(input: {

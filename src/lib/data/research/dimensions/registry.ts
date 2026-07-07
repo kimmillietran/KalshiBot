@@ -20,18 +20,25 @@ import {
   valueFitsBucket,
   VOLATILITY_BUCKET_DEFINITIONS,
 } from "./bucketDefinitions";
+import { extractDimensionValue, integerFitsBucket } from "./extractors";
 import { MOMENTUM_BUCKET_DEFINITIONS } from "./momentum/momentumBucketDefinitions";
-import { extractDimensionValue } from "./extractors";
 import {
   observationMatchesDimensionBuckets,
   observationMatchesMultiAxisBucket,
   observationMatchesSingleDimensionBucket,
 } from "./matchers";
+import {
+  DAY_OF_WEEK_UTC_BUCKET_DEFINITIONS,
+  HOUR_UTC_BUCKET_DEFINITIONS,
+  SESSION_BUCKET_DEFINITIONS,
+  WEEKEND_FLAG_BUCKET_DEFINITIONS,
+} from "./temporalBucketDefinitions";
 import type {
   ResearchAxisGroup,
   ResearchDimension,
   ResearchDimensionId,
   ResearchMatcherAxisId,
+  SingleAxisStateKey,
 } from "./types";
 
 export const MATCHER_AXIS_TO_DIMENSION_ID: Record<
@@ -43,6 +50,10 @@ export const MATCHER_AXIS_TO_DIMENSION_ID: Record<
   moneyness: "moneyness",
   volatility: "volatility",
   momentum: "momentum15m",
+  hour: "hourUtc",
+  dayOfWeek: "dayOfWeekUtc",
+  session: "sessionBucket",
+  weekend: "weekendFlag",
 };
 
 const RESEARCH_DIMENSIONS_INTERNAL: readonly ResearchDimension[] = [
@@ -103,6 +114,34 @@ const RESEARCH_DIMENSIONS_INTERNAL: readonly ResearchDimension[] = [
     getBuckets: () => MOMENTUM_BUCKET_DEFINITIONS,
     extractValue: (observation) => extractDimensionValue("momentum15m", observation),
     valueFitsBucket: valueFitsBucket,
+  },
+  {
+    id: "hourUtc",
+    label: "Hour of day (UTC)",
+    getBuckets: () => HOUR_UTC_BUCKET_DEFINITIONS,
+    extractValue: (observation) => extractDimensionValue("hourUtc", observation),
+    valueFitsBucket: integerFitsBucket,
+  },
+  {
+    id: "dayOfWeekUtc",
+    label: "Day of week (UTC)",
+    getBuckets: () => DAY_OF_WEEK_UTC_BUCKET_DEFINITIONS,
+    extractValue: (observation) => extractDimensionValue("dayOfWeekUtc", observation),
+    valueFitsBucket: integerFitsBucket,
+  },
+  {
+    id: "sessionBucket",
+    label: "Session bucket (UTC)",
+    getBuckets: () => SESSION_BUCKET_DEFINITIONS,
+    extractValue: (observation) => extractDimensionValue("sessionBucket", observation),
+    valueFitsBucket: integerFitsBucket,
+  },
+  {
+    id: "weekendFlag",
+    label: "Weekend flag (UTC)",
+    getBuckets: () => WEEKEND_FLAG_BUCKET_DEFINITIONS,
+    extractValue: (observation) => extractDimensionValue("weekendFlag", observation),
+    valueFitsBucket: integerFitsBucket,
   },
 ];
 
@@ -228,6 +267,46 @@ export const RESEARCH_AXIS_GROUPS: readonly ResearchAxisGroup[] = [
     matcherAxes: ["momentum"],
   },
   {
+    groupId: "probabilityHour",
+    dimensionIds: ["coarseProbabilityAxis", "hourUtc"],
+    atlasSource: {
+      kind: "coarse",
+      coarseBucketsKey: "probabilityHour",
+      stateKey: "coarseProbabilityHour",
+    },
+    matcherAxes: ["probability", "hour"],
+  },
+  {
+    groupId: "probabilityWeekday",
+    dimensionIds: ["coarseProbabilityAxis", "dayOfWeekUtc"],
+    atlasSource: {
+      kind: "coarse",
+      coarseBucketsKey: "probabilityWeekday",
+      stateKey: "coarseProbabilityWeekday",
+    },
+    matcherAxes: ["probability", "dayOfWeek"],
+  },
+  {
+    groupId: "momentumHour",
+    dimensionIds: ["momentum15m", "hourUtc"],
+    atlasSource: {
+      kind: "coarse",
+      coarseBucketsKey: "momentumHour",
+      stateKey: "coarseMomentumHour",
+    },
+    matcherAxes: ["momentum", "hour"],
+  },
+  {
+    groupId: "timeRemainingHour",
+    dimensionIds: ["coarseTimeRemaining", "hourUtc"],
+    atlasSource: {
+      kind: "coarse",
+      coarseBucketsKey: "timeRemainingHour",
+      stateKey: "coarseTimeRemainingHour",
+    },
+    matcherAxes: ["time", "hour"],
+  },
+  {
     groupId: "probability",
     dimensionIds: ["probability"],
     atlasSource: { kind: "singleAxis", stateKey: "probabilityBuckets" },
@@ -250,6 +329,30 @@ export const RESEARCH_AXIS_GROUPS: readonly ResearchAxisGroup[] = [
     dimensionIds: ["volatility"],
     atlasSource: { kind: "singleAxis", stateKey: "volatilityBuckets" },
     matcherAxes: ["volatility"],
+  },
+  {
+    groupId: "hourUtc",
+    dimensionIds: ["hourUtc"],
+    atlasSource: { kind: "singleAxis", stateKey: "hourUtcBuckets" },
+    matcherAxes: ["hour"],
+  },
+  {
+    groupId: "dayOfWeekUtc",
+    dimensionIds: ["dayOfWeekUtc"],
+    atlasSource: { kind: "singleAxis", stateKey: "dayOfWeekUtcBuckets" },
+    matcherAxes: ["dayOfWeek"],
+  },
+  {
+    groupId: "sessionBucket",
+    dimensionIds: ["sessionBucket"],
+    atlasSource: { kind: "singleAxis", stateKey: "sessionBucketBuckets" },
+    matcherAxes: ["session"],
+  },
+  {
+    groupId: "weekendFlag",
+    dimensionIds: ["weekendFlag"],
+    atlasSource: { kind: "singleAxis", stateKey: "weekendFlagBuckets" },
+    matcherAxes: ["weekend"],
   },
 ];
 
@@ -347,6 +450,17 @@ export function buildCompositeBucketTemplates(
   return templates;
 }
 
+function readSingleAxisBuckets(
+  normalizedAtlas: NormalizedMispricingAtlas,
+  stateKey: SingleAxisStateKey,
+): readonly MispricingAtlasBucketSummary[] {
+  if (stateKey === "momentumBuckets") {
+    return normalizedAtlas.momentumBuckets ?? [];
+  }
+
+  return normalizedAtlas[stateKey] ?? [];
+}
+
 export function collectAtlasBucketGroupsFromNormalizedAtlas(
   normalizedAtlas: NormalizedMispricingAtlas,
 ): Array<{
@@ -355,21 +469,15 @@ export function collectAtlasBucketGroupsFromNormalizedAtlas(
 }> {
   return RESEARCH_AXIS_GROUPS.map((group) => {
     if (group.atlasSource.kind === "singleAxis") {
-      const stateKey = group.atlasSource.stateKey;
-      const buckets =
-        stateKey === "momentumBuckets"
-          ? (normalizedAtlas.momentumBuckets ?? [])
-          : normalizedAtlas[stateKey];
-
       return {
         groupId: group.groupId,
-        buckets,
+        buckets: readSingleAxisBuckets(normalizedAtlas, group.atlasSource.stateKey),
       };
     }
 
     return {
       groupId: group.groupId,
-      buckets: normalizedAtlas.coarseBuckets[group.atlasSource.coarseBucketsKey],
+      buckets: normalizedAtlas.coarseBuckets[group.atlasSource.coarseBucketsKey] ?? [],
     };
   });
 }
@@ -411,6 +519,15 @@ export function observationMatchesResearchAxisGroupBucket(input: {
       && regimeDefinition !== undefined
       && regimeTag === regimeDefinition.regimeTag
       && probabilityFitsBucket(input.observation.predictedProbability, probabilityDefinition)
+    );
+  }
+
+  const compositeTemplate = findCompositeBucketTemplate(input.groupId, input.bucketId);
+  if (compositeTemplate) {
+    return observationMatchesCompositeTemplate(
+      input.observation,
+      group.dimensionIds,
+      compositeTemplate.bucketDefinitions,
     );
   }
 
