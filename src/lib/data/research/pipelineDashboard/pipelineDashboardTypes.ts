@@ -10,6 +10,7 @@ import {
 import { DEFAULT_HYPOTHESIS_CANDIDATES_OUTPUT_PATH } from "@/lib/data/research/hypothesisCandidates/hypothesisCandidateTypes";
 import { DEFAULT_HYPOTHESIS_HISTORY_OUTPUT_PATH } from "@/lib/data/research/hypothesisEvolution/hypothesisEvolutionTypes";
 import { DEFAULT_EXPANSION_RUN_HISTORY_OUTPUT_PATH } from "@/lib/data/research/expansionRunHistory/expansionRunHistoryTypes";
+import { DEFAULT_RESEARCH_DIAGNOSTICS_INPUT_PATHS } from "@/lib/data/research/researchDiagnostics/researchDiagnosticsTypes";
 import { DEFAULT_HYPOTHESIS_VALIDATION_OUTPUT_PATH } from "@/lib/data/research/hypothesisRobustness/hypothesisRobustnessTypes";
 import { DEFAULT_STRATEGY_LEADERBOARD_OUTPUT_PATH } from "@/lib/data/research/leaderboard/strategyLeaderboardTypes";
 import { DEFAULT_RESEARCH_PIPELINE_SUMMARY_PATH } from "@/lib/data/research/pipeline/researchPipelineTypes";
@@ -43,6 +44,7 @@ export type PipelineDashboardInputPaths = {
   expansionRebuildSummaryPath: string;
   hypothesisHistoryPath: string;
   expansionRunHistoryPath: string;
+  researchDiagnosticsPaths: import("@/lib/data/research/researchDiagnostics/researchDiagnosticsTypes").ResearchDiagnosticsInputPaths;
 };
 
 export const DEFAULT_PIPELINE_DASHBOARD_INPUT_PATHS: PipelineDashboardInputPaths = {
@@ -63,6 +65,7 @@ export const DEFAULT_PIPELINE_DASHBOARD_INPUT_PATHS: PipelineDashboardInputPaths
   expansionRebuildSummaryPath: EXPANSION_REBUILD_SUMMARY_PATH,
   hypothesisHistoryPath: DEFAULT_HYPOTHESIS_HISTORY_OUTPUT_PATH,
   expansionRunHistoryPath: DEFAULT_EXPANSION_RUN_HISTORY_OUTPUT_PATH,
+  researchDiagnosticsPaths: DEFAULT_RESEARCH_DIAGNOSTICS_INPUT_PATHS,
 };
 
 export type PipelineStatusSection = {
@@ -177,6 +180,9 @@ export type ExpansionRunHistorySection = {
   efficiencyImproving: boolean | null;
 };
 
+export type ResearchDiagnosticsSection =
+  import("@/lib/data/research/researchDiagnostics/researchDiagnosticsTypes").ResearchDiagnosticsSection;
+
 export type PipelineDashboardReport = {
   generatedAt: string;
   outputPath: string;
@@ -190,6 +196,7 @@ export type PipelineDashboardReport = {
   historicalImportability: HistoricalImportabilitySection;
   hypothesisEvolution: HypothesisEvolutionSection;
   expansionRunHistory: ExpansionRunHistorySection;
+  researchDiagnostics: ResearchDiagnosticsSection;
 };
 
 export type BuildPipelineDashboardReportInput = {
@@ -358,6 +365,7 @@ export type ParsedPipelineDashboardInputs = {
   expansionRebuildSummary: { generatedAt: string } | null;
   hypothesisHistory: import("@/lib/data/research/hypothesisEvolution/hypothesisEvolutionTypes").HypothesisHistoryDocument | null;
   expansionRunHistory: import("@/lib/data/research/expansionRunHistory/expansionRunHistoryTypes").ExpansionRunHistoryDocument | null;
+  loadedResearchDiagnostics: import("@/lib/data/research/researchDiagnostics/loadResearchDiagnosticsInputs").LoadedResearchDiagnosticsInputs;
 };
 
 export type PipelineDashboardIo = {

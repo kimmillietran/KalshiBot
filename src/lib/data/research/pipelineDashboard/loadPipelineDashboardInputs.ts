@@ -3,6 +3,7 @@ import { z } from "zod";
 import { parseExpansionImportSummaryJson } from "@/lib/data/research/coveragePlanner/importability";
 import { parseHypothesisHistoryDocument } from "@/lib/data/research/hypothesisEvolution";
 import { tryLoadExpansionRunHistoryDocument } from "@/lib/data/research/expansionRunHistory/expansionRunHistoryDocument";
+import { loadResearchDiagnosticsInputs } from "@/lib/data/research/researchDiagnostics";
 
 import {
   PipelineDashboardError,
@@ -532,5 +533,9 @@ export function loadPipelineDashboardInputs(
     expansionRebuildSummary: readGeneratedArtifact(io, inputPaths.expansionRebuildSummaryPath),
     hypothesisHistory: readHypothesisHistory(io, inputPaths.hypothesisHistoryPath),
     expansionRunHistory: readExpansionRunHistory(io, inputPaths.expansionRunHistoryPath),
+    loadedResearchDiagnostics: loadResearchDiagnosticsInputs(
+      io,
+      inputPaths.researchDiagnosticsPaths,
+    ),
   };
 }

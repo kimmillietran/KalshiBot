@@ -10,12 +10,25 @@ export {
 } from "./createResearchStrategyHarnessRegistry";
 export {
   filterHarnessStrategySpecs,
-  HARNESS_DEFAULT_PROMOTION_STATUSES,
   HARNESS_NO_MATCH_WARNING,
+  loadHarnessStrategySelection,
   loadHarnessStrategySpecs,
   loadStrategySynthesisCandidatesReport,
   resolveHarnessStrategySpecs,
+  resolveHarnessStrategySpecsWithSelection,
 } from "./loadSynthesizedStrategySpecs";
+export { loadHypothesisFailureAnalysisForHarness } from "./loadHypothesisFailureAnalysisForHarness";
+export {
+  evaluateResearchOnlyHarnessEligibility,
+  HARNESS_RESEARCH_ONLY_WARNING,
+  RESEARCH_ONLY_MIN_OBSERVATIONS,
+  RESEARCH_ONLY_MIN_ROBUSTNESS_SCORE,
+} from "./researchOnlyHarnessEligibility";
+export {
+  resolveHarnessStrategySelection,
+  type HarnessStrategySelectionEntry,
+  type HarnessStrategySelectionResult,
+} from "./resolveHarnessStrategySelection";
 export {
   normalizeSynthesizedStrategySpec,
   parseRawStrategySynthesisCandidatesReport,
@@ -32,8 +45,10 @@ export {
 export type { RunStrategyHarnessInput } from "./runStrategyHarness";
 export {
   DEFAULT_STRATEGY_HARNESS_OUTPUT_DIR,
+  DEFAULT_STRATEGY_HARNESS_RESEARCH_ONLY_OUTPUT_DIR,
   DEFAULT_STRATEGY_HARNESS_SUMMARY_FILENAME,
   DEFAULT_STRATEGY_SYNTHESIS_CANDIDATES_PATH,
+  HARNESS_DEFAULT_PROMOTION_STATUSES,
   STRATEGY_HARNESS_OUTPUT_FILENAME,
   STRATEGY_SYNTHESIS_CANDIDATES_FILENAME,
   SUPPORTED_STRATEGY_HARNESS_FAMILIES,

@@ -28,6 +28,7 @@ function groupHarnessResultsByStrategyId(
 
 function buildSummary(
   strategies: HarnessResultsReport["strategies"],
+  harnessSummary: BuildHarnessResultsReportInput["harnessSummary"],
 ): HarnessResultsSummary {
   const recommendationCounts = {
     reject: 0,
@@ -49,6 +50,16 @@ function buildSummary(
     totalStrategies: strategies.length,
     evaluatedCount: strategies.filter((strategy) => strategy.runStatus !== "not-run").length,
     recommendationCounts,
+    ...(harnessSummary
+      ? {
+          runMode: harnessSummary.runMode,
+          researchOnlyBacktest: harnessSummary.researchOnlyBacktest,
+          includedRejectedStrategies: harnessSummary.includedRejectedStrategies,
+          promotionEligible: harnessSummary.promotionEligible,
+          skippedRejectedStrategyCount: harnessSummary.skippedRejectedStrategyCount,
+          strategySelection: harnessSummary.strategySelection,
+        }
+      : {}),
   };
 }
 
@@ -58,6 +69,7 @@ export function buildHarnessResultsReport(
 ): HarnessResultsReport {
   const config = resolveHarnessResultsConfig(input.config);
   const groupedResults = groupHarnessResultsByStrategyId(input.harnessSummary);
+  const researchOnlyBacktest = input.harnessSummary?.researchOnlyBacktest === true;
 
   const strategies = [...input.synthesisStrategies]
     .sort((left, right) => left.strategyId.localeCompare(right.strategyId))
@@ -69,6 +81,7 @@ export function buildHarnessResultsReport(
         leaderboardStrategyIds: input.leaderboardStrategyIds,
         readFile: input.readFile,
         config,
+        researchOnlyBacktest,
       }),
     );
 
@@ -78,7 +91,7 @@ export function buildHarnessResultsReport(
     htmlOutputPath: input.htmlOutputPath,
     inputPaths: input.inputPaths,
     config,
-    summary: buildSummary(strategies),
+    summary: buildSummary(strategies, input.harnessSummary),
     strategies,
   };
 }

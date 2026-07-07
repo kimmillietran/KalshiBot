@@ -9,6 +9,32 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+function readQualityFlagsFromRecord(value: unknown): readonly string[] {
+  if (!isRecord(value)) {
+    return [];
+  }
+
+  const rawFlags = value.qualityFlags ?? value.quality_flags;
+  if (!Array.isArray(rawFlags)) {
+    return [];
+  }
+
+  return rawFlags.filter((flag): flag is string => typeof flag === "string");
+}
+
+/** Reads settlement quality flags from a silver-normalized settlement record. */
+export function readSettlementQualityFlagsFromRecord(value: unknown): readonly string[] {
+  return readQualityFlagsFromRecord(value);
+}
+
+/** Returns true when settlement carries the derived-expiration-value quality flag. */
+export function settlementHasDerivedExpirationValue(
+  settlement: unknown,
+  derivedFlag: string,
+): boolean {
+  return readQualityFlagsFromRecord(settlement).includes(derivedFlag);
+}
+
 /** Reads a binary settlement outcome from a silver-normalized settlement record. */
 export function readSettlementOutcomeFromRecord(value: unknown): SettlementOutcome | null {
   if (!isRecord(value)) {
@@ -54,6 +80,24 @@ export function findSettlementInDatasetSnapshots(
   }
 
   return resolution;
+}
+
+/** Returns true when the resolved settlement snapshot carries derived expiration_value. */
+export function findDerivedExpirationValueInDatasetSnapshots(
+  snapshots: readonly unknown[],
+  derivedFlag: string,
+): boolean {
+  const resolution = findSettlementInDatasetSnapshots(snapshots);
+  if (resolution.snapshotIndex === null) {
+    return false;
+  }
+
+  const snapshot = snapshots[resolution.snapshotIndex];
+  if (!isRecord(snapshot)) {
+    return false;
+  }
+
+  return settlementHasDerivedExpirationValue(snapshot.settlement, derivedFlag);
 }
 
 /** Returns the first plain-object snapshot in a dataset. */

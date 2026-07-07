@@ -275,4 +275,144 @@ describe("runStrategyHarnessCommand", () => {
     expect(JSON.parse(stdout).evaluatedStrategies).toBe(1);
     expect(JSON.parse(stdout).warnings).toEqual([]);
   });
+
+  it("runs research-only backtest mode with metadata on stdout", async () => {
+    let stdout = "";
+    const synthesisPath = "data/research-results/strategy-synthesis-candidates.json";
+    const failureAnalysisPath = "data/research-results/hypothesis-failure-analysis.json";
+    const registryPath = "data/research-datasets/KXBTC15M/dataset-registry.json";
+    const fixturePath = "data/fixtures/KXBTC15M/market-a.json";
+
+    const exitCode = await runStrategyHarnessCommand(
+      [
+        "--input",
+        synthesisPath,
+        "--registry-dir",
+        "data/research-datasets",
+        "--research-only-backtest",
+      ],
+      {
+        readFile: (path) => {
+          if (path === synthesisPath) {
+            return JSON.stringify({
+              generatedAt: "2026-07-03T12:00:00.000Z",
+              outputPath: synthesisPath,
+              inputs: {},
+              strategies: [
+                {
+                  strategyId: "synth-rejected-near-promising",
+                  hypothesisId: "hypothesis-a",
+                  strategyFamily: "calibration-fade",
+                  direction: "fade-yes",
+                  entryConditions: { yesMidThresholdCents: 55 },
+                  exitAssumption: "Hold to settlement",
+                  requiredData: [],
+                  riskNotes: [],
+                  validationSummary: {
+                    robustnessScore: 58,
+                    passes: false,
+                    observationCount: 12,
+                  },
+                  promotionStatus: "rejected",
+                },
+              ],
+              summary: {},
+            });
+          }
+
+          if (path === failureAnalysisPath) {
+            return JSON.stringify({
+              analyses: [
+                {
+                  hypothesisId: "hypothesis-a",
+                  priorityCategory: "near-promising",
+                },
+              ],
+            });
+          }
+
+          if (path === registryPath) {
+            return JSON.stringify({
+              seriesTicker: "KXBTC15M",
+              markets: [
+                {
+                  seriesTicker: "KXBTC15M",
+                  marketTicker: "MARKET-A",
+                  fixturePath,
+                },
+              ],
+            });
+          }
+
+          return "{}";
+        },
+        fileExists: (path) =>
+          path === synthesisPath
+          || path === failureAnalysisPath
+          || path === registryPath
+          || path === fixturePath,
+        readdir: (path) =>
+          path.endsWith("KXBTC15M") ? ["dataset-registry.json"] : ["KXBTC15M"],
+        isDirectory: (path) =>
+          path.endsWith("research-datasets") || path.endsWith("KXBTC15M"),
+        writeStdout: (text) => {
+          stdout += text;
+        },
+        writeStderr: () => {},
+        writeFile: () => {},
+        mkdirSync: () => {},
+      },
+      {
+        runEvaluation: () => JSON.stringify({ metadata: { runId: "harness-run" } }),
+        parseFixtureJson: () =>
+          ({
+            bronzeRecords: [{ recordId: "r1" }],
+            strategyId: "noop",
+            engineConfig: {
+              enabled: true,
+              minEdgePercent: 1,
+              minLiquidityQuality: "Fair",
+              maxSpreadPercent: 10,
+              minimumTimeRemaining: 0,
+              minimumCandles: 0,
+            },
+            initialCashCents: 10_000,
+            runId: "fixture-run",
+            durationMs: 1_000,
+          }) as HistoricalResearchCliInputDocument,
+      },
+    );
+
+    const payload = JSON.parse(stdout);
+    expect(exitCode).toBe(0);
+    expect(payload.runMode).toBe("research-only");
+    expect(payload.researchOnlyBacktest).toBe(true);
+    expect(payload.includedRejectedStrategies).toBe(true);
+    expect(payload.promotionEligible).toBe(false);
+    expect(payload.evaluatedStrategies).toBe(1);
+    expect(payload.outputDir).toBe("data/research-results/harness-research-only");
+  });
+
+  it("returns non-zero when research-only and include-rejected are both set", async () => {
+    let stderr = "";
+
+    const exitCode = await runStrategyHarnessCommand(
+      ["--research-only-backtest", "--include-rejected"],
+      {
+        readFile: () => "",
+        fileExists: () => true,
+        writeStdout: () => {},
+        writeStderr: (text) => {
+          stderr += text;
+        },
+        writeFile: () => {},
+        mkdirSync: () => {},
+        readdir: () => [],
+        isDirectory: () => false,
+      },
+    );
+
+    expect(exitCode).toBe(1);
+    expect(stderr).toContain("cannot be combined");
+  });
 });

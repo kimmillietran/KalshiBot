@@ -128,6 +128,58 @@ const REPORT: PipelineDashboardReport = {
     worstBottleneckGeneratedAt: "2026-07-01T10:00:00.000Z",
     efficiencyImproving: true,
   },
+  researchDiagnostics: {
+    availableCount: 1,
+    totalCount: 4,
+    nearPromisingHypothesisCount: 2,
+    highestRobustnessScore: 59,
+    derivedSensitiveHypothesisCount: null,
+    refinementCandidateCount: null,
+    strategySynthesisFunnelStatus: null,
+    harnessCandidateCount: null,
+    cards: [
+      {
+        artifactId: "hypothesis-failure-analysis",
+        label: "Hypothesis failure analysis",
+        jsonPath: "data/research-results/hypothesis-failure-analysis.json",
+        htmlPath: "data/reports/hypothesis-failure-analysis.html",
+        present: true,
+        generatedAt: "2026-07-07T03:29:15.026Z",
+        metrics: [
+          { label: "Near-promising", value: "2" },
+          { label: "Highest robustness", value: "59" },
+          { label: "Total hypotheses", value: "5" },
+        ],
+      },
+      {
+        artifactId: "derived-settlement-sensitivity",
+        label: "Derived settlement sensitivity",
+        jsonPath: "data/research-results/derived-settlement-sensitivity.json",
+        htmlPath: "data/reports/derived-settlement-sensitivity.html",
+        present: false,
+        generatedAt: null,
+        metrics: [],
+      },
+      {
+        artifactId: "hypothesis-refinements",
+        label: "Hypothesis refinements",
+        jsonPath: "data/research-results/hypothesis-refinements.json",
+        htmlPath: "data/reports/hypothesis-refinements.html",
+        present: false,
+        generatedAt: null,
+        metrics: [],
+      },
+      {
+        artifactId: "strategy-synthesis-debug",
+        label: "Strategy synthesis debug",
+        jsonPath: "data/research-results/strategy-synthesis-debug.json",
+        htmlPath: "data/reports/strategy-synthesis-debug.html",
+        present: false,
+        generatedAt: null,
+        metrics: [],
+      },
+    ],
+  },
 };
 
 describe("serializePipelineDashboardHtml", () => {
@@ -171,5 +223,14 @@ describe("serializePipelineDashboardHtml", () => {
     expect(html).toContain("Expansion Run History");
     expect(html).toContain("984");
     expect(html).toContain("improving");
+  });
+
+  it("renders the research diagnostics section", () => {
+    const html = serializePipelineDashboardHtml(REPORT);
+
+    expect(html).toContain("Research Diagnostics");
+    expect(html).toContain("Near-promising");
+    expect(html).toContain("hypothesis-failure-analysis.html");
+    expect(html).toContain("not generated");
   });
 });

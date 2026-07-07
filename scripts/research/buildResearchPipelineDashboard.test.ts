@@ -25,6 +25,9 @@ describe("buildResearchPipelineDashboard CLI", () => {
     expect(writes.get("data/reports/research-dashboard.html")).toContain(
       "Research Pipeline Dashboard",
     );
+    expect(writes.get("data/reports/research-dashboard.html")).toContain(
+      "Research Diagnostics",
+    );
     expect(stdout).toContain('"pipelineStatus":"unknown"');
   });
 });

@@ -308,6 +308,28 @@ export type {
 } from "./hypothesisFailureAnalysis";
 
 export {
+  analyzeDerivedSettlementSensitivity,
+  buildDefaultDerivedSettlementSensitivityInputPaths,
+  buildDerivedSettlementSensitivityReport,
+  classifyDerivedSensitivityRecommendation,
+  computeOfficialOnlyValidations,
+  discoverDerivedSettlementMarketKeys,
+  loadDerivedSettlementSensitivityComputation,
+  serializeDerivedSettlementSensitivityHtml,
+  serializeDerivedSettlementSensitivityReport,
+  DEFAULT_DERIVED_SETTLEMENT_SENSITIVITY_HTML_PATH,
+  DEFAULT_DERIVED_SETTLEMENT_SENSITIVITY_OUTPUT_PATH,
+  DERIVED_SETTLEMENT_SENSITIVITY_FILENAME,
+  DerivedSettlementSensitivityError,
+} from "./derivedSettlementSensitivity";
+export type {
+  BuildDerivedSettlementSensitivityReportInput,
+  DerivedSensitivityRecommendation,
+  DerivedSettlementSensitivityEntry,
+  DerivedSettlementSensitivityReport,
+} from "./derivedSettlementSensitivity";
+
+export {
   buildDefaultHypothesisRefinementInputPaths,
   buildHypothesisRefinementReport,
   generateHypothesisRefinements,
@@ -344,6 +366,23 @@ export type {
   RefinementHypothesisCandidatesReport,
   RegisteredRefinementHypothesisCandidate,
 } from "./refinementHypothesisRegistration";
+
+export {
+  buildStrategySynthesisDebugReport,
+  loadStrategySynthesisDebugInputs,
+  serializeStrategySynthesisDebugHtml,
+  serializeStrategySynthesisDebugReport,
+  DEFAULT_STRATEGY_SYNTHESIS_DEBUG_HTML_PATH,
+  DEFAULT_STRATEGY_SYNTHESIS_DEBUG_OUTPUT_PATH,
+  STRATEGY_SYNTHESIS_DEBUG_FILENAME,
+  StrategySynthesisDebugError,
+} from "./strategySynthesisDebug";
+export type {
+  BuildStrategySynthesisDebugReportInput,
+  StrategySynthesisDebugReport,
+  StrategySynthesisFunnelCounts,
+  StrategySynthesisDiagnosis,
+} from "./strategySynthesisDebug";
 
 export {
   buildStatisticalSignificanceFromDirectories,
@@ -646,6 +685,16 @@ export type {
   ExpansionRunHistoryRun,
   ExpansionRunHistoryTrends,
 } from "./expansionRunHistory";
+
+export {
+  buildResearchDiagnosticsSection,
+  loadResearchDiagnosticsInputs,
+  DEFAULT_RESEARCH_DIAGNOSTICS_INPUT_PATHS,
+} from "./researchDiagnostics";
+export type {
+  ResearchDiagnosticArtifactCard,
+  ResearchDiagnosticsSection,
+} from "./researchDiagnostics";
 
 export {
   buildHypothesisLifecycleReport,
