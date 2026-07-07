@@ -680,6 +680,26 @@ export type {
 } from "./researchDiagnostics";
 
 export {
+  buildResearchWorkflowReport,
+  loadResearchWorkflowInputs,
+  parseResearchWorkflowPathsFromArgv,
+  serializeResearchWorkflowHtml,
+  serializeResearchWorkflowReport,
+  determineHypothesisWorkflowAction,
+  DEFAULT_RESEARCH_WORKFLOW_HTML_PATH,
+  DEFAULT_RESEARCH_WORKFLOW_INPUT_PATHS,
+  DEFAULT_RESEARCH_WORKFLOW_OUTPUT_PATH,
+  ResearchWorkflowError,
+} from "./researchWorkflow";
+export type {
+  ResearchWorkflowHypothesisPipeline,
+  ResearchWorkflowInputPaths,
+  ResearchWorkflowQueueAction,
+  ResearchWorkflowQueueItem,
+  ResearchWorkflowReport,
+} from "./researchWorkflow";
+
+export {
   buildHypothesisLifecycleReport,
   buildHypothesisLifecycleReportFromInputs,
   loadHypothesisLifecycleInputs,

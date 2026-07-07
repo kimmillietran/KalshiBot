@@ -488,6 +488,18 @@ export const EXPANSION_RUN_HISTORY_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--imports-dir" },
 ];
 
+export const RESEARCH_WORKFLOW_ARGV_SCHEMA: readonly NpmArgvField[] = [
+  { flag: "--output" },
+  { flag: "--html-output" },
+  { flag: "--hypothesis-failure-analysis" },
+  { flag: "--derived-settlement-sensitivity" },
+  { flag: "--hypothesis-refinements" },
+  { flag: "--refinement-hypothesis-candidates" },
+  { flag: "--strategy-synthesis-debug" },
+  { flag: "--month-regime-analysis" },
+  { flag: "--harness-summary" },
+];
+
 export const RESEARCH_PIPELINE_DASHBOARD_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--output" },
   { flag: "--pipeline-summary" },
@@ -790,6 +802,10 @@ export function normalizeResearchPerformanceAuditArgv(argv: readonly string[]): 
 
 export function normalizeExpansionRunHistoryArgv(argv: readonly string[]): string[] {
   return normalizeNpmScriptArgv(argv, EXPANSION_RUN_HISTORY_ARGV_SCHEMA);
+}
+
+export function normalizeResearchWorkflowArgv(argv: readonly string[]): string[] {
+  return normalizeNpmScriptArgv(argv, RESEARCH_WORKFLOW_ARGV_SCHEMA);
 }
 
 export function normalizeExpansionImportPerformanceAuditArgv(
