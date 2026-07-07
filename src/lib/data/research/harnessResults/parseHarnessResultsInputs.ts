@@ -197,6 +197,35 @@ export function parseStrategyHarnessSummary(
         typeof value.successfulRuns === "number" ? value.successfulRuns : 0,
       failedRuns: typeof value.failedRuns === "number" ? value.failedRuns : 0,
       skippedRuns: typeof value.skippedRuns === "number" ? value.skippedRuns : 0,
+      runMode: value.runMode === "research-only" ? "research-only" : "production",
+      researchOnlyBacktest: value.researchOnlyBacktest === true,
+      includedRejectedStrategies: value.includedRejectedStrategies === true,
+      promotionEligible: value.promotionEligible !== false,
+      skippedRejectedStrategyCount:
+        typeof value.skippedRejectedStrategyCount === "number"
+          ? value.skippedRejectedStrategyCount
+          : 0,
+      strategySelection: Array.isArray(value.strategySelection)
+        ? value.strategySelection.map((entry) => {
+            if (!isRecord(entry)) {
+              return {
+                strategyId: "",
+                hypothesisId: "",
+                promotionStatus: "",
+                decision: "skipped" as const,
+                reason: "Invalid selection entry",
+              };
+            }
+
+            return {
+              strategyId: String(entry.strategyId ?? ""),
+              hypothesisId: String(entry.hypothesisId ?? ""),
+              promotionStatus: String(entry.promotionStatus ?? ""),
+              decision: entry.decision === "included" ? "included" : "skipped",
+              reason: String(entry.reason ?? ""),
+            };
+          })
+        : [],
       results: value.results.map(parseHarnessMarketResult),
     };
   });

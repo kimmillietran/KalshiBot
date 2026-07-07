@@ -4,6 +4,7 @@ import { buildHypothesisValidationReport } from "./buildHypothesisValidationRepo
 import { serializeHypothesisValidationHtml } from "./serializeHypothesisValidationHtml";
 import type { EnrichedMispricingObservation, HypothesisValidationReport } from "./hypothesisRobustnessTypes";
 import type { HypothesisCandidate } from "@/lib/data/research/hypothesisCandidates/hypothesisCandidateTypes";
+import { loadHypothesisCandidatesFromFile } from "./loadHypothesisValidationInputs";
 
 const GENERATED_AT = "2026-07-02T12:00:00.000Z";
 
@@ -162,5 +163,97 @@ describe("buildHypothesisValidationReport", () => {
     expect(html).toContain("PASS");
     expect(html).toContain("atlas-volatility-vol-high-over");
     expect(html).toContain("Month persistence");
+  });
+
+  it("validates registered refinement candidates using parent atlas bucket and filters", () => {
+    const report = buildHypothesisValidationReport({
+      generatedAt: GENERATED_AT,
+      outputPath: "data/research-results/hypothesis-validation.json",
+      htmlOutputPath: "data/reports/research-hypothesis-validation.html",
+      inputPaths: {
+        hypothesisCandidatesPath: "data/research-results/refinement-hypothesis-candidates.json",
+        mispricingAtlasPath: "data/research-results/mispricing-atlas.json",
+        researchResultsDir: "data/research-results",
+        regimeTagsPath: "data/research-results/regime-tags.json",
+      },
+      candidates: [
+        createCandidate("atlas-volatility-vol-high-over"),
+        createCandidate(
+          "refine-atlas-volatility-vol-high-over--exclude-reversing-months-2026-03",
+          {
+            refinementRegistration: {
+              parentHypothesisId: "atlas-volatility-vol-high-over",
+              refinementType: "exclude-reversing-months",
+              generatedFromFailureAnalysis: true,
+              suggestedFilters: { excludedMonths: ["2026-03"] },
+              generationReason: "Exclude reversing month",
+              refinementRank: 1,
+              status: "candidate-refinement",
+            },
+          },
+        ),
+      ],
+      observations: [
+        createObservation(0, { calendarMonth: "2026-02", annualizedVolatility: 0.8 }),
+        createObservation(1, { calendarMonth: "2026-03", annualizedVolatility: 0.8 }),
+        createObservation(2, { calendarMonth: "2026-02", annualizedVolatility: 0.8 }),
+        createObservation(3, { calendarMonth: "2026-03", annualizedVolatility: 0.8 }),
+      ],
+      regimeVolatilityByMarket: new Map(),
+    });
+
+    const parentEntry = report.validations.find(
+      (entry) => entry.hypothesisId === "atlas-volatility-vol-high-over",
+    );
+    const refinementEntry = report.validations.find(
+      (entry) =>
+        entry.hypothesisId
+        === "refine-atlas-volatility-vol-high-over--exclude-reversing-months-2026-03",
+    );
+
+    expect(parentEntry?.observationCount).toBe(4);
+    expect(refinementEntry?.observationCount).toBe(2);
+    expect(refinementEntry?.robustnessScore).toBeGreaterThan(0);
+  });
+
+  it("loads registered refinement candidates for validation compatibility", () => {
+    const fixture = {
+      generatedAt: GENERATED_AT,
+      outputPath: "data/research-results/refinement-hypothesis-candidates.json",
+      config: {
+        minSampleSize: 30,
+        minCalibrationError: 0.05,
+        minLeadLagCorrelation: 0.2,
+      },
+      inputs: {},
+      candidates: [
+        createCandidate(
+          "refine-atlas-volatility-vol-high-over--probability-bucket-split-prob-30-50",
+          {
+            refinementRegistration: {
+              parentHypothesisId: "atlas-volatility-vol-high-over",
+              refinementType: "probability-bucket-split",
+              generatedFromFailureAnalysis: true,
+              suggestedFilters: { probabilityRangeLabel: "[0.3, 0.5)" },
+              generationReason: "Split probability",
+              refinementRank: 1,
+              status: "candidate-refinement",
+            },
+          },
+        ),
+      ],
+      summary: { registeredCount: 1 },
+    };
+
+    const candidates = loadHypothesisCandidatesFromFile(
+      {
+        readFile: () => JSON.stringify(fixture),
+        fileExists: () => true,
+      },
+      "data/research-results/refinement-hypothesis-candidates.json",
+    );
+
+    expect(candidates).toHaveLength(1);
+    expect(candidates[0]?.refinementRegistration?.status).toBe("candidate-refinement");
   });
 });

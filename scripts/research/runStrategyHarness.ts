@@ -23,9 +23,11 @@ import type { HistoricalResearchCliInputDocument } from "./types";
 import {
   formatStdoutOutput,
   parseConcurrencyFromArgv,
+  parseFailureAnalysisPathFromArgv,
   parseIncludeRejectedFromArgv,
   parseOutputDirFromArgv,
   parseRegistryDirFromArgv,
+  parseResearchOnlyBacktestFromArgv,
   parseStrategyFamilyFromArgv,
   parseSynthesizedStrategyIdFromArgv,
   parseSynthesisPathFromArgv,
@@ -95,7 +97,15 @@ export function runStrategyHarnessCommand(
     const strategyFamily = parseStrategyFamilyFromArgv(normalizedArgv);
     const synthesizedStrategyId = parseSynthesizedStrategyIdFromArgv(normalizedArgv);
     const includeRejected = parseIncludeRejectedFromArgv(normalizedArgv);
+    const researchOnlyBacktest = parseResearchOnlyBacktestFromArgv(normalizedArgv);
+    const failureAnalysisPath = parseFailureAnalysisPathFromArgv(normalizedArgv);
     const concurrency = parseConcurrencyFromArgv(normalizedArgv);
+
+    if (researchOnlyBacktest && includeRejected) {
+      throw new StrategyHarnessCommandError(
+        "--research-only-backtest cannot be combined with --include-rejected.",
+      );
+    }
 
     return runStrategyHarness({
       synthesisPath,
@@ -104,6 +114,8 @@ export function runStrategyHarnessCommand(
       strategyFamily,
       synthesizedStrategyId,
       includeRejected,
+      researchOnlyBacktest,
+      failureAnalysisPath,
       concurrency,
       io: createHarnessIo(io),
       parseFixtureJson: options?.parseFixtureJson
@@ -129,7 +141,12 @@ export function runStrategyHarnessCommand(
             stableStringify({
               summaryPath: summary.summaryPath,
               outputDir: summary.outputDir,
+              runMode: summary.runMode,
+              researchOnlyBacktest: summary.researchOnlyBacktest,
+              includedRejectedStrategies: summary.includedRejectedStrategies,
+              promotionEligible: summary.promotionEligible,
               evaluatedStrategies: summary.evaluatedStrategies,
+              skippedRejectedStrategyCount: summary.skippedRejectedStrategyCount,
               totalRuns: summary.totalRuns,
               successfulRuns: summary.successfulRuns,
               failedRuns: summary.failedRuns,

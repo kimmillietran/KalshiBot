@@ -58,16 +58,37 @@ export function parseHtmlOutputPathFromArgv(
   return readFlagValue(argv, "--html-output") ?? defaultPath;
 }
 
+function resolveHypothesisCandidatesInputPath(path: string | undefined, defaultPath: string): string {
+  if (!path) {
+    return defaultPath;
+  }
+
+  if (path.includes("/") || path.includes("\\")) {
+    return path;
+  }
+
+  if (path.endsWith(".json")) {
+    return `data/research-results/${path}`;
+  }
+
+  return path;
+}
+
 export function parseInputPathsFromArgv(argv: readonly string[]): {
   hypothesisCandidatesPath: string;
   mispricingAtlasPath: string;
   researchResultsDir: string;
   regimeTagsPath: string;
 } {
+  const candidatesInput =
+    readFlagValue(argv, "--input")
+    ?? readFlagValue(argv, "--hypothesis-candidates");
+
   return {
-    hypothesisCandidatesPath:
-      readFlagValue(argv, "--hypothesis-candidates")
-      ?? DEFAULT_HYPOTHESIS_CANDIDATES_OUTPUT_PATH,
+    hypothesisCandidatesPath: resolveHypothesisCandidatesInputPath(
+      candidatesInput,
+      DEFAULT_HYPOTHESIS_CANDIDATES_OUTPUT_PATH,
+    ),
     mispricingAtlasPath:
       readFlagValue(argv, "--mispricing-atlas")
       ?? DEFAULT_MISPRICING_ATLAS_INPUT_PATH,

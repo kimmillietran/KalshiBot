@@ -9,10 +9,12 @@ import { buildStrategyHarnessOutputPath, resolveStrategyHarnessSummaryPath } fro
 import { resolveHarnessStrategyFromSpec } from "./createResearchStrategyHarnessRegistry";
 import {
   HARNESS_NO_MATCH_WARNING,
-  loadHarnessStrategySpecs,
+  loadHarnessStrategySelection,
 } from "./loadSynthesizedStrategySpecs";
+import { HARNESS_RESEARCH_ONLY_WARNING } from "./researchOnlyHarnessEligibility";
 import {
   DEFAULT_STRATEGY_HARNESS_OUTPUT_DIR,
+  DEFAULT_STRATEGY_HARNESS_RESEARCH_ONLY_OUTPUT_DIR,
   DEFAULT_STRATEGY_HARNESS_SUMMARY_FILENAME,
   StrategyHarnessError,
   type RunStrategyHarnessEvaluationFn,
@@ -94,6 +96,8 @@ export type RunStrategyHarnessInput = {
   strategyFamily?: string;
   synthesizedStrategyId?: string;
   includeRejected?: boolean;
+  researchOnlyBacktest?: boolean;
+  failureAnalysisPath?: string;
   concurrency?: number;
   io: StrategyHarnessIo;
   parseFixtureJson: (json: string, marketTicker?: string) => HistoricalResearchCliInput;
@@ -149,7 +153,16 @@ function buildEmptyHarnessSummary(input: {
   completedAt: string;
   durationMs: number;
   includeRejected: boolean;
+  researchOnlyBacktest: boolean;
+  strategySelection: StrategyHarnessSummary["strategySelection"];
+  skippedRejectedStrategyCount: number;
+  includedRejectedStrategies: boolean;
 }): StrategyHarnessSummary {
+  const warnings = [HARNESS_NO_MATCH_WARNING];
+  if (input.researchOnlyBacktest) {
+    warnings.unshift(HARNESS_RESEARCH_ONLY_WARNING);
+  }
+
   return {
     synthesisPath: input.synthesisPath,
     registryDir: input.registryDir,
@@ -159,12 +172,18 @@ function buildEmptyHarnessSummary(input: {
     completedAt: input.completedAt,
     durationMs: input.durationMs,
     includeRejected: input.includeRejected,
+    runMode: input.researchOnlyBacktest ? "research-only" : "production",
+    researchOnlyBacktest: input.researchOnlyBacktest,
+    includedRejectedStrategies: input.includedRejectedStrategies,
+    promotionEligible: !input.researchOnlyBacktest,
     evaluatedStrategies: 0,
+    skippedRejectedStrategyCount: input.skippedRejectedStrategyCount,
+    strategySelection: input.strategySelection,
     totalRuns: 0,
     successfulRuns: 0,
     failedRuns: 0,
     skippedRuns: 0,
-    warnings: [HARNESS_NO_MATCH_WARNING],
+    warnings,
     results: [],
   };
 }
@@ -175,21 +194,32 @@ export async function runStrategyHarness(
 ): Promise<StrategyHarnessSummary> {
   const startedAt = input.now?.().toISOString() ?? new Date().toISOString();
   const startMs = Date.now();
-  const outputDir = normalizePath(input.outputDir ?? DEFAULT_STRATEGY_HARNESS_OUTPUT_DIR);
+  const researchOnlyBacktest = input.researchOnlyBacktest === true;
+  const includeRejected = input.includeRejected === true;
+
+  if (researchOnlyBacktest && includeRejected) {
+    throw new StrategyHarnessError(
+      "--research-only-backtest cannot be combined with --include-rejected.",
+    );
+  }
+
+  const outputDir = normalizePath(
+    input.outputDir
+    ?? (researchOnlyBacktest
+      ? DEFAULT_STRATEGY_HARNESS_RESEARCH_ONLY_OUTPUT_DIR
+      : DEFAULT_STRATEGY_HARNESS_OUTPUT_DIR),
+  );
   const summaryPath = input.summaryPath
     ?? resolveStrategyHarnessSummaryPath(outputDir, DEFAULT_STRATEGY_HARNESS_SUMMARY_FILENAME);
   const concurrency = input.concurrency ?? 1;
-  const includeRejected = input.includeRejected === true;
-
-  if (!Number.isInteger(concurrency) || concurrency < 1) {
-    throw new StrategyHarnessError("concurrency must be a positive integer");
-  }
-
-  const specs = loadHarnessStrategySpecs(input.io, input.synthesisPath, {
+  const selectionResult = loadHarnessStrategySelection(input.io, input.synthesisPath, {
     strategyFamily: input.strategyFamily,
     synthesizedStrategyId: input.synthesizedStrategyId,
     includeRejected,
+    researchOnlyBacktest,
+    failureAnalysisPath: input.failureAnalysisPath,
   });
+  const specs = selectionResult.specs;
 
   if (specs.length === 0) {
     input.io.mkdir(outputDir);
@@ -203,10 +233,18 @@ export async function runStrategyHarness(
       completedAt,
       durationMs: Date.now() - startMs,
       includeRejected,
+      researchOnlyBacktest,
+      strategySelection: selectionResult.selection,
+      skippedRejectedStrategyCount: selectionResult.skippedRejectedStrategyCount,
+      includedRejectedStrategies: selectionResult.includedRejectedStrategies,
     });
 
     input.io.writeFile(summaryPath, stableStringify(summary));
     return summary;
+  }
+
+  if (!Number.isInteger(concurrency) || concurrency < 1) {
+    throw new StrategyHarnessError("concurrency must be a positive integer");
   }
 
   const normalizedRegistryDir = normalizePath(input.registryDir);
@@ -314,6 +352,11 @@ export async function runStrategyHarness(
 
   const completedAt = input.now?.().toISOString() ?? new Date().toISOString();
   const sortedResults = [...results].sort(compareResults);
+  const warnings: string[] = [];
+  if (researchOnlyBacktest) {
+    warnings.push(HARNESS_RESEARCH_ONLY_WARNING);
+  }
+
   const summary: StrategyHarnessSummary = {
     synthesisPath: input.synthesisPath,
     registryDir: normalizePath(input.registryDir),
@@ -323,12 +366,18 @@ export async function runStrategyHarness(
     completedAt,
     durationMs: Date.now() - startMs,
     includeRejected,
+    runMode: researchOnlyBacktest ? "research-only" : "production",
+    researchOnlyBacktest,
+    includedRejectedStrategies: selectionResult.includedRejectedStrategies,
+    promotionEligible: !researchOnlyBacktest,
     evaluatedStrategies: specs.length,
+    skippedRejectedStrategyCount: selectionResult.skippedRejectedStrategyCount,
+    strategySelection: selectionResult.selection,
     totalRuns: sortedResults.length,
     successfulRuns: sortedResults.filter((result) => result.status === "success").length,
     failedRuns: sortedResults.filter((result) => result.status === "failed").length,
     skippedRuns: sortedResults.filter((result) => result.status === "skipped").length,
-    warnings: [],
+    warnings,
     results: sortedResults,
   };
 

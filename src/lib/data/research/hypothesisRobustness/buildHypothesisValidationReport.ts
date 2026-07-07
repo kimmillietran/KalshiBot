@@ -4,6 +4,7 @@ import type { RegimeVolatilityByMarketKey } from "@/lib/data/research/mispricing
 import { loadRegimeVolatilityByMarket } from "@/lib/data/research/mispricingAtlas/loadRegimeVolatilityByMarket";
 import { DEFAULT_MIN_CALIBRATION_ERROR } from "@/lib/data/research/hypothesisCandidates/hypothesisCandidateTypes";
 import type { HypothesisCandidate } from "@/lib/data/research/hypothesisCandidates/hypothesisCandidateTypes";
+import type { HypothesisRefinementFilters } from "@/lib/data/research/hypothesisRefinementGenerator/hypothesisRefinementTypes";
 
 import {
   buildValidationReasons,
@@ -14,6 +15,7 @@ import {
   computeTimeStabilityMetrics,
 } from "./computeHypothesisRobustnessMetrics";
 import { filterObservationsForAtlasBucket } from "./filterObservationsForAtlasBucket";
+import { applyRefinementSuggestedFilters } from "./applyRefinementSuggestedFilters";
 import {
   buildValidationObservationAccumulators,
 } from "./buildValidationObservationAccumulators";
@@ -89,7 +91,10 @@ export function validateCandidate(
   regimeVolatilityByMarket: RegimeVolatilityByMarketKey,
   config: HypothesisValidationConfig,
 ): HypothesisValidationEntry {
-  const atlasRef = parseAtlasHypothesisCandidateId(candidate.candidateId);
+  const refinementRegistration = candidate.refinementRegistration;
+  const atlasRef = refinementRegistration
+    ? parseAtlasHypothesisCandidateId(refinementRegistration.parentHypothesisId)
+    : parseAtlasHypothesisCandidateId(candidate.candidateId);
 
   if (!atlasRef) {
     const components = emptyScoreComponents();
@@ -113,11 +118,18 @@ export function validateCandidate(
     };
   }
 
-  const bucketObservations = filterObservationsForAtlasBucket(
+  let bucketObservations = filterObservationsForAtlasBucket(
     observations,
     atlasRef,
     regimeVolatilityByMarket,
   );
+
+  if (refinementRegistration) {
+    bucketObservations = applyRefinementSuggestedFilters(
+      bucketObservations,
+      refinementRegistration.suggestedFilters as HypothesisRefinementFilters,
+    );
+  }
 
   if (bucketObservations.length === 0) {
     const components = emptyScoreComponents();

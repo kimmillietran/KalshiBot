@@ -47,6 +47,7 @@
     "research:hypothesis-failure-analysis": "tsx scripts/research/buildHypothesisFailureAnalysis.ts",
     "research:derived-sensitivity": "tsx scripts/research/buildDerivedSettlementSensitivity.ts",
     "research:hypothesis-refinements": "tsx scripts/research/buildHypothesisRefinements.ts",
+    "research:register-refinements": "tsx scripts/research/registerRefinementHypotheses.ts",
     "research:strategy-synthesis-debug": "tsx scripts/research/buildStrategySynthesisDebug.ts",
     "research:month-regime-analysis": "tsx scripts/research/buildMonthRegimeAnalysis.ts",
     "research:artifact-index": "tsx scripts/research/buildResearchArtifactIndex.ts",

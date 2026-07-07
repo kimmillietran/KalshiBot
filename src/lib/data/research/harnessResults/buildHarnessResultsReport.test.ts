@@ -6,6 +6,29 @@ import { buildHarnessResultsReport } from "./buildHarnessResultsReport";
 
 const GENERATED_AT = "2026-07-03T15:00:00.000Z";
 
+function createHarnessSummary(
+  overrides: Partial<NonNullable<Parameters<typeof buildHarnessResultsReport>[0]["harnessSummary"]>> = {},
+): NonNullable<Parameters<typeof buildHarnessResultsReport>[0]["harnessSummary"]> {
+  return {
+    synthesisPath: "data/research-results/strategy-synthesis-candidates.json",
+    outputDir: "data/research-results/harness",
+    summaryPath: "data/research-results/harness/strategy-harness-summary.json",
+    evaluatedStrategies: 1,
+    totalRuns: 1,
+    successfulRuns: 1,
+    failedRuns: 0,
+    skippedRuns: 0,
+    runMode: "production",
+    researchOnlyBacktest: false,
+    includedRejectedStrategies: false,
+    promotionEligible: true,
+    skippedRejectedStrategyCount: 0,
+    strategySelection: [],
+    results: [],
+    ...overrides,
+  };
+}
+
 function createResearchOutputJson(): string {
   return JSON.stringify({
     dataset: JSON.stringify({
@@ -99,15 +122,7 @@ describe("buildHarnessResultsReport", () => {
         strategyLeaderboardPath: null,
       },
       synthesisStrategies: [createStrategy()],
-      harnessSummary: {
-        synthesisPath: "data/research-results/strategy-synthesis-candidates.json",
-        outputDir: "data/research-results/harness",
-        summaryPath: "data/research-results/harness/strategy-harness-summary.json",
-        evaluatedStrategies: 1,
-        totalRuns: 1,
-        successfulRuns: 1,
-        failedRuns: 0,
-        skippedRuns: 0,
+      harnessSummary: createHarnessSummary({
         results: [
           {
             synthesizedStrategyId: "synth-atlas-volatility-vol-high-over",
@@ -120,7 +135,7 @@ describe("buildHarnessResultsReport", () => {
             errorMessage: null,
           },
         ],
-      },
+      }),
       validationByHypothesisId: new Map([
         [
           "atlas-volatility-vol-high-over",
@@ -144,5 +159,51 @@ describe("buildHarnessResultsReport", () => {
     expect(strategy.calibrationContext?.bucketId).toBe("vol-high");
     expect(strategy.promotionRecommendation).toBe("candidate");
     expect(report.summary.recommendationCounts.candidate).toBe(1);
+  });
+
+  it("marks harness results as research-only and not promotion eligible", () => {
+    const report = buildHarnessResultsReport({
+      generatedAt: GENERATED_AT,
+      outputPath: "data/research-results/harness-results.json",
+      htmlOutputPath: "data/reports/research-harness-results.html",
+      inputPaths: {
+        synthesisPath: "data/research-results/strategy-synthesis-candidates.json",
+        harnessSummaryPath:
+          "data/research-results/harness-research-only/strategy-harness-summary.json",
+        harnessOutputDir: "data/research-results/harness-research-only",
+        hypothesisValidationPath: null,
+        strategyLeaderboardPath: null,
+      },
+      synthesisStrategies: [createStrategy({ promotionStatus: "rejected" })],
+      harnessSummary: createHarnessSummary({
+        outputDir: "data/research-results/harness-research-only",
+        summaryPath:
+          "data/research-results/harness-research-only/strategy-harness-summary.json",
+        runMode: "research-only",
+        researchOnlyBacktest: true,
+        includedRejectedStrategies: true,
+        promotionEligible: false,
+        skippedRejectedStrategyCount: 2,
+        strategySelection: [
+          {
+            strategyId: "synth-atlas-volatility-vol-high-over",
+            hypothesisId: "atlas-volatility-vol-high-over",
+            promotionStatus: "rejected",
+            decision: "included",
+            reason: "Near-promising rejected strategy eligible for research-only backtest.",
+          },
+        ],
+      }),
+      validationByHypothesisId: new Map(),
+      leaderboardStrategyIds: new Set(),
+      readFile: () => "",
+    });
+
+    expect(report.summary.runMode).toBe("research-only");
+    expect(report.summary.promotionEligible).toBe(false);
+    expect(report.strategies[0]?.promotionRecommendation).toBe("reject");
+    expect(report.strategies[0]?.warnings).toContain(
+      "Research-only backtest: results are diagnostic and not promotion-eligible.",
+    );
   });
 });

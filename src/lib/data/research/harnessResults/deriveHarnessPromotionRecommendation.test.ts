@@ -93,4 +93,24 @@ describe("deriveHarnessPromotionRecommendation", () => {
       }),
     ).toBe("needs-more-data");
   });
+
+  it("always rejects promotion recommendations in research-only mode", () => {
+    expect(
+      deriveHarnessPromotionRecommendation({
+        strategy: createStrategy(),
+        validation: {
+          hypothesisId: "atlas-volatility-vol-high-over",
+          robustnessScore: 85,
+          passes: true,
+          reasons: [],
+        },
+        runStatus: "completed",
+        completedMarkets: 5,
+        winRatePct: 55,
+        totalPnlCents: 500,
+        config,
+        researchOnlyBacktest: true,
+      }),
+    ).toBe("reject");
+  });
 });

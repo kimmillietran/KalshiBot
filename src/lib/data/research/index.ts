@@ -351,6 +351,23 @@ export type {
 } from "./hypothesisRefinementGenerator";
 
 export {
+  buildDefaultRefinementHypothesisRegistrationInputPaths,
+  buildRefinementHypothesisCandidatesReport,
+  loadRefinementHypothesisRegistrationInputs,
+  registerRefinementHypothesisCandidates,
+  serializeRefinementHypothesisCandidatesHtml,
+  serializeRefinementHypothesisCandidatesReport,
+  DEFAULT_REFINEMENT_HYPOTHESIS_CANDIDATES_HTML_PATH,
+  DEFAULT_REFINEMENT_HYPOTHESIS_CANDIDATES_OUTPUT_PATH,
+  REFINEMENT_HYPOTHESIS_CANDIDATES_FILENAME,
+  RefinementHypothesisRegistrationError,
+} from "./refinementHypothesisRegistration";
+export type {
+  RefinementHypothesisCandidatesReport,
+  RegisteredRefinementHypothesisCandidate,
+} from "./refinementHypothesisRegistration";
+
+export {
   buildStrategySynthesisDebugReport,
   loadStrategySynthesisDebugInputs,
   serializeStrategySynthesisDebugHtml,

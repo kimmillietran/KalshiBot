@@ -150,6 +150,7 @@ export const HYPOTHESIS_CANDIDATES_ARGV_SCHEMA: readonly NpmArgvField[] = [
 export const HYPOTHESIS_VALIDATION_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--output" },
   { flag: "--html-output" },
+  { flag: "--input" },
   { flag: "--hypothesis-candidates" },
   { flag: "--mispricing-atlas" },
   { flag: "--research-results-dir" },
@@ -172,6 +173,8 @@ export const STRATEGY_HARNESS_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--strategy-id" },
   { flag: "--concurrency" },
   { flag: "--include-rejected" },
+  { flag: "--research-only-backtest" },
+  { flag: "--failure-analysis" },
 ];
 
 export const HARNESS_RESULTS_ARGV_SCHEMA: readonly NpmArgvField[] = [
@@ -253,6 +256,14 @@ export const HYPOTHESIS_REFINEMENTS_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--hypothesis-validation" },
   { flag: "--mispricing-atlas" },
   { flag: "--cross-validation" },
+];
+
+export const REGISTER_REFINEMENT_HYPOTHESES_ARGV_SCHEMA: readonly NpmArgvField[] = [
+  { flag: "--output" },
+  { flag: "--html-output" },
+  { flag: "--hypothesis-refinements" },
+  { flag: "--hypothesis-candidates" },
+  { flag: "--hypothesis-failure-analysis" },
 ];
 
 export const STRATEGY_SYNTHESIS_DEBUG_ARGV_SCHEMA: readonly NpmArgvField[] = [
@@ -703,7 +714,7 @@ export function normalizeStrategySynthesisArgv(argv: readonly string[]): string[
 export function normalizeStrategyHarnessArgv(argv: readonly string[]): string[] {
   return mergeNpmBooleanFlags(
     normalizeNpmScriptArgv(argv, STRATEGY_HARNESS_ARGV_SCHEMA),
-    ["--include-rejected"],
+    ["--include-rejected", "--research-only-backtest"],
   );
 }
 
@@ -737,6 +748,10 @@ export function normalizeDerivedSettlementSensitivityArgv(argv: readonly string[
 
 export function normalizeHypothesisRefinementsArgv(argv: readonly string[]): string[] {
   return normalizeNpmScriptArgv(argv, HYPOTHESIS_REFINEMENTS_ARGV_SCHEMA);
+}
+
+export function normalizeRegisterRefinementHypothesesArgv(argv: readonly string[]): string[] {
+  return normalizeNpmScriptArgv(argv, REGISTER_REFINEMENT_HYPOTHESES_ARGV_SCHEMA);
 }
 
 export function normalizeStrategySynthesisDebugArgv(argv: readonly string[]): string[] {
