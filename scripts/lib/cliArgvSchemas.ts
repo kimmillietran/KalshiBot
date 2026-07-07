@@ -265,6 +265,15 @@ export const STRATEGY_SYNTHESIS_DEBUG_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--harness-results" },
 ];
 
+export const MONTH_REGIME_ANALYSIS_ARGV_SCHEMA: readonly NpmArgvField[] = [
+  { flag: "--output" },
+  { flag: "--html-output" },
+  { flag: "--hypothesis-candidates" },
+  { flag: "--hypothesis-validation" },
+  { flag: "--regime-tags" },
+  { flag: "--research-results-dir" },
+];
+
 export const OVERFITTING_DIAGNOSTICS_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--input-dir" },
   { flag: "--experiments-root" },
@@ -732,6 +741,10 @@ export function normalizeHypothesisRefinementsArgv(argv: readonly string[]): str
 
 export function normalizeStrategySynthesisDebugArgv(argv: readonly string[]): string[] {
   return normalizeNpmScriptArgv(argv, STRATEGY_SYNTHESIS_DEBUG_ARGV_SCHEMA);
+}
+
+export function normalizeMonthRegimeAnalysisArgv(argv: readonly string[]): string[] {
+  return normalizeNpmScriptArgv(argv, MONTH_REGIME_ANALYSIS_ARGV_SCHEMA);
 }
 
 export function normalizePowerAnalysisArgv(argv: readonly string[]): string[] {

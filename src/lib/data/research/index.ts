@@ -368,6 +368,24 @@ export type {
 } from "./strategySynthesisDebug";
 
 export {
+  analyzeMonthRegimeStability,
+  buildMonthRegimeAnalysisReport,
+  buildMonthRegimeObservationIndex,
+  loadMonthRegimeAnalysisInputs,
+  serializeMonthRegimeAnalysisHtml,
+  serializeMonthRegimeAnalysisReport,
+  DEFAULT_MONTH_REGIME_ANALYSIS_HTML_PATH,
+  DEFAULT_MONTH_REGIME_ANALYSIS_OUTPUT_PATH,
+  MONTH_REGIME_ANALYSIS_FILENAME,
+  MonthRegimeAnalysisError,
+} from "./monthRegimeAnalysis";
+export type {
+  BuildMonthRegimeAnalysisReportInput,
+  MonthRegimeAnalysisReport,
+  MonthRegimeHypothesisAnalysis,
+} from "./monthRegimeAnalysis";
+
+export {
   buildStatisticalSignificanceFromDirectories,
   buildStatisticalSignificanceReport,
   bootstrapMeanConfidenceInterval,
