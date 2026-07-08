@@ -1,3 +1,5 @@
+import { quantile } from "@/lib/utils/stats";
+
 import type { ResearchDimensionSampleSizeStats } from "./researchDimensionExplorerTypes";
 
 /** Shannon entropy (base 2) for a non-negative count vector. */
@@ -41,25 +43,9 @@ export function computeSampleSizeStats(
   return {
     min: sorted[0] ?? null,
     max: sorted[sorted.length - 1] ?? null,
-    median: percentile(sorted, 0.5),
+    median: quantile(sorted, 0.5),
     mean: total / sorted.length,
-    p25: percentile(sorted, 0.25),
-    p75: percentile(sorted, 0.75),
+    p25: quantile(sorted, 0.25),
+    p75: quantile(sorted, 0.75),
   };
-}
-
-function percentile(sortedValues: readonly number[], quantile: number): number {
-  const index = (sortedValues.length - 1) * quantile;
-  const lower = Math.floor(index);
-  const upper = Math.ceil(index);
-
-  if (lower === upper) {
-    return sortedValues[lower] ?? 0;
-  }
-
-  const weight = index - lower;
-  return (
-    (sortedValues[lower] ?? 0) * (1 - weight)
-    + (sortedValues[upper] ?? 0) * weight
-  );
 }

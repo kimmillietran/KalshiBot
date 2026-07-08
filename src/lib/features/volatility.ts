@@ -1,6 +1,10 @@
 import { stableMean, stableStdDev } from "./normalize";
 import type { FeatureCandle, RollingVolatilityFeature } from "./types";
 
+/**
+ * Rolling close-price std dev for trading features. Distinct from research
+ * `estimateRealizedVolatility`; see FEATURE_SEMANTICS.md.
+ */
 export function rollingVolatility(
   candles: readonly FeatureCandle[],
   window = 10,

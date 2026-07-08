@@ -1,3 +1,5 @@
+import { midProbabilityFromCents } from "@/lib/features/contractPricing";
+
 import {
   CalibrationError,
   CalibrationErrorCode,
@@ -34,10 +36,6 @@ function readFiniteNumber(record: Record<string, unknown>, key: string): number 
   return typeof value === "number" && Number.isFinite(value) ? value : undefined;
 }
 
-function midProbability(yesBidCents: number, yesAskCents: number): number {
-  return (yesBidCents + yesAskCents) / 2 / 100;
-}
-
 function extractKalshiProbabilities(snapshot: Record<string, unknown>): number[] {
   const candles = snapshot.kalshiCandles;
   if (!Array.isArray(candles)) {
@@ -57,7 +55,7 @@ function extractKalshiProbabilities(snapshot: Record<string, unknown>): number[]
       continue;
     }
 
-    probabilities.push(midProbability(yesBidCents, yesAskCents));
+    probabilities.push(midProbabilityFromCents(yesBidCents, yesAskCents));
   }
 
   return probabilities;

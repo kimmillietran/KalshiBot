@@ -1,3 +1,4 @@
+import { spreadSidePercent } from "@/lib/features/contractPricing";
 import type { LiquidityQuality } from "@/types/domain/trading";
 
 import type {
@@ -59,18 +60,6 @@ export function spreadPercent(pricing: FeaturePricingInput): SpreadPercentFeatur
     noSpreadPercent,
     maxSpreadPercent: spreads.length === 0 ? null : Math.max(...spreads),
   };
-}
-
-function spreadSidePercent(
-  bidCents: number | null,
-  askCents: number | null,
-): number | null {
-  if (bidCents == null || askCents == null || askCents <= 0) {
-    return null;
-  }
-
-  const spread = Math.max(askCents - bidCents, 0);
-  return (spread / askCents) * 100;
 }
 
 export function liquidityScore(pricing: FeaturePricingInput): LiquidityScoreFeature {

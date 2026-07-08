@@ -1,3 +1,5 @@
+import { midProbabilityFromCents } from "@/lib/features/contractPricing";
+
 import {
   LeadLagError,
   LeadLagErrorCode,
@@ -32,10 +34,6 @@ function readFiniteNumber(record: Record<string, unknown>, key: string): number 
 function readString(record: Record<string, unknown>, key: string): string | undefined {
   const value = record[key];
   return typeof value === "string" && value.trim() ? value.trim() : undefined;
-}
-
-function midProbability(yesBidCents: number, yesAskCents: number): number {
-  return (yesBidCents + yesAskCents) / 2 / 100;
 }
 
 function extractReplayCandlePoints(input: {
@@ -80,7 +78,7 @@ function extractReplayCandlePoints(input: {
       stepIndex,
       timestampMs,
       btcPrice,
-      impliedProbability: midProbability(yesBidCents, yesAskCents),
+      impliedProbability: midProbabilityFromCents(yesBidCents, yesAskCents),
     });
   });
 
@@ -127,7 +125,7 @@ function extractSnapshotFallbackCandlePoints(
         stepIndex,
         timestampMs,
         btcPrice,
-        impliedProbability: midProbability(yesBidCents, yesAskCents),
+        impliedProbability: midProbabilityFromCents(yesBidCents, yesAskCents),
       },
     ];
   });

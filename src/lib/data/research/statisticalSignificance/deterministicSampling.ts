@@ -1,4 +1,5 @@
 import { fnv1a32 } from "@/lib/trading/config/hashConfig";
+import { percentile as percentileFromSorted } from "@/lib/utils/stats";
 
 export type DeterministicSampleContext = {
   seed: number;
@@ -19,29 +20,9 @@ export function deterministicUniformIndex(context: DeterministicSampleContext): 
   return parseInt(digest, 16) % context.upperBound;
 }
 
-/** Linear-interpolation percentile for sorted values. */
+/** Linear-interpolation percentile for sorted values (0–100 scale). */
 export function percentile(sortedValues: readonly number[], pct: number): number {
-  if (sortedValues.length === 0) {
-    return 0;
-  }
-
-  if (sortedValues.length === 1) {
-    return sortedValues[0]!;
-  }
-
-  const rank = (pct / 100) * (sortedValues.length - 1);
-  const lowerIndex = Math.floor(rank);
-  const upperIndex = Math.ceil(rank);
-
-  if (lowerIndex === upperIndex) {
-    return sortedValues[lowerIndex]!;
-  }
-
-  const weight = rank - lowerIndex;
-  return (
-    sortedValues[lowerIndex]! * (1 - weight) +
-    sortedValues[upperIndex]! * weight
-  );
+  return percentileFromSorted(sortedValues, pct);
 }
 
 export function mean(values: readonly number[]): number {

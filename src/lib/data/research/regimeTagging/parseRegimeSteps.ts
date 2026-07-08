@@ -1,4 +1,8 @@
 import {
+  maxSpreadSidePercent,
+  midProbabilityFromCents,
+} from "@/lib/features/contractPricing";
+import {
   RegimeTaggingError,
   RegimeTaggingErrorCode,
   type RegimeStepPoint,
@@ -34,41 +38,13 @@ function readString(record: Record<string, unknown>, key: string): string | unde
   return typeof value === "string" && value.trim() ? value.trim() : undefined;
 }
 
-function midProbability(yesBidCents: number, yesAskCents: number): number {
-  return (yesBidCents + yesAskCents) / 2 / 100;
-}
-
-function spreadSidePercent(bidCents: number, askCents: number): number | null {
-  if (askCents <= 0) {
-    return null;
-  }
-
-  return (Math.max(askCents - bidCents, 0) / askCents) * 100;
-}
-
 function maxSpreadPercent(pricing: Record<string, unknown>): number | null {
-  const yesBid = readFiniteNumber(pricing, "yesBidCents");
-  const yesAsk = readFiniteNumber(pricing, "yesAskCents");
-  const noBid = readFiniteNumber(pricing, "noBidCents");
-  const noAsk = readFiniteNumber(pricing, "noAskCents");
-
-  const spreads: number[] = [];
-
-  if (yesBid !== undefined && yesAsk !== undefined) {
-    const spread = spreadSidePercent(yesBid, yesAsk);
-    if (spread !== null) {
-      spreads.push(spread);
-    }
-  }
-
-  if (noBid !== undefined && noAsk !== undefined) {
-    const spread = spreadSidePercent(noBid, noAsk);
-    if (spread !== null) {
-      spreads.push(spread);
-    }
-  }
-
-  return spreads.length === 0 ? null : Math.max(...spreads);
+  return maxSpreadSidePercent({
+    yesBidCents: readFiniteNumber(pricing, "yesBidCents"),
+    yesAskCents: readFiniteNumber(pricing, "yesAskCents"),
+    noBidCents: readFiniteNumber(pricing, "noBidCents"),
+    noAskCents: readFiniteNumber(pricing, "noAskCents"),
+  });
 }
 
 function extractReplayStepPoints(backtestResult: Record<string, unknown>): RegimeStepPoint[] {
@@ -113,7 +89,7 @@ function extractReplayStepPoints(backtestResult: Record<string, unknown>): Regim
       stepIndex,
       timestampMs,
       btcPrice,
-      impliedProbability: midProbability(yesBidCents, yesAskCents),
+      impliedProbability: midProbabilityFromCents(yesBidCents, yesAskCents),
       maxSpreadPercent: maxSpreadPercent(pricing),
       timeRemainingMs: market ? readFiniteNumber(market, "timeRemainingMs") ?? null : null,
     });
@@ -168,7 +144,7 @@ function extractSnapshotFallbackStepPoints(snapshot: Record<string, unknown>): R
         stepIndex,
         timestampMs,
         btcPrice,
-        impliedProbability: midProbability(yesBidCents, yesAskCents),
+        impliedProbability: midProbabilityFromCents(yesBidCents, yesAskCents),
         maxSpreadPercent: maxSpreadPercent({
           yesBidCents,
           yesAskCents,

@@ -1,3 +1,5 @@
+import { averageFinite } from "@/lib/utils/stats";
+
 import {
   MIN_ATTRIBUTION_SAMPLE_SIZE,
   type AttributionBucketSummary,
@@ -6,13 +8,6 @@ import {
 
 function roundMetric(value: number): number {
   return Math.round(value * 1_000_000) / 1_000_000;
-}
-
-function average(values: readonly number[]): number | null {
-  if (values.length === 0) {
-    return null;
-  }
-  return values.reduce((sum, value) => sum + value, 0) / values.length;
 }
 
 function buildSparseSampleWarning(count: number): readonly string[] {
@@ -35,8 +30,8 @@ function summarizeBucket(
   const pnls = observations.map(readPnl);
   const fillPrices = observations.map(readFillPrice);
   const wins = observations.filter(readIsWin).length;
-  const avgPnl = average(pnls);
-  const avgFill = average(fillPrices);
+  const avgPnl = averageFinite(pnls);
+  const avgFill = averageFinite(fillPrices);
 
   return {
     bucketId,

@@ -28,6 +28,7 @@ export function readNoAskCents(
   return noAskCents === null || noAskCents === undefined ? null : noAskCents;
 }
 
+/** Strategy/research BTC momentum percent over a fixed candle lookback. Canonical research momentum base. */
 export function computeBtcMomentumPct(
   candles: readonly EvaluationCandleSnapshot[],
   lookbackBars: number,

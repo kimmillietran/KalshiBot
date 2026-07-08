@@ -1,6 +1,8 @@
 import type { NumericBucketDefinition } from "../mispricingAtlas/mispricingAtlasBuckets";
 import { valueFitsBucket } from "../mispricingAtlas/mispricingAtlasBuckets";
 
+export { TIME_REMAINING_BUCKET_DEFINITIONS } from "@/lib/data/research/dimensions/bucketDefinitions";
+
 export const YES_MID_BUCKET_DEFINITIONS: readonly NumericBucketDefinition[] = [
   {
     bucketId: "yes-mid-low",
@@ -19,33 +21,6 @@ export const YES_MID_BUCKET_DEFINITIONS: readonly NumericBucketDefinition[] = [
     bucketLabel: "67-100 cents",
     minInclusive: 67,
     maxExclusive: 101,
-  },
-];
-
-export const TIME_REMAINING_BUCKET_DEFINITIONS: readonly NumericBucketDefinition[] = [
-  {
-    bucketId: "time-0-5m",
-    bucketLabel: "0-5 minutes remaining",
-    minInclusive: 0,
-    maxExclusive: 5 * 60 * 1_000,
-  },
-  {
-    bucketId: "time-5-15m",
-    bucketLabel: "5-15 minutes remaining",
-    minInclusive: 5 * 60 * 1_000,
-    maxExclusive: 15 * 60 * 1_000,
-  },
-  {
-    bucketId: "time-15-30m",
-    bucketLabel: "15-30 minutes remaining",
-    minInclusive: 15 * 60 * 1_000,
-    maxExclusive: 30 * 60 * 1_000,
-  },
-  {
-    bucketId: "time-30m-plus",
-    bucketLabel: "30+ minutes remaining",
-    minInclusive: 30 * 60 * 1_000,
-    maxExclusive: null,
   },
 ];
 

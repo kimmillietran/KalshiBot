@@ -1,4 +1,6 @@
+import { mapEvaluationCandleSnapshots } from "@/lib/data/research/parsing/mapEvaluationCandleSnapshots";
 import { estimateRealizedVolatility } from "@/lib/data/strategies/fairValueDiffusion/fairValueDiffusionModel";
+import { midProbabilityFromCents } from "@/lib/features/contractPricing";
 import { percentToTarget } from "@/lib/features/targetDistance";
 import type { EvaluationCandleSnapshot } from "@/types/domain/trading";
 
@@ -46,44 +48,6 @@ function readFiniteNumber(record: Record<string, unknown>, key: string): number 
 function readString(record: Record<string, unknown>, key: string): string | undefined {
   const value = record[key];
   return typeof value === "string" && value.trim() ? value.trim() : undefined;
-}
-
-function midProbability(yesBidCents: number, yesAskCents: number): number {
-  return (yesBidCents + yesAskCents) / 2 / 100;
-}
-
-function mapCandles(value: unknown): EvaluationCandleSnapshot[] {
-  if (!Array.isArray(value)) {
-    return [];
-  }
-
-  const candles: EvaluationCandleSnapshot[] = [];
-
-  for (const candle of value) {
-    if (!isRecord(candle)) {
-      continue;
-    }
-
-    const timestamp = readFiniteNumber(candle, "timestamp");
-    const open = readFiniteNumber(candle, "open");
-    const high = readFiniteNumber(candle, "high");
-    const low = readFiniteNumber(candle, "low");
-    const close = readFiniteNumber(candle, "close");
-
-    if (
-      timestamp === undefined
-      || open === undefined
-      || high === undefined
-      || low === undefined
-      || close === undefined
-    ) {
-      continue;
-    }
-
-    candles.push({ timestamp, open, high, low, close });
-  }
-
-  return candles;
 }
 
 function readAnnualizedVolatility(
@@ -188,7 +152,7 @@ function extractReplayStepObservations(input: {
     const timeRemainingMs = market
       ? readFiniteNumber(market, "timeRemainingMs") ?? null
       : null;
-    const candles = btc ? mapCandles(btc.candles) : [];
+    const candles = btc ? mapEvaluationCandleSnapshots(btc.candles) : [];
     const evaluatedAt = readString(engineInput, "evaluatedAt");
     const observationTimestampMs = evaluatedAt ? Date.parse(evaluatedAt) : Number.NaN;
 
@@ -199,7 +163,7 @@ function extractReplayStepObservations(input: {
         marketTicker: input.marketTicker,
         outputPath: input.outputPath,
         stepIndex,
-        predictedProbability: midProbability(yesBidCents, yesAskCents),
+        predictedProbability: midProbabilityFromCents(yesBidCents, yesAskCents),
         observedOutcome: input.observedOutcome,
         spotPrice,
         strikePrice,
@@ -292,7 +256,7 @@ function extractSnapshotFallbackObservations(input: {
         marketTicker: input.marketTicker,
         outputPath: input.outputPath,
         stepIndex,
-        predictedProbability: midProbability(yesBidCents, yesAskCents),
+        predictedProbability: midProbabilityFromCents(yesBidCents, yesAskCents),
         observedOutcome: input.observedOutcome,
         spotPrice,
         strikePrice,

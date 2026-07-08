@@ -5,6 +5,10 @@ import type {
   RecentMomentumFeature,
 } from "./types";
 
+/**
+ * Short-window momentum for live feature vectors. Distinct from
+ * `computeBtcMomentumPct` (research/strategy); see FEATURE_SEMANTICS.md.
+ */
 export function recentMomentum(
   candles: readonly FeatureCandle[],
   window = 5,

@@ -3,7 +3,7 @@ import type { EvaluationCandleSnapshot } from "@/types/domain/trading";
 
 import { DEFAULT_RESEARCH_MOMENTUM_LOOKBACK_BARS } from "./momentumResearchTypes";
 
-/** Reuses trading-layer BTC momentum percent over a 15-minute candle window. */
+/** Canonical research BTC momentum percent (`computeBtcMomentumPct`); see FEATURE_SEMANTICS.md. */
 export function computeResearchObservationMomentumPercent(
   candles: readonly EvaluationCandleSnapshot[],
   lookbackBars: number = DEFAULT_RESEARCH_MOMENTUM_LOOKBACK_BARS,
