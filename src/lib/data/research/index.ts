@@ -904,6 +904,37 @@ export type {
 } from "./costAwareAtlas";
 
 export {
+  buildHypothesisTradeReplayReport,
+  loadHypothesisTradeReplayInputs,
+  serializeHypothesisTradeReplayHtml,
+  serializeHypothesisTradeReplayReport,
+  HypothesisTradeReplayError,
+} from "./hypothesisTradeReplay";
+export type {
+  HypothesisTradeReplayEntry,
+  HypothesisTradeReplayReport,
+} from "./hypothesisTradeReplay";
+
+export {
+  buildPnlForensicsGateReport,
+  buildDefaultPnlForensicsGateInputPaths,
+  createPnlForensicsGateConfig,
+  DEFAULT_PNL_FORENSICS_GATE_CONFIG,
+  DEFAULT_PNL_FORENSICS_GATE_HTML_OUTPUT_PATH,
+  DEFAULT_PNL_FORENSICS_GATE_OUTPUT_PATH,
+  loadPnlForensicsGateInputs,
+  serializePnlForensicsGateHtml,
+  serializePnlForensicsGateReport,
+  PnlForensicsGateError,
+} from "./pnlForensicsGate";
+export type {
+  PnlForensicsFamilyVerdict,
+  PnlForensicsGateReport,
+  PnlForensicsHypothesisReport,
+  PnlForensicsHypothesisVerdict,
+} from "./pnlForensicsGate";
+
+export {
   assertUnifiedFeatureCatalogIntegrity,
   buildResearchDimensionFeatureMap,
   getUnifiedFeatureById,

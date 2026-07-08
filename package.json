@@ -69,6 +69,8 @@
     "research:dimension-explorer": "tsx scripts/research/buildResearchDimensionExplorer.ts",
     "research:portfolio-analytics": "tsx scripts/research/buildResearchPortfolioAnalytics.ts",
     "research:cost-aware-atlas": "tsx scripts/research/buildCostAwareAtlas.ts",
+    "research:hypothesis-trade-replay": "tsx scripts/research/buildHypothesisTradeReplay.ts",
+    "research:pnl-forensics": "tsx scripts/research/buildPnlForensicsGate.ts",
     "research:recommendations": "tsx scripts/research/buildResearchRecommendationEngine.ts",
     "research:feature-catalog": "tsx scripts/research/buildFeatureCatalogExplorer.ts",
     "research:family-verdict": "tsx scripts/research/buildCalibrationFadeFamilyVerdict.ts",
