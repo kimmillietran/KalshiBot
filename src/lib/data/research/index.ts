@@ -881,6 +881,37 @@ export type {
 } from "./researchRecommendationEngine";
 
 export {
+  buildFeatureCatalogExplorerReport,
+  loadFeatureCatalogExplorerInputs,
+  parseFeatureCatalogExplorerPathsFromArgv,
+  serializeFeatureCatalogExplorerHtml,
+  serializeFeatureCatalogExplorerReport,
+  DEFAULT_FEATURE_CATALOG_EXPLORER_HTML_PATH,
+  DEFAULT_FEATURE_CATALOG_EXPLORER_INPUT_PATHS,
+  DEFAULT_FEATURE_CATALOG_EXPLORER_OUTPUT_PATH,
+  FeatureCatalogExplorerError,
+} from "./featureCatalogExplorer";
+export type {
+  FeatureCatalogExplorerFeatureEntry,
+  FeatureCatalogExplorerInputPaths,
+  FeatureCatalogExplorerReport,
+} from "./featureCatalogExplorer";
+
+export {
+  buildUnifiedFeatureCatalogDocument,
+  getUnifiedFeatureCatalogEntry,
+  listUnifiedFeatureCatalogEntries,
+  FEATURE_DUPLICATION_GROUPS,
+  GENUINELY_MISSING_INDICATOR_IDS,
+} from "./featureCatalog";
+export type {
+  FeatureCatalogSourceLayer,
+  FeatureDuplicationGroup,
+  UnifiedFeatureCatalogDocument,
+  UnifiedFeatureCatalogEntry,
+} from "./featureCatalog";
+
+export {
   buildHypothesisLifecycleReport,
   buildHypothesisLifecycleReportFromInputs,
   loadHypothesisLifecycleInputs,

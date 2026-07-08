@@ -3,6 +3,7 @@ import { DEFAULT_RESEARCH_MOMENTUM_LOOKBACK_BARS } from "@/lib/data/research/dim
 import { DEFAULT_REGIME_VOLATILITY_LOOKBACK_BARS } from "@/lib/data/research/regimeTagging/regimeTaggingTypes";
 
 import type { UnifiedFeatureCatalogEntry } from "./types";
+import { CATALOG_EXTENSION_ENTRIES } from "./catalogExtensions";
 
 const CATALOG_ENTRIES: readonly UnifiedFeatureCatalogEntry[] = [
   {
@@ -61,6 +62,7 @@ const CATALOG_ENTRIES: readonly UnifiedFeatureCatalogEntry[] = [
     mispricingObservationField: "timeRemainingMs",
     researchDimensionEligible: true,
     linkedResearchDimensionIds: ["timeRemaining", "coarseTimeRemaining"],
+    duplicationGroupId: "time-remaining",
     dependencies: [],
     description: "Milliseconds until contract close at observation time.",
   },
@@ -82,6 +84,7 @@ const CATALOG_ENTRIES: readonly UnifiedFeatureCatalogEntry[] = [
     mispricingObservationField: "annualizedVolatility",
     researchDimensionEligible: true,
     linkedResearchDimensionIds: ["volatility"],
+    duplicationGroupId: "volatility",
     dependencies: [],
     description:
       "Backward-looking annualized realized BTC volatility used by the mispricing atlas.",
@@ -105,6 +108,7 @@ const CATALOG_ENTRIES: readonly UnifiedFeatureCatalogEntry[] = [
     mispricingObservationField: "momentumPercent",
     researchDimensionEligible: true,
     linkedResearchDimensionIds: ["momentum15m"],
+    duplicationGroupId: "momentum",
     dependencies: [],
     description: "BTC percent change over the research momentum lookback window.",
   },
@@ -225,6 +229,7 @@ const CATALOG_ENTRIES: readonly UnifiedFeatureCatalogEntry[] = [
     outputType: "number",
     onMispricingObservation: false,
     researchDimensionEligible: true,
+    duplicationGroupId: "volatility",
     dependencies: [],
     description:
       "Close-price standard deviation over a rolling candle window in the trading feature vector.",
@@ -418,6 +423,7 @@ const CATALOG_ENTRIES: readonly UnifiedFeatureCatalogEntry[] = [
     outputType: "percent",
     onMispricingObservation: false,
     researchDimensionEligible: true,
+    duplicationGroupId: "momentum",
     dependencies: [],
     description:
       "Trading-layer close change percent; research uses momentum15m for atlas observations.",
@@ -450,8 +456,11 @@ const CATALOG_ENTRIES: readonly UnifiedFeatureCatalogEntry[] = [
 ];
 
 /** Canonical unified feature catalog (deterministic id sort). */
-export const UNIFIED_FEATURE_CATALOG: readonly UnifiedFeatureCatalogEntry[] = [...CATALOG_ENTRIES].sort(
+export const UNIFIED_FEATURE_CATALOG: readonly UnifiedFeatureCatalogEntry[] = [
+  ...CATALOG_ENTRIES,
+  ...CATALOG_EXTENSION_ENTRIES,
+].sort(
   (left, right) => left.id.localeCompare(right.id),
 );
 
-export const UNIFIED_FEATURE_CATALOG_VERSION = "1.0.0";
+export const UNIFIED_FEATURE_CATALOG_VERSION = "1.1.0";

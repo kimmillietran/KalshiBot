@@ -559,6 +559,15 @@ export const RESEARCH_RECOMMENDATION_ENGINE_ARGV_SCHEMA: readonly NpmArgvField[]
   { flag: "--month-regime-analysis" },
 ];
 
+export const FEATURE_CATALOG_EXPLORER_ARGV_SCHEMA: readonly NpmArgvField[] = [
+  { flag: "--output" },
+  { flag: "--html-output" },
+  { flag: "--dimension-explorer" },
+  { flag: "--portfolio-analytics" },
+  { flag: "--roi-analysis" },
+  { flag: "--duplication-analysis" },
+];
+
 export const RESEARCH_PIPELINE_DASHBOARD_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--output" },
   { flag: "--pipeline-summary" },
@@ -893,6 +902,12 @@ export function normalizeResearchRecommendationEngineArgv(
   argv: readonly string[],
 ): string[] {
   return normalizeNpmScriptArgv(argv, RESEARCH_RECOMMENDATION_ENGINE_ARGV_SCHEMA);
+}
+
+export function normalizeFeatureCatalogExplorerArgv(
+  argv: readonly string[],
+): string[] {
+  return normalizeNpmScriptArgv(argv, FEATURE_CATALOG_EXPLORER_ARGV_SCHEMA);
 }
 
 export function normalizeExpansionImportPerformanceAuditArgv(

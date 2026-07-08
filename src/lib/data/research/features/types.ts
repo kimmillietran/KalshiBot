@@ -68,6 +68,10 @@ export type UnifiedFeatureCatalogEntry = {
   /** Other catalog feature ids required upstream. */
   dependencies: readonly string[];
   description?: string;
+  /** False for catalogued but not-yet-implemented indicators (e.g. EMA). Defaults to true. */
+  implemented?: boolean;
+  /** Optional duplication group for explorer diagnostics. */
+  duplicationGroupId?: string | null;
 };
 
 export type UnifiedFeatureCatalog = {
