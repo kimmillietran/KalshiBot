@@ -908,7 +908,7 @@ export type {
   FeatureCatalogSourceLayer,
   FeatureDuplicationGroup,
   UnifiedFeatureCatalogDocument,
-  UnifiedFeatureCatalogEntry,
+  UnifiedFeatureCatalogEntry as FeatureCatalogExplorerCatalogEntry,
 } from "./featureCatalog";
 
 export {
