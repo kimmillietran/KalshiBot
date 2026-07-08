@@ -836,6 +836,30 @@ export type {
 } from "./researchPortfolioAnalytics";
 
 export {
+  assertUnifiedFeatureCatalogIntegrity,
+  buildResearchDimensionFeatureMap,
+  getUnifiedFeatureById,
+  getUnifiedFeatureForResearchDimension,
+  listUnifiedFeatures,
+  listUnifiedFeaturesBySourceLayer,
+  requireUnifiedFeatureById,
+  UNIFIED_FEATURE_CATALOG,
+  UNIFIED_FEATURE_CATALOG_VERSION,
+  UnifiedFeatureCatalogError,
+  FEATURE_OUTPUT_TYPES,
+  FEATURE_SOURCE_LAYERS,
+} from "./features";
+export type {
+  FeatureCanonicalSource,
+  FeatureLookbackMetadata,
+  FeatureOutputType,
+  FeatureSourceLayer,
+  UnifiedFeatureCatalog,
+  UnifiedFeatureCatalogEntry,
+  UnifiedFeatureCatalogIntegrityReport,
+} from "./features";
+
+export {
   buildResearchRecommendationEngineReport,
   buildResearchRecommendations,
   loadResearchRecommendationInputs,
