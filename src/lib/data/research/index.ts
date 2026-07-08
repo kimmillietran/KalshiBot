@@ -115,6 +115,7 @@ export type {
 export {
   buildMispricingAtlas,
   buildMispricingAtlasFromDirectories,
+  enrichResearchObservationFeatures,
   extractMispricingObservationsFromResearchOutput,
   serializeMispricingAtlas,
   DEFAULT_MISPRICING_ATLAS_INPUT_DIR,
@@ -124,10 +125,12 @@ export {
   MispricingAtlasErrorCode,
 } from "./mispricingAtlas";
 export type {
+  ComputedResearchFeatures,
   MispricingAtlas,
   MispricingAtlasBucketSummary,
   MispricingAtlasWarning,
   MispricingObservation,
+  ResearchObservationFeatures,
 } from "./mispricingAtlas";
 
 export {

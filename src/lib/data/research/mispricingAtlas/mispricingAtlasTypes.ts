@@ -1,3 +1,5 @@
+import type { ComputedResearchFeatures } from "./researchObservationFeaturesTypes";
+
 export const MISPRICING_ATLAS_FILENAME = "mispricing-atlas.json";
 export const DEFAULT_MISPRICING_ATLAS_INPUT_DIR = "data/research-results";
 export const DEFAULT_MISPRICING_ATLAS_OUTPUT_PATH =
@@ -42,7 +44,11 @@ export type MispricingObservation = {
   tradingDayUtc?: string | null;
   /** UTC epoch milliseconds for clock-time temporal dimensions. */
   timestampMs?: number | null;
+  /** Canonical computed feature bag; mirrors top-level context fields when present. */
+  computedFeatures?: ComputedResearchFeatures;
 };
+
+export type { ComputedResearchFeatures, ResearchObservationFeatures } from "./researchObservationFeaturesTypes";
 
 export type MispricingAtlasBucketSummary = {
   bucketId: string;

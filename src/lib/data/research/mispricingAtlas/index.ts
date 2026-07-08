@@ -34,6 +34,10 @@ export {
 } from "./mispricingAtlasBuckets";
 export { extractMispricingObservationsFromResearchOutput } from "./parseMispricingObservations";
 export {
+  applyComputedFeaturesToObservationFields,
+  enrichResearchObservationFeatures,
+} from "./enrichResearchObservationFeatures";
+export {
   DEFAULT_MISPRICING_ATLAS_INPUT_DIR,
   DEFAULT_MISPRICING_ATLAS_MIN_SAMPLE_THRESHOLD,
   DEFAULT_MISPRICING_ATLAS_OUTPUT_PATH,
@@ -51,4 +55,7 @@ export type {
   MispricingAtlasSampleCounts,
   MispricingAtlasWarning,
   MispricingObservation,
+  ComputedResearchFeatures,
+  ResearchObservationFeatures,
 } from "./mispricingAtlasTypes";
+export type { ResearchObservationEnrichmentContext } from "./researchObservationFeaturesTypes";

@@ -112,6 +112,8 @@ describe("extractMispricingObservationsFromResearchOutput", () => {
     expect(extracted.observations[0]?.predictedProbability).toBe(0.5);
     expect(extracted.observations[0]?.timeRemainingMs).toBe(12 * 60_000);
     expect(extracted.observations[0]?.moneynessPercent).toBeCloseTo(-0.8333, 3);
+    expect(extracted.observations[0]?.computedFeatures?.moneynessPercent).toBeCloseTo(-0.8333, 3);
+    expect(extracted.observations[0]?.computedFeatures?.timeRemainingMs).toBe(12 * 60_000);
   });
 });
 

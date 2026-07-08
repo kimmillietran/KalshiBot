@@ -1,7 +1,5 @@
 import { mapEvaluationCandleSnapshots } from "@/lib/data/research/parsing/mapEvaluationCandleSnapshots";
-import { estimateRealizedVolatility } from "@/lib/data/strategies/fairValueDiffusion/fairValueDiffusionModel";
 import { midProbabilityFromCents } from "@/lib/features/contractPricing";
-import { percentToTarget } from "@/lib/features/targetDistance";
 import type { EvaluationCandleSnapshot } from "@/types/domain/trading";
 
 import {
@@ -11,8 +9,10 @@ import {
   formatMissingSettlementDiagnostic,
 } from "@/lib/data/research/settlement";
 
-import { computeResearchObservationMomentumPercent } from "@/lib/data/research/dimensions/momentum/computeResearchObservationMomentumPercent";
-
+import {
+  applyComputedFeaturesToObservationFields,
+  enrichResearchObservationFeatures,
+} from "./enrichResearchObservationFeatures";
 import {
   DEFAULT_MISPRICING_VOLATILITY_LOOKBACK_BARS,
   MispricingAtlasError,
@@ -50,20 +50,6 @@ function readString(record: Record<string, unknown>, key: string): string | unde
   return typeof value === "string" && value.trim() ? value.trim() : undefined;
 }
 
-function readAnnualizedVolatility(
-  candles: readonly EvaluationCandleSnapshot[],
-): number | null {
-  const estimate = estimateRealizedVolatility(
-    candles,
-    DEFAULT_MISPRICING_VOLATILITY_LOOKBACK_BARS,
-  );
-
-  return estimate?.annualizedVol ?? null;
-}
-
-function toTradingDayUtc(timestampMs: number): string {
-  return new Date(timestampMs).toISOString().slice(0, 10);
-}
 
 function buildObservation(input: {
   strategyId: string;
@@ -79,10 +65,14 @@ function buildObservation(input: {
   candles: readonly EvaluationCandleSnapshot[];
   observationTimestampMs?: number | null;
 }): MispricingObservation {
-  const moneynessPercent =
-    input.spotPrice !== null && input.strikePrice !== null
-      ? percentToTarget(input.spotPrice, input.strikePrice).percent
-      : null;
+  const computedFeatures = enrichResearchObservationFeatures({
+    spotPrice: input.spotPrice,
+    strikePrice: input.strikePrice,
+    timeRemainingMs: input.timeRemainingMs,
+    candles: input.candles,
+    observationTimestampMs: input.observationTimestampMs,
+    volatilityLookbackBars: DEFAULT_MISPRICING_VOLATILITY_LOOKBACK_BARS,
+  });
 
   return {
     strategyId: input.strategyId,
@@ -92,26 +82,8 @@ function buildObservation(input: {
     stepIndex: input.stepIndex,
     predictedProbability: input.predictedProbability,
     observedOutcome: input.observedOutcome,
-    timeRemainingMs: input.timeRemainingMs,
-    moneynessPercent,
-    annualizedVolatility:
-      input.candles.length > 0 ? readAnnualizedVolatility(input.candles) : null,
-    momentumPercent:
-      input.candles.length > 0
-        ? computeResearchObservationMomentumPercent(input.candles)
-        : null,
-    tradingDayUtc:
-      input.observationTimestampMs !== undefined
-      && input.observationTimestampMs !== null
-      && Number.isFinite(input.observationTimestampMs)
-        ? toTradingDayUtc(input.observationTimestampMs)
-        : null,
-    timestampMs:
-      input.observationTimestampMs !== undefined
-      && input.observationTimestampMs !== null
-      && Number.isFinite(input.observationTimestampMs)
-        ? input.observationTimestampMs
-        : null,
+    ...applyComputedFeaturesToObservationFields(computedFeatures),
+    computedFeatures,
   };
 }
 
