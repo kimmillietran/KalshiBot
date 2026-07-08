@@ -963,6 +963,26 @@ export type {
 } from "./featureCatalogExplorer";
 
 export {
+  buildCalibrationFadeFamilyVerdictReport,
+  evaluateCalibrationFadeFamilyVerdict,
+  loadCalibrationFadeFamilyVerdictInputs,
+  parseCalibrationFadeFamilyVerdictPathsFromArgv,
+  serializeCalibrationFadeFamilyVerdictHtml,
+  serializeCalibrationFadeFamilyVerdictReport,
+  CALIBRATION_FADE_FAMILY_VERDICT_THRESHOLDS,
+  DEFAULT_CALIBRATION_FADE_FAMILY_VERDICT_HTML_PATH,
+  DEFAULT_CALIBRATION_FADE_FAMILY_VERDICT_INPUT_PATHS,
+  DEFAULT_CALIBRATION_FADE_FAMILY_VERDICT_OUTPUT_PATH,
+  CalibrationFadeFamilyVerdictError,
+} from "./calibrationFadeFamilyVerdict";
+export type {
+  CalibrationFadeFamilyVerdictReport,
+  CalibrationFadeHypothesisVerdictEntry,
+  CalibrationFadeFamilyVerdictId,
+  CalibrationFadeHypothesisVerdictId,
+} from "./calibrationFadeFamilyVerdict";
+
+export {
   buildUnifiedFeatureCatalogDocument,
   getUnifiedFeatureCatalogEntry,
   listUnifiedFeatureCatalogEntries,

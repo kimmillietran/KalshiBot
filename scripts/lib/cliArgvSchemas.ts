@@ -598,6 +598,21 @@ export const FEATURE_CATALOG_EXPLORER_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--duplication-analysis" },
 ];
 
+export const CALIBRATION_FADE_FAMILY_VERDICT_ARGV_SCHEMA: readonly NpmArgvField[] = [
+  { flag: "--output" },
+  { flag: "--html-output" },
+  { flag: "--family" },
+  { flag: "--hypotheses" },
+  { flag: "--validation" },
+  { flag: "--cost-aware-atlas" },
+  { flag: "--trade-replay" },
+  { flag: "--oos-power-correction" },
+  { flag: "--derived-sensitivity" },
+  { flag: "--feature-catalog" },
+  { flag: "--research-recommendations" },
+  { flag: "--failure-analysis" },
+];
+
 export const RESEARCH_PIPELINE_DASHBOARD_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--output" },
   { flag: "--pipeline-summary" },
@@ -949,6 +964,12 @@ export function normalizeFeatureCatalogExplorerArgv(
   argv: readonly string[],
 ): string[] {
   return normalizeNpmScriptArgv(argv, FEATURE_CATALOG_EXPLORER_ARGV_SCHEMA);
+}
+
+export function normalizeCalibrationFadeFamilyVerdictArgv(
+  argv: readonly string[],
+): string[] {
+  return normalizeNpmScriptArgv(argv, CALIBRATION_FADE_FAMILY_VERDICT_ARGV_SCHEMA);
 }
 
 export function normalizeExpansionImportPerformanceAuditArgv(
