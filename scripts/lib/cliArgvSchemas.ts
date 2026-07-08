@@ -269,6 +269,23 @@ export const RESEARCH_ROI_ANALYSIS_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--mispricing-atlas" },
 ];
 
+export const HYPOTHESIS_TRADE_REPLAY_ARGV_SCHEMA: readonly NpmArgvField[] = [
+  { flag: "--output" },
+  { flag: "--html-output" },
+  { flag: "--input" },
+  { flag: "--hypothesis-candidates" },
+  { flag: "--atlas" },
+  { flag: "--mispricing-atlas" },
+  { flag: "--cost-aware-atlas" },
+  { flag: "--research-results-dir" },
+  { flag: "--regime-tags" },
+  { flag: "--max-spread-cents" },
+  { flag: "--min-net-edge-cents" },
+  { flag: "--slippage-buffer-cents" },
+  { flag: "--execution-mode" },
+  { flag: "--official-only" },
+];
+
 export const REGISTER_REFINEMENT_HYPOTHESES_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--output" },
   { flag: "--html-output" },
@@ -812,6 +829,13 @@ export function normalizeHypothesisRefinementsArgv(argv: readonly string[]): str
 
 export function normalizeResearchRoiAnalysisArgv(argv: readonly string[]): string[] {
   return normalizeNpmScriptArgv(argv, RESEARCH_ROI_ANALYSIS_ARGV_SCHEMA);
+}
+
+export function normalizeHypothesisTradeReplayArgv(argv: readonly string[]): string[] {
+  return mergeNpmBooleanFlags(
+    normalizeNpmScriptArgv(argv, HYPOTHESIS_TRADE_REPLAY_ARGV_SCHEMA),
+    ["--official-only"],
+  );
 }
 
 export function normalizeRegisterRefinementHypothesesArgv(argv: readonly string[]): string[] {

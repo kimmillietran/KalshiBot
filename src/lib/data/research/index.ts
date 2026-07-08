@@ -350,6 +350,24 @@ export type {
 } from "./researchRoiAnalysis";
 
 export {
+  buildHypothesisTradeReplayReport,
+  deriveHypothesisTradeRule,
+  loadHypothesisTradeReplayInputs,
+  serializeHypothesisTradeReplayHtml,
+  serializeHypothesisTradeReplayReport,
+  DEFAULT_HYPOTHESIS_TRADE_REPLAY_HTML_PATH,
+  DEFAULT_HYPOTHESIS_TRADE_REPLAY_OUTPUT_PATH,
+  HypothesisTradeReplayError,
+} from "./hypothesisTradeReplay";
+export type {
+  BuildHypothesisTradeReplayReportInput,
+  HypothesisTradeReplayConfig,
+  HypothesisTradeReplayEntry,
+  HypothesisTradeReplayReport,
+  HypothesisTradeRule,
+} from "./hypothesisTradeReplay";
+
+export {
   analyzeDerivedSettlementSensitivity,
   buildDefaultDerivedSettlementSensitivityInputPaths,
   buildDerivedSettlementSensitivityReport,
