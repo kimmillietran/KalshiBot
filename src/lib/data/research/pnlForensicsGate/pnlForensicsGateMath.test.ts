@@ -164,10 +164,10 @@ describe("family verdict", () => {
 
   it("returns proceed when concentration is broad", () => {
     const trades = [
-      trade({ hypothesisId: "h1", marketId: "s:m1", netPnlCents: 30, tradingDayUtc: "2026-05-01", calendarMonth: "2026-05" }),
-      trade({ hypothesisId: "h1", marketId: "s:m2", netPnlCents: 30, tradingDayUtc: "2026-05-02", calendarMonth: "2026-05" }),
-      trade({ hypothesisId: "h2", marketId: "s:m3", netPnlCents: 30, tradingDayUtc: "2026-06-01", calendarMonth: "2026-06" }),
-      trade({ hypothesisId: "h2", marketId: "s:m4", netPnlCents: 30, tradingDayUtc: "2026-06-02", calendarMonth: "2026-06" }),
+      trade({ hypothesisId: "h1", marketId: "s:m1", netPnlCents: 30, tradingDayUtc: "2026-03-01", calendarMonth: "2026-03" }),
+      trade({ hypothesisId: "h1", marketId: "s:m2", netPnlCents: 30, tradingDayUtc: "2026-04-01", calendarMonth: "2026-04" }),
+      trade({ hypothesisId: "h2", marketId: "s:m3", netPnlCents: 30, tradingDayUtc: "2026-05-01", calendarMonth: "2026-05" }),
+      trade({ hypothesisId: "h2", marketId: "s:m4", netPnlCents: 30, tradingDayUtc: "2026-06-01", calendarMonth: "2026-06" }),
     ];
     const daily = aggregateDailyPnl(trades);
     const monthly = aggregateMonthlyPnl(trades, 120, config);

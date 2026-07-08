@@ -904,18 +904,6 @@ export type {
 } from "./costAwareAtlas";
 
 export {
-  buildHypothesisTradeReplayReport,
-  loadHypothesisTradeReplayInputs,
-  serializeHypothesisTradeReplayHtml,
-  serializeHypothesisTradeReplayReport,
-  HypothesisTradeReplayError,
-} from "./hypothesisTradeReplay";
-export type {
-  HypothesisTradeReplayEntry,
-  HypothesisTradeReplayReport,
-} from "./hypothesisTradeReplay";
-
-export {
   buildPnlForensicsGateReport,
   buildDefaultPnlForensicsGateInputPaths,
   createPnlForensicsGateConfig,
