@@ -52,9 +52,7 @@ export function buildDefaultDerivedMonthPnlSensitivityInputPaths(
       ?? `${researchResultsDir}/calibration-fade-family-verdict.json`,
     regimeTagsPath:
       overrides?.regimeTagsPath ?? `${researchResultsDir}/regime-tags.json`,
-    monthRegimeAnalysisPath:
-      overrides?.monthRegimeAnalysisPath
-      ?? `${researchResultsDir}/month-regime-analysis.json`,
+    monthRegimeAnalysisPath: `${researchResultsDir}/month-regime-analysis.json`,
   });
 
   return {
