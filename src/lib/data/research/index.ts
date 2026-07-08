@@ -427,6 +427,26 @@ export type {
 } from "./officialMonthExpansionRefresh";
 
 export {
+  buildQuoteFidelityGateReport,
+  createQuoteFidelityGateConfig,
+  loadQuoteFidelityGateInputs,
+  resolveEventTickerFromMarketTicker,
+  serializeQuoteFidelityGateHtml,
+  serializeQuoteFidelityGateReport,
+  DEFAULT_QUOTE_FIDELITY_GATE_HTML_OUTPUT_PATH,
+  DEFAULT_QUOTE_FIDELITY_GATE_OUTPUT_PATH,
+  QuoteFidelityGateError,
+} from "./quoteFidelityGate";
+export type {
+  QuoteFidelityGateReport,
+  QuoteFidelityGateVerdict,
+  QuoteFidelityRecommendedNextAction,
+} from "./quoteFidelityGate";
+
+export { resolveKalshiContractQuotes } from "./quotes/resolveKalshiContractQuotes";
+export type { ResolvedKalshiContractQuotes } from "./quotes/resolveKalshiContractQuotes";
+
+export {
   buildDefaultHypothesisRefinementInputPaths,
   buildHypothesisRefinementReport,
   generateHypothesisRefinements,
