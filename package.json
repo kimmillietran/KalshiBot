@@ -53,6 +53,7 @@
     "research:roi-analysis": "tsx scripts/research/buildResearchRoiAnalysis.ts",
     "research:hypothesis-trade-replay": "tsx scripts/research/buildHypothesisTradeReplay.ts",
     "research:interaction-analysis": "tsx scripts/research/buildDimensionInteractionAnalytics.ts",
+    "research:oos-power-correction": "tsx scripts/research/buildOosPowerCorrection.ts",
     "research:artifact-index": "tsx scripts/research/buildResearchArtifactIndex.ts",
     "research:dashboard": "tsx scripts/research/buildResearchPipelineDashboard.ts",
     "research:full": "tsx scripts/research/runFullResearchOrchestrator.ts",

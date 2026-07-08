@@ -484,6 +484,27 @@ export type {
 } from "./dimensionInteractionAnalytics";
 
 export {
+  buildOosPowerCorrectionReport,
+  computeBenjaminiYekutieliFdr,
+  computeDefaultTemporalSplitRanges,
+  evaluateOosPowerCandidates,
+  loadOosPowerCorrectionInputs,
+  serializeOosPowerCorrectionHtml,
+  serializeOosPowerCorrectionReport,
+  DEFAULT_OOS_POWER_CORRECTION_HTML_PATH,
+  DEFAULT_OOS_POWER_CORRECTION_OUTPUT_PATH,
+  OOS_POWER_CORRECTION_FILENAME,
+  OosPowerCorrectionError,
+} from "./oosPowerCorrection";
+export type {
+  BuildOosPowerCorrectionReportInput,
+  OosPowerCorrectionEntry,
+  OosPowerCorrectionReport,
+  OosStatisticalVerdict,
+  OosTemporalSplitRanges,
+} from "./oosPowerCorrection";
+
+export {
   buildStatisticalSignificanceFromDirectories,
   buildStatisticalSignificanceReport,
   bootstrapMeanConfidenceInterval,
