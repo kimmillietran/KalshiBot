@@ -390,6 +390,26 @@ export type {
 } from "./derivedSettlementSensitivity";
 
 export {
+  buildDerivedMonthPnlSensitivityReport,
+  createDerivedMonthPnlSensitivityConfig,
+  loadDerivedMonthPnlSensitivityInputs,
+  resolveDerivedMonthPnlSensitivityInputStatus,
+  serializeDerivedMonthPnlSensitivityHtml,
+  serializeDerivedMonthPnlSensitivityReport,
+  buildDefaultDerivedMonthPnlSensitivityInputPaths,
+  DEFAULT_DERIVED_MONTH_PNL_SENSITIVITY_HTML_OUTPUT_PATH,
+  DEFAULT_DERIVED_MONTH_PNL_SENSITIVITY_OUTPUT_PATH,
+  DERIVED_MONTH_PNL_SENSITIVITY_FILENAME,
+  DerivedMonthPnlSensitivityError,
+} from "./derivedMonthPnlSensitivity";
+export type {
+  DerivedMonthPnlSensitivityFamilyRecommendation,
+  DerivedMonthPnlSensitivityReport,
+  DerivedMonthPnlSensitivitySummary,
+  DerivedMonthPnlSensitivityVariantId,
+} from "./derivedMonthPnlSensitivity";
+
+export {
   buildDefaultHypothesisRefinementInputPaths,
   buildHypothesisRefinementReport,
   generateHypothesisRefinements,
