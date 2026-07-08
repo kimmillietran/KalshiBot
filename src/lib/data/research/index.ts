@@ -410,6 +410,23 @@ export type {
 } from "./derivedMonthPnlSensitivity";
 
 export {
+  buildOfficialMonthExpansionRefreshReport,
+  buildMonthCoverageAudit,
+  createOfficialMonthExpansionRefreshConfig,
+  loadOfficialMonthExpansionRefreshArtifacts,
+  serializeOfficialMonthExpansionRefreshHtml,
+  serializeOfficialMonthExpansionRefreshReport,
+  DEFAULT_OFFICIAL_MONTH_EXPANSION_REFRESH_HTML_OUTPUT_PATH,
+  DEFAULT_OFFICIAL_MONTH_EXPANSION_REFRESH_OUTPUT_PATH,
+  OfficialMonthExpansionRefreshError,
+} from "./officialMonthExpansionRefresh";
+export type {
+  MonthCoverageAudit,
+  OfficialMonthExpansionRefreshReport,
+  OfficialMonthRefreshRecommendation,
+} from "./officialMonthExpansionRefresh";
+
+export {
   buildDefaultHypothesisRefinementInputPaths,
   buildHypothesisRefinementReport,
   generateHypothesisRefinements,
