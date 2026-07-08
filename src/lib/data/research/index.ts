@@ -839,6 +839,32 @@ export type {
 } from "./researchPortfolioAnalytics";
 
 export {
+  buildCostAwareAtlasFromDirectories,
+  buildCostAwareAtlasReport,
+  createCostAwareAtlasConfig,
+  DEFAULT_COST_AWARE_ATLAS_CONFIG,
+  DEFAULT_COST_AWARE_ATLAS_HTML_OUTPUT_PATH,
+  DEFAULT_COST_AWARE_ATLAS_INPUT_DIR,
+  DEFAULT_COST_AWARE_ATLAS_OUTPUT_PATH,
+  DEFAULT_COST_AWARE_MISPRICING_ATLAS_PATH,
+  extractCostAwareObservationsFromResearchOutput,
+  serializeCostAwareAtlasHtml,
+  serializeCostAwareAtlasReport,
+  summarizeTradeabilityForStdout,
+  CostAwareAtlasError,
+  CostAwareAtlasErrorCode,
+} from "./costAwareAtlas";
+export type {
+  CostAwareAtlasConfig,
+  CostAwareAtlasReport,
+  CostAwareAtlasSummary,
+  CostAwareBucketEntry,
+  CostAwareCohortMetrics,
+  CostAwareMispricingObservation,
+  TradeabilityClassification,
+} from "./costAwareAtlas";
+
+export {
   assertUnifiedFeatureCatalogIntegrity,
   buildResearchDimensionFeatureMap,
   getUnifiedFeatureById,

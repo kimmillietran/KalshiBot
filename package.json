@@ -66,6 +66,7 @@
     "research:workflow": "tsx scripts/research/buildResearchWorkflow.ts",
     "research:dimension-explorer": "tsx scripts/research/buildResearchDimensionExplorer.ts",
     "research:portfolio-analytics": "tsx scripts/research/buildResearchPortfolioAnalytics.ts",
+    "research:cost-aware-atlas": "tsx scripts/research/buildCostAwareAtlas.ts",
     "research:recommendations": "tsx scripts/research/buildResearchRecommendationEngine.ts",
     "research:feature-catalog": "tsx scripts/research/buildFeatureCatalogExplorer.ts",
     "experiments:register": "tsx scripts/experiments/registerExperiments.ts",
