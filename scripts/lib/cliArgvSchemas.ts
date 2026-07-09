@@ -300,6 +300,18 @@ export const KALSHI_WS_CAPTURE_SPIKE_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--html-output" },
 ];
 
+export const CAPTURE_HEALTH_AUDIT_ARGV_SCHEMA: readonly NpmArgvField[] = [
+  { flag: "--capture-run-dir" },
+  { flag: "--output" },
+  { flag: "--html-output" },
+  { flag: "--min-duration-seconds" },
+  { flag: "--max-p90-gap-ms" },
+  { flag: "--min-valid-book-share" },
+  { flag: "--min-btc-join-share" },
+  { flag: "--max-zero-spread-share" },
+  { flag: "--btc-join-max-distance-ms" },
+];
+
 export const REGISTER_REFINEMENT_HYPOTHESES_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--output" },
   { flag: "--html-output" },
@@ -885,6 +897,10 @@ export function normalizeKalshiWsCaptureSpikeArgv(argv: readonly string[]): stri
     normalizeNpmScriptArgv(argv, KALSHI_WS_CAPTURE_SPIKE_ARGV_SCHEMA),
     ["--dry-run", "--capture-btc-spot", "--mock-input"],
   );
+}
+
+export function normalizeCaptureHealthAuditArgv(argv: readonly string[]): string[] {
+  return normalizeNpmScriptArgv(argv, CAPTURE_HEALTH_AUDIT_ARGV_SCHEMA);
 }
 
 export function normalizeRegisterRefinementHypothesesArgv(argv: readonly string[]): string[] {
