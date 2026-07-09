@@ -443,6 +443,23 @@ export type {
   QuoteFidelityRecommendedNextAction,
 } from "./quoteFidelityGate";
 
+export {
+  buildVendorOrderbookSufficiencyAuditReport,
+  loadAndBuildVendorOrderbookSufficiencyAuditReport,
+  createVendorOrderbookAuditConfig,
+  serializeVendorOrderbookSufficiencyAuditHtml,
+  serializeVendorOrderbookSufficiencyAuditReport,
+  DEFAULT_VENDOR_ORDERBOOK_SUFFICIENCY_AUDIT_HTML_OUTPUT_PATH,
+  DEFAULT_VENDOR_ORDERBOOK_SUFFICIENCY_AUDIT_OUTPUT_PATH,
+  VendorOrderbookSufficiencyAuditError,
+} from "./vendorOrderbookSufficiencyAudit";
+export type {
+  OverallAuditVerdict,
+  VendorAuditRecommendedNextAction,
+  VendorOrderbookSufficiencyAuditReport,
+  VendorOrderbookSourceMetadata,
+} from "./vendorOrderbookSufficiencyAudit";
+
 export { resolveKalshiContractQuotes } from "./quotes/resolveKalshiContractQuotes";
 export type { ResolvedKalshiContractQuotes } from "./quotes/resolveKalshiContractQuotes";
 
