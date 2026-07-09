@@ -348,6 +348,12 @@ export const DIMENSION_INTERACTION_ANALYTICS_ARGV_SCHEMA: readonly NpmArgvField[
   { flag: "--hypothesis-failure-analysis" },
 ];
 
+export const VENDOR_SAMPLE_INTAKE_ARGV_SCHEMA: readonly NpmArgvField[] = [
+  { flag: "--output" },
+  { flag: "--html-output" },
+  { flag: "--samples-root" },
+];
+
 export const OOS_POWER_CORRECTION_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--output" },
   { flag: "--html-output" },
@@ -917,6 +923,10 @@ export function normalizeMonthRegimeAnalysisArgv(argv: readonly string[]): strin
 
 export function normalizeDimensionInteractionAnalyticsArgv(argv: readonly string[]): string[] {
   return normalizeNpmScriptArgv(argv, DIMENSION_INTERACTION_ANALYTICS_ARGV_SCHEMA);
+}
+
+export function normalizeVendorSampleIntakeArgv(argv: readonly string[]): string[] {
+  return normalizeNpmScriptArgv(argv, VENDOR_SAMPLE_INTAKE_ARGV_SCHEMA);
 }
 
 export function normalizeOosPowerCorrectionArgv(argv: readonly string[]): string[] {
