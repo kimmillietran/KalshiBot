@@ -75,6 +75,7 @@
     "research:official-month-refresh": "tsx scripts/research/buildOfficialMonthExpansionRefresh.ts",
     "research:quote-fidelity-gate": "tsx scripts/research/buildQuoteFidelityGate.ts",
     "research:vendor-orderbook-audit": "tsx scripts/research/buildVendorOrderbookSufficiencyAudit.ts",
+    "live:forward-quote-capture": "tsx scripts/live/runForwardQuoteCapture.ts",
     "research:recommendations": "tsx scripts/research/buildResearchRecommendationEngine.ts",
     "research:feature-catalog": "tsx scripts/research/buildFeatureCatalogExplorer.ts",
     "research:family-verdict": "tsx scripts/research/buildCalibrationFadeFamilyVerdict.ts",

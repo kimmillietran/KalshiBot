@@ -2,6 +2,7 @@ export { runKalshiWsCaptureSpike } from "./runKalshiWsCaptureSpike";
 export type { KalshiWsCaptureSpikeRunResult } from "./runKalshiWsCaptureSpike";
 export { discoverKalshiCaptureMarkets } from "./discoverKalshiCaptureMarkets";
 export { resolveKalshiCaptureCredentials } from "./resolveKalshiCaptureCredentials";
+export type { KalshiCaptureCredentials } from "./resolveKalshiCaptureCredentials";
 export { resolveKalshiPrivateKeyMaterial } from "./resolveKalshiPrivateKeyMaterial";
 export {
   createKalshiAuthHeaders,

@@ -25,7 +25,9 @@
 .DS_Store
 *.pem
 
-# debug
+# runtime capture artifacts (M12.1B)
+data/live-capture/
+
 *.log
 data/debug/
 npm-debug.log*
