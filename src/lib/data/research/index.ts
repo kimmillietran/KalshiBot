@@ -1076,6 +1076,25 @@ export type {
 } from "./calibrationFadeFamilyVerdict";
 
 export {
+  buildForwardCaptureReadinessReport,
+  evaluateForwardCaptureReadiness,
+  loadForwardCaptureRuns,
+  parseForwardCaptureReadinessPathsFromArgv,
+  serializeForwardCaptureReadinessHtml,
+  serializeForwardCaptureReadinessReport,
+  DEFAULT_FORWARD_CAPTURE_READINESS_HTML_PATH,
+  DEFAULT_FORWARD_CAPTURE_READINESS_INPUT_PATHS,
+  DEFAULT_FORWARD_CAPTURE_READINESS_OUTPUT_PATH,
+  DEFAULT_FORWARD_CAPTURE_READINESS_THRESHOLDS,
+  ForwardCaptureReadinessError,
+} from "./forwardCaptureReadiness";
+export type {
+  ForwardCaptureFamilyReadinessVerdict,
+  ForwardCaptureOverallReadinessVerdict,
+  ForwardCaptureReadinessReport,
+} from "./forwardCaptureReadiness";
+
+export {
   buildUnifiedFeatureCatalogDocument,
   getUnifiedFeatureCatalogEntry,
   listUnifiedFeatureCatalogEntries,
