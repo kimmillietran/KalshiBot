@@ -86,7 +86,7 @@ function parseVendorIntakeFile(input: {
   const parsed = parseVendorSampleFile(input);
   return {
     format: parsed.format === "unsupported" ? "unsupported" : parsed.format,
-    rows: parsed.rows,
+    rows: [...parsed.rows],
     error: parsed.error,
   };
 }
