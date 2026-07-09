@@ -52,6 +52,7 @@
     "research:month-regime-analysis": "tsx scripts/research/buildMonthRegimeAnalysis.ts",
     "research:roi-analysis": "tsx scripts/research/buildResearchRoiAnalysis.ts",
     "research:hypothesis-trade-replay": "tsx scripts/research/buildHypothesisTradeReplay.ts",
+    "live:kalshi-ws-capture-spike": "tsx scripts/live/runKalshiWsCaptureSpike.ts",
     "research:interaction-analysis": "tsx scripts/research/buildDimensionInteractionAnalytics.ts",
     "research:oos-power-correction": "tsx scripts/research/buildOosPowerCorrection.ts",
     "research:artifact-index": "tsx scripts/research/buildResearchArtifactIndex.ts",

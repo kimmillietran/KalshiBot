@@ -286,6 +286,19 @@ export const HYPOTHESIS_TRADE_REPLAY_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--official-only" },
 ];
 
+export const KALSHI_WS_CAPTURE_SPIKE_ARGV_SCHEMA: readonly NpmArgvField[] = [
+  { flag: "--series" },
+  { flag: "--duration-seconds" },
+  { flag: "--max-markets" },
+  { flag: "--output-dir" },
+  { flag: "--dry-run" },
+  { flag: "--market-ticker" },
+  { flag: "--capture-btc-spot" },
+  { flag: "--rest-snapshot-interval-seconds" },
+  { flag: "--mock-input" },
+  { flag: "--html-output" },
+];
+
 export const REGISTER_REFINEMENT_HYPOTHESES_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--output" },
   { flag: "--html-output" },
@@ -863,6 +876,13 @@ export function normalizeHypothesisTradeReplayArgv(argv: readonly string[]): str
   return mergeNpmBooleanFlags(
     normalizeNpmScriptArgv(argv, HYPOTHESIS_TRADE_REPLAY_ARGV_SCHEMA),
     ["--official-only"],
+  );
+}
+
+export function normalizeKalshiWsCaptureSpikeArgv(argv: readonly string[]): string[] {
+  return mergeNpmBooleanFlags(
+    normalizeNpmScriptArgv(argv, KALSHI_WS_CAPTURE_SPIKE_ARGV_SCHEMA),
+    ["--dry-run", "--capture-btc-spot", "--mock-input"],
   );
 }
 
