@@ -97,6 +97,7 @@ export function serializeForwardQuoteCaptureHtml(
 
       <section class="panel">
         <h2>WS Connection</h2>
+        <p>Current at report: ${report.connection.connected ? "connected" : "disconnected"} | Ever connected: ${report.connection.everConnected ? "yes" : "no"} | Completed normally: ${report.connection.completedNormally ? "yes" : "no"}</p>
         <p>Connects: ${report.connection.wsConnectCount} | Disconnects: ${report.connection.wsDisconnectCount} | Reconnects: ${report.connection.reconnectCount}</p>
       </section>
 

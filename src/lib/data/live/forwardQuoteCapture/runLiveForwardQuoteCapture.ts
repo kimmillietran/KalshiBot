@@ -7,6 +7,7 @@ import {
   NodeKalshiAuthenticatedWsClient,
   type KalshiCaptureCredentials,
 } from "@/lib/data/live/kalshiWsCaptureSpike";
+import { createEmptyConnectionDiagnostics } from "./connectionDiagnostics";
 import { discoverRolloverMarkets } from "./discoverCaptureMarkets";
 import {
   ForwardCaptureMessageProcessor,
@@ -73,12 +74,7 @@ export async function runLiveForwardQuoteCapture(input: {
   const wsUrl = resolveWsUrl(input.credentials);
   const errors: string[] = [];
 
-  const connection: ForwardCaptureConnectionDiagnostics = {
-    wsConnectCount: 0,
-    wsDisconnectCount: 0,
-    reconnectCount: 0,
-    connected: false,
-  };
+  const connection = createEmptyConnectionDiagnostics();
 
   const rollover: ForwardCaptureRolloverDiagnostics = {
     marketsDiscovered: input.discovery.discoveredMarketCount,
@@ -343,6 +339,18 @@ export async function runLiveForwardQuoteCapture(input: {
   transport.close();
   connection.connected = false;
   processor.finalize();
+
+  const connectionSemantics = {
+    everConnected: connection.wsConnectCount > 0,
+    completedNormally:
+      connection.wsConnectCount > 0
+      && processor.diagnostics.rawMessageCount > 0,
+    liveConnectionSucceeded:
+      authHeadersGenerated
+      && connection.wsConnectCount > 0
+      && processor.diagnostics.rawMessageCount > 0,
+  };
+  Object.assign(connection, connectionSemantics);
 
   return {
     runId: input.runId,

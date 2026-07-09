@@ -1,5 +1,6 @@
 import { KALSHI_WS_URL } from "@/features/market-data/orderbook/constants";
 
+import { createEmptyConnectionDiagnostics } from "./connectionDiagnostics";
 import { ForwardCaptureMessageProcessor } from "./forwardCaptureMessageProcessor";
 import {
   createJsonlForwardCaptureWriter,
@@ -98,12 +99,7 @@ export function runDryRunForwardQuoteCapture(input: {
     paths,
     discovery: input.discovery,
     processor,
-    connection: {
-      wsConnectCount: 0,
-      wsDisconnectCount: 0,
-      reconnectCount: 0,
-      connected: false,
-    },
+    connection: createEmptyConnectionDiagnostics(),
     rollover: {
       marketsDiscovered: input.discovery.discoveredMarketCount,
       marketsSubscribed: input.discovery.selectedMarketTickers.length,

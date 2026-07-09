@@ -147,7 +147,14 @@ export type ForwardCaptureConnectionDiagnostics = {
   wsConnectCount: number;
   wsDisconnectCount: number;
   reconnectCount: number;
+  /** Current socket state when the health report is generated (false after graceful shutdown). */
   connected: boolean;
+  /** Whether at least one WebSocket connection succeeded during the run. */
+  everConnected: boolean;
+  /** Whether a duration-bounded live run ended without an early fatal error. */
+  completedNormally: boolean;
+  /** Whether live auth + WS produced captured messages during the run. */
+  liveConnectionSucceeded: boolean;
 };
 
 export type ForwardCaptureRolloverDiagnostics = {

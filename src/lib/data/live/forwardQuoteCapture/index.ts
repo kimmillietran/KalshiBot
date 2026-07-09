@@ -7,6 +7,8 @@ export { ForwardCaptureMessageProcessor } from "./forwardCaptureMessageProcessor
 export { OrderbookCaptureBook } from "./orderbookCaptureBook";
 export {
   buildForwardCaptureHealthReport,
+  deriveConnectionSemantics,
+  evaluateForwardCaptureVerdict,
   serializeForwardCaptureHealthReport,
 } from "./buildForwardCaptureHealthReport";
 export { serializeForwardQuoteCaptureHtml } from "./serializeForwardQuoteCaptureHtml";

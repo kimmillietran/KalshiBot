@@ -6,6 +6,7 @@ import {
   buildForwardCaptureHealthReport,
   serializeForwardCaptureHealthReport,
 } from "./buildForwardCaptureHealthReport";
+import { createEmptyConnectionDiagnostics } from "./connectionDiagnostics";
 import { discoverCaptureMarkets } from "./discoverCaptureMarkets";
 import { createJsonlForwardCaptureWriter, createRunOutputPaths } from "./jsonlForwardCaptureWriter";
 import { resolveKalshiCaptureCredentials } from "@/lib/data/live/kalshiWsCaptureSpike";
@@ -109,12 +110,7 @@ export async function runForwardQuoteCapture(input: {
         },
         finalize: () => {},
       },
-      connection: {
-        wsConnectCount: 0,
-        wsDisconnectCount: 0,
-        reconnectCount: 0,
-        connected: false,
-      },
+      connection: createEmptyConnectionDiagnostics(),
       rollover: {
         marketsDiscovered: discovery.discoveredMarketCount,
         marketsSubscribed: 0,
@@ -156,12 +152,7 @@ export async function runForwardQuoteCapture(input: {
         },
         finalize: () => {},
       },
-      connection: {
-        wsConnectCount: 0,
-        wsDisconnectCount: 0,
-        reconnectCount: 0,
-        connected: false,
-      },
+      connection: createEmptyConnectionDiagnostics(),
       rollover: {
         marketsDiscovered: 0,
         marketsSubscribed: 0,

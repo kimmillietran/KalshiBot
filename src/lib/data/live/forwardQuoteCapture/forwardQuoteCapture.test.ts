@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { buildForwardCaptureHealthReport } from "./buildForwardCaptureHealthReport";
+import { buildForwardCaptureHealthReport, evaluateForwardCaptureVerdict } from "./buildForwardCaptureHealthReport";
 import { discoverCaptureMarkets } from "./discoverCaptureMarkets";
 import { ForwardCaptureMessageProcessor } from "./forwardCaptureMessageProcessor";
 import { OrderbookCaptureBook } from "./orderbookCaptureBook";
@@ -164,6 +164,96 @@ describe("ForwardCaptureMessageProcessor", () => {
   });
 });
 
+describe("evaluateForwardCaptureVerdict", () => {
+  const successDiscovery = {
+    attempted: true,
+    succeeded: true,
+    seriesTicker: "KXBTC15M",
+    discoveredMarketCount: 2,
+    selectedMarketTickers: ["M1", "M2"],
+    marketStatuses: {},
+    eventTickers: {},
+    closeTimes: {},
+    error: null,
+  };
+
+  it("classifies completed live capture as success when disconnected at final report", () => {
+    expect(
+      evaluateForwardCaptureVerdict({
+        dryRun: false,
+        credentialStatus: "available",
+        discovery: successDiscovery,
+        authHeadersGenerated: true,
+        wsConnectCount: 1,
+        marketsSubscribed: 2,
+        rawMessageCount: 162_797,
+        snapshotsReceived: 4,
+        validTopOfBookRecords: 162_793,
+        sequenceGapCount: 0,
+        resyncSuccessCount: 0,
+        errors: [],
+      }),
+    ).toBe("capture-mvp-success");
+  });
+
+  it("classifies true auth failure as blocked-ws-auth", () => {
+    expect(
+      evaluateForwardCaptureVerdict({
+        dryRun: false,
+        credentialStatus: "available",
+        discovery: successDiscovery,
+        authHeadersGenerated: true,
+        wsConnectCount: 0,
+        marketsSubscribed: 0,
+        rawMessageCount: 0,
+        snapshotsReceived: 0,
+        validTopOfBookRecords: 0,
+        sequenceGapCount: 0,
+        resyncSuccessCount: 0,
+        errors: ["WebSocket connection failed"],
+      }),
+    ).toBe("blocked-ws-auth");
+  });
+
+  it("keeps dry-run as dry-run-ok", () => {
+    expect(
+      evaluateForwardCaptureVerdict({
+        dryRun: true,
+        credentialStatus: "missing",
+        discovery: successDiscovery,
+        authHeadersGenerated: false,
+        wsConnectCount: 0,
+        marketsSubscribed: 1,
+        rawMessageCount: 5,
+        snapshotsReceived: 1,
+        validTopOfBookRecords: 5,
+        sequenceGapCount: 0,
+        resyncSuccessCount: 0,
+        errors: [],
+      }),
+    ).toBe("dry-run-ok");
+  });
+
+  it("classifies sequence gaps without resync as degraded-capture", () => {
+    expect(
+      evaluateForwardCaptureVerdict({
+        dryRun: false,
+        credentialStatus: "available",
+        discovery: successDiscovery,
+        authHeadersGenerated: true,
+        wsConnectCount: 1,
+        marketsSubscribed: 1,
+        rawMessageCount: 100,
+        snapshotsReceived: 1,
+        validTopOfBookRecords: 100,
+        sequenceGapCount: 2,
+        resyncSuccessCount: 0,
+        errors: [],
+      }),
+    ).toBe("degraded-capture");
+  });
+});
+
 describe("buildForwardCaptureHealthReport", () => {
   it("returns valid capture verdict for dry-run", () => {
     const { io } = createIo();
@@ -198,6 +288,112 @@ describe("buildForwardCaptureHealthReport", () => {
 
     expect(report.verdict).toBe("dry-run-ok");
     expect(report.capture.topOfBookRecordCount).toBeGreaterThan(0);
+  });
+
+  it("reports everConnected semantics for completed live capture disconnected at shutdown", () => {
+    const report = buildForwardCaptureHealthReport({
+      runId: "2026-07-09T21-37-58-543Z",
+      generatedAt: "2026-07-09T22:00:00.000Z",
+      startedAt: "2026-07-09T21:37:58.543Z",
+      endedAt: "2026-07-09T21:47:58.543Z",
+      config: { ...BASE_CONFIG, dryRun: false },
+      credentials: {
+        status: "available",
+        apiKeyId: "key",
+        apiBaseUrl: null,
+        wsUrl: null,
+        privateKeyMaterial: {
+          status: "loaded",
+          source: "path",
+          privateKeyPem: null,
+          privateKeyLoaded: true,
+          privateKeyFingerprint: "abc",
+          warnings: [],
+          error: null,
+        },
+        privateKeySource: "path",
+        privateKeyLoaded: true,
+        privateKeyFingerprint: "abc",
+        keyIdPresent: true,
+        warnings: [],
+        error: null,
+      },
+      discovery: {
+        attempted: true,
+        succeeded: true,
+        seriesTicker: "KXBTC15M",
+        discoveredMarketCount: 2,
+        selectedMarketTickers: ["M1", "M2"],
+        marketStatuses: {},
+        eventTickers: {},
+        closeTimes: {},
+        error: null,
+      },
+      captureResult: {
+        runId: "2026-07-09T21-37-58-543Z",
+        startedAt: "2026-07-09T21:37:58.543Z",
+        endedAt: "2026-07-09T21:47:58.543Z",
+        paths: createRunOutputPaths(BASE_CONFIG.outputDir, "run-live"),
+        discovery: {
+          attempted: true,
+          succeeded: true,
+          seriesTicker: "KXBTC15M",
+          discoveredMarketCount: 2,
+          selectedMarketTickers: ["M1", "M2"],
+          marketStatuses: {},
+          eventTickers: {},
+          closeTimes: {},
+          error: null,
+        },
+        processor: {
+          diagnostics: {
+            rawMessageCount: 162_797,
+            snapshotsReceived: 4,
+            deltasReceived: 162_789,
+            unknownMessagesReceived: 0,
+            sequenceGapCount: 0,
+            outOfOrderCount: 0,
+            resyncAttemptCount: 0,
+            resyncSuccessCount: 0,
+            validTopOfBookRecords: 162_793,
+            marketsWithValidBook: 2,
+            marketsAwaitingSnapshot: 0,
+            validBookStateDurationMs: 1,
+            invalidBookStateDurationMs: 0,
+          },
+          finalize: () => {},
+        },
+        connection: {
+          wsConnectCount: 1,
+          wsDisconnectCount: 0,
+          reconnectCount: 0,
+          connected: false,
+          everConnected: false,
+          completedNormally: false,
+          liveConnectionSucceeded: false,
+        },
+        rollover: {
+          marketsDiscovered: 2,
+          marketsSubscribed: 2,
+          marketsClosed: 0,
+          rolloverChecks: 10,
+          rolloverSubscriptionsAdded: 0,
+        },
+        btcSpotStatus: "healthy",
+        connected: true,
+        wsUrl: "wss://example",
+        authHeadersGenerated: true,
+        errors: [],
+        recordCounts: { raw: 162_797, topOfBook: 162_793, btcSpot: 120, marketMetadata: 2 },
+      },
+    });
+
+    expect(report.verdict).toBe("capture-mvp-success");
+    expect(report.connection.everConnected).toBe(true);
+    expect(report.connection.connected).toBe(false);
+    expect(report.connection.completedNormally).toBe(true);
+    expect(report.connection.liveConnectionSucceeded).toBe(true);
+    expect(report.recommendedNextAction).toBe("continue-capture");
   });
 });
 

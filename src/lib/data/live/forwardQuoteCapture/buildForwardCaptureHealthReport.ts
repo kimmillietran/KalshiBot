@@ -8,6 +8,7 @@ import type { DryRunForwardCaptureResult } from "./runDryRunForwardQuoteCapture"
 import type { LiveForwardCaptureResult } from "./runLiveForwardQuoteCapture";
 import {
   FORWARD_CAPTURE_DISCLAIMER,
+  type ForwardCaptureConnectionDiagnostics,
   type ForwardCaptureRecommendedAction,
   type ForwardCaptureVerdict,
   type ForwardCaptureHealthReport,
@@ -17,19 +18,24 @@ import {
 
 type CaptureRunResult = DryRunForwardCaptureResult | LiveForwardCaptureResult;
 
-function resolveVerdict(input: {
+export type ForwardCaptureVerdictInput = {
   dryRun: boolean;
   credentialStatus: KalshiCaptureCredentials["status"];
   discovery: ForwardCaptureMarketDiscoveryResult;
-  connected: boolean;
   authHeadersGenerated: boolean;
+  wsConnectCount: number;
+  marketsSubscribed: number;
   snapshotsReceived: number;
   validTopOfBookRecords: number;
   rawMessageCount: number;
   sequenceGapCount: number;
   resyncSuccessCount: number;
   errors: string[];
-}): ForwardCaptureVerdict {
+};
+
+export function evaluateForwardCaptureVerdict(
+  input: ForwardCaptureVerdictInput,
+): ForwardCaptureVerdict {
   if (input.dryRun) {
     return "dry-run-ok";
   }
@@ -46,7 +52,11 @@ function resolveVerdict(input: {
     return "blocked-market-discovery";
   }
 
-  if (!input.authHeadersGenerated || !input.connected) {
+  if (!input.authHeadersGenerated || input.wsConnectCount === 0) {
+    return "blocked-ws-auth";
+  }
+
+  if (input.rawMessageCount === 0) {
     return "blocked-ws-auth";
   }
 
@@ -54,19 +64,14 @@ function resolveVerdict(input: {
     return "blocked-no-valid-books";
   }
 
-  if (input.rawMessageCount === 0) {
+  if (input.marketsSubscribed < 1) {
     return "blocked-no-valid-books";
   }
 
   if (
     input.sequenceGapCount > 0
     && input.resyncSuccessCount === 0
-    && input.errors.length > 0
   ) {
-    return "degraded-capture";
-  }
-
-  if (input.sequenceGapCount > 0 && input.resyncSuccessCount === 0) {
     return "degraded-capture";
   }
 
@@ -75,6 +80,41 @@ function resolveVerdict(input: {
   }
 
   return "capture-mvp-success";
+}
+
+function resolveVerdict(input: ForwardCaptureVerdictInput): ForwardCaptureVerdict {
+  return evaluateForwardCaptureVerdict(input);
+}
+
+export function deriveConnectionSemantics(input: {
+  connection: Pick<
+    ForwardCaptureConnectionDiagnostics,
+    "wsConnectCount" | "connected"
+  >;
+  authHeadersGenerated: boolean;
+  endedAt: string | null;
+  dryRun: boolean;
+  rawMessageCount: number;
+}): Pick<
+  ForwardCaptureConnectionDiagnostics,
+  "everConnected" | "completedNormally" | "liveConnectionSucceeded"
+> {
+  const everConnected = input.connection.wsConnectCount > 0;
+  const liveConnectionSucceeded =
+    input.authHeadersGenerated
+    && everConnected
+    && input.rawMessageCount > 0;
+  const completedNormally =
+    !input.dryRun
+    && input.endedAt !== null
+    && everConnected
+    && liveConnectionSucceeded;
+
+  return {
+    everConnected,
+    completedNormally,
+    liveConnectionSucceeded,
+  };
 }
 
 function resolveRecommendedAction(verdict: ForwardCaptureVerdict): ForwardCaptureRecommendedAction {
@@ -114,14 +154,23 @@ export function buildForwardCaptureHealthReport(input: {
     dryRun: input.config.dryRun,
     credentialStatus: input.credentials.status,
     discovery: input.discovery,
-    connected: input.captureResult.connection.connected,
     authHeadersGenerated,
+    wsConnectCount: input.captureResult.connection.wsConnectCount,
+    marketsSubscribed: input.captureResult.rollover.marketsSubscribed,
     snapshotsReceived: diagnostics.snapshotsReceived,
     validTopOfBookRecords: diagnostics.validTopOfBookRecords,
     rawMessageCount: diagnostics.rawMessageCount,
     sequenceGapCount: diagnostics.sequenceGapCount,
     resyncSuccessCount: diagnostics.resyncSuccessCount,
     errors,
+  });
+
+  const connectionSemantics = deriveConnectionSemantics({
+    connection: input.captureResult.connection,
+    authHeadersGenerated,
+    endedAt: input.endedAt,
+    dryRun: input.config.dryRun,
+    rawMessageCount: diagnostics.rawMessageCount,
   });
 
   const warnings: string[] = [];
@@ -136,6 +185,16 @@ export function buildForwardCaptureHealthReport(input: {
   if (input.captureResult.btcSpotStatus === "degraded") {
     warnings.push("BTC spot capture degraded; Kalshi capture continued.");
   }
+  if (
+    !input.config.dryRun
+    && connectionSemantics.everConnected
+    && !input.captureResult.connection.connected
+    && connectionSemantics.completedNormally
+  ) {
+    warnings.push(
+      "connection.connected is false at report time after graceful shutdown; this is expected for completed duration-bounded captures.",
+    );
+  }
 
   return {
     runId: input.runId,
@@ -147,6 +206,7 @@ export function buildForwardCaptureHealthReport(input: {
     credentialStatus: input.credentials.status,
     connection: {
       ...input.captureResult.connection,
+      ...connectionSemantics,
       authHeadersGenerated,
       wsUrl: input.captureResult.wsUrl,
       privateKeySource: input.credentials.privateKeySource,
