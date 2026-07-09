@@ -74,7 +74,10 @@ export async function runKalshiWsCaptureSpike(input: {
       return { price: response.price, updatedAt: response.updatedAt };
     });
 
-  const credentials = resolveCredentials();
+  const credentials = resolveCredentials({
+    readFile: input.io.readFile,
+    privateKeyPathOverride: input.config.privateKeyPath,
+  });
 
   const discovery = input.config.dryRun
     ? input.config.marketTicker
@@ -127,7 +130,7 @@ export async function runKalshiWsCaptureSpike(input: {
     return { runId, healthReport, htmlOutputPath };
   }
 
-  if (credentials.status === "missing" || credentials.status === "invalid") {
+  if (credentials.status !== "available") {
     const paths = createRunOutputPaths(input.config.outputDir, runId);
     createJsonlCaptureWriter(input.io, paths);
     const blockedDiscovery = discovery.succeeded
@@ -143,6 +146,22 @@ export async function runKalshiWsCaptureSpike(input: {
       wsUrl: credentials.wsUrl,
       btcSpotStatus: input.config.captureBtcSpot ? "unavailable" : "disabled",
     });
+
+    const credentialErrors: string[] = [];
+    if (credentials.status === "missing") {
+      credentialErrors.push(
+        "Missing Kalshi credentials (KALSHI_API_KEY_ID and private key path or PEM).",
+      );
+    } else if (credentials.status === "invalid") {
+      credentialErrors.push("Incomplete Kalshi credential configuration.");
+    } else if (credentials.status === "invalid-private-key-path") {
+      credentialErrors.push("Private key path is invalid or unreadable.");
+    } else if (credentials.status === "invalid-private-key-format") {
+      credentialErrors.push("Private key material is not valid PEM format.");
+    } else if (credentials.status === "read-error") {
+      credentialErrors.push(credentials.error ?? "Failed to read private key file.");
+    }
+
     const healthReport = buildCaptureHealthReport({
       runId,
       generatedAt,
@@ -152,11 +171,7 @@ export async function runKalshiWsCaptureSpike(input: {
       captureResult,
       liveConnectionAttempted: true,
       recordCounts: captureResult.recordCounts,
-      errors: [
-        credentials.status === "missing"
-          ? "Missing Kalshi credentials (KALSHI_API_KEY_ID / KALSHI_API_PRIVATE_KEY)."
-          : "Invalid Kalshi credentials configuration.",
-      ],
+      errors: [...credentialErrors, ...credentials.warnings],
     });
     input.io.writeFile(paths.captureHealthPath, serializeCaptureHealthReport(healthReport));
     input.io.mkdirSync(join(htmlOutputPath, ".."), { recursive: true });

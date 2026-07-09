@@ -27,10 +27,23 @@ describe("runKalshiWsCaptureSpike CLI args", () => {
       outputDir: "data/live-capture/kalshi-ws-spike",
       dryRun: true,
       marketTicker: undefined,
+      privateKeyPath: undefined,
       captureBtcSpot: true,
       restSnapshotIntervalSeconds: null,
       mockInput: true,
     });
+  });
+
+  it("parses private key path override", () => {
+    const config = parseCaptureSpikeConfigFromArgv([
+      "--series",
+      "KXBTC15M",
+      "--private-key-path",
+      "C:\\Users\\me\\.kalshi\\key.pem",
+      "--dry-run",
+    ]);
+
+    expect(config.privateKeyPath).toBe("C:\\Users\\me\\.kalshi\\key.pem");
   });
 
   it("parses html output path override", () => {

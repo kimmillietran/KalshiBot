@@ -10,11 +10,23 @@ export type KalshiCredentialStatus =
   | "available"
   | "missing"
   | "invalid"
+  | "invalid-private-key-path"
+  | "invalid-private-key-format"
+  | "read-error"
   | "unknown";
+
+export type KalshiPrivateKeySourceReport =
+  | "path"
+  | "raw-env"
+  | "fallback-raw-env"
+  | "cli-path"
+  | "missing"
+  | "invalid";
 
 export type CaptureSpikeVerdict =
   | "dry-run-ok"
   | "blocked-missing-credentials"
+  | "blocked-invalid-private-key"
   | "blocked-market-discovery"
   | "blocked-ws-auth"
   | "blocked-no-snapshot"
@@ -37,6 +49,7 @@ export type KalshiWsCaptureSpikeConfig = {
   outputDir: string;
   dryRun: boolean;
   marketTicker?: string;
+  privateKeyPath?: string;
   captureBtcSpot: boolean;
   restSnapshotIntervalSeconds: number | null;
   mockInput: boolean;
@@ -136,6 +149,11 @@ export type KalshiWsCaptureHealthReport = {
     liveConnectionAttempted: boolean;
     connected: boolean;
     credentialStatus: KalshiCredentialStatus;
+    privateKeySource: KalshiPrivateKeySourceReport;
+    privateKeyLoaded: boolean;
+    privateKeyFingerprint: string | null;
+    keyIdPresent: boolean;
+    authHeadersGenerated: boolean;
     wsUrl: string | null;
   };
   marketDiscovery: {

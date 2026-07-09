@@ -70,7 +70,7 @@ export type KalshiOrderbookWireMessage =
   | { type: string; sid?: number; seq?: number; msg?: unknown };
 
 export type KalshiWsTransport = {
-  connect(url: string): Promise<void>;
+  connect(url: string, options?: { headers?: Record<string, string> }): Promise<void>;
   send(payload: string): void;
   close(): void;
   onOpen(handler: () => void): void;

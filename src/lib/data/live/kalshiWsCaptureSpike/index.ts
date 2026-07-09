@@ -2,6 +2,15 @@ export { runKalshiWsCaptureSpike } from "./runKalshiWsCaptureSpike";
 export type { KalshiWsCaptureSpikeRunResult } from "./runKalshiWsCaptureSpike";
 export { discoverKalshiCaptureMarkets } from "./discoverKalshiCaptureMarkets";
 export { resolveKalshiCaptureCredentials } from "./resolveKalshiCaptureCredentials";
+export { resolveKalshiPrivateKeyMaterial } from "./resolveKalshiPrivateKeyMaterial";
+export {
+  createKalshiAuthHeaders,
+  createKalshiWebSocketAuthHeaders,
+  buildKalshiSignMessage,
+  KALSHI_WS_SIGN_PATH,
+} from "./kalshiAuthHeaders";
+export { redactCaptureArtifactText } from "./credentialRedaction";
+export { NodeKalshiAuthenticatedWsClient } from "./nodeKalshiAuthenticatedWsClient";
 export { OrderbookCaptureBook } from "./orderbookCaptureBook";
 export { KalshiWsCaptureMessageProcessor } from "./kalshiWsCaptureMessageProcessor";
 export {

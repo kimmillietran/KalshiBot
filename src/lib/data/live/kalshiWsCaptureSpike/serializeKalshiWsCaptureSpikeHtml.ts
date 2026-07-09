@@ -72,6 +72,10 @@ export function serializeKalshiWsCaptureSpikeHtml(
         <tr><th>Live connection attempted</th><td>${report.connection.liveConnectionAttempted ? "yes" : "no"}</td></tr>
         <tr><th>Connected</th><td>${report.connection.connected ? "yes" : "no"}</td></tr>
         <tr><th>Credential status</th><td>${escapeHtml(report.connection.credentialStatus)}</td></tr>
+        <tr><th>Key ID present</th><td>${report.connection.keyIdPresent ? "yes" : "no"}</td></tr>
+        <tr><th>Private key source</th><td>${escapeHtml(report.connection.privateKeySource)}</td></tr>
+        <tr><th>Private key loaded</th><td>${report.connection.privateKeyLoaded ? "yes" : "no"}</td></tr>
+        <tr><th>Auth headers generated</th><td>${report.connection.authHeadersGenerated ? "yes" : "no"}</td></tr>
         <tr><th>WS URL</th><td>${escapeHtml(report.connection.wsUrl ?? "—")}</td></tr>
       </table>
     </section>

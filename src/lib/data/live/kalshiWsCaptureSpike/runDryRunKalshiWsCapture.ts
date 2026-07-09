@@ -24,6 +24,7 @@ export type DryRunCaptureResult = {
   btcSpotStatus: BtcSpotCaptureStatus;
   connected: boolean;
   wsUrl: string;
+  authHeadersGenerated: boolean;
   recordCounts: { raw: number; topOfBook: number; btcSpot: number };
 };
 
@@ -70,6 +71,7 @@ export function runDryRunKalshiWsCapture(input: {
     btcSpotStatus,
     connected: false,
     wsUrl: KALSHI_WS_URL,
+    authHeadersGenerated: false,
     recordCounts: writer.counts,
   };
 }

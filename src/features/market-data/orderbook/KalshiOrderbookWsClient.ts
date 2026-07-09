@@ -14,7 +14,8 @@ export class KalshiOrderbookWsClient implements KalshiWsTransport {
 
   constructor(private readonly WebSocketImpl: typeof WebSocket = WebSocket) {}
 
-  async connect(url: string): Promise<void> {
+  async connect(url: string, _options?: { headers?: Record<string, string> }): Promise<void> {
+    void _options;
     if (this.socket) {
       this.close();
     }
@@ -86,7 +87,8 @@ export class MockKalshiWsTransport implements KalshiWsTransport {
   readonly sent: string[] = [];
   private handlers: Handler = {};
 
-  async connect(url: string): Promise<void> {
+  async connect(url: string, _options?: { headers?: Record<string, string> }): Promise<void> {
+    void _options;
     void url;
     this.handlers.onOpen?.();
   }

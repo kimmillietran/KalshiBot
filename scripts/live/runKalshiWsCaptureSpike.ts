@@ -28,7 +28,7 @@ export async function runKalshiWsCaptureSpikeCommand(
 ): Promise<number> {
   try {
     const normalizedArgv = normalizeKalshiWsCaptureSpikeArgv(argv);
-    let config = parseCaptureSpikeConfigFromArgv(normalizedArgv);
+    const config = parseCaptureSpikeConfigFromArgv(normalizedArgv);
     const htmlOutputPath = parseHtmlOutputPathFromArgv(normalizedArgv);
 
     const result = await runKalshiWsCaptureSpike({

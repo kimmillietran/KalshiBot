@@ -1,5 +1,7 @@
 import { stableStringify } from "@/lib/trading/config/hashConfig";
 
+import { redactCaptureArtifactText } from "./credentialRedaction";
+
 import type { KalshiCaptureCredentials } from "./resolveKalshiCaptureCredentials";
 import type { DryRunCaptureResult } from "./runDryRunKalshiWsCapture";
 import type { LiveCaptureResult } from "./runLiveKalshiWsCapture";
@@ -17,7 +19,10 @@ function resolveVerdict(input: {
   credentialStatus: KalshiCaptureCredentials["status"];
   discovery: KalshiCaptureMarketDiscoveryResult;
   connected: boolean;
+  authHeadersGenerated: boolean;
   snapshotsReceived: number;
+  validTopOfBookRecords: number;
+  messagesReceived: number;
   sequenceGapCount: number;
   errors: string[];
 }): CaptureSpikeVerdict {
@@ -25,17 +30,24 @@ function resolveVerdict(input: {
     return "dry-run-ok";
   }
 
-  if (input.credentialStatus === "missing" || input.credentialStatus === "invalid") {
-    return input.credentialStatus === "missing"
-      ? "blocked-missing-credentials"
-      : "blocked-ws-auth";
+  if (input.credentialStatus === "missing") {
+    return "blocked-missing-credentials";
+  }
+
+  if (
+    input.credentialStatus === "invalid-private-key-path"
+    || input.credentialStatus === "invalid-private-key-format"
+    || input.credentialStatus === "read-error"
+    || input.credentialStatus === "invalid"
+  ) {
+    return "blocked-invalid-private-key";
   }
 
   if (!input.discovery.succeeded) {
     return "blocked-market-discovery";
   }
 
-  if (!input.connected) {
+  if (!input.authHeadersGenerated || !input.connected) {
     return "blocked-ws-auth";
   }
 
@@ -47,7 +59,11 @@ function resolveVerdict(input: {
     return "blocked-sequence-gaps";
   }
 
-  if (input.errors.length > 0) {
+  if (
+    input.messagesReceived === 0
+    || input.validTopOfBookRecords === 0
+    || input.errors.length > 0
+  ) {
     return "blocked-ws-auth";
   }
 
@@ -57,8 +73,10 @@ function resolveVerdict(input: {
 function resolveRecommendedAction(verdict: CaptureSpikeVerdict): CaptureSpikeRecommendedAction {
   switch (verdict) {
     case "blocked-missing-credentials":
-    case "blocked-ws-auth":
+    case "blocked-invalid-private-key":
       return "configure-credentials";
+    case "blocked-ws-auth":
+      return "fix-ws-auth";
     case "blocked-market-discovery":
       return "fix-market-discovery";
     case "blocked-no-snapshot":
@@ -84,12 +102,19 @@ export function buildCaptureHealthReport(input: {
   errors?: string[];
 }): KalshiWsCaptureHealthReport {
   const diagnostics = input.captureResult.processor.diagnostics;
+  const authHeadersGenerated =
+    "authHeadersGenerated" in input.captureResult
+      ? input.captureResult.authHeadersGenerated
+      : false;
   const verdict = resolveVerdict({
     dryRun: input.config.dryRun,
     credentialStatus: input.credentials.status,
     discovery: input.discovery,
     connected: input.captureResult.connected,
+    authHeadersGenerated,
     snapshotsReceived: diagnostics.snapshotsReceived,
+    validTopOfBookRecords: diagnostics.validTopOfBookRecords,
+    messagesReceived: diagnostics.messagesReceived,
     sequenceGapCount: diagnostics.sequenceGapCount,
     errors: input.errors ?? ("errors" in input.captureResult ? input.captureResult.errors : []),
   });
@@ -111,7 +136,7 @@ export function buildCaptureHealthReport(input: {
     && input.credentials.status === "available"
     && verdict !== "capture-spike-success"
   ) {
-    warnings.push("Live authenticated orderbook capture is not yet validated.");
+    warnings.push("Live authenticated orderbook capture did not complete successfully.");
   }
   if (diagnostics.sequenceGapCount > 0) {
     warnings.push(
@@ -138,6 +163,11 @@ export function buildCaptureHealthReport(input: {
       liveConnectionAttempted: input.liveConnectionAttempted,
       connected: input.captureResult.connected,
       credentialStatus: input.credentials.status,
+      privateKeySource: input.credentials.privateKeySource,
+      privateKeyLoaded: input.credentials.privateKeyLoaded,
+      privateKeyFingerprint: input.credentials.privateKeyFingerprint,
+      keyIdPresent: input.credentials.keyIdPresent,
+      authHeadersGenerated,
       wsUrl: input.captureResult.wsUrl,
     },
     marketDiscovery: {
@@ -174,5 +204,5 @@ export function buildCaptureHealthReport(input: {
 }
 
 export function serializeCaptureHealthReport(report: KalshiWsCaptureHealthReport): string {
-  return stableStringify(report);
+  return redactCaptureArtifactText(stableStringify(report));
 }

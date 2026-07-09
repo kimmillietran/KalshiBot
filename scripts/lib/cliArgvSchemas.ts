@@ -293,6 +293,7 @@ export const KALSHI_WS_CAPTURE_SPIKE_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--output-dir" },
   { flag: "--dry-run" },
   { flag: "--market-ticker" },
+  { flag: "--private-key-path" },
   { flag: "--capture-btc-spot" },
   { flag: "--rest-snapshot-interval-seconds" },
   { flag: "--mock-input" },

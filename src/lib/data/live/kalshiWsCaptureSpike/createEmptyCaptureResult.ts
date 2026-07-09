@@ -42,6 +42,7 @@ export function createEmptyCaptureResult(input: {
     btcSpotStatus: input.btcSpotStatus,
     connected: false,
     wsUrl: input.wsUrl ?? "",
+    authHeadersGenerated: false,
     recordCounts: { raw: 0, topOfBook: 0, btcSpot: 0 },
   };
 }

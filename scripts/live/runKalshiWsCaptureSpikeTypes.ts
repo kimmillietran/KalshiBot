@@ -60,6 +60,7 @@ export function parseCaptureSpikeConfigFromArgv(
     outputDir: readFlagValue(argv, "--output-dir") ?? DEFAULT_KALSHI_WS_CAPTURE_SPIKE_OUTPUT_DIR,
     dryRun: argv.includes("--dry-run"),
     marketTicker: readFlagValue(argv, "--market-ticker"),
+    privateKeyPath: readFlagValue(argv, "--private-key-path"),
     captureBtcSpot: argv.includes("--capture-btc-spot"),
     restSnapshotIntervalSeconds: readFlagValue(argv, "--rest-snapshot-interval-seconds")
       ? readNumberFlag(argv, "--rest-snapshot-interval-seconds", 0)

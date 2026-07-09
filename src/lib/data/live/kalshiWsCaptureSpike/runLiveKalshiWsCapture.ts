@@ -1,16 +1,14 @@
 import { KALSHI_WS_URL } from "@/features/market-data/orderbook/constants";
-import {
-  KalshiOrderbookWsClient,
-  MockKalshiWsTransport,
-} from "@/features/market-data/orderbook/KalshiOrderbookWsClient";
 import { OrderbookSubscriptionManager } from "@/features/market-data/orderbook/OrderbookSubscriptionManager";
 import type { KalshiWsTransport } from "@/features/market-data/orderbook/types";
 
+import { createKalshiWebSocketAuthHeaders } from "./kalshiAuthHeaders";
 import { KalshiWsCaptureMessageProcessor } from "./kalshiWsCaptureMessageProcessor";
 import {
   createJsonlCaptureWriter,
   createRunOutputPaths,
 } from "./jsonlCaptureWriter";
+import { NodeKalshiAuthenticatedWsClient } from "./nodeKalshiAuthenticatedWsClient";
 import type {
   BtcSpotCaptureStatus,
   KalshiCaptureMarketDiscoveryResult,
@@ -27,6 +25,7 @@ export type LiveCaptureResult = {
   btcSpotStatus: BtcSpotCaptureStatus;
   connected: boolean;
   wsUrl: string;
+  authHeadersGenerated: boolean;
   errors: string[];
   recordCounts: { raw: number; topOfBook: number; btcSpot: number };
 };
@@ -41,7 +40,7 @@ function resolveWsUrl(credentials: KalshiCaptureCredentials): string {
   return credentials.wsUrl ?? KALSHI_WS_URL;
 }
 
-/** Attempts a short live Kalshi WS capture using injectable transport. */
+/** Attempts a short live Kalshi WS capture using authenticated Node WebSocket transport. */
 export async function runLiveKalshiWsCapture(input: {
   runId: string;
   config: KalshiWsCaptureSpikeConfig;
@@ -66,16 +65,34 @@ export async function runLiveKalshiWsCapture(input: {
     monotonicNowMs: input.io.monotonicNowMs,
   });
 
-  const transport =
-    input.transport
-    ?? (typeof WebSocket !== "undefined"
-      ? new KalshiOrderbookWsClient(WebSocket)
-      : new KalshiOrderbookWsClient(MockKalshiWsTransport as unknown as typeof WebSocket));
+  let authHeadersGenerated = false;
+  let connectHeaders: Record<string, string> | undefined;
+
+  if (
+    input.credentials.status === "available"
+    && input.credentials.apiKeyId
+    && input.credentials.privateKeyMaterial.privateKeyPem
+  ) {
+    connectHeaders = createKalshiWebSocketAuthHeaders({
+      apiKeyId: input.credentials.apiKeyId,
+      privateKeyPem: input.credentials.privateKeyMaterial.privateKeyPem,
+      timestampMs: String(input.io.now().getTime()),
+    });
+    authHeadersGenerated = true;
+  } else {
+    errors.push("Authenticated WebSocket headers could not be generated from credentials.");
+  }
+
+  const transport = input.transport ?? new NodeKalshiAuthenticatedWsClient();
   const subscriptionManager = new OrderbookSubscriptionManager();
   let connected = false;
 
   try {
-    await transport.connect(wsUrl);
+    if (!authHeadersGenerated) {
+      throw new Error("Missing authenticated WebSocket headers.");
+    }
+
+    await transport.connect(wsUrl, { headers: connectHeaders });
     connected = true;
 
     for (const ticker of input.discovery.selectedMarketTickers) {
@@ -135,6 +152,7 @@ export async function runLiveKalshiWsCapture(input: {
     btcSpotStatus,
     connected,
     wsUrl,
+    authHeadersGenerated,
     errors,
     recordCounts: writer.counts,
   };
