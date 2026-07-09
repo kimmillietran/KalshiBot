@@ -1,8 +1,6 @@
 import {
   buildRunBreakdownMetrics,
   groupRunsByKey,
-  isNonZeroSpread,
-  isSuccessfulRun,
   runDurationMinutes,
   summarizeForwardCaptureRuns,
   type LoadedForwardCaptureRun,
@@ -11,8 +9,8 @@ import {
   median,
   percentile,
   safeShare,
-  utcDateKey,
 } from "./forwardCaptureReadinessMath";
+import { isSuccessfulRun } from "./loadForwardCaptureRuns";
 import {
   DEFAULT_FORWARD_CAPTURE_READINESS_THRESHOLDS,
   FORWARD_CAPTURE_READINESS_CAVEATS,
@@ -31,12 +29,9 @@ function buildAggregateMetrics(
   runs: LoadedForwardCaptureRun[],
 ): ForwardCaptureAggregateMetrics {
   const metrics = summarizeForwardCaptureRuns(runs);
-  const validRecords = metrics.allTopOfBookRecords.filter(
-    (record) => record.bookState === "valid",
-  ).length;
-  const nonZeroSpreadRecords = metrics.allTopOfBookRecords.filter(isNonZeroSpread).length;
+  const topOfBookStats = metrics.topOfBookStats;
   const zeroSpreadRecords =
-    metrics.allTopOfBookRecords.length - nonZeroSpreadRecords;
+    topOfBookStats.recordCount - topOfBookStats.nonZeroSpreadRecordCount;
 
   const totalDurationMinutes = runs.reduce(
     (sum, run) => sum + runDurationMinutes(run),
@@ -53,36 +48,35 @@ function buildAggregateMetrics(
     successfulRunCount: runs.filter((run) => isSuccessfulRun(run.health.verdict)).length,
     totalDurationMinutes,
     researchReadyDurationMinutes,
-    marketCount: new Set(metrics.allTopOfBookRecords.map((record) => record.marketTicker))
-      .size,
-    eventCount: new Set(
-      metrics.allTopOfBookRecords
-        .map((record) => record.eventTicker)
-        .filter((value): value is string => Boolean(value)),
-    ).size,
-    topOfBookRecordCount: metrics.allTopOfBookRecords.length,
-    btcSpotRecordCount: metrics.allBtcSpotRecords.length,
+    marketCount: topOfBookStats.marketTickers.size,
+    eventCount: topOfBookStats.eventTickers.size,
+    topOfBookRecordCount: topOfBookStats.recordCount,
+    btcSpotRecordCount: metrics.btcSpotRecordCount,
     rawMessageCount: runs.reduce((sum, run) => sum + run.rawMessageCount, 0),
-    validBookShare: safeShare(validRecords, metrics.allTopOfBookRecords.length),
+    validBookShare: safeShare(topOfBookStats.validRecordCount, topOfBookStats.recordCount),
     sequenceGapCount: runs.reduce(
       (sum, run) => sum + (run.health.orderbook?.sequenceGapCount ?? 0),
       0,
     ),
     reconnectCount: runs.reduce(
-      (sum, run) => sum + (run.health.orderbook?.reconnectCount ?? 0),
+      (sum, run) =>
+        sum
+        + (run.health.orderbook?.reconnectCount
+          ?? run.health.connection?.reconnectCount
+          ?? 0),
       0,
     ),
     medianTopOfBookGapMs: median(metrics.allGapsMs),
     p90TopOfBookGapMs: percentile(metrics.allGapsMs, 90),
     btcSpotCoverageShare: safeShare(
-      metrics.allBtcSpotRecords.length,
-      Math.max(metrics.allTopOfBookRecords.length, 1),
+      metrics.btcSpotRecordCount,
+      Math.max(topOfBookStats.recordCount, 1),
     ),
     nonZeroSpreadShare: safeShare(
-      nonZeroSpreadRecords,
-      metrics.allTopOfBookRecords.length,
+      topOfBookStats.nonZeroSpreadRecordCount,
+      topOfBookStats.recordCount,
     ),
-    zeroSpreadShare: safeShare(zeroSpreadRecords, metrics.allTopOfBookRecords.length),
+    zeroSpreadShare: safeShare(zeroSpreadRecords, topOfBookStats.recordCount),
     daysCovered: metrics.calendarDays.size,
     hoursCovered,
   };
@@ -225,13 +219,7 @@ function evaluateSameMarketParityReadiness(
 
   const metrics = summarizeForwardCaptureRuns(runs);
   const depthPresent = thresholds.requireDepthFields
-    ? metrics.allTopOfBookRecords.some(
-        (record) =>
-          record.yesBestBidSize !== null
-          && record.yesBestAskSize !== null
-          && record.noBestBidSize !== null
-          && record.noBestAskSize !== null,
-      )
+    ? metrics.topOfBookStats.hasDepthFields
     : true;
 
   if (!depthPresent) {
@@ -397,7 +385,7 @@ function resolveRecommendedNextAction(input: {
 function buildBreakdownByDate(
   runs: LoadedForwardCaptureRun[],
 ): ForwardCaptureBreakdownEntry[] {
-  const grouped = groupRunsByKey(runs, (record) => utcDateKey(record.receivedAtLocal));
+  const grouped = groupRunsByKey(runs, (run) => [...run.topOfBookStats.calendarDays]);
   return [...grouped.entries()]
     .map(([key, groupedRuns]) => ({
       key,
@@ -411,7 +399,7 @@ function buildBreakdownBySeries(
 ): ForwardCaptureBreakdownEntry[] {
   const grouped = groupRunsByKey(
     runs,
-    (record) => record.seriesTicker ?? null,
+    (run) => [...run.topOfBookStats.seriesTickers],
   );
   return [...grouped.entries()]
     .map(([key, groupedRuns]) => ({
@@ -424,7 +412,10 @@ function buildBreakdownBySeries(
 function buildBreakdownByMarket(
   runs: LoadedForwardCaptureRun[],
 ): ForwardCaptureBreakdownEntry[] {
-  const grouped = groupRunsByKey(runs, (record) => record.marketTicker);
+  const grouped = groupRunsByKey(
+    runs,
+    (run) => [...run.topOfBookStats.marketTickers],
+  );
   return [...grouped.entries()]
     .map(([key, groupedRuns]) => ({
       key,

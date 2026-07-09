@@ -7,9 +7,13 @@ export { serializeForwardCaptureReadinessReport } from "./serializeForwardCaptur
 export {
   computeTopOfBookGapsMs,
   median,
+  minMaxTimestampsMs,
   percentile,
   safeShare,
 } from "./forwardCaptureReadinessMath";
+export {
+  loadForwardCaptureRunsWithWarnings,
+} from "./loadForwardCaptureRuns";
 export {
   DEFAULT_FORWARD_CAPTURE_READINESS_HTML_PATH,
   DEFAULT_FORWARD_CAPTURE_READINESS_INPUT_PATHS,

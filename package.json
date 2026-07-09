@@ -82,6 +82,7 @@
     "research:feature-catalog": "tsx scripts/research/buildFeatureCatalogExplorer.ts",
     "research:family-verdict": "tsx scripts/research/buildCalibrationFadeFamilyVerdict.ts",
     "research:forward-capture-readiness": "tsx scripts/research/buildForwardCaptureReadiness.ts",
+    "research:static-parity-scan": "tsx scripts/research/buildStaticParityScan.ts",
     "experiments:register": "tsx scripts/experiments/registerExperiments.ts",
     "leaderboard:strategies": "tsx scripts/leaderboard/runStrategyLeaderboard.ts",
     "data:audit-bid-ask": "tsx scripts/data/auditBidAskFidelity.ts",

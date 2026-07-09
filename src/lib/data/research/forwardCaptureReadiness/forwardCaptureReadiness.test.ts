@@ -408,4 +408,63 @@ describe("forwardCaptureReadiness", () => {
     expect(html).toContain("leadLagReadiness");
     expect(html).toContain("keep-capturing");
   });
+
+  it("handles large synthetic top-of-book runs without stack overflow", () => {
+    const runId = "large-unthrottled-run";
+    const runDir = `${SPIKE_ROOT}/${runId}`;
+    const lines = Array.from({ length: 160_000 }, (_, index) =>
+      createTopOfBookLine({
+        runId,
+        receivedAtLocal: new Date(Date.UTC(2026, 6, 9, 8, 0, index % 60)).toISOString(),
+        withDepth: true,
+      }),
+    );
+
+    const files: Record<string, string> = {
+      [`${runDir}/capture-health.json`]: JSON.stringify({
+        runId,
+        generatedAt: "2026-07-09T08:00:00.000Z",
+        startedAt: "2026-07-09T08:00:00.000Z",
+        endedAt: "2026-07-09T18:00:00.000Z",
+        verdict: "capture-mvp-success",
+        config: {
+          series: "KXBTC15M",
+          durationMinutes: 600,
+          maxMarkets: 1,
+          dryRun: false,
+        },
+        marketDiscovery: {
+          selectedMarketTickers: ["KXBTC15M-26JUL091915-15"],
+        },
+        capture: {
+          rawMessageCount: 162_793,
+          topOfBookRecordCount: 160_000,
+        },
+        orderbook: {
+          validTopOfBookRecords: 160_000,
+          sequenceGapCount: 0,
+          reconnectCount: 0,
+          marketsWithValidBook: 1,
+        },
+        btcSpot: {
+          status: "enabled",
+          recordsCaptured: 120,
+        },
+      }),
+      [`${runDir}/top-of-book.jsonl`]: lines.join("\n"),
+      [`${runDir}/btc-spot.jsonl`]: JSON.stringify({
+        runId,
+        receivedAtLocal: "2026-07-09T08:00:01.000Z",
+        priceUsd: 100000,
+      }),
+    };
+
+    const evaluation = evaluateForwardCaptureReadiness(
+      loadForwardCaptureRuns(buildMemoryIo(files), DEFAULT_FORWARD_CAPTURE_READINESS_INPUT_PATHS),
+    );
+
+    expect(evaluation.aggregates.topOfBookRecordCount).toBe(160_000);
+    expect(evaluation.aggregates.runCount).toBe(1);
+    expect(evaluation.summary.overallVerdict).not.toBe("not-ready-no-data");
+  });
 });

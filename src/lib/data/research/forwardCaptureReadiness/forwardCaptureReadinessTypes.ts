@@ -151,6 +151,7 @@ export type ForwardCaptureReadinessReport = {
   htmlOutputPath: string;
   disclaimer: string;
   caveats: readonly string[];
+  warnings: readonly string[];
   inputPaths: ForwardCaptureReadinessInputPaths;
   thresholds: typeof DEFAULT_FORWARD_CAPTURE_READINESS_THRESHOLDS;
   summary: ForwardCaptureReadinessSummary;

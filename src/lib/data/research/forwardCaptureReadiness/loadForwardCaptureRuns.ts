@@ -1,11 +1,16 @@
 import { z } from "zod";
 
 import {
-  computeTopOfBookGapsMs,
   parseIsoTimestampMs,
-  safeShare,
   utcDateKey,
 } from "./forwardCaptureReadinessMath";
+import {
+  accumulateTopOfBookRecord,
+  createEmptyRunBtcSpotStats,
+  createEmptyRunTopOfBookStats,
+  type RunBtcSpotStats,
+  type RunTopOfBookStats,
+} from "./runTopOfBookStats";
 import type {
   ForwardCaptureReadinessIo,
   ForwardCaptureRunTableEntry,
@@ -15,11 +20,14 @@ const captureHealthSchema = z
   .object({
     runId: z.string(),
     generatedAt: z.string().optional(),
+    startedAt: z.string().optional(),
+    endedAt: z.string().optional(),
     verdict: z.string().optional(),
     config: z
       .object({
         series: z.string().optional(),
         durationSeconds: z.number().optional(),
+        durationMinutes: z.number().optional(),
         maxMarkets: z.number().optional(),
         dryRun: z.boolean().optional(),
       })
@@ -28,12 +36,15 @@ const captureHealthSchema = z
     marketDiscovery: z
       .object({
         selectedMarketTickers: z.array(z.string()).optional(),
+        marketsSubscribed: z.number().optional(),
       })
       .passthrough()
       .optional(),
     capture: z
       .object({
         messagesReceived: z.number().optional(),
+        rawMessageCount: z.number().optional(),
+        topOfBookRecordCount: z.number().optional(),
       })
       .passthrough()
       .optional(),
@@ -43,6 +54,12 @@ const captureHealthSchema = z
         sequenceGapCount: z.number().optional(),
         reconnectCount: z.number().optional(),
         marketsWithValidBook: z.number().optional(),
+      })
+      .passthrough()
+      .optional(),
+    connection: z
+      .object({
+        reconnectCount: z.number().optional(),
       })
       .passthrough()
       .optional(),
@@ -87,47 +104,23 @@ const btcSpotRecordSchema = z
 
 export type ParsedTopOfBookRecord = z.infer<typeof topOfBookRecordSchema>;
 export type ParsedBtcSpotRecord = z.infer<typeof btcSpotRecordSchema>;
+export type ParsedCaptureHealth = z.infer<typeof captureHealthSchema>;
 
 export type LoadedForwardCaptureRun = {
   runId: string;
   sourceRoot: string;
   healthPath: string;
-  health: z.infer<typeof captureHealthSchema>;
-  topOfBookRecords: ParsedTopOfBookRecord[];
-  btcSpotRecords: ParsedBtcSpotRecord[];
+  health: ParsedCaptureHealth;
+  topOfBookStats: RunTopOfBookStats;
+  btcSpotStats: RunBtcSpotStats;
   rawMessageCount: number;
 };
 
-function parseJsonl<T>(
-  content: string,
-  schema: z.ZodType<T>,
-): T[] {
-  const records: T[] = [];
-
-  for (const line of content.split(/\r?\n/)) {
-    const trimmed = line.trim();
-    if (!trimmed) {
-      continue;
-    }
-
-    try {
-      const parsed = schema.safeParse(JSON.parse(trimmed));
-      if (parsed.success) {
-        records.push(parsed.data);
-      }
-    } catch {
-      // skip malformed lines
-    }
-  }
-
-  return records;
-}
-
-function countJsonlLines(content: string): number {
-  return content
-    .split(/\r?\n/)
-    .filter((line) => line.trim().length > 0).length;
-}
+export type ForwardCaptureLoadWarning = {
+  runId: string | null;
+  runDir: string;
+  message: string;
+};
 
 function joinPath(root: string, child: string): string {
   return `${root.replace(/[\\/]+$/, "")}/${child}`;
@@ -148,43 +141,155 @@ function discoverRunDirectories(
     .filter((entryPath) => io.fileExists(joinPath(entryPath, "capture-health.json")));
 }
 
+function streamJsonlLines<T>(
+  content: string,
+  schema: z.ZodType<T>,
+  onRecord: (record: T) => void,
+): { malformedLineCount: number } {
+  let malformedLineCount = 0;
+
+  for (const line of content.split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (!trimmed) {
+      continue;
+    }
+
+    try {
+      const parsed = schema.safeParse(JSON.parse(trimmed));
+      if (parsed.success) {
+        onRecord(parsed.data);
+      } else {
+        malformedLineCount += 1;
+      }
+    } catch {
+      malformedLineCount += 1;
+    }
+  }
+
+  return { malformedLineCount };
+}
+
+function streamTopOfBookFile(
+  content: string,
+): RunTopOfBookStats {
+  const stats = createEmptyRunTopOfBookStats();
+  let previousTimestampMs: number | null = null;
+
+  const result = streamJsonlLines(content, topOfBookRecordSchema, (record) => {
+    previousTimestampMs = accumulateTopOfBookRecord(
+      stats,
+      record,
+      previousTimestampMs,
+    );
+  });
+
+  stats.malformedLineCount = result.malformedLineCount;
+  return stats;
+}
+
+function streamBtcSpotFile(content: string): RunBtcSpotStats {
+  const stats = createEmptyRunBtcSpotStats();
+
+  const result = streamJsonlLines(content, btcSpotRecordSchema, (record) => {
+    stats.recordCount += 1;
+    const day = utcDateKey(record.receivedAtLocal);
+    if (day) {
+      stats.calendarDays.add(day);
+    }
+  });
+
+  stats.malformedLineCount = result.malformedLineCount;
+  return stats;
+}
+
+function resolveRawMessageCount(health: ParsedCaptureHealth): number {
+  return (
+    health.capture?.rawMessageCount
+    ?? health.capture?.messagesReceived
+    ?? 0
+  );
+}
+
+function resolveTopOfBookRecordCount(
+  health: ParsedCaptureHealth,
+  stats: RunTopOfBookStats,
+): number {
+  return (
+    health.capture?.topOfBookRecordCount
+    ?? health.orderbook?.validTopOfBookRecords
+    ?? stats.recordCount
+  );
+}
+
+function resolveBtcSpotRecordCount(
+  health: ParsedCaptureHealth,
+  stats: RunBtcSpotStats,
+): number {
+  return health.btcSpot?.recordsCaptured ?? stats.recordCount;
+}
+
 function loadRun(
   io: ForwardCaptureReadinessIo,
   runDir: string,
   sourceRoot: string,
-): LoadedForwardCaptureRun | null {
+): { run: LoadedForwardCaptureRun | null; warning: ForwardCaptureLoadWarning | null } {
   const healthPath = joinPath(runDir, "capture-health.json");
   if (!io.fileExists(healthPath)) {
-    return null;
+    return {
+      run: null,
+      warning: {
+        runId: null,
+        runDir,
+        message: "Missing capture-health.json; run skipped.",
+      },
+    };
   }
 
   try {
     const health = captureHealthSchema.parse(JSON.parse(io.readFile(healthPath)));
     const topOfBookPath = joinPath(runDir, "top-of-book.jsonl");
     const btcSpotPath = joinPath(runDir, "btc-spot.jsonl");
-    const rawMessagesPath = joinPath(runDir, "raw-messages.jsonl");
 
-    const topOfBookRecords = io.fileExists(topOfBookPath)
-      ? parseJsonl(io.readFile(topOfBookPath), topOfBookRecordSchema)
-      : [];
-    const btcSpotRecords = io.fileExists(btcSpotPath)
-      ? parseJsonl(io.readFile(btcSpotPath), btcSpotRecordSchema)
-      : [];
-    const rawMessageCount = io.fileExists(rawMessagesPath)
-      ? countJsonlLines(io.readFile(rawMessagesPath))
-      : health.capture?.messagesReceived ?? 0;
+    const topOfBookStats = io.fileExists(topOfBookPath)
+      ? streamTopOfBookFile(io.readFile(topOfBookPath))
+      : createEmptyRunTopOfBookStats();
+    const btcSpotStats = io.fileExists(btcSpotPath)
+      ? streamBtcSpotFile(io.readFile(btcSpotPath))
+      : createEmptyRunBtcSpotStats();
+
+    const normalizedTopOfBookStats = {
+      ...topOfBookStats,
+      recordCount: resolveTopOfBookRecordCount(health, topOfBookStats),
+    };
+    const normalizedBtcSpotStats = {
+      ...btcSpotStats,
+      recordCount: resolveBtcSpotRecordCount(health, btcSpotStats),
+    };
 
     return {
-      runId: health.runId,
-      sourceRoot,
-      healthPath,
-      health,
-      topOfBookRecords,
-      btcSpotRecords,
-      rawMessageCount,
+      run: {
+        runId: health.runId,
+        sourceRoot,
+        healthPath,
+        health,
+        topOfBookStats: normalizedTopOfBookStats,
+        btcSpotStats: normalizedBtcSpotStats,
+        rawMessageCount: resolveRawMessageCount(health),
+      },
+      warning: null,
     };
-  } catch {
-    return null;
+  } catch (error) {
+    return {
+      run: null,
+      warning: {
+        runId: null,
+        runDir,
+        message:
+          error instanceof Error
+            ? `Failed to load run: ${error.message}`
+            : "Failed to load run.",
+      },
+    };
   }
 }
 
@@ -193,93 +298,101 @@ export function loadForwardCaptureRuns(
   io: ForwardCaptureReadinessIo,
   inputPaths: { forwardQuotesDir: string; kalshiWsSpikeDir: string },
 ): LoadedForwardCaptureRun[] {
+  const result = loadForwardCaptureRunsWithWarnings(io, inputPaths);
+  return result.runs;
+}
+
+export function loadForwardCaptureRunsWithWarnings(
+  io: ForwardCaptureReadinessIo,
+  inputPaths: { forwardQuotesDir: string; kalshiWsSpikeDir: string },
+): { runs: LoadedForwardCaptureRun[]; warnings: ForwardCaptureLoadWarning[] } {
   const runDirs = [
     ...discoverRunDirectories(io, inputPaths.forwardQuotesDir),
     ...discoverRunDirectories(io, inputPaths.kalshiWsSpikeDir),
   ];
 
   const runs: LoadedForwardCaptureRun[] = [];
+  const warnings: ForwardCaptureLoadWarning[] = [];
+
   for (const runDir of runDirs) {
     const sourceRoot = runDir.includes(inputPaths.forwardQuotesDir)
       ? inputPaths.forwardQuotesDir
       : inputPaths.kalshiWsSpikeDir;
     const loaded = loadRun(io, runDir, sourceRoot);
-    if (loaded) {
-      runs.push(loaded);
+    if (loaded.run) {
+      runs.push(loaded.run);
+    }
+    if (loaded.warning) {
+      warnings.push(loaded.warning);
     }
   }
 
-  return runs.sort((left, right) => left.runId.localeCompare(right.runId));
+  return {
+    runs: runs.sort((left, right) => left.runId.localeCompare(right.runId)),
+    warnings,
+  };
 }
 
 function isSuccessfulRun(verdict: string | undefined): boolean {
-  return verdict === "capture-spike-success" || verdict === "forward-capture-success";
-}
-
-function hasDepthFields(record: ParsedTopOfBookRecord): boolean {
   return (
-    record.yesBestBidSize !== null
-    && record.yesBestBidSize !== undefined
-    && record.yesBestAskSize !== null
-    && record.yesBestAskSize !== undefined
-    && record.noBestBidSize !== null
-    && record.noBestBidSize !== undefined
-    && record.noBestAskSize !== null
-    && record.noBestAskSize !== undefined
+    verdict === "capture-spike-success"
+    || verdict === "forward-capture-success"
+    || verdict === "capture-mvp-success"
+    || verdict === "degraded-capture"
   );
-}
-
-function isNonZeroSpread(record: ParsedTopOfBookRecord): boolean {
-  const spreads = [record.yesSpreadCents, record.noSpreadCents].filter(
-    (value): value is number => value !== null && value !== undefined,
-  );
-  if (spreads.length === 0) {
-    const yesBid = record.yesBestBidCents;
-    const yesAsk = record.yesBestAskCents;
-    if (yesBid !== null && yesBid !== undefined && yesAsk !== null && yesAsk !== undefined) {
-      return yesAsk > yesBid;
-    }
-
-    return false;
-  }
-
-  return spreads.some((spread) => spread > 0);
 }
 
 function runDurationMinutes(run: LoadedForwardCaptureRun): number {
-  const configuredSeconds = run.health.config?.durationSeconds ?? 0;
-  const timestamps = run.topOfBookRecords
-    .map((record) => parseIsoTimestampMs(record.receivedAtLocal))
-    .filter((value): value is number => value !== null);
-
-  if (timestamps.length >= 2) {
-    const observedMinutes = (Math.max(...timestamps) - Math.min(...timestamps)) / 60_000;
-    return Math.max(configuredSeconds / 60, observedMinutes);
+  const startedAt = run.health.startedAt;
+  const endedAt = run.health.endedAt;
+  if (startedAt && endedAt) {
+    const startMs = parseIsoTimestampMs(startedAt);
+    const endMs = parseIsoTimestampMs(endedAt);
+    if (startMs !== null && endMs !== null && endMs > startMs) {
+      return (endMs - startMs) / 60_000;
+    }
   }
 
-  return configuredSeconds / 60;
+  const durationMinutes = run.health.config?.durationMinutes;
+  if (durationMinutes !== undefined && durationMinutes > 0) {
+    return durationMinutes;
+  }
+
+  const configuredSeconds = run.health.config?.durationSeconds ?? 0;
+  if (configuredSeconds > 0) {
+    return configuredSeconds / 60;
+  }
+
+  const { minTimestampMs, maxTimestampMs } = run.topOfBookStats;
+  if (minTimestampMs !== null && maxTimestampMs !== null && maxTimestampMs > minTimestampMs) {
+    return (maxTimestampMs - minTimestampMs) / 60_000;
+  }
+
+  return 0;
 }
 
 function summarizeRun(run: LoadedForwardCaptureRun): ForwardCaptureRunTableEntry {
-  const validRecords = run.topOfBookRecords.filter(
-    (record) => record.bookState === "valid",
-  ).length;
-  const validBookShare = safeShare(validRecords, run.topOfBookRecords.length);
-
   return {
     runId: run.runId,
     sourceRoot: run.sourceRoot,
     generatedAt: run.health.generatedAt ?? null,
     durationMinutes: runDurationMinutes(run),
-    marketCount: new Set(run.topOfBookRecords.map((record) => record.marketTicker)).size
+    marketCount:
+      run.topOfBookStats.marketTickers.size
       || run.health.marketDiscovery?.selectedMarketTickers?.length
       || 0,
-    topOfBookRecordCount: run.topOfBookRecords.length,
-    btcSpotRecordCount: run.btcSpotRecords.length,
+    topOfBookRecordCount: run.topOfBookStats.recordCount,
+    btcSpotRecordCount: run.btcSpotStats.recordCount,
     rawMessageCount: run.rawMessageCount,
-    validBookShare,
+    validBookShare:
+      run.topOfBookStats.recordCount > 0
+        ? run.topOfBookStats.validRecordCount / run.topOfBookStats.recordCount
+        : null,
     sequenceGapCount: run.health.orderbook?.sequenceGapCount ?? 0,
-    reconnectCount: run.health.orderbook?.reconnectCount ?? 0,
+    reconnectCount:
+      run.health.orderbook?.reconnectCount
+      ?? run.health.connection?.reconnectCount
+      ?? 0,
     verdict: run.health.verdict ?? null,
     successful: isSuccessfulRun(run.health.verdict),
   };
@@ -288,8 +401,8 @@ function summarizeRun(run: LoadedForwardCaptureRun): ForwardCaptureRunTableEntry
 export type ForwardCaptureRunMetrics = {
   runs: LoadedForwardCaptureRun[];
   runTable: ForwardCaptureRunTableEntry[];
-  allTopOfBookRecords: ParsedTopOfBookRecord[];
-  allBtcSpotRecords: ParsedBtcSpotRecord[];
+  topOfBookStats: RunTopOfBookStats;
+  btcSpotRecordCount: number;
   allGapsMs: number[];
   calendarDays: Set<string>;
 };
@@ -298,33 +411,74 @@ export type ForwardCaptureRunMetrics = {
 export function summarizeForwardCaptureRuns(
   runs: LoadedForwardCaptureRun[],
 ): ForwardCaptureRunMetrics {
-  const allTopOfBookRecords = runs.flatMap((run) => run.topOfBookRecords);
-  const allBtcSpotRecords = runs.flatMap((run) => run.btcSpotRecords);
-  const allGapsMs = runs.flatMap((run) =>
-    computeTopOfBookGapsMs(run.topOfBookRecords.map((record) => record.receivedAtLocal)),
-  );
-
+  let topOfBookStats = createEmptyRunTopOfBookStats();
+  let btcSpotRecordCount = 0;
   const calendarDays = new Set<string>();
+
   for (const run of runs) {
+    topOfBookStats = {
+      ...topOfBookStats,
+      recordCount: topOfBookStats.recordCount + run.topOfBookStats.recordCount,
+      validRecordCount:
+        topOfBookStats.validRecordCount + run.topOfBookStats.validRecordCount,
+      nonZeroSpreadRecordCount:
+        topOfBookStats.nonZeroSpreadRecordCount
+        + run.topOfBookStats.nonZeroSpreadRecordCount,
+      hasDepthFields:
+        topOfBookStats.hasDepthFields || run.topOfBookStats.hasDepthFields,
+      marketTickers: new Set([
+        ...topOfBookStats.marketTickers,
+        ...run.topOfBookStats.marketTickers,
+      ]),
+      eventTickers: new Set([
+        ...topOfBookStats.eventTickers,
+        ...run.topOfBookStats.eventTickers,
+      ]),
+      seriesTickers: new Set([
+        ...topOfBookStats.seriesTickers,
+        ...run.topOfBookStats.seriesTickers,
+      ]),
+      calendarDays: new Set([
+        ...topOfBookStats.calendarDays,
+        ...run.topOfBookStats.calendarDays,
+      ]),
+      gapsMs: [...topOfBookStats.gapsMs, ...run.topOfBookStats.gapsMs],
+      minTimestampMs:
+        topOfBookStats.minTimestampMs === null
+          ? run.topOfBookStats.minTimestampMs
+          : run.topOfBookStats.minTimestampMs === null
+            ? topOfBookStats.minTimestampMs
+            : Math.min(topOfBookStats.minTimestampMs, run.topOfBookStats.minTimestampMs),
+      maxTimestampMs:
+        topOfBookStats.maxTimestampMs === null
+          ? run.topOfBookStats.maxTimestampMs
+          : run.topOfBookStats.maxTimestampMs === null
+            ? topOfBookStats.maxTimestampMs
+            : Math.max(topOfBookStats.maxTimestampMs, run.topOfBookStats.maxTimestampMs),
+      malformedLineCount:
+        topOfBookStats.malformedLineCount + run.topOfBookStats.malformedLineCount,
+    };
+
+    btcSpotRecordCount += run.btcSpotStats.recordCount;
+
     const day = utcDateKey(run.health.generatedAt);
     if (day) {
       calendarDays.add(day);
     }
-
-    for (const record of run.topOfBookRecords) {
-      const recordDay = utcDateKey(record.receivedAtLocal);
-      if (recordDay) {
-        calendarDays.add(recordDay);
-      }
+    for (const recordDay of run.topOfBookStats.calendarDays) {
+      calendarDays.add(recordDay);
+    }
+    for (const spotDay of run.btcSpotStats.calendarDays) {
+      calendarDays.add(spotDay);
     }
   }
 
   return {
     runs,
     runTable: runs.map(summarizeRun),
-    allTopOfBookRecords,
-    allBtcSpotRecords,
-    allGapsMs,
+    topOfBookStats,
+    btcSpotRecordCount,
+    allGapsMs: topOfBookStats.gapsMs,
     calendarDays,
   };
 }
@@ -334,11 +488,9 @@ export function buildRunBreakdownMetrics(
 ): import("./forwardCaptureReadinessTypes").ForwardCaptureBreakdownEntry[] {
   return runs.map((run) => {
     const metrics = summarizeForwardCaptureRuns([run]);
-    const validRecords = metrics.allTopOfBookRecords.filter(
-      (record) => record.bookState === "valid",
-    ).length;
-    const nonZeroSpreadRecords = metrics.allTopOfBookRecords.filter(isNonZeroSpread).length;
-    const zeroSpreadRecords = metrics.allTopOfBookRecords.length - nonZeroSpreadRecords;
+    const zeroSpreadRecords =
+      metrics.topOfBookStats.recordCount
+      - metrics.topOfBookStats.nonZeroSpreadRecordCount;
 
     return {
       key: run.runId,
@@ -348,29 +500,35 @@ export function buildRunBreakdownMetrics(
       researchReadyDurationMinutes: isSuccessfulRun(run.health.verdict)
         ? runDurationMinutes(run)
         : 0,
-      marketCount: new Set(metrics.allTopOfBookRecords.map((r) => r.marketTicker)).size,
-      eventCount: new Set(
-        metrics.allTopOfBookRecords
-          .map((r) => r.eventTicker)
-          .filter((value): value is string => Boolean(value)),
-      ).size,
-      topOfBookRecordCount: metrics.allTopOfBookRecords.length,
-      btcSpotRecordCount: metrics.allBtcSpotRecords.length,
+      marketCount: metrics.topOfBookStats.marketTickers.size,
+      eventCount: metrics.topOfBookStats.eventTickers.size,
+      topOfBookRecordCount: metrics.topOfBookStats.recordCount,
+      btcSpotRecordCount: run.btcSpotStats.recordCount,
       rawMessageCount: run.rawMessageCount,
-      validBookShare: safeShare(validRecords, metrics.allTopOfBookRecords.length),
+      validBookShare:
+        metrics.topOfBookStats.recordCount > 0
+          ? metrics.topOfBookStats.validRecordCount / metrics.topOfBookStats.recordCount
+          : null,
       sequenceGapCount: run.health.orderbook?.sequenceGapCount ?? 0,
-      reconnectCount: run.health.orderbook?.reconnectCount ?? 0,
+      reconnectCount:
+        run.health.orderbook?.reconnectCount
+        ?? run.health.connection?.reconnectCount
+        ?? 0,
       medianTopOfBookGapMs: null,
       p90TopOfBookGapMs: null,
-      btcSpotCoverageShare: safeShare(
-        metrics.allBtcSpotRecords.length,
-        Math.max(metrics.allTopOfBookRecords.length, 1),
-      ),
-      nonZeroSpreadShare: safeShare(
-        nonZeroSpreadRecords,
-        metrics.allTopOfBookRecords.length,
-      ),
-      zeroSpreadShare: safeShare(zeroSpreadRecords, metrics.allTopOfBookRecords.length),
+      btcSpotCoverageShare:
+        metrics.topOfBookStats.recordCount > 0
+          ? run.btcSpotStats.recordCount / metrics.topOfBookStats.recordCount
+          : null,
+      nonZeroSpreadShare:
+        metrics.topOfBookStats.recordCount > 0
+          ? metrics.topOfBookStats.nonZeroSpreadRecordCount
+            / metrics.topOfBookStats.recordCount
+          : null,
+      zeroSpreadShare:
+        metrics.topOfBookStats.recordCount > 0
+          ? zeroSpreadRecords / metrics.topOfBookStats.recordCount
+          : null,
       daysCovered: metrics.calendarDays.size,
       hoursCovered: runDurationMinutes(run) / 60,
     };
@@ -379,16 +537,12 @@ export function buildRunBreakdownMetrics(
 
 export function groupRunsByKey(
   runs: LoadedForwardCaptureRun[],
-  keySelector: (record: ParsedTopOfBookRecord) => string | null,
+  keySelector: (run: LoadedForwardCaptureRun) => readonly string[],
 ): Map<string, LoadedForwardCaptureRun[]> {
   const grouped = new Map<string, LoadedForwardCaptureRun[]>();
 
   for (const run of runs) {
-    const keys = new Set(
-      run.topOfBookRecords
-        .map(keySelector)
-        .filter((value): value is string => Boolean(value)),
-    );
+    const keys = new Set(keySelector(run).filter(Boolean));
 
     if (keys.size === 0) {
       const fallback = utcDateKey(run.health.generatedAt) ?? run.runId;
@@ -409,8 +563,6 @@ export function groupRunsByKey(
 }
 
 export {
-  hasDepthFields,
-  isNonZeroSpread,
   isSuccessfulRun,
   runDurationMinutes,
 };

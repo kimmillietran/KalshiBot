@@ -56,3 +56,33 @@ export function safeShare(numerator: number, denominator: number): number | null
 
   return numerator / denominator;
 }
+
+export function minMaxTimestampsMs(
+  values: readonly number[],
+): { min: number | null; max: number | null } {
+  let min: number | null = null;
+  let max: number | null = null;
+
+  for (const value of values) {
+    if (min === null || value < min) {
+      min = value;
+    }
+    if (max === null || value > max) {
+      max = value;
+    }
+  }
+
+  return { min, max };
+}
+
+export function appendOrderedGapMs(
+  gaps: number[],
+  previousTimestampMs: number | null,
+  timestampMs: number,
+): number {
+  if (previousTimestampMs !== null && timestampMs >= previousTimestampMs) {
+    gaps.push(timestampMs - previousTimestampMs);
+  }
+
+  return timestampMs;
+}

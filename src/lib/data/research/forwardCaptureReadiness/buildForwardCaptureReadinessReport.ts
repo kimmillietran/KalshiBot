@@ -1,5 +1,7 @@
 import { evaluateForwardCaptureReadiness } from "./evaluateForwardCaptureReadiness";
-import { loadForwardCaptureRuns } from "./loadForwardCaptureRuns";
+import {
+  loadForwardCaptureRunsWithWarnings,
+} from "./loadForwardCaptureRuns";
 import {
   DEFAULT_FORWARD_CAPTURE_READINESS_THRESHOLDS,
   type ForwardCaptureReadinessInputPaths,
@@ -15,7 +17,10 @@ export function buildForwardCaptureReadinessReport(input: {
   inputPaths: ForwardCaptureReadinessInputPaths;
   io: ForwardCaptureReadinessIo;
 }): ForwardCaptureReadinessReport {
-  const runs = loadForwardCaptureRuns(input.io, input.inputPaths);
+  const { runs, warnings } = loadForwardCaptureRunsWithWarnings(
+    input.io,
+    input.inputPaths,
+  );
   const evaluation = evaluateForwardCaptureReadiness(runs);
 
   return {
@@ -24,6 +29,11 @@ export function buildForwardCaptureReadinessReport(input: {
     htmlOutputPath: input.htmlOutputPath,
     disclaimer: evaluation.disclaimer,
     caveats: evaluation.caveats,
+    warnings: warnings.map((warning) =>
+      warning.runId
+        ? `${warning.runId}: ${warning.message}`
+        : `${warning.runDir}: ${warning.message}`,
+    ),
     inputPaths: input.inputPaths,
     thresholds: DEFAULT_FORWARD_CAPTURE_READINESS_THRESHOLDS,
     summary: evaluation.summary,
