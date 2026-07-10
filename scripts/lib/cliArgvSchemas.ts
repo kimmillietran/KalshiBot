@@ -312,6 +312,18 @@ export const CAPTURE_HEALTH_AUDIT_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--btc-join-max-distance-ms" },
 ];
 
+export const CAPTURE_QUALITY_VALIDATION_ARGV_SCHEMA: readonly NpmArgvField[] = [
+  { flag: "--forward-quotes-dir" },
+  { flag: "--output" },
+  { flag: "--html-output" },
+  { flag: "--min-economically-valid-share" },
+  { flag: "--min-parity-usable-records" },
+  { flag: "--max-health-count-mismatch" },
+  { flag: "--max-economic-state-mismatch-records" },
+  { flag: "--max-malformed-jsonl-lines" },
+  { flag: "--max-empty-rollover-share" },
+];
+
 export const REGISTER_REFINEMENT_HYPOTHESES_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--output" },
   { flag: "--html-output" },
@@ -914,6 +926,10 @@ export function normalizeKalshiWsCaptureSpikeArgv(argv: readonly string[]): stri
 
 export function normalizeCaptureHealthAuditArgv(argv: readonly string[]): string[] {
   return normalizeNpmScriptArgv(argv, CAPTURE_HEALTH_AUDIT_ARGV_SCHEMA);
+}
+
+export function normalizeCaptureQualityValidationArgv(argv: readonly string[]): string[] {
+  return normalizeNpmScriptArgv(argv, CAPTURE_QUALITY_VALIDATION_ARGV_SCHEMA);
 }
 
 export function normalizeRegisterRefinementHypothesesArgv(argv: readonly string[]): string[] {
