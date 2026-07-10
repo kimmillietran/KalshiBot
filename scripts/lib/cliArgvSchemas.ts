@@ -324,6 +324,18 @@ export const CAPTURE_QUALITY_VALIDATION_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--max-empty-rollover-share" },
 ];
 
+export const BID_ONLY_CANDIDATE_LIFECYCLE_ARGV_SCHEMA: readonly NpmArgvField[] = [
+  { flag: "--forward-quotes-dir" },
+  { flag: "--output" },
+  { flag: "--html-output" },
+  { flag: "--static-parity-scan" },
+  { flag: "--max-gap-ms" },
+  { flag: "--min-episode-duration-ms" },
+  { flag: "--min-edge-cents" },
+  { flag: "--min-size-contracts" },
+  { flag: "--pricing-model" },
+];
+
 export const REGISTER_REFINEMENT_HYPOTHESES_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--output" },
   { flag: "--html-output" },
@@ -930,6 +942,10 @@ export function normalizeCaptureHealthAuditArgv(argv: readonly string[]): string
 
 export function normalizeCaptureQualityValidationArgv(argv: readonly string[]): string[] {
   return normalizeNpmScriptArgv(argv, CAPTURE_QUALITY_VALIDATION_ARGV_SCHEMA);
+}
+
+export function normalizeBidOnlyCandidateLifecycleArgv(argv: readonly string[]): string[] {
+  return normalizeNpmScriptArgv(argv, BID_ONLY_CANDIDATE_LIFECYCLE_ARGV_SCHEMA);
 }
 
 export function normalizeRegisterRefinementHypothesesArgv(argv: readonly string[]): string[] {
