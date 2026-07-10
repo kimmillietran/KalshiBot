@@ -676,6 +676,14 @@ export const FORWARD_CAPTURE_READINESS_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--kalshi-ws-spike-dir" },
 ];
 
+export const EXECUTABLE_CONFIRMATION_DESIGN_ARGV_SCHEMA: readonly NpmArgvField[] = [
+  { flag: "--output" },
+  { flag: "--html-output" },
+  { flag: "--static-parity-scan" },
+  { flag: "--bid-only-lifecycle" },
+  { flag: "--forward-capture-readiness" },
+];
+
 export const RESEARCH_PIPELINE_DASHBOARD_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--output" },
   { flag: "--pipeline-summary" },
@@ -1062,6 +1070,12 @@ export function normalizeForwardCaptureReadinessArgv(
   argv: readonly string[],
 ): string[] {
   return normalizeNpmScriptArgv(argv, FORWARD_CAPTURE_READINESS_ARGV_SCHEMA);
+}
+
+export function normalizeExecutableConfirmationDesignArgv(
+  argv: readonly string[],
+): string[] {
+  return normalizeNpmScriptArgv(argv, EXECUTABLE_CONFIRMATION_DESIGN_ARGV_SCHEMA);
 }
 
 export function normalizeExpansionImportPerformanceAuditArgv(

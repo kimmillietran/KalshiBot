@@ -1095,6 +1095,28 @@ export type {
 } from "./forwardCaptureReadiness";
 
 export {
+  buildExecutableConfirmationDesignReport,
+  evaluateExecutableConfirmationReadiness,
+  loadExecutableConfirmationArtifacts,
+  parseExecutableConfirmationDesignPathsFromArgv,
+  serializeExecutableConfirmationDesignHtml,
+  serializeExecutableConfirmationDesignReport,
+  CONFIRMATION_REQUIRED_DATA_FIELDS,
+  DEFAULT_EXECUTABLE_CONFIRMATION_DESIGN_CONFIG,
+  DEFAULT_EXECUTABLE_CONFIRMATION_DESIGN_HTML_PATH,
+  DEFAULT_EXECUTABLE_CONFIRMATION_DESIGN_INPUT_PATHS,
+  DEFAULT_EXECUTABLE_CONFIRMATION_DESIGN_OUTPUT_PATH,
+  EXECUTABLE_CONFIRMATION_DESIGN_DISCLAIMER,
+  ExecutableConfirmationDesignError,
+} from "./executableConfirmationDesign";
+export type {
+  ConfirmationRecommendedNextFix,
+  ConfirmationStatus,
+  ExecutableConfirmationDesignReport,
+  ExecutableConfirmationRecord,
+} from "./executableConfirmationDesign";
+
+export {
   buildUnifiedFeatureCatalogDocument,
   getUnifiedFeatureCatalogEntry,
   listUnifiedFeatureCatalogEntries,
