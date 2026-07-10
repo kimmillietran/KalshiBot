@@ -4,6 +4,10 @@ import {
 } from "@/features/market-data/orderbook/schemas";
 
 import type { EconomicBookState } from "./classifyTopOfBookEconomicValidity";
+import {
+  hasBidSizeFieldPresent,
+  hasExecutableBidPairSize,
+} from "./orderbookLevelSize";
 import { createEmptyOrderbookDiagnostics } from "./createEmptyOrderbookDiagnostics";
 import { OrderbookCaptureBook } from "./orderbookCaptureBook";
 import type { ForwardCaptureWriter } from "./jsonlForwardCaptureWriter";
@@ -85,6 +89,23 @@ function recordEconomicDiagnostics(
       break;
     default:
       break;
+  }
+
+  if (
+    hasBidSizeFieldPresent(record.yesBestBidSize)
+    || hasBidSizeFieldPresent(record.noBestBidSize)
+  ) {
+    diagnostics.bidSizePresentTopOfBookRecords += 1;
+  }
+
+  if (hasExecutableBidPairSize(record.yesBestBidSize, record.noBestBidSize)) {
+    diagnostics.bidPairWithSizeTopOfBookRecords += 1;
+  } else if (
+    record.yesBestBidCents !== null
+    && record.noBestBidCents !== null
+    && record.bookState === "valid"
+  ) {
+    diagnostics.bidPairWithoutSizeTopOfBookRecords += 1;
   }
 }
 

@@ -84,6 +84,7 @@
     "research:family-verdict": "tsx scripts/research/buildCalibrationFadeFamilyVerdict.ts",
     "research:forward-capture-readiness": "tsx scripts/research/buildForwardCaptureReadiness.ts",
     "research:static-parity-scan": "tsx scripts/research/buildStaticParityScan.ts",
+    "research:bid-size-coverage-audit": "tsx scripts/research/buildBidSizeCoverageAudit.ts",
     "research:valid-book-coverage": "tsx scripts/research/buildValidBookCoverageInvestigation.ts",
     "research:orderbook-reconstruction-audit": "tsx scripts/research/buildOrderbookReconstructionAudit.ts",
     "research:orderbook-semantics-validation": "tsx scripts/research/buildOrderbookSemanticsValidation.ts",

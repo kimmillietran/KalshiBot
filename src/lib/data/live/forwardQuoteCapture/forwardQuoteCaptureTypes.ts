@@ -167,6 +167,9 @@ export type ForwardCaptureOrderbookDiagnostics = {
   insufficientDepthTopOfBookRecords: number;
   awaitingSnapshotTopOfBookRecords: number;
   invalidPriceTopOfBookRecords: number;
+  bidSizePresentTopOfBookRecords: number;
+  bidPairWithSizeTopOfBookRecords: number;
+  bidPairWithoutSizeTopOfBookRecords: number;
   marketsWithValidBook: number;
   marketsAwaitingSnapshot: number;
   validBookStateDurationMs: number;
@@ -239,6 +242,10 @@ export type ForwardCaptureHealthReport = {
     insufficientDepthTopOfBookRecords: number;
     awaitingSnapshotTopOfBookRecords: number;
     invalidPriceTopOfBookRecords: number;
+    bidSizePresentTopOfBookRecords: number;
+    bidPairWithSizeTopOfBookRecords: number;
+    bidPairWithoutSizeTopOfBookRecords: number;
+    bidSizeCoverageShare: number | null;
     sequenceGapCount: number;
     outOfOrderCount: number;
     resyncAttemptCount: number;

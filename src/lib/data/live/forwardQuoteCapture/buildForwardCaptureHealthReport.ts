@@ -310,6 +310,13 @@ export function buildForwardCaptureHealthReport(input: {
       insufficientDepthTopOfBookRecords: diagnostics.insufficientDepthTopOfBookRecords,
       awaitingSnapshotTopOfBookRecords: diagnostics.awaitingSnapshotTopOfBookRecords,
       invalidPriceTopOfBookRecords: diagnostics.invalidPriceTopOfBookRecords,
+      bidSizePresentTopOfBookRecords: diagnostics.bidSizePresentTopOfBookRecords,
+      bidPairWithSizeTopOfBookRecords: diagnostics.bidPairWithSizeTopOfBookRecords,
+      bidPairWithoutSizeTopOfBookRecords: diagnostics.bidPairWithoutSizeTopOfBookRecords,
+      bidSizeCoverageShare:
+        diagnostics.topOfBookRecordsEmitted > 0
+          ? diagnostics.bidPairWithSizeTopOfBookRecords / diagnostics.topOfBookRecordsEmitted
+          : null,
       sequenceGapCount: diagnostics.sequenceGapCount,
       outOfOrderCount: diagnostics.outOfOrderCount,
       resyncAttemptCount: diagnostics.resyncAttemptCount,

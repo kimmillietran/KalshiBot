@@ -6,6 +6,10 @@ import type {
 } from "@/features/market-data/orderbook/types";
 
 import { classifyTopOfBookEconomicValidity } from "./classifyTopOfBookEconomicValidity";
+import {
+  isMeaningfulOrderbookLevelSize,
+  shouldRemoveOrderbookLevelSize,
+} from "./orderbookLevelSize";
 import type {
   ForwardTopOfBookBookState,
   ForwardTopOfBookRecord,
@@ -22,7 +26,7 @@ function bestBid(
   let best: { priceCents: number; size: number } | null = null;
 
   for (const [priceCents, size] of levels.entries()) {
-    if (size <= 0) {
+    if (!isMeaningfulOrderbookLevelSize(size)) {
       continue;
     }
 
@@ -73,7 +77,7 @@ export class OrderbookCaptureBook {
     for (const [priceDollars, quantityFp] of message.msg.yes_dollars_fp ?? []) {
       const priceCents = parseKalshiDollarToCents(priceDollars);
       const size = Number.parseFloat(quantityFp);
-      if (priceCents !== null && Number.isFinite(size) && size > 0) {
+      if (priceCents !== null && isMeaningfulOrderbookLevelSize(size)) {
         this.yesBids.set(priceCents, size);
       }
     }
@@ -81,7 +85,7 @@ export class OrderbookCaptureBook {
     for (const [priceDollars, quantityFp] of message.msg.no_dollars_fp ?? []) {
       const priceCents = parseKalshiDollarToCents(priceDollars);
       const size = Number.parseFloat(quantityFp);
-      if (priceCents !== null && Number.isFinite(size) && size > 0) {
+      if (priceCents !== null && isMeaningfulOrderbookLevelSize(size)) {
         this.noBids.set(priceCents, size);
       }
     }
@@ -117,7 +121,7 @@ export class OrderbookCaptureBook {
     const delta = Number.parseFloat(message.msg.delta_fp);
     const next = current + delta;
 
-    if (!Number.isFinite(next) || next <= 0) {
+    if (shouldRemoveOrderbookLevelSize(next)) {
       levels.delete(priceCents);
     } else {
       levels.set(priceCents, next);

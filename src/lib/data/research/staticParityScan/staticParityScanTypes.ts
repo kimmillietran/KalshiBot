@@ -18,6 +18,7 @@ export const STATIC_PARITY_SCAN_CAVEATS = [
   "Gross bid-book imbalance may not survive fees, slippage, queue priority, or execution timing.",
   "Buffer-adjusted candidates are research signals only — not actionable trades without executable confirmation.",
   "Captured quotes may lag exchange state; settlement joins are not included.",
+  "Bid-only parity requires min(yesBestBidSize, noBestBidSize) >= 1 contract; sub-contract or dust sizes block evaluation (see M12.8 bid-size-coverage audit).",
 ] as const;
 
 export const COMPLEMENT_PARITY_CLASSIFICATIONS = [
