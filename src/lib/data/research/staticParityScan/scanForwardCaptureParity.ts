@@ -42,6 +42,9 @@ const topOfBookRecordSchema = z
     noBestAskCents: z.number().nullable().optional(),
     noBestBidSize: z.number().nullable().optional(),
     noBestAskSize: z.number().nullable().optional(),
+    isParityUsable: z.boolean().optional(),
+    isEconomicallyValid: z.boolean().optional(),
+    economicBookState: z.string().optional(),
   })
   .passthrough();
 
@@ -230,6 +233,17 @@ function scanRunDirectory(input: {
     input.metrics.timeRangeStart = timeRange.start;
     input.metrics.timeRangeEnd = timeRange.end;
 
+    if (record.isParityUsable === false) {
+      if (record.economicBookState === "insufficient-depth") {
+        input.metrics.insufficientDepthSnapshots += 1;
+      } else {
+        input.metrics.invalidSnapshots += 1;
+      }
+      previousCandidateTimestamp = null;
+      candidateRunStart = null;
+      continue;
+    }
+
     const diagnostics = classifyParitySnapshot(
       {
         yesBidCents: record.yesBestBidCents ?? null,
@@ -245,18 +259,20 @@ function scanRunDirectory(input: {
       input.friction,
     );
 
-    if (diagnostics.classification === "invalid-book-state") {
-      input.metrics.invalidSnapshots += 1;
-      previousCandidateTimestamp = null;
-      candidateRunStart = null;
-      continue;
-    }
+    if (record.isParityUsable !== true) {
+      if (diagnostics.classification === "invalid-book-state") {
+        input.metrics.invalidSnapshots += 1;
+        previousCandidateTimestamp = null;
+        candidateRunStart = null;
+        continue;
+      }
 
-    if (diagnostics.classification === "insufficient-book-depth") {
-      input.metrics.insufficientDepthSnapshots += 1;
-      previousCandidateTimestamp = null;
-      candidateRunStart = null;
-      continue;
+      if (diagnostics.classification === "insufficient-book-depth") {
+        input.metrics.insufficientDepthSnapshots += 1;
+        previousCandidateTimestamp = null;
+        candidateRunStart = null;
+        continue;
+      }
     }
 
     input.metrics.validParitySnapshots += 1;

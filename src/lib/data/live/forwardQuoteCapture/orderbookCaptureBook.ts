@@ -5,6 +5,7 @@ import type {
   KalshiOrderbookSnapshotMessage,
 } from "@/features/market-data/orderbook/types";
 
+import { classifyTopOfBookEconomicValidity } from "./classifyTopOfBookEconomicValidity";
 import type {
   ForwardTopOfBookBookState,
   ForwardTopOfBookRecord,
@@ -149,6 +150,27 @@ export class OrderbookCaptureBook {
     const noBestAskCents =
       yesBestBidCents === null ? null : Math.max(100 - yesBestBidCents, 0);
 
+    const yesSignedSpreadCents =
+      yesBestBidCents !== null && yesBestAskCents !== null
+        ? yesBestAskCents - yesBestBidCents
+        : null;
+    const noSignedSpreadCents =
+      noBestBidCents !== null && noBestAskCents !== null
+        ? noBestAskCents - noBestBidCents
+        : null;
+
+    const economic = classifyTopOfBookEconomicValidity({
+      bookState: this.bookState,
+      yesBestBidCents,
+      yesBestAskCents,
+      noBestBidCents,
+      noBestAskCents,
+      yesBestBidSize: yesBest?.size ?? null,
+      yesBestAskSize: noBest?.size ?? null,
+      noBestBidSize: noBest?.size ?? null,
+      noBestAskSize: yesBest?.size ?? null,
+    });
+
     return {
       runId: input.runId,
       marketTicker: this.marketTicker,
@@ -167,13 +189,23 @@ export class OrderbookCaptureBook {
       noBestAskCents,
       noBestAskSize: yesBest?.size ?? null,
       yesSpreadCents:
-        yesBestBidCents !== null && yesBestAskCents !== null
-          ? Math.max(yesBestAskCents - yesBestBidCents, 0)
+        yesSignedSpreadCents !== null
+          ? Math.max(yesSignedSpreadCents, 0)
           : null,
       noSpreadCents:
-        noBestBidCents !== null && noBestAskCents !== null
-          ? Math.max(noBestAskCents - noBestBidCents, 0)
+        noSignedSpreadCents !== null
+          ? Math.max(noSignedSpreadCents, 0)
           : null,
+      yesSignedSpreadCents,
+      noSignedSpreadCents,
+      economicBookState: economic.economicBookState,
+      economicInvalidReasons: economic.economicInvalidReasons,
+      isEconomicallyValid: economic.isEconomicallyValid,
+      isParityUsable: economic.isParityUsable,
+      yesBookCrossed: economic.yesBookCrossed,
+      noBookCrossed: economic.noBookCrossed,
+      yesBookLocked: economic.yesBookLocked,
+      noBookLocked: economic.noBookLocked,
       btcSpotPriceUsd: input.btcSpotPriceUsd ?? null,
       btcSpotReceivedAtLocal: input.btcSpotReceivedAtLocal ?? null,
       btcSpotSource: input.btcSpotSource ?? null,

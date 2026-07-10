@@ -7,6 +7,7 @@ import {
   serializeForwardCaptureHealthReport,
 } from "./buildForwardCaptureHealthReport";
 import { createEmptyConnectionDiagnostics } from "./connectionDiagnostics";
+import { createEmptyOrderbookDiagnostics } from "./createEmptyOrderbookDiagnostics";
 import { discoverCaptureMarkets } from "./discoverCaptureMarkets";
 import { createJsonlForwardCaptureWriter, createRunOutputPaths } from "./jsonlForwardCaptureWriter";
 import { resolveKalshiCaptureCredentials } from "@/lib/data/live/kalshiWsCaptureSpike";
@@ -93,21 +94,7 @@ export async function runForwardQuoteCapture(input: {
       paths,
       discovery,
       processor: {
-        diagnostics: {
-          rawMessageCount: 0,
-          snapshotsReceived: 0,
-          deltasReceived: 0,
-          unknownMessagesReceived: 0,
-          sequenceGapCount: 0,
-          outOfOrderCount: 0,
-          resyncAttemptCount: 0,
-          resyncSuccessCount: 0,
-          validTopOfBookRecords: 0,
-          marketsWithValidBook: 0,
-          marketsAwaitingSnapshot: 0,
-          validBookStateDurationMs: 0,
-          invalidBookStateDurationMs: 0,
-        },
+        diagnostics: createEmptyOrderbookDiagnostics(),
         finalize: () => {},
       },
       connection: createEmptyConnectionDiagnostics(),
@@ -135,21 +122,7 @@ export async function runForwardQuoteCapture(input: {
       paths,
       discovery,
       processor: {
-        diagnostics: {
-          rawMessageCount: 0,
-          snapshotsReceived: 0,
-          deltasReceived: 0,
-          unknownMessagesReceived: 0,
-          sequenceGapCount: 0,
-          outOfOrderCount: 0,
-          resyncAttemptCount: 0,
-          resyncSuccessCount: 0,
-          validTopOfBookRecords: 0,
-          marketsWithValidBook: 0,
-          marketsAwaitingSnapshot: 0,
-          validBookStateDurationMs: 0,
-          invalidBookStateDurationMs: 0,
-        },
+        diagnostics: createEmptyOrderbookDiagnostics(),
         finalize: () => {},
       },
       connection: createEmptyConnectionDiagnostics(),

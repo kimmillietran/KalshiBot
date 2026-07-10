@@ -3,6 +3,8 @@ import {
   kalshiOrderbookSnapshotMessageSchema,
 } from "@/features/market-data/orderbook/schemas";
 
+import type { EconomicBookState } from "./classifyTopOfBookEconomicValidity";
+import { createEmptyOrderbookDiagnostics } from "./createEmptyOrderbookDiagnostics";
 import { OrderbookCaptureBook } from "./orderbookCaptureBook";
 import type { ForwardCaptureWriter } from "./jsonlForwardCaptureWriter";
 import type {
@@ -18,29 +20,80 @@ export type LatestBtcSpot = {
   source: string;
 } | null;
 
-function createEmptyDiagnostics(): ForwardCaptureOrderbookDiagnostics {
-  return {
-    rawMessageCount: 0,
-    snapshotsReceived: 0,
-    deltasReceived: 0,
-    unknownMessagesReceived: 0,
-    sequenceGapCount: 0,
-    outOfOrderCount: 0,
-    resyncAttemptCount: 0,
-    resyncSuccessCount: 0,
-    validTopOfBookRecords: 0,
-    marketsWithValidBook: 0,
-    marketsAwaitingSnapshot: 0,
-    validBookStateDurationMs: 0,
-    invalidBookStateDurationMs: 0,
-  };
+function isEmptyAwaitingSnapshot(record: ForwardTopOfBookRecord): boolean {
+  return (
+    record.bookState === "awaiting-snapshot"
+    && record.yesBestBidCents === null
+    && record.yesBestAskCents === null
+    && record.noBestBidCents === null
+    && record.noBestAskCents === null
+  );
+}
+
+function shouldBypassThrottle(input: {
+  previousState: EconomicBookState | undefined;
+  currentState: EconomicBookState;
+}): boolean {
+  const wasEconomicallyValid = input.previousState === "economically-valid";
+  const isEconomicallyValid = input.currentState === "economically-valid";
+
+  if (!wasEconomicallyValid && isEconomicallyValid) {
+    return true;
+  }
+
+  if (wasEconomicallyValid && !isEconomicallyValid) {
+    return true;
+  }
+
+  return false;
+}
+
+function recordEconomicDiagnostics(
+  diagnostics: ForwardCaptureOrderbookDiagnostics,
+  record: ForwardTopOfBookRecord,
+): void {
+  diagnostics.topOfBookRecordsEmitted += 1;
+
+  if (record.bookState === "valid") {
+    diagnostics.sequenceValidTopOfBookRecords += 1;
+  }
+
+  if (record.isEconomicallyValid) {
+    diagnostics.economicallyValidTopOfBookRecords += 1;
+    diagnostics.validTopOfBookRecords += 1;
+  }
+
+  if (record.isParityUsable) {
+    diagnostics.parityUsableTopOfBookRecords += 1;
+  }
+
+  switch (record.economicBookState) {
+    case "sequence-valid-crossed":
+      diagnostics.crossedTopOfBookRecords += 1;
+      break;
+    case "sequence-valid-locked":
+      diagnostics.lockedTopOfBookRecords += 1;
+      break;
+    case "insufficient-depth":
+      diagnostics.insufficientDepthTopOfBookRecords += 1;
+      break;
+    case "awaiting-snapshot":
+      diagnostics.awaitingSnapshotTopOfBookRecords += 1;
+      break;
+    case "invalid-price":
+      diagnostics.invalidPriceTopOfBookRecords += 1;
+      break;
+    default:
+      break;
+  }
 }
 
 export class ForwardCaptureMessageProcessor {
-  readonly diagnostics: ForwardCaptureOrderbookDiagnostics = createEmptyDiagnostics();
+  readonly diagnostics: ForwardCaptureOrderbookDiagnostics = createEmptyOrderbookDiagnostics();
   readonly books = new Map<string, OrderbookCaptureBook>();
   private captureCounter = 0;
   private lastTopOfBookEmitMs = new Map<string, number>();
+  private lastEconomicBookState = new Map<string, EconomicBookState>();
 
   constructor(
     private readonly input: {
@@ -204,16 +257,6 @@ export class ForwardCaptureMessageProcessor {
     receivedAtLocal: string,
     exchangeTimestampMs: number | null,
   ): void {
-    const throttleMs = this.input.config.topOfBookThrottleMs;
-    if (throttleMs > 0) {
-      const lastEmit = this.lastTopOfBookEmitMs.get(book.marketTicker) ?? 0;
-      const nowMs = this.input.monotonicNowMs();
-      if (nowMs - lastEmit < throttleMs) {
-        return;
-      }
-      this.lastTopOfBookEmitMs.set(book.marketTicker, nowMs);
-    }
-
     const btcSpot = this.input.getLatestBtcSpot?.() ?? null;
     const record: ForwardTopOfBookRecord = book.toTopOfBookRecord({
       runId: this.input.runId,
@@ -223,8 +266,32 @@ export class ForwardCaptureMessageProcessor {
       btcSpotReceivedAtLocal: btcSpot?.receivedAtLocal ?? null,
       btcSpotSource: btcSpot?.source ?? null,
     });
+
+    if (isEmptyAwaitingSnapshot(record)) {
+      return;
+    }
+
+    const throttleMs = this.input.config.topOfBookThrottleMs;
+    const bypassThrottle = shouldBypassThrottle({
+      previousState: this.lastEconomicBookState.get(book.marketTicker),
+      currentState: record.economicBookState,
+    });
+    const hasPriorEmit = this.lastTopOfBookEmitMs.has(book.marketTicker);
+
+    if (throttleMs > 0 && hasPriorEmit && !bypassThrottle) {
+      const lastEmit = this.lastTopOfBookEmitMs.get(book.marketTicker) ?? 0;
+      const nowMs = this.input.monotonicNowMs();
+      if (nowMs - lastEmit < throttleMs) {
+        return;
+      }
+      this.lastTopOfBookEmitMs.set(book.marketTicker, nowMs);
+    } else if (throttleMs > 0) {
+      this.lastTopOfBookEmitMs.set(book.marketTicker, this.input.monotonicNowMs());
+    }
+
     this.input.writer.appendTopOfBook(record);
-    this.diagnostics.validTopOfBookRecords += 1;
+    recordEconomicDiagnostics(this.diagnostics, record);
+    this.lastEconomicBookState.set(book.marketTicker, record.economicBookState);
 
     if (record.bookState === "valid") {
       this.diagnostics.validBookStateDurationMs += 1;

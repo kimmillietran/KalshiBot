@@ -8,6 +8,8 @@ import type { ParsedTopOfBookRecord } from "./loadForwardCaptureRuns";
 export type RunTopOfBookStats = {
   recordCount: number;
   validRecordCount: number;
+  economicallyValidRecordCount: number;
+  parityUsableRecordCount: number;
   nonZeroSpreadRecordCount: number;
   hasDepthFields: boolean;
   marketTickers: Set<string>;
@@ -30,6 +32,8 @@ export function createEmptyRunTopOfBookStats(): RunTopOfBookStats {
   return {
     recordCount: 0,
     validRecordCount: 0,
+    economicallyValidRecordCount: 0,
+    parityUsableRecordCount: 0,
     nonZeroSpreadRecordCount: 0,
     hasDepthFields: false,
     marketTickers: new Set(),
@@ -102,6 +106,22 @@ function updateTimestampRange(
   return timestampMs;
 }
 
+function isEconomicallyValidRecord(record: ParsedTopOfBookRecord): boolean {
+  if (record.isEconomicallyValid !== undefined) {
+    return record.isEconomicallyValid;
+  }
+
+  return record.bookState === "valid";
+}
+
+function isParityUsableRecord(record: ParsedTopOfBookRecord): boolean {
+  if (record.isParityUsable !== undefined) {
+    return record.isParityUsable;
+  }
+
+  return isEconomicallyValidRecord(record);
+}
+
 export function accumulateTopOfBookRecord(
   stats: RunTopOfBookStats,
   record: ParsedTopOfBookRecord,
@@ -111,6 +131,14 @@ export function accumulateTopOfBookRecord(
 
   if (record.bookState === "valid") {
     stats.validRecordCount += 1;
+  }
+
+  if (isEconomicallyValidRecord(record)) {
+    stats.economicallyValidRecordCount += 1;
+  }
+
+  if (isParityUsableRecord(record)) {
+    stats.parityUsableRecordCount += 1;
   }
 
   if (isNonZeroSpread(record)) {
@@ -149,6 +177,10 @@ export function mergeRunTopOfBookStats(
   return {
     recordCount: left.recordCount + right.recordCount,
     validRecordCount: left.validRecordCount + right.validRecordCount,
+    economicallyValidRecordCount:
+      left.economicallyValidRecordCount + right.economicallyValidRecordCount,
+    parityUsableRecordCount:
+      left.parityUsableRecordCount + right.parityUsableRecordCount,
     nonZeroSpreadRecordCount:
       left.nonZeroSpreadRecordCount + right.nonZeroSpreadRecordCount,
     hasDepthFields: left.hasDepthFields || right.hasDepthFields,
@@ -185,6 +217,10 @@ export function mergeRunBtcSpotStats(
 }
 
 export function validBookShare(stats: RunTopOfBookStats): number | null {
+  if (stats.economicallyValidRecordCount > 0 || stats.recordCount === 0) {
+    return safeShare(stats.economicallyValidRecordCount, stats.recordCount);
+  }
+
   return safeShare(stats.validRecordCount, stats.recordCount);
 }
 

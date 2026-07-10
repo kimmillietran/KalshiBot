@@ -1,5 +1,9 @@
 import { classifyParitySnapshot } from "@/lib/data/research/staticParityScan/classifyParitySnapshot";
 import { DEFAULT_STATIC_PARITY_FRICTION_CONFIG } from "@/lib/data/research/staticParityScan/staticParityScanTypes";
+import {
+  resolveTopOfBookEconomicFields,
+  type EconomicBookState,
+} from "@/lib/data/live/forwardQuoteCapture/classifyTopOfBookEconomicValidity";
 
 export type TopOfBookValidityInput = {
   bookState: string;
@@ -13,6 +17,15 @@ export type TopOfBookValidityInput = {
   noBestAskSize: number | null;
   yesSpreadCents: number | null;
   noSpreadCents: number | null;
+  economicBookState?: EconomicBookState;
+  isEconomicallyValid?: boolean;
+  isParityUsable?: boolean;
+  yesSignedSpreadCents?: number | null;
+  noSignedSpreadCents?: number | null;
+  yesBookCrossed?: boolean;
+  noBookCrossed?: boolean;
+  yesBookLocked?: boolean;
+  noBookLocked?: boolean;
 };
 
 export type TopOfBookValidityClass =
@@ -110,22 +123,31 @@ export function classifyTopOfBookValidity(
   );
   const impossiblePrice = outOfRangePrice;
 
-  const crossedYes =
-    isPresentPrice(input.yesBestBidCents)
-    && isPresentPrice(input.yesBestAskCents)
-    && input.yesBestBidCents > input.yesBestAskCents;
-  const crossedNo =
-    isPresentPrice(input.noBestBidCents)
-    && isPresentPrice(input.noBestAskCents)
-    && input.noBestBidCents > input.noBestAskCents;
-  const lockedYes =
-    isPresentPrice(input.yesBestBidCents)
-    && isPresentPrice(input.yesBestAskCents)
-    && input.yesBestBidCents === input.yesBestAskCents;
-  const lockedNo =
-    isPresentPrice(input.noBestBidCents)
-    && isPresentPrice(input.noBestAskCents)
-    && input.noBestBidCents === input.noBestAskCents;
+  const economic = resolveTopOfBookEconomicFields({
+    bookState: input.bookState,
+    yesBestBidCents: input.yesBestBidCents,
+    yesBestAskCents: input.yesBestAskCents,
+    noBestBidCents: input.noBestBidCents,
+    noBestAskCents: input.noBestAskCents,
+    yesBestBidSize: input.yesBestBidSize,
+    yesBestAskSize: input.yesBestAskSize,
+    noBestBidSize: input.noBestBidSize,
+    noBestAskSize: input.noBestAskSize,
+    economicBookState: input.economicBookState,
+    isEconomicallyValid: input.isEconomicallyValid,
+    isParityUsable: input.isParityUsable,
+    yesSignedSpreadCents: input.yesSignedSpreadCents,
+    noSignedSpreadCents: input.noSignedSpreadCents,
+    yesBookCrossed: input.yesBookCrossed,
+    noBookCrossed: input.noBookCrossed,
+    yesBookLocked: input.yesBookLocked,
+    noBookLocked: input.noBookLocked,
+  });
+
+  const crossedYes = economic.yesBookCrossed;
+  const crossedNo = economic.noBookCrossed;
+  const lockedYes = economic.yesBookLocked;
+  const lockedNo = economic.noBookLocked;
 
   const yesBidGreaterThanYesAsk = crossedYes;
   const yesBidEqualsYesAsk = lockedYes;
@@ -142,13 +164,19 @@ export function classifyTopOfBookValidity(
   );
 
   const rawYesSpread =
-    isPresentPrice(input.yesBestBidCents) && isPresentPrice(input.yesBestAskCents)
-      ? input.yesBestAskCents - input.yesBestBidCents
-      : null;
+    input.yesSignedSpreadCents
+    ?? (
+      isPresentPrice(input.yesBestBidCents) && isPresentPrice(input.yesBestAskCents)
+        ? input.yesBestAskCents - input.yesBestBidCents
+        : null
+    );
   const rawNoSpread =
-    isPresentPrice(input.noBestBidCents) && isPresentPrice(input.noBestAskCents)
-      ? input.noBestAskCents - input.noBestBidCents
-      : null;
+    input.noSignedSpreadCents
+    ?? (
+      isPresentPrice(input.noBestBidCents) && isPresentPrice(input.noBestAskCents)
+        ? input.noBestAskCents - input.noBestBidCents
+        : null
+    );
   const negativeImpliedSpreadBeforeClamp =
     (rawYesSpread !== null && rawYesSpread < 0)
     || (rawNoSpread !== null && rawNoSpread < 0);
@@ -165,17 +193,7 @@ export function classifyTopOfBookValidity(
     && isEffectivelyZeroSize(input.noBestBidSize)
     && isEffectivelyZeroSize(input.noBestAskSize);
 
-  const economicallyValid =
-    captureValid
-    && !missingYesBid
-    && !missingYesAsk
-    && !missingNoBid
-    && !missingNoAsk
-    && !outOfRangePrice
-    && !crossedYes
-    && !crossedNo
-    && !lockedYes
-    && !lockedNo;
+  const economicallyValid = economic.isEconomicallyValid;
 
   const parityDiagnostics = classifyParitySnapshot(
     {
@@ -192,9 +210,10 @@ export function classifyTopOfBookValidity(
     DEFAULT_STATIC_PARITY_FRICTION_CONFIG,
   );
 
-  const parityUsable =
+  const parityUsable = input.isParityUsable ?? (
     parityDiagnostics.classification !== "invalid-book-state"
-    && parityDiagnostics.classification !== "insufficient-book-depth";
+    && parityDiagnostics.classification !== "insufficient-book-depth"
+  );
 
   let primaryClass: TopOfBookValidityClass;
   let reason: string;
@@ -202,6 +221,12 @@ export function classifyTopOfBookValidity(
   if (!captureValid) {
     primaryClass = "capture-invalid";
     reason = `Capture bookState is ${input.bookState}.`;
+  } else if (economic.economicBookState === "awaiting-snapshot") {
+    primaryClass = "capture-invalid";
+    reason = economic.economicInvalidReasons[0] ?? "Awaiting snapshot.";
+  } else if (economic.economicBookState === "invalid-price") {
+    primaryClass = "impossible-price";
+    reason = economic.economicInvalidReasons[0] ?? "Invalid price.";
   } else if (missingYesSide) {
     primaryClass = "missing-yes-side";
     reason = "Missing YES bid and ask.";

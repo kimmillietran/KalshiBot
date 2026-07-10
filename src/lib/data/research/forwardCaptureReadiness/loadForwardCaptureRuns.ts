@@ -8,6 +8,7 @@ import {
   accumulateTopOfBookRecord,
   createEmptyRunBtcSpotStats,
   createEmptyRunTopOfBookStats,
+  validBookShare,
   type RunBtcSpotStats,
   type RunTopOfBookStats,
 } from "./runTopOfBookStats";
@@ -51,6 +52,9 @@ const captureHealthSchema = z
     orderbook: z
       .object({
         validTopOfBookRecords: z.number().optional(),
+        economicallyValidTopOfBookRecords: z.number().optional(),
+        sequenceValidTopOfBookRecords: z.number().optional(),
+        parityUsableTopOfBookRecords: z.number().optional(),
         sequenceGapCount: z.number().optional(),
         reconnectCount: z.number().optional(),
         marketsWithValidBook: z.number().optional(),
@@ -91,6 +95,9 @@ const topOfBookRecordSchema = z
     noBestAskSize: z.number().nullable().optional(),
     yesSpreadCents: z.number().nullable().optional(),
     noSpreadCents: z.number().nullable().optional(),
+    isEconomicallyValid: z.boolean().optional(),
+    isParityUsable: z.boolean().optional(),
+    economicBookState: z.string().optional(),
   })
   .passthrough();
 
@@ -384,10 +391,7 @@ function summarizeRun(run: LoadedForwardCaptureRun): ForwardCaptureRunTableEntry
     topOfBookRecordCount: run.topOfBookStats.recordCount,
     btcSpotRecordCount: run.btcSpotStats.recordCount,
     rawMessageCount: run.rawMessageCount,
-    validBookShare:
-      run.topOfBookStats.recordCount > 0
-        ? run.topOfBookStats.validRecordCount / run.topOfBookStats.recordCount
-        : null,
+    validBookShare: validBookShare(run.topOfBookStats),
     sequenceGapCount: run.health.orderbook?.sequenceGapCount ?? 0,
     reconnectCount:
       run.health.orderbook?.reconnectCount
@@ -421,6 +425,12 @@ export function summarizeForwardCaptureRuns(
       recordCount: topOfBookStats.recordCount + run.topOfBookStats.recordCount,
       validRecordCount:
         topOfBookStats.validRecordCount + run.topOfBookStats.validRecordCount,
+      economicallyValidRecordCount:
+        topOfBookStats.economicallyValidRecordCount
+        + run.topOfBookStats.economicallyValidRecordCount,
+      parityUsableRecordCount:
+        topOfBookStats.parityUsableRecordCount
+        + run.topOfBookStats.parityUsableRecordCount,
       nonZeroSpreadRecordCount:
         topOfBookStats.nonZeroSpreadRecordCount
         + run.topOfBookStats.nonZeroSpreadRecordCount,
@@ -505,10 +515,7 @@ export function buildRunBreakdownMetrics(
       topOfBookRecordCount: metrics.topOfBookStats.recordCount,
       btcSpotRecordCount: run.btcSpotStats.recordCount,
       rawMessageCount: run.rawMessageCount,
-      validBookShare:
-        metrics.topOfBookStats.recordCount > 0
-          ? metrics.topOfBookStats.validRecordCount / metrics.topOfBookStats.recordCount
-          : null,
+      validBookShare: validBookShare(metrics.topOfBookStats),
       sequenceGapCount: run.health.orderbook?.sequenceGapCount ?? 0,
       reconnectCount:
         run.health.orderbook?.reconnectCount

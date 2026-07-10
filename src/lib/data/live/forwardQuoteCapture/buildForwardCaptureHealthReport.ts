@@ -26,7 +26,8 @@ export type ForwardCaptureVerdictInput = {
   wsConnectCount: number;
   marketsSubscribed: number;
   snapshotsReceived: number;
-  validTopOfBookRecords: number;
+  topOfBookRecordsEmitted: number;
+  economicallyValidTopOfBookRecords: number;
   rawMessageCount: number;
   sequenceGapCount: number;
   resyncSuccessCount: number;
@@ -60,7 +61,11 @@ export function evaluateForwardCaptureVerdict(
     return "blocked-ws-auth";
   }
 
-  if (input.snapshotsReceived === 0 || input.validTopOfBookRecords === 0) {
+  if (
+    input.snapshotsReceived === 0
+    || input.topOfBookRecordsEmitted === 0
+    || input.economicallyValidTopOfBookRecords === 0
+  ) {
     return "blocked-no-valid-books";
   }
 
@@ -135,6 +140,41 @@ function resolveRecommendedAction(verdict: ForwardCaptureVerdict): ForwardCaptur
   }
 }
 
+function resolveDominantEconomicInvalidReason(
+  diagnostics: {
+    crossedTopOfBookRecords: number;
+    lockedTopOfBookRecords: number;
+    insufficientDepthTopOfBookRecords: number;
+    awaitingSnapshotTopOfBookRecords: number;
+    invalidPriceTopOfBookRecords: number;
+  },
+): string | null {
+  const entries: Array<[string, number]> = [
+    ["sequence-valid-crossed", diagnostics.crossedTopOfBookRecords],
+    ["sequence-valid-locked", diagnostics.lockedTopOfBookRecords],
+    ["insufficient-depth", diagnostics.insufficientDepthTopOfBookRecords],
+    ["awaiting-snapshot", diagnostics.awaitingSnapshotTopOfBookRecords],
+    ["invalid-price", diagnostics.invalidPriceTopOfBookRecords],
+  ];
+
+  const dominant = entries.reduce<[string, number] | null>(
+    (best, current) => {
+      if (current[1] <= 0) {
+        return best;
+      }
+
+      if (!best || current[1] > best[1]) {
+        return current;
+      }
+
+      return best;
+    },
+    null,
+  );
+
+  return dominant ? dominant[0] : null;
+}
+
 export function buildForwardCaptureHealthReport(input: {
   runId: string;
   generatedAt: string;
@@ -158,7 +198,8 @@ export function buildForwardCaptureHealthReport(input: {
     wsConnectCount: input.captureResult.connection.wsConnectCount,
     marketsSubscribed: input.captureResult.rollover.marketsSubscribed,
     snapshotsReceived: diagnostics.snapshotsReceived,
-    validTopOfBookRecords: diagnostics.validTopOfBookRecords,
+    topOfBookRecordsEmitted: diagnostics.topOfBookRecordsEmitted,
+    economicallyValidTopOfBookRecords: diagnostics.economicallyValidTopOfBookRecords,
     rawMessageCount: diagnostics.rawMessageCount,
     sequenceGapCount: diagnostics.sequenceGapCount,
     resyncSuccessCount: diagnostics.resyncSuccessCount,
@@ -181,6 +222,30 @@ export function buildForwardCaptureHealthReport(input: {
     warnings.push(
       `Detected ${diagnostics.sequenceGapCount} sequence gap(s); resync attempts=${diagnostics.resyncAttemptCount}, successes=${diagnostics.resyncSuccessCount}.`,
     );
+  }
+  if (
+    diagnostics.topOfBookRecordsEmitted > 0
+    && diagnostics.sequenceValidTopOfBookRecords > diagnostics.economicallyValidTopOfBookRecords
+  ) {
+    const sequenceShare = Math.round(
+      (diagnostics.sequenceValidTopOfBookRecords / diagnostics.topOfBookRecordsEmitted) * 100,
+    );
+    const economicShare = Math.round(
+      (diagnostics.economicallyValidTopOfBookRecords / diagnostics.topOfBookRecordsEmitted) * 100,
+    );
+    const parityShare = Math.round(
+      (diagnostics.parityUsableTopOfBookRecords / diagnostics.topOfBookRecordsEmitted) * 100,
+    );
+    const crossedShare = Math.round(
+      (diagnostics.crossedTopOfBookRecords / diagnostics.topOfBookRecordsEmitted) * 100,
+    );
+    const dominantInvalidReason = resolveDominantEconomicInvalidReason(diagnostics);
+    warnings.push(
+      `Top-of-book quality: capture-valid ${sequenceShare}% vs economically-valid ${economicShare}% vs parity-usable ${parityShare}%; crossed share ${crossedShare}%.`,
+    );
+    if (dominantInvalidReason) {
+      warnings.push(`Dominant economic invalid reason: ${dominantInvalidReason}.`);
+    }
   }
   if (input.captureResult.btcSpotStatus === "degraded") {
     warnings.push("BTC spot capture degraded; Kalshi capture continued.");
@@ -221,7 +286,7 @@ export function buildForwardCaptureHealthReport(input: {
     },
     capture: {
       rawMessageCount: diagnostics.rawMessageCount,
-      topOfBookRecordCount: diagnostics.validTopOfBookRecords,
+      topOfBookRecordCount: diagnostics.topOfBookRecordsEmitted,
       btcSpotRecordCount: input.captureResult.recordCounts.btcSpot,
       marketMetadataRecordCount: input.captureResult.recordCounts.marketMetadata,
       rawKalshiWsPath: input.captureResult.paths.rawKalshiWsPath,
@@ -235,7 +300,16 @@ export function buildForwardCaptureHealthReport(input: {
     orderbook: {
       snapshotsReceived: diagnostics.snapshotsReceived,
       deltasReceived: diagnostics.deltasReceived,
+      topOfBookRecordsEmitted: diagnostics.topOfBookRecordsEmitted,
       validTopOfBookRecords: diagnostics.validTopOfBookRecords,
+      sequenceValidTopOfBookRecords: diagnostics.sequenceValidTopOfBookRecords,
+      economicallyValidTopOfBookRecords: diagnostics.economicallyValidTopOfBookRecords,
+      parityUsableTopOfBookRecords: diagnostics.parityUsableTopOfBookRecords,
+      crossedTopOfBookRecords: diagnostics.crossedTopOfBookRecords,
+      lockedTopOfBookRecords: diagnostics.lockedTopOfBookRecords,
+      insufficientDepthTopOfBookRecords: diagnostics.insufficientDepthTopOfBookRecords,
+      awaitingSnapshotTopOfBookRecords: diagnostics.awaitingSnapshotTopOfBookRecords,
+      invalidPriceTopOfBookRecords: diagnostics.invalidPriceTopOfBookRecords,
       sequenceGapCount: diagnostics.sequenceGapCount,
       outOfOrderCount: diagnostics.outOfOrderCount,
       resyncAttemptCount: diagnostics.resyncAttemptCount,

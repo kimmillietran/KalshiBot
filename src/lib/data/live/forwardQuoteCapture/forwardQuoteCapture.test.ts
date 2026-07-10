@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { buildForwardCaptureHealthReport, evaluateForwardCaptureVerdict } from "./buildForwardCaptureHealthReport";
+import { createEmptyOrderbookDiagnostics } from "./createEmptyOrderbookDiagnostics";
 import { discoverCaptureMarkets } from "./discoverCaptureMarkets";
 import { ForwardCaptureMessageProcessor } from "./forwardCaptureMessageProcessor";
 import { OrderbookCaptureBook } from "./orderbookCaptureBook";
@@ -123,13 +124,26 @@ describe("OrderbookCaptureBook", () => {
     expect(book.bookState).toBe("gap-detected");
   });
 
-  it("marks closed markets", () => {
+  it("derives signed and clamped spreads without hiding crossed state", () => {
     const book = new OrderbookCaptureBook({
       marketTicker: "KXBTC15M-TEST",
       seriesTicker: "KXBTC15M",
     });
-    book.markClosed();
-    expect(book.bookState).toBe("closed");
+    const [snapshot] = createMockForwardCaptureMessages("KXBTC15M-TEST");
+    book.applySnapshot(snapshot);
+    book.yesBids.set(54, 10);
+    book.noBids.set(70, 10);
+
+    const record = book.toTopOfBookRecord({
+      runId: "run-1",
+      receivedAtLocal: "2026-07-09T00:00:00.000Z",
+      exchangeTimestampMs: null,
+    });
+
+    expect(record.yesSignedSpreadCents).toBeLessThan(0);
+    expect(record.yesSpreadCents).toBe(0);
+    expect(record.economicBookState).toBe("sequence-valid-crossed");
+    expect(record.isEconomicallyValid).toBe(false);
   });
 });
 
@@ -162,6 +176,108 @@ describe("ForwardCaptureMessageProcessor", () => {
     expect(processor.diagnostics.sequenceGapCount).toBeGreaterThan(0);
     expect(processor.diagnostics.resyncAttemptCount).toBeGreaterThan(0);
   });
+
+  it("bypasses throttle on invalid to economically-valid transition", () => {
+    const { io, appended } = createIo();
+    const paths = createRunOutputPaths(BASE_CONFIG.outputDir, "run-throttle");
+    const writer = createJsonlForwardCaptureWriter(io, paths);
+    let monotonicMs = 0;
+
+    const processor = new ForwardCaptureMessageProcessor({
+      runId: "run-throttle",
+      seriesTicker: "KXBTC15M",
+      config: { ...BASE_CONFIG, topOfBookThrottleMs: 1000 },
+      writer,
+      now: () => new Date("2026-07-09T00:00:00.000Z"),
+      monotonicNowMs: () => {
+        monotonicMs += 100;
+        return monotonicMs;
+      },
+    });
+
+    const marketTicker = "KXBTC15M-THROTTLE";
+    const crossedSnapshot = {
+      type: "orderbook_snapshot",
+      sid: 1,
+      seq: 1,
+      msg: {
+        market_ticker: marketTicker,
+        market_id: "mock",
+        yes_dollars_fp: [["0.5400", "10.00"]],
+        no_dollars_fp: [["0.7000", "10.00"]],
+      },
+    };
+    const validSnapshot = {
+      type: "orderbook_snapshot",
+      sid: 1,
+      seq: 2,
+      msg: {
+        market_ticker: marketTicker,
+        market_id: "mock",
+        yes_dollars_fp: [["0.4500", "10.00"]],
+        no_dollars_fp: [["0.5000", "10.00"]],
+      },
+    };
+
+    processor.processRawPayload(crossedSnapshot);
+    processor.processRawPayload(validSnapshot);
+
+    const topOfBookLines = appended[paths.topOfBookPath] ?? [];
+    expect(topOfBookLines.length).toBe(2);
+    expect(processor.diagnostics.crossedTopOfBookRecords).toBe(1);
+    expect(processor.diagnostics.economicallyValidTopOfBookRecords).toBe(1);
+  });
+
+  it("bypasses throttle on economically-valid to crossed transition", () => {
+    const { io, appended } = createIo();
+    const paths = createRunOutputPaths(BASE_CONFIG.outputDir, "run-throttle-invalid");
+    const writer = createJsonlForwardCaptureWriter(io, paths);
+    let monotonicMs = 0;
+
+    const processor = new ForwardCaptureMessageProcessor({
+      runId: "run-throttle-invalid",
+      seriesTicker: "KXBTC15M",
+      config: { ...BASE_CONFIG, topOfBookThrottleMs: 1000 },
+      writer,
+      now: () => new Date("2026-07-09T00:00:00.000Z"),
+      monotonicNowMs: () => {
+        monotonicMs += 100;
+        return monotonicMs;
+      },
+    });
+
+    const marketTicker = "KXBTC15M-THROTTLE-2";
+    const validSnapshot = {
+      type: "orderbook_snapshot",
+      sid: 1,
+      seq: 1,
+      msg: {
+        market_ticker: marketTicker,
+        market_id: "mock",
+        yes_dollars_fp: [["0.4500", "10.00"]],
+        no_dollars_fp: [["0.5000", "10.00"]],
+      },
+    };
+    const crossedSnapshot = {
+      type: "orderbook_snapshot",
+      sid: 1,
+      seq: 2,
+      msg: {
+        market_ticker: marketTicker,
+        market_id: "mock",
+        yes_dollars_fp: [["0.5400", "10.00"]],
+        no_dollars_fp: [["0.7000", "10.00"]],
+      },
+    };
+
+    processor.processRawPayload(validSnapshot);
+    processor.processRawPayload(crossedSnapshot);
+
+    const topOfBookLines = appended[paths.topOfBookPath] ?? [];
+    expect(topOfBookLines.length).toBe(2);
+    expect(processor.diagnostics.economicallyValidTopOfBookRecords).toBe(1);
+    expect(processor.diagnostics.crossedTopOfBookRecords).toBe(1);
+  });
 });
 
 describe("evaluateForwardCaptureVerdict", () => {
@@ -188,7 +304,8 @@ describe("evaluateForwardCaptureVerdict", () => {
         marketsSubscribed: 2,
         rawMessageCount: 162_797,
         snapshotsReceived: 4,
-        validTopOfBookRecords: 162_793,
+        topOfBookRecordsEmitted: 162_793,
+        economicallyValidTopOfBookRecords: 17,
         sequenceGapCount: 0,
         resyncSuccessCount: 0,
         errors: [],
@@ -207,7 +324,8 @@ describe("evaluateForwardCaptureVerdict", () => {
         marketsSubscribed: 0,
         rawMessageCount: 0,
         snapshotsReceived: 0,
-        validTopOfBookRecords: 0,
+        topOfBookRecordsEmitted: 0,
+        economicallyValidTopOfBookRecords: 0,
         sequenceGapCount: 0,
         resyncSuccessCount: 0,
         errors: ["WebSocket connection failed"],
@@ -226,7 +344,8 @@ describe("evaluateForwardCaptureVerdict", () => {
         marketsSubscribed: 1,
         rawMessageCount: 5,
         snapshotsReceived: 1,
-        validTopOfBookRecords: 5,
+        topOfBookRecordsEmitted: 5,
+        economicallyValidTopOfBookRecords: 5,
         sequenceGapCount: 0,
         resyncSuccessCount: 0,
         errors: [],
@@ -245,7 +364,8 @@ describe("evaluateForwardCaptureVerdict", () => {
         marketsSubscribed: 1,
         rawMessageCount: 100,
         snapshotsReceived: 1,
-        validTopOfBookRecords: 100,
+        topOfBookRecordsEmitted: 100,
+        economicallyValidTopOfBookRecords: 100,
         sequenceGapCount: 2,
         resyncSuccessCount: 0,
         errors: [],
@@ -288,6 +408,7 @@ describe("buildForwardCaptureHealthReport", () => {
 
     expect(report.verdict).toBe("dry-run-ok");
     expect(report.capture.topOfBookRecordCount).toBeGreaterThan(0);
+    expect(report.orderbook.economicallyValidTopOfBookRecords).toBeGreaterThan(0);
   });
 
   it("reports everConnected semantics for completed live capture disconnected at shutdown", () => {
@@ -347,19 +468,18 @@ describe("buildForwardCaptureHealthReport", () => {
         },
         processor: {
           diagnostics: {
+            ...createEmptyOrderbookDiagnostics(),
             rawMessageCount: 162_797,
             snapshotsReceived: 4,
             deltasReceived: 162_789,
-            unknownMessagesReceived: 0,
-            sequenceGapCount: 0,
-            outOfOrderCount: 0,
-            resyncAttemptCount: 0,
-            resyncSuccessCount: 0,
-            validTopOfBookRecords: 162_793,
+            topOfBookRecordsEmitted: 162_793,
+            validTopOfBookRecords: 17,
+            sequenceValidTopOfBookRecords: 162_793,
+            economicallyValidTopOfBookRecords: 17,
+            parityUsableTopOfBookRecords: 17,
+            crossedTopOfBookRecords: 531,
             marketsWithValidBook: 2,
-            marketsAwaitingSnapshot: 0,
             validBookStateDurationMs: 1,
-            invalidBookStateDurationMs: 0,
           },
           finalize: () => {},
         },
@@ -422,6 +542,87 @@ describe("discoverCaptureMarkets", () => {
 
     expect(result.succeeded).toBe(true);
     expect(result.selectedMarketTickers).toEqual(["KXBTC15M-OVERRIDE"]);
+  });
+});
+
+describe("buildForwardCaptureHealthReport economic metrics", () => {
+  it("tracks sequence-valid vs economically-valid separately", () => {
+    const diagnostics = createEmptyOrderbookDiagnostics();
+    diagnostics.topOfBookRecordsEmitted = 100;
+    diagnostics.sequenceValidTopOfBookRecords = 90;
+    diagnostics.economicallyValidTopOfBookRecords = 12;
+    diagnostics.validTopOfBookRecords = 12;
+    diagnostics.parityUsableTopOfBookRecords = 12;
+    diagnostics.crossedTopOfBookRecords = 70;
+
+    const report = buildForwardCaptureHealthReport({
+      runId: "run-economic",
+      generatedAt: "2026-07-09T00:00:00.000Z",
+      startedAt: "2026-07-09T00:00:00.000Z",
+      endedAt: "2026-07-09T00:10:00.000Z",
+      config: { ...BASE_CONFIG, dryRun: false },
+      credentials: resolveKalshiCaptureCredentials({ env: {} }),
+      discovery: {
+        attempted: true,
+        succeeded: true,
+        seriesTicker: "KXBTC15M",
+        discoveredMarketCount: 1,
+        selectedMarketTickers: ["M1"],
+        marketStatuses: {},
+        eventTickers: {},
+        closeTimes: {},
+        error: null,
+      },
+      captureResult: {
+        runId: "run-economic",
+        startedAt: "2026-07-09T00:00:00.000Z",
+        endedAt: "2026-07-09T00:10:00.000Z",
+        paths: createRunOutputPaths(BASE_CONFIG.outputDir, "run-economic"),
+        discovery: {
+          attempted: true,
+          succeeded: true,
+          seriesTicker: "KXBTC15M",
+          discoveredMarketCount: 1,
+          selectedMarketTickers: ["M1"],
+          marketStatuses: {},
+          eventTickers: {},
+          closeTimes: {},
+          error: null,
+        },
+        processor: {
+          diagnostics,
+          finalize: () => {},
+        },
+        connection: {
+          wsConnectCount: 1,
+          wsDisconnectCount: 0,
+          reconnectCount: 0,
+          connected: false,
+          everConnected: false,
+          completedNormally: false,
+          liveConnectionSucceeded: false,
+        },
+        rollover: {
+          marketsDiscovered: 1,
+          marketsSubscribed: 1,
+          marketsClosed: 0,
+          rolloverChecks: 0,
+          rolloverSubscriptionsAdded: 0,
+        },
+        btcSpotStatus: "healthy",
+        connected: true,
+        wsUrl: "wss://example",
+        authHeadersGenerated: true,
+        errors: [],
+        recordCounts: { raw: 100, topOfBook: 100, btcSpot: 0, marketMetadata: 0 },
+      },
+    });
+
+    expect(report.orderbook.topOfBookRecordsEmitted).toBe(100);
+    expect(report.orderbook.sequenceValidTopOfBookRecords).toBe(90);
+    expect(report.orderbook.economicallyValidTopOfBookRecords).toBe(12);
+    expect(report.orderbook.validTopOfBookRecords).toBe(12);
+    expect(report.warnings.some((warning) => warning.includes("crossed share"))).toBe(true);
   });
 });
 

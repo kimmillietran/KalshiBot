@@ -108,8 +108,42 @@ export function serializeForwardQuoteCaptureHtml(
 
       <section class="panel">
         <h2>Orderbook Validity</h2>
-        <p>Snapshots: ${report.orderbook.snapshotsReceived} | Deltas: ${report.orderbook.deltasReceived} | Valid books: ${report.orderbook.marketsWithValidBook}</p>
+        <p>Snapshots: ${report.orderbook.snapshotsReceived} | Deltas: ${report.orderbook.deltasReceived} | Sequence-valid markets: ${report.orderbook.marketsWithValidBook}</p>
         <p>Gaps: ${report.orderbook.sequenceGapCount} | Resync attempts: ${report.orderbook.resyncAttemptCount} | Resync successes: ${report.orderbook.resyncSuccessCount}</p>
+        <div class="stat-grid">
+          <div class="stat">
+            <div class="label">Records emitted</div>
+            <div class="value">${report.orderbook.topOfBookRecordsEmitted}</div>
+          </div>
+          <div class="stat">
+            <div class="label">Sequence-valid</div>
+            <div class="value">${report.orderbook.sequenceValidTopOfBookRecords}</div>
+          </div>
+          <div class="stat">
+            <div class="label">Economically valid</div>
+            <div class="value positive">${report.orderbook.economicallyValidTopOfBookRecords}</div>
+          </div>
+          <div class="stat">
+            <div class="label">Parity-usable</div>
+            <div class="value positive">${report.orderbook.parityUsableTopOfBookRecords}</div>
+          </div>
+          <div class="stat">
+            <div class="label">Crossed</div>
+            <div class="value negative">${report.orderbook.crossedTopOfBookRecords}</div>
+          </div>
+          <div class="stat">
+            <div class="label">Locked</div>
+            <div class="value warning">${report.orderbook.lockedTopOfBookRecords}</div>
+          </div>
+          <div class="stat">
+            <div class="label">Insufficient depth</div>
+            <div class="value">${report.orderbook.insufficientDepthTopOfBookRecords}</div>
+          </div>
+          <div class="stat">
+            <div class="label">Awaiting snapshot</div>
+            <div class="value">${report.orderbook.awaitingSnapshotTopOfBookRecords}</div>
+          </div>
+        </div>
       </section>
 
       <section class="panel">

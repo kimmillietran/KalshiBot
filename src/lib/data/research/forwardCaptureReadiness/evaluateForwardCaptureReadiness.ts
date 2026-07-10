@@ -11,6 +11,7 @@ import {
   safeShare,
 } from "./forwardCaptureReadinessMath";
 import { isSuccessfulRun } from "./loadForwardCaptureRuns";
+import { validBookShare } from "./runTopOfBookStats";
 import {
   DEFAULT_FORWARD_CAPTURE_READINESS_THRESHOLDS,
   FORWARD_CAPTURE_READINESS_CAVEATS,
@@ -53,7 +54,7 @@ function buildAggregateMetrics(
     topOfBookRecordCount: topOfBookStats.recordCount,
     btcSpotRecordCount: metrics.btcSpotRecordCount,
     rawMessageCount: runs.reduce((sum, run) => sum + run.rawMessageCount, 0),
-    validBookShare: safeShare(topOfBookStats.validRecordCount, topOfBookStats.recordCount),
+    validBookShare: validBookShare(topOfBookStats),
     sequenceGapCount: runs.reduce(
       (sum, run) => sum + (run.health.orderbook?.sequenceGapCount ?? 0),
       0,

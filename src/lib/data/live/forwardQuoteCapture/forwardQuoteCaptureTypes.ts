@@ -71,6 +71,14 @@ export type ForwardTopOfBookBookState =
   | "resyncing"
   | "closed";
 
+export type EconomicBookState =
+  | "economically-valid"
+  | "sequence-valid-crossed"
+  | "sequence-valid-locked"
+  | "insufficient-depth"
+  | "awaiting-snapshot"
+  | "invalid-price";
+
 export type ForwardTopOfBookRecord = {
   runId: string;
   marketTicker: string;
@@ -90,6 +98,16 @@ export type ForwardTopOfBookRecord = {
   noBestAskSize: number | null;
   yesSpreadCents: number | null;
   noSpreadCents: number | null;
+  yesSignedSpreadCents: number | null;
+  noSignedSpreadCents: number | null;
+  economicBookState: EconomicBookState;
+  economicInvalidReasons: readonly string[];
+  isEconomicallyValid: boolean;
+  isParityUsable: boolean;
+  yesBookCrossed: boolean;
+  noBookCrossed: boolean;
+  yesBookLocked: boolean;
+  noBookLocked: boolean;
   btcSpotPriceUsd: number | null;
   btcSpotReceivedAtLocal: string | null;
   btcSpotSource: string | null;
@@ -136,7 +154,19 @@ export type ForwardCaptureOrderbookDiagnostics = {
   outOfOrderCount: number;
   resyncAttemptCount: number;
   resyncSuccessCount: number;
+  /** Total top-of-book JSONL records written. */
+  topOfBookRecordsEmitted: number;
+  /** Economically valid records (strict bid < ask on both sides). */
   validTopOfBookRecords: number;
+  /** Records with capture bookState === "valid". */
+  sequenceValidTopOfBookRecords: number;
+  economicallyValidTopOfBookRecords: number;
+  parityUsableTopOfBookRecords: number;
+  crossedTopOfBookRecords: number;
+  lockedTopOfBookRecords: number;
+  insufficientDepthTopOfBookRecords: number;
+  awaitingSnapshotTopOfBookRecords: number;
+  invalidPriceTopOfBookRecords: number;
   marketsWithValidBook: number;
   marketsAwaitingSnapshot: number;
   validBookStateDurationMs: number;
@@ -199,7 +229,16 @@ export type ForwardCaptureHealthReport = {
   orderbook: {
     snapshotsReceived: number;
     deltasReceived: number;
+    topOfBookRecordsEmitted: number;
     validTopOfBookRecords: number;
+    sequenceValidTopOfBookRecords: number;
+    economicallyValidTopOfBookRecords: number;
+    parityUsableTopOfBookRecords: number;
+    crossedTopOfBookRecords: number;
+    lockedTopOfBookRecords: number;
+    insufficientDepthTopOfBookRecords: number;
+    awaitingSnapshotTopOfBookRecords: number;
+    invalidPriceTopOfBookRecords: number;
     sequenceGapCount: number;
     outOfOrderCount: number;
     resyncAttemptCount: number;

@@ -614,6 +614,42 @@ function investigateRunDirectory(input: {
       noBestAskSize: record.noBestAskSize ?? null,
       yesSpreadCents: record.yesSpreadCents ?? null,
       noSpreadCents: record.noSpreadCents ?? null,
+      economicBookState:
+        typeof record.economicBookState === "string"
+          ? record.economicBookState as never
+          : undefined,
+      isEconomicallyValid:
+        typeof record.isEconomicallyValid === "boolean"
+          ? record.isEconomicallyValid
+          : undefined,
+      isParityUsable:
+        typeof record.isParityUsable === "boolean"
+          ? record.isParityUsable
+          : undefined,
+      yesSignedSpreadCents:
+        typeof record.yesSignedSpreadCents === "number"
+          ? record.yesSignedSpreadCents
+          : undefined,
+      noSignedSpreadCents:
+        typeof record.noSignedSpreadCents === "number"
+          ? record.noSignedSpreadCents
+          : undefined,
+      yesBookCrossed:
+        typeof record.yesBookCrossed === "boolean"
+          ? record.yesBookCrossed
+          : undefined,
+      noBookCrossed:
+        typeof record.noBookCrossed === "boolean"
+          ? record.noBookCrossed
+          : undefined,
+      yesBookLocked:
+        typeof record.yesBookLocked === "boolean"
+          ? record.yesBookLocked
+          : undefined,
+      noBookLocked:
+        typeof record.noBookLocked === "boolean"
+          ? record.noBookLocked
+          : undefined,
     });
 
     accumulateValidityBreakdown(validityBreakdown, validity);

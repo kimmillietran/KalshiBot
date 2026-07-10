@@ -23,6 +23,16 @@ export {
   DEFAULT_FORWARD_QUOTE_CAPTURE_HTML_PATH,
   FORWARD_CAPTURE_DISCLAIMER,
 } from "./forwardQuoteCaptureTypes";
+export {
+  classifyTopOfBookEconomicValidity,
+  resolveTopOfBookEconomicFields,
+} from "./classifyTopOfBookEconomicValidity";
+export type {
+  EconomicBookState,
+  TopOfBookEconomicValidityInput,
+  TopOfBookEconomicValidityResult,
+} from "./classifyTopOfBookEconomicValidity";
+export { createEmptyOrderbookDiagnostics } from "./createEmptyOrderbookDiagnostics";
 export type {
   ForwardCaptureHealthReport,
   ForwardCaptureVerdict,
