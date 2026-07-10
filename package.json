@@ -86,6 +86,7 @@
     "research:static-parity-scan": "tsx scripts/research/buildStaticParityScan.ts",
     "research:bid-size-coverage-audit": "tsx scripts/research/buildBidSizeCoverageAudit.ts",
     "research:bid-only-candidate-lifecycle": "tsx scripts/research/buildBidOnlyCandidateLifecycle.ts",
+    "research:strategy-evaluation-readiness": "tsx scripts/research/buildStrategyEvaluationReadiness.ts",
     "research:valid-book-coverage": "tsx scripts/research/buildValidBookCoverageInvestigation.ts",
     "research:orderbook-reconstruction-audit": "tsx scripts/research/buildOrderbookReconstructionAudit.ts",
     "research:orderbook-semantics-validation": "tsx scripts/research/buildOrderbookSemanticsValidation.ts",
