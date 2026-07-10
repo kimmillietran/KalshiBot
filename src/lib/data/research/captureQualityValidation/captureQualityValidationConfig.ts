@@ -59,9 +59,13 @@ export function resolveRecommendedNextAction(
     return "merge-m12.4b-economic-validity-fields";
   }
 
+  if (!summary.latestRunEnoughForBidOnlyParityResearch) {
+    return "extend-capture-or-improve-bid-pair-coverage";
+  }
+
   if (!summary.latestRunEnoughForParityResearch) {
     return "extend-capture-or-improve-transition-emission";
   }
 
-  return "proceed-with-parity-research-on-validated-captures";
+  return "proceed-with-bid-only-parity-research-on-validated-captures";
 }

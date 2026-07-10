@@ -259,6 +259,39 @@ describe("captureQualityValidation", () => {
     expect(derived.isCrossed).toBe(true);
   });
 
+  it("treats complement-crossed captures as bid-only parity ready when bid pairs exist", () => {
+    const lines = Array.from({ length: 12 }, (_, index) =>
+      topOfBookLine({
+        receivedAtLocal: new Date(Date.UTC(2026, 6, 9, 8, 0, index)).toISOString(),
+        yesBid: 54,
+        yesAsk: 30,
+        noBid: 70,
+        noAsk: 46,
+        economicBookState: "crossed-yes-book",
+        isEconomicallyValid: false,
+        isParityUsable: false,
+        isCrossed: true,
+      }),
+    );
+    const files = createRunFiles({
+      runId: "bid-only-ready-crossed",
+      topOfBookLines: lines,
+    });
+
+    const result = validateCaptureRunQuality({
+      runDir: `${INPUT_DIR}/bid-only-ready-crossed`,
+      config: createCaptureQualityValidationConfig(),
+      io: buildMemoryIo(files),
+    });
+
+    expect(result.recomputed.crossedTopOfBookRecords).toBeGreaterThan(0);
+    expect(result.recomputed.bidPairPresentTopOfBookRecords).toBe(12);
+    expect(result.enoughForBidOnlyParityResearch).toBe(true);
+    expect(result.warnings).not.toContain(
+      "capture says success but economically valid share is below threshold",
+    );
+  });
+
   it("counts invalid to valid transitions", () => {
     const files = createRunFiles({
       runId: "transition-run",

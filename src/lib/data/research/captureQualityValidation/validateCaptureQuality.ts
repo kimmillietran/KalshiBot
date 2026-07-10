@@ -143,6 +143,7 @@ function createEmptyRecomputedCounts(): RecomputedValidityCounts {
     sequenceValidTopOfBookRecords: 0,
     economicallyValidTopOfBookRecords: 0,
     parityUsableTopOfBookRecords: 0,
+    bidPairPresentTopOfBookRecords: 0,
     crossedTopOfBookRecords: 0,
     insufficientDepthTopOfBookRecords: 0,
     awaitingSnapshotTopOfBookRecords: 0,
@@ -150,6 +151,19 @@ function createEmptyRecomputedCounts(): RecomputedValidityCounts {
     lockedTopOfBookRecords: 0,
     malformedJsonlLines: 0,
   };
+}
+
+function hasBidPairPresent(record: ParsedTopOfBookValidationRecord): boolean {
+  const yesBid = record.yesBestBidCents;
+  const noBid = record.noBestBidCents;
+  return (
+    yesBid !== null
+    && noBid !== null
+    && yesBid >= 0
+    && yesBid <= 100
+    && noBid >= 0
+    && noBid <= 100
+  );
 }
 
 function accumulateRecomputedCounts(
@@ -169,6 +183,10 @@ function accumulateRecomputedCounts(
 
   if (derived.isParityUsable) {
     counts.parityUsableTopOfBookRecords += 1;
+  }
+
+  if (hasBidPairPresent(record)) {
+    counts.bidPairPresentTopOfBookRecords += 1;
   }
 
   if (derived.isCrossed) {
@@ -362,6 +380,7 @@ function buildRegressionWarnings(input: {
   healthMismatches: HealthCountMismatch[];
   economicStateMismatches: EconomicStateMismatch[];
   economicallyValidShare: number | null;
+  bidPairPresentShare: number | null;
   topOfBookMissing: boolean;
   rolloverEmptyCount: number;
   rolloverTotalCount: number;
@@ -397,6 +416,7 @@ function buildRegressionWarnings(input: {
     input.healthReported.captureVerdict === "capture-mvp-success"
     && input.economicallyValidShare !== null
     && input.economicallyValidShare < input.thresholds.minEconomicallyValidShare
+    && (input.bidPairPresentShare ?? 0) < input.thresholds.minEconomicallyValidShare
   ) {
     warnings.push("capture says success but economically valid share is below threshold");
   }
@@ -471,6 +491,8 @@ export function validateCaptureRunQuality(input: {
       parityUsableShare: null,
       sequenceValidShare: null,
       enoughForParityResearch: false,
+      enoughForBidOnlyParityResearch: false,
+      bidPairPresentShare: null,
     };
   }
 
@@ -554,6 +576,10 @@ export function validateCaptureRunQuality(input: {
     recomputed.parityUsableTopOfBookRecords,
     recomputed.topOfBookRecordCount,
   );
+  const bidPairPresentShare = roundShare(
+    recomputed.bidPairPresentTopOfBookRecords,
+    recomputed.topOfBookRecordCount,
+  );
   const sequenceValidShare = roundShare(
     recomputed.sequenceValidTopOfBookRecords,
     recomputed.topOfBookRecordCount,
@@ -562,6 +588,9 @@ export function validateCaptureRunQuality(input: {
   const enoughForParityResearch =
     recomputed.parityUsableTopOfBookRecords >= input.config.thresholds.minParityUsableRecords
     && (economicallyValidShare ?? 0) >= input.config.thresholds.minEconomicallyValidShare;
+  const enoughForBidOnlyParityResearch =
+    recomputed.bidPairPresentTopOfBookRecords
+      >= input.config.thresholds.minParityUsableRecords;
 
   const warnings = buildRegressionWarnings({
     thresholds: input.config.thresholds,
@@ -571,6 +600,7 @@ export function validateCaptureRunQuality(input: {
     healthMismatches,
     economicStateMismatches,
     economicallyValidShare,
+    bidPairPresentShare,
     topOfBookMissing: false,
     rolloverEmptyCount,
     rolloverTotalCount,
@@ -592,6 +622,8 @@ export function validateCaptureRunQuality(input: {
     parityUsableShare,
     sequenceValidShare,
     enoughForParityResearch,
+    enoughForBidOnlyParityResearch,
+    bidPairPresentShare,
   };
 }
 

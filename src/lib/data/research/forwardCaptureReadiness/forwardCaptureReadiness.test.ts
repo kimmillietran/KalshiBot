@@ -344,6 +344,31 @@ describe("forwardCaptureReadiness", () => {
     expect(parity?.verdict).toBe("ready");
   });
 
+  it("recognizes bid-only parity readiness separately from complement parity", () => {
+    const files = createRunFiles({
+      runId: "bid-only-ready-run",
+      durationSeconds: 60,
+      generatedAt: "2026-07-09T08:00:00.000Z",
+      topOfBookLines: [
+        createTopOfBookLine({
+          runId: "bid-only-ready-run",
+          receivedAtLocal: "2026-07-09T08:00:00.000Z",
+          withDepth: true,
+        }),
+      ],
+    });
+
+    const evaluation = evaluateForwardCaptureReadiness(
+      loadForwardCaptureRuns(buildMemoryIo(files), DEFAULT_FORWARD_CAPTURE_READINESS_INPUT_PATHS),
+    );
+    const bidOnly = evaluation.summary.familyReadiness.find(
+      (entry) => entry.familyId === "bidOnlyParityReadiness",
+    );
+
+    expect(bidOnly?.verdict).toBe("ready");
+    expect(bidOnly?.rationale).toContain("Bid-only");
+  });
+
   it("aggregates by day and runId", () => {
     const files = {
       ...createRunFiles({

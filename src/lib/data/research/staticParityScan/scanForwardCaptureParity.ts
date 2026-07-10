@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { classifyBidOnlyParitySnapshot } from "./classifyBidOnlyParitySnapshot";
 import { classifyParitySnapshot } from "./classifyParitySnapshot";
 import {
   median,
@@ -7,6 +8,7 @@ import {
 } from "../forwardCaptureReadiness/forwardCaptureReadinessMath";
 import type {
   StaticParityCandidateSample,
+  StaticParityClassification,
   StaticParityFrictionConfig,
   StaticParityScanIo,
   StaticParityScanMetrics,
@@ -57,6 +59,8 @@ export type ScannedParityRun = {
   topOfBookRecordCount: number;
   grossCandidateCount: number;
   bufferAdjustedCandidateCount: number;
+  bidOnlyGrossCandidateCount: number;
+  bidOnlyBufferAdjustedCandidateCount: number;
 };
 
 export type ScanForwardCaptureParityResult = {
@@ -81,8 +85,9 @@ function discoverRunDirectories(io: StaticParityScanIo, rootPath: string): strin
     .filter((entryPath) => io.fileExists(joinPath(entryPath, "capture-health.json")));
 }
 
-function createEmptyMetrics(): StaticParityScanMetrics {
+function createEmptyMetrics(pricingModel: StaticParityFrictionConfig["pricingModel"]): StaticParityScanMetrics {
   return {
+    pricingModel,
     runCountScanned: 0,
     runsSkipped: 0,
     skipReasons: {},
@@ -92,9 +97,18 @@ function createEmptyMetrics(): StaticParityScanMetrics {
     insufficientDepthSnapshots: 0,
     grossParityCandidateCount: 0,
     bufferAdjustedCandidateCount: 0,
+    bidOnlyRecordsEvaluated: 0,
+    bidOnlyNoSignalCount: 0,
+    bidOnlyWatchCount: 0,
+    bidOnlyGrossCandidateCount: 0,
+    bidOnlyBufferAdjustedCandidateCount: 0,
+    executableConfirmedCandidateCount: 0,
     maxGrossEdgeCents: null,
     medianGrossEdgeCents: null,
     p95GrossEdgeCents: null,
+    maxBidOnlyEdgeCents: null,
+    medianBidOnlyEdgeCents: null,
+    p95BidOnlyEdgeCents: null,
     totalCandidateDurationMs: 0,
     longestCandidateDurationMs: 0,
     marketsInvolved: [],
@@ -121,18 +135,23 @@ function updateTimeRange(
   return { start: currentStart, end: currentEnd };
 }
 
+function isCandidateClassification(classification: StaticParityClassification): boolean {
+  return (
+    classification === "gross-parity-candidate"
+    || classification === "buffer-adjusted-candidate"
+    || classification === "parity-watch"
+    || classification === "bid-only-gross-candidate"
+    || classification === "bid-only-buffer-adjusted-candidate"
+    || classification === "bid-only-watch"
+  );
+}
+
 function maybePushSample(
   samples: StaticParityCandidateSample[],
   sample: StaticParityCandidateSample,
 ): void {
-  if (
-    sample.classification === "gross-parity-candidate"
-    || sample.classification === "buffer-adjusted-candidate"
-    || sample.classification === "parity-watch"
-  ) {
-    if (samples.length < MAX_CANDIDATE_SAMPLES) {
-      samples.push(sample);
-    }
+  if (isCandidateClassification(sample.classification) && samples.length < MAX_CANDIDATE_SAMPLES) {
+    samples.push(sample);
   }
 }
 
@@ -143,6 +162,7 @@ function scanRunDirectory(input: {
   metrics: StaticParityScanMetrics;
   candidateSamples: StaticParityCandidateSample[];
   grossEdges: number[];
+  bidOnlyEdges: number[];
   markets: Set<string>;
   events: Set<string>;
 }): ScannedParityRun {
@@ -159,6 +179,8 @@ function scanRunDirectory(input: {
       topOfBookRecordCount: 0,
       grossCandidateCount: 0,
       bufferAdjustedCandidateCount: 0,
+      bidOnlyGrossCandidateCount: 0,
+      bidOnlyBufferAdjustedCandidateCount: 0,
     };
   }
 
@@ -172,6 +194,8 @@ function scanRunDirectory(input: {
       topOfBookRecordCount: 0,
       grossCandidateCount: 0,
       bufferAdjustedCandidateCount: 0,
+      bidOnlyGrossCandidateCount: 0,
+      bidOnlyBufferAdjustedCandidateCount: 0,
     };
   }
 
@@ -188,6 +212,8 @@ function scanRunDirectory(input: {
       topOfBookRecordCount: 0,
       grossCandidateCount: 0,
       bufferAdjustedCandidateCount: 0,
+      bidOnlyGrossCandidateCount: 0,
+      bidOnlyBufferAdjustedCandidateCount: 0,
     };
   }
 
@@ -195,9 +221,12 @@ function scanRunDirectory(input: {
 
   let grossCandidateCount = 0;
   let bufferAdjustedCandidateCount = 0;
+  let bidOnlyGrossCandidateCount = 0;
+  let bidOnlyBufferAdjustedCandidateCount = 0;
   let runRecordCount = 0;
   let previousCandidateTimestamp: string | null = null;
   let candidateRunStart: string | null = null;
+  const isBidOnly = input.friction.pricingModel === "bid-only";
 
   for (const line of input.io.readFile(topOfBookPath).split(/\r?\n/)) {
     const trimmed = line.trim();
@@ -233,6 +262,97 @@ function scanRunDirectory(input: {
     input.metrics.timeRangeStart = timeRange.start;
     input.metrics.timeRangeEnd = timeRange.end;
 
+    const snapshotInput = {
+      yesBidCents: record.yesBestBidCents ?? null,
+      yesAskCents: record.yesBestAskCents ?? null,
+      noBidCents: record.noBestBidCents ?? null,
+      noAskCents: record.noBestAskCents ?? null,
+      yesBestBidSize: record.yesBestBidSize ?? null,
+      yesBestAskSize: record.yesBestAskSize ?? null,
+      noBestBidSize: record.noBestBidSize ?? null,
+      noBestAskSize: record.noBestAskSize ?? null,
+      bookState: record.bookState,
+    };
+
+    if (isBidOnly) {
+      const diagnostics = classifyBidOnlyParitySnapshot(snapshotInput, input.friction);
+      input.metrics.bidOnlyRecordsEvaluated += 1;
+
+      if (diagnostics.classification === "bid-only-invalid-price") {
+        input.metrics.invalidSnapshots += 1;
+        previousCandidateTimestamp = null;
+        candidateRunStart = null;
+        continue;
+      }
+
+      if (diagnostics.classification === "bid-only-insufficient-depth") {
+        input.metrics.insufficientDepthSnapshots += 1;
+        previousCandidateTimestamp = null;
+        candidateRunStart = null;
+        continue;
+      }
+
+      input.metrics.validParitySnapshots += 1;
+
+      if (diagnostics.classification === "bid-only-no-signal") {
+        input.metrics.bidOnlyNoSignalCount += 1;
+      } else if (diagnostics.classification === "bid-only-watch") {
+        input.metrics.bidOnlyWatchCount += 1;
+      }
+
+      if (diagnostics.isGrossCandidate) {
+        input.metrics.bidOnlyGrossCandidateCount += 1;
+        input.metrics.grossParityCandidateCount += 1;
+        bidOnlyGrossCandidateCount += 1;
+        grossCandidateCount += 1;
+        if (diagnostics.bidOnlyEdgeCents !== null) {
+          input.bidOnlyEdges.push(diagnostics.bidOnlyEdgeCents);
+          input.metrics.maxBidOnlyEdgeCents =
+            input.metrics.maxBidOnlyEdgeCents === null
+              ? diagnostics.bidOnlyEdgeCents
+              : Math.max(input.metrics.maxBidOnlyEdgeCents, diagnostics.bidOnlyEdgeCents);
+        }
+      }
+
+      if (diagnostics.isBufferAdjustedCandidate) {
+        input.metrics.bidOnlyBufferAdjustedCandidateCount += 1;
+        input.metrics.bufferAdjustedCandidateCount += 1;
+        bidOnlyBufferAdjustedCandidateCount += 1;
+        bufferAdjustedCandidateCount += 1;
+      }
+
+      ({ candidateRunStart, previousCandidateTimestamp } = updateCandidateTimestamps(
+        diagnostics.classification,
+        record.receivedAtLocal,
+        candidateRunStart,
+        previousCandidateTimestamp,
+        input.metrics,
+      ));
+
+      maybePushSample(input.candidateSamples, {
+        timestamp: record.receivedAtLocal,
+        runId: health.runId,
+        marketTicker: record.marketTicker,
+        eventTicker: record.eventTicker ?? null,
+        yesBidCents: record.yesBestBidCents ?? null,
+        yesAskCents: record.yesBestAskCents ?? null,
+        noBidCents: record.noBestBidCents ?? null,
+        noAskCents: record.noBestAskCents ?? null,
+        yesAskPlusNoAskCents: null,
+        yesBidPlusNoBidCents: diagnostics.bidSumCents,
+        bidSumCents: diagnostics.bidSumCents,
+        bidOnlyEdgeCents: diagnostics.bidOnlyEdgeCents,
+        grossEdgeCents: diagnostics.bidOnlyEdgeCents,
+        estimatedNetEdgeCents: diagnostics.estimatedNetEdgeCents,
+        availableSize: diagnostics.minBidSizeContracts,
+        minBidSizeContracts: diagnostics.minBidSizeContracts,
+        classification: diagnostics.classification,
+        reason: diagnostics.reason,
+        requiresExecutableConfirmation: diagnostics.requiresExecutableConfirmation,
+      });
+      continue;
+    }
+
     if (record.isParityUsable === false) {
       if (record.economicBookState === "insufficient-depth") {
         input.metrics.insufficientDepthSnapshots += 1;
@@ -244,20 +364,7 @@ function scanRunDirectory(input: {
       continue;
     }
 
-    const diagnostics = classifyParitySnapshot(
-      {
-        yesBidCents: record.yesBestBidCents ?? null,
-        yesAskCents: record.yesBestAskCents ?? null,
-        noBidCents: record.noBestBidCents ?? null,
-        noAskCents: record.noBestAskCents ?? null,
-        yesBestBidSize: record.yesBestBidSize ?? null,
-        yesBestAskSize: record.yesBestAskSize ?? null,
-        noBestBidSize: record.noBestBidSize ?? null,
-        noBestAskSize: record.noBestAskSize ?? null,
-        bookState: record.bookState,
-      },
-      input.friction,
-    );
+    const diagnostics = classifyParitySnapshot(snapshotInput, input.friction);
 
     if (record.isParityUsable !== true) {
       if (diagnostics.classification === "invalid-book-state") {
@@ -294,29 +401,13 @@ function scanRunDirectory(input: {
       bufferAdjustedCandidateCount += 1;
     }
 
-    const isCandidateSnapshot =
-      diagnostics.classification === "gross-parity-candidate"
-      || diagnostics.classification === "buffer-adjusted-candidate"
-      || diagnostics.classification === "parity-watch";
-
-    if (isCandidateSnapshot) {
-      if (candidateRunStart === null) {
-        candidateRunStart = record.receivedAtLocal;
-      }
-      previousCandidateTimestamp = record.receivedAtLocal;
-    } else if (candidateRunStart && previousCandidateTimestamp) {
-      const durationMs =
-        Date.parse(previousCandidateTimestamp) - Date.parse(candidateRunStart);
-      if (Number.isFinite(durationMs) && durationMs > 0) {
-        input.metrics.totalCandidateDurationMs += durationMs;
-        input.metrics.longestCandidateDurationMs = Math.max(
-          input.metrics.longestCandidateDurationMs,
-          durationMs,
-        );
-      }
-      candidateRunStart = null;
-      previousCandidateTimestamp = null;
-    }
+    ({ candidateRunStart, previousCandidateTimestamp } = updateCandidateTimestamps(
+      diagnostics.classification,
+      record.receivedAtLocal,
+      candidateRunStart,
+      previousCandidateTimestamp,
+      input.metrics,
+    ));
 
     maybePushSample(input.candidateSamples, {
       timestamp: record.receivedAtLocal,
@@ -329,11 +420,15 @@ function scanRunDirectory(input: {
       noAskCents: record.noBestAskCents ?? null,
       yesAskPlusNoAskCents: diagnostics.yesAskPlusNoAskCents,
       yesBidPlusNoBidCents: diagnostics.yesBidPlusNoBidCents,
+      bidSumCents: diagnostics.yesBidPlusNoBidCents,
+      bidOnlyEdgeCents: null,
       grossEdgeCents: diagnostics.grossEdgeCents,
       estimatedNetEdgeCents: diagnostics.estimatedNetEdgeCents,
       availableSize: diagnostics.availableSize,
+      minBidSizeContracts: null,
       classification: diagnostics.classification,
       reason: diagnostics.reason,
+      requiresExecutableConfirmation: input.friction.requireExecutableConfirmation,
     });
   }
 
@@ -347,7 +442,39 @@ function scanRunDirectory(input: {
     topOfBookRecordCount,
     grossCandidateCount,
     bufferAdjustedCandidateCount,
+    bidOnlyGrossCandidateCount,
+    bidOnlyBufferAdjustedCandidateCount,
   };
+}
+
+function updateCandidateTimestamps(
+  classification: StaticParityClassification,
+  receivedAtLocal: string,
+  candidateRunStart: string | null,
+  previousCandidateTimestamp: string | null,
+  metrics: StaticParityScanMetrics,
+): { candidateRunStart: string | null; previousCandidateTimestamp: string | null } {
+  if (isCandidateClassification(classification)) {
+    if (candidateRunStart === null) {
+      candidateRunStart = receivedAtLocal;
+    }
+    previousCandidateTimestamp = receivedAtLocal;
+    return { candidateRunStart, previousCandidateTimestamp };
+  }
+
+  if (candidateRunStart && previousCandidateTimestamp) {
+    const durationMs =
+      Date.parse(previousCandidateTimestamp) - Date.parse(candidateRunStart);
+    if (Number.isFinite(durationMs) && durationMs > 0) {
+      metrics.totalCandidateDurationMs += durationMs;
+      metrics.longestCandidateDurationMs = Math.max(
+        metrics.longestCandidateDurationMs,
+        durationMs,
+      );
+    }
+  }
+
+  return { candidateRunStart: null, previousCandidateTimestamp: null };
 }
 
 export function scanForwardCaptureParity(input: {
@@ -355,9 +482,10 @@ export function scanForwardCaptureParity(input: {
   forwardQuotesDir: string;
   friction: StaticParityFrictionConfig;
 }): ScanForwardCaptureParityResult {
-  const metrics = createEmptyMetrics();
+  const metrics = createEmptyMetrics(input.friction.pricingModel);
   const candidateSamples: StaticParityCandidateSample[] = [];
   const grossEdges: number[] = [];
+  const bidOnlyEdges: number[] = [];
   const markets = new Set<string>();
   const events = new Set<string>();
   const runs: ScannedParityRun[] = [];
@@ -371,6 +499,7 @@ export function scanForwardCaptureParity(input: {
         metrics,
         candidateSamples,
         grossEdges,
+        bidOnlyEdges,
         markets,
         events,
       }),
@@ -379,6 +508,8 @@ export function scanForwardCaptureParity(input: {
 
   metrics.medianGrossEdgeCents = median(grossEdges);
   metrics.p95GrossEdgeCents = percentile(grossEdges, 95);
+  metrics.medianBidOnlyEdgeCents = median(bidOnlyEdges);
+  metrics.p95BidOnlyEdgeCents = percentile(bidOnlyEdges, 95);
   metrics.marketsInvolved = [...markets].sort();
   metrics.eventTickersInvolved = [...events].sort();
 

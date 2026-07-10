@@ -993,7 +993,11 @@ function classifyRootCause(input: {
     input.crossed.spreadClampedToZeroSuspicionCount > 0
     || crossedCount > 0
   ) {
-    const primary: RootCauseClassification = "capture-reconstruction-issue";
+    const primary: RootCauseClassification =
+      input.breakdown.captureValidRecords > 0
+      && input.yesNoPairing.scannerFieldMappingOk
+        ? "bid-only-book-semantics"
+        : "capture-reconstruction-issue";
     if (input.breakdown.insufficientDepthRecords > input.breakdown.parityUsableRecords) {
       secondary.add("market-depth-actually-missing");
     }
@@ -1002,9 +1006,9 @@ function classifyRootCause(input: {
       primary,
       secondary: [...secondary],
       recommendedNextFix:
-        "Build M12.4B capture economic validity gate: add economicBookState, stop counting crossed implied books as validTopOfBookRecords, emit on invalid->valid transitions, and re-run M12.3.",
+        "Run M12.7 bid-only static parity scan (pricingModel=bid-only). M12.6 validated Kalshi forward captures as bid-only ladders; complement-derived ask parity is legacy diagnostic only.",
       whyOnlyFewParityUsable:
-        `Capture marks ${input.breakdown.captureValidRecords}/${input.breakdown.totalTopOfBookRecords} records as bookState=valid, but only ${input.breakdown.parityUsableRecords} are parity-usable. ${input.crossedImpliedBookRecords} records have crossed implied YES/NO books from opposite-side bid derivation, and ${input.crossed.spreadClampedToZeroSuspicionCount} show spread clamped to zero despite negative implied spread.`,
+        `Capture marks ${input.breakdown.captureValidRecords}/${input.breakdown.totalTopOfBookRecords} records as bookState=valid, but only ${input.breakdown.parityUsableRecords} are complement-parity-usable. ${input.crossedImpliedBookRecords} records show complement-derived crossed implied books — expected under bid-only semantics and not a capture failure. Use bid-only parity diagnostics for research.`,
     };
   }
 

@@ -421,9 +421,36 @@ describe("investigateValidBookCoverage", () => {
     });
 
     expect(result.aggregateValidityBreakdown.totalTopOfBookRecords).toBe(160_000);
-    expect(result.summary.rootCauseClassification).toBe(
-      "capture-reconstruction-issue",
+    expect(result.summary.rootCauseClassification).toBe("bid-only-book-semantics");
+    expect(result.summary.recommendedNextFix).toContain("M12.7 bid-only");
+  });
+
+  it("recommends bid-only parity scan when complement-derived books are crossed", () => {
+    const lines = Array.from({ length: 60 }, (_, index) =>
+      createTopOfBookLine({
+        runId: "crossed-run",
+        receivedAtLocal: new Date(Date.UTC(2026, 6, 9, 8, 0, index)).toISOString(),
+        yesBid: 54,
+        yesAsk: 30,
+        noBid: 70,
+        noAsk: 46,
+        yesSpread: 0,
+        noSpread: 0,
+      }),
     );
+
+    const result = investigateValidBookCoverage({
+      io: buildMemoryIo(
+        createRunFiles({
+          runId: "crossed-run",
+          topOfBookLines: lines,
+        }),
+      ),
+      forwardQuotesDir: INPUT_DIR,
+    });
+
+    expect(result.summary.recommendedNextFix).toContain("M12.7 bid-only");
+    expect(result.summary.rootCauseClassification).toBe("bid-only-book-semantics");
   });
 });
 

@@ -10,6 +10,7 @@ import {
 
 import {
   buildStaticParityScanReport,
+  parseStaticParityScanFrictionFromArgv,
   parseStaticParityScanPathsFromArgv,
   serializeStaticParityScanHtml,
   serializeStaticParityScanReport,
@@ -47,6 +48,7 @@ export function runStaticParityScanCommand(
   try {
     const { outputPath, htmlOutputPath, inputPaths } =
       parseStaticParityScanPathsFromArgv(argv);
+    const friction = parseStaticParityScanFrictionFromArgv(argv);
     const generatedAt = options?.generatedAt ?? new Date().toISOString();
 
     const report = buildStaticParityScanReport({
@@ -54,6 +56,7 @@ export function runStaticParityScanCommand(
       outputPath,
       htmlOutputPath,
       inputPaths,
+      friction,
       io,
     });
 
@@ -67,11 +70,21 @@ export function runStaticParityScanCommand(
         stableStringify({
           outputPath: report.outputPath,
           htmlOutputPath: report.htmlOutputPath,
+          pricingModel: report.summary.pricingModel,
           overallClassification: report.summary.overallClassification,
           recommendedNextAction: report.summary.recommendedNextAction,
           runCountScanned: report.metrics.runCountScanned,
           runsSkipped: report.metrics.runsSkipped,
           topOfBookRecordsScanned: report.metrics.topOfBookRecordsScanned,
+          bidOnlyGrossCandidateCount: report.metrics.bidOnlyGrossCandidateCount,
+          bidOnlyBufferAdjustedCandidateCount:
+            report.metrics.bidOnlyBufferAdjustedCandidateCount,
+          executableConfirmedCandidateCount:
+            report.metrics.executableConfirmedCandidateCount,
+          hasBidOnlyBufferAdjustedCandidates:
+            report.summary.hasBidOnlyBufferAdjustedCandidates,
+          requiresExecutableConfirmation:
+            report.summary.requiresExecutableConfirmation,
           grossParityCandidateCount: report.metrics.grossParityCandidateCount,
           bufferAdjustedCandidateCount: report.metrics.bufferAdjustedCandidateCount,
           hasBufferAdjustedCandidates: report.summary.hasBufferAdjustedCandidates,

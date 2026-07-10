@@ -1,6 +1,10 @@
 export { buildStaticParityScanReport } from "./buildStaticParityScanReport";
+export { classifyBidOnlyParitySnapshot } from "./classifyBidOnlyParitySnapshot";
 export { classifyParitySnapshot } from "./classifyParitySnapshot";
-export { parseStaticParityScanPathsFromArgv } from "./parseStaticParityScanArgv";
+export {
+  parseStaticParityScanFrictionFromArgv,
+  parseStaticParityScanPathsFromArgv,
+} from "./parseStaticParityScanArgv";
 export { scanForwardCaptureParity } from "./scanForwardCaptureParity";
 export { serializeStaticParityScanHtml } from "./serializeStaticParityScanHtml";
 export { serializeStaticParityScanReport } from "./serializeStaticParityScanReport";
@@ -15,7 +19,10 @@ export {
   StaticParityScanError,
 } from "./staticParityScanTypes";
 export type {
+  BidOnlyParityClassification,
+  ParityPricingModel,
   StaticParityCandidateSample,
   StaticParityClassification,
+  StaticParityFrictionConfig,
   StaticParityScanReport,
 } from "./staticParityScanTypes";

@@ -10,6 +10,7 @@ export type RunTopOfBookStats = {
   validRecordCount: number;
   economicallyValidRecordCount: number;
   parityUsableRecordCount: number;
+  bidPairPresentRecordCount: number;
   nonZeroSpreadRecordCount: number;
   hasDepthFields: boolean;
   marketTickers: Set<string>;
@@ -34,6 +35,7 @@ export function createEmptyRunTopOfBookStats(): RunTopOfBookStats {
     validRecordCount: 0,
     economicallyValidRecordCount: 0,
     parityUsableRecordCount: 0,
+    bidPairPresentRecordCount: 0,
     nonZeroSpreadRecordCount: 0,
     hasDepthFields: false,
     marketTickers: new Set(),
@@ -106,6 +108,21 @@ function updateTimestampRange(
   return timestampMs;
 }
 
+function hasBidPair(record: ParsedTopOfBookRecord): boolean {
+  const yesBid = record.yesBestBidCents;
+  const noBid = record.noBestBidCents;
+  return (
+    yesBid !== null
+    && yesBid !== undefined
+    && noBid !== null
+    && noBid !== undefined
+    && yesBid >= 0
+    && yesBid <= 100
+    && noBid >= 0
+    && noBid <= 100
+  );
+}
+
 function isEconomicallyValidRecord(record: ParsedTopOfBookRecord): boolean {
   if (record.isEconomicallyValid !== undefined) {
     return record.isEconomicallyValid;
@@ -139,6 +156,10 @@ export function accumulateTopOfBookRecord(
 
   if (isParityUsableRecord(record)) {
     stats.parityUsableRecordCount += 1;
+  }
+
+  if (hasBidPair(record)) {
+    stats.bidPairPresentRecordCount += 1;
   }
 
   if (isNonZeroSpread(record)) {
@@ -181,6 +202,8 @@ export function mergeRunTopOfBookStats(
       left.economicallyValidRecordCount + right.economicallyValidRecordCount,
     parityUsableRecordCount:
       left.parityUsableRecordCount + right.parityUsableRecordCount,
+    bidPairPresentRecordCount:
+      left.bidPairPresentRecordCount + right.bidPairPresentRecordCount,
     nonZeroSpreadRecordCount:
       left.nonZeroSpreadRecordCount + right.nonZeroSpreadRecordCount,
     hasDepthFields: left.hasDepthFields || right.hasDepthFields,
@@ -222,6 +245,10 @@ export function validBookShare(stats: RunTopOfBookStats): number | null {
   }
 
   return safeShare(stats.validRecordCount, stats.recordCount);
+}
+
+export function bidPairShare(stats: RunTopOfBookStats): number | null {
+  return safeShare(stats.bidPairPresentRecordCount, stats.recordCount);
 }
 
 export function nonZeroSpreadShare(stats: RunTopOfBookStats): number | null {

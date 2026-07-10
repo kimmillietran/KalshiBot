@@ -431,6 +431,9 @@ export function summarizeForwardCaptureRuns(
       parityUsableRecordCount:
         topOfBookStats.parityUsableRecordCount
         + run.topOfBookStats.parityUsableRecordCount,
+      bidPairPresentRecordCount:
+        topOfBookStats.bidPairPresentRecordCount
+        + run.topOfBookStats.bidPairPresentRecordCount,
       nonZeroSpreadRecordCount:
         topOfBookStats.nonZeroSpreadRecordCount
         + run.topOfBookStats.nonZeroSpreadRecordCount,

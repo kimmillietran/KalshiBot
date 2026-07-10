@@ -16,9 +16,22 @@ import {
 } from "./staticParityScanTypes";
 
 function resolveOverallClassification(input: {
+  pricingModel: StaticParityFrictionConfig["pricingModel"];
   grossParityCandidateCount: number;
   bufferAdjustedCandidateCount: number;
+  bidOnlyGrossCandidateCount: number;
+  bidOnlyBufferAdjustedCandidateCount: number;
 }): StaticParityClassification {
+  if (input.pricingModel === "bid-only") {
+    if (input.bidOnlyBufferAdjustedCandidateCount > 0) {
+      return "bid-only-buffer-adjusted-candidate";
+    }
+    if (input.bidOnlyGrossCandidateCount > 0) {
+      return "bid-only-gross-candidate";
+    }
+    return "bid-only-no-signal";
+  }
+
   if (input.bufferAdjustedCandidateCount > 0) {
     return "buffer-adjusted-candidate";
   }
@@ -31,6 +44,14 @@ function resolveOverallClassification(input: {
 }
 
 function resolveRecommendedNextAction(summary: StaticParityScanSummary): string {
+  if (summary.hasBidOnlyBufferAdjustedCandidates) {
+    return "review-bid-only-buffer-adjusted-candidates-offline-require-executable-confirmation";
+  }
+
+  if (summary.hasBidOnlyGrossCandidates) {
+    return "refine-bid-only-friction-model-and-continue-capture";
+  }
+
   if (summary.hasBufferAdjustedCandidates) {
     return "review-buffer-adjusted-candidates-offline";
   }
@@ -58,9 +79,20 @@ export function buildStaticParityScanReport(input: {
   });
 
   const summary: StaticParityScanSummary = {
-    overallClassification: resolveOverallClassification(scan.metrics),
+    pricingModel: friction.pricingModel,
+    overallClassification: resolveOverallClassification({
+      pricingModel: friction.pricingModel,
+      grossParityCandidateCount: scan.metrics.grossParityCandidateCount,
+      bufferAdjustedCandidateCount: scan.metrics.bufferAdjustedCandidateCount,
+      bidOnlyGrossCandidateCount: scan.metrics.bidOnlyGrossCandidateCount,
+      bidOnlyBufferAdjustedCandidateCount: scan.metrics.bidOnlyBufferAdjustedCandidateCount,
+    }),
     hasBufferAdjustedCandidates: scan.metrics.bufferAdjustedCandidateCount > 0,
     hasGrossCandidates: scan.metrics.grossParityCandidateCount > 0,
+    hasBidOnlyGrossCandidates: scan.metrics.bidOnlyGrossCandidateCount > 0,
+    hasBidOnlyBufferAdjustedCandidates:
+      scan.metrics.bidOnlyBufferAdjustedCandidateCount > 0,
+    requiresExecutableConfirmation: friction.requireExecutableConfirmation,
     recommendedNextAction: "continue-capture-and-rescan",
   };
   summary.recommendedNextAction = resolveRecommendedNextAction(summary);

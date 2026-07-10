@@ -12,12 +12,14 @@ export const VALID_BOOK_COVERAGE_DISCLAIMER =
 
 export const VALID_BOOK_COVERAGE_CAVEATS = [
   "Capture-valid reflects sequence/snapshot state, not economic book consistency.",
-  "Economically-valid requires internally consistent derived YES/NO top-of-book prices.",
-  "Parity-usable follows the same rules as M12.3 static parity scan.",
+  "Economically-valid uses complement-derived asks (legacy diagnostic).",
+  "M12.7 bid-only parity diagnostics are the default research model per M12.6 semantics validation.",
+  "yesBid + noBid > 100 is a bid-book imbalance, not guaranteed arbitrage.",
 ] as const;
 
 export const ROOT_CAUSE_CLASSIFICATIONS = [
   "capture-reconstruction-issue",
+  "bid-only-book-semantics",
   "scanner-field-mapping-issue",
   "market-depth-actually-missing",
   "market-selection-issue",

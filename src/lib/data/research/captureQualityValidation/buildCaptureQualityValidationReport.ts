@@ -33,6 +33,10 @@ function buildSummary(runs: ReturnType<typeof validateCaptureQuality>): CaptureQ
     latestRunEconomicallyValidShare: latestRun?.economicallyValidShare ?? null,
     latestRunParityUsableRecords: latestRun?.recomputed.parityUsableTopOfBookRecords ?? 0,
     latestRunEnoughForParityResearch: latestRun?.enoughForParityResearch ?? false,
+    latestRunEnoughForBidOnlyParityResearch:
+      latestRun?.enoughForBidOnlyParityResearch ?? false,
+    latestRunBidPairPresentRecords:
+      latestRun?.recomputed.bidPairPresentTopOfBookRecords ?? 0,
     recommendedNextAction: "pending",
   };
 }

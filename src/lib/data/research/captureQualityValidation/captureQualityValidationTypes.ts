@@ -10,8 +10,10 @@ export const CAPTURE_QUALITY_VALIDATION_DISCLAIMER =
 
 export const CAPTURE_QUALITY_VALIDATION_CAVEATS = [
   "Legacy capture-valid means sequence/snapshot-valid, not economically-valid.",
-  "Recomputed economic validity uses the same rules as M12.4 classifyTopOfBookValidity.",
-  "Health JSON may lag M12.4B field additions; mismatches are reported, not auto-fixed.",
+  "Recomputed economic validity uses complement-derived asks (legacy diagnostic).",
+  "Complement-derived crossed books are expected on bid-only Kalshi ladders and are not capture failures.",
+  "Bid-only parity readiness uses YES+NO bid pair presence per M12.7.",
+  "Health JSON may lag field additions; mismatches are reported, not auto-fixed.",
 ] as const;
 
 export type CaptureFormatClassification =
@@ -70,6 +72,7 @@ export type RecomputedValidityCounts = {
   sequenceValidTopOfBookRecords: number;
   economicallyValidTopOfBookRecords: number;
   parityUsableTopOfBookRecords: number;
+  bidPairPresentTopOfBookRecords: number;
   crossedTopOfBookRecords: number;
   insufficientDepthTopOfBookRecords: number;
   awaitingSnapshotTopOfBookRecords: number;
@@ -130,6 +133,8 @@ export type CaptureRunQualityValidation = {
   parityUsableShare: number | null;
   sequenceValidShare: number | null;
   enoughForParityResearch: boolean;
+  enoughForBidOnlyParityResearch: boolean;
+  bidPairPresentShare: number | null;
 };
 
 export type CaptureQualityValidationSummary = {
@@ -145,6 +150,8 @@ export type CaptureQualityValidationSummary = {
   latestRunEconomicallyValidShare: number | null;
   latestRunParityUsableRecords: number;
   latestRunEnoughForParityResearch: boolean;
+  latestRunEnoughForBidOnlyParityResearch: boolean;
+  latestRunBidPairPresentRecords: number;
   recommendedNextAction: string;
 };
 

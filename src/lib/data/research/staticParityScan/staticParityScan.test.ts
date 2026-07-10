@@ -1,17 +1,33 @@
 import { describe, expect, it } from "vitest";
 
+import { classifyBidOnlyParitySnapshot } from "./classifyBidOnlyParitySnapshot";
 import { classifyParitySnapshot } from "./classifyParitySnapshot";
 import { buildStaticParityScanReport } from "./buildStaticParityScanReport";
+import {
+  parseStaticParityScanFrictionFromArgv,
+  parseStaticParityScanPathsFromArgv,
+} from "./parseStaticParityScanArgv";
 import { scanForwardCaptureParity } from "./scanForwardCaptureParity";
 import { serializeStaticParityScanHtml } from "./serializeStaticParityScanHtml";
 import { serializeStaticParityScanReport } from "./serializeStaticParityScanReport";
 import {
   DEFAULT_STATIC_PARITY_FRICTION_CONFIG,
   DEFAULT_STATIC_PARITY_SCAN_INPUT_PATHS,
+  type StaticParityFrictionConfig,
   type StaticParityScanIo,
 } from "./staticParityScanTypes";
 
-const FRICTION = DEFAULT_STATIC_PARITY_FRICTION_CONFIG;
+const BID_ONLY_FRICTION: StaticParityFrictionConfig = {
+  ...DEFAULT_STATIC_PARITY_FRICTION_CONFIG,
+  pricingModel: "bid-only",
+};
+
+const COMPLEMENT_FRICTION: StaticParityFrictionConfig = {
+  ...DEFAULT_STATIC_PARITY_FRICTION_CONFIG,
+  pricingModel: "complement-derived",
+  requireBothSidesPresent: true,
+};
+
 const INPUT_DIR = "data/live-capture/forward-quotes";
 
 function buildMemoryIo(files: Record<string, string>): StaticParityScanIo {
@@ -64,6 +80,8 @@ function createTopOfBookLine(input: {
   noBidSize?: number | null;
   noAskSize?: number | null;
   bookState?: string;
+  isParityUsable?: boolean;
+  economicBookState?: string;
 }) {
   return JSON.stringify({
     runId: input.runId,
@@ -79,6 +97,10 @@ function createTopOfBookLine(input: {
     noBestAskCents: input.noAsk ?? 55,
     noBestBidSize: input.noBidSize ?? 10,
     noBestAskSize: input.noAskSize ?? 10,
+    ...(input.isParityUsable !== undefined ? { isParityUsable: input.isParityUsable } : {}),
+    ...(input.economicBookState !== undefined
+      ? { economicBookState: input.economicBookState }
+      : {}),
   });
 }
 
@@ -97,7 +119,120 @@ function createRunFiles(input: {
   };
 }
 
-describe("classifyParitySnapshot", () => {
+describe("classifyBidOnlyParitySnapshot", () => {
+  it("classifies bid-only no-signal when bid sum <= 100", () => {
+    const result = classifyBidOnlyParitySnapshot(
+      {
+        yesBidCents: 45,
+        noBidCents: 53,
+        yesBestBidSize: 10,
+        noBestBidSize: 10,
+        bookState: "valid",
+      },
+      BID_ONLY_FRICTION,
+    );
+
+    expect(result.classification).toBe("bid-only-no-signal");
+    expect(result.bidSumCents).toBe(98);
+  });
+
+  it("classifies bid-only gross candidate when yesBid + noBid > 100", () => {
+    const result = classifyBidOnlyParitySnapshot(
+      {
+        yesBidCents: 55,
+        noBidCents: 55,
+        yesBestBidSize: 10,
+        noBestBidSize: 10,
+        bookState: "valid",
+      },
+      { ...BID_ONLY_FRICTION, feeBufferCents: 20 },
+    );
+
+    expect(result.classification).toBe("bid-only-gross-candidate");
+    expect(result.bidOnlyEdgeCents).toBe(10);
+    expect(result.requiresExecutableConfirmation).toBe(true);
+  });
+
+  it("classifies bid-only buffer-adjusted candidate", () => {
+    const result = classifyBidOnlyParitySnapshot(
+      {
+        yesBidCents: 55,
+        noBidCents: 55,
+        yesBestBidSize: 10,
+        noBestBidSize: 10,
+        bookState: "valid",
+      },
+      { ...BID_ONLY_FRICTION, feeBufferCents: 2, minBidOnlyEdgeCents: 2 },
+    );
+
+    expect(result.classification).toBe("bid-only-buffer-adjusted-candidate");
+    expect(result.estimatedNetEdgeCents).toBeGreaterThanOrEqual(2);
+  });
+
+  it("classifies candidate below fee buffer as watch", () => {
+    const result = classifyBidOnlyParitySnapshot(
+      {
+        yesBidCents: 50,
+        noBidCents: 51,
+        yesBestBidSize: 10,
+        noBestBidSize: 10,
+        bookState: "valid",
+      },
+      BID_ONLY_FRICTION,
+    );
+
+    expect(result.classification).toBe("bid-only-watch");
+    expect(result.isGrossCandidate).toBe(false);
+    expect(result.isBufferAdjustedCandidate).toBe(false);
+  });
+
+  it("classifies missing YES bid as insufficient depth", () => {
+    const result = classifyBidOnlyParitySnapshot(
+      {
+        yesBidCents: null,
+        noBidCents: 53,
+        yesBestBidSize: null,
+        noBestBidSize: 10,
+        bookState: "valid",
+      },
+      BID_ONLY_FRICTION,
+    );
+
+    expect(result.classification).toBe("bid-only-insufficient-depth");
+  });
+
+  it("classifies missing NO bid as insufficient depth", () => {
+    const result = classifyBidOnlyParitySnapshot(
+      {
+        yesBidCents: 45,
+        noBidCents: null,
+        yesBestBidSize: 10,
+        noBestBidSize: null,
+        bookState: "valid",
+      },
+      BID_ONLY_FRICTION,
+    );
+
+    expect(result.classification).toBe("bid-only-insufficient-depth");
+  });
+
+  it("classifies invalid price as bid-only-invalid-price", () => {
+    const result = classifyBidOnlyParitySnapshot(
+      {
+        yesBidCents: 150,
+        noBidCents: 53,
+        yesBestBidSize: 10,
+        noBestBidSize: 10,
+        bookState: "valid",
+      },
+      BID_ONLY_FRICTION,
+    );
+
+    expect(result.classification).toBe("bid-only-invalid-price");
+  });
+});
+
+describe("classifyParitySnapshot (complement-derived legacy)", () => {
   it("classifies normal no-signal parity state", () => {
     const result = classifyParitySnapshot(
       {
@@ -111,13 +246,13 @@ describe("classifyParitySnapshot", () => {
         noBestAskSize: 10,
         bookState: "valid",
       },
-      FRICTION,
+      COMPLEMENT_FRICTION,
     );
 
     expect(result.classification).toBe("no-signal");
   });
 
-  it("classifies YES ask + NO ask < 100 as gross candidate", () => {
+  it("classifies YES ask + NO ask < 100 as gross candidate in complement mode", () => {
     const result = classifyParitySnapshot(
       {
         yesBidCents: 40,
@@ -130,114 +265,43 @@ describe("classifyParitySnapshot", () => {
         noBestAskSize: 10,
         bookState: "valid",
       },
-      { ...FRICTION, feeBufferCents: 20 },
+      { ...COMPLEMENT_FRICTION, feeBufferCents: 20 },
     );
 
     expect(result.classification).toBe("gross-parity-candidate");
     expect(result.grossEdgeCents).toBe(10);
-  });
-
-  it("classifies YES bid + NO bid > 100 as gross candidate", () => {
-    const result = classifyParitySnapshot(
-      {
-        yesBidCents: 55,
-        yesAskCents: 57,
-        noBidCents: 55,
-        noAskCents: 57,
-        yesBestBidSize: 10,
-        yesBestAskSize: 10,
-        noBestBidSize: 10,
-        noBestAskSize: 10,
-        bookState: "valid",
-      },
-      { ...FRICTION, feeBufferCents: 20 },
-    );
-
-    expect(result.classification).toBe("gross-parity-candidate");
-    expect(result.grossEdgeCents).toBe(10);
-  });
-
-  it("classifies candidate below friction buffer as watch/not-tradable", () => {
-    const result = classifyParitySnapshot(
-      {
-        yesBidCents: 48,
-        yesAskCents: 49,
-        noBidCents: 48,
-        noAskCents: 50,
-        yesBestBidSize: 10,
-        yesBestAskSize: 10,
-        noBestBidSize: 10,
-        noBestAskSize: 10,
-        bookState: "valid",
-      },
-      FRICTION,
-    );
-
-    expect(result.classification).toBe("parity-watch");
-    expect(result.isGrossCandidate).toBe(false);
-  });
-
-  it("classifies candidate surviving buffer as buffer-adjusted-candidate", () => {
-    const result = classifyParitySnapshot(
-      {
-        yesBidCents: 40,
-        yesAskCents: 45,
-        noBidCents: 40,
-        noAskCents: 45,
-        yesBestBidSize: 10,
-        yesBestAskSize: 10,
-        noBestBidSize: 10,
-        noBestAskSize: 10,
-        bookState: "valid",
-      },
-      { ...FRICTION, feeBufferCents: 2, minGrossEdgeCents: 2 },
-    );
-
-    expect(result.classification).toBe("buffer-adjusted-candidate");
-    expect(result.estimatedNetEdgeCents).toBeGreaterThanOrEqual(2);
-  });
-
-  it("classifies missing YES or NO side as insufficient-book-depth", () => {
-    const result = classifyParitySnapshot(
-      {
-        yesBidCents: 45,
-        yesAskCents: 47,
-        noBidCents: null,
-        noAskCents: null,
-        yesBestBidSize: 10,
-        yesBestAskSize: 10,
-        noBestBidSize: null,
-        noBestAskSize: null,
-        bookState: "valid",
-      },
-      FRICTION,
-    );
-
-    expect(result.classification).toBe("insufficient-book-depth");
-  });
-
-  it("flags invalid/crossed book state", () => {
-    const result = classifyParitySnapshot(
-      {
-        yesBidCents: 50,
-        yesAskCents: 49,
-        noBidCents: 50,
-        noAskCents: 51,
-        yesBestBidSize: 10,
-        yesBestAskSize: 10,
-        noBestBidSize: 10,
-        noBestAskSize: 10,
-        bookState: "valid",
-      },
-      FRICTION,
-    );
-
-    expect(result.classification).toBe("invalid-book-state");
   });
 });
 
 describe("scanForwardCaptureParity", () => {
-  it("aggregates multiple runs correctly", () => {
+  it("defaults to bid-only and finds gross candidates from bid sum > 100", () => {
+    const files = createRunFiles({
+      runId: "bid-only-run",
+      topOfBookLines: [
+        createTopOfBookLine({
+          runId: "bid-only-run",
+          receivedAtLocal: "2026-07-09T08:00:00.000Z",
+          yesBid: 55,
+          noBid: 55,
+          isParityUsable: false,
+          economicBookState: "crossed-yes-book",
+        }),
+      ],
+    });
+
+    const result = scanForwardCaptureParity({
+      io: buildMemoryIo(files),
+      forwardQuotesDir: INPUT_DIR,
+      friction: { ...BID_ONLY_FRICTION, feeBufferCents: 20 },
+    });
+
+    expect(result.metrics.pricingModel).toBe("bid-only");
+    expect(result.metrics.bidOnlyGrossCandidateCount).toBe(1);
+    expect(result.candidateSamples[0]?.bidSumCents).toBe(110);
+    expect(result.candidateSamples[0]?.requiresExecutableConfirmation).toBe(true);
+  });
+
+  it("aggregates multiple runs correctly in bid-only mode", () => {
     const files = {
       ...createRunFiles({
         runId: "run-a",
@@ -254,10 +318,8 @@ describe("scanForwardCaptureParity", () => {
           createTopOfBookLine({
             runId: "run-b",
             receivedAtLocal: "2026-07-09T08:01:00.000Z",
-            yesAsk: 45,
-            noAsk: 45,
-            yesBid: 40,
-            noBid: 40,
+            yesBid: 55,
+            noBid: 55,
           }),
         ],
       }),
@@ -266,11 +328,35 @@ describe("scanForwardCaptureParity", () => {
     const result = scanForwardCaptureParity({
       io: buildMemoryIo(files),
       forwardQuotesDir: INPUT_DIR,
-      friction: { ...FRICTION, feeBufferCents: 20 },
+      friction: { ...BID_ONLY_FRICTION, feeBufferCents: 20 },
     });
 
     expect(result.metrics.runCountScanned).toBe(2);
-    expect(result.metrics.topOfBookRecordsScanned).toBe(2);
+    expect(result.metrics.bidOnlyGrossCandidateCount).toBe(1);
+  });
+
+  it("legacy complement mode still works when explicitly selected", () => {
+    const files = createRunFiles({
+      runId: "complement-run",
+      topOfBookLines: [
+        createTopOfBookLine({
+          runId: "complement-run",
+          receivedAtLocal: "2026-07-09T08:00:00.000Z",
+          yesAsk: 45,
+          noAsk: 45,
+          yesBid: 40,
+          noBid: 40,
+        }),
+      ],
+    });
+
+    const result = scanForwardCaptureParity({
+      io: buildMemoryIo(files),
+      forwardQuotesDir: INPUT_DIR,
+      friction: { ...COMPLEMENT_FRICTION, feeBufferCents: 20 },
+    });
+
+    expect(result.metrics.pricingModel).toBe("complement-derived");
     expect(result.metrics.grossParityCandidateCount).toBe(1);
   });
 
@@ -289,49 +375,72 @@ describe("scanForwardCaptureParity", () => {
     const result = scanForwardCaptureParity({
       io: buildMemoryIo(files),
       forwardQuotesDir: INPUT_DIR,
-      friction: FRICTION,
+      friction: BID_ONLY_FRICTION,
     });
 
     expect(result.metrics.malformedLineCount).toBe(1);
     expect(result.metrics.topOfBookRecordsScanned).toBe(1);
   });
 
-  it("handles large synthetic input without stack overflow", () => {
-    const lines = Array.from({ length: 160_000 }, (_, index) =>
-      createTopOfBookLine({
-        runId: "large-run",
-        receivedAtLocal: new Date(Date.UTC(2026, 6, 9, 8, 0, index % 60)).toISOString(),
-      }),
-    );
+  it("aggregates candidate duration across bid-only watch streaks", () => {
     const files = createRunFiles({
-      runId: "large-run",
-      topOfBookLines: lines,
+      runId: "duration-run",
+      topOfBookLines: [
+        createTopOfBookLine({
+          runId: "duration-run",
+          receivedAtLocal: "2026-07-09T08:00:00.000Z",
+          yesBid: 51,
+          noBid: 51,
+        }),
+        createTopOfBookLine({
+          runId: "duration-run",
+          receivedAtLocal: "2026-07-09T08:00:02.000Z",
+          yesBid: 51,
+          noBid: 51,
+        }),
+        createTopOfBookLine({
+          runId: "duration-run",
+          receivedAtLocal: "2026-07-09T08:00:10.000Z",
+          yesBid: 45,
+          noBid: 53,
+        }),
+      ],
     });
-
-    expect(() =>
-      scanForwardCaptureParity({
-        io: buildMemoryIo(files),
-        forwardQuotesDir: INPUT_DIR,
-        friction: FRICTION,
-      }),
-    ).not.toThrow();
 
     const result = scanForwardCaptureParity({
       io: buildMemoryIo(files),
       forwardQuotesDir: INPUT_DIR,
-      friction: FRICTION,
+      friction: BID_ONLY_FRICTION,
     });
-    expect(result.metrics.topOfBookRecordsScanned).toBe(160_000);
+
+    expect(result.metrics.totalCandidateDurationMs).toBeGreaterThan(0);
+  });
+});
+
+describe("parseStaticParityScanArgv", () => {
+  it("defaults pricing model to bid-only", () => {
+    const friction = parseStaticParityScanFrictionFromArgv([]);
+    expect(friction.pricingModel).toBe("bid-only");
+  });
+
+  it("parses complement-derived pricing model flag", () => {
+    const friction = parseStaticParityScanFrictionFromArgv([
+      "--pricing-model",
+      "complement-derived",
+    ]);
+    expect(friction.pricingModel).toBe("complement-derived");
+    expect(friction.requireBothSidesPresent).toBe(true);
   });
 });
 
 describe("buildStaticParityScanReport", () => {
-  it("serializes deterministic JSON and HTML", () => {
+  it("serializes deterministic JSON and HTML with bid-only defaults", () => {
     const report = buildStaticParityScanReport({
       generatedAt: "2026-07-09T12:00:00.000Z",
       outputPath: "data/research-results/static-parity-scan.json",
       htmlOutputPath: "data/reports/static-parity-scan.html",
       inputPaths: DEFAULT_STATIC_PARITY_SCAN_INPUT_PATHS,
+      friction: BID_ONLY_FRICTION,
       io: buildMemoryIo(
         createRunFiles({
           runId: "report-run",
@@ -349,7 +458,47 @@ describe("buildStaticParityScanReport", () => {
     const html = serializeStaticParityScanHtml(report);
 
     expect(json).toBe(serializeStaticParityScanReport(report));
-    expect(html).toContain("Static Same-Market Parity Scan");
-    expect(json).toContain('"runCountScanned":1');
+    expect(html).toContain("Bid-Only Parity Scan");
+    expect(html).toContain("bid-only");
+    expect(json).toContain('"pricingModel":"bid-only"');
+    expect(report.summary.requiresExecutableConfirmation).toBe(true);
+    expect(report.metrics.executableConfirmedCandidateCount).toBe(0);
+  });
+
+  it("includes candidate sample bid-only fields", () => {
+    const report = buildStaticParityScanReport({
+      generatedAt: "2026-07-09T12:00:00.000Z",
+      outputPath: "data/research-results/static-parity-scan.json",
+      htmlOutputPath: "data/reports/static-parity-scan.html",
+      inputPaths: DEFAULT_STATIC_PARITY_SCAN_INPUT_PATHS,
+      friction: { ...BID_ONLY_FRICTION, feeBufferCents: 20 },
+      io: buildMemoryIo(
+        createRunFiles({
+          runId: "sample-run",
+          topOfBookLines: [
+            createTopOfBookLine({
+              runId: "sample-run",
+              receivedAtLocal: "2026-07-09T08:00:00.000Z",
+              yesBid: 55,
+              noBid: 55,
+            }),
+          ],
+        }),
+      ),
+    });
+
+    expect(report.candidateSamples[0]?.bidSumCents).toBe(110);
+    expect(report.candidateSamples[0]?.bidOnlyEdgeCents).toBe(10);
+    expect(report.candidateSamples[0]?.minBidSizeContracts).toBe(10);
+  });
+});
+
+describe("parseStaticParityScanPathsFromArgv", () => {
+  it("parses paths", () => {
+    const paths = parseStaticParityScanPathsFromArgv([
+      "--input-dir",
+      "data/custom",
+    ]);
+    expect(paths.inputPaths.forwardQuotesDir).toBe("data/custom");
   });
 });

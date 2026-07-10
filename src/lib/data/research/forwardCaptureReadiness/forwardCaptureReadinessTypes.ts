@@ -22,6 +22,7 @@ export const FORWARD_CAPTURE_RESEARCH_FAMILY_IDS = [
   "leadLagReadiness",
   "quoteStalenessReadiness",
   "sameMarketParityReadiness",
+  "bidOnlyParityReadiness",
   "calibrationFadeSpreadRealismReadiness",
 ] as const;
 
@@ -71,6 +72,10 @@ export const DEFAULT_FORWARD_CAPTURE_READINESS_THRESHOLDS = {
   },
   sameMarketParity: {
     minValidBookShare: 0.95,
+    requireDepthFields: true,
+  },
+  bidOnlyParity: {
+    minBidPairShare: 0.9,
     requireDepthFields: true,
   },
   calibrationFadeSpreadRealism: {

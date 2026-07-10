@@ -11,7 +11,7 @@ import {
   safeShare,
 } from "./forwardCaptureReadinessMath";
 import { isSuccessfulRun } from "./loadForwardCaptureRuns";
-import { validBookShare } from "./runTopOfBookStats";
+import { bidPairShare, validBookShare } from "./runTopOfBookStats";
 import {
   DEFAULT_FORWARD_CAPTURE_READINESS_THRESHOLDS,
   FORWARD_CAPTURE_READINESS_CAVEATS,
@@ -242,7 +242,53 @@ function evaluateSameMarketParityReadiness(
   return {
     familyId,
     verdict: "ready",
-    rationale: "Real-book parity scan prerequisites are satisfied.",
+    rationale:
+      "Complement-derived parity prerequisites met (legacy diagnostic mode). Bid-only parity readiness is tracked separately.",
+  };
+}
+
+function evaluateBidOnlyParityReadiness(
+  runs: LoadedForwardCaptureRun[],
+  aggregates: ForwardCaptureAggregateMetrics,
+): ForwardCaptureFamilyReadinessEntry {
+  const thresholds = DEFAULT_FORWARD_CAPTURE_READINESS_THRESHOLDS.bidOnlyParity;
+  const familyId: ForwardCaptureResearchFamilyId = "bidOnlyParityReadiness";
+
+  if (aggregates.runCount === 0) {
+    return {
+      familyId,
+      verdict: "not-ready-no-data",
+      rationale: "No forward capture runs found.",
+    };
+  }
+
+  const metrics = summarizeForwardCaptureRuns(runs);
+  const depthPresent = thresholds.requireDepthFields
+    ? metrics.topOfBookStats.hasDepthFields
+    : true;
+
+  if (!depthPresent) {
+    return {
+      familyId,
+      verdict: "not-ready-invalid-books",
+      rationale: "YES/NO bid depth fields are missing from captured top-of-book records.",
+    };
+  }
+
+  const bidPairShareValue = bidPairShare(metrics.topOfBookStats);
+  if ((bidPairShareValue ?? 0) < thresholds.minBidPairShare) {
+    return {
+      familyId,
+      verdict: "not-ready-invalid-books",
+      rationale: `Bid-pair share ${Math.round((bidPairShareValue ?? 0) * 100)}% below ${Math.round(thresholds.minBidPairShare * 100)}%.`,
+    };
+  }
+
+  return {
+    familyId,
+    verdict: "ready",
+    rationale:
+      "Bid-only parity scan prerequisites met (YES and NO bids present with depth). Default M12.7 pricing model.",
   };
 }
 
@@ -442,6 +488,7 @@ export function evaluateForwardCaptureReadiness(runs: LoadedForwardCaptureRun[])
     evaluateLeadLagReadiness(aggregates),
     evaluateQuoteStalenessReadiness(aggregates),
     evaluateSameMarketParityReadiness(runs, aggregates),
+    evaluateBidOnlyParityReadiness(runs, aggregates),
     evaluateCalibrationFadeSpreadRealismReadiness(aggregates),
   ];
 
