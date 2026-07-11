@@ -17,7 +17,7 @@ branch_allowed() {
   local name="$2"
 
   case "$worktree_path" in
-    *kalshi-builder1*|*kalshi-builder2*|*kalshi-builder4*)
+    *kalshi-builder1*|*kalshi-builder2*|*kalshi-builder3*|*kalshi-builder4*)
       [[ "$name" == feature/* ]]
       ;;
     *kalshi-review*)
@@ -30,7 +30,7 @@ branch_allowed() {
 }
 
 case "$top" in
-  *kalshi-builder1*|*kalshi-builder2*|*kalshi-builder4*|*kalshi-review*)
+  *kalshi-builder1*|*kalshi-builder2*|*kalshi-builder3*|*kalshi-builder4*|*kalshi-review*)
     if ! branch_allowed "$top" "$branch"; then
       case "$top" in
         *kalshi-review*)
@@ -44,7 +44,7 @@ case "$top" in
     fi
     ;;
   *)
-    echo "❌ Assign branches only from kalshi-builder1, kalshi-builder2, kalshi-builder4, or kalshi-review."
+    echo "❌ Assign branches only from kalshi-builder1, kalshi-builder2, kalshi-builder3, kalshi-builder4, or kalshi-review."
     exit 1
     ;;
 esac
