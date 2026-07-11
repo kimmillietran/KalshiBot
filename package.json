@@ -89,6 +89,7 @@
     "research:strategy-evaluation-readiness": "tsx scripts/research/buildStrategyEvaluationReadiness.ts",
     "research:executable-confirmation-design": "tsx scripts/research/buildExecutableConfirmationDesign.ts",
     "research:forward-settlement-join": "tsx scripts/research/buildForwardSettlementJoin.ts",
+    "research:capture-baseline-comparison": "tsx scripts/research/buildCaptureBaselineComparison.ts",
     "research:valid-book-coverage": "tsx scripts/research/buildValidBookCoverageInvestigation.ts",
     "research:orderbook-reconstruction-audit": "tsx scripts/research/buildOrderbookReconstructionAudit.ts",
     "research:orderbook-semantics-validation": "tsx scripts/research/buildOrderbookSemanticsValidation.ts",

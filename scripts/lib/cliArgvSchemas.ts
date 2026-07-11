@@ -336,6 +336,16 @@ export const BID_ONLY_CANDIDATE_LIFECYCLE_ARGV_SCHEMA: readonly NpmArgvField[] =
   { flag: "--pricing-model" },
 ];
 
+export const CAPTURE_BASELINE_COMPARISON_ARGV_SCHEMA: readonly NpmArgvField[] = [
+  { flag: "--forward-quotes-dir" },
+  { flag: "--output" },
+  { flag: "--html-output" },
+  { flag: "--baseline-run-id" },
+  { flag: "--comparison-run-id" },
+  { flag: "--latest" },
+  { flag: "--no-configured-baseline" },
+];
+
 export const REGISTER_REFINEMENT_HYPOTHESES_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--output" },
   { flag: "--html-output" },
@@ -954,6 +964,10 @@ export function normalizeCaptureQualityValidationArgv(argv: readonly string[]): 
 
 export function normalizeBidOnlyCandidateLifecycleArgv(argv: readonly string[]): string[] {
   return normalizeNpmScriptArgv(argv, BID_ONLY_CANDIDATE_LIFECYCLE_ARGV_SCHEMA);
+}
+
+export function normalizeCaptureBaselineComparisonArgv(argv: readonly string[]): string[] {
+  return normalizeNpmScriptArgv(argv, CAPTURE_BASELINE_COMPARISON_ARGV_SCHEMA);
 }
 
 export function normalizeRegisterRefinementHypothesesArgv(argv: readonly string[]): string[] {
