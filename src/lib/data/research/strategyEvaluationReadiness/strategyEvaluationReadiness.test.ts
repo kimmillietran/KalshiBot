@@ -67,9 +67,15 @@ function buildForwardCaptureArtifact(input: {
   marketCount?: number;
   topOfBookRecordCount?: number;
   generatedAt?: string;
+  analysisScope?: "selected-run" | "aggregate";
+  sourceRunIds?: string[];
+  selectedRunId?: string | null;
 }) {
   return JSON.stringify({
     generatedAt: input.generatedAt ?? GENERATED_AT,
+    analysisScope: input.analysisScope,
+    sourceRunIds: input.sourceRunIds,
+    selectedRunId: input.selectedRunId,
     aggregates: {
       totalDurationMinutes: input.totalDurationMinutes ?? 0,
       daysCovered: input.daysCovered ?? 0,
@@ -86,9 +92,15 @@ function buildStaticParityArtifact(input: {
   bufferAdjustedCandidates?: number;
   executableConfirmed?: number;
   generatedAt?: string;
+  analysisScope?: "selected-run" | "aggregate";
+  sourceRunIds?: string[];
+  selectedRunId?: string | null;
 }) {
   return JSON.stringify({
     generatedAt: input.generatedAt ?? GENERATED_AT,
+    analysisScope: input.analysisScope,
+    sourceRunIds: input.sourceRunIds,
+    selectedRunId: input.selectedRunId,
     friction: {
       requireExecutableConfirmation: true,
     },
@@ -125,17 +137,30 @@ function buildLifecycleArtifact(input: {
   episodeCount: number;
   bufferAdjustedEpisodeCount?: number;
   totalEpisodeDurationMs?: number;
+  useReportMetricNames?: boolean;
   settlementJoined?: number;
   settlementCoverageShare?: number;
   generatedAt?: string;
+  analysisScope?: "selected-run" | "aggregate";
+  sourceRunIds?: string[];
+  selectedRunId?: string | null;
 }) {
   return JSON.stringify({
     generatedAt: input.generatedAt ?? GENERATED_AT,
-    metrics: {
-      episodeCount: input.episodeCount,
-      bufferAdjustedEpisodeCount: input.bufferAdjustedEpisodeCount ?? 0,
-      totalEpisodeDurationMs: input.totalEpisodeDurationMs ?? 60_000,
-    },
+    analysisScope: input.analysisScope,
+    sourceRunIds: input.sourceRunIds,
+    selectedRunId: input.selectedRunId,
+    metrics: input.useReportMetricNames
+      ? {
+          episodesBuilt: input.episodeCount,
+          bufferAdjustedCandidateEpisodes: input.bufferAdjustedEpisodeCount ?? 0,
+          totalCandidateTimeMs: input.totalEpisodeDurationMs ?? 60_000,
+        }
+      : {
+          episodeCount: input.episodeCount,
+          bufferAdjustedEpisodeCount: input.bufferAdjustedEpisodeCount ?? 0,
+          totalEpisodeDurationMs: input.totalEpisodeDurationMs ?? 60_000,
+        },
     settlementJoin: input.settlementJoined
       ? {
           joinedEpisodeCount: input.settlementJoined,
@@ -385,6 +410,52 @@ describe("strategyEvaluationReadiness", () => {
     expect(report.summary.recommendedNextAction).toBe("proceed-strategy-evaluation");
   });
 
+  it("reads bid-only lifecycle artifacts using the report metric field names", () => {
+    const report = evaluateWithArtifacts({
+      [DEFAULT_STRATEGY_EVALUATION_INPUT_PATHS.artifacts.forwardCaptureReadiness]:
+        buildForwardCaptureArtifact({
+          totalDurationMinutes: 30 * 60,
+          daysCovered: 5,
+          marketCount: 30,
+          topOfBookRecordCount: 8_000,
+        }),
+      [DEFAULT_STRATEGY_EVALUATION_INPUT_PATHS.artifacts.bidSizeCoverageAudit]:
+        buildBidSizeAuditArtifact({
+          bidPairWithSizeCount: 400,
+          bidPairWithoutSizeCount: 100,
+        }),
+      [DEFAULT_STRATEGY_EVALUATION_INPUT_PATHS.artifacts.staticParityScan]:
+        buildStaticParityArtifact({
+          grossCandidates: 40,
+          bufferAdjustedCandidates: 12,
+          executableConfirmed: 3,
+        }),
+      [DEFAULT_STRATEGY_EVALUATION_INPUT_PATHS.artifacts.bidOnlyCandidateLifecycle]:
+        buildLifecycleArtifact({
+          episodeCount: 40,
+          bufferAdjustedEpisodeCount: 12,
+          totalEpisodeDurationMs: 240_000,
+          settlementJoined: 35,
+          settlementCoverageShare: 0.9,
+          useReportMetricNames: true,
+        }),
+    });
+
+    expect(report.summary.overallVerdict).toBe("ready-for-offline-strategy-evaluation");
+    expect(report.dimensions).toContainEqual(
+      expect.objectContaining({
+        id: "candidateEpisodeCount",
+        value: 40,
+      }),
+    );
+    expect(report.dimensions).toContainEqual(
+      expect.objectContaining({
+        id: "candidateEpisodeDuration",
+        value: 240_000,
+      }),
+    );
+  });
+
   it("does not recommend static parity scan when fresh matching artifact exists", () => {
     const report = evaluateWithArtifacts({
       [DEFAULT_STRATEGY_EVALUATION_INPUT_PATHS.artifacts.forwardCaptureReadiness]:
@@ -451,6 +522,74 @@ describe("strategyEvaluationReadiness", () => {
     });
 
     expect(loaded.artifactValidation.mismatchedArtifacts).toContain(
+      DEFAULT_STRATEGY_EVALUATION_INPUT_PATHS.artifacts.staticParityScan,
+    );
+  });
+
+  it("excludes mismatched selected-run artifacts from readiness inputs", () => {
+    const inputPaths = buildInputPaths({
+      captureRunDir: "data/live-capture/forward-quotes/run-a",
+    });
+    const io = buildMemoryIo({
+      [DEFAULT_STRATEGY_EVALUATION_INPUT_PATHS.artifacts.forwardCaptureReadiness]:
+        buildForwardCaptureArtifact({
+          totalDurationMinutes: 30 * 60,
+          daysCovered: 5,
+          marketCount: 30,
+          topOfBookRecordCount: 8_000,
+          analysisScope: "aggregate",
+          sourceRunIds: ["run-b"],
+        }),
+      [DEFAULT_STRATEGY_EVALUATION_INPUT_PATHS.artifacts.bidSizeCoverageAudit]:
+        buildBidSizeAuditArtifact({
+          bidPairWithSizeCount: 400,
+          bidPairWithoutSizeCount: 100,
+        }),
+      [DEFAULT_STRATEGY_EVALUATION_INPUT_PATHS.artifacts.staticParityScan]:
+        buildStaticParityArtifact({
+          grossCandidates: 40,
+          bufferAdjustedCandidates: 12,
+          executableConfirmed: 3,
+          analysisScope: "aggregate",
+          sourceRunIds: ["run-b"],
+        }),
+      [DEFAULT_STRATEGY_EVALUATION_INPUT_PATHS.artifacts.bidOnlyCandidateLifecycle]:
+        buildLifecycleArtifact({
+          episodeCount: 40,
+          bufferAdjustedEpisodeCount: 12,
+          settlementJoined: 35,
+          settlementCoverageShare: 0.9,
+          analysisScope: "aggregate",
+          sourceRunIds: ["run-b"],
+        }),
+    });
+
+    const loaded = loadStrategyEvaluationInputs({
+      io,
+      inputPaths,
+      evaluatedAt: GENERATED_AT,
+    });
+    const report = evaluateStrategyEvaluationReadiness({
+      inputs: loaded,
+      inputPaths,
+      evaluatedAt: GENERATED_AT,
+      generatedAt: GENERATED_AT,
+      outputPath: OUTPUT_PATH,
+      htmlOutputPath: HTML_PATH,
+    });
+
+    expect(report.summary.overallVerdict).not.toBe("ready-for-offline-strategy-evaluation");
+    expect(report.summary.recommendedNextAction).toBe("fix-artifact-scope");
+    expect(report.summary.inputArtifactsUsed).not.toContain(
+      DEFAULT_STRATEGY_EVALUATION_INPUT_PATHS.artifacts.forwardCaptureReadiness,
+    );
+    expect(report.summary.inputArtifactsUsed).not.toContain(
+      DEFAULT_STRATEGY_EVALUATION_INPUT_PATHS.artifacts.staticParityScan,
+    );
+    expect(report.summary.inputArtifactsUsed).not.toContain(
+      DEFAULT_STRATEGY_EVALUATION_INPUT_PATHS.artifacts.bidOnlyCandidateLifecycle,
+    );
+    expect(report.summary.missingArtifacts).not.toContain(
       DEFAULT_STRATEGY_EVALUATION_INPUT_PATHS.artifacts.staticParityScan,
     );
   });

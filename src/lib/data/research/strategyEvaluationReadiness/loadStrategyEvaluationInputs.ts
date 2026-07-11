@@ -86,6 +86,30 @@ function tryLoadArtifact(
   }
 }
 
+function excludeInvalidSelectedRunArtifact(input: {
+  artifact: LoadedStrategyEvaluationArtifact | null;
+  excludedPaths: ReadonlySet<string>;
+}): LoadedStrategyEvaluationArtifact | null {
+  if (!input.artifact || !input.excludedPaths.has(input.artifact.path)) {
+    return input.artifact;
+  }
+
+  return {
+    ...input.artifact,
+    excludedByValidation: true,
+  };
+}
+
+function readUsableParsedArtifact(
+  artifact: LoadedStrategyEvaluationArtifact | null,
+): Record<string, unknown> | null {
+  if (!artifact?.parsed || artifact.malformed || artifact.excludedByValidation) {
+    return null;
+  }
+
+  return artifact.parsed;
+}
+
 function scanBidPairWithSizeFromCapture(
   io: StrategyEvaluationReadinessIo,
   forwardQuotesDir: string,
@@ -306,11 +330,33 @@ export function loadStrategyEvaluationInputs(input: {
       malformedArtifacts,
       missingArtifacts: [] as string[],
       warnings: [] as string[],
+      staleArtifacts: [] as string[],
+      usablePaths: [] as string[],
     };
 
   if (artifactValidation.mismatchedArtifacts.length > 0) {
     warnings.push(
       `Artifact scope mismatch in selected-run mode: ${artifactValidation.mismatchedArtifacts.join(", ")}`,
+    );
+  }
+
+  const selectedRunValidatedArtifactPaths = selection.analysisScope === "selected-run"
+    ? [
+      inputPaths.artifacts.forwardCaptureReadiness,
+      inputPaths.artifacts.staticParityScan,
+      inputPaths.artifacts.bidOnlyCandidateLifecycle,
+    ].filter((path) => io.fileExists(path))
+    : [];
+  const usableArtifactPaths = new Set(artifactValidation.usablePaths);
+  const excludedArtifactPaths = new Set(
+    selectedRunValidatedArtifactPaths.filter((path) => !usableArtifactPaths.has(path)),
+  );
+
+  if (excludedArtifactPaths.size > 0) {
+    warnings.push(
+      `Excluded invalid selected-run artifacts from readiness metrics: ${[
+        ...excludedArtifactPaths,
+      ].join(", ")}`,
     );
   }
 
@@ -323,10 +369,19 @@ export function loadStrategyEvaluationInputs(input: {
   const captureFallback = buildCaptureFallback(io, inputPaths);
 
   return {
-    forwardCaptureReadiness,
-    staticParityScan,
+    forwardCaptureReadiness: excludeInvalidSelectedRunArtifact({
+      artifact: forwardCaptureReadiness,
+      excludedPaths: excludedArtifactPaths,
+    }),
+    staticParityScan: excludeInvalidSelectedRunArtifact({
+      artifact: staticParityScan,
+      excludedPaths: excludedArtifactPaths,
+    }),
     bidSizeCoverageAudit,
-    bidOnlyCandidateLifecycle,
+    bidOnlyCandidateLifecycle: excludeInvalidSelectedRunArtifact({
+      artifact: bidOnlyCandidateLifecycle,
+      excludedPaths: excludedArtifactPaths,
+    }),
     captureQualityValidation,
     validBookCoverageInvestigation,
     captureFallback,
@@ -339,8 +394,8 @@ export function loadStrategyEvaluationInputs(input: {
 export function readBidPairWithSizeShare(
   inputs: StrategyEvaluationLoadedInputs,
 ): number | null {
-  const audit = inputs.bidSizeCoverageAudit?.parsed;
-  if (audit && !inputs.bidSizeCoverageAudit?.malformed) {
+  const audit = readUsableParsedArtifact(inputs.bidSizeCoverageAudit);
+  if (audit) {
     const comparison = isRecord(audit.comparison) ? audit.comparison : null;
     const summary = isRecord(audit.summary) ? audit.summary : null;
     const withSize =
@@ -368,8 +423,8 @@ export function readBidPairWithSizeShare(
 export function readBidSizeCoverageShare(
   inputs: StrategyEvaluationLoadedInputs,
 ): number | null {
-  const audit = inputs.bidSizeCoverageAudit?.parsed;
-  if (audit && !inputs.bidSizeCoverageAudit?.malformed) {
+  const audit = readUsableParsedArtifact(inputs.bidSizeCoverageAudit);
+  if (audit) {
     const comparison = isRecord(audit.comparison) ? audit.comparison : null;
     const share =
       readNumber(comparison?.topOfBookBidSizeCoverageShare)
@@ -385,10 +440,9 @@ export function readBidSizeCoverageShare(
 export function readCaptureDurationHours(
   inputs: StrategyEvaluationLoadedInputs,
 ): number {
-  const aggregates = inputs.forwardCaptureReadiness?.parsed
-    && !inputs.forwardCaptureReadiness.malformed
-    && isRecord(inputs.forwardCaptureReadiness.parsed.aggregates)
-    ? inputs.forwardCaptureReadiness.parsed.aggregates
+  const readiness = readUsableParsedArtifact(inputs.forwardCaptureReadiness);
+  const aggregates = readiness && isRecord(readiness.aggregates)
+    ? readiness.aggregates
     : null;
   const minutes = readNumber(aggregates?.totalDurationMinutes);
   if (minutes !== null) {
@@ -401,10 +455,9 @@ export function readCaptureDurationHours(
 export function readCaptureDays(
   inputs: StrategyEvaluationLoadedInputs,
 ): number {
-  const aggregates = inputs.forwardCaptureReadiness?.parsed
-    && !inputs.forwardCaptureReadiness.malformed
-    && isRecord(inputs.forwardCaptureReadiness.parsed.aggregates)
-    ? inputs.forwardCaptureReadiness.parsed.aggregates
+  const readiness = readUsableParsedArtifact(inputs.forwardCaptureReadiness);
+  const aggregates = readiness && isRecord(readiness.aggregates)
+    ? readiness.aggregates
     : null;
   const days = readNumber(aggregates?.daysCovered);
   if (days !== null) {
@@ -417,20 +470,18 @@ export function readCaptureDays(
 export function readMarketCount(
   inputs: StrategyEvaluationLoadedInputs,
 ): number {
-  const aggregates = inputs.forwardCaptureReadiness?.parsed
-    && !inputs.forwardCaptureReadiness.malformed
-    && isRecord(inputs.forwardCaptureReadiness.parsed.aggregates)
-    ? inputs.forwardCaptureReadiness.parsed.aggregates
+  const readiness = readUsableParsedArtifact(inputs.forwardCaptureReadiness);
+  const aggregates = readiness && isRecord(readiness.aggregates)
+    ? readiness.aggregates
     : null;
   const markets = readNumber(aggregates?.marketCount);
   if (markets !== null) {
     return markets;
   }
 
-  const parityMetrics = inputs.staticParityScan?.parsed
-    && !inputs.staticParityScan.malformed
-    && isRecord(inputs.staticParityScan.parsed.metrics)
-    ? inputs.staticParityScan.parsed.metrics
+  const parityScan = readUsableParsedArtifact(inputs.staticParityScan);
+  const parityMetrics = parityScan && isRecord(parityScan.metrics)
+    ? parityScan.metrics
     : null;
   const involved = parityMetrics?.marketsInvolved;
   if (Array.isArray(involved)) {
@@ -443,20 +494,18 @@ export function readMarketCount(
 export function readTopOfBookRecordCount(
   inputs: StrategyEvaluationLoadedInputs,
 ): number {
-  const aggregates = inputs.forwardCaptureReadiness?.parsed
-    && !inputs.forwardCaptureReadiness.malformed
-    && isRecord(inputs.forwardCaptureReadiness.parsed.aggregates)
-    ? inputs.forwardCaptureReadiness.parsed.aggregates
+  const readiness = readUsableParsedArtifact(inputs.forwardCaptureReadiness);
+  const aggregates = readiness && isRecord(readiness.aggregates)
+    ? readiness.aggregates
     : null;
   const count = readNumber(aggregates?.topOfBookRecordCount);
   if (count !== null) {
     return count;
   }
 
-  const parityMetrics = inputs.staticParityScan?.parsed
-    && !inputs.staticParityScan.malformed
-    && isRecord(inputs.staticParityScan.parsed.metrics)
-    ? inputs.staticParityScan.parsed.metrics
+  const parityScan = readUsableParsedArtifact(inputs.staticParityScan);
+  const parityMetrics = parityScan && isRecord(parityScan.metrics)
+    ? parityScan.metrics
     : null;
   const scanned = readNumber(parityMetrics?.topOfBookRecordsScanned);
   if (scanned !== null) {
@@ -469,10 +518,9 @@ export function readTopOfBookRecordCount(
 export function readBtcSpotCoverage(
   inputs: StrategyEvaluationLoadedInputs,
 ): number | null {
-  const aggregates = inputs.forwardCaptureReadiness?.parsed
-    && !inputs.forwardCaptureReadiness.malformed
-    && isRecord(inputs.forwardCaptureReadiness.parsed.aggregates)
-    ? inputs.forwardCaptureReadiness.parsed.aggregates
+  const readiness = readUsableParsedArtifact(inputs.forwardCaptureReadiness);
+  const aggregates = readiness && isRecord(readiness.aggregates)
+    ? readiness.aggregates
     : null;
   const share = readNumber(aggregates?.btcSpotCoverageShare);
   if (share !== null) {
@@ -485,10 +533,9 @@ export function readBtcSpotCoverage(
 export function readBidOnlyCandidateCount(
   inputs: StrategyEvaluationLoadedInputs,
 ): number {
-  const metrics = inputs.staticParityScan?.parsed
-    && !inputs.staticParityScan.malformed
-    && isRecord(inputs.staticParityScan.parsed.metrics)
-    ? inputs.staticParityScan.parsed.metrics
+  const parityScan = readUsableParsedArtifact(inputs.staticParityScan);
+  const metrics = parityScan && isRecord(parityScan.metrics)
+    ? parityScan.metrics
     : null;
   if (!metrics) {
     return 0;
@@ -505,10 +552,9 @@ export function readBidOnlyCandidateCount(
 export function readBufferAdjustedCandidateCount(
   inputs: StrategyEvaluationLoadedInputs,
 ): number {
-  const metrics = inputs.staticParityScan?.parsed
-    && !inputs.staticParityScan.malformed
-    && isRecord(inputs.staticParityScan.parsed.metrics)
-    ? inputs.staticParityScan.parsed.metrics
+  const parityScan = readUsableParsedArtifact(inputs.staticParityScan);
+  const metrics = parityScan && isRecord(parityScan.metrics)
+    ? parityScan.metrics
     : null;
   if (!metrics) {
     return 0;
@@ -525,8 +571,8 @@ export function readCandidateEpisodeMetrics(inputs: StrategyEvaluationLoadedInpu
   bufferAdjustedEpisodeCount: number;
   totalEpisodeDurationMs: number;
 } {
-  const lifecycle = inputs.bidOnlyCandidateLifecycle?.parsed;
-  if (!lifecycle || inputs.bidOnlyCandidateLifecycle?.malformed) {
+  const lifecycle = readUsableParsedArtifact(inputs.bidOnlyCandidateLifecycle);
+  if (!lifecycle) {
     return {
       episodeCount: 0,
       bufferAdjustedEpisodeCount: 0,
@@ -539,7 +585,8 @@ export function readCandidateEpisodeMetrics(inputs: StrategyEvaluationLoadedInpu
   const episodes = Array.isArray(lifecycle.episodes) ? lifecycle.episodes : null;
 
   const episodeCount =
-    readNumber(metrics?.episodeCount)
+    readNumber(metrics?.episodesBuilt)
+    ?? readNumber(metrics?.episodeCount)
     ?? readNumber(metrics?.candidateEpisodeCount)
     ?? readNumber(summary?.episodeCount)
     ?? readNumber(summary?.candidateEpisodeCount)
@@ -547,12 +594,14 @@ export function readCandidateEpisodeMetrics(inputs: StrategyEvaluationLoadedInpu
     ?? 0;
 
   const bufferAdjustedEpisodeCount =
-    readNumber(metrics?.bufferAdjustedEpisodeCount)
+    readNumber(metrics?.bufferAdjustedCandidateEpisodes)
+    ?? readNumber(metrics?.bufferAdjustedEpisodeCount)
     ?? readNumber(summary?.bufferAdjustedEpisodeCount)
     ?? 0;
 
   const totalEpisodeDurationMs =
-    readNumber(metrics?.totalEpisodeDurationMs)
+    readNumber(metrics?.totalCandidateTimeMs)
+    ?? readNumber(metrics?.totalEpisodeDurationMs)
     ?? readNumber(summary?.totalEpisodeDurationMs)
     ?? 0;
 
@@ -570,7 +619,7 @@ export function readSettlementOutcomeCoverage(
   coverageShare: number | null;
   joinedEpisodeCount: number;
 } {
-  const lifecycle = inputs.bidOnlyCandidateLifecycle?.parsed;
+  const lifecycle = readUsableParsedArtifact(inputs.bidOnlyCandidateLifecycle);
   if (lifecycle) {
     const settlementJoin = isRecord(lifecycle.settlementJoin)
       ? lifecycle.settlementJoin
@@ -609,8 +658,8 @@ export function readExecutionConfirmationSupport(
   confirmedCount: number;
   requiresConfirmation: boolean;
 } {
-  const scan = inputs.staticParityScan?.parsed;
-  if (!scan || inputs.staticParityScan?.malformed) {
+  const scan = readUsableParsedArtifact(inputs.staticParityScan);
+  if (!scan) {
     return {
       supported: false,
       confirmedCount: 0,
@@ -753,7 +802,7 @@ export function listInputArtifactsUsed(
     inputs.validBookCoverageInvestigation,
   ]
     .filter((artifact): artifact is LoadedStrategyEvaluationArtifact =>
-      artifact !== null && !artifact.malformed,
+      artifact !== null && !artifact.malformed && !artifact.excludedByValidation,
     )
     .map((artifact) => artifact.path);
 }

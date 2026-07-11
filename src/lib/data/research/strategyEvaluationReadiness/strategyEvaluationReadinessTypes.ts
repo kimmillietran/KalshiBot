@@ -143,6 +143,7 @@ export type LoadedStrategyEvaluationArtifact = {
   generatedAt: string | null;
   parsed: Record<string, unknown> | null;
   malformed: boolean;
+  excludedByValidation?: boolean;
 };
 
 export type StrategyEvaluationLoadedInputs = {
@@ -169,10 +170,12 @@ export type StrategyEvaluationLoadedInputs = {
     selectedRunId: string | null;
   };
   artifactValidation: {
+    staleArtifacts: string[];
     mismatchedArtifacts: string[];
     malformedArtifacts: string[];
     missingArtifacts: string[];
     warnings: string[];
+    usablePaths: string[];
   };
   warnings: string[];
 };

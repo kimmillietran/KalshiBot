@@ -43,10 +43,12 @@ import {
 function hasCaptureData(inputs: StrategyEvaluationLoadedInputs): boolean {
   const runCount = inputs.captureFallback?.runCount ?? 0;
   const topOfBook = readTopOfBookRecordCount(inputs);
-  const readiness = inputs.forwardCaptureReadiness?.parsed;
+  const forwardCaptureReadiness = inputs.forwardCaptureReadiness;
+  const readiness = forwardCaptureReadiness?.parsed;
   const aggregates =
     readiness
-    && !inputs.forwardCaptureReadiness?.malformed
+    && !forwardCaptureReadiness.malformed
+    && !forwardCaptureReadiness.excludedByValidation
     && typeof readiness.aggregates === "object"
     && readiness.aggregates !== null
       ? readiness.aggregates as Record<string, unknown>
@@ -446,7 +448,12 @@ function hasFreshMatchingArtifact(
   evaluatedAt: string,
   staleAfterHours: number,
 ): boolean {
-  if (!artifact?.parsed || artifact.malformed || !artifact.generatedAt) {
+  if (
+    !artifact?.parsed
+    || artifact.malformed
+    || artifact.excludedByValidation
+    || !artifact.generatedAt
+  ) {
     return false;
   }
 
