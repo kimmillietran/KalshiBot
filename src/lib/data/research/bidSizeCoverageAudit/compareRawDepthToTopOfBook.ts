@@ -118,13 +118,14 @@ export function indexReplayPoints(
 
 export function compareRawDepthToTopOfBook(input: {
   captured: readonly CapturedTopOfBookSizeRecord[];
-  replayPoints: readonly ReplayBidSizePoint[];
+  replayPoints?: readonly ReplayBidSizePoint[];
+  replayIndex?: Map<string, ReplayBidSizePoint>;
   sampleLimit: number;
 }): {
   metrics: TopOfBookSizeComparisonMetrics;
   samples: TopOfBookSizeComparisonSample[];
 } {
-  const replayIndex = indexReplayPoints(input.replayPoints);
+  const replayIndex = input.replayIndex ?? indexReplayPoints(input.replayPoints ?? []);
   const samples: TopOfBookSizeComparisonSample[] = [];
 
   const metrics: TopOfBookSizeComparisonMetrics = {

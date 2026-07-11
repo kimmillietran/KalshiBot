@@ -1,24 +1,38 @@
 import { posix } from "node:path";
 
 import {
+  createFilesystemJsonlIo,
+  createLineIterableFromFile,
+} from "@/lib/data/research/jsonl";
+
+import {
   compareRawDepthToTopOfBook,
   type CapturedTopOfBookSizeRecord,
   parseCapturedTopOfBookLine,
 } from "./compareRawDepthToTopOfBook";
 import { inspectRawLadderSizes } from "./inspectRawLadderSizes";
-import { replayBidSizeState } from "./replayBidSizeState";
+import { replayBidSizeState, replayKey } from "./replayBidSizeState";
 import {
   BidSizeCoverageAuditError,
   type BidSizeCoverageAuditConfig,
   type BidSizeCoverageAuditIo,
   type BidSizeCoverageAuditResult,
   type BidSizeCoverageAuditSummary,
+  type ComparisonMode,
   type RecommendedSizeFix,
   type SizeLossClassification,
 } from "./bidSizeCoverageAuditTypes";
 
 function joinPath(root: string, child: string): string {
   return posix.join(root.replaceAll("\\", "/"), child);
+}
+
+export function createFilesystemBidSizeCoverageIo(): BidSizeCoverageAuditIo {
+  const jsonl = createFilesystemJsonlIo();
+  return {
+    ...jsonl,
+    createLineIterable: createLineIterableFromFile,
+  };
 }
 
 function classifySizeLoss(input: {
@@ -38,6 +52,17 @@ function classifySizeLoss(input: {
     };
   }
 
+  if (
+    input.rawInventory.rawBestBidPricePresentCount > 0
+    && input.rawInventory.rawBestBidSizePresentCount === 0
+  ) {
+    return {
+      sizeLossClassification: "raw-size-missing",
+      recommendedNextFix: "extend-capture-with-size-fields",
+      confidence: "high",
+    };
+  }
+
   if (input.comparison.legacyRecordWithoutSizeCount > input.comparison.topOfBookRecordsCompared * 0.5) {
     return {
       sizeLossClassification: "legacy-missing-size-fields",
@@ -47,15 +72,24 @@ function classifySizeLoss(input: {
   }
 
   if (
-    input.comparison.fractionalBelowParityMinCount
-      > input.comparison.sizeMatchCount
-    || input.replayState.dustLevelBestBidCount
-      > input.comparison.topOfBookRecordsCompared * 0.3
+    input.comparison.fractionalBelowParityMinCount > input.comparison.sizeMatchCount
+    || input.replayState.dustLevelBestBidCount > input.comparison.topOfBookRecordsCompared * 0.3
   ) {
     return {
       sizeLossClassification: "floating-point-dust-at-best-bid",
-      recommendedNextFix: "apply-dust-level-epsilon-in-capture",
+      recommendedNextFix: "continue-capture-and-run-downstream-analysis",
       confidence: "high",
+    };
+  }
+
+  if (
+    input.comparison.bidSizeCoverageShare !== null
+    && input.comparison.bidSizeCoverageShare < 0.5
+  ) {
+    return {
+      sizeLossClassification: "parity-min-size-gate",
+      recommendedNextFix: "investigate-low-bid-pair-coverage",
+      confidence: "medium",
     };
   }
 
@@ -70,7 +104,7 @@ function classifySizeLoss(input: {
   if (input.comparison.sizeMatchCount > 0) {
     return {
       sizeLossClassification: "none",
-      recommendedNextFix: "no-fix-needed",
+      recommendedNextFix: "run-static-parity-and-lifecycle",
       confidence: "high",
     };
   }
@@ -82,10 +116,14 @@ function classifySizeLoss(input: {
   };
 }
 
-export function auditBidSizeCoverage(input: {
+function resolveComparisonMode(config: BidSizeCoverageAuditConfig): ComparisonMode {
+  return Number.isFinite(config.maxRawMessages) ? "bounded-sample" : "full";
+}
+
+export async function auditBidSizeCoverage(input: {
   io: BidSizeCoverageAuditIo;
   config: BidSizeCoverageAuditConfig;
-}): BidSizeCoverageAuditResult {
+}): Promise<BidSizeCoverageAuditResult> {
   const captureRunDir = input.config.captureRunDir.replaceAll("\\", "/");
   const rawPath = joinPath(captureRunDir, "raw-kalshi-ws.jsonl");
   const topOfBookPath = joinPath(captureRunDir, "top-of-book.jsonl");
@@ -112,9 +150,34 @@ export function auditBidSizeCoverage(input: {
     }
   }
 
-  const rawLines = input.io.readFile(rawPath).split(/\r?\n/);
-  const rawInventory = inspectRawLadderSizes({
-    lines: rawLines,
+  const captured: CapturedTopOfBookSizeRecord[] = [];
+  const topOfBookSummary = await input.io.iterateJsonl(topOfBookPath, {
+    onLine: (line) => {
+      const record = parseCapturedTopOfBookLine(line);
+      if (!record) {
+        warnings.push("Skipped malformed top-of-book JSONL line.");
+        return "skip";
+      }
+      if (input.config.marketTicker && record.marketTicker !== input.config.marketTicker) {
+        return "skip";
+      }
+      captured.push(record);
+      return "continue";
+    },
+  });
+  if (topOfBookSummary.invalidLineCount > 0) {
+    warnings.push(`Skipped ${topOfBookSummary.invalidLineCount} malformed top-of-book JSONL line(s).`);
+  }
+
+  const neededReplayKeys = new Set<string>();
+  for (const record of captured) {
+    if (record.sequence !== null) {
+      neededReplayKeys.add(replayKey(record.marketTicker, record.sequence));
+    }
+  }
+
+  const rawInventory = await inspectRawLadderSizes({
+    lines: input.io.createLineIterable(rawPath),
     maxMessages: input.config.maxRawMessages,
     marketTicker: input.config.marketTicker,
   });
@@ -122,33 +185,17 @@ export function auditBidSizeCoverage(input: {
     warnings.push(`Skipped ${rawInventory.malformedLineCount} malformed raw JSONL line(s).`);
   }
 
-  const { state: replayState, points: replayPoints } = replayBidSizeState({
-    lines: rawLines,
+  const { state: replayState, replayIndex } = await replayBidSizeState({
+    lines: input.io.createLineIterable(rawPath),
     maxMessages: input.config.maxRawMessages,
     marketTicker: input.config.marketTicker,
     runId: runId ?? captureRunDir.split("/").pop() ?? "unknown",
+    neededReplayKeys,
   });
-
-  const captured: CapturedTopOfBookSizeRecord[] = [];
-  for (const line of input.io.readFile(topOfBookPath).split(/\r?\n/)) {
-    const trimmed = line.trim();
-    if (!trimmed) {
-      continue;
-    }
-    const record = parseCapturedTopOfBookLine(trimmed);
-    if (!record) {
-      warnings.push("Skipped malformed top-of-book JSONL line.");
-      continue;
-    }
-    if (input.config.marketTicker && record.marketTicker !== input.config.marketTicker) {
-      continue;
-    }
-    captured.push(record);
-  }
 
   const { metrics: comparison, samples } = compareRawDepthToTopOfBook({
     captured,
-    replayPoints,
+    replayIndex,
     sampleLimit: input.config.sampleLimit,
   });
 
@@ -158,9 +205,17 @@ export function auditBidSizeCoverage(input: {
     rawInventory,
   });
 
+  const comparisonMode = resolveComparisonMode(input.config);
+  if (comparisonMode === "bounded-sample") {
+    warnings.push(
+      `Raw replay bounded to maxRawMessages=${input.config.maxRawMessages}; comparison may be partial.`,
+    );
+  }
+
   const summary: BidSizeCoverageAuditSummary = {
     captureRunDir,
     runId,
+    comparisonMode,
     messagesScanned: rawInventory.messagesScanned,
     topOfBookRecordsCompared: comparison.topOfBookRecordsCompared,
     rawBestBidSizePresentCount: rawInventory.rawBestBidSizePresentCount,

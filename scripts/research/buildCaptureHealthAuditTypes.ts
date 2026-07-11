@@ -3,6 +3,7 @@ import {
   DEFAULT_CAPTURE_HEALTH_AUDIT_OUTPUT_PATH,
   CaptureHealthAuditError,
 } from "@/lib/data/research/captureHealthAudit";
+import type { JsonlIo } from "@/lib/data/research/jsonl";
 
 export class CaptureHealthAuditCommandError extends Error {
   constructor(message: string) {
@@ -75,12 +76,10 @@ export function mapCommandError(error: unknown): string {
   return error instanceof Error ? error.message : "Capture health audit failed";
 }
 
-export type CaptureHealthAuditCommandIo = {
-  readFile: (path: string) => string;
+export type CaptureHealthAuditCommandIo = JsonlIo & {
   writeStdout: (text: string) => void;
   writeStderr: (text: string) => void;
   writeFile: (path: string, data: string) => void;
   mkdirSync: (path: string, options: { recursive: boolean }) => void;
-  fileExists: (path: string) => boolean;
   isDirectory: (path: string) => boolean;
 };

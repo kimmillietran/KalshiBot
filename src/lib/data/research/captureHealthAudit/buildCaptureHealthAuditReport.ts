@@ -9,15 +9,15 @@ import { loadCaptureRunArtifacts } from "./loadCaptureRunArtifacts";
 import type { CaptureHealthAuditIo } from "./captureHealthAuditTypes";
 
 /** Loads capture artifacts and builds the full capture health audit report. */
-export function buildCaptureHealthAuditReport(input: {
+export async function buildCaptureHealthAuditReport(input: {
   generatedAt: string;
   outputPath: string;
   htmlOutputPath: string;
   captureRunDir: string;
   config: CaptureHealthAuditConfig;
   io: CaptureHealthAuditIo;
-}): CaptureHealthAuditReport {
-  const loaded = loadCaptureRunArtifacts({
+}): Promise<CaptureHealthAuditReport> {
+  const loaded = await loadCaptureRunArtifacts({
     captureRunDir: input.captureRunDir,
     io: input.io,
   });

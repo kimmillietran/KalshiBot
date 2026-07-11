@@ -25,16 +25,23 @@ export type ReplayBidSizePoint = {
   hasDustBestBidSize: boolean;
 };
 
-export function replayBidSizeState(input: {
-  lines: readonly string[];
+export function replayKey(marketTicker: string, sequence: number): string {
+  return `${marketTicker}:${sequence}`;
+}
+
+export async function replayBidSizeState(input: {
+  lines: AsyncIterable<string>;
   maxMessages: number;
   marketTicker?: string | null;
   runId: string;
-}): {
+  neededReplayKeys?: ReadonlySet<string>;
+}): Promise<{
   state: ReplayBidSizeState;
+  replayIndex: Map<string, ReplayBidSizePoint>;
   points: ReplayBidSizePoint[];
-} {
+}> {
   const books = new Map<string, OrderbookCaptureBook>();
+  const replayIndex = new Map<string, ReplayBidSizePoint>();
   const points: ReplayBidSizePoint[] = [];
   let messagesScanned = 0;
   let yesBestBidPricePresentCount = 0;
@@ -51,7 +58,7 @@ export function replayBidSizeState(input: {
     { yesPrice: number | null; yesSize: number | null; noPrice: number | null; noSize: number | null }
   >();
 
-  for (const line of input.lines) {
+  for await (const line of input.lines) {
     const trimmed = line.trim();
     if (!trimmed) {
       continue;
@@ -149,7 +156,7 @@ export function replayBidSizeState(input: {
       noSize: top.noBestBidSize,
     });
 
-    points.push({
+    const point: ReplayBidSizePoint = {
       marketTicker: record.marketTicker,
       sequence: top.sequence,
       receivedAtLocal: record.receivedAtLocal,
@@ -159,7 +166,18 @@ export function replayBidSizeState(input: {
       noBestBidCents: top.noBestBidCents,
       noBestBidSize: top.noBestBidSize,
       hasDustBestBidSize: hasDust,
-    });
+    };
+
+    const storePoint =
+      input.neededReplayKeys === undefined
+      || (top.sequence !== null
+        && input.neededReplayKeys.has(replayKey(record.marketTicker, top.sequence)));
+    if (storePoint) {
+      points.push(point);
+      if (top.sequence !== null) {
+        replayIndex.set(replayKey(record.marketTicker, top.sequence), point);
+      }
+    }
   }
 
   const replayBidSizeCoverageShare =
@@ -186,6 +204,7 @@ export function replayBidSizeState(input: {
       dustLevelBestBidCount,
       replayBidSizeCoverageShare,
     },
+    replayIndex,
     points,
   };
 }

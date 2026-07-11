@@ -44,14 +44,19 @@ export type SizeLossClassification = (typeof SIZE_LOSS_CLASSIFICATIONS)[number];
 
 export const RECOMMENDED_SIZE_FIXES = [
   "no-fix-needed",
-  "apply-dust-level-epsilon-in-capture",
   "improve-bid-size-emission",
   "extend-capture-with-size-fields",
   "document-parity-min-size-gate",
+  "continue-capture-and-run-downstream-analysis",
+  "investigate-low-bid-pair-coverage",
+  "run-static-parity-and-lifecycle",
   "unknown",
 ] as const;
 
 export type RecommendedSizeFix = (typeof RECOMMENDED_SIZE_FIXES)[number];
+
+export const COMPARISON_MODES = ["full", "bounded-sample"] as const;
+export type ComparisonMode = (typeof COMPARISON_MODES)[number];
 
 export type BidSizeCoverageAuditConfig = {
   captureRunDir: string;
@@ -67,9 +72,10 @@ export const DEFAULT_BID_SIZE_COVERAGE_AUDIT_CONFIG: BidSizeCoverageAuditConfig 
   sampleLimit: 25,
 };
 
-export type BidSizeCoverageAuditIo = {
-  readFile: (path: string) => string;
-  fileExists: (path: string) => boolean;
+import type { JsonlIo } from "@/lib/data/research/jsonl";
+
+export type BidSizeCoverageAuditIo = JsonlIo & {
+  createLineIterable: (path: string) => AsyncIterable<string>;
 };
 
 export type RawLadderSizeInventory = {
@@ -138,6 +144,7 @@ export type TopOfBookSizeComparisonSample = {
 export type BidSizeCoverageAuditSummary = {
   captureRunDir: string;
   runId: string | null;
+  comparisonMode: ComparisonMode;
   messagesScanned: number;
   topOfBookRecordsCompared: number;
   rawBestBidSizePresentCount: number;

@@ -1,5 +1,7 @@
 import { join } from "node:path";
 
+import { collectJsonlRecords, countJsonlLines } from "@/lib/data/research/jsonl";
+
 import type {
   CaptureArtifactPaths,
   CaptureHealthAuditIo,
@@ -11,7 +13,6 @@ import { CaptureHealthAuditError, CaptureHealthAuditErrorCode } from "./captureH
 import {
   hourBucketFromIso,
   parseIsoTimestampMs,
-  parseJsonlLines,
 } from "./captureHealthAuditUtils";
 
 export type LoadedCaptureHealthJson = {
@@ -31,6 +32,7 @@ export type LoadedCaptureHealthJson = {
   };
   capture?: {
     messagesReceived?: number;
+    rawMessageCount?: number;
   };
 };
 
@@ -135,11 +137,23 @@ function parseMarketMetadataLine(line: string): ParsedMarketMetadataRecord | nul
   };
 }
 
-/** Resolves capture artifact paths and loads JSONL inputs from a run directory. */
-export function loadCaptureRunArtifacts(input: {
+function resolveHealthRawMessageCount(captureHealth: LoadedCaptureHealthJson | null): number | null {
+  const fromHealth =
+    captureHealth?.capture?.messagesReceived
+    ?? captureHealth?.capture?.rawMessageCount
+    ?? null;
+  if (fromHealth !== null && Number.isFinite(fromHealth)) {
+    return fromHealth;
+  }
+
+  return null;
+}
+
+/** Resolves capture artifact paths and streams JSONL inputs from a run directory. */
+export async function loadCaptureRunArtifacts(input: {
   captureRunDir: string;
   io: CaptureHealthAuditIo;
-}): LoadedCaptureRunArtifacts {
+}): Promise<LoadedCaptureRunArtifacts> {
   const captureRunDir = input.captureRunDir.replaceAll("\\", "/");
   if (!input.io.fileExists(captureRunDir) || !input.io.isDirectory(captureRunDir)) {
     throw new CaptureHealthAuditError(
@@ -170,47 +184,61 @@ export function loadCaptureRunArtifacts(input: {
   let marketMetadataRecords: ParsedMarketMetadataRecord[] = [];
   let captureHealth: LoadedCaptureHealthJson | null = null;
 
-  if (artifacts.rawMessagesPath) {
-    const parsed = parseJsonlLines(input.io.readFile(artifacts.rawMessagesPath), (line) => {
-      JSON.parse(line);
-      return { parsed: true };
-    });
-    rawMessageCount = parsed.records.length;
-    rawInvalidLineCount = parsed.invalidLineCount;
-  }
-
-  if (artifacts.topOfBookPath) {
-    const parsed = parseJsonlLines(
-      input.io.readFile(artifacts.topOfBookPath),
-      parseTopOfBookLine,
-    );
-    topOfBookRecords = parsed.records;
-    topOfBookInvalidLineCount = parsed.invalidLineCount;
-  } else {
-    loadWarnings.push("top-of-book.jsonl is missing.");
-  }
-
-  if (artifacts.btcSpotPath) {
-    const parsed = parseJsonlLines(input.io.readFile(artifacts.btcSpotPath), (line) =>
-      parseBtcSpotLine(line),
-    );
-    btcSpotRecords = parsed.records;
-    btcSpotInvalidLineCount = parsed.invalidLineCount;
-  }
-
-  if (artifacts.marketMetadataPath) {
-    const parsed = parseJsonlLines(input.io.readFile(artifacts.marketMetadataPath), (line) =>
-      parseMarketMetadataLine(line),
-    );
-    marketMetadataRecords = parsed.records;
-  }
-
   if (artifacts.captureHealthPath) {
     try {
       captureHealth = JSON.parse(input.io.readFile(artifacts.captureHealthPath)) as LoadedCaptureHealthJson;
     } catch {
       loadWarnings.push("capture-health.json could not be parsed.");
     }
+  }
+
+  if (artifacts.rawMessagesPath) {
+    const healthRawCount = resolveHealthRawMessageCount(captureHealth);
+    if (healthRawCount !== null) {
+      rawMessageCount = healthRawCount;
+    } else {
+      const rawSummary = await countJsonlLines({
+        path: artifacts.rawMessagesPath,
+        io: input.io,
+        validateJson: true,
+      });
+      rawInvalidLineCount = rawSummary.invalidLineCount;
+      rawMessageCount = rawSummary.recordsHandled;
+      if (rawSummary.truncated) {
+        loadWarnings.push("Raw message stream truncated during count (unexpected).");
+      }
+    }
+  }
+
+  if (artifacts.topOfBookPath) {
+    const parsed = await collectJsonlRecords({
+      path: artifacts.topOfBookPath,
+      io: input.io,
+      parseLine: parseTopOfBookLine,
+    });
+    topOfBookRecords = parsed.records;
+    topOfBookInvalidLineCount = parsed.summary.invalidLineCount;
+  } else {
+    loadWarnings.push("top-of-book.jsonl is missing.");
+  }
+
+  if (artifacts.btcSpotPath) {
+    const parsed = await collectJsonlRecords({
+      path: artifacts.btcSpotPath,
+      io: input.io,
+      parseLine: (line) => parseBtcSpotLine(line),
+    });
+    btcSpotRecords = parsed.records;
+    btcSpotInvalidLineCount = parsed.summary.invalidLineCount;
+  }
+
+  if (artifacts.marketMetadataPath) {
+    const parsed = await collectJsonlRecords({
+      path: artifacts.marketMetadataPath,
+      io: input.io,
+      parseLine: (line) => parseMarketMetadataLine(line),
+    });
+    marketMetadataRecords = parsed.records;
   }
 
   if (topOfBookInvalidLineCount > 0) {

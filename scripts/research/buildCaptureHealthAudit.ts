@@ -1,11 +1,5 @@
 import { dirname } from "node:path";
-import {
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  statSync,
-  writeFileSync,
-} from "node:fs";
+import { mkdirSync, statSync, writeFileSync } from "node:fs";
 
 import {
   buildCaptureHealthAuditReport,
@@ -13,6 +7,7 @@ import {
   serializeCaptureHealthAuditHtml,
   serializeCaptureHealthAuditReport,
 } from "@/lib/data/research/captureHealthAudit";
+import { createFilesystemJsonlIo } from "@/lib/data/research/jsonl";
 import { stableStringify } from "@/lib/trading/config/hashConfig";
 
 import { normalizeCaptureHealthAuditArgv } from "../lib/cliArgvSchemas";
@@ -27,11 +22,11 @@ import {
 } from "./buildCaptureHealthAuditTypes";
 import type { CaptureHealthAuditCommandIo } from "./buildCaptureHealthAuditTypes";
 
-export function runCaptureHealthAuditCommand(
+export async function runCaptureHealthAuditCommand(
   argv: readonly string[],
   io: CaptureHealthAuditCommandIo,
   options?: { generatedAt?: string },
-): number {
+): Promise<number> {
   try {
     const normalizedArgv = normalizeCaptureHealthAuditArgv(argv);
     const captureRunDir = parseCaptureRunDirFromArgv(normalizedArgv);
@@ -60,7 +55,7 @@ export function runCaptureHealthAuditCommand(
     });
     const generatedAt = options?.generatedAt ?? new Date().toISOString();
 
-    const report = buildCaptureHealthAuditReport({
+    const report = await buildCaptureHealthAuditReport({
       generatedAt,
       outputPath,
       htmlOutputPath,
@@ -99,9 +94,10 @@ export function runCaptureHealthAuditCommand(
   }
 }
 
-function main(): void {
-  const exitCode = runCaptureHealthAuditCommand(process.argv.slice(2), {
-    readFile: (path) => readFileSync(path, "utf8").replace(/^\uFEFF/, ""),
+async function main(): Promise<void> {
+  const jsonlIo = createFilesystemJsonlIo();
+  const exitCode = await runCaptureHealthAuditCommand(process.argv.slice(2), {
+    ...jsonlIo,
     writeStdout: (text) => {
       process.stdout.write(text);
     },
@@ -114,7 +110,6 @@ function main(): void {
     mkdirSync: (path, options) => {
       mkdirSync(path, options);
     },
-    fileExists: (path) => existsSync(path),
     isDirectory: (path) => statSync(path).isDirectory(),
   });
 
@@ -122,5 +117,5 @@ function main(): void {
 }
 
 if (process.env.VITEST !== "true") {
-  main();
+  void main();
 }
