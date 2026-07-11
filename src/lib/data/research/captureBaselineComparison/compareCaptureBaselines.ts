@@ -60,6 +60,7 @@ function hasCandidateSignal(snapshot: CaptureBaselineSnapshot): boolean {
   return (
     (snapshot.grossCandidates ?? 0) > 0
     || (snapshot.bufferAdjustedCandidates ?? 0) > 0
+    || (snapshot.candidateEpisodes ?? 0) > 0
     || (snapshot.persistentCandidateEpisodes ?? 0) > 0
   );
 }
@@ -170,6 +171,7 @@ export function compareCaptureBaselines(input: {
   } else if (
     (input.comparison.grossCandidates ?? 0) === 0
     && (input.comparison.bufferAdjustedCandidates ?? 0) === 0
+    && (input.comparison.candidateEpisodes ?? 0) === 0
     && (input.comparison.persistentCandidateEpisodes ?? 0) === 0
   ) {
     overallVerdict = "no-candidates-yet";
