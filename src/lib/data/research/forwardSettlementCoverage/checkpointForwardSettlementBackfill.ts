@@ -125,6 +125,16 @@ export function isCheckpointMarketEligible(
     return false;
   }
 
+  if (market.status === "failed") {
+    if (!market.nextEligibleRetryAt) {
+      return true;
+    }
+
+    const retryMs = Date.parse(market.nextEligibleRetryAt);
+    const evaluatedMs = Date.parse(evaluatedAt);
+    return Number.isFinite(retryMs) && Number.isFinite(evaluatedMs) && evaluatedMs >= retryMs;
+  }
+
   if (!market.nextEligibleRetryAt) {
     return true;
   }

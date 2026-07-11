@@ -92,6 +92,24 @@ function buildJoinIntegration(input: {
       reason: market.exclusionReason ?? market.classification,
     }));
 
+  const realMarketCount = input.markets.filter(
+    (market) => market.classification !== "invalid-market",
+  ).length;
+  const unresolvedMarketCount = excluded.filter(
+    (market) => market.reason !== "invalid-market",
+  ).length;
+
+  let overallVerdict = joined.summary.overallVerdict;
+  let recommendedNextAction = joined.summary.recommendedNextAction;
+  if (
+    unresolvedMarketCount > 0
+    && realMarketCount > joinableMarkets.length
+    && overallVerdict === "settlement-join-ready"
+  ) {
+    overallVerdict = "partial-settlement-coverage";
+    recommendedNextAction = "import-settlements";
+  }
+
   if (input.joinOutputPath && input.io.writeFile && input.io.mkdirSync) {
     const scopedJoinReport = {
       generatedAt: input.generatedAt,
@@ -99,7 +117,12 @@ function buildJoinIntegration(input: {
       analysisScope: "selected-run",
       selectedRunId: input.selectedRunId,
       selectedRunDirectory: input.config.captureRunDir,
-      summary: joined.summary,
+      summary: {
+        ...joined.summary,
+        overallVerdict,
+        recommendedNextAction,
+        capturedMarketCount: realMarketCount,
+      },
       marketJoins: joined.marketJoins,
       episodeJoins: joined.episodeJoins,
       marketsExcludedFromJoin: excluded,
@@ -109,8 +132,8 @@ function buildJoinIntegration(input: {
   }
 
   return {
-    overallVerdict: joined.summary.overallVerdict,
-    recommendedNextAction: joined.summary.recommendedNextAction,
+    overallVerdict,
+    recommendedNextAction,
     settlementKnownMarketCount: joined.summary.settlementKnownMarketCount,
     settlementCoverageShare: joined.summary.settlementCoverageShare,
     marketsExcludedFromJoin: excluded,

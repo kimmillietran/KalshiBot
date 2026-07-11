@@ -635,7 +635,7 @@ describe("forwardSettlementCoverage", () => {
     expect(report.summary.analysisScope).toBe("selected-run");
     expect(report.summary.capturedMarketCount).toBe(3);
     expect(report.joinIntegration.settlementKnownMarketCount).toBeGreaterThanOrEqual(1);
-    expect(report.joinIntegration.overallVerdict).toBe("settlement-join-ready");
+    expect(report.joinIntegration.overallVerdict).toBe("partial-settlement-coverage");
     expect(report.joinIntegration.marketsExcludedFromJoin.length).toBeGreaterThan(0);
     expect(files["data/research-results/forward-settlement-join-selected-run.json"]).toBeDefined();
   });
