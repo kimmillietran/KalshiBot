@@ -84,6 +84,33 @@ function shouldSkipBackfill(
   return null;
 }
 
+function checkpointTerminalStatusStillApplies(input: {
+  entry: ForwardSettlementBackfillCheckpointMarket;
+  market: MarketSettlementCoverageEntry;
+}): boolean {
+  if (isBackfillCandidate(input.market.classification)) {
+    return false;
+  }
+
+  if (input.entry.status === "imported" || input.entry.status === "skipped-ready") {
+    return input.market.classification === "settlement-ready";
+  }
+
+  if (input.entry.status === "skipped-unsettled") {
+    return input.market.classification === "market-not-yet-settled";
+  }
+
+  if (input.entry.status === "skipped-conflict") {
+    return input.market.classification === "settlement-present-but-conflicting";
+  }
+
+  if (input.entry.status === "skipped-not-candidate") {
+    return !isBackfillCandidate(input.market.classification);
+  }
+
+  return true;
+}
+
 async function backfillOneMarket(input: {
   market: MarketSettlementCoverageEntry;
   config: ForwardSettlementCoverageConfig;
@@ -134,6 +161,10 @@ async function backfillOneMarket(input: {
   if (
     existingEntry
     && !isCheckpointMarketEligible(existingEntry, input.evaluatedAt)
+    && checkpointTerminalStatusStillApplies({
+      entry: existingEntry,
+      market: input.market,
+    })
   ) {
     return {
       checkpoint: input.checkpoint,

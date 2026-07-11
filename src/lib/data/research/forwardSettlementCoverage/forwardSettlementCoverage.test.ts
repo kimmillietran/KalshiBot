@@ -558,6 +558,66 @@ describe("forwardSettlementCoverage", () => {
     expect(summary.marketResults[0]?.status).toBe("imported");
   });
 
+  it("invalidates imported checkpoint entries when the market is backfillable again", async () => {
+    const files: Record<string, string> = {};
+    const dirs: string[] = [];
+    seedRun(files, dirs);
+    const checkpoint = createForwardSettlementBackfillCheckpoint({
+      captureRunDir: RUN_DIR,
+      selectedRunId: RUN_ID,
+      importsDir: "data/imports",
+      dryRun: false,
+      startedAt: EVALUATED_AT,
+      marketTickers: [MARKET_B],
+    });
+    checkpoint.markets[0] = {
+      marketTicker: MARKET_B,
+      status: "imported",
+      attempts: 1,
+      lastAttemptAt: EVALUATED_AT,
+      nextEligibleRetryAt: null,
+      errorMessage: null,
+      importResultPath: `data/imports/KXBTC15M/${MARKET_B}/import-result.json`,
+    };
+    files[defaultConfig().checkpointPath] = serializeForwardSettlementBackfillCheckpoint(checkpoint);
+
+    const io = createIo(files, dirs);
+    const runMarketImport = vi.fn(async ({ market }) => {
+      files[`data/imports/KXBTC15M/${market.marketTicker}/import-result.json`] =
+        createImportResult(market.marketTicker, "no");
+      return { success: true };
+    });
+    const inventory = extractSelectedRunMarketInventory({
+      io,
+      captureRunDir: RUN_DIR,
+      evaluatedAt: EVALUATED_AT,
+    }).inventory.find((entry) => entry.marketTicker === MARKET_B)!;
+    const markets = [
+      classifyMarketSettlementCoverage({
+        io,
+        importsDir: "data/imports",
+        inventory,
+        evaluatedAt: EVALUATED_AT,
+        staleAfterCaptureObservation: true,
+      }),
+    ];
+
+    expect(markets[0]?.classification).toBe("missing-settlement-source");
+
+    const summary = await runForwardSettlementBackfill({
+      config: defaultConfig({ maxRetries: 1, maxConcurrency: 1 }),
+      io,
+      markets,
+      selectedRunId: RUN_ID,
+      evaluatedAt: EVALUATED_AT,
+      deps: { runMarketImport },
+    });
+
+    expect(runMarketImport).toHaveBeenCalledTimes(1);
+    expect(summary.importedMarketCount).toBe(1);
+    expect(summary.marketResults[0]?.status).toBe("imported");
+  });
+
   it("integrates M12.12 join semantics for zero-candidate selected-run coverage", async () => {
     const files: Record<string, string> = {};
     const dirs: string[] = [];
