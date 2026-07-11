@@ -107,6 +107,26 @@ describe("captureHealthReconciliation", () => {
       expect(metrics.eventWallClockSpanSeconds).toBeNull();
       expect(metrics.warnings.length).toBeGreaterThan(0);
     });
+
+    it("does not classify clean observed valid time as unknown blind time", () => {
+      const metrics = computeDurationMetrics({
+        topOfBookRecords: [
+          topOfBookRecord({ receivedAtLocal: "2026-07-11T00:00:00.000Z" }),
+          topOfBookRecord({ receivedAtLocal: "2026-07-11T00:01:00.000Z" }),
+        ],
+        captureHealth: {
+          config: { durationSeconds: 60 },
+          startedAt: "2026-07-11T00:00:00.000Z",
+          endedAt: "2026-07-11T00:01:00.000Z",
+        },
+        suspectedHostSuspensionSeconds: 0,
+      });
+
+      expect(metrics.eventWallClockSpanSeconds).toBe(60);
+      expect(metrics.usableObservationSeconds).toBe(60);
+      expect(metrics.resynchronizationSeconds).toBe(0);
+      expect(metrics.unknownBlindSeconds).toBe(0);
+    });
   });
 
   describe("reconcileValidBookMetrics", () => {
@@ -308,6 +328,55 @@ describe("captureHealthReconciliation", () => {
   });
 
   describe("evaluateResearchSuitability", () => {
+    it("keeps clean all-valid runs suitable for zero-candidate interpretation", () => {
+      const topOfBookRecords = [
+        topOfBookRecord({ receivedAtLocal: "2026-07-11T00:00:00.000Z" }),
+        topOfBookRecord({ receivedAtLocal: "2026-07-11T00:01:00.000Z" }),
+      ];
+      const durations = computeDurationMetrics({
+        topOfBookRecords,
+        captureHealth: {
+          config: { durationSeconds: 60 },
+          startedAt: "2026-07-11T00:00:00.000Z",
+          endedAt: "2026-07-11T00:01:00.000Z",
+        },
+        suspectedHostSuspensionSeconds: 0,
+      });
+
+      const assessment = evaluateResearchSuitability({
+        durations,
+        validBookMetrics: reconcileValidBookMetrics({
+          topOfBookRecords,
+          aggregateForwardReadinessValidShare: null,
+        }),
+        suspension: {
+          suspectedSystemSleepEventCount: 0,
+          suspectedSystemSleepSeconds: 0,
+          longestHeartbeatGapMs: null,
+          heartbeatGapCount: 0,
+          intervals: [],
+          warnings: [],
+        },
+        connection: {
+          reconnectCount: 0,
+          sequenceGapCount: 0,
+          sequenceGapEpisodeCount: 0,
+          eventsInsideSuspensionWindows: 0,
+          eventsOutsideSuspensionWindows: 0,
+          timelineBuckets: [],
+          counterSemantics: [],
+        },
+        downstreamArtifacts: [],
+        throttleMs: 1000,
+      });
+
+      expect(assessment.continuousMicrostructureSuitability).toBe("ready");
+      expect(assessment.transientEventDetectionSuitability).toBe("ready-with-warnings");
+      expect(assessment.zeroCandidateInterpretation).toBe(
+        "zero-candidates-on-clean-observation",
+      );
+    });
+
     it("does not mark transient detection ready when blind windows are material", () => {
       const assessment = evaluateResearchSuitability({
         durations: {

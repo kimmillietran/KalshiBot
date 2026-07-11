@@ -22,7 +22,7 @@ const DURATION_DEFINITIONS: DurationMetrics["definitions"] = {
   resynchronizationSeconds:
     "Estimated time in gap-detected / awaiting-snapshot book states using inter-record gaps.",
   unknownBlindSeconds:
-    "Remaining unclassified blind time within event span after suspension and resync estimates.",
+    "Observed active non-usable time that remains after classified resync estimates.",
 };
 
 function readIsoMs(value: unknown): number | null {
@@ -132,12 +132,14 @@ export function computeDurationMetrics(input: {
       ? null
       : Math.round(activeObservationSeconds * validShare);
 
-  const attributedSeconds =
-    input.suspectedHostSuspensionSeconds + resynchronizationSeconds;
-  const unknownBlindSeconds =
-    eventWallClockSpanSeconds === null
+  const activeNonUsableSeconds =
+    activeObservationSeconds === null || usableObservationSeconds === null
       ? null
-      : Math.max(0, eventWallClockSpanSeconds - attributedSeconds);
+      : Math.max(0, activeObservationSeconds - usableObservationSeconds);
+  const unknownBlindSeconds =
+    activeNonUsableSeconds === null
+      ? null
+      : Math.max(0, activeNonUsableSeconds - resynchronizationSeconds);
 
   if (
     input.captureHealth?.config?.durationSeconds
