@@ -20,6 +20,9 @@ import type {
   StrategyEvaluationLoadedInputs,
   StrategyEvaluationReadinessIo,
 } from "./strategyEvaluationReadinessTypes";
+import {
+  DEFAULT_BID_ONLY_PARITY_EPISODE_THRESHOLDS,
+} from "./strategyEvaluationReadinessTypes";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -323,6 +326,7 @@ export function loadStrategyEvaluationInputs(input: {
         inputPaths.artifacts.bidOnlyCandidateLifecycle,
       ].filter((path) => io.fileExists(path)),
       evaluatedAt: input.evaluatedAt,
+      staleAfterHours: DEFAULT_BID_ONLY_PARITY_EPISODE_THRESHOLDS.artifactStaleAfterHours,
       requireIdentityInSelectedRun: true,
     })
     : {

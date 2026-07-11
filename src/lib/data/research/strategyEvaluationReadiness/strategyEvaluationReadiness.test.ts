@@ -641,6 +641,42 @@ describe("strategyEvaluationReadiness", () => {
     );
   });
 
+  it("validates selected-run artifacts with the strategy readiness 72h freshness threshold", () => {
+    const inputPaths = buildInputPaths({
+      captureRunDir: "data/live-capture/forward-quotes/run-a",
+    });
+    const io = buildMemoryIo({
+      [DEFAULT_STRATEGY_EVALUATION_INPUT_PATHS.artifacts.forwardCaptureReadiness]:
+        buildForwardCaptureArtifact({
+          totalDurationMinutes: 8 * 60,
+          daysCovered: 2,
+          marketCount: 25,
+          topOfBookRecordCount: 2_000,
+          generatedAt: "2026-07-09T19:00:00.000Z",
+          analysisScope: "selected-run",
+          sourceRunIds: ["run-a"],
+          selectedRunId: "run-a",
+        }),
+    });
+
+    const loaded = loadStrategyEvaluationInputs({
+      io,
+      inputPaths,
+      evaluatedAt: GENERATED_AT,
+    });
+    const freshness = readArtifactFreshness({
+      inputs: loaded,
+      evaluatedAt: GENERATED_AT,
+      staleAfterHours: 72,
+    });
+
+    expect(loaded.forwardCaptureReadiness?.excludedByValidation).toBeUndefined();
+    expect(loaded.artifactValidation.staleArtifacts).not.toContain(
+      DEFAULT_STRATEGY_EVALUATION_INPUT_PATHS.artifacts.forwardCaptureReadiness,
+    );
+    expect(freshness.status).toBe("fresh");
+  });
+
   it("builds JSON and HTML reports through the builder", () => {
     const io = buildMemoryIo({
       [DEFAULT_STRATEGY_EVALUATION_INPUT_PATHS.artifacts.forwardCaptureReadiness]:

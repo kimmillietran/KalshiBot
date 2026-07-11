@@ -4,7 +4,10 @@ import {
   normalizeDiscoveryImportConfigsArgv,
   normalizeEventStudyArgv,
   normalizeExecuteExpansionImportArgv,
+  normalizeForwardCaptureReadinessArgv,
   normalizeResearchInspectArgv,
+  normalizeStaticParityScanArgv,
+  normalizeStrategyEvaluationReadinessArgv,
   normalizeStrategySweepArgv,
 } from "./cliArgvSchemas";
 
@@ -61,6 +64,23 @@ describe("cliArgvSchemas", () => {
     expect(normalizeEventStudyArgv(["data/events/events.json"])).toEqual([
       "--events",
       "data/events/events.json",
+    ]);
+  });
+
+  it("maps stripped selected-run capture paths to --capture-run-dir", () => {
+    const captureRunDir = "data/live-capture/forward-quotes/run-a";
+
+    expect(normalizeStaticParityScanArgv([captureRunDir])).toEqual([
+      "--capture-run-dir",
+      captureRunDir,
+    ]);
+    expect(normalizeForwardCaptureReadinessArgv([captureRunDir])).toEqual([
+      "--capture-run-dir",
+      captureRunDir,
+    ]);
+    expect(normalizeStrategyEvaluationReadinessArgv([captureRunDir])).toEqual([
+      "--capture-run-dir",
+      captureRunDir,
     ]);
   });
 

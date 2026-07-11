@@ -71,15 +71,15 @@ export function artifactMatchesSelectedRun(
   scope: ParsedArtifactScope,
   selectedRunId: string,
 ): boolean {
-  if (scope.selectedRunId === selectedRunId) {
-    return true;
+  if (scope.sourceRunIds.length > 0) {
+    return (
+      scope.sourceRunIds.length === 1
+      && scope.sourceRunIds[0] === selectedRunId
+      && (!scope.selectedRunId || scope.selectedRunId === selectedRunId)
+    );
   }
 
-  if (scope.sourceRunIds.length === 1 && scope.sourceRunIds[0] === selectedRunId) {
-    return true;
-  }
-
-  return scope.sourceRunIds.includes(selectedRunId);
+  return scope.selectedRunId === selectedRunId;
 }
 
 /** Spreads scope metadata on reports with backward-compatible top-level fields. */
