@@ -89,6 +89,7 @@
     "research:bid-only-candidate-lifecycle": "tsx scripts/research/buildBidOnlyCandidateLifecycle.ts",
     "research:strategy-evaluation-readiness": "tsx scripts/research/buildStrategyEvaluationReadiness.ts",
     "research:executable-confirmation-design": "tsx scripts/research/buildExecutableConfirmationDesign.ts",
+    "research:parity-near-miss-analysis": "tsx scripts/research/buildParityNearMissAnalysis.ts",
     "research:forward-settlement-join": "tsx scripts/research/buildForwardSettlementJoin.ts",
     "research:capture-baseline-comparison": "tsx scripts/research/buildCaptureBaselineComparison.ts",
     "research:valid-book-coverage": "tsx scripts/research/buildValidBookCoverageInvestigation.ts",
