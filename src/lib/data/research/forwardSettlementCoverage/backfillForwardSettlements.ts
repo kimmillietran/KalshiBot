@@ -8,6 +8,7 @@ import { runHistoricalImportFromConfig } from "@/lib/data/importJobs";
 import { serializeHistoricalBronzeImportConfig } from "@/lib/data/importJobs/config";
 
 import {
+  classifyMarketSettlementCoverage,
   isBackfillCandidate,
 } from "./classifyMarketSettlementCoverage";
 import {
@@ -420,6 +421,8 @@ export async function runForwardSettlementBackfill(input: {
 export function createProductionForwardSettlementBackfillDeps(input: {
   io: ForwardSettlementCoverageIo;
   evaluatedAt: string;
+  importsDir: string;
+  staleAfterCaptureObservation?: boolean;
   fetchImpl?: Parameters<typeof runHistoricalImportFromConfig>[0]["fetchImpl"];
 }): ForwardSettlementBackfillDeps {
   return {
@@ -428,11 +431,18 @@ export function createProductionForwardSettlementBackfillDeps(input: {
         return { success: true };
       }
 
-      if (
-        input.io.fileExists(importResultPath)
-        && !input.io.readFile(importResultPath).includes("\"valid\":false")
-      ) {
-        return { success: true, skipped: true };
+      if (input.io.fileExists(importResultPath)) {
+        const classification = classifyMarketSettlementCoverage({
+          io: input.io,
+          importsDir: input.importsDir,
+          inventory: market,
+          evaluatedAt: input.evaluatedAt,
+          staleAfterCaptureObservation: input.staleAfterCaptureObservation ?? true,
+        });
+
+        if (classification.classification === "settlement-ready") {
+          return { success: true, skipped: true };
+        }
       }
 
       const config = buildCaptureMarketImportConfig({

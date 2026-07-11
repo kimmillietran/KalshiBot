@@ -49,6 +49,8 @@ function main(): void {
       : createProductionForwardSettlementBackfillDeps({
           io,
           evaluatedAt: generatedAt,
+          importsDir: parsed.importsDir,
+          staleAfterCaptureObservation: parsed.staleAfterCaptureObservation,
         }),
   }).then((report) => {
     mkdirSync(dirname(parsed.outputPath), { recursive: true });

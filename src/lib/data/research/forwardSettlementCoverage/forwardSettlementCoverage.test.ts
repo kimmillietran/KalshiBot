@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { runForwardSettlementBackfill } from "./backfillForwardSettlements";
+import { runForwardSettlementBackfill, createProductionForwardSettlementBackfillDeps } from "./backfillForwardSettlements";
 import { buildForwardSettlementCoverageReport } from "./buildForwardSettlementCoverageReport";
+import { resolveMarketImportPaths } from "./buildCaptureMarketImportConfig";
 import {
   classifyInvalidMarketEntry,
   classifyMarketSettlementCoverage,
@@ -519,6 +520,107 @@ describe("forwardSettlementCoverage", () => {
     expect(report.joinIntegration.settlementKnownMarketCount).toBeGreaterThanOrEqual(1);
     expect(report.joinIntegration.marketsExcludedFromJoin.length).toBeGreaterThan(0);
     expect(files["data/research-results/forward-settlement-join-selected-run.json"]).toBeDefined();
+  });
+
+  it("production backfill deps only skips settlement-ready existing imports", async () => {
+    const files: Record<string, string> = {};
+    const dirs: string[] = [];
+    seedRun(files, dirs);
+    files[`data/imports/KXBTC15M/${MARKET_B}/metadata.json`] = JSON.stringify({
+      valid: true,
+      closeTime: "2026-07-11T11:30:00.000Z",
+    });
+    files[`data/imports/KXBTC15M/${MARKET_B}/import-result.json`] = createImportResult(
+      MARKET_B,
+      "no",
+      { collectionTime: "2026-07-11T11:08:00.000Z" },
+    );
+
+    const io = createIo(files, dirs);
+    const inventory = extractSelectedRunMarketInventory({
+      io,
+      captureRunDir: RUN_DIR,
+      evaluatedAt: EVALUATED_AT,
+    }).inventory.find((entry) => entry.marketTicker === MARKET_B)!;
+    const paths = resolveMarketImportPaths({
+      importsDir: "data/imports",
+      market: inventory,
+    });
+    const deps = createProductionForwardSettlementBackfillDeps({
+      io,
+      evaluatedAt: EVALUATED_AT,
+      importsDir: "data/imports",
+      staleAfterCaptureObservation: true,
+      fetchImpl: vi.fn().mockRejectedValue(new Error("mock-import-blocked")),
+    });
+
+    await expect(
+      deps.runMarketImport({
+        market: inventory,
+        configPath: paths.configPath,
+        importResultPath: paths.importResultPath,
+        dryRun: false,
+      }),
+    ).rejects.toThrow("mock-import-blocked");
+
+    files[`data/imports/KXBTC15M/${MARKET_B}/import-result.json`] = createImportResult(
+      MARKET_B,
+      "no",
+      { collectionTime: "2026-07-11T11:31:00.000Z" },
+    );
+
+    const readyResult = await deps.runMarketImport({
+      market: inventory,
+      configPath: paths.configPath,
+      importResultPath: paths.importResultPath,
+      dryRun: false,
+    });
+
+    expect(readyResult.skipped).toBe(true);
+  });
+
+  it("production backfill deps retries valid-but-empty existing imports", async () => {
+    const files: Record<string, string> = {};
+    const dirs: string[] = [];
+    seedRun(files, dirs);
+    files[`data/imports/KXBTC15M/${MARKET_B}/metadata.json`] = JSON.stringify({
+      valid: true,
+      closeTime: "2026-07-11T11:30:00.000Z",
+    });
+    files[`data/imports/KXBTC15M/${MARKET_B}/import-result.json`] = JSON.stringify({
+      metadata: {
+        valid: true,
+        collectionTime: "2026-07-11T11:31:00.000Z",
+        settlementPresent: false,
+      },
+      bronzeRecords: [],
+    });
+
+    const io = createIo(files, dirs);
+    const inventory = extractSelectedRunMarketInventory({
+      io,
+      captureRunDir: RUN_DIR,
+      evaluatedAt: EVALUATED_AT,
+    }).inventory.find((entry) => entry.marketTicker === MARKET_B)!;
+    const paths = resolveMarketImportPaths({
+      importsDir: "data/imports",
+      market: inventory,
+    });
+    const deps = createProductionForwardSettlementBackfillDeps({
+      io,
+      evaluatedAt: EVALUATED_AT,
+      importsDir: "data/imports",
+      fetchImpl: vi.fn().mockRejectedValue(new Error("mock-import-blocked")),
+    });
+
+    await expect(
+      deps.runMarketImport({
+        market: inventory,
+        configPath: paths.configPath,
+        importResultPath: paths.importResultPath,
+        dryRun: false,
+      }),
+    ).rejects.toThrow("mock-import-blocked");
   });
 
   it("preserves invalid capture tickers after a backfill-enabled report refresh", async () => {
