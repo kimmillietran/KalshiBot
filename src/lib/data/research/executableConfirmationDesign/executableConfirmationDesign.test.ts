@@ -346,4 +346,30 @@ describe("executableConfirmationDesign", () => {
     );
     expect(report.confirmationRecords).toHaveLength(0);
   });
+
+  it("does not count aggregate forward-capture readiness as present in selected-run mode", () => {
+    const report = buildExecutableConfirmationDesignReport({
+      generatedAt: GENERATED_AT,
+      outputPath: OUTPUT_PATH,
+      htmlOutputPath: HTML_PATH,
+      inputPaths: {
+        ...DEFAULT_EXECUTABLE_CONFIRMATION_DESIGN_INPUT_PATHS,
+        captureRunDir: "data/live-capture/forward-quotes/run-a",
+        forwardCaptureReadinessPath: "data/research-results/forward-capture-readiness.json",
+      },
+      io: buildMemoryIo({
+        "data/research-results/forward-capture-readiness.json": JSON.stringify({
+          generatedAt: GENERATED_AT,
+          analysisScope: "aggregate",
+          sourceRunIds: ["run-b"],
+          aggregates: { runCount: 2 },
+        }),
+      }),
+    });
+
+    expect(report.dataAssessment.forwardCaptureReadinessPresent).toBe(false);
+    expect(report.scope.mismatchedArtifacts).toContain(
+      "data/research-results/forward-capture-readiness.json",
+    );
+  });
 });

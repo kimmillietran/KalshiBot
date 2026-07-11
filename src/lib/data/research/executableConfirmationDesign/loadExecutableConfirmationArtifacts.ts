@@ -141,6 +141,7 @@ export function loadExecutableConfirmationArtifacts(input: {
       artifactPaths: [
         input.inputPaths.staticParityScanPath,
         input.inputPaths.bidOnlyCandidateLifecyclePath,
+        input.inputPaths.forwardCaptureReadinessPath,
       ].filter((path) => input.io.fileExists(path)),
       evaluatedAt,
       requireIdentityInSelectedRun: true,
@@ -195,7 +196,13 @@ export function loadExecutableConfirmationArtifacts(input: {
     }
   }
 
-  if (input.io.fileExists(input.inputPaths.forwardCaptureReadinessPath)) {
+  if (
+    input.io.fileExists(input.inputPaths.forwardCaptureReadinessPath)
+    && (
+      !artifactValidation
+      || artifactValidation.usablePaths.includes(input.inputPaths.forwardCaptureReadinessPath)
+    )
+  ) {
     forwardCaptureReadinessPresent = true;
   }
 
