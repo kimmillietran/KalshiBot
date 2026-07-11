@@ -97,8 +97,26 @@ function parseTopOfBookLine(line: string, lineNumber: number): ParsedTopOfBookRe
       typeof parsed.yesBestBidCents === "number" ? parsed.yesBestBidCents : null,
     yesBestAskCents:
       typeof parsed.yesBestAskCents === "number" ? parsed.yesBestAskCents : null,
+    yesBestBidSize:
+      typeof parsed.yesBestBidSize === "number" ? parsed.yesBestBidSize : null,
+    yesBestAskSize:
+      typeof parsed.yesBestAskSize === "number" ? parsed.yesBestAskSize : null,
+    noBestBidCents:
+      typeof parsed.noBestBidCents === "number" ? parsed.noBestBidCents : null,
+    noBestAskCents:
+      typeof parsed.noBestAskCents === "number" ? parsed.noBestAskCents : null,
+    noBestBidSize:
+      typeof parsed.noBestBidSize === "number" ? parsed.noBestBidSize : null,
+    noBestAskSize:
+      typeof parsed.noBestAskSize === "number" ? parsed.noBestAskSize : null,
     yesSpreadCents: typeof parsed.yesSpreadCents === "number" ? parsed.yesSpreadCents : null,
     noSpreadCents: typeof parsed.noSpreadCents === "number" ? parsed.noSpreadCents : null,
+    isEconomicallyValid:
+      typeof parsed.isEconomicallyValid === "boolean" ? parsed.isEconomicallyValid : undefined,
+    isParityUsable:
+      typeof parsed.isParityUsable === "boolean" ? parsed.isParityUsable : undefined,
+    economicBookState:
+      typeof parsed.economicBookState === "string" ? parsed.economicBookState : undefined,
     hourBucket: hourBucketFromIso(receivedAtLocal),
   };
 }

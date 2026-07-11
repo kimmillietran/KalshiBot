@@ -25,10 +25,17 @@ function toReadinessRecord(record: ParsedTopOfBookRecord): ReadinessTopOfBookRec
     bookState: record.bookState,
     yesBestBidCents: record.yesBestBidCents,
     yesBestAskCents: record.yesBestAskCents,
+    yesBestBidSize: record.yesBestBidSize,
+    yesBestAskSize: record.yesBestAskSize,
+    noBestBidCents: record.noBestBidCents,
+    noBestAskCents: record.noBestAskCents,
+    noBestBidSize: record.noBestBidSize,
+    noBestAskSize: record.noBestAskSize,
     yesSpreadCents: record.yesSpreadCents,
     noSpreadCents: record.noSpreadCents,
-    isEconomicallyValid: undefined,
-    isParityUsable: undefined,
+    isEconomicallyValid: record.isEconomicallyValid,
+    isParityUsable: record.isParityUsable,
+    economicBookState: record.economicBookState,
   };
 }
 

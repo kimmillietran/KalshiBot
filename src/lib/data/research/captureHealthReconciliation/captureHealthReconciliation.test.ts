@@ -48,6 +48,8 @@ function btcSpotLine(receivedAtLocal: string): string {
 function topOfBookRecord(input: {
   receivedAtLocal: string;
   bookState?: string;
+  isEconomicallyValid?: boolean;
+  isParityUsable?: boolean;
 }): ParsedTopOfBookRecord {
   const receivedAtMs = Date.parse(input.receivedAtLocal);
   return {
@@ -63,8 +65,13 @@ function topOfBookRecord(input: {
     bookState: input.bookState ?? "valid",
     yesBestBidCents: 45,
     yesBestAskCents: 50,
+    noBestBidCents: 50,
+    noBestAskCents: 55,
     yesSpreadCents: 5,
     noSpreadCents: 5,
+    isEconomicallyValid: input.isEconomicallyValid,
+    isParityUsable: input.isParityUsable,
+    hourBucket: input.receivedAtLocal.slice(0, 13),
     rawMessageType: "orderbook_delta",
   };
 }
@@ -127,6 +134,28 @@ describe("captureHealthReconciliation", () => {
       expect(metrics.resynchronizationSeconds).toBe(0);
       expect(metrics.unknownBlindSeconds).toBe(0);
     });
+
+    it("scans large capture arrays without spreading timestamps onto the stack", () => {
+      const startMs = Date.parse("2026-07-11T00:00:00.000Z");
+      const topOfBookRecords = Array.from({ length: 200_000 }, (_, index) =>
+        topOfBookRecord({
+          receivedAtLocal: new Date(startMs + index * 1000).toISOString(),
+        }),
+      );
+
+      const metrics = computeDurationMetrics({
+        topOfBookRecords,
+        captureHealth: {
+          config: { durationSeconds: 200_000 },
+          startedAt: "2026-07-11T00:00:00.000Z",
+          endedAt: new Date(startMs + 199_999_000).toISOString(),
+        },
+        suspectedHostSuspensionSeconds: 0,
+      });
+
+      expect(metrics.eventWallClockSpanSeconds).toBe(199_999);
+      expect(metrics.unknownBlindSeconds).toBe(0);
+    });
   });
 
   describe("reconcileValidBookMetrics", () => {
@@ -152,6 +181,41 @@ describe("captureHealthReconciliation", () => {
       expect(raw?.denominator).toBe(3);
       expect(aggregate?.value).toBeCloseTo(0.6237, 4);
       expect(aggregate?.population).toContain("multi-run aggregate");
+    });
+
+    it("uses persisted economic and parity flags when present", () => {
+      const records = [
+        topOfBookRecord({
+          receivedAtLocal: "2026-07-11T00:00:00.000Z",
+          isEconomicallyValid: false,
+          isParityUsable: false,
+        }),
+        topOfBookRecord({
+          receivedAtLocal: "2026-07-11T00:00:01.000Z",
+          isEconomicallyValid: true,
+          isParityUsable: false,
+        }),
+        topOfBookRecord({
+          receivedAtLocal: "2026-07-11T00:00:02.000Z",
+          isEconomicallyValid: true,
+          isParityUsable: true,
+        }),
+      ];
+
+      const metrics = reconcileValidBookMetrics({
+        topOfBookRecords: records,
+        aggregateForwardReadinessValidShare: null,
+      });
+
+      const researchEligible = metrics.find(
+        (metric) => metric.metricId === "researchEligibleValidShare",
+      );
+      const parityUsable = metrics.find((metric) => metric.metricId === "parityUsableShare");
+
+      expect(researchEligible?.value).toBeCloseTo(0.6667, 4);
+      expect(researchEligible?.numerator).toBe(2);
+      expect(parityUsable?.value).toBeCloseTo(0.3333, 4);
+      expect(parityUsable?.numerator).toBe(1);
     });
   });
 
@@ -265,6 +329,46 @@ describe("captureHealthReconciliation", () => {
       expect(attribution.eventsInsideSuspensionWindows).toBeGreaterThan(0);
       expect(attribution.eventsOutsideSuspensionWindows).toBeGreaterThan(0);
       expect(attribution.timelineBuckets.length).toBeGreaterThan(0);
+    });
+
+    it("creates blind timeline buckets for suspension intervals even when no records are emitted", async () => {
+      const runDir = buildRunDir("empty-suspension-buckets");
+      const attribution = await attributeConnectionEvents({
+        io: createReconciliationMemoryIo({}, [runDir]),
+        config: createCaptureHealthReconciliationConfig({
+          captureRunDir: runDir,
+          timelineBucketMs: 5 * 60 * 1000,
+        }),
+        topOfBookRecords: [
+          topOfBookRecord({ receivedAtLocal: "2026-07-11T05:00:00.000Z" }),
+          topOfBookRecord({ receivedAtLocal: "2026-07-11T06:00:00.000Z" }),
+        ],
+        captureHealth: null,
+        rawWsPath: null,
+        btcSpotPath: null,
+        suspensionIntervals: [
+          {
+            startedAt: "2026-07-11T05:10:00.000Z",
+            endedAt: "2026-07-11T05:20:00.000Z",
+            gapDurationMs: 10 * 60 * 1000,
+            previousHeartbeatAt: "2026-07-11T05:10:00.000Z",
+            nextHeartbeatAt: "2026-07-11T05:20:00.000Z",
+            classification: "probable-host-suspension",
+            confidence: "high",
+            corroboratingStreams: ["btc-spot"],
+            notes: [],
+          },
+        ],
+      });
+
+      const emptySuspensionBuckets = attribution.timelineBuckets.filter(
+        (bucket) => bucket.suspectedSuspension && bucket.topOfBookCount === 0,
+      );
+
+      expect(emptySuspensionBuckets.length).toBeGreaterThan(0);
+      expect(emptySuspensionBuckets.every((bucket) => bucket.classification === "blind")).toBe(
+        true,
+      );
     });
   });
 
@@ -532,6 +636,84 @@ describe("captureHealthReconciliation", () => {
       expect(result.reconciliation.summary.sourceRunIds).toEqual([runId]);
       expect(result.reconciliation.validBookMetrics.length).toBeGreaterThan(0);
       expect(result.timeline.connectionAttribution.timelineBuckets.length).toBeGreaterThan(0);
+    });
+
+    it("preserves top-of-book economic flags from JSONL in selected-run metrics", async () => {
+      const runId = "flagged-run";
+      const runDir = buildRunDir(runId);
+      const topPath = `${runDir}/top-of-book.jsonl`;
+      const healthPath = `${runDir}/capture-health.json`;
+      const topLines = [
+        {
+          runId,
+          marketTicker: "KXBTC15M-TEST",
+          eventTicker: "KXBTC15M-EVENT",
+          seriesTicker: "KXBTC15M",
+          receivedAtLocal: "2026-07-11T00:00:00.000Z",
+          bookState: "valid",
+          yesBestBidCents: 45,
+          yesBestAskCents: 50,
+          noBestBidCents: 50,
+          noBestAskCents: 55,
+          yesSpreadCents: 5,
+          noSpreadCents: 5,
+          isEconomicallyValid: false,
+          isParityUsable: false,
+        },
+        {
+          runId,
+          marketTicker: "KXBTC15M-TEST",
+          eventTicker: "KXBTC15M-EVENT",
+          seriesTicker: "KXBTC15M",
+          receivedAtLocal: "2026-07-11T00:00:01.000Z",
+          bookState: "valid",
+          yesBestBidCents: 45,
+          yesBestAskCents: 50,
+          noBestBidCents: 50,
+          noBestAskCents: 55,
+          yesSpreadCents: 5,
+          noSpreadCents: 5,
+          isEconomicallyValid: true,
+          isParityUsable: true,
+        },
+      ]
+        .map((record) => JSON.stringify(record))
+        .join("\n");
+
+      const io = createReconciliationMemoryIo(
+        {
+          [topPath]: `${topLines}\n`,
+          [healthPath]: JSON.stringify({
+            runId,
+            startedAt: "2026-07-11T00:00:00.000Z",
+            endedAt: "2026-07-11T00:00:01.000Z",
+            config: { durationSeconds: 1 },
+          }),
+        },
+        [runDir],
+      );
+
+      const result = await analyzeCaptureIntegrity({
+        io,
+        config: createCaptureHealthReconciliationConfig({ captureRunDir: runDir }),
+        generatedAt: "2026-07-11T12:00:00.000Z",
+        reconciliationOutputPath: "out/reconciliation.json",
+        reconciliationHtmlOutputPath: "out/reconciliation.html",
+        timelineOutputPath: "out/timeline.json",
+        timelineHtmlOutputPath: "out/timeline.html",
+      });
+
+      const researchEligible = result.reconciliation.validBookMetrics.find(
+        (metric) => metric.metricId === "researchEligibleValidShare",
+      );
+      const parityUsable = result.reconciliation.validBookMetrics.find(
+        (metric) => metric.metricId === "parityUsableShare",
+      );
+
+      expect(researchEligible?.numerator).toBe(1);
+      expect(researchEligible?.value).toBe(0.5);
+      expect(parityUsable?.numerator).toBe(1);
+      expect(parityUsable?.value).toBe(0.5);
     });
 
     it("streams raw JSONL via io.streamJsonl for timeline bucketing", async () => {

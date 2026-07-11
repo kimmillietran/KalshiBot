@@ -86,8 +86,17 @@ export type ParsedTopOfBookRecord = {
   bookState: string;
   yesBestBidCents: number | null;
   yesBestAskCents: number | null;
+  yesBestBidSize?: number | null;
+  yesBestAskSize?: number | null;
+  noBestBidCents?: number | null;
+  noBestAskCents?: number | null;
+  noBestBidSize?: number | null;
+  noBestAskSize?: number | null;
   yesSpreadCents: number | null;
   noSpreadCents: number | null;
+  isEconomicallyValid?: boolean;
+  isParityUsable?: boolean;
+  economicBookState?: string;
   hourBucket: string;
 };
 

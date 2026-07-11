@@ -80,6 +80,23 @@ function estimateResyncSeconds(
   return Math.round(totalMs / 1000);
 }
 
+function computeEventWallClockSpanSeconds(
+  records: readonly ParsedTopOfBookRecord[],
+): number | null {
+  if (records.length === 0) {
+    return null;
+  }
+
+  let minTimestampMs = Number.POSITIVE_INFINITY;
+  let maxTimestampMs = Number.NEGATIVE_INFINITY;
+  for (const record of records) {
+    minTimestampMs = Math.min(minTimestampMs, record.receivedAtMs);
+    maxTimestampMs = Math.max(maxTimestampMs, record.receivedAtMs);
+  }
+
+  return Math.round((maxTimestampMs - minTimestampMs) / 1000);
+}
+
 /** Computes explicit duration metrics for a selected capture run. */
 export function computeDurationMetrics(input: {
   topOfBookRecords: readonly ParsedTopOfBookRecord[];
@@ -105,13 +122,8 @@ export function computeDurationMetrics(input: {
   }
 
   let eventWallClockSpanSeconds: number | null = null;
-  if (input.topOfBookRecords.length >= 2) {
-    const timestamps = input.topOfBookRecords.map((record) => record.receivedAtMs);
-    eventWallClockSpanSeconds = Math.round(
-      (Math.max(...timestamps) - Math.min(...timestamps)) / 1000,
-    );
-  } else if (input.topOfBookRecords.length === 1) {
-    eventWallClockSpanSeconds = 0;
+  if (input.topOfBookRecords.length > 0) {
+    eventWallClockSpanSeconds = computeEventWallClockSpanSeconds(input.topOfBookRecords);
   } else {
     warnings.push("eventWallClockSpanSeconds unavailable: no top-of-book records.");
   }

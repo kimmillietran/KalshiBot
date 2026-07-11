@@ -87,6 +87,16 @@ function countSequenceGapEpisodes(records: readonly ParsedTopOfBookRecord[]): nu
   return episodes;
 }
 
+function parseIntervalMs(interval: SuspensionInterval): { startMs: number; endMs: number } | null {
+  const startMs = Date.parse(interval.startedAt);
+  const endMs = Date.parse(interval.endedAt);
+  if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs < startMs) {
+    return null;
+  }
+
+  return { startMs, endMs };
+}
+
 /** Attributes connection events and builds timeline buckets for a selected run. */
 export async function attributeConnectionEvents(input: {
   io: CaptureHealthReconciliationIo;
@@ -114,6 +124,23 @@ export async function attributeConnectionEvents(input: {
 
   let eventsInsideSuspensionWindows = 0;
   let eventsOutsideSuspensionWindows = 0;
+
+  for (const interval of input.suspensionIntervals) {
+    const parsed = parseIntervalMs(interval);
+    if (!parsed) {
+      continue;
+    }
+
+    const firstBucketStartMs = bucketKey(parsed.startMs, bucketMs);
+    const lastBucketStartMs = bucketKey(parsed.endMs, bucketMs);
+    for (
+      let bucketStartMs = firstBucketStartMs;
+      bucketStartMs <= lastBucketStartMs;
+      bucketStartMs += bucketMs
+    ) {
+      getBucket(bucketStartMs).suspectedSuspension = true;
+    }
+  }
 
   for (const record of input.topOfBookRecords) {
     const bucket = getBucket(record.receivedAtMs);
