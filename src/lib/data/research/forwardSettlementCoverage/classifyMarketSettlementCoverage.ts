@@ -240,6 +240,7 @@ export function isBackfillCandidate(
   return (
     classification === "missing-settlement-source"
     || classification === "settlement-present-but-stale"
+    || classification === "import-failed"
   );
 }
 

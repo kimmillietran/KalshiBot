@@ -442,6 +442,64 @@ describe("forwardSettlementCoverage", () => {
     expect(summary.importedMarketCount).toBe(1);
   });
 
+  it("retries import-failed coverage entries instead of skipping them", async () => {
+    const files: Record<string, string> = {};
+    const dirs: string[] = [];
+    seedRun(files, dirs);
+    files[`data/imports/KXBTC15M/${MARKET_B}/metadata.json`] = JSON.stringify({
+      valid: false,
+      closeTime: "2026-07-11T11:30:00.000Z",
+    });
+    files[`data/imports/KXBTC15M/${MARKET_B}/import-result.json`] = JSON.stringify({
+      metadata: {
+        valid: false,
+        collectionTime: "2026-07-11T11:31:00.000Z",
+        settlementPresent: true,
+      },
+      bronzeRecords: [],
+    });
+    const io = createIo(files, dirs);
+    const runMarketImport = vi.fn(async ({ market }) => {
+      files[`data/imports/KXBTC15M/${market.marketTicker}/metadata.json`] = JSON.stringify({
+        valid: true,
+        closeTime: "2026-07-11T11:30:00.000Z",
+      });
+      files[`data/imports/KXBTC15M/${market.marketTicker}/import-result.json`] =
+        createImportResult(market.marketTicker, "no");
+      return { success: true };
+    });
+
+    const inventory = extractSelectedRunMarketInventory({
+      io,
+      captureRunDir: RUN_DIR,
+      evaluatedAt: EVALUATED_AT,
+    }).inventory.find((entry) => entry.marketTicker === MARKET_B)!;
+    const markets = [
+      classifyMarketSettlementCoverage({
+        io,
+        importsDir: "data/imports",
+        inventory,
+        evaluatedAt: EVALUATED_AT,
+        staleAfterCaptureObservation: true,
+      }),
+    ];
+
+    expect(markets[0]?.classification).toBe("import-failed");
+
+    const summary = await runForwardSettlementBackfill({
+      config: defaultConfig({ maxRetries: 1, maxConcurrency: 1 }),
+      io,
+      markets,
+      selectedRunId: RUN_ID,
+      evaluatedAt: EVALUATED_AT,
+      deps: { runMarketImport },
+    });
+
+    expect(runMarketImport).toHaveBeenCalledTimes(1);
+    expect(summary.importedMarketCount).toBe(1);
+    expect(summary.marketResults[0]?.status).toBe("imported");
+  });
+
   it("integrates M12.12 join semantics for zero-candidate selected-run coverage", async () => {
     const files: Record<string, string> = {};
     const dirs: string[] = [];
@@ -461,6 +519,28 @@ describe("forwardSettlementCoverage", () => {
     expect(report.joinIntegration.settlementKnownMarketCount).toBeGreaterThanOrEqual(1);
     expect(report.joinIntegration.marketsExcludedFromJoin.length).toBeGreaterThan(0);
     expect(files["data/research-results/forward-settlement-join-selected-run.json"]).toBeDefined();
+  });
+
+  it("preserves invalid capture tickers after a backfill-enabled report refresh", async () => {
+    const files: Record<string, string> = {};
+    const dirs: string[] = [];
+    seedRun(files, dirs);
+    const runMarketImport = vi.fn(async () => ({ success: true }));
+
+    const report = await buildForwardSettlementCoverageReport({
+      generatedAt: EVALUATED_AT,
+      config: defaultConfig({ dryRun: true }),
+      io: createIo(files, dirs),
+      runBackfill: true,
+      backfillDeps: { runMarketImport },
+    });
+
+    expect(report.backfill).not.toBeNull();
+    expect(report.summary.invalidMarketCount).toBe(1);
+    expect(report.markets.find((market) => market.marketTicker === "KXBTC15M-MOCK")?.classification)
+      .toBe("invalid-market");
+    expect(report.joinIntegration.marketsExcludedFromJoin.some((market) =>
+      market.marketTicker === "KXBTC15M-MOCK")).toBe(true);
   });
 
   it("classifies invalid markets explicitly", () => {
