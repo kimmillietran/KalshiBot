@@ -11,14 +11,14 @@ import {
   type BidSizeCoverageAuditReport,
 } from "./bidSizeCoverageAuditTypes";
 
-export function buildBidSizeCoverageAuditReport(input: {
+export async function buildBidSizeCoverageAuditReport(input: {
   generatedAt: string;
   outputPath: string;
   htmlOutputPath: string;
   config: typeof DEFAULT_BID_SIZE_COVERAGE_AUDIT_CONFIG;
   io: BidSizeCoverageAuditIo;
-}): BidSizeCoverageAuditReport {
-  const audit = auditBidSizeCoverage({ io: input.io, config: input.config });
+}): Promise<BidSizeCoverageAuditReport> {
+  const audit = await auditBidSizeCoverage({ io: input.io, config: input.config });
   return {
     generatedAt: input.generatedAt,
     outputPath: input.outputPath,

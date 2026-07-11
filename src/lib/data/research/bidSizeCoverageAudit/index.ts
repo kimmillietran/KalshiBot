@@ -1,4 +1,4 @@
-export { auditBidSizeCoverage } from "./auditBidSizeCoverage";
+export { auditBidSizeCoverage, createFilesystemBidSizeCoverageIo } from "./auditBidSizeCoverage";
 export { buildBidSizeCoverageAuditReport, serializeBidSizeCoverageAuditReport } from "./buildBidSizeCoverageAuditReport";
 export { compareRawDepthToTopOfBook, parseCapturedTopOfBookLine } from "./compareRawDepthToTopOfBook";
 export { inspectRawLadderSizes } from "./inspectRawLadderSizes";

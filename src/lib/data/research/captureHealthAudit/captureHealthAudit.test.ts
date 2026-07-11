@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 
+import { createMemoryJsonlIo } from "@/lib/data/research/jsonl";
+
 import {
   buildCaptureHealthAuditReport,
   computeCaptureHealthMetrics,
@@ -10,31 +12,22 @@ import {
   serializeCaptureHealthAuditReport,
 } from "./index";
 import { CaptureHealthAuditError } from "./captureHealthAuditTypes";
+import type { CaptureHealthAuditIo } from "./captureHealthAuditTypes";
 
-type MemoryIo = {
-  io: {
-    readFile: (path: string) => string;
-    fileExists: (path: string) => boolean;
-    isDirectory: (path: string) => boolean;
-  };
-  files: Record<string, string>;
-  dirs: Set<string>;
-};
-
-function createMemoryIo(files: Record<string, string> = {}, dirs: string[] = []): MemoryIo {
+function createCaptureHealthMemoryIo(
+  files: Record<string, string> = {},
+  dirs: string[] = [],
+): CaptureHealthAuditIo {
   const dirSet = new Set(dirs.map((dir) => dir.replaceAll("\\", "/")));
+  const jsonl = createMemoryJsonlIo(files);
 
   return {
-    files,
-    dirs: dirSet,
-    io: {
-      readFile: (path) => files[path.replaceAll("\\", "/")] ?? "",
-      fileExists: (path) => {
-        const normalized = path.replaceAll("\\", "/");
-        return normalized in files || dirSet.has(normalized);
-      },
-      isDirectory: (path) => dirSet.has(path.replaceAll("\\", "/")),
+    ...jsonl,
+    fileExists: (path) => {
+      const normalized = path.replaceAll("\\", "/");
+      return jsonl.fileExists(path) || dirSet.has(normalized);
     },
+    isDirectory: (path) => dirSet.has(path.replaceAll("\\", "/")),
   };
 }
 
@@ -80,11 +73,11 @@ function buildRunDir(prefix: string): string {
 }
 
 describe("captureHealthAudit", () => {
-  it("reports capture-empty for an empty run dir", () => {
+  it("reports capture-empty for an empty run dir", async () => {
     const runDir = buildRunDir("empty-run");
-    const { io } = createMemoryIo({}, [runDir]);
+    const io = createCaptureHealthMemoryIo({}, [runDir]);
 
-    const report = buildCaptureHealthAuditReport({
+    const report = await buildCaptureHealthAuditReport({
       generatedAt: "2026-07-09T00:00:00.000Z",
       outputPath: "out.json",
       htmlOutputPath: "out.html",
@@ -97,17 +90,17 @@ describe("captureHealthAudit", () => {
     expect(report.summary.topOfBookCount).toBe(0);
   });
 
-  it("reports capture-invalid when top-of-book is missing", () => {
+  it("reports capture-invalid when top-of-book is missing", async () => {
     const runDir = buildRunDir("missing-top");
     const rawPath = `${runDir}/raw-messages.jsonl`;
-    const { io } = createMemoryIo(
+    const io = createCaptureHealthMemoryIo(
       {
         [rawPath]: `${JSON.stringify({ marketTicker: "KXBTC15M-TEST" })}\n`,
       },
       [runDir],
     );
 
-    const report = buildCaptureHealthAuditReport({
+    const report = await buildCaptureHealthAuditReport({
       generatedAt: "2026-07-09T00:00:00.000Z",
       outputPath: "out.json",
       htmlOutputPath: "out.html",
@@ -120,11 +113,35 @@ describe("captureHealthAudit", () => {
     expect(report.summary.rawMessageCount).toBe(1);
   });
 
-  it("reports capture-too-short for a valid short smoke run", () => {
+  it("counts raw messages via streaming when capture-health has no raw count", async () => {
+    const runDir = buildRunDir("raw-count");
+    const rawPath = `${runDir}/raw-kalshi-ws.jsonl`;
+    const topPath = `${runDir}/top-of-book.jsonl`;
+    const rawLines = [
+      JSON.stringify({ marketTicker: "KXBTC15M-TEST", type: "snapshot" }),
+      JSON.stringify({ marketTicker: "KXBTC15M-TEST", type: "delta" }),
+      "{bad",
+      JSON.stringify({ marketTicker: "KXBTC15M-TEST", type: "delta-2" }),
+    ];
+    const io = createCaptureHealthMemoryIo(
+      {
+        [rawPath]: `${rawLines.join("\n")}\n`,
+        [topPath]: topOfBookLine({ receivedAtLocal: "2026-07-09T00:00:00.000Z" }),
+      },
+      [runDir],
+    );
+
+    const loaded = await loadCaptureRunArtifacts({ captureRunDir: runDir, io });
+
+    expect(loaded.rawMessageCount).toBe(3);
+    expect(loaded.rawInvalidLineCount).toBe(1);
+  });
+
+  it("reports capture-too-short for a valid short smoke run", async () => {
     const runDir = buildRunDir("short-smoke");
     const topPath = `${runDir}/top-of-book.jsonl`;
     const healthPath = `${runDir}/capture-health.json`;
-    const { io } = createMemoryIo(
+    const io = createCaptureHealthMemoryIo(
       {
         [topPath]: [
           topOfBookLine({ receivedAtLocal: "2026-07-09T00:00:00.000Z" }),
@@ -138,7 +155,7 @@ describe("captureHealthAudit", () => {
       [runDir],
     );
 
-    const report = buildCaptureHealthAuditReport({
+    const report = await buildCaptureHealthAuditReport({
       generatedAt: "2026-07-09T00:00:00.000Z",
       outputPath: "out.json",
       htmlOutputPath: "out.html",
@@ -152,7 +169,7 @@ describe("captureHealthAudit", () => {
     expect(report.summary.topOfBookCount).toBe(2);
   });
 
-  it("reports capture-gappy when p90 gap exceeds threshold", () => {
+  it("reports capture-gappy when p90 gap exceeds threshold", async () => {
     const runDir = buildRunDir("gappy-run");
     const topPath = `${runDir}/top-of-book.jsonl`;
     const healthPath = `${runDir}/capture-health.json`;
@@ -162,7 +179,7 @@ describe("captureHealthAudit", () => {
       topOfBookLine({ receivedAtLocal: "2026-07-09T01:10:00.000Z", bookState: "valid" }),
     ];
 
-    const { io } = createMemoryIo(
+    const io = createCaptureHealthMemoryIo(
       {
         [topPath]: lines.join("\n"),
         [healthPath]: JSON.stringify({
@@ -173,7 +190,7 @@ describe("captureHealthAudit", () => {
       [runDir],
     );
 
-    const report = buildCaptureHealthAuditReport({
+    const report = await buildCaptureHealthAuditReport({
       generatedAt: "2026-07-09T00:00:00.000Z",
       outputPath: "out.json",
       htmlOutputPath: "out.html",
@@ -187,7 +204,7 @@ describe("captureHealthAudit", () => {
     expect(report.summary.bookState.reconnectCount).toBe(1);
   });
 
-  it("reports capture-no-btc-spot when BTC join coverage is insufficient", () => {
+  it("reports capture-no-btc-spot when BTC join coverage is insufficient", async () => {
     const runDir = buildRunDir("no-btc");
     const topPath = `${runDir}/top-of-book.jsonl`;
     const healthPath = `${runDir}/capture-health.json`;
@@ -197,7 +214,7 @@ describe("captureHealthAudit", () => {
       }),
     );
 
-    const { io } = createMemoryIo(
+    const io = createCaptureHealthMemoryIo(
       {
         [topPath]: lines.join("\n"),
         [healthPath]: JSON.stringify({
@@ -208,7 +225,7 @@ describe("captureHealthAudit", () => {
       [runDir],
     );
 
-    const report = buildCaptureHealthAuditReport({
+    const report = await buildCaptureHealthAuditReport({
       generatedAt: "2026-07-09T00:00:00.000Z",
       outputPath: "out.json",
       htmlOutputPath: "out.html",
@@ -220,7 +237,7 @@ describe("captureHealthAudit", () => {
     expect(report.summary.verdict).toBe("capture-no-btc-spot");
   });
 
-  it("reports capture-zero-spread-suspicious when spreads are all zero", () => {
+  it("reports capture-zero-spread-suspicious when spreads are all zero", async () => {
     const runDir = buildRunDir("zero-spread");
     const topPath = `${runDir}/top-of-book.jsonl`;
     const healthPath = `${runDir}/capture-health.json`;
@@ -233,7 +250,7 @@ describe("captureHealthAudit", () => {
       }),
     );
 
-    const { io } = createMemoryIo(
+    const io = createCaptureHealthMemoryIo(
       {
         [topPath]: lines.join("\n"),
         [healthPath]: JSON.stringify({ config: { durationSeconds: 1200 } }),
@@ -241,7 +258,7 @@ describe("captureHealthAudit", () => {
       [runDir],
     );
 
-    const report = buildCaptureHealthAuditReport({
+    const report = await buildCaptureHealthAuditReport({
       generatedAt: "2026-07-09T00:00:00.000Z",
       outputPath: "out.json",
       htmlOutputPath: "out.html",
@@ -254,7 +271,7 @@ describe("captureHealthAudit", () => {
     expect(report.summary.spread.zeroSpreadShare).toBe(1);
   });
 
-  it("reports capture-research-ready for synthetic long capture", () => {
+  it("reports capture-research-ready for synthetic long capture", async () => {
     const runDir = buildRunDir("research-ready");
     const topPath = `${runDir}/top-of-book.jsonl`;
     const btcPath = `${runDir}/btc-spot.jsonl`;
@@ -273,7 +290,7 @@ describe("captureHealthAudit", () => {
       return btcSpotLine(parsed.receivedAtLocal);
     });
 
-    const { io } = createMemoryIo(
+    const io = createCaptureHealthMemoryIo(
       {
         [topPath]: topLines.join("\n"),
         [btcPath]: btcLines.join("\n"),
@@ -286,7 +303,7 @@ describe("captureHealthAudit", () => {
       [runDir],
     );
 
-    const report = buildCaptureHealthAuditReport({
+    const report = await buildCaptureHealthAuditReport({
       generatedAt: "2026-07-09T00:00:00.000Z",
       outputPath: "out.json",
       htmlOutputPath: "out.html",
@@ -345,17 +362,17 @@ describe("captureHealthAudit", () => {
     expect(metrics.btcJoin.medianKalshiToBtcDistanceMs).toBe(0);
   });
 
-  it("serializes stable JSON and HTML containing verdict", () => {
+  it("serializes stable JSON and HTML containing verdict", async () => {
     const runDir = buildRunDir("html-run");
     const topPath = `${runDir}/top-of-book.jsonl`;
-    const { io } = createMemoryIo(
+    const io = createCaptureHealthMemoryIo(
       {
         [topPath]: topOfBookLine({ receivedAtLocal: "2026-07-09T00:00:00.000Z" }),
       },
       [runDir],
     );
 
-    const report = buildCaptureHealthAuditReport({
+    const report = await buildCaptureHealthAuditReport({
       generatedAt: "2026-07-09T00:00:00.000Z",
       outputPath: "out.json",
       htmlOutputPath: "out.html",
@@ -373,18 +390,18 @@ describe("captureHealthAudit", () => {
     expect(html).toContain("Executive Verdict");
   });
 
-  it("throws for missing capture dir", () => {
-    const { io } = createMemoryIo();
+  it("throws for missing capture dir", async () => {
+    const io = createCaptureHealthMemoryIo();
 
-    expect(() =>
+    await expect(
       loadCaptureRunArtifacts({
         captureRunDir: "data/live-capture/missing",
         io,
       }),
-    ).toThrow(CaptureHealthAuditError);
+    ).rejects.toThrow(CaptureHealthAuditError);
   });
 
-  it("evaluates per-market breakdown segments", () => {
+  it("evaluates per-market breakdown segments", async () => {
     const runDir = buildRunDir("segments");
     const topPath = `${runDir}/top-of-book.jsonl`;
     const lines = [
@@ -393,9 +410,9 @@ describe("captureHealthAudit", () => {
       topOfBookLine({ marketTicker: "MKT-B", receivedAtLocal: "2026-07-09T00:02:00.000Z" }),
     ];
 
-    const loaded = loadCaptureRunArtifacts({
+    const loaded = await loadCaptureRunArtifacts({
       captureRunDir: runDir,
-      io: createMemoryIo({ [topPath]: lines.join("\n") }, [runDir]).io,
+      io: createCaptureHealthMemoryIo({ [topPath]: lines.join("\n") }, [runDir]),
     });
 
     const metrics = computeCaptureHealthMetrics({

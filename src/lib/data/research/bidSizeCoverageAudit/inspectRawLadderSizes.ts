@@ -95,11 +95,11 @@ function bestBid(levels: SideLadder) {
   return best;
 }
 
-export function inspectRawLadderSizes(input: {
-  lines: readonly string[];
+export async function inspectRawLadderSizes(input: {
+  lines: AsyncIterable<string>;
   maxMessages: number;
   marketTicker?: string | null;
-}): RawLadderSizeInventory {
+}): Promise<RawLadderSizeInventory> {
   const yesLadder: SideLadder = new Map();
   const noLadder: SideLadder = new Map();
   let messagesScanned = 0;
@@ -118,7 +118,7 @@ export function inspectRawLadderSizes(input: {
   let rawBestBidSizeNonzeroCount = 0;
   let rawBestBidSizeBelowParityMinCount = 0;
 
-  for (const line of input.lines) {
+  for await (const line of input.lines) {
     const trimmed = line.trim();
     if (!trimmed) {
       continue;

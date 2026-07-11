@@ -1,10 +1,35 @@
 import { describe, expect, it } from "vitest";
 
+import { createMemoryJsonlIo } from "@/lib/data/research/jsonl";
+
 import { runCaptureHealthAuditCommand } from "./buildCaptureHealthAudit";
 import {
   parseCaptureRunDirFromArgv,
   parseThresholdOverridesFromArgv,
 } from "./buildCaptureHealthAuditTypes";
+
+function createCaptureHealthCommandIo(
+  files: Record<string, string>,
+  dirs: string[],
+) {
+  const dirSet = new Set(dirs.map((dir) => dir.replaceAll("\\", "/")));
+  const jsonl = createMemoryJsonlIo(files);
+
+  return {
+    ...jsonl,
+    fileExists: (path: string) => {
+      const normalized = path.replaceAll("\\", "/");
+      return jsonl.fileExists(path) || dirSet.has(normalized);
+    },
+    isDirectory: (path: string) => dirSet.has(path.replaceAll("\\", "/")),
+    writeStdout: () => {},
+    writeStderr: () => {},
+    writeFile: (path: string, data: string) => {
+      files[path.replaceAll("\\", "/")] = data;
+    },
+    mkdirSync: () => {},
+  };
+}
 
 describe("buildCaptureHealthAudit CLI", () => {
   it("requires capture run dir", () => {
@@ -29,7 +54,7 @@ describe("buildCaptureHealthAudit CLI", () => {
     });
   });
 
-  it("runs CLI smoke test against synthetic capture dir", () => {
+  it("runs CLI smoke test against synthetic capture dir", async () => {
     const runDir = "data/live-capture/kalshi-ws-spike/cli-smoke";
     const topPath = `${runDir}/top-of-book.jsonl`;
     const files: Record<string, string> = {
@@ -50,27 +75,15 @@ describe("buildCaptureHealthAudit CLI", () => {
       }),
       [`${runDir}/capture-health.json`]: JSON.stringify({ config: { durationSeconds: 5 } }),
     };
-    const dirs = new Set([runDir]);
     const stdout: string[] = [];
+    const io = createCaptureHealthCommandIo(files, [runDir]);
+    io.writeStdout = (text) => {
+      stdout.push(text);
+    };
 
-    const exitCode = runCaptureHealthAuditCommand(
+    const exitCode = await runCaptureHealthAuditCommand(
       ["--capture-run-dir", runDir, "--output", "tmp/capture-health-audit.json"],
-      {
-        readFile: (path) => files[path.replaceAll("\\", "/")] ?? "",
-        fileExists: (path) => {
-          const normalized = path.replaceAll("\\", "/");
-          return normalized in files || dirs.has(normalized);
-        },
-        isDirectory: (path) => dirs.has(path.replaceAll("\\", "/")),
-        writeStdout: (text) => {
-          stdout.push(text);
-        },
-        writeStderr: () => {},
-        writeFile: (path, data) => {
-          files[path.replaceAll("\\", "/")] = data;
-        },
-        mkdirSync: () => {},
-      },
+      io,
       { generatedAt: "2026-07-09T00:00:00.000Z" },
     );
 

@@ -1,3 +1,5 @@
+import type { JsonlIo } from "@/lib/data/research/jsonl";
+
 export const CAPTURE_HEALTH_AUDIT_FILENAME = "capture-health-audit.json";
 export const DEFAULT_CAPTURE_HEALTH_AUDIT_OUTPUT_PATH =
   "data/research-results/capture-health-audit.json";
@@ -101,9 +103,7 @@ export type ParsedMarketMetadataRecord = {
   eventTicker: string | null;
 };
 
-export type CaptureHealthAuditIo = {
-  readFile: (path: string) => string;
-  fileExists: (path: string) => boolean;
+export type CaptureHealthAuditIo = JsonlIo & {
   isDirectory: (path: string) => boolean;
 };
 

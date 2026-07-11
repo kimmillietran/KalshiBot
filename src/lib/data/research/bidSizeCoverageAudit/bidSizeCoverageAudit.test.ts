@@ -5,6 +5,8 @@ import {
   hasExecutableBidPairSize,
   shouldRemoveOrderbookLevelSize,
 } from "@/lib/data/live/forwardQuoteCapture/orderbookLevelSize";
+import { createMemoryJsonlIo } from "@/lib/data/research/jsonl";
+
 import { auditBidSizeCoverage } from "./auditBidSizeCoverage";
 import { buildBidSizeCoverageAuditReport } from "./buildBidSizeCoverageAuditReport";
 import { compareRawDepthToTopOfBook, parseCapturedTopOfBookLine } from "./compareRawDepthToTopOfBook";
@@ -62,12 +64,20 @@ function wrapRaw(message: unknown, receivedAtLocal: string) {
   });
 }
 
-function createIo(files: Record<string, string>): BidSizeCoverageAuditIo {
+async function* linesFromContent(content: string): AsyncIterable<string> {
+  for (const line of content.split(/\r?\n/)) {
+    yield line;
+  }
+}
+
+function createBidSizeCoverageIo(files: Record<string, string>): BidSizeCoverageAuditIo {
   const normalized = Object.fromEntries(
     Object.entries(files).map(([path, content]) => [path.replaceAll("\\", "/"), content]),
   );
+  const jsonl = createMemoryJsonlIo(normalized);
+
   return {
-    readFile: (path) => normalized[path.replaceAll("\\", "/")] ?? "",
+    ...jsonl,
     fileExists: (path) => {
       const key = path.replaceAll("\\", "/");
       if (key in normalized) {
@@ -75,6 +85,7 @@ function createIo(files: Record<string, string>): BidSizeCoverageAuditIo {
       }
       return Object.keys(normalized).some((filePath) => filePath.startsWith(`${key}/`));
     },
+    createLineIterable: (path) => linesFromContent(normalized[path.replaceAll("\\", "/")] ?? ""),
   };
 }
 
@@ -122,9 +133,9 @@ describe("orderbookLevelSize", () => {
 });
 
 describe("inspectRawLadderSizes", () => {
-  it("inventories raw snapshot and delta size fields", () => {
-    const inventory = inspectRawLadderSizes({
-      lines: buildFixture()[`${RUN_DIR}/raw-kalshi-ws.jsonl`].split("\n").filter(Boolean),
+  it("inventories raw snapshot and delta size fields", async () => {
+    const inventory = await inspectRawLadderSizes({
+      lines: linesFromContent(buildFixture()[`${RUN_DIR}/raw-kalshi-ws.jsonl`]),
       maxMessages: 100,
     });
     expect(inventory.snapshotLadderEntries).toBeGreaterThan(0);
@@ -134,9 +145,9 @@ describe("inspectRawLadderSizes", () => {
 });
 
 describe("replayBidSizeState", () => {
-  it("tracks replay best bid sizes and zero-size removals", () => {
-    const { state, points } = replayBidSizeState({
-      lines: buildFixture()[`${RUN_DIR}/raw-kalshi-ws.jsonl`].split("\n").filter(Boolean),
+  it("tracks replay best bid sizes and zero-size removals", async () => {
+    const { state, points } = await replayBidSizeState({
+      lines: linesFromContent(buildFixture()[`${RUN_DIR}/raw-kalshi-ws.jsonl`]),
       maxMessages: 100,
       runId: "run-size-audit",
     });
@@ -147,9 +158,9 @@ describe("replayBidSizeState", () => {
 });
 
 describe("compareRawDepthToTopOfBook", () => {
-  it("matches top-of-book sizes when replay agrees", () => {
-    const { points } = replayBidSizeState({
-      lines: buildFixture()[`${RUN_DIR}/raw-kalshi-ws.jsonl`].split("\n").filter(Boolean),
+  it("matches top-of-book sizes when replay agrees", async () => {
+    const { points } = await replayBidSizeState({
+      lines: linesFromContent(buildFixture()[`${RUN_DIR}/raw-kalshi-ws.jsonl`]),
       maxMessages: 100,
       runId: "run-size-audit",
     });
@@ -180,9 +191,9 @@ describe("compareRawDepthToTopOfBook", () => {
 });
 
 describe("auditBidSizeCoverage", () => {
-  it("produces summary with size loss classification", () => {
-    const result = auditBidSizeCoverage({
-      io: createIo(buildFixture()),
+  it("produces summary with size loss classification", async () => {
+    const result = await auditBidSizeCoverage({
+      io: createBidSizeCoverageIo(buildFixture()),
       config: {
         captureRunDir: RUN_DIR,
         marketTicker: null,
@@ -192,14 +203,15 @@ describe("auditBidSizeCoverage", () => {
     });
     expect(result.summary.messagesScanned).toBeGreaterThan(0);
     expect(result.summary.recommendedNextFix).not.toBe("unknown");
+    expect(result.summary.comparisonMode).toBe("full");
     expect(result.rawInventory.rawBestBidSizeNonzeroCount).toBeGreaterThan(0);
   });
 
-  it("skips malformed raw JSONL with warning", () => {
+  it("skips malformed raw JSONL with warning", async () => {
     const files = buildFixture();
     files[`${RUN_DIR}/raw-kalshi-ws.jsonl`] += "{bad\n";
-    const result = auditBidSizeCoverage({
-      io: createIo(files),
+    const result = await auditBidSizeCoverage({
+      io: createBidSizeCoverageIo(files),
       config: {
         captureRunDir: RUN_DIR,
         marketTicker: null,
@@ -208,6 +220,49 @@ describe("auditBidSizeCoverage", () => {
       },
     });
     expect(result.warnings.some((warning) => warning.includes("malformed"))).toBe(true);
+  });
+
+  it("does not recommend stale dust epsilon fix", async () => {
+    const result = await auditBidSizeCoverage({
+      io: createBidSizeCoverageIo(buildFixture()),
+      config: {
+        captureRunDir: RUN_DIR,
+        marketTicker: null,
+        maxRawMessages: Number.POSITIVE_INFINITY,
+        sampleLimit: 10,
+      },
+    });
+
+    expect(result.summary.recommendedNextFix).not.toBe("apply-dust-level-epsilon-in-capture");
+  });
+
+  it("streams large synthetic raw JSONL without loading full file into memory", async () => {
+    const files = buildFixture();
+    const repeatedLine = wrapRaw(snapshot(1, "0.5400", "0.4600"), "2026-07-10T00:00:01.000Z");
+    files[`${RUN_DIR}/raw-kalshi-ws.jsonl`] = `${Array.from({ length: 5_000 }, () => repeatedLine).join("\n")}\n`;
+
+    const io = createBidSizeCoverageIo(files);
+    let iterableCalls = 0;
+    const originalCreateLineIterable = io.createLineIterable;
+    io.createLineIterable = (path) => {
+      iterableCalls += 1;
+      return originalCreateLineIterable(path);
+    };
+
+    const result = await auditBidSizeCoverage({
+      io,
+      config: {
+        captureRunDir: RUN_DIR,
+        marketTicker: null,
+        maxRawMessages: 100,
+        sampleLimit: 10,
+      },
+    });
+
+    expect(iterableCalls).toBe(2);
+    expect(result.summary.comparisonMode).toBe("bounded-sample");
+    expect(result.summary.messagesScanned).toBe(100);
+    expect(result.warnings.some((warning) => warning.includes("maxRawMessages"))).toBe(true);
   });
 });
 
@@ -255,8 +310,8 @@ describe("parseBidSizeCoverageAuditArgv", () => {
 });
 
 describe("buildBidSizeCoverageAuditReport", () => {
-  it("serializes JSON and HTML", () => {
-    const report = buildBidSizeCoverageAuditReport({
+  it("serializes JSON and HTML", async () => {
+    const report = await buildBidSizeCoverageAuditReport({
       generatedAt: "2026-07-10T12:00:00.000Z",
       outputPath: "data/research-results/bid-size-coverage-audit.json",
       htmlOutputPath: "data/reports/bid-size-coverage-audit.html",
@@ -266,7 +321,7 @@ describe("buildBidSizeCoverageAuditReport", () => {
         maxRawMessages: Number.POSITIVE_INFINITY,
         sampleLimit: 10,
       },
-      io: createIo(buildFixture()),
+      io: createBidSizeCoverageIo(buildFixture()),
     });
     const html = serializeBidSizeCoverageAuditHtml(report);
     expect(html).toContain("Bid Size Coverage");
