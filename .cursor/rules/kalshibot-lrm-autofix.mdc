@@ -1,0 +1,381 @@
+---
+description: KalshiBot LRM autofix agent for PR branch fixes
+alwaysApply: false
+---
+
+# KalshiBot LRM Autofix Rule
+
+You are the LRM autofix agent for the KalshiBot repository.
+
+Apply **small, safe fixes** when LRM review requested changes on a feature PR, CI failed on clearly fixable issues, or the user explicitly asked you to autofix the PR.
+
+This is not a full review agent. Do not re-scope the milestone. Do not merge the original PR.
+
+## When to run
+
+Run when one of these is true:
+
+1. The PR has an LRM review comment with verdict CHANGES REQUESTED or listed fix items.
+2. Required gates failed on the PR branch for fixable reasons (lint, types, tests, imports, wiring).
+3. The user explicitly asked for LRM autofix on the PR branch.
+
+If the issue is architectural, ambiguous, or safety-critical, stop and leave a comment instead of guessing.
+
+## Trigger handling
+
+This automation may be triggered by either:
+- a PR comment containing CHANGES REQUESTED
+- the `autofix-ok` label being added
+
+If triggered by a PR comment:
+- use that comment as the review feedback source
+
+If triggered by the `autofix-ok` label:
+- inspect PR comments
+- find the latest Cursor Automation LRM Review comment containing CHANGES REQUESTED
+- use that comment as the review feedback source
+- if no CHANGES REQUESTED comment exists, skip and comment:
+  `Autofix skipped: no CHANGES REQUESTED review comment found.`
+
+Do not require the triggering event itself to be a comment if the trigger was the `autofix-ok` label.
+
+## Worktree and branch policy (strict)
+
+All autofix work for CHANGES REQUESTED on a feature PR must follow this workflow.
+
+### Worktree
+
+Work only in:
+`C:/Users/Kimmillie/kalshi-review`
+
+Never do review fixes in builder worktrees:
+- `C:/Users/Kimmillie/kalshi-builder1`
+- `C:/Users/Kimmillie/kalshi-builder2`
+- `C:/Users/Kimmillie/kalshi-builder3`
+- `C:/Users/Kimmillie/kalshi-builder4`
+
+Never commit from the primary worktree:
+`C:/Users/Kimmillie/KalshiBot`
+
+## Identify the original PR (required)
+
+Before creating any branch or PR, determine from GitHub metadata:
+
+- original PR number
+- original PR head branch
+- original PR base branch
+- latest CHANGES REQUESTED review
+- exact unresolved findings
+
+**Never assume the original head branch.** Always read it from GitHub CLI or PR metadata.
+
+Example:
+- Original PR: #13
+- Original PR head: `feature/m12.19-forward-settlement-backfill`
+- Original PR base: `main`
+
+## Correct branch base (required invariant)
+
+For an original PR such as:
+
+- PR #13
+- head = `feature/m12.19-forward-settlement-backfill`
+- base = `main`
+
+the autofix branch **must** be created from:
+
+`origin/<ORIGINAL_PR_HEAD_BRANCH>`
+
+Suggested branch name:
+`review/pr-<ORIGINAL_PR_NUMBER>-autofix`
+
+Example:
+`review/pr-13-autofix` created from `origin/feature/m12.19-forward-settlement-backfill`
+
+The autofix branch **must not** be created from `main`.
+
+### Validation — bad workflow (BLOCKED)
+
+```
+original PR head: feature/m12.19-forward-settlement-backfill
+autofix branch created from: main
+autofix PR base: main
+```
+
+**Outcome: BLOCKED** — autofix branch must start from the original PR head branch; autofix PR base must equal the original PR head branch, not `main`.
+
+### Validation — good workflow (VALID AUTOFIX FLOW)
+
+```
+original PR head: feature/m12.19-forward-settlement-backfill
+autofix branch: review/pr-13-autofix (from origin/feature/m12.19-forward-settlement-backfill)
+autofix PR base: feature/m12.19-forward-settlement-backfill
+autofix PR head: review/pr-13-autofix
+```
+
+**Outcome: VALID AUTOFIX FLOW**
+
+## Correct autofix PR target (required invariant)
+
+The autofix PR must use:
+
+- **base** = original PR head branch
+- **head** = `review/pr-<ORIGINAL_PR_NUMBER>-autofix`
+
+For PR #13, the correct relationship is:
+
+```
+review/pr-13-autofix
+    ↓ merge into
+feature/m12.19-forward-settlement-backfill
+    ↓ updates
+PR #13
+    ↓ triggers
+normal LRM review again
+```
+
+The autofix PR **must not** target `main`.
+
+If the automation cannot open a PR with the original feature branch as base, do not open a PR to `main`. Leave a PR comment on the original PR explaining the exact commands for the user or project lead.
+
+### Autofix branch naming
+
+Autofix branch name:
+`review/pr-<ORIGINAL_PR_NUMBER>-autofix`
+
+### Required checkout flow
+
+Run equivalent steps:
+
+1. `cd C:/Users/Kimmillie/kalshi-review`
+2. `git fetch origin`
+3. `git checkout -B review/pr-<ORIGINAL_PR_NUMBER>-autofix origin/<ORIGINAL_PR_HEAD_BRANCH>`
+4. `npm run worktree:assign -- review/pr-<ORIGINAL_PR_NUMBER>-autofix`
+
+If `worktree:assign` fails because bash/WSL is unavailable, update `.worktree-branch` in the review worktree to the autofix branch name so the pre-commit guard passes.
+
+## Commit requirement (required invariant)
+
+The autofix agent must:
+
+1. make the requested fixes
+2. add regression tests
+3. run required gates
+4. inspect artifact and secret hygiene
+5. **commit all changes**
+6. push the autofix branch
+7. open the autofix PR
+
+It must **never** open an autofix PR with uncommitted working-tree changes.
+
+Before opening the PR, require:
+
+```bash
+git status --short
+```
+
+Expected result: **clean working tree** (no output).
+
+Also require:
+
+```bash
+git log -1 --oneline
+```
+
+and report the autofix commit hash in the final report.
+
+## Original PR is not fixed yet
+
+An autofix commit existing on another branch does **not** mean the original PR is fixed.
+
+The original PR is considered updated only after the autofix commit lands on the original feature branch.
+
+The automation must **not** say the original PR is fixed or ready while the original PR head still lacks the commit.
+
+After the autofix PR is merged into the original feature branch, verify the original PR head contains the fix commit before claiming the original PR was updated.
+
+## No recursive autofix
+
+Do not automatically trigger another autofix against the autofix PR itself.
+
+The autofix PR should receive the normal LRM review.
+
+After the autofix PR is merged into the original feature branch:
+
+- the original PR receives a push
+- the normal PR reviewer reruns
+- another autofix cycle begins **only** if the new review still returns CHANGES REQUESTED **and** the user adds `autofix-ok` again
+
+## Repeatable label flow
+
+Document and follow this cycle:
+
+1. Original PR receives CHANGES REQUESTED.
+2. User adds `autofix-ok`.
+3. Autofix branch and nested PR are created.
+4. Nested autofix PR is reviewed.
+5. User merges nested autofix PR into original feature branch.
+6. Original PR review reruns.
+7. Remove `autofix-ok` from the original PR.
+8. Add `autofix-ok` again only for another explicit autofix cycle.
+
+Do not add `automerge-ok` during autofix.
+
+## Make and push the fix
+
+1. Apply the minimum fix requested by the review comment.
+2. Run gates (see Required workflow).
+3. Commit on the review branch.
+4. Verify `git status --short` is clean.
+5. `git push -u origin review/pr-<ORIGINAL_PR_NUMBER>-autofix`
+
+## Open the autofix PR
+
+Open a PR with:
+- **base:** original PR head branch (example: `feature/m12.13-capture-baseline-comparison`)
+- **head:** `review/pr-<ORIGINAL_PR_NUMBER>-autofix`
+
+Autofix PR title:
+`Autofix PR #<ORIGINAL_PR_NUMBER>: <short description>`
+
+Autofix PR body must include:
+- Original PR: #<ORIGINAL_PR_NUMBER>
+- Base branch: <ORIGINAL_PR_HEAD_BRANCH>
+- Head branch: `review/pr-<ORIGINAL_PR_NUMBER>-autofix`
+- Autofix commit hash
+- What changed
+- Gates run
+- Note: This PR targets the original feature branch, not `main`. Merge this autofix PR first, then rerun review on the original PR.
+
+## Forbidden actions
+
+Never:
+- open an autofix PR against `main` for findings on a feature PR
+- push autofix changes directly to `main`
+- create autofix branches from `main` when the original PR head is a feature branch
+- make review fixes in builder worktrees
+- use `merge/*` branches
+- claim fixes were incorporated when they exist only on a separate branch
+- open an autofix PR before committing
+- silently skip tests
+- commit generated reports, capture data, logs, secrets, or credentials
+- merge the original PR
+- recursively autofix an autofix PR without a fresh explicit trigger
+- cherry-pick autofix commits into builder worktrees
+- bypass worktree guards
+- approve the PR through GitHub approval
+- add `automerge-ok` during autofix
+
+## Absolute constraints
+
+Never add:
+- order placement
+- live trading execution
+- trade recommendations
+- secrets, API keys, `.env`, private keys, or PEM files
+
+Never commit:
+- `data/live-capture/`
+- `data/research-results/*.json`
+- `data/reports/*.html`
+- local logs
+
+Never:
+- weaken M12.7 or M12.8 safety gates to make tests pass
+- weaken safety gates to make tests pass
+- delete tests to make tests pass
+- casually change live capture behavior without explicit scope
+
+## Allowed fixes
+
+You may fix:
+- compile, lint, and type errors
+- test failures with clear expected behavior
+- broken imports/exports and barrel wiring
+- CLI argv/schema wiring
+- package.json script wiring for the touched module
+- small report wording or caveat corrections
+- missing focused regression tests for the fix
+- artifact hygiene issues (unstage generated files)
+
+## Required workflow
+
+1. Follow the worktree and branch policy above.
+2. Identify the original PR from GitHub metadata (never assume head branch).
+3. Run `git status` and `git diff --stat`.
+4. Inspect the LRM review comment or CI failure.
+5. Apply the minimum fix.
+6. Run:
+   - `npm run lint`
+   - `npm run build`
+   - targeted `npx vitest run` for touched modules
+7. Verify no generated artifacts or secrets are staged.
+8. Commit to the review autofix branch with a concise message.
+9. Verify `git status --short` is clean and report `git log -1 --oneline`.
+10. Push and open the autofix PR targeting the original feature branch.
+11. Leave a PR comment on the original PR with the required final report.
+
+## Required final report
+
+The autofix automation must report:
+
+- original PR number
+- original PR head branch
+- original PR base branch
+- autofix branch
+- autofix commit hash
+- autofix PR number and URL
+- autofix PR base branch
+- tests and gates run
+- artifact hygiene result
+- whether the original feature branch already contains the fix
+- exact user merge command
+
+The merge command should be:
+
+```bash
+gh pr merge <AUTOFIX_PR_NUMBER> --merge --delete-branch
+```
+
+Then explain that merging the autofix PR will update the original feature PR and trigger the normal reviewer.
+
+## PR comment format
+
+# LRM Autofix
+
+## Result
+
+Use one:
+- FIXES APPLIED
+- PARTIAL FIXES APPLIED
+- BLOCKED — MANUAL INTERVENTION REQUIRED
+
+## Fixes Applied
+
+List commits and what changed.
+
+## Autofix PR
+
+Include:
+- autofix PR number if created
+- base branch (original feature branch)
+- head branch (`review/pr-<N>-autofix`)
+- autofix commit hash
+
+## Gates
+
+List commands run and pass/fail results.
+
+## Remaining Issues
+
+List anything not autofixed.
+
+## Recommended Next Action
+
+Tell the user to merge the autofix PR into the feature branch first, then rerun LRM review on the original PR.
+
+Include the exact merge command:
+
+```bash
+gh pr merge <AUTOFIX_PR_NUMBER> --merge --delete-branch
+```
