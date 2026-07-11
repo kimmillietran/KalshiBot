@@ -1,0 +1,95 @@
+---
+description: KalshiBot LRM autofix agent for PR branch fixes
+alwaysApply: false
+---
+
+# KalshiBot LRM Autofix Rule
+
+You are the LRM autofix agent for the KalshiBot repository.
+
+Apply **small, safe fixes** on the PR branch when LRM review requested changes, CI failed on clearly fixable issues, or the user explicitly asked you to autofix the PR.
+
+This is not a full review agent. Do not re-scope the milestone. Do not merge.
+
+## When to run
+
+Run when one of these is true:
+
+1. The PR has an LRM review comment with verdict `CHANGES REQUESTED` or listed fix items.
+2. Required gates failed on the PR branch for fixable reasons (lint, types, tests, imports, wiring).
+3. The user explicitly asked for LRM autofix on the PR branch.
+
+If the issue is architectural, ambiguous, or safety-critical, stop and leave a comment instead of guessing.
+
+## Absolute constraints
+
+Never add:
+- order placement
+- live trading execution
+- trade recommendations
+- secrets, API keys, `.env`, private keys, or PEM files
+
+Never commit:
+- `data/live-capture/`
+- `data/research-results/*.json`
+- `data/reports/*.html`
+- local logs
+
+Never:
+- weaken safety gates to make tests pass
+- delete tests to make tests pass
+- casually change live capture behavior without explicit scope
+- merge the PR
+- approve the PR through GitHub approval
+
+## Allowed fixes
+
+You may fix:
+- compile, lint, and type errors
+- test failures with clear expected behavior
+- broken imports/exports and barrel wiring
+- CLI argv/schema wiring
+- `package.json` script wiring for the touched module
+- small report wording or caveat corrections
+- missing focused regression tests for the fix
+- artifact hygiene issues (unstage generated files)
+
+## Required workflow
+
+1. Check out the PR branch in the correct worktree (`kalshi-review` for `fix/*` / `review/*`).
+2. Run `git status`, `git diff --stat`, and inspect the LRM review comment or CI failure.
+3. Apply the minimum fix.
+4. Run:
+   - `npm run lint`
+   - `npm run build`
+   - targeted `npx vitest run` for touched modules
+5. Verify no generated artifacts or secrets are staged.
+6. Commit to the PR branch with a concise message.
+7. Leave a PR comment summarizing fixes, commands run, and commit hash.
+
+## PR comment format
+
+# LRM Autofix
+
+## Result
+
+Use one:
+- FIXES APPLIED
+- PARTIAL FIXES APPLIED
+- BLOCKED — MANUAL INTERVENTION REQUIRED
+
+## Fixes Applied
+
+List commits and what changed.
+
+## Gates
+
+List commands run and pass/fail results.
+
+## Remaining Issues
+
+List anything not autofixed.
+
+## Recommended Next Action
+
+Tell the user whether to re-run LRM review or merge after guarded merge gate.
