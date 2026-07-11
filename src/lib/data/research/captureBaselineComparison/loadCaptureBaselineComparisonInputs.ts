@@ -4,6 +4,7 @@ import type {
   CaptureBaselineComparisonIo,
   CaptureBaselineSnapshot,
 } from "./captureBaselineComparisonTypes";
+import { hasExecutableBidPairSize } from "@/lib/data/live/forwardQuoteCapture/orderbookLevelSize";
 import { DEFAULT_CONFIGURED_BASELINE } from "./captureBaselineComparisonTypes";
 import {
   isRecord,
@@ -122,7 +123,6 @@ function scanRunTopOfBookMetrics(
   let validBookCount = 0;
   let bidPairWithSize = 0;
   let bidPairWithoutSize = 0;
-  let bidSizePresent = 0;
   const markets = new Set<string>();
 
   for (const line of io.readFile(topOfBookPath).split(/\r?\n/)) {
@@ -156,17 +156,8 @@ function scanRunTopOfBookMetrics(
     const yesSize = readNumber(record.yesBestBidSize);
     const noSize = readNumber(record.noBestBidSize);
 
-    if (yesSize !== null || noSize !== null) {
-      bidSizePresent += 1;
-    }
-
     if (yesBid !== null && noBid !== null) {
-      if (
-        yesSize !== null
-        && noSize !== null
-        && yesSize >= 1
-        && noSize >= 1
-      ) {
+      if (hasExecutableBidPairSize(yesSize, noSize)) {
         bidPairWithSize += 1;
       } else {
         bidPairWithoutSize += 1;
@@ -178,7 +169,7 @@ function scanRunTopOfBookMetrics(
     topOfBookCount,
     bidPairWithSizeCount: bidPairWithSize,
     bidPairWithoutSizeCount: bidPairWithoutSize,
-    bidSizeCoverageShare: safeShare(bidSizePresent, topOfBookCount),
+    bidSizeCoverageShare: safeShare(bidPairWithSize, topOfBookCount),
     validBookShare: safeShare(validBookCount, topOfBookCount),
     marketCount: markets.size,
   };

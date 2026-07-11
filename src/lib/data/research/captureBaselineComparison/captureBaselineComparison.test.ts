@@ -62,14 +62,17 @@ function topOfBookLine(input: {
   yesBidSize?: number | null;
   noBidSize?: number | null;
 }): string {
+  const yesBestBidSize = Object.hasOwn(input, "yesBidSize") ? input.yesBidSize : 10;
+  const noBestBidSize = Object.hasOwn(input, "noBidSize") ? input.noBidSize : 10;
+
   return JSON.stringify({
     marketTicker: "KXBTC15M-TEST",
     receivedAtLocal: input.receivedAtLocal,
     bookState: "valid",
     yesBestBidCents: input.yesBid ?? 50,
     noBestBidCents: input.noBid ?? 50,
-    yesBestBidSize: input.yesBidSize ?? 10,
-    noBestBidSize: input.noBidSize ?? 10,
+    yesBestBidSize,
+    noBestBidSize,
   });
 }
 
@@ -245,6 +248,57 @@ describe("captureBaselineComparison", () => {
     expect(comparison.runId).toBe("run-new");
     expect(comparison.bidPairWithSizeCount).toBe(2);
     expect(comparison.captureHealthVerdict).toBe("capture-research-ready");
+  });
+
+  it("uses executable bid-pair coverage for run-derived bid-size share", () => {
+    const files = {
+      [`${INPUT_DIR}/run-new/capture-health.json`]: JSON.stringify({
+        runId: "run-new",
+        generatedAt: "2026-07-10T00:00:00.000Z",
+      }),
+      [`${INPUT_DIR}/run-new/top-of-book.jsonl`]: [
+        topOfBookLine({
+          receivedAtLocal: "2026-07-10T00:00:00.000Z",
+          yesBidSize: 5,
+          noBidSize: 5,
+        }),
+        topOfBookLine({
+          receivedAtLocal: "2026-07-10T00:00:01.000Z",
+          yesBidSize: 5,
+          noBidSize: null,
+        }),
+        topOfBookLine({
+          receivedAtLocal: "2026-07-10T00:00:02.000Z",
+          yesBidSize: 0.5,
+          noBidSize: 5,
+        }),
+        topOfBookLine({
+          receivedAtLocal: "2026-07-10T00:00:03.000Z",
+          yesBidSize: null,
+          noBidSize: null,
+        }),
+      ].join("\n"),
+    };
+
+    const io = buildMemoryIo(files);
+    const loaded = loadCaptureBaselineComparisonInputs({
+      config: createCaptureBaselineComparisonConfig({ forwardQuotesDir: INPUT_DIR }),
+      io,
+    });
+    const comparison = buildComparisonSnapshot({
+      config: createCaptureBaselineComparisonConfig({
+        forwardQuotesDir: INPUT_DIR,
+        useLatestComparisonRun: true,
+      }),
+      artifacts: {},
+      runs: loaded.runs,
+      io,
+    });
+
+    expect(comparison.topOfBookCount).toBe(4);
+    expect(comparison.bidPairWithSizeCount).toBe(1);
+    expect(comparison.bidPairWithoutSizeCount).toBe(3);
+    expect(comparison.bidSizeCoverageShare).toBe(0.25);
   });
 
   it("uses explicit baseline and comparison run selection", () => {
