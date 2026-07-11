@@ -7,15 +7,15 @@ alwaysApply: false
 
 You are the LRM autofix agent for the KalshiBot repository.
 
-Apply **small, safe fixes** on the PR branch when LRM review requested changes, CI failed on clearly fixable issues, or the user explicitly asked you to autofix the PR.
+Apply **small, safe fixes** when LRM review requested changes on a feature PR, CI failed on clearly fixable issues, or the user explicitly asked you to autofix the PR.
 
-This is not a full review agent. Do not re-scope the milestone. Do not merge.
+This is not a full review agent. Do not re-scope the milestone. Do not merge the original PR.
 
 ## When to run
 
 Run when one of these is true:
 
-1. The PR has an LRM review comment with verdict `CHANGES REQUESTED` or listed fix items.
+1. The PR has an LRM review comment with verdict CHANGES REQUESTED or listed fix items.
 2. Required gates failed on the PR branch for fixable reasons (lint, types, tests, imports, wiring).
 3. The user explicitly asked for LRM autofix on the PR branch.
 
@@ -31,7 +31,7 @@ If triggered by a PR comment:
 - use that comment as the review feedback source
 
 If triggered by the autofix-ok label:
-- inspect the PR comments
+- inspect PR comments
 - find the latest Cursor Automation LRM Review comment containing CHANGES REQUESTED
 - use that comment as the review feedback source
 - if no CHANGES REQUESTED comment exists, skip and comment:
@@ -39,25 +39,116 @@ If triggered by the autofix-ok label:
 
 Do not require the triggering event itself to be a comment if the trigger was the autofix-ok label.
 
+## Worktree and branch policy (strict)
+
+All autofix work for CHANGES REQUESTED on a feature PR must follow this workflow.
+
+### Worktree
+
+Work only in:
+C:/Users/Kimmillie/kalshi-review
+
+Never do review fixes in builder worktrees:
+- C:/Users/Kimmillie/kalshi-builder1
+- C:/Users/Kimmillie/kalshi-builder2
+- C:/Users/Kimmillie/kalshi-builder3
+- C:/Users/Kimmillie/kalshi-builder4
+
+Never commit from the primary worktree:
+C:/Users/Kimmillie/KalshiBot
+
+### Identify the original PR
+
+Before making changes, determine:
+- original PR number
+- original PR head branch
+- original PR base branch
+
+Use GitHub CLI or PR metadata. Example:
+- Original PR: #2
+- Original PR head: feature/m12.13-capture-baseline-comparison
+- Original PR base: main
+
+### Autofix branch naming
+
+If the original PR is a feature branch targeting main, create the autofix branch from the original PR head branch, not from main.
+
+Autofix branch name:
+review/pr-<ORIGINAL_PR_NUMBER>-autofix
+
+Example:
+review/pr-2-autofix
+
+### Required checkout flow
+
+Run equivalent steps:
+
+1. cd C:/Users/Kimmillie/kalshi-review
+2. git fetch origin
+3. git checkout -B review/pr-<ORIGINAL_PR_NUMBER>-autofix origin/<ORIGINAL_PR_HEAD_BRANCH>
+4. npm run worktree:assign -- review/pr-<ORIGINAL_PR_NUMBER>-autofix
+
+If worktree:assign fails because bash/WSL is unavailable, update .worktree-branch in the review worktree to the autofix branch name so the pre-commit guard passes.
+
+### Make and push the fix
+
+1. Apply the minimum fix requested by the review comment.
+2. Run gates (see Required workflow).
+3. Commit on the review branch.
+4. git push -u origin review/pr-<ORIGINAL_PR_NUMBER>-autofix
+
+### Open the autofix PR
+
+Open a PR with:
+- base: original PR head branch (example: feature/m12.13-capture-baseline-comparison)
+- head: review/pr-<ORIGINAL_PR_NUMBER>-autofix
+
+The autofix PR must target the original feature branch, not main.
+
+Autofix PR title:
+Autofix PR #<ORIGINAL_PR_NUMBER>: <short description>
+
+Autofix PR body must include:
+- Original PR: #<ORIGINAL_PR_NUMBER>
+- Base branch: <ORIGINAL_PR_HEAD_BRANCH>
+- Head branch: review/pr-<ORIGINAL_PR_NUMBER>-autofix
+- What changed
+- Gates run
+- Note: This PR targets the original feature branch, not main. Merge this autofix PR first, then rerun review on the original PR.
+
+If the automation cannot open a PR with the original feature branch as base, do not open a PR to main. Leave a PR comment on the original PR explaining the exact commands for the user or project lead.
+
+### Forbidden behavior
+
+Never:
+- create autofix PRs targeting main for CHANGES REQUESTED on a feature PR
+- cherry-pick autofix commits into builder worktrees
+- push directly to main
+- use merge/* branches
+- do review fixes in builder worktrees
+- bypass worktree guards
+- merge the original feature PR
+
 ## Absolute constraints
 
 Never add:
 - order placement
 - live trading execution
 - trade recommendations
-- secrets, API keys, `.env`, private keys, or PEM files
+- secrets, API keys, .env, private keys, or PEM files
 
 Never commit:
-- `data/live-capture/`
-- `data/research-results/*.json`
-- `data/reports/*.html`
+- data/live-capture/
+- data/research-results/*.json
+- data/reports/*.html
 - local logs
 
 Never:
+- weaken M12.7 or M12.8 safety gates to make tests pass
 - weaken safety gates to make tests pass
 - delete tests to make tests pass
 - casually change live capture behavior without explicit scope
-- merge the PR
+- merge the original PR
 - approve the PR through GitHub approval
 
 ## Allowed fixes
@@ -67,23 +158,25 @@ You may fix:
 - test failures with clear expected behavior
 - broken imports/exports and barrel wiring
 - CLI argv/schema wiring
-- `package.json` script wiring for the touched module
+- package.json script wiring for the touched module
 - small report wording or caveat corrections
 - missing focused regression tests for the fix
 - artifact hygiene issues (unstage generated files)
 
 ## Required workflow
 
-1. Check out the PR branch in the correct worktree (`kalshi-review` for `fix/*` / `review/*`).
-2. Run `git status`, `git diff --stat`, and inspect the LRM review comment or CI failure.
-3. Apply the minimum fix.
-4. Run:
-   - `npm run lint`
-   - `npm run build`
-   - targeted `npx vitest run` for touched modules
-5. Verify no generated artifacts or secrets are staged.
-6. Commit to the PR branch with a concise message.
-7. Leave a PR comment summarizing fixes, commands run, and commit hash.
+1. Follow the worktree and branch policy above.
+2. Run git status and git diff --stat.
+3. Inspect the LRM review comment or CI failure.
+4. Apply the minimum fix.
+5. Run:
+   - npm run lint
+   - npm run build
+   - targeted npx vitest run for touched modules
+6. Verify no generated artifacts or secrets are staged.
+7. Commit to the review autofix branch with a concise message.
+8. Push and open the autofix PR targeting the original feature branch.
+9. Leave a PR comment on the original PR summarizing fixes, commands run, commit hash, and autofix PR link.
 
 ## PR comment format
 
@@ -100,6 +193,13 @@ Use one:
 
 List commits and what changed.
 
+## Autofix PR
+
+Include:
+- autofix PR number if created
+- base branch (original feature branch)
+- head branch (review/pr-<N>-autofix)
+
 ## Gates
 
 List commands run and pass/fail results.
@@ -110,4 +210,4 @@ List anything not autofixed.
 
 ## Recommended Next Action
 
-Tell the user whether to re-run LRM review or merge after guarded merge gate.
+Tell the user to merge the autofix PR into the feature branch first, then rerun LRM review on the original PR.

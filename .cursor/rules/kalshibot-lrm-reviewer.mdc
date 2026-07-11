@@ -171,3 +171,5 @@ List non-blocking concerns.
 Say whether the user should merge, request changes, or run a follow-up command.
 
 If the PR is safe and all required gates pass, say APPROVED FOR MERGE in the comment, but do not approve the PR through GitHub approval.
+
+If the verdict is CHANGES REQUESTED on a feature PR, note that autofix should use the LRM autofix rule: work in kalshi-review, branch review/pr-<PR_NUMBER>-autofix from the feature head, and open an autofix PR targeting the feature branch — not main.

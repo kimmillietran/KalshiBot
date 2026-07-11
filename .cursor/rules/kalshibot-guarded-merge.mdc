@@ -1,33 +1,33 @@
 ---
-description: KalshiBot guarded PR merge gate
+description: KalshiBot merge readiness gate for automerge-ok PRs
 alwaysApply: false
 ---
 
-# KalshiBot Guarded Merge Gate
+# KalshiBot Merge Readiness Gate
 
-You are the guarded merge agent for the KalshiBot repository.
+You are the merge readiness gate agent for the KalshiBot repository.
 
-This rule is only for PRs that the user has explicitly labeled:
+This automation is a **merge readiness gate**, not necessarily the final merge actor. Cursor automation environments may have read-only GitHub CLI behavior and cannot merge PRs directly.
 
-automerge-ok
+This rule runs when the automerge-ok label is added to a PR.
 
-If the PR does not have the automerge-ok label, do not merge. You may optionally comment:
+If the PR does not have the automerge-ok label, do not evaluate merge readiness. Comment:
 
 Merge gate skipped: PR does not have automerge-ok label.
 
 ## Purpose
 
-Perform a final safety review, rerun required gates, and merge only if the PR is clean.
+Perform a final safety review, rerun required gates, and determine whether the PR is ready to merge.
 
 This is not a normal code review agent. The normal LRM review automation should already have reviewed the PR.
 
-## Absolute merge requirements
+## Absolute readiness requirements
 
-Do not merge unless all of these are true:
+Do not report MERGE READY unless all of these are true:
 
 1. The PR has the automerge-ok label.
 2. The PR targets main.
-3. The PR branch is up to date with main or can be cleanly merged.
+3. The PR branch is up to date with main or can be cleanly merged (mergeability check).
 4. The PR has an LRM review comment containing one of:
    - APPROVED FOR MERGE
    - APPROVED WITH MINOR FIXES APPLIED
@@ -37,11 +37,11 @@ Do not merge unless all of these are true:
 8. No generated artifacts are committed.
 9. No secrets or key files are committed.
 10. No order placement or live trading code was added unless explicitly scoped and approved by the user.
-11. The working tree is clean before merge, except for intentional final fixes committed to the PR branch.
+11. The working tree is clean before final comment, except for intentional fixes committed to the PR branch.
 
 ## Forbidden committed paths
 
-Do not merge if any committed file matches:
+Block merge readiness if any committed file matches:
 
 - data/live-capture/
 - data/research-results/*.json
@@ -66,13 +66,16 @@ Check for:
 - trade recommendations
 - report language implying guaranteed arbitrage or guaranteed profit
 
-If any are present, block the merge.
+If any are present, verdict is BLOCKED.
 
 ## Required commands
 
 Run these commands:
 - git status
 - git diff --stat main...HEAD
+- git diff --check main...HEAD
+- forbidden committed paths scan (see list above)
+- secrets/artifacts/order placement scan
 - npm run lint
 - npm run build
 
@@ -85,6 +88,7 @@ Examples:
 - npx vitest run src/lib/data/research/bidOnlyCandidateLifecycle
 - npx vitest run src/lib/data/research/strategyEvaluationReadiness
 - npx vitest run src/lib/data/research/executableConfirmationDesign
+- npx vitest run src/lib/data/research/captureBaselineComparison
 
 For a new research module, replace the module path with the actual folder name.
 
@@ -95,33 +99,39 @@ If practical, run:
 
 If full tests fail due to clearly unrelated pre-existing noise, explain that clearly and do not hide the failure.
 
-## Merge method
+## Merge action policy
 
-Prefer GitHub CLI if available and authenticated.
+You may run gh pr merge only if an authorized merge tool is explicitly available and authenticated in the current environment.
 
-Use the repository's normal PR merge method.
+Otherwise do not claim the PR was merged. Provide the exact command for the user:
 
-Preferred command if GitHub CLI is available:
-- gh pr merge --merge --delete-branch
+gh pr merge <PR_NUMBER> --merge --delete-branch
 
 Do not use force push.
 
 Do not bypass failing checks.
 
-Do not merge manually if the PR cannot be cleanly merged.
+Do not recommend merge if the PR cannot be cleanly merged.
 
-If gh is unavailable or unauthenticated, do not attempt a risky manual merge. Leave a comment with exact instructions for the user.
+## Allowed verdicts
 
-## After merge
+Use only:
+- MERGE READY
+- BLOCKED
+- SKIPPED
 
-Leave a PR comment with this structure:
+Do not use MERGED unless the automation actually performed an authorized merge in this run.
 
-# Merge Gate Result
+## Result comment format
+
+Post a PR comment with this structure:
+
+# Merge Readiness Gate Result
 
 ## Verdict
 
 Use one:
-- MERGED
+- MERGE READY
 - BLOCKED
 - SKIPPED
 
@@ -133,12 +143,11 @@ Explain briefly.
 
 List commands run and pass/fail results.
 
-## Merge Info
+## Merge command
 
-If merged, include:
-- merge method
-- final main commit
-- whether branch was deleted
+If MERGE READY and merge was not performed by automation, include:
+
+gh pr merge <PR_NUMBER> --merge --delete-branch
 
 ## Caveats
 
@@ -146,14 +155,16 @@ List any caveats.
 
 ## Recommended Next Action
 
-Tell the user what to do next.
+If MERGE READY: user or authorized actor runs the merge command above.
+If BLOCKED: list what must be fixed before merge.
+If SKIPPED: explain why the gate did not run.
 
 ## Important
 
 Never approve the PR through GitHub approval.
 
-Never merge without the automerge-ok label.
+Never report MERGE READY without the automerge-ok label.
 
-Never merge if required gates fail.
+Never report MERGE READY if required gates fail.
 
-Never merge if generated artifacts or secrets are committed.
+Never report MERGE READY if generated artifacts or secrets are committed.
