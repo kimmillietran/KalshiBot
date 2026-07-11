@@ -78,6 +78,9 @@ describe("cliArgvSchemas", () => {
       "--capture-run-dir",
       captureRunDir,
     ]);
+    expect(
+      normalizeForwardCaptureReadinessArgv(["data/reports/custom-forward-readiness.json"]),
+    ).toEqual(["--output", "data/reports/custom-forward-readiness.json"]);
     expect(normalizeStrategyEvaluationReadinessArgv([captureRunDir])).toEqual([
       "--capture-run-dir",
       captureRunDir,

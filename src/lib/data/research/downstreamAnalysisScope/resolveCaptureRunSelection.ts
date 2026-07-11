@@ -8,7 +8,16 @@ function readArgValue(argv: readonly string[], flag: string): string | null {
     return null;
   }
 
-  return argv[index + 1] ?? null;
+  const value = argv[index + 1];
+  if (value === undefined) {
+    throw new DownstreamAnalysisScopeError(`${flag} requires a value.`);
+  }
+
+  if (value.startsWith("--")) {
+    throw new DownstreamAnalysisScopeError(`${flag} requires a path value, not ${value}.`);
+  }
+
+  return value;
 }
 
 /** Resolves aggregate vs selected-run scope from CLI argv. */

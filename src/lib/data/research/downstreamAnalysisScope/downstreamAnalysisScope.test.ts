@@ -45,6 +45,24 @@ describe("resolveCaptureRunSelection", () => {
       }),
     ).toThrow(DownstreamAnalysisScopeError);
   });
+
+  it("rejects missing capture run dir value", () => {
+    expect(() =>
+      resolveCaptureRunSelection({
+        argv: ["--capture-run-dir"],
+        defaultForwardQuotesDir: "data/live-capture/forward-quotes",
+      }),
+    ).toThrow(/requires a value/);
+  });
+
+  it("rejects flag-valued capture run dir", () => {
+    expect(() =>
+      resolveCaptureRunSelection({
+        argv: ["--capture-run-dir", "--output", "out.json"],
+        defaultForwardQuotesDir: "data/live-capture/forward-quotes",
+      }),
+    ).toThrow(/requires a path value/);
+  });
 });
 
 describe("validateInputArtifacts", () => {

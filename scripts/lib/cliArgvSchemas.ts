@@ -1122,7 +1122,22 @@ export function normalizeCalibrationFadeFamilyVerdictArgv(
 export function normalizeForwardCaptureReadinessArgv(
   argv: readonly string[],
 ): string[] {
-  return normalizeNpmScriptArgv(argv, FORWARD_CAPTURE_READINESS_ARGV_SCHEMA);
+  const expanded = expandEqualsStyleFlags(argv);
+  if (hasCliFlags(expanded)) {
+    return normalizeNpmScriptArgv(expanded, FORWARD_CAPTURE_READINESS_ARGV_SCHEMA);
+  }
+
+  if (expanded.length === 1 && !expanded[0]!.startsWith("--")) {
+    const positional = expanded[0]!;
+    const normalized = positional.replace(/\\/g, "/");
+    if (normalized.includes("forward-quotes/") || normalized.includes("live-capture/")) {
+      return ["--capture-run-dir", positional];
+    }
+
+    return ["--output", positional];
+  }
+
+  return normalizeNpmScriptArgv(expanded, FORWARD_CAPTURE_READINESS_ARGV_SCHEMA);
 }
 
 export function normalizeExecutableConfirmationDesignArgv(
