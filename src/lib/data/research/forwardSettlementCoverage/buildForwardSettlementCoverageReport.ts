@@ -206,6 +206,26 @@ function buildSummary(input: {
   };
 }
 
+function classifyExtractedMarkets(input: {
+  config: ForwardSettlementCoverageConfig;
+  io: ForwardSettlementCoverageIo;
+  extracted: ReturnType<typeof extractSelectedRunMarketInventory>;
+  evaluatedAt: string;
+}): MarketSettlementCoverageEntry[] {
+  return [
+    ...input.extracted.inventory.map((inventory) =>
+      classifyMarketSettlementCoverage({
+        io: input.io,
+        importsDir: input.config.importsDir,
+        inventory,
+        evaluatedAt: input.evaluatedAt,
+        staleAfterCaptureObservation: input.config.staleAfterCaptureObservation,
+      })),
+    ...input.extracted.excludedTickers.map((entry) =>
+      classifyInvalidMarketEntry(entry)),
+  ].sort((left, right) => left.marketTicker.localeCompare(right.marketTicker));
+}
+
 /** Builds forward settlement coverage report for one selected capture run. */
 export async function buildForwardSettlementCoverageReport(input: {
   generatedAt: string;
@@ -225,21 +245,12 @@ export async function buildForwardSettlementCoverageReport(input: {
   });
   warnings.push(...extracted.warnings);
 
-  let markets: MarketSettlementCoverageEntry[] = extracted.inventory.map((inventory) =>
-    classifyMarketSettlementCoverage({
-      io: input.io,
-      importsDir: input.config.importsDir,
-      inventory,
-      evaluatedAt: input.generatedAt,
-      staleAfterCaptureObservation: input.config.staleAfterCaptureObservation,
-    }),
-  );
-
-  markets = [
-    ...markets,
-    ...extracted.excludedTickers.map((entry) =>
-      classifyInvalidMarketEntry(entry)),
-  ].sort((left, right) => left.marketTicker.localeCompare(right.marketTicker));
+  let markets = classifyExtractedMarkets({
+    config: input.config,
+    io: input.io,
+    extracted,
+    evaluatedAt: input.generatedAt,
+  });
 
   let backfill = null;
   if (input.runBackfill && input.backfillDeps) {
@@ -252,15 +263,12 @@ export async function buildForwardSettlementCoverageReport(input: {
       deps: input.backfillDeps,
     });
 
-    markets = extracted.inventory.map((inventory) =>
-      classifyMarketSettlementCoverage({
-        io: input.io,
-        importsDir: input.config.importsDir,
-        inventory,
-        evaluatedAt: input.generatedAt,
-        staleAfterCaptureObservation: input.config.staleAfterCaptureObservation,
-      }),
-    );
+    markets = classifyExtractedMarkets({
+      config: input.config,
+      io: input.io,
+      extracted,
+      evaluatedAt: input.generatedAt,
+    });
   }
 
   const joinIntegration = buildJoinIntegration({
