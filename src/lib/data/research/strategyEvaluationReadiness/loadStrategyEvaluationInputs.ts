@@ -7,11 +7,11 @@ import {
 } from "@/lib/data/research/forwardCaptureReadiness/loadForwardCaptureRuns";
 import { safeShare } from "@/lib/data/research/forwardCaptureReadiness/forwardCaptureReadinessMath";
 
-import { resolveCaptureRunDirectories } from "../downstreamAnalysisScope/discoverCaptureRunDirectories";
 import {
   artifactMatchesSelectedRun,
   isArtifactStale,
   parseArtifactScope,
+  resolveRunIdFromPath,
 } from "../downstreamAnalysisScope/downstreamAnalysisScopeUtils";
 import { validateInputArtifacts } from "../downstreamAnalysisScope/validateInputArtifacts";
 import type {
@@ -203,25 +203,17 @@ function buildCaptureFallback(
   io: StrategyEvaluationReadinessIo,
   inputPaths: StrategyEvaluationInputPaths,
 ): StrategyEvaluationLoadedInputs["captureFallback"] {
-  const runDirs = inputPaths.captureRunDir
-    ? [inputPaths.captureRunDir]
-    : [
-      ...resolveCaptureRunDirectories({
-        io,
-        forwardQuotesDir: inputPaths.forwardQuotesDir,
-        captureRunDir: null,
-      }),
-    ];
+  const selectedRunId = inputPaths.captureRunDir
+    ? resolveRunIdFromPath(inputPaths.captureRunDir)
+    : null;
 
   const { runs } = loadForwardCaptureRunsWithWarnings(io, {
     forwardQuotesDir: inputPaths.forwardQuotesDir,
     kalshiWsSpikeDir: inputPaths.forwardQuotesDir,
   });
 
-  const filteredRuns = inputPaths.captureRunDir
-    ? runs.filter((run) =>
-      runDirs.some((runDir) => runDir.endsWith(run.runId) || run.healthPath.startsWith(runDir)),
-    )
+  const filteredRuns = selectedRunId
+    ? runs.filter((run) => run.runId === selectedRunId)
     : runs;
 
   if (filteredRuns.length === 0) {
@@ -237,7 +229,8 @@ function buildCaptureFallback(
     return sum + durationSeconds / 60;
   }, 0);
 
-  const sizeShares = scanBidPairWithSizeFromCapture(io, inputPaths.forwardQuotesDir, filteredRuns);
+  const captureDirForSizeScan = inputPaths.captureRunDir ?? inputPaths.forwardQuotesDir;
+  const sizeShares = scanBidPairWithSizeFromCapture(io, captureDirForSizeScan, filteredRuns);
 
   return {
     runCount: filteredRuns.length,

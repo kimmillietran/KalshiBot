@@ -143,6 +143,59 @@ describe("validateInputArtifacts", () => {
     expect(result.identities[0]?.verified).toBe(false);
   });
 
+  it("rejects selected-run artifacts without run identity", () => {
+    const path = "data/research-results/static-parity-scan.json";
+    const io = buildMemoryIo({
+      [path]: JSON.stringify({
+        generatedAt: "2026-07-11T12:00:00.000Z",
+        analysisScope: "selected-run",
+      }),
+    });
+
+    const result = validateInputArtifacts({
+      io,
+      selection: {
+        analysisScope: "selected-run",
+        forwardQuotesDir: "data/live-capture/forward-quotes",
+        captureRunDir: "data/live-capture/forward-quotes/run-a",
+        selectedRunId: "run-a",
+      },
+      artifactPaths: [path],
+      evaluatedAt: "2026-07-11T13:00:00.000Z",
+      requireIdentityInSelectedRun: true,
+    });
+
+    expect(result.usablePaths).toHaveLength(0);
+    expect(result.mismatchedArtifacts).toContain(path);
+  });
+
+  it("rejects artifacts with unverifiable freshness timestamps", () => {
+    const path = "data/research-results/static-parity-scan.json";
+    const io = buildMemoryIo({
+      [path]: JSON.stringify({
+        analysisScope: "selected-run",
+        selectedRunId: "run-a",
+        sourceRunIds: ["run-a"],
+      }),
+    });
+
+    const result = validateInputArtifacts({
+      io,
+      selection: {
+        analysisScope: "selected-run",
+        forwardQuotesDir: "data/live-capture/forward-quotes",
+        captureRunDir: "data/live-capture/forward-quotes/run-a",
+        selectedRunId: "run-a",
+      },
+      artifactPaths: [path],
+      evaluatedAt: "2026-07-11T13:00:00.000Z",
+      requireIdentityInSelectedRun: true,
+    });
+
+    expect(result.usablePaths).toHaveLength(0);
+    expect(result.mismatchedArtifacts).toContain(path);
+  });
+
   it("marks malformed JSON without empty parsed fallback", () => {
     const io = buildMemoryIo({
       "data/research-results/broken.json": "{not-json",

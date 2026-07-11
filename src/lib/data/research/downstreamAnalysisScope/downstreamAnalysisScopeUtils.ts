@@ -120,3 +120,20 @@ export function isArtifactStale(
   const ageHours = (evaluatedMs - generatedMs) / (1000 * 60 * 60);
   return ageHours > staleAfterHours;
 }
+
+export function isArtifactFreshnessUnverifiable(
+  generatedAt: string | null,
+  evaluatedAt: string,
+): boolean {
+  if (!generatedAt) {
+    return true;
+  }
+
+  const generatedMs = Date.parse(generatedAt);
+  const evaluatedMs = Date.parse(evaluatedAt);
+  if (!Number.isFinite(generatedMs) || !Number.isFinite(evaluatedMs)) {
+    return true;
+  }
+
+  return generatedMs > evaluatedMs;
+}

@@ -5,6 +5,7 @@ import type {
 } from "./downstreamAnalysisScopeTypes";
 import {
   artifactMatchesSelectedRun,
+  isArtifactFreshnessUnverifiable,
   isArtifactStale,
   isRecord,
   parseArtifactScope,
@@ -114,13 +115,19 @@ export function validateInputArtifacts(input: {
 
       if (
         input.requireIdentityInSelectedRun
-        && scope.analysisScope !== "selected-run"
-        && scope.sourceRunIds.length === 0
         && !scope.selectedRunId
+        && scope.sourceRunIds.length === 0
       ) {
+        mismatchedArtifacts.push(path);
         identityWarnings.push("Artifact run identity is missing and cannot be verified.");
         verified = false;
       }
+    }
+
+    if (isArtifactFreshnessUnverifiable(scope.generatedAt, input.evaluatedAt)) {
+      mismatchedArtifacts.push(path);
+      identityWarnings.push("Artifact freshness timestamp is missing, invalid, or in the future.");
+      verified = false;
     }
 
     if (isArtifactStale(scope.generatedAt, input.evaluatedAt, staleAfterHours)) {
