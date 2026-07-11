@@ -1,4 +1,13 @@
 import {
+  buildDownstreamScopeMetadata,
+  spreadDownstreamScopeFields,
+} from "../downstreamAnalysisScope";
+import {
+  artifactMatchesSelectedRun,
+  isArtifactStale,
+  parseArtifactScope,
+} from "../downstreamAnalysisScope/downstreamAnalysisScopeUtils";
+import {
   listInputArtifactsUsed,
   listMissingArtifacts,
   readArtifactFreshness,
@@ -36,7 +45,10 @@ function hasCaptureData(inputs: StrategyEvaluationLoadedInputs): boolean {
   const topOfBook = readTopOfBookRecordCount(inputs);
   const readiness = inputs.forwardCaptureReadiness?.parsed;
   const aggregates =
-    readiness && typeof readiness.aggregates === "object" && readiness.aggregates !== null
+    readiness
+    && !inputs.forwardCaptureReadiness?.malformed
+    && typeof readiness.aggregates === "object"
+    && readiness.aggregates !== null
       ? readiness.aggregates as Record<string, unknown>
       : null;
   const artifactRunCount =
@@ -428,20 +440,66 @@ function resolveOverallVerdict(
   return primary?.verdict ?? "not-ready-no-capture";
 }
 
+function hasFreshMatchingArtifact(
+  artifact: StrategyEvaluationLoadedInputs["staticParityScan"],
+  selection: StrategyEvaluationLoadedInputs["selection"],
+  evaluatedAt: string,
+  staleAfterHours: number,
+): boolean {
+  if (!artifact?.parsed || artifact.malformed || !artifact.generatedAt) {
+    return false;
+  }
+
+  if (isArtifactStale(artifact.generatedAt, evaluatedAt, staleAfterHours)) {
+    return false;
+  }
+
+  if (selection.analysisScope === "selected-run" && selection.selectedRunId) {
+    const scope = parseArtifactScope(artifact.parsed);
+    return artifactMatchesSelectedRun(scope, selection.selectedRunId);
+  }
+
+  return true;
+}
+
 function resolveRecommendedNextAction(input: {
   verdict: StrategyEvaluationReadinessVerdict;
   inputs: StrategyEvaluationLoadedInputs;
   evaluatedAt: string;
 }): StrategyEvaluationRecommendedNextAction {
+  const thresholds = DEFAULT_BID_ONLY_PARITY_EPISODE_THRESHOLDS;
   const freshness = readArtifactFreshness({
     inputs: input.inputs,
     evaluatedAt: input.evaluatedAt,
-    staleAfterHours: DEFAULT_BID_ONLY_PARITY_EPISODE_THRESHOLDS.artifactStaleAfterHours,
+    staleAfterHours: thresholds.artifactStaleAfterHours,
   });
+
+  if (
+    input.inputs.selection.analysisScope === "selected-run"
+    && (
+      input.inputs.artifactValidation.mismatchedArtifacts.length > 0
+      || freshness.mismatchedArtifacts.length > 0
+    )
+  ) {
+    return "fix-artifact-scope";
+  }
 
   if (freshness.status === "stale") {
     return "refresh-stale-artifacts";
   }
+
+  const freshStaticParity = hasFreshMatchingArtifact(
+    input.inputs.staticParityScan,
+    input.inputs.selection,
+    input.evaluatedAt,
+    thresholds.artifactStaleAfterHours,
+  );
+  const freshLifecycle = hasFreshMatchingArtifact(
+    input.inputs.bidOnlyCandidateLifecycle,
+    input.inputs.selection,
+    input.evaluatedAt,
+    thresholds.artifactStaleAfterHours,
+  );
 
   switch (input.verdict) {
     case "not-ready-no-capture":
@@ -452,21 +510,27 @@ function resolveRecommendedNextAction(input: {
         ? "merge-m12.8-and-recapture"
         : "run-bid-size-audit";
     case "not-ready-no-candidates":
-      if (input.inputs.staticParityScan?.generatedAt) {
-        return "build-candidate-lifecycle";
+      if (freshStaticParity) {
+        return "run-near-miss-analysis";
       }
       return "run-static-parity-scan";
     case "not-ready-no-episodes":
-      return "build-candidate-lifecycle";
+      if (freshLifecycle) {
+        return "run-near-miss-analysis";
+      }
+      return freshStaticParity ? "build-candidate-lifecycle" : "run-static-parity-scan";
     case "not-ready-no-settlements":
       return "join-settlements";
     case "not-ready-no-executable-confirmation":
     case "ready-for-execution-confirmation-design":
       return "design-executable-confirmation";
     case "ready-for-descriptive-analysis":
+      if (freshLifecycle) {
+        return "continue-clean-capture";
+      }
       return "build-candidate-lifecycle";
     case "ready-for-offline-strategy-evaluation":
-      return "design-executable-confirmation";
+      return "proceed-strategy-evaluation";
     default:
       return "continue-capture";
   }
@@ -493,6 +557,12 @@ function buildSummary(input: {
   if (freshness.staleArtifacts.length > 0) {
     warnings.push(
       `Stale artifacts detected: ${freshness.staleArtifacts.join(", ")}`,
+    );
+  }
+
+  if (freshness.mismatchedArtifacts.length > 0) {
+    warnings.push(
+      `Mismatched artifact scope: ${freshness.mismatchedArtifacts.join(", ")}`,
     );
   }
 
@@ -538,6 +608,39 @@ export function evaluateStrategyEvaluationReadiness(input: {
     families,
   });
 
+  const sourceRunIds = input.inputs.selection.analysisScope === "selected-run"
+    ? input.inputs.selection.selectedRunId
+      ? [input.inputs.selection.selectedRunId]
+      : []
+    : [];
+  const scope = buildDownstreamScopeMetadata({
+    selection: input.inputs.selection,
+    generatedAt: input.generatedAt,
+    recordsScanned: readTopOfBookRecordCount(input.inputs),
+    artifactValidation: {
+      identities: [],
+      staleArtifacts: readArtifactFreshness({
+        inputs: input.inputs,
+        evaluatedAt: input.evaluatedAt,
+        staleAfterHours: DEFAULT_BID_ONLY_PARITY_EPISODE_THRESHOLDS.artifactStaleAfterHours,
+      }).staleArtifacts,
+      mismatchedArtifacts: [
+        ...input.inputs.artifactValidation.mismatchedArtifacts,
+        ...readArtifactFreshness({
+          inputs: input.inputs,
+          evaluatedAt: input.evaluatedAt,
+          staleAfterHours: DEFAULT_BID_ONLY_PARITY_EPISODE_THRESHOLDS.artifactStaleAfterHours,
+        }).mismatchedArtifacts,
+      ],
+      malformedArtifacts: input.inputs.artifactValidation.malformedArtifacts,
+      missingArtifacts: listMissingArtifacts(input.inputPaths, input.inputs),
+      warnings: input.inputs.artifactValidation.warnings,
+      usablePaths: listInputArtifactsUsed(input.inputs),
+    },
+    extraWarnings: summary.warnings,
+  });
+  const scopeFields = spreadDownstreamScopeFields(scope, { sourceRunIds });
+
   return {
     generatedAt: input.generatedAt,
     outputPath: input.outputPath,
@@ -548,5 +651,6 @@ export function evaluateStrategyEvaluationReadiness(input: {
     thresholds: DEFAULT_BID_ONLY_PARITY_EPISODE_THRESHOLDS,
     dimensions,
     summary,
+    ...scopeFields,
   };
 }

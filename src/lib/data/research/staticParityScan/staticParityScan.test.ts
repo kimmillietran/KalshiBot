@@ -274,6 +274,40 @@ describe("classifyParitySnapshot (complement-derived legacy)", () => {
 });
 
 describe("scanForwardCaptureParity", () => {
+  it("scans only the selected run when captureRunDir is provided", () => {
+    const runAFiles = createRunFiles({
+      runId: "run-a",
+      topOfBookLines: [
+        createTopOfBookLine({
+          runId: "run-a",
+          receivedAtLocal: "2026-07-09T08:00:00.000Z",
+        }),
+      ],
+    });
+    const runBFiles = createRunFiles({
+      runId: "run-b",
+      topOfBookLines: [
+        createTopOfBookLine({
+          runId: "run-b",
+          receivedAtLocal: "2026-07-09T08:01:00.000Z",
+          yesBid: 55,
+          noBid: 55,
+        }),
+      ],
+    });
+
+    const result = scanForwardCaptureParity({
+      io: buildMemoryIo({ ...runAFiles, ...runBFiles }),
+      forwardQuotesDir: INPUT_DIR,
+      captureRunDir: `${INPUT_DIR}/run-a`,
+      friction: { ...BID_ONLY_FRICTION, feeBufferCents: 20 },
+    });
+
+    expect(result.metrics.runCountScanned).toBe(1);
+    expect(result.runs).toHaveLength(1);
+    expect(result.runs[0]?.runId).toBe("run-a");
+  });
+
   it("defaults to bid-only and finds gross candidates from bid sum > 100", () => {
     const files = createRunFiles({
       runId: "bid-only-run",
@@ -491,6 +525,35 @@ describe("buildStaticParityScanReport", () => {
     expect(report.candidateSamples[0]?.bidOnlyEdgeCents).toBe(10);
     expect(report.candidateSamples[0]?.minBidSizeContracts).toBe(10);
   });
+
+  it("includes scope metadata for selected-run scans", () => {
+    const report = buildStaticParityScanReport({
+      generatedAt: "2026-07-09T12:00:00.000Z",
+      outputPath: "data/research-results/static-parity-scan.json",
+      htmlOutputPath: "data/reports/static-parity-scan.html",
+      inputPaths: {
+        forwardQuotesDir: INPUT_DIR,
+        captureRunDir: `${INPUT_DIR}/selected-run`,
+      },
+      friction: BID_ONLY_FRICTION,
+      io: buildMemoryIo(
+        createRunFiles({
+          runId: "selected-run",
+          topOfBookLines: [
+            createTopOfBookLine({
+              runId: "selected-run",
+              receivedAtLocal: "2026-07-09T08:00:00.000Z",
+            }),
+          ],
+        }),
+      ),
+    });
+
+    expect(report.analysisScope).toBe("selected-run");
+    expect(report.selectedRunId).toBe("selected-run");
+    expect(report.sourceRunIds).toEqual(["selected-run"]);
+    expect(report.scope.recordsScanned).toBe(1);
+  });
 });
 
 describe("parseStaticParityScanPathsFromArgv", () => {
@@ -500,5 +563,13 @@ describe("parseStaticParityScanPathsFromArgv", () => {
       "data/custom",
     ]);
     expect(paths.inputPaths.forwardQuotesDir).toBe("data/custom");
+  });
+
+  it("parses selected-run capture dir", () => {
+    const paths = parseStaticParityScanPathsFromArgv([
+      "--capture-run-dir",
+      "data/live-capture/forward-quotes/run-a",
+    ]);
+    expect(paths.inputPaths.captureRunDir).toBe("data/live-capture/forward-quotes/run-a");
   });
 });

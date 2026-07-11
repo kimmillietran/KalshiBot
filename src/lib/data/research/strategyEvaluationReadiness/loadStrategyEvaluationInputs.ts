@@ -7,6 +7,13 @@ import {
 } from "@/lib/data/research/forwardCaptureReadiness/loadForwardCaptureRuns";
 import { safeShare } from "@/lib/data/research/forwardCaptureReadiness/forwardCaptureReadinessMath";
 
+import { resolveCaptureRunDirectories } from "../downstreamAnalysisScope/discoverCaptureRunDirectories";
+import {
+  artifactMatchesSelectedRun,
+  isArtifactStale,
+  parseArtifactScope,
+} from "../downstreamAnalysisScope/downstreamAnalysisScopeUtils";
+import { validateInputArtifacts } from "../downstreamAnalysisScope/validateInputArtifacts";
 import type {
   LoadedStrategyEvaluationArtifact,
   StrategyEvaluationInputPaths,
@@ -37,7 +44,8 @@ function parseArtifactJson(
     return {
       path,
       generatedAt: null,
-      parsed: {},
+      parsed: null,
+      malformed: true,
     };
   }
 
@@ -45,7 +53,8 @@ function parseArtifactJson(
     return {
       path,
       generatedAt: null,
-      parsed: {},
+      parsed: null,
+      malformed: true,
     };
   }
 
@@ -53,6 +62,7 @@ function parseArtifactJson(
     path,
     generatedAt: readString(parsed.generatedAt),
     parsed,
+    malformed: false,
   };
 }
 
@@ -70,7 +80,8 @@ function tryLoadArtifact(
     return {
       path,
       generatedAt: null,
-      parsed: {},
+      parsed: null,
+      malformed: true,
     };
   }
 }
@@ -78,20 +89,22 @@ function tryLoadArtifact(
 function scanBidPairWithSizeFromCapture(
   io: StrategyEvaluationReadinessIo,
   forwardQuotesDir: string,
+  runs?: ReturnType<typeof loadForwardCaptureRunsWithWarnings>["runs"],
 ): {
   bidPairWithSizeShare: number | null;
   bidSizeCoverageShare: number | null;
 } {
-  const { runs } = loadForwardCaptureRunsWithWarnings(io, {
-    forwardQuotesDir,
-    kalshiWsSpikeDir: forwardQuotesDir,
-  });
+  const loadedRuns = runs
+    ?? loadForwardCaptureRunsWithWarnings(io, {
+      forwardQuotesDir,
+      kalshiWsSpikeDir: forwardQuotesDir,
+    }).runs;
 
-  if (runs.length === 0) {
+  if (loadedRuns.length === 0) {
     return { bidPairWithSizeShare: null, bidSizeCoverageShare: null };
   }
 
-  const metrics = summarizeForwardCaptureRuns(runs);
+  const metrics = summarizeForwardCaptureRuns(loadedRuns);
   const stats = metrics.topOfBookStats;
 
   let bidPairWithSize = 0;
@@ -99,7 +112,7 @@ function scanBidPairWithSizeFromCapture(
   let bidSizePresent = 0;
   let recordsScanned = 0;
 
-  for (const run of runs) {
+  for (const run of loadedRuns) {
     const topOfBookPath = `${run.sourceRoot}/${run.runId}/top-of-book.jsonl`;
     if (!io.fileExists(topOfBookPath)) {
       continue;
@@ -161,30 +174,46 @@ function scanBidPairWithSizeFromCapture(
 
 function buildCaptureFallback(
   io: StrategyEvaluationReadinessIo,
-  forwardQuotesDir: string,
+  inputPaths: StrategyEvaluationInputPaths,
 ): StrategyEvaluationLoadedInputs["captureFallback"] {
+  const runDirs = inputPaths.captureRunDir
+    ? [inputPaths.captureRunDir]
+    : [
+      ...resolveCaptureRunDirectories({
+        io,
+        forwardQuotesDir: inputPaths.forwardQuotesDir,
+        captureRunDir: null,
+      }),
+    ];
+
   const { runs } = loadForwardCaptureRunsWithWarnings(io, {
-    forwardQuotesDir,
-    kalshiWsSpikeDir: forwardQuotesDir,
+    forwardQuotesDir: inputPaths.forwardQuotesDir,
+    kalshiWsSpikeDir: inputPaths.forwardQuotesDir,
   });
 
-  if (runs.length === 0) {
+  const filteredRuns = inputPaths.captureRunDir
+    ? runs.filter((run) =>
+      runDirs.some((runDir) => runDir.endsWith(run.runId) || run.healthPath.startsWith(runDir)),
+    )
+    : runs;
+
+  if (filteredRuns.length === 0) {
     return null;
   }
 
-  const metrics = summarizeForwardCaptureRuns(runs);
+  const metrics = summarizeForwardCaptureRuns(filteredRuns);
   const stats = metrics.topOfBookStats;
-  const totalDurationMinutes = runs.reduce((sum, run) => {
+  const totalDurationMinutes = filteredRuns.reduce((sum, run) => {
     const durationSeconds =
       run.health.config?.durationSeconds
       ?? (run.health.config?.durationMinutes ?? 0) * 60;
     return sum + durationSeconds / 60;
   }, 0);
 
-  const sizeShares = scanBidPairWithSizeFromCapture(io, forwardQuotesDir);
+  const sizeShares = scanBidPairWithSizeFromCapture(io, inputPaths.forwardQuotesDir, filteredRuns);
 
   return {
-    runCount: runs.length,
+    runCount: filteredRuns.length,
     totalDurationMinutes,
     daysCovered: metrics.calendarDays.size,
     marketCount: stats.marketTickers.size,
@@ -206,6 +235,14 @@ export function loadStrategyEvaluationInputs(input: {
 }): StrategyEvaluationLoadedInputs {
   const warnings: string[] = [];
   const { io, inputPaths } = input;
+  const selection = {
+    analysisScope: inputPaths.captureRunDir ? "selected-run" as const : "aggregate" as const,
+    forwardQuotesDir: inputPaths.forwardQuotesDir,
+    captureRunDir: inputPaths.captureRunDir,
+    selectedRunId: inputPaths.captureRunDir
+      ? inputPaths.captureRunDir.split("/").pop() ?? null
+      : null,
+  };
 
   const forwardCaptureReadiness = tryLoadArtifact(
     io,
@@ -232,13 +269,58 @@ export function loadStrategyEvaluationInputs(input: {
     inputPaths.artifacts.validBookCoverageInvestigation,
   );
 
+  const malformedArtifacts = [
+    forwardCaptureReadiness,
+    staticParityScan,
+    bidSizeCoverageAudit,
+    bidOnlyCandidateLifecycle,
+    captureQualityValidation,
+    validBookCoverageInvestigation,
+  ]
+    .filter((artifact): artifact is LoadedStrategyEvaluationArtifact =>
+      artifact !== null && artifact.malformed,
+    )
+    .map((artifact) => artifact.path);
+
+  if (malformedArtifacts.length > 0) {
+    warnings.push(`Malformed artifacts: ${malformedArtifacts.join(", ")}`);
+  }
+
+  const artifactValidation = selection.analysisScope === "selected-run"
+    ? validateInputArtifacts({
+      io: {
+        readFile: io.readFile,
+        fileExists: io.fileExists,
+      },
+      selection,
+      artifactPaths: [
+        inputPaths.artifacts.forwardCaptureReadiness,
+        inputPaths.artifacts.staticParityScan,
+        inputPaths.artifacts.bidOnlyCandidateLifecycle,
+      ].filter((path) => io.fileExists(path)),
+      evaluatedAt: input.evaluatedAt,
+      requireIdentityInSelectedRun: true,
+    })
+    : {
+      mismatchedArtifacts: [] as string[],
+      malformedArtifacts,
+      missingArtifacts: [] as string[],
+      warnings: [] as string[],
+    };
+
+  if (artifactValidation.mismatchedArtifacts.length > 0) {
+    warnings.push(
+      `Artifact scope mismatch in selected-run mode: ${artifactValidation.mismatchedArtifacts.join(", ")}`,
+    );
+  }
+
   if (!forwardCaptureReadiness && !staticParityScan) {
     warnings.push(
       "No forward-capture-readiness or static-parity-scan artifact; using capture directory fallback when available.",
     );
   }
 
-  const captureFallback = buildCaptureFallback(io, inputPaths.forwardQuotesDir);
+  const captureFallback = buildCaptureFallback(io, inputPaths);
 
   return {
     forwardCaptureReadiness,
@@ -248,6 +330,8 @@ export function loadStrategyEvaluationInputs(input: {
     captureQualityValidation,
     validBookCoverageInvestigation,
     captureFallback,
+    selection,
+    artifactValidation,
     warnings,
   };
 }
@@ -256,7 +340,7 @@ export function readBidPairWithSizeShare(
   inputs: StrategyEvaluationLoadedInputs,
 ): number | null {
   const audit = inputs.bidSizeCoverageAudit?.parsed;
-  if (audit) {
+  if (audit && !inputs.bidSizeCoverageAudit?.malformed) {
     const comparison = isRecord(audit.comparison) ? audit.comparison : null;
     const summary = isRecord(audit.summary) ? audit.summary : null;
     const withSize =
@@ -285,7 +369,7 @@ export function readBidSizeCoverageShare(
   inputs: StrategyEvaluationLoadedInputs,
 ): number | null {
   const audit = inputs.bidSizeCoverageAudit?.parsed;
-  if (audit) {
+  if (audit && !inputs.bidSizeCoverageAudit?.malformed) {
     const comparison = isRecord(audit.comparison) ? audit.comparison : null;
     const share =
       readNumber(comparison?.topOfBookBidSizeCoverageShare)
@@ -301,8 +385,10 @@ export function readBidSizeCoverageShare(
 export function readCaptureDurationHours(
   inputs: StrategyEvaluationLoadedInputs,
 ): number {
-  const aggregates = isRecord(inputs.forwardCaptureReadiness?.parsed.aggregates)
-    ? inputs.forwardCaptureReadiness?.parsed.aggregates
+  const aggregates = inputs.forwardCaptureReadiness?.parsed
+    && !inputs.forwardCaptureReadiness.malformed
+    && isRecord(inputs.forwardCaptureReadiness.parsed.aggregates)
+    ? inputs.forwardCaptureReadiness.parsed.aggregates
     : null;
   const minutes = readNumber(aggregates?.totalDurationMinutes);
   if (minutes !== null) {
@@ -315,8 +401,10 @@ export function readCaptureDurationHours(
 export function readCaptureDays(
   inputs: StrategyEvaluationLoadedInputs,
 ): number {
-  const aggregates = isRecord(inputs.forwardCaptureReadiness?.parsed.aggregates)
-    ? inputs.forwardCaptureReadiness?.parsed.aggregates
+  const aggregates = inputs.forwardCaptureReadiness?.parsed
+    && !inputs.forwardCaptureReadiness.malformed
+    && isRecord(inputs.forwardCaptureReadiness.parsed.aggregates)
+    ? inputs.forwardCaptureReadiness.parsed.aggregates
     : null;
   const days = readNumber(aggregates?.daysCovered);
   if (days !== null) {
@@ -329,16 +417,20 @@ export function readCaptureDays(
 export function readMarketCount(
   inputs: StrategyEvaluationLoadedInputs,
 ): number {
-  const aggregates = isRecord(inputs.forwardCaptureReadiness?.parsed.aggregates)
-    ? inputs.forwardCaptureReadiness?.parsed.aggregates
+  const aggregates = inputs.forwardCaptureReadiness?.parsed
+    && !inputs.forwardCaptureReadiness.malformed
+    && isRecord(inputs.forwardCaptureReadiness.parsed.aggregates)
+    ? inputs.forwardCaptureReadiness.parsed.aggregates
     : null;
   const markets = readNumber(aggregates?.marketCount);
   if (markets !== null) {
     return markets;
   }
 
-  const parityMetrics = isRecord(inputs.staticParityScan?.parsed.metrics)
-    ? inputs.staticParityScan?.parsed.metrics
+  const parityMetrics = inputs.staticParityScan?.parsed
+    && !inputs.staticParityScan.malformed
+    && isRecord(inputs.staticParityScan.parsed.metrics)
+    ? inputs.staticParityScan.parsed.metrics
     : null;
   const involved = parityMetrics?.marketsInvolved;
   if (Array.isArray(involved)) {
@@ -351,16 +443,20 @@ export function readMarketCount(
 export function readTopOfBookRecordCount(
   inputs: StrategyEvaluationLoadedInputs,
 ): number {
-  const aggregates = isRecord(inputs.forwardCaptureReadiness?.parsed.aggregates)
-    ? inputs.forwardCaptureReadiness?.parsed.aggregates
+  const aggregates = inputs.forwardCaptureReadiness?.parsed
+    && !inputs.forwardCaptureReadiness.malformed
+    && isRecord(inputs.forwardCaptureReadiness.parsed.aggregates)
+    ? inputs.forwardCaptureReadiness.parsed.aggregates
     : null;
   const count = readNumber(aggregates?.topOfBookRecordCount);
   if (count !== null) {
     return count;
   }
 
-  const parityMetrics = isRecord(inputs.staticParityScan?.parsed.metrics)
-    ? inputs.staticParityScan?.parsed.metrics
+  const parityMetrics = inputs.staticParityScan?.parsed
+    && !inputs.staticParityScan.malformed
+    && isRecord(inputs.staticParityScan.parsed.metrics)
+    ? inputs.staticParityScan.parsed.metrics
     : null;
   const scanned = readNumber(parityMetrics?.topOfBookRecordsScanned);
   if (scanned !== null) {
@@ -373,8 +469,10 @@ export function readTopOfBookRecordCount(
 export function readBtcSpotCoverage(
   inputs: StrategyEvaluationLoadedInputs,
 ): number | null {
-  const aggregates = isRecord(inputs.forwardCaptureReadiness?.parsed.aggregates)
-    ? inputs.forwardCaptureReadiness?.parsed.aggregates
+  const aggregates = inputs.forwardCaptureReadiness?.parsed
+    && !inputs.forwardCaptureReadiness.malformed
+    && isRecord(inputs.forwardCaptureReadiness.parsed.aggregates)
+    ? inputs.forwardCaptureReadiness.parsed.aggregates
     : null;
   const share = readNumber(aggregates?.btcSpotCoverageShare);
   if (share !== null) {
@@ -387,8 +485,10 @@ export function readBtcSpotCoverage(
 export function readBidOnlyCandidateCount(
   inputs: StrategyEvaluationLoadedInputs,
 ): number {
-  const metrics = isRecord(inputs.staticParityScan?.parsed.metrics)
-    ? inputs.staticParityScan?.parsed.metrics
+  const metrics = inputs.staticParityScan?.parsed
+    && !inputs.staticParityScan.malformed
+    && isRecord(inputs.staticParityScan.parsed.metrics)
+    ? inputs.staticParityScan.parsed.metrics
     : null;
   if (!metrics) {
     return 0;
@@ -405,8 +505,10 @@ export function readBidOnlyCandidateCount(
 export function readBufferAdjustedCandidateCount(
   inputs: StrategyEvaluationLoadedInputs,
 ): number {
-  const metrics = isRecord(inputs.staticParityScan?.parsed.metrics)
-    ? inputs.staticParityScan?.parsed.metrics
+  const metrics = inputs.staticParityScan?.parsed
+    && !inputs.staticParityScan.malformed
+    && isRecord(inputs.staticParityScan.parsed.metrics)
+    ? inputs.staticParityScan.parsed.metrics
     : null;
   if (!metrics) {
     return 0;
@@ -424,7 +526,7 @@ export function readCandidateEpisodeMetrics(inputs: StrategyEvaluationLoadedInpu
   totalEpisodeDurationMs: number;
 } {
   const lifecycle = inputs.bidOnlyCandidateLifecycle?.parsed;
-  if (!lifecycle) {
+  if (!lifecycle || inputs.bidOnlyCandidateLifecycle?.malformed) {
     return {
       episodeCount: 0,
       bufferAdjustedEpisodeCount: 0,
@@ -508,7 +610,7 @@ export function readExecutionConfirmationSupport(
   requiresConfirmation: boolean;
 } {
   const scan = inputs.staticParityScan?.parsed;
-  if (!scan) {
+  if (!scan || inputs.staticParityScan?.malformed) {
     return {
       supported: false,
       confirmedCount: 0,
@@ -558,9 +660,13 @@ export function readArtifactFreshness(input: {
   status: "fresh" | "stale" | "unknown";
   oldestArtifactHours: number | null;
   staleArtifacts: string[];
+  mismatchedArtifacts: string[];
+  malformedArtifacts: string[];
 } {
   const evaluatedAtMs = Date.parse(input.evaluatedAt);
   const staleArtifacts: string[] = [];
+  const mismatchedArtifacts: string[] = [];
+  const malformedArtifacts: string[] = [];
   let oldestMs: number | null = null;
 
   const artifacts = [
@@ -573,7 +679,31 @@ export function readArtifactFreshness(input: {
   ];
 
   for (const artifact of artifacts) {
-    if (!artifact?.generatedAt) {
+    if (!artifact) {
+      continue;
+    }
+
+    if (artifact.malformed) {
+      malformedArtifacts.push(artifact.path);
+      continue;
+    }
+
+    if (
+      input.inputs.selection.analysisScope === "selected-run"
+      && input.inputs.selection.selectedRunId
+      && artifact.parsed
+    ) {
+      const scope = parseArtifactScope(artifact.parsed);
+      if (
+        scope.analysisScope === "aggregate"
+        || (scope.sourceRunIds.length > 0
+          && !artifactMatchesSelectedRun(scope, input.inputs.selection.selectedRunId))
+      ) {
+        mismatchedArtifacts.push(artifact.path);
+      }
+    }
+
+    if (!artifact.generatedAt) {
       continue;
     }
 
@@ -586,8 +716,7 @@ export function readArtifactFreshness(input: {
       oldestMs = generatedMs;
     }
 
-    const ageHours = (evaluatedAtMs - generatedMs) / (1000 * 60 * 60);
-    if (ageHours > input.staleAfterHours) {
+    if (isArtifactStale(artifact.generatedAt, input.evaluatedAt, input.staleAfterHours)) {
       staleArtifacts.push(artifact.path);
     }
   }
@@ -597,6 +726,8 @@ export function readArtifactFreshness(input: {
       status: "unknown",
       oldestArtifactHours: null,
       staleArtifacts,
+      mismatchedArtifacts,
+      malformedArtifacts,
     };
   }
 
@@ -605,6 +736,8 @@ export function readArtifactFreshness(input: {
     status: staleArtifacts.length > 0 ? "stale" : "fresh",
     oldestArtifactHours,
     staleArtifacts,
+    mismatchedArtifacts,
+    malformedArtifacts,
   };
 }
 
@@ -619,7 +752,9 @@ export function listInputArtifactsUsed(
     inputs.captureQualityValidation,
     inputs.validBookCoverageInvestigation,
   ]
-    .filter((artifact): artifact is LoadedStrategyEvaluationArtifact => artifact !== null)
+    .filter((artifact): artifact is LoadedStrategyEvaluationArtifact =>
+      artifact !== null && !artifact.malformed,
+    )
     .map((artifact) => artifact.path);
 }
 

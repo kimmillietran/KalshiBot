@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { validateInputArtifacts } from "../downstreamAnalysisScope/validateInputArtifacts";
 import type { StaticParityScanReport } from "@/lib/data/research/staticParityScan/staticParityScanTypes";
 
 import {
@@ -69,8 +70,15 @@ function mapLifecycleEpisode(
   const classification = episode.episodeClassification ?? "";
   const isCandidate =
     classification === "needs-executable-confirmation"
-    || classification.includes("candidate")
-    || episode.requiresExecutableConfirmation === true;
+    || classification === "gross-candidate-episode"
+    || classification === "buffer-adjusted-candidate-episode"
+    || classification === "persistent-candidate-episode"
+    || (
+      episode.requiresExecutableConfirmation === true
+      && classification !== "no-candidate"
+      && classification !== "too-brief"
+      && classification !== "insufficient-depth"
+    );
 
   if (!isCandidate) {
     return null;
@@ -102,6 +110,7 @@ export function loadExecutableConfirmationArtifacts(input: {
   inputPaths: ExecutableConfirmationDesignInputPaths;
   config?: ExecutableConfirmationDesignConfig;
   io: ExecutableConfirmationDesignIo;
+  evaluatedAt?: string;
 }): {
   artifacts: LoadedExecutableConfirmationArtifacts;
   staticParityScanPresent: boolean;
@@ -110,12 +119,41 @@ export function loadExecutableConfirmationArtifacts(input: {
   const config = input.config ?? DEFAULT_EXECUTABLE_CONFIRMATION_DESIGN_CONFIG;
   const staticParityCandidates: AssessedConfirmationCandidate[] = [];
   const lifecycleCandidates: AssessedConfirmationCandidate[] = [];
+  const evaluatedAt = input.evaluatedAt ?? new Date().toISOString();
+  const selection = {
+    analysisScope: input.inputPaths.captureRunDir ? "selected-run" as const : "aggregate" as const,
+    forwardQuotesDir: "data/live-capture/forward-quotes",
+    captureRunDir: input.inputPaths.captureRunDir,
+    selectedRunId: input.inputPaths.captureRunDir
+      ? input.inputPaths.captureRunDir.split("/").pop() ?? null
+      : null,
+  };
 
   let staticParityScanPresent = false;
   let bidOnlyCandidateLifecyclePresent = false;
   let forwardCaptureReadinessPresent = false;
+  let lifecycleEpisodeCount = 0;
 
-  if (input.io.fileExists(input.inputPaths.staticParityScanPath)) {
+  const artifactValidation = selection.analysisScope === "selected-run"
+    ? validateInputArtifacts({
+      io: input.io,
+      selection,
+      artifactPaths: [
+        input.inputPaths.staticParityScanPath,
+        input.inputPaths.bidOnlyCandidateLifecyclePath,
+      ].filter((path) => input.io.fileExists(path)),
+      evaluatedAt,
+      requireIdentityInSelectedRun: true,
+    })
+    : null;
+
+  if (
+    input.io.fileExists(input.inputPaths.staticParityScanPath)
+    && (
+      !artifactValidation
+      || artifactValidation.usablePaths.includes(input.inputPaths.staticParityScanPath)
+    )
+  ) {
     staticParityScanPresent = true;
     const report = parseStaticParityScanReport(
       input.io.readFile(input.inputPaths.staticParityScanPath),
@@ -132,7 +170,13 @@ export function loadExecutableConfirmationArtifacts(input: {
     }
   }
 
-  if (input.io.fileExists(input.inputPaths.bidOnlyCandidateLifecyclePath)) {
+  if (
+    input.io.fileExists(input.inputPaths.bidOnlyCandidateLifecyclePath)
+    && (
+      !artifactValidation
+      || artifactValidation.usablePaths.includes(input.inputPaths.bidOnlyCandidateLifecyclePath)
+    )
+  ) {
     bidOnlyCandidateLifecyclePresent = true;
     const lifecycle = safeParseJson(
       input.io.readFile(input.inputPaths.bidOnlyCandidateLifecyclePath),
@@ -140,6 +184,7 @@ export function loadExecutableConfirmationArtifacts(input: {
     );
 
     if (lifecycle) {
+      lifecycleEpisodeCount = lifecycle.episodes?.length ?? 0;
       const feeBuffer = lifecycle.config?.feeBufferCents ?? config.feeBufferCents;
       lifecycle.episodes?.forEach((episode, index) => {
         const mapped = mapLifecycleEpisode(episode, index, feeBuffer);
@@ -158,7 +203,9 @@ export function loadExecutableConfirmationArtifacts(input: {
     artifacts: {
       staticParityCandidates,
       lifecycleCandidates,
+      lifecycleEpisodeCount,
       forwardCaptureReadinessPresent,
+      artifactValidation,
     },
     staticParityScanPresent,
     bidOnlyCandidateLifecyclePresent,

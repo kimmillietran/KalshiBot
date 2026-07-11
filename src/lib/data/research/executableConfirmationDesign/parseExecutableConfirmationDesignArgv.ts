@@ -4,6 +4,7 @@ import {
   DEFAULT_EXECUTABLE_CONFIRMATION_DESIGN_OUTPUT_PATH,
   type ExecutableConfirmationDesignInputPaths,
 } from "./executableConfirmationDesignTypes";
+import { resolveCaptureRunSelection } from "../downstreamAnalysisScope/resolveCaptureRunSelection";
 
 function readFlagValue(argv: readonly string[], flag: string, defaultValue: string): string {
   for (let index = 0; index < argv.length; index += 1) {
@@ -30,6 +31,11 @@ export function parseExecutableConfirmationDesignPathsFromArgv(
   htmlOutputPath: string;
   inputPaths: ExecutableConfirmationDesignInputPaths;
 } {
+  const selection = resolveCaptureRunSelection({
+    argv,
+    defaultForwardQuotesDir: "data/live-capture/forward-quotes",
+  });
+
   return {
     outputPath: readFlagValue(
       argv,
@@ -42,6 +48,7 @@ export function parseExecutableConfirmationDesignPathsFromArgv(
       DEFAULT_EXECUTABLE_CONFIRMATION_DESIGN_HTML_PATH,
     ),
     inputPaths: {
+      captureRunDir: selection.captureRunDir,
       staticParityScanPath: readFlagValue(
         argv,
         "--static-parity-scan",

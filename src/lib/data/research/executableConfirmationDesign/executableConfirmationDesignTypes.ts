@@ -93,6 +93,7 @@ export type ExecutableConfirmationRecord = {
 };
 
 export type ExecutableConfirmationDesignInputPaths = {
+  captureRunDir: string | null;
   staticParityScanPath: string;
   bidOnlyCandidateLifecyclePath: string;
   forwardCaptureReadinessPath: string;
@@ -100,6 +101,7 @@ export type ExecutableConfirmationDesignInputPaths = {
 
 export const DEFAULT_EXECUTABLE_CONFIRMATION_DESIGN_INPUT_PATHS: ExecutableConfirmationDesignInputPaths =
   {
+    captureRunDir: null,
     staticParityScanPath: DEFAULT_STATIC_PARITY_SCAN_ARTIFACT_PATH,
     bidOnlyCandidateLifecyclePath: DEFAULT_BID_ONLY_CANDIDATE_LIFECYCLE_ARTIFACT_PATH,
     forwardCaptureReadinessPath: DEFAULT_FORWARD_CAPTURE_READINESS_ARTIFACT_PATH,
@@ -136,6 +138,9 @@ export type ExecutableConfirmationDesignSummary = {
   requiredDataFields: readonly ConfirmationRequiredDataField[];
   availableDataFields: readonly ConfirmationRequiredDataField[];
   missingDataFields: readonly ConfirmationRequiredDataField[];
+  episodesAssessed: number;
+  candidateEpisodesAssessed: number;
+  /** @deprecated Use candidateEpisodesAssessed for lifecycle episodes or episodesAssessed for total lifecycle count. */
   candidateCountAssessed: number;
   confirmedExecutableCandidateCount: number;
   unsupportedCandidateCount: number;
@@ -155,6 +160,10 @@ export type ExecutableConfirmationDesignReport = {
   dataAssessment: ExecutableConfirmationDataAssessment;
   confirmationRecords: readonly ExecutableConfirmationRecord[];
   exampleConfirmationRecord: ExecutableConfirmationRecord;
+  scope: import("../downstreamAnalysisScope/downstreamAnalysisScopeTypes").DownstreamScopeMetadata;
+  analysisScope: import("../downstreamAnalysisScope/downstreamAnalysisScopeTypes").AnalysisScope;
+  selectedRunId: string | null;
+  sourceRunIds: readonly string[];
 };
 
 export type ExecutableConfirmationDesignIo = {

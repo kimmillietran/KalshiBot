@@ -70,6 +70,9 @@ export function runStaticParityScanCommand(
         stableStringify({
           outputPath: report.outputPath,
           htmlOutputPath: report.htmlOutputPath,
+          analysisScope: report.analysisScope,
+          selectedRunId: report.selectedRunId,
+          sourceRunIds: report.sourceRunIds,
           pricingModel: report.summary.pricingModel,
           overallClassification: report.summary.overallClassification,
           recommendedNextAction: report.summary.recommendedNextAction,

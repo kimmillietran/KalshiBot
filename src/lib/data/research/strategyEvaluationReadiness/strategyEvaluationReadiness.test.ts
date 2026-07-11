@@ -382,6 +382,77 @@ describe("strategyEvaluationReadiness", () => {
     });
 
     expect(report.summary.overallVerdict).toBe("ready-for-offline-strategy-evaluation");
+    expect(report.summary.recommendedNextAction).toBe("proceed-strategy-evaluation");
+  });
+
+  it("does not recommend static parity scan when fresh matching artifact exists", () => {
+    const report = evaluateWithArtifacts({
+      [DEFAULT_STRATEGY_EVALUATION_INPUT_PATHS.artifacts.forwardCaptureReadiness]:
+        buildForwardCaptureArtifact({
+          totalDurationMinutes: 8 * 60,
+          daysCovered: 3,
+          marketCount: 25,
+          topOfBookRecordCount: 2_000,
+        }),
+      [DEFAULT_STRATEGY_EVALUATION_INPUT_PATHS.artifacts.bidSizeCoverageAudit]:
+        buildBidSizeAuditArtifact({
+          bidPairWithSizeCount: 80,
+          bidPairWithoutSizeCount: 20,
+        }),
+      [DEFAULT_STRATEGY_EVALUATION_INPUT_PATHS.artifacts.staticParityScan]:
+        buildStaticParityArtifact({ grossCandidates: 0, bufferAdjustedCandidates: 0 }),
+    });
+
+    expect(report.summary.recommendedNextAction).not.toBe("run-static-parity-scan");
+    expect(report.summary.recommendedNextAction).toBe("run-near-miss-analysis");
+  });
+
+  it("does not recommend lifecycle rebuild when fresh lifecycle artifact exists", () => {
+    const report = evaluateWithArtifacts({
+      [DEFAULT_STRATEGY_EVALUATION_INPUT_PATHS.artifacts.forwardCaptureReadiness]:
+        buildForwardCaptureArtifact({
+          totalDurationMinutes: 8 * 60,
+          daysCovered: 3,
+          marketCount: 25,
+          topOfBookRecordCount: 2_000,
+        }),
+      [DEFAULT_STRATEGY_EVALUATION_INPUT_PATHS.artifacts.bidSizeCoverageAudit]:
+        buildBidSizeAuditArtifact({
+          bidPairWithSizeCount: 80,
+          bidPairWithoutSizeCount: 20,
+        }),
+      [DEFAULT_STRATEGY_EVALUATION_INPUT_PATHS.artifacts.staticParityScan]:
+        buildStaticParityArtifact({ grossCandidates: 12, bufferAdjustedCandidates: 3 }),
+      [DEFAULT_STRATEGY_EVALUATION_INPUT_PATHS.artifacts.bidOnlyCandidateLifecycle]:
+        buildLifecycleArtifact({ episodeCount: 2 }),
+    });
+
+    expect(report.summary.recommendedNextAction).not.toBe("build-candidate-lifecycle");
+    expect(report.summary.recommendedNextAction).toBe("run-near-miss-analysis");
+  });
+
+  it("rejects aggregate artifacts in selected-run mode", () => {
+    const io = buildMemoryIo({
+      [DEFAULT_STRATEGY_EVALUATION_INPUT_PATHS.artifacts.staticParityScan]:
+        JSON.stringify({
+          generatedAt: GENERATED_AT,
+          analysisScope: "aggregate",
+          sourceRunIds: ["run-a", "run-b"],
+          metrics: { bidOnlyGrossCandidateCount: 5 },
+        }),
+    });
+
+    const loaded = loadStrategyEvaluationInputs({
+      io,
+      inputPaths: buildInputPaths({
+        captureRunDir: "data/live-capture/forward-quotes/run-a",
+      }),
+      evaluatedAt: GENERATED_AT,
+    });
+
+    expect(loaded.artifactValidation.mismatchedArtifacts).toContain(
+      DEFAULT_STRATEGY_EVALUATION_INPUT_PATHS.artifacts.staticParityScan,
+    );
   });
 
   it("warns on missing artifacts without crashing", () => {

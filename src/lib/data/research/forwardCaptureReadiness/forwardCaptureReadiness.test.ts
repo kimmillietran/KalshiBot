@@ -492,4 +492,76 @@ describe("forwardCaptureReadiness", () => {
     expect(evaluation.aggregates.runCount).toBe(1);
     expect(evaluation.summary.overallVerdict).not.toBe("not-ready-no-data");
   });
+
+  it("evaluates only the selected run in selected-run mode", () => {
+    const eligibleRun = createRunFiles({
+      runId: "eligible-run",
+      durationSeconds: 600,
+      generatedAt: "2026-07-09T08:00:00.000Z",
+      verdict: "capture-mvp-success",
+    });
+    const mockRun = createRunFiles({
+      runId: "mock-run",
+      durationSeconds: 600,
+      generatedAt: "2026-07-09T08:00:00.000Z",
+      verdict: "capture-mvp-success",
+      topOfBookLines: [
+        createTopOfBookLine({
+          runId: "mock-run",
+          marketTicker: "KXBTC15M-MOCK-15",
+          receivedAtLocal: "2026-07-09T08:00:00.000Z",
+        }),
+      ],
+    });
+
+    const report = buildForwardCaptureReadinessReport({
+      generatedAt: GENERATED_AT,
+      outputPath: OUTPUT_PATH,
+      htmlOutputPath: HTML_PATH,
+      inputPaths: {
+        ...DEFAULT_FORWARD_CAPTURE_READINESS_INPUT_PATHS,
+        captureRunDir: `${SPIKE_ROOT}/eligible-run`,
+      },
+      io: buildMemoryIo({ ...eligibleRun, ...mockRun }),
+    });
+
+    expect(report.analysisScope).toBe("selected-run");
+    expect(report.sourceRunIds).toEqual(["eligible-run"]);
+    expect(report.aggregates.runCount).toBe(1);
+    expect(report.sequenceGapSemantics?.length).toBeGreaterThan(0);
+  });
+
+  it("excludes mock runs in aggregate mode", () => {
+    const eligibleRun = createRunFiles({
+      runId: "eligible-run",
+      durationSeconds: 600,
+      generatedAt: "2026-07-09T08:00:00.000Z",
+      verdict: "capture-mvp-success",
+    });
+    const mockRun = createRunFiles({
+      runId: "mock-run",
+      durationSeconds: 600,
+      generatedAt: "2026-07-09T08:00:00.000Z",
+      verdict: "capture-mvp-success",
+      topOfBookLines: [
+        createTopOfBookLine({
+          runId: "mock-run",
+          marketTicker: "KXBTC15M-MOCK-15",
+          receivedAtLocal: "2026-07-09T08:00:00.000Z",
+        }),
+      ],
+    });
+
+    const report = buildForwardCaptureReadinessReport({
+      generatedAt: GENERATED_AT,
+      outputPath: OUTPUT_PATH,
+      htmlOutputPath: HTML_PATH,
+      inputPaths: DEFAULT_FORWARD_CAPTURE_READINESS_INPUT_PATHS,
+      io: buildMemoryIo({ ...eligibleRun, ...mockRun }),
+    });
+
+    expect(report.analysisScope).toBe("aggregate");
+    expect(report.excludedRuns?.some((entry) => entry.runId === "mock-run")).toBe(true);
+    expect(report.aggregates.runCount).toBe(1);
+  });
 });

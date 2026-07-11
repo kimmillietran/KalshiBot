@@ -1,4 +1,9 @@
 import {
+  buildDownstreamScopeMetadata,
+  resolveRunIdFromPath,
+  spreadDownstreamScopeFields,
+} from "../downstreamAnalysisScope";
+import {
   scanForwardCaptureParity,
 } from "./scanForwardCaptureParity";
 import {
@@ -75,8 +80,41 @@ export function buildStaticParityScanReport(input: {
   const scan = scanForwardCaptureParity({
     io: input.io,
     forwardQuotesDir: input.inputPaths.forwardQuotesDir,
+    captureRunDir: input.inputPaths.captureRunDir,
     friction,
   });
+
+  const selection = {
+    analysisScope: input.inputPaths.captureRunDir ? "selected-run" as const : "aggregate" as const,
+    forwardQuotesDir: input.inputPaths.forwardQuotesDir,
+    captureRunDir: input.inputPaths.captureRunDir,
+    selectedRunId: input.inputPaths.captureRunDir
+      ? resolveRunIdFromPath(input.inputPaths.captureRunDir)
+      : null,
+  };
+  const sourceRunIds = selection.analysisScope === "selected-run"
+    ? selection.selectedRunId
+      ? [selection.selectedRunId]
+      : []
+    : scan.runs.filter((run) => run.scanned).map((run) => run.runId);
+  const scope = buildDownstreamScopeMetadata({
+    selection,
+    generatedAt: input.generatedAt,
+    recordsScanned: scan.metrics.topOfBookRecordsScanned,
+    artifactValidation: {
+      identities: [],
+      staleArtifacts: [],
+      mismatchedArtifacts: [],
+      malformedArtifacts: [],
+      missingArtifacts: [],
+      warnings: [],
+      usablePaths: [],
+    },
+    extraWarnings: selection.analysisScope === "selected-run" && scan.metrics.runCountScanned === 0
+      ? ["Selected capture run was not scanned (missing or invalid artifacts)."]
+      : undefined,
+  });
+  const scopeFields = spreadDownstreamScopeFields(scope, { sourceRunIds });
 
   const summary: StaticParityScanSummary = {
     pricingModel: friction.pricingModel,
@@ -107,6 +145,7 @@ export function buildStaticParityScanReport(input: {
     friction,
     summary,
     metrics: scan.metrics,
+    ...scopeFields,
     candidateSamples: scan.candidateSamples,
     runs: scan.runs,
   };

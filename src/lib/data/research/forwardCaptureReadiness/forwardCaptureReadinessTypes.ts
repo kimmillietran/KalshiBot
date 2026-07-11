@@ -88,13 +88,21 @@ export const DEFAULT_FORWARD_CAPTURE_READINESS_THRESHOLDS = {
 export type ForwardCaptureReadinessInputPaths = {
   forwardQuotesDir: string;
   kalshiWsSpikeDir: string;
+  captureRunDir: string | null;
 };
 
 export const DEFAULT_FORWARD_CAPTURE_READINESS_INPUT_PATHS: ForwardCaptureReadinessInputPaths =
   {
     forwardQuotesDir: DEFAULT_FORWARD_QUOTES_CAPTURE_DIR,
     kalshiWsSpikeDir: DEFAULT_KALSHI_WS_SPIKE_CAPTURE_DIR,
+    captureRunDir: null,
   };
+
+export type ExcludedCaptureRun = {
+  runId: string;
+  runDir: string;
+  reason: string;
+};
 
 export type ForwardCaptureAggregateMetrics = {
   runCount: number;
@@ -166,6 +174,12 @@ export type ForwardCaptureReadinessReport = {
   bySeriesTicker: readonly ForwardCaptureBreakdownEntry[];
   byMarketTicker: readonly ForwardCaptureBreakdownEntry[];
   byRunId: readonly ForwardCaptureBreakdownEntry[];
+  scope: import("../downstreamAnalysisScope/downstreamAnalysisScopeTypes").DownstreamScopeMetadata;
+  analysisScope: import("../downstreamAnalysisScope/downstreamAnalysisScopeTypes").AnalysisScope;
+  selectedRunId: string | null;
+  sourceRunIds: readonly string[];
+  excludedRuns?: readonly ExcludedCaptureRun[];
+  sequenceGapSemantics?: readonly import("../downstreamAnalysisScope/downstreamAnalysisScopeTypes").SequenceGapCounterSemantics[];
 };
 
 export type ForwardCaptureReadinessIo = {

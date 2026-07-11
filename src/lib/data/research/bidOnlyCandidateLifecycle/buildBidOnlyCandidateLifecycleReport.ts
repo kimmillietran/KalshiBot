@@ -1,4 +1,9 @@
 import {
+  buildDownstreamScopeMetadata,
+  resolveRunIdFromPath,
+  spreadDownstreamScopeFields,
+} from "../downstreamAnalysisScope";
+import {
   createBidOnlyCandidateLifecycleConfig,
   resolveRecommendedNextAction,
 } from "./bidOnlyCandidateLifecycleConfig";
@@ -37,6 +42,8 @@ function buildMetrics(input: {
   runs: ReturnType<typeof loadBidOnlyParityInputs>["runs"];
   episodes: ReturnType<typeof buildBidOnlyCandidateEpisodes>;
   warnings: string[];
+  scopeWarnings: string[];
+  dataQualityWarnings: string[];
 }): BidOnlyCandidateLifecycleMetrics {
   const markets = new Set<string>();
   let recordsScanned = 0;
@@ -78,6 +85,18 @@ function buildMetrics(input: {
     btcMoveBucketDistribution[episode.btcMoveBucket] += 1;
   }
 
+  const combinedWarnings = [
+    ...input.scopeWarnings,
+    ...input.dataQualityWarnings,
+    ...input.warnings,
+  ];
+
+  if (input.episodes.length === 0 && input.runs.length > 0) {
+    combinedWarnings.push(
+      "Zero candidate episodes after classification (distinct from scope or data-quality issues).",
+    );
+  }
+
   return {
     runsScanned: input.runs.length,
     marketsScanned: markets.size,
@@ -101,7 +120,7 @@ function buildMetrics(input: {
     timeToCloseBucketDistribution,
     btcMoveBucketDistribution,
     malformedLineCount,
-    warnings: input.warnings,
+    warnings: combinedWarnings,
   };
 }
 
@@ -114,13 +133,47 @@ export function buildBidOnlyCandidateLifecycleReport(input: {
   io: BidOnlyCandidateLifecycleIo;
 }): BidOnlyCandidateLifecycleReport {
   const config = input.config ?? createBidOnlyCandidateLifecycleConfig();
-  const loaded = loadBidOnlyParityInputs({ config, io: input.io });
+  const loaded = loadBidOnlyParityInputs({
+    config,
+    io: input.io,
+    evaluatedAt: input.generatedAt,
+  });
   const episodes = buildBidOnlyCandidateEpisodes(loaded.runs, config);
   const metrics = buildMetrics({
     runs: loaded.runs,
     episodes,
     warnings: loaded.warnings,
+    scopeWarnings: loaded.scopeWarnings,
+    dataQualityWarnings: loaded.dataQualityWarnings,
   });
+
+  const selection = {
+    analysisScope: config.captureRunDir ? "selected-run" as const : "aggregate" as const,
+    forwardQuotesDir: config.forwardQuotesDir,
+    captureRunDir: config.captureRunDir,
+    selectedRunId: config.captureRunDir ? resolveRunIdFromPath(config.captureRunDir) : null,
+  };
+  const sourceRunIds = selection.analysisScope === "selected-run"
+    ? selection.selectedRunId
+      ? [selection.selectedRunId]
+      : []
+    : loaded.runs.map((run) => run.runId);
+  const scope = buildDownstreamScopeMetadata({
+    selection,
+    generatedAt: input.generatedAt,
+    recordsScanned: metrics.recordsScanned,
+    artifactValidation: loaded.artifactValidation ?? {
+      identities: [],
+      staleArtifacts: [],
+      mismatchedArtifacts: [],
+      malformedArtifacts: [],
+      missingArtifacts: [],
+      warnings: [],
+      usablePaths: config.staticParityScanPath ? [config.staticParityScanPath] : [],
+    },
+    extraWarnings: loaded.scopeWarnings,
+  });
+  const scopeFields = spreadDownstreamScopeFields(scope, { sourceRunIds });
 
   const enoughForStrategyEvaluation =
     metrics.persistentCandidateEpisodes > 0
@@ -146,6 +199,7 @@ export function buildBidOnlyCandidateLifecycleReport(input: {
       requiresExecutableConfirmation: config.requireExecutableConfirmation,
     },
     metrics,
+    ...scopeFields,
     episodes,
   };
 }

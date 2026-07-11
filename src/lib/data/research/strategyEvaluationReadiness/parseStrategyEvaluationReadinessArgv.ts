@@ -4,6 +4,7 @@ import {
   DEFAULT_STRATEGY_EVALUATION_READINESS_OUTPUT_PATH,
   type StrategyEvaluationInputPaths,
 } from "./strategyEvaluationReadinessTypes";
+import { resolveCaptureRunSelection } from "../downstreamAnalysisScope/resolveCaptureRunSelection";
 
 function readFlagValue(argv: readonly string[], flag: string, defaultValue: string): string {
   for (let index = 0; index < argv.length; index += 1) {
@@ -26,6 +27,11 @@ export function parseStrategyEvaluationReadinessPathsFromArgv(
   htmlOutputPath: string;
   inputPaths: StrategyEvaluationInputPaths;
 } {
+  const selection = resolveCaptureRunSelection({
+    argv,
+    defaultForwardQuotesDir: DEFAULT_STRATEGY_EVALUATION_INPUT_PATHS.forwardQuotesDir,
+  });
+
   return {
     outputPath: readFlagValue(
       argv,
@@ -38,11 +44,8 @@ export function parseStrategyEvaluationReadinessPathsFromArgv(
       DEFAULT_STRATEGY_EVALUATION_READINESS_HTML_PATH,
     ),
     inputPaths: {
-      forwardQuotesDir: readFlagValue(
-        argv,
-        "--forward-quotes-dir",
-        DEFAULT_STRATEGY_EVALUATION_INPUT_PATHS.forwardQuotesDir,
-      ),
+      forwardQuotesDir: selection.forwardQuotesDir,
+      captureRunDir: selection.captureRunDir,
       artifacts: {
         forwardCaptureReadiness: readFlagValue(
           argv,

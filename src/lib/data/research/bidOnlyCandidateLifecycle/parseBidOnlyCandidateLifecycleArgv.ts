@@ -5,6 +5,7 @@ import {
   DEFAULT_BID_ONLY_CANDIDATE_LIFECYCLE_OUTPUT_PATH,
   DEFAULT_STATIC_PARITY_SCAN_ARTIFACT_PATH,
 } from "./bidOnlyCandidateLifecycleTypes";
+import { resolveCaptureRunSelection } from "../downstreamAnalysisScope/resolveCaptureRunSelection";
 
 export type BidOnlyCandidateLifecycleArgv = {
   forwardQuotesDir: string;
@@ -37,9 +38,13 @@ function readNumericFlag(argv: readonly string[], flag: string): number | undefi
 export function parseBidOnlyCandidateLifecycleArgv(
   argv: readonly string[],
 ): BidOnlyCandidateLifecycleArgv {
+  const selection = resolveCaptureRunSelection({
+    argv,
+    defaultForwardQuotesDir: DEFAULT_BID_ONLY_CANDIDATE_LIFECYCLE_INPUT_DIR,
+  });
+
   return {
-    forwardQuotesDir:
-      readFlagValue(argv, "--forward-quotes-dir") ?? DEFAULT_BID_ONLY_CANDIDATE_LIFECYCLE_INPUT_DIR,
+    forwardQuotesDir: selection.forwardQuotesDir,
     outputPath:
       readFlagValue(argv, "--output") ?? DEFAULT_BID_ONLY_CANDIDATE_LIFECYCLE_OUTPUT_PATH,
     htmlOutputPath:
@@ -47,6 +52,7 @@ export function parseBidOnlyCandidateLifecycleArgv(
     staticParityScanPath:
       readFlagValue(argv, "--static-parity-scan") ?? DEFAULT_STATIC_PARITY_SCAN_ARTIFACT_PATH,
     configOverrides: {
+      captureRunDir: selection.captureRunDir,
       maxGapMs: readNumericFlag(argv, "--max-gap-ms"),
       minEpisodeDurationMs: readNumericFlag(argv, "--min-episode-duration-ms"),
       minEdgeCents: readNumericFlag(argv, "--min-edge-cents"),

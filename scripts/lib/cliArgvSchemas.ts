@@ -326,6 +326,7 @@ export const CAPTURE_QUALITY_VALIDATION_ARGV_SCHEMA: readonly NpmArgvField[] = [
 
 export const BID_ONLY_CANDIDATE_LIFECYCLE_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--forward-quotes-dir" },
+  { flag: "--capture-run-dir" },
   { flag: "--output" },
   { flag: "--html-output" },
   { flag: "--static-parity-scan" },
@@ -334,6 +335,21 @@ export const BID_ONLY_CANDIDATE_LIFECYCLE_ARGV_SCHEMA: readonly NpmArgvField[] =
   { flag: "--min-edge-cents" },
   { flag: "--min-size-contracts" },
   { flag: "--pricing-model" },
+];
+
+export const STATIC_PARITY_SCAN_ARGV_SCHEMA: readonly NpmArgvField[] = [
+  { flag: "--input-dir" },
+  { flag: "--forward-quotes-dir" },
+  { flag: "--capture-run-dir" },
+  { flag: "--output" },
+  { flag: "-o" },
+  { flag: "--html" },
+  { flag: "--html-output" },
+  { flag: "--pricing-model" },
+  { flag: "--fee-buffer-cents" },
+  { flag: "--min-gross-edge-cents" },
+  { flag: "--min-bid-only-edge-cents" },
+  { flag: "--min-size-contracts" },
 ];
 
 export const CAPTURE_BASELINE_COMPARISON_ARGV_SCHEMA: readonly NpmArgvField[] = [
@@ -683,12 +699,27 @@ export const FORWARD_CAPTURE_READINESS_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--output" },
   { flag: "--html-output" },
   { flag: "--forward-quotes-dir" },
+  { flag: "--capture-run-dir" },
   { flag: "--kalshi-ws-spike-dir" },
+];
+
+export const STRATEGY_EVALUATION_READINESS_ARGV_SCHEMA: readonly NpmArgvField[] = [
+  { flag: "--output" },
+  { flag: "--html-output" },
+  { flag: "--forward-quotes-dir" },
+  { flag: "--capture-run-dir" },
+  { flag: "--forward-capture-readiness" },
+  { flag: "--static-parity-scan" },
+  { flag: "--bid-size-coverage-audit" },
+  { flag: "--bid-only-candidate-lifecycle" },
+  { flag: "--capture-quality-validation" },
+  { flag: "--valid-book-coverage" },
 ];
 
 export const EXECUTABLE_CONFIRMATION_DESIGN_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--output" },
   { flag: "--html-output" },
+  { flag: "--capture-run-dir" },
   { flag: "--static-parity-scan" },
   { flag: "--bid-only-lifecycle" },
   { flag: "--forward-capture-readiness" },
@@ -964,6 +995,14 @@ export function normalizeCaptureQualityValidationArgv(argv: readonly string[]): 
 
 export function normalizeBidOnlyCandidateLifecycleArgv(argv: readonly string[]): string[] {
   return normalizeNpmScriptArgv(argv, BID_ONLY_CANDIDATE_LIFECYCLE_ARGV_SCHEMA);
+}
+
+export function normalizeStaticParityScanArgv(argv: readonly string[]): string[] {
+  return normalizeNpmScriptArgv(argv, STATIC_PARITY_SCAN_ARGV_SCHEMA);
+}
+
+export function normalizeStrategyEvaluationReadinessArgv(argv: readonly string[]): string[] {
+  return normalizeNpmScriptArgv(argv, STRATEGY_EVALUATION_READINESS_ARGV_SCHEMA);
 }
 
 export function normalizeCaptureBaselineComparisonArgv(argv: readonly string[]): string[] {

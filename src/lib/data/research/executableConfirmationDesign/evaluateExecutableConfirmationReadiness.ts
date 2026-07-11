@@ -36,10 +36,14 @@ export type AssessedConfirmationCandidate = {
   requiresExecutableConfirmation: boolean;
 };
 
+import type { ArtifactValidationResult } from "../downstreamAnalysisScope/downstreamAnalysisScopeTypes";
+
 export type LoadedExecutableConfirmationArtifacts = {
   staticParityCandidates: AssessedConfirmationCandidate[];
   lifecycleCandidates: AssessedConfirmationCandidate[];
+  lifecycleEpisodeCount: number;
   forwardCaptureReadinessPresent: boolean;
+  artifactValidation: ArtifactValidationResult | null;
 };
 
 function parseTimestampMs(timestamp: string | null | undefined): number | null {
@@ -360,10 +364,9 @@ export function evaluateExecutableConfirmationReadiness(input: {
 } {
   const config = input.config ?? DEFAULT_EXECUTABLE_CONFIRMATION_DESIGN_CONFIG;
   const nowMs = input.generatedAt ? Date.parse(input.generatedAt) : Date.now();
-  const candidates = [
-    ...input.artifacts.staticParityCandidates,
-    ...input.artifacts.lifecycleCandidates,
-  ];
+  const parityCandidates = input.artifacts.staticParityCandidates;
+  const lifecycleCandidates = input.artifacts.lifecycleCandidates;
+  const candidates = [...parityCandidates, ...lifecycleCandidates];
 
   const confirmationRecords = candidates.map((candidate) =>
     buildConfirmationRecord({ candidate, config, nowMs }),
@@ -414,7 +417,9 @@ export function evaluateExecutableConfirmationReadiness(input: {
     requiredDataFields: CONFIRMATION_REQUIRED_DATA_FIELDS,
     availableDataFields: [...unionAvailable],
     missingDataFields: [...unionMissing],
-    candidateCountAssessed: candidates.length,
+    episodesAssessed: input.artifacts.lifecycleEpisodeCount,
+    candidateEpisodesAssessed: lifecycleCandidates.length,
+    candidateCountAssessed: parityCandidates.length + lifecycleCandidates.length,
     confirmedExecutableCandidateCount,
     unsupportedCandidateCount,
     recommendedNextFix: resolveRecommendedNextFix({

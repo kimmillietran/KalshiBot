@@ -276,4 +276,74 @@ describe("executableConfirmationDesign", () => {
       expect(content).not.toMatch(/placeOrder|submitOrder|createOrder/i);
     }
   });
+
+  it("reports episodesAssessed separately from candidate counts", () => {
+    const lifecycleArtifact = JSON.stringify({
+      generatedAt: GENERATED_AT,
+      episodes: [
+        {
+          episodeId: "ep-1",
+          marketTicker: "MKT-1",
+          episodeClassification: "gross-candidate-episode",
+          startedAt: GENERATED_AT,
+          minBidSizeContracts: 5,
+          maxBidOnlyEdgeCents: 3,
+          firstBidSumCents: 103,
+          requiresExecutableConfirmation: true,
+        },
+        {
+          episodeId: "ep-2",
+          marketTicker: "MKT-2",
+          episodeClassification: "no-candidate",
+          startedAt: GENERATED_AT,
+        },
+      ],
+      config: { feeBufferCents: 4 },
+    });
+
+    const report = buildExecutableConfirmationDesignReport({
+      generatedAt: GENERATED_AT,
+      outputPath: OUTPUT_PATH,
+      htmlOutputPath: HTML_PATH,
+      inputPaths: {
+        ...DEFAULT_EXECUTABLE_CONFIRMATION_DESIGN_INPUT_PATHS,
+        bidOnlyCandidateLifecyclePath: "data/research-results/bid-only-candidate-lifecycle.json",
+      },
+      io: buildMemoryIo({
+        "data/research-results/bid-only-candidate-lifecycle.json": lifecycleArtifact,
+      }),
+    });
+
+    expect(report.summary.episodesAssessed).toBe(2);
+    expect(report.summary.candidateEpisodesAssessed).toBe(1);
+    expect(report.summary.candidateCountAssessed).toBe(1);
+  });
+
+  it("rejects aggregate artifacts in selected-run mode", () => {
+    const report = buildExecutableConfirmationDesignReport({
+      generatedAt: GENERATED_AT,
+      outputPath: OUTPUT_PATH,
+      htmlOutputPath: HTML_PATH,
+      inputPaths: {
+        ...DEFAULT_EXECUTABLE_CONFIRMATION_DESIGN_INPUT_PATHS,
+        captureRunDir: "data/live-capture/forward-quotes/run-a",
+        staticParityScanPath: "data/research-results/static-parity-scan.json",
+      },
+      io: buildMemoryIo({
+        "data/research-results/static-parity-scan.json": JSON.stringify({
+          generatedAt: GENERATED_AT,
+          analysisScope: "aggregate",
+          sourceRunIds: ["run-a", "run-b"],
+          friction: { feeBufferCents: 4 },
+          candidateSamples: [],
+        }),
+      }),
+    });
+
+    expect(report.analysisScope).toBe("selected-run");
+    expect(report.scope.mismatchedArtifacts).toContain(
+      "data/research-results/static-parity-scan.json",
+    );
+    expect(report.confirmationRecords).toHaveLength(0);
+  });
 });
