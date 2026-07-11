@@ -161,6 +161,21 @@ describe("captureBaselineComparison", () => {
     expect(result.improvements.some((item) => item.includes("gross candidates"))).toBe(true);
   });
 
+  it("detects candidate-signal-emerging from lifecycle episodes alone", () => {
+    const result = compareCaptureBaselines({
+      baseline: DEFAULT_CONFIGURED_BASELINE,
+      comparison: comparisonSnapshot({
+        candidateEpisodes: 5,
+        grossCandidates: 0,
+        bufferAdjustedCandidates: 0,
+        persistentCandidateEpisodes: 0,
+      }),
+    });
+
+    expect(result.overallVerdict).toBe("candidate-signal-emerging");
+    expect(result.currentBottleneck).toBe("executable-confirmation");
+  });
+
   it("returns no-candidates-yet when comparison still has zero candidates", () => {
     const result = compareCaptureBaselines({
       baseline: DEFAULT_CONFIGURED_BASELINE,
@@ -330,6 +345,78 @@ describe("captureBaselineComparison", () => {
     expect(
       report.summary.warnings.some((warning) => warning.includes("aggregate artifact")),
     ).toBe(true);
+  });
+
+  it("does not warn about aggregate artifacts when only capture-quality audits are loaded", () => {
+    const files = {
+      [`${INPUT_DIR}/run-new/capture-health.json`]: JSON.stringify({
+        runId: "run-new",
+        generatedAt: "2026-07-10T00:00:00.000Z",
+        verdict: "capture-research-ready",
+        config: { durationSeconds: 600 },
+      }),
+      [`${INPUT_DIR}/run-new/top-of-book.jsonl`]: topOfBookLine({
+        receivedAtLocal: "2026-07-10T00:00:00.000Z",
+        yesBidSize: 5,
+        noBidSize: 5,
+      }),
+      ...artifact("data/research-results/capture-health-audit.json", {
+        summary: { verdict: "capture-research-ready", runDurationSeconds: 600 },
+      }),
+      ...artifact("data/research-results/bid-size-coverage-audit.json", {
+        summary: { bidPairWithSizeCount: 1, bidPairWithoutSizeCount: 0 },
+        comparison: { bidSizeCoverageShare: 1 },
+      }),
+    };
+
+    const report = buildCaptureBaselineComparisonReport({
+      generatedAt: "2026-07-10T00:00:00.000Z",
+      io: buildMemoryIo(files),
+      config: createCaptureBaselineComparisonConfig({
+        forwardQuotesDir: INPUT_DIR,
+        useLatestComparisonRun: true,
+      }),
+    });
+
+    expect(
+      report.summary.warnings.some((warning) => warning.includes("aggregate artifact")),
+    ).toBe(false);
+  });
+
+  it("does not warn when static parity has snapshots but no candidate counts", () => {
+    const files = {
+      [`${INPUT_DIR}/run-new/capture-health.json`]: JSON.stringify({
+        runId: "run-new",
+        generatedAt: "2026-07-10T00:00:00.000Z",
+        verdict: "capture-research-ready",
+        config: { durationSeconds: 600 },
+      }),
+      [`${INPUT_DIR}/run-new/top-of-book.jsonl`]: topOfBookLine({
+        receivedAtLocal: "2026-07-10T00:00:00.000Z",
+        yesBidSize: 5,
+        noBidSize: 5,
+      }),
+      ...artifact("data/research-results/static-parity-scan.json", {
+        metrics: {
+          validParitySnapshots: 62,
+          bidOnlyGrossCandidateCount: 0,
+          bidOnlyBufferAdjustedCandidateCount: 0,
+        },
+      }),
+    };
+
+    const report = buildCaptureBaselineComparisonReport({
+      generatedAt: "2026-07-10T00:00:00.000Z",
+      io: buildMemoryIo(files),
+      config: createCaptureBaselineComparisonConfig({
+        forwardQuotesDir: INPUT_DIR,
+        useLatestComparisonRun: true,
+      }),
+    });
+
+    expect(
+      report.summary.warnings.some((warning) => warning.includes("aggregate artifact")),
+    ).toBe(false);
   });
 
   it("selects the latest run by generated timestamp", () => {
@@ -529,7 +616,7 @@ describe("captureBaselineComparison", () => {
         }),
         ...artifact("data/research-results/bid-only-candidate-lifecycle.json", {
           metrics: {
-            episodesBuilt: 3,
+            episodesBuilt: 0,
             bidOnlyCandidateRecords: 0,
             persistentCandidateEpisodes: 0,
           },
