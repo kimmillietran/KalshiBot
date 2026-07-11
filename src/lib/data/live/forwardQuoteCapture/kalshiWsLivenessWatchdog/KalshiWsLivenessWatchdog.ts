@@ -25,9 +25,11 @@ export class KalshiWsLivenessWatchdog {
   private captureStartedAtMonotonicMs: number | null = null;
   private lastWatchdogTickMonotonicMs: number | null = null;
   private lastRawMessageMonotonicMs: number | null = null;
+  private lastExpectedMarketMessageMonotonicMs: number | null = null;
   private lastTopOfBookMonotonicMs: number | null = null;
   private lastBtcActivityMonotonicMs: number | null = null;
   private lastRawMessageAt: string | null = null;
+  private lastExpectedMarketMessageAt: string | null = null;
   private lastTopOfBookAt: string | null = null;
   private lastWebSocketOpenAt: string | null = null;
   private lastWebSocketCloseAt: string | null = null;
@@ -106,6 +108,12 @@ export class KalshiWsLivenessWatchdog {
     const nowMono = this.deps.monotonicNowMs();
     this.lastRawMessageMonotonicMs = nowMono;
     this.lastRawMessageAt = this.deps.now().toISOString();
+  }
+
+  recordExpectedMarketMessage(): void {
+    const nowMono = this.deps.monotonicNowMs();
+    this.lastExpectedMarketMessageMonotonicMs = nowMono;
+    this.lastExpectedMarketMessageAt = this.deps.now().toISOString();
     this.kalshiStreamEndedAt = null;
     this.silentWhileBtcActiveStartMonotonicMs = null;
 
@@ -128,8 +136,8 @@ export class KalshiWsLivenessWatchdog {
     this.lastBtcActivityMonotonicMs = nowMono;
 
     if (
-      this.lastRawMessageMonotonicMs === null
-      || nowMono - this.lastRawMessageMonotonicMs >= this.config.wsSoftSilenceThresholdMs
+      this.lastExpectedMarketMessageMonotonicMs === null
+      || nowMono - this.lastExpectedMarketMessageMonotonicMs >= this.config.wsSoftSilenceThresholdMs
     ) {
       if (this.silentWhileBtcActiveStartMonotonicMs === null) {
         this.silentWhileBtcActiveStartMonotonicMs = nowMono;
@@ -287,7 +295,7 @@ export class KalshiWsLivenessWatchdog {
       lifecycleEvents: this.lifecycleEvents,
       liveness: {
         lastAnyKalshiRawMessageAt: this.lastRawMessageAt,
-        lastExpectedMarketMessageAt: this.lastRawMessageAt,
+        lastExpectedMarketMessageAt: this.lastExpectedMarketMessageAt,
         lastWebSocketOpenAt: this.lastWebSocketOpenAt,
         lastWebSocketCloseAt: this.lastWebSocketCloseAt,
         lastPingSentAt: this.lastPingSentAt,
@@ -313,7 +321,7 @@ export class KalshiWsLivenessWatchdog {
   }
 
   private currentSilenceMs(nowMono: number): number {
-    if (this.lastRawMessageMonotonicMs === null) {
+    if (this.lastExpectedMarketMessageMonotonicMs === null) {
       if (this.captureStartedAtMonotonicMs === null) {
         return 0;
       }
@@ -321,7 +329,7 @@ export class KalshiWsLivenessWatchdog {
       return nowMono - this.captureStartedAtMonotonicMs;
     }
 
-    return nowMono - this.lastRawMessageMonotonicMs;
+    return nowMono - this.lastExpectedMarketMessageMonotonicMs;
   }
 
   private updateSilentWhileBtcActive(nowMono: number): void {
@@ -331,8 +339,8 @@ export class KalshiWsLivenessWatchdog {
 
     const btcRecent = nowMono - this.lastBtcActivityMonotonicMs < this.config.watchdogTickMs * 2;
     const kalshiSilent =
-      this.lastRawMessageMonotonicMs === null
-      || nowMono - this.lastRawMessageMonotonicMs >= this.config.wsSoftSilenceThresholdMs;
+      this.lastExpectedMarketMessageMonotonicMs === null
+      || nowMono - this.lastExpectedMarketMessageMonotonicMs >= this.config.wsSoftSilenceThresholdMs;
 
     if (btcRecent && kalshiSilent) {
       if (this.silentWhileBtcActiveStartMonotonicMs === null) {

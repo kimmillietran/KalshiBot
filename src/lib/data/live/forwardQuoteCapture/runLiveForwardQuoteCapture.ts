@@ -200,7 +200,7 @@ export async function runLiveForwardQuoteCapture(input: {
           marketTickers: activeMarketTickers,
         });
         processor.invalidateAllBooksForRecovery();
-        const rawBeforeRecovery = processor.diagnostics.rawMessageCount;
+        const snapshotsBeforeRecovery = processor.diagnostics.snapshotsReceived;
         plannedShutdown = true;
         try {
           transport.close();
@@ -218,7 +218,7 @@ export async function runLiveForwardQuoteCapture(input: {
         await connectTransport(socketGeneration);
 
         while (input.io.monotonicNowMs() < confirmationDeadline) {
-          if (processor.diagnostics.rawMessageCount > rawBeforeRecovery) {
+          if (processor.diagnostics.snapshotsReceived > snapshotsBeforeRecovery) {
             return {
               status: "succeeded" as const,
               firstRawMessageAt: input.io.now().toISOString(),
@@ -230,7 +230,7 @@ export async function runLiveForwardQuoteCapture(input: {
 
         return {
           status: "failed" as const,
-          reason: "no-application-messages-after-recovery",
+          reason: "no-fresh-orderbook-snapshot-after-recovery",
         };
       },
     })
@@ -301,8 +301,11 @@ export async function runLiveForwardQuoteCapture(input: {
     }
 
     try {
-      processor.processRawPayload(payload);
+      const result = processor.processRawPayload(payload);
       watchdog?.recordRawMessage();
+      if (result.expectedMarketMessage) {
+        watchdog?.recordExpectedMarketMessage();
+      }
     } catch (error) {
       errors.push(
         error instanceof Error ? error.message : "Failed to process WS payload",

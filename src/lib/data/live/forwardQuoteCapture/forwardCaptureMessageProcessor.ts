@@ -24,6 +24,12 @@ export type LatestBtcSpot = {
   source: string;
 } | null;
 
+export type ForwardCaptureMessageProcessingResult = {
+  messageType: string | null;
+  marketTicker: string | null;
+  expectedMarketMessage: boolean;
+};
+
 function isEmptyAwaitingSnapshot(record: ForwardTopOfBookRecord): boolean {
   return (
     record.bookState === "awaiting-snapshot"
@@ -182,7 +188,7 @@ export class ForwardCaptureMessageProcessor {
     }
   }
 
-  processRawPayload(rawPayload: unknown): void {
+  processRawPayload(rawPayload: unknown): ForwardCaptureMessageProcessingResult {
     this.diagnostics.rawMessageCount += 1;
     const receivedAtLocal = this.input.now().toISOString();
     const receivedAtMonotonicMs = this.input.monotonicNowMs();
@@ -248,7 +254,7 @@ export class ForwardCaptureMessageProcessor {
       const parsed = kalshiOrderbookSnapshotMessageSchema.safeParse(payload);
       if (!parsed.success) {
         this.diagnostics.unknownMessagesReceived += 1;
-        return;
+        return { messageType, marketTicker, expectedMarketMessage: false };
       }
 
       this.diagnostics.snapshotsReceived += 1;
@@ -259,14 +265,18 @@ export class ForwardCaptureMessageProcessor {
         this.recordResyncSuccess(parsed.data.msg.market_ticker);
       }
       this.emitTopOfBook(book, receivedAtLocal, exchangeTimestampMs);
-      return;
+      return {
+        messageType,
+        marketTicker: parsed.data.msg.market_ticker,
+        expectedMarketMessage: true,
+      };
     }
 
     if (messageType === "orderbook_delta") {
       const parsed = kalshiOrderbookDeltaMessageSchema.safeParse(payload);
       if (!parsed.success) {
         this.diagnostics.unknownMessagesReceived += 1;
-        return;
+        return { messageType, marketTicker, expectedMarketMessage: false };
       }
 
       this.diagnostics.deltasReceived += 1;
@@ -280,10 +290,15 @@ export class ForwardCaptureMessageProcessor {
       }
 
       this.emitTopOfBook(book, receivedAtLocal, exchangeTimestampMs);
-      return;
+      return {
+        messageType,
+        marketTicker: parsed.data.msg.market_ticker,
+        expectedMarketMessage: true,
+      };
     }
 
     this.diagnostics.unknownMessagesReceived += 1;
+    return { messageType, marketTicker, expectedMarketMessage: false };
   }
 
   private emitTopOfBook(

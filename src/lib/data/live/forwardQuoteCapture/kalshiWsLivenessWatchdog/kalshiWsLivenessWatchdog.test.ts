@@ -55,6 +55,7 @@ describe("KalshiWsLivenessWatchdog", () => {
     watchdog.recordWebSocketOpen();
     watchdog.recordSubscriptionSuccess(1);
     watchdog.recordRawMessage();
+    watchdog.recordExpectedMarketMessage();
     nowMs += 5_000;
 
     return {
@@ -81,7 +82,7 @@ describe("KalshiWsLivenessWatchdog", () => {
     expect(watchdog.toDiagnostics().wsStallDetectedCount).toBe(0);
   });
 
-  it("sends a probe during soft silence and cancels on raw message", async () => {
+  it("sends a probe during soft silence and waits for expected market data", async () => {
     const sendProbe = vi.fn();
     const { watchdog, advance, runTick } = createWatchdog({ sendProbe });
     advance(35_000);
@@ -89,6 +90,9 @@ describe("KalshiWsLivenessWatchdog", () => {
     expect(sendProbe).toHaveBeenCalledTimes(1);
     watchdog.recordRawMessage();
     advance(5_000);
+    await runTick();
+    expect(watchdog.toDiagnostics().state).toBe("probing");
+    watchdog.recordExpectedMarketMessage();
     await runTick();
     expect(watchdog.toDiagnostics().state).toBe("healthy");
   });
@@ -153,6 +157,7 @@ describe("KalshiWsLivenessWatchdog", () => {
     watchdog.recordWebSocketOpen();
     watchdog.recordSubscriptionSuccess(1);
     watchdog.recordRawMessage();
+    watchdog.recordExpectedMarketMessage();
     nowMs += 65_000;
     const pending = watchdog.tick();
     await vi.runOnlyPendingTimersAsync();

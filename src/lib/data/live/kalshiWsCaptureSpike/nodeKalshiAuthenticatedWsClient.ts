@@ -1,6 +1,6 @@
 import WebSocket from "ws";
 
-import type { KalshiWsProbeTransport, KalshiWsTransport } from "@/features/market-data/orderbook/types";
+import type { KalshiWsProbeTransport } from "@/features/market-data/orderbook/types";
 
 type Handler = {
   onOpen?: () => void;
