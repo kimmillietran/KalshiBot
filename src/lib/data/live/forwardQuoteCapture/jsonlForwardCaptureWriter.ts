@@ -11,6 +11,7 @@ export function createRunOutputPaths(outputDir: string, runId: string) {
     btcSpotPath: posix.join(runDir, "btc-spot.jsonl"),
     marketMetadataPath: posix.join(runDir, "market-metadata.jsonl"),
     captureHealthPath: posix.join(runDir, "capture-health.json"),
+    captureLifecyclePath: posix.join(runDir, "capture-lifecycle.jsonl"),
   };
 }
 
@@ -25,6 +26,7 @@ export function createJsonlForwardCaptureWriter(
     topOfBook: 0,
     btcSpot: 0,
     marketMetadata: 0,
+    lifecycle: 0,
   };
 
   return {
@@ -45,6 +47,10 @@ export function createJsonlForwardCaptureWriter(
     appendMarketMetadata(record: unknown) {
       io.appendFile(paths.marketMetadataPath, `${JSON.stringify(record)}\n`);
       counts.marketMetadata += 1;
+    },
+    appendLifecycleEvent(record: unknown) {
+      io.appendFile(paths.captureLifecyclePath, `${JSON.stringify(record)}\n`);
+      counts.lifecycle += 1;
     },
   };
 }

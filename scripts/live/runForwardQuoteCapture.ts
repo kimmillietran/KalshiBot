@@ -62,11 +62,20 @@ export async function runForwardQuoteCaptureCommand(
           btcSpotRecordCount: result.healthReport.capture.btcSpotRecordCount,
           sequenceGapCount: result.healthReport.orderbook.sequenceGapCount,
           reconnectCount: result.healthReport.connection.reconnectCount,
+          captureEndReason: result.healthReport.connection.captureEndReason,
+          terminalFailureReason: result.healthReport.connection.terminalFailureReason,
           htmlOutputPath: result.htmlOutputPath,
           outputDir: config.outputDir,
         }),
       ),
     );
+
+    if (
+      result.healthReport.connection.captureEndReason === "terminal-websocket-failure"
+      || result.healthReport.connection.terminalFailureReason !== null
+    ) {
+      return 1;
+    }
 
     return 0;
   } catch (error) {

@@ -24,6 +24,12 @@ export type LatestBtcSpot = {
   source: string;
 } | null;
 
+export type ForwardCaptureMessageProcessingResult = {
+  messageType: string | null;
+  marketTicker: string | null;
+  expectedMarketMessage: boolean;
+};
+
 function isEmptyAwaitingSnapshot(record: ForwardTopOfBookRecord): boolean {
   return (
     record.bookState === "awaiting-snapshot"
@@ -127,6 +133,7 @@ export class ForwardCaptureMessageProcessor {
       monotonicNowMs: () => number;
       onSequenceGap?: (marketTicker: string) => void;
       getLatestBtcSpot?: () => LatestBtcSpot;
+      onTopOfBookEmitted?: () => void;
     },
   ) {}
 
@@ -163,13 +170,25 @@ export class ForwardCaptureMessageProcessor {
     this.diagnostics.resyncAttemptCount += 1;
   }
 
+  invalidateAllBooksForRecovery(): void {
+    for (const book of this.books.values()) {
+      book.invalidateForRecovery();
+    }
+  }
+
+  recordBooksResynchronized(): void {
+    this.diagnostics.resyncSuccessCount += [...this.books.values()].filter(
+      (book) => book.bookState === "valid",
+    ).length;
+  }
+
   recordResyncSuccess(marketTicker: string): void {
     if (this.books.get(marketTicker)?.bookState === "valid") {
       this.diagnostics.resyncSuccessCount += 1;
     }
   }
 
-  processRawPayload(rawPayload: unknown): void {
+  processRawPayload(rawPayload: unknown): ForwardCaptureMessageProcessingResult {
     this.diagnostics.rawMessageCount += 1;
     const receivedAtLocal = this.input.now().toISOString();
     const receivedAtMonotonicMs = this.input.monotonicNowMs();
@@ -235,7 +254,7 @@ export class ForwardCaptureMessageProcessor {
       const parsed = kalshiOrderbookSnapshotMessageSchema.safeParse(payload);
       if (!parsed.success) {
         this.diagnostics.unknownMessagesReceived += 1;
-        return;
+        return { messageType, marketTicker, expectedMarketMessage: false };
       }
 
       this.diagnostics.snapshotsReceived += 1;
@@ -246,14 +265,18 @@ export class ForwardCaptureMessageProcessor {
         this.recordResyncSuccess(parsed.data.msg.market_ticker);
       }
       this.emitTopOfBook(book, receivedAtLocal, exchangeTimestampMs);
-      return;
+      return {
+        messageType,
+        marketTicker: parsed.data.msg.market_ticker,
+        expectedMarketMessage: true,
+      };
     }
 
     if (messageType === "orderbook_delta") {
       const parsed = kalshiOrderbookDeltaMessageSchema.safeParse(payload);
       if (!parsed.success) {
         this.diagnostics.unknownMessagesReceived += 1;
-        return;
+        return { messageType, marketTicker, expectedMarketMessage: false };
       }
 
       this.diagnostics.deltasReceived += 1;
@@ -267,10 +290,15 @@ export class ForwardCaptureMessageProcessor {
       }
 
       this.emitTopOfBook(book, receivedAtLocal, exchangeTimestampMs);
-      return;
+      return {
+        messageType,
+        marketTicker: parsed.data.msg.market_ticker,
+        expectedMarketMessage: true,
+      };
     }
 
     this.diagnostics.unknownMessagesReceived += 1;
+    return { messageType, marketTicker, expectedMarketMessage: false };
   }
 
   private emitTopOfBook(
@@ -313,6 +341,7 @@ export class ForwardCaptureMessageProcessor {
     this.input.writer.appendTopOfBook(record);
     recordEconomicDiagnostics(this.diagnostics, record);
     this.lastEconomicBookState.set(book.marketTicker, record.economicBookState);
+    this.input.onTopOfBookEmitted?.();
 
     if (record.bookState === "valid") {
       this.diagnostics.validBookStateDurationMs += 1;

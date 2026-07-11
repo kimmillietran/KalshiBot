@@ -32,6 +32,7 @@ export type ForwardCaptureVerdictInput = {
   sequenceGapCount: number;
   resyncSuccessCount: number;
   errors: string[];
+  terminalWebSocketFailure?: boolean;
 };
 
 export function evaluateForwardCaptureVerdict(
@@ -84,6 +85,10 @@ export function evaluateForwardCaptureVerdict(
     return "degraded-capture";
   }
 
+  if (input.terminalWebSocketFailure) {
+    return "degraded-capture";
+  }
+
   return "capture-mvp-success";
 }
 
@@ -94,31 +99,41 @@ function resolveVerdict(input: ForwardCaptureVerdictInput): ForwardCaptureVerdic
 export function deriveConnectionSemantics(input: {
   connection: Pick<
     ForwardCaptureConnectionDiagnostics,
-    "wsConnectCount" | "connected"
+    "wsConnectCount" | "connected" | "terminalFailureReason" | "captureEndReason"
   >;
   authHeadersGenerated: boolean;
   endedAt: string | null;
   dryRun: boolean;
   rawMessageCount: number;
+  kalshiSilentWhileBtcActiveSeconds?: number;
 }): Pick<
   ForwardCaptureConnectionDiagnostics,
-  "everConnected" | "completedNormally" | "liveConnectionSucceeded"
+  "everConnected" | "completedNormally" | "liveConnectionSucceeded" | "completedWithWarnings"
 > {
   const everConnected = input.connection.wsConnectCount > 0;
   const liveConnectionSucceeded =
     input.authHeadersGenerated
     && everConnected
     && input.rawMessageCount > 0;
+  const terminalFailure = input.connection.terminalFailureReason !== null;
+  const materialKalshiSilence =
+    (input.kalshiSilentWhileBtcActiveSeconds ?? 0) > 300;
   const completedNormally =
     !input.dryRun
     && input.endedAt !== null
     && everConnected
-    && liveConnectionSucceeded;
+    && liveConnectionSucceeded
+    && !terminalFailure
+    && input.connection.captureEndReason !== "terminal-websocket-failure"
+    && !materialKalshiSilence;
 
   return {
     everConnected,
     completedNormally,
     liveConnectionSucceeded,
+    completedWithWarnings:
+      input.connection.captureEndReason === "duration-complete"
+      && (terminalFailure || materialKalshiSilence),
   };
 }
 
@@ -204,6 +219,10 @@ export function buildForwardCaptureHealthReport(input: {
     sequenceGapCount: diagnostics.sequenceGapCount,
     resyncSuccessCount: diagnostics.resyncSuccessCount,
     errors,
+    terminalWebSocketFailure:
+      "watchdog" in input.captureResult
+        ? input.captureResult.watchdog?.terminalWebSocketFailure
+        : undefined,
   });
 
   const connectionSemantics = deriveConnectionSemantics({
@@ -212,6 +231,10 @@ export function buildForwardCaptureHealthReport(input: {
     endedAt: input.endedAt,
     dryRun: input.config.dryRun,
     rawMessageCount: diagnostics.rawMessageCount,
+    kalshiSilentWhileBtcActiveSeconds:
+      "watchdog" in input.captureResult
+        ? input.captureResult.watchdog?.kalshiSilentWhileBtcActiveSeconds
+        : undefined,
   });
 
   const warnings: string[] = [];
@@ -330,6 +353,27 @@ export function buildForwardCaptureHealthReport(input: {
       provider: input.config.captureBtcSpot ? "coinbase" : null,
       recordsCaptured: input.captureResult.recordCounts.btcSpot,
     },
+    watchdog:
+      "watchdog" in input.captureResult && input.captureResult.watchdog
+        ? {
+          wsStallDetectedCount: input.captureResult.watchdog.wsStallDetectedCount,
+          wsRecoveryAttemptCount: input.captureResult.watchdog.wsRecoveryAttemptCount,
+          wsRecoverySuccessCount: input.captureResult.watchdog.wsRecoverySuccessCount,
+          wsRecoveryFailureCount: input.captureResult.watchdog.wsRecoveryFailureCount,
+          postResumeRecoveryCount: input.captureResult.watchdog.postResumeRecoveryCount,
+          longestKalshiSilenceMs: input.captureResult.watchdog.longestKalshiSilenceMs,
+          longestRecoveredStallMs: input.captureResult.watchdog.longestRecoveredStallMs,
+          terminalWebSocketFailure: input.captureResult.watchdog.terminalWebSocketFailure,
+          kalshiStreamEndedAt: input.captureResult.watchdog.kalshiStreamEndedAt,
+          kalshiSilentWhileBtcActiveSeconds:
+            input.captureResult.watchdog.kalshiSilentWhileBtcActiveSeconds,
+          lifecycleEventCount: input.captureResult.watchdog.lifecycleEvents.length,
+          lifecyclePath:
+            "paths" in input.captureResult
+              ? input.captureResult.paths.captureLifecyclePath
+              : null,
+        }
+        : undefined,
     verdict,
     recommendedNextAction: resolveRecommendedAction(verdict),
     warnings,

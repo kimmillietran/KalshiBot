@@ -40,6 +40,12 @@ export function evaluateResearchSuitability(input: {
   connection: ConnectionAttributionSummary;
   downstreamArtifacts: readonly DownstreamArtifactScopeCheck[];
   throttleMs: number | null;
+  watchdog?: {
+    terminalWebSocketFailure: boolean;
+    kalshiSilentWhileBtcActiveSeconds: number;
+    wsRecoverySuccessCount: number;
+    wsStallDetectedCount: number;
+  } | null;
 }): ResearchSuitabilityAssessment {
   const rationale: string[] = [];
   const eventSpan = input.durations.eventWallClockSpanSeconds ?? 0;
@@ -68,6 +74,20 @@ export function evaluateResearchSuitability(input: {
     rationale.push("Downstream artifacts include mixed-scope or stale inputs.");
   }
 
+  if (input.watchdog?.terminalWebSocketFailure) {
+    rationale.push("Explicit watchdog reported terminal WebSocket failure.");
+  }
+
+  if ((input.watchdog?.kalshiSilentWhileBtcActiveSeconds ?? 0) > 300) {
+    rationale.push(
+      `Kalshi stream silent for ${input.watchdog?.kalshiSilentWhileBtcActiveSeconds}s while BTC remained active.`,
+    );
+  }
+
+  const explicitWatchdogDegraded =
+    input.watchdog?.terminalWebSocketFailure === true
+    || (input.watchdog?.kalshiSilentWhileBtcActiveSeconds ?? 0) > 300;
+
   const descriptiveAnalysisSuitability =
     validShare !== null && validShare >= 0.8
       ? suspensionShare !== null && suspensionShare > 0.2
@@ -83,13 +103,15 @@ export function evaluateResearchSuitability(input: {
 
   const throttleMs = input.throttleMs ?? 1000;
   const transientEventDetectionSuitability: ResearchSuitabilityVerdict =
-    continuousMicrostructureSuitability === "ready"
+    explicitWatchdogDegraded
+      ? "not-ready"
+      : continuousMicrostructureSuitability === "ready"
       && throttleMs <= 1000
       && (suspensionShare ?? 1) <= 0.05
-      ? "ready-with-warnings"
-      : continuousMicrostructureSuitability === "not-ready"
-        ? "not-ready"
-        : "degraded-but-usable";
+        ? "ready-with-warnings"
+        : continuousMicrostructureSuitability === "not-ready"
+          ? "not-ready"
+          : "degraded-but-usable";
 
   if (throttleMs >= 1000) {
     rationale.push(
@@ -105,7 +127,11 @@ export function evaluateResearchSuitability(input: {
 
   if (mixedScope) {
     zeroCandidateInterpretation = "zero-candidates-on-mixed-scope-inputs";
-  } else if ((suspensionShare ?? 0) > 0.1 || continuousMicrostructureSuitability === "not-ready") {
+  } else if (
+    explicitWatchdogDegraded
+    || (suspensionShare ?? 0) > 0.1
+    || continuousMicrostructureSuitability === "not-ready"
+  ) {
     zeroCandidateInterpretation = "zero-candidates-with-material-blind-windows";
   } else if (continuousMicrostructureSuitability === "ready" || continuousMicrostructureSuitability === "ready-with-warnings") {
     zeroCandidateInterpretation = "zero-candidates-on-clean-observation";

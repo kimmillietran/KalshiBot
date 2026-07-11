@@ -1,4 +1,5 @@
 import { loadCaptureRunArtifacts } from "@/lib/data/research/captureHealthAudit/loadCaptureRunArtifacts";
+import type { LoadedCaptureHealthJson } from "@/lib/data/research/captureHealthAudit/loadCaptureRunArtifacts";
 import type { CaptureHealthAuditIo } from "@/lib/data/research/captureHealthAudit/captureHealthAuditTypes";
 
 import { attributeConnectionEvents } from "./attributeConnectionEvents";
@@ -93,6 +94,36 @@ function resolveOverallVerdict(
   };
 }
 
+function readWatchdogSummary(
+  captureHealth: LoadedCaptureHealthJson | null,
+): {
+  terminalWebSocketFailure: boolean;
+  kalshiSilentWhileBtcActiveSeconds: number;
+  wsRecoverySuccessCount: number;
+  wsStallDetectedCount: number;
+} | null {
+  const watchdog = (captureHealth as { watchdog?: Record<string, unknown> } | null)?.watchdog;
+  if (!watchdog) {
+    return null;
+  }
+
+  return {
+    terminalWebSocketFailure: watchdog.terminalWebSocketFailure === true,
+    kalshiSilentWhileBtcActiveSeconds:
+      typeof watchdog.kalshiSilentWhileBtcActiveSeconds === "number"
+        ? watchdog.kalshiSilentWhileBtcActiveSeconds
+        : 0,
+    wsRecoverySuccessCount:
+      typeof watchdog.wsRecoverySuccessCount === "number"
+        ? watchdog.wsRecoverySuccessCount
+        : 0,
+    wsStallDetectedCount:
+      typeof watchdog.wsStallDetectedCount === "number"
+        ? watchdog.wsStallDetectedCount
+        : 0,
+  };
+}
+
 /** Builds capture health reconciliation and timeline attribution for a selected run. */
 export async function analyzeCaptureIntegrity(input: {
   io: CaptureHealthReconciliationIo;
@@ -165,6 +196,7 @@ export async function analyzeCaptureIntegrity(input: {
     connection: connectionAttribution,
     downstreamArtifacts,
     throttleMs: sampling.topOfBookThrottleMs,
+    watchdog: readWatchdogSummary(loaded.captureHealth),
   });
 
   const overall = resolveOverallVerdict(researchSuitability);

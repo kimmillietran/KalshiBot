@@ -79,6 +79,11 @@ export type KalshiWsTransport = {
   onError(handler: (error: Error) => void): void;
 };
 
+export type KalshiWsProbeTransport = KalshiWsTransport & {
+  ping?: () => void;
+  onPong?: (handler: () => void) => void;
+};
+
 export type FetchOrderbookSnapshot = (
   ticker: string,
 ) => Promise<{
