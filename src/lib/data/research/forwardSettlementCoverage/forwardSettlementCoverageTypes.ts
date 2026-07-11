@@ -38,6 +38,7 @@ export const BACKFILL_MARKET_STATUSES = [
   "skipped-ready",
   "skipped-unsettled",
   "skipped-conflict",
+  "skipped-not-candidate",
   "imported",
   "failed",
   "dry-run-planned",

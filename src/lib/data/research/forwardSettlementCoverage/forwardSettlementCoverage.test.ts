@@ -575,6 +575,7 @@ describe("forwardSettlementCoverage", () => {
     expect(report.summary.analysisScope).toBe("selected-run");
     expect(report.summary.capturedMarketCount).toBe(3);
     expect(report.joinIntegration.settlementKnownMarketCount).toBeGreaterThanOrEqual(1);
+    expect(report.joinIntegration.overallVerdict).toBe("settlement-join-ready");
     expect(report.joinIntegration.marketsExcludedFromJoin.length).toBeGreaterThan(0);
     expect(files["data/research-results/forward-settlement-join-selected-run.json"]).toBeDefined();
   });
@@ -709,5 +710,54 @@ describe("forwardSettlementCoverage", () => {
     });
 
     expect(entry.classification).toBe("invalid-market");
+  });
+
+  it("resolves import paths from market ticker series when capture seriesTicker is wrong", () => {
+    const files: Record<string, string> = {};
+    const dirs: string[] = [];
+    seedRun(files, dirs);
+    files[`${RUN_DIR}/top-of-book.jsonl`] = files[`${RUN_DIR}/top-of-book.jsonl`]!.replace(
+      /"seriesTicker": "KXBTC15M"/,
+      '"seriesTicker": "WRONGSERIES"',
+    );
+    files[`data/imports/KXBTC15M/${MARKET_A}/import-result.json`] = createImportResult(MARKET_A, "yes");
+
+    const extracted = extractSelectedRunMarketInventory({
+      io: createIo(files, dirs),
+      captureRunDir: RUN_DIR,
+      evaluatedAt: EVALUATED_AT,
+    });
+
+    const classified = classifyMarketSettlementCoverage({
+      io: createIo(files, dirs),
+      importsDir: "data/imports",
+      inventory: extracted.inventory.find((entry) => entry.marketTicker === MARKET_A)!,
+      evaluatedAt: EVALUATED_AT,
+      staleAfterCaptureObservation: true,
+    });
+
+    expect(classified.classification).toBe("settlement-ready");
+  });
+
+  it("marks non-backfillable markets as skipped-not-candidate", async () => {
+    const files: Record<string, string> = {};
+    const dirs: string[] = [];
+    seedRun(files, dirs);
+
+    const summary = await runForwardSettlementBackfill({
+      config: defaultConfig({ dryRun: true }),
+      io: createIo(files, dirs),
+      markets: [
+        classifyInvalidMarketEntry({
+          marketTicker: "KXBTC15M-MOCK",
+          reason: "mock ticker excluded",
+        }),
+      ],
+      selectedRunId: RUN_ID,
+      evaluatedAt: EVALUATED_AT,
+      deps: { runMarketImport: vi.fn() },
+    });
+
+    expect(summary.marketResults[0]?.status).toBe("skipped-not-candidate");
   });
 });

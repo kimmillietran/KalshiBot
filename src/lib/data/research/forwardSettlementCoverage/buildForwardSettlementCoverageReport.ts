@@ -1,5 +1,6 @@
 import { posix } from "node:path";
 
+import { resolveSeriesTicker } from "@/lib/data/audit/settlementTrace/settlementTraceUtils";
 import { stableStringify } from "@/lib/trading/config/hashConfig";
 import {
   joinForwardCaptureSettlements,
@@ -41,7 +42,7 @@ function toCapturedMarketSettlementKey(
   return {
     marketTicker: entry.marketTicker,
     eventTicker: entry.inventory.eventTicker,
-    seriesTicker: entry.inventory.seriesTicker,
+    seriesTicker: resolveSeriesTicker(entry.marketTicker),
     openTime: entry.inventory.firstObservedAt,
     closeTime: entry.inventory.marketCloseTime,
     captureRunIds: [selectedRunId],
@@ -81,6 +82,7 @@ function buildJoinIntegration(input: {
     ],
     missingArtifacts: [],
     warnings: [],
+    marketOnlyJoin: true,
   });
 
   const excluded = input.markets

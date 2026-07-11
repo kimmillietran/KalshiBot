@@ -117,7 +117,11 @@ export function isCheckpointMarketEligible(
     return false;
   }
 
-  if (market.status === "skipped-unsettled" || market.status === "skipped-conflict") {
+  if (
+    market.status === "skipped-unsettled"
+    || market.status === "skipped-conflict"
+    || market.status === "skipped-not-candidate"
+  ) {
     return false;
   }
 

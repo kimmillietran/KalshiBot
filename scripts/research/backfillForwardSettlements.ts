@@ -72,6 +72,10 @@ function main(): void {
         recommendedNextAction: report.summary.recommendedNextAction,
       })}\n`,
     );
+
+    if ((report.backfill?.failedMarketCount ?? 0) > 0) {
+      process.exitCode = 1;
+    }
   }).catch((error: unknown) => {
     const message = error instanceof Error ? error.message : "Forward settlement backfill failed";
     process.stderr.write(`${message}\n`);

@@ -9,6 +9,7 @@ import {
 } from "@/lib/data/importJobs/config";
 import type { HistoricalBronzeImportConfig } from "@/lib/data/importJobs/config";
 import { buildImportedMarketDirectoryPath } from "@/lib/data/datasets/registry/importedMarketDatasetPaths";
+import { resolveSeriesTicker } from "@/lib/data/audit/settlementTrace/settlementTraceUtils";
 
 import type { CapturedMarketInventoryEntry } from "./forwardSettlementCoverageTypes";
 
@@ -85,9 +86,10 @@ export function resolveMarketImportPaths(input: {
   importResultPath: string;
   metadataPath: string;
 } {
+  const seriesTicker = resolveSeriesTicker(input.market.marketTicker);
   const paths = buildImportedMarketDirectoryPath(
     input.importsDir,
-    input.market.seriesTicker,
+    seriesTicker,
     input.market.marketTicker,
   );
 

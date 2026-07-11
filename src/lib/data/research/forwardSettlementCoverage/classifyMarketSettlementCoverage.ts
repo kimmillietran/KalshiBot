@@ -3,6 +3,7 @@ import {
   detectSettlementConflicts,
   loadMarketImportSettlementState,
 } from "./loadMarketImportSettlementState";
+import { resolveSeriesTicker } from "@/lib/data/audit/settlementTrace/settlementTraceUtils";
 import type {
   CapturedMarketInventoryEntry,
   ForwardSettlementCoverageIo,
@@ -52,7 +53,7 @@ export function classifyMarketSettlementCoverage(input: {
     io: input.io,
     importsDir: input.importsDir,
     marketTicker: input.inventory.marketTicker,
-    seriesTicker: input.inventory.seriesTicker,
+    seriesTicker: resolveSeriesTicker(input.inventory.marketTicker),
   });
 
   const closeTime =

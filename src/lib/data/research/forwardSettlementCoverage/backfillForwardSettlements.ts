@@ -78,7 +78,7 @@ function shouldSkipBackfill(
   }
 
   if (!isBackfillCandidate(market.classification)) {
-    return "skipped-ready";
+    return "skipped-not-candidate";
   }
 
   return null;
@@ -378,7 +378,11 @@ export async function runForwardSettlementBackfill(input: {
       continue;
     }
 
-    const skipStatus = shouldSkipBackfill(market) ?? "skipped-ready";
+    const skipStatus = shouldSkipBackfill(market);
+    if (!skipStatus) {
+      continue;
+    }
+
     results.push({
       marketTicker: market.marketTicker,
       status: skipStatus,
