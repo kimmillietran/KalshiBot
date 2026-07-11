@@ -9,6 +9,7 @@ export {
   buildComparisonSnapshot,
   loadCaptureBaselineComparisonInputs,
   resolveSelectedRun,
+  validateExplicitRunIds,
 } from "./loadCaptureBaselineComparisonInputs";
 export {
   argvToConfig,
@@ -21,6 +22,7 @@ export {
 } from "./serializeCaptureBaselineComparisonHtml";
 export {
   CAPTURE_BASELINE_COMPARISON_DISCLAIMER,
+  CaptureBaselineComparisonError,
   DEFAULT_CAPTURE_BASELINE_COMPARISON_HTML_PATH,
   DEFAULT_CAPTURE_BASELINE_COMPARISON_OUTPUT_PATH,
   DEFAULT_CONFIGURED_BASELINE,

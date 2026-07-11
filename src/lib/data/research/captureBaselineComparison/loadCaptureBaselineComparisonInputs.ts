@@ -5,7 +5,10 @@ import type {
   CaptureBaselineSnapshot,
 } from "./captureBaselineComparisonTypes";
 import { hasExecutableBidPairSize } from "@/lib/data/live/forwardQuoteCapture/orderbookLevelSize";
-import { DEFAULT_CONFIGURED_BASELINE } from "./captureBaselineComparisonTypes";
+import {
+  CaptureBaselineComparisonError,
+  DEFAULT_CONFIGURED_BASELINE,
+} from "./captureBaselineComparisonTypes";
 import {
   isRecord,
   joinPath,
@@ -32,28 +35,38 @@ export type LoadedCaptureBaselineComparisonInputs = {
   runs: DiscoveredCaptureRun[];
   warnings: string[];
   missingArtifacts: CaptureBaselineArtifactKey[];
+  corruptArtifacts: string[];
 };
+
+type ParseArtifactResult =
+  | { ok: true; artifact: LoadedCaptureBaselineArtifact }
+  | { ok: false; path: string };
+
+const SELECTED_RUN_AGGREGATE_ARTIFACT_WARNING =
+  "selected-run-comparison: aggregate artifact candidate/readiness fields excluded from run verdicts";
 
 function parseArtifact(
   key: CaptureBaselineArtifactKey,
   path: string,
   raw: string,
-): LoadedCaptureBaselineArtifact {
+): ParseArtifactResult {
   try {
     const parsed = JSON.parse(raw) as unknown;
+    if (!isRecord(parsed)) {
+      return { ok: false, path };
+    }
+
     return {
-      key,
-      path,
-      generatedAt: isRecord(parsed) ? readString(parsed.generatedAt) : null,
-      parsed: isRecord(parsed) ? parsed : {},
+      ok: true,
+      artifact: {
+        key,
+        path,
+        generatedAt: readString(parsed.generatedAt),
+        parsed,
+      },
     };
   } catch {
-    return {
-      key,
-      path,
-      generatedAt: null,
-      parsed: {},
-    };
+    return { ok: false, path };
   }
 }
 
@@ -379,6 +392,84 @@ function buildArtifactSnapshot(
   return snapshot;
 }
 
+function hasAggregateArtifactReadinessSignals(
+  artifacts: Partial<Record<CaptureBaselineArtifactKey, LoadedCaptureBaselineArtifact>>,
+): boolean {
+  const overlay = buildArtifactSnapshot(artifacts);
+
+  return (
+    (overlay.grossCandidates ?? 0) > 0
+    || (overlay.bufferAdjustedCandidates ?? 0) > 0
+    || (overlay.candidateEpisodes ?? 0) > 0
+    || (overlay.persistentCandidateEpisodes ?? 0) > 0
+    || overlay.strategyReadinessVerdict !== null
+    || overlay.executableConfirmationStatus !== null
+    || overlay.forwardCaptureReadinessVerdict !== null
+    || (overlay.validBidOnlySnapshots ?? 0) > 0
+  );
+}
+
+function emptyCaptureBaselineSnapshotFields(): Omit<
+  CaptureBaselineSnapshot,
+  "label" | "source" | "runId"
+> {
+  return {
+    captureDurationSeconds: null,
+    marketCount: null,
+    topOfBookCount: null,
+    btcSpotCount: null,
+    btcJoinCoverageShare: null,
+    validBookShare: null,
+    p90TopOfBookGapMs: null,
+    bidPairWithSizeCount: null,
+    bidPairWithoutSizeCount: null,
+    bidSizeCoverageShare: null,
+    validBidOnlySnapshots: null,
+    grossCandidates: null,
+    bufferAdjustedCandidates: null,
+    candidateEpisodes: null,
+    persistentCandidateEpisodes: null,
+    strategyReadinessVerdict: null,
+    executableConfirmationStatus: null,
+    captureHealthVerdict: null,
+    forwardCaptureReadinessVerdict: null,
+  };
+}
+
+function warnWhenAggregateArtifactsExcludedFromSelectedRun(input: {
+  artifacts: Partial<Record<CaptureBaselineArtifactKey, LoadedCaptureBaselineArtifact>>;
+  warnings?: string[];
+}): void {
+  if (!hasAggregateArtifactReadinessSignals(input.artifacts)) {
+    return;
+  }
+
+  input.warnings?.push(SELECTED_RUN_AGGREGATE_ARTIFACT_WARNING);
+}
+
+export function validateExplicitRunIds(input: {
+  config: CaptureBaselineComparisonConfig;
+  runs: readonly DiscoveredCaptureRun[];
+}): void {
+  if (input.config.baselineRunId) {
+    const baselineRun = resolveSelectedRun(input.runs, input.config.baselineRunId, false);
+    if (!baselineRun) {
+      throw new CaptureBaselineComparisonError(
+        `Unknown baseline run id: ${input.config.baselineRunId}`,
+      );
+    }
+  }
+
+  if (input.config.comparisonRunId) {
+    const comparisonRun = resolveSelectedRun(input.runs, input.config.comparisonRunId, false);
+    if (!comparisonRun) {
+      throw new CaptureBaselineComparisonError(
+        `Unknown comparison run id: ${input.config.comparisonRunId}`,
+      );
+    }
+  }
+}
+
 export function resolveSelectedRun(
   runs: readonly DiscoveredCaptureRun[],
   runId: string | null,
@@ -400,18 +491,29 @@ export function buildBaselineSnapshot(input: {
   artifacts: Partial<Record<CaptureBaselineArtifactKey, LoadedCaptureBaselineArtifact>>;
   runs: readonly DiscoveredCaptureRun[];
   io: CaptureBaselineComparisonIo;
+  warnings?: string[];
 }): CaptureBaselineSnapshot {
   if (input.config.baselineRunId) {
     const run = resolveSelectedRun(input.runs, input.config.baselineRunId, false);
-    if (run) {
-      return {
-        ...DEFAULT_CONFIGURED_BASELINE,
-        ...readCaptureHealthSnapshot(input.io, run),
-        label: `baseline run ${run.runId}`,
-        source: "capture-run",
-        runId: run.runId,
-      };
+    if (!run) {
+      throw new CaptureBaselineComparisonError(
+        `Unknown baseline run id: ${input.config.baselineRunId}`,
+      );
     }
+
+    warnWhenAggregateArtifactsExcludedFromSelectedRun({
+      artifacts: input.artifacts,
+      warnings: input.warnings,
+    });
+
+    return {
+      ...DEFAULT_CONFIGURED_BASELINE,
+      ...emptyCaptureBaselineSnapshotFields(),
+      ...readCaptureHealthSnapshot(input.io, run),
+      label: `baseline run ${run.runId}`,
+      source: "capture-run",
+      runId: run.runId,
+    };
   }
 
   if (input.config.useConfiguredBaseline) {
@@ -431,6 +533,7 @@ export function buildComparisonSnapshot(input: {
   artifacts: Partial<Record<CaptureBaselineArtifactKey, LoadedCaptureBaselineArtifact>>;
   runs: readonly DiscoveredCaptureRun[];
   io: CaptureBaselineComparisonIo;
+  warnings?: string[];
 }): CaptureBaselineSnapshot {
   const artifactOverlay = buildArtifactSnapshot(input.artifacts);
   const selectedRun = resolveSelectedRun(
@@ -440,31 +543,17 @@ export function buildComparisonSnapshot(input: {
   );
 
   if (selectedRun) {
+    warnWhenAggregateArtifactsExcludedFromSelectedRun({
+      artifacts: input.artifacts,
+      warnings: input.warnings,
+    });
+
     return {
+      ...emptyCaptureBaselineSnapshotFields(),
+      ...readCaptureHealthSnapshot(input.io, selectedRun),
       label: `comparison run ${selectedRun.runId}`,
       source: "capture-run",
       runId: selectedRun.runId,
-      captureDurationSeconds: null,
-      marketCount: null,
-      topOfBookCount: null,
-      btcSpotCount: null,
-      btcJoinCoverageShare: null,
-      validBookShare: null,
-      p90TopOfBookGapMs: null,
-      bidPairWithSizeCount: null,
-      bidPairWithoutSizeCount: null,
-      bidSizeCoverageShare: null,
-      validBidOnlySnapshots: null,
-      grossCandidates: null,
-      bufferAdjustedCandidates: null,
-      candidateEpisodes: null,
-      persistentCandidateEpisodes: null,
-      strategyReadinessVerdict: null,
-      executableConfirmationStatus: null,
-      captureHealthVerdict: null,
-      forwardCaptureReadinessVerdict: null,
-      ...artifactOverlay,
-      ...readCaptureHealthSnapshot(input.io, selectedRun),
     };
   }
 
@@ -472,25 +561,7 @@ export function buildComparisonSnapshot(input: {
     label: "research artifacts",
     source: "research-artifacts",
     runId: null,
-    captureDurationSeconds: null,
-    marketCount: null,
-    topOfBookCount: null,
-    btcSpotCount: null,
-    btcJoinCoverageShare: null,
-    validBookShare: null,
-    p90TopOfBookGapMs: null,
-    bidPairWithSizeCount: null,
-    bidPairWithoutSizeCount: null,
-    bidSizeCoverageShare: null,
-    validBidOnlySnapshots: null,
-    grossCandidates: null,
-    bufferAdjustedCandidates: null,
-    candidateEpisodes: null,
-    persistentCandidateEpisodes: null,
-    strategyReadinessVerdict: null,
-    executableConfirmationStatus: null,
-    captureHealthVerdict: null,
-    forwardCaptureReadinessVerdict: null,
+    ...emptyCaptureBaselineSnapshotFields(),
     ...artifactOverlay,
   };
 }
@@ -504,6 +575,7 @@ export function loadCaptureBaselineComparisonInputs(input: {
     {};
   const warnings: string[] = [];
   const missingArtifacts: CaptureBaselineArtifactKey[] = [];
+  const corruptArtifacts: string[] = [];
 
   for (const [key, path] of Object.entries(input.config.artifacts) as Array<
     [CaptureBaselineArtifactKey, string]
@@ -513,12 +585,15 @@ export function loadCaptureBaselineComparisonInputs(input: {
       continue;
     }
 
-    try {
-      artifacts[key] = parseArtifact(key, path, input.io.readFile(path));
-    } catch {
-      warnings.push(`Failed to parse artifact: ${path}`);
+    const parsed = parseArtifact(key, path, input.io.readFile(path));
+    if (!parsed.ok) {
+      warnings.push(`corrupt-artifact-json: ${path}`);
+      corruptArtifacts.push(path);
       missingArtifacts.push(key);
+      continue;
     }
+
+    artifacts[key] = parsed.artifact;
   }
 
   if (missingArtifacts.length > 0) {
@@ -535,5 +610,6 @@ export function loadCaptureBaselineComparisonInputs(input: {
     runs,
     warnings,
     missingArtifacts,
+    corruptArtifacts,
   };
 }

@@ -15,6 +15,7 @@ import {
   buildBaselineSnapshot,
   buildComparisonSnapshot,
   loadCaptureBaselineComparisonInputs,
+  validateExplicitRunIds,
 } from "./loadCaptureBaselineComparisonInputs";
 
 /** Builds the post-capture baseline comparison report. */
@@ -31,17 +32,21 @@ export function buildCaptureBaselineComparisonReport(input: {
     input.htmlOutputPath ?? DEFAULT_CAPTURE_BASELINE_COMPARISON_HTML_PATH;
 
   const loaded = loadCaptureBaselineComparisonInputs({ config, io: input.io });
+  validateExplicitRunIds({ config, runs: loaded.runs });
+  const snapshotWarnings: string[] = [];
   const baseline = buildBaselineSnapshot({
     config,
     artifacts: loaded.artifacts,
     runs: loaded.runs,
     io: input.io,
+    warnings: snapshotWarnings,
   });
   const comparison = buildComparisonSnapshot({
     config,
     artifacts: loaded.artifacts,
     runs: loaded.runs,
     io: input.io,
+    warnings: snapshotWarnings,
   });
   const compared = compareCaptureBaselines({ baseline, comparison });
 
@@ -63,9 +68,10 @@ export function buildCaptureBaselineComparisonReport(input: {
       currentBottleneck: compared.currentBottleneck,
       improvements: compared.improvements,
       regressions: compared.regressions,
-      warnings: loaded.warnings,
+      warnings: [...loaded.warnings, ...snapshotWarnings],
       artifactsLoaded,
       missingArtifacts: loaded.missingArtifacts,
+      corruptArtifacts: loaded.corruptArtifacts,
     },
   };
 }

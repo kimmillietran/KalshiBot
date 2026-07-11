@@ -158,6 +158,7 @@ export type CaptureBaselineComparisonSummary = {
   warnings: readonly string[];
   artifactsLoaded: readonly string[];
   missingArtifacts: readonly string[];
+  corruptArtifacts: readonly string[];
 };
 
 export type CaptureBaselineComparisonReport = {

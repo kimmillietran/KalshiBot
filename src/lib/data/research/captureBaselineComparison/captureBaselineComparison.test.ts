@@ -7,7 +7,10 @@ import type {
   CaptureBaselineComparisonIo,
   CaptureBaselineSnapshot,
 } from "./captureBaselineComparisonTypes";
-import { DEFAULT_CONFIGURED_BASELINE } from "./captureBaselineComparisonTypes";
+import {
+  CaptureBaselineComparisonError,
+  DEFAULT_CONFIGURED_BASELINE,
+} from "./captureBaselineComparisonTypes";
 import {
   buildBaselineSnapshot,
   buildComparisonSnapshot,
@@ -195,6 +198,106 @@ describe("captureBaselineComparison", () => {
 
     expect(loaded.missingArtifacts.length).toBeGreaterThan(0);
     expect(loaded.warnings.some((warning) => warning.includes("Missing artifacts"))).toBe(true);
+    expect(loaded.corruptArtifacts).toEqual([]);
+  });
+
+  it("warns when artifact JSON is corrupt and excludes it from loaded artifacts", () => {
+    const loaded = loadCaptureBaselineComparisonInputs({
+      config: createCaptureBaselineComparisonConfig(),
+      io: buildMemoryIo({
+        "data/research-results/capture-health-audit.json": "{not valid json",
+      }),
+    });
+
+    expect(loaded.corruptArtifacts).toContain("data/research-results/capture-health-audit.json");
+    expect(loaded.warnings.some((warning) => warning.includes("corrupt-artifact-json"))).toBe(
+      true,
+    );
+    expect(loaded.artifacts.captureHealthAudit).toBeUndefined();
+    expect(loaded.missingArtifacts).toContain("captureHealthAudit");
+  });
+
+  it("rejects unknown explicit baseline run id", () => {
+    expect(() =>
+      buildCaptureBaselineComparisonReport({
+        generatedAt: "2026-07-10T00:00:00.000Z",
+        config: createCaptureBaselineComparisonConfig({
+          baselineRunId: "does-not-exist",
+          useConfiguredBaseline: false,
+        }),
+        io: buildMemoryIo({}),
+      }),
+    ).toThrow(CaptureBaselineComparisonError);
+  });
+
+  it("rejects unknown explicit comparison run id", () => {
+    expect(() =>
+      buildCaptureBaselineComparisonReport({
+        generatedAt: "2026-07-10T00:00:00.000Z",
+        config: createCaptureBaselineComparisonConfig({
+          comparisonRunId: "does-not-exist",
+        }),
+        io: buildMemoryIo({}),
+      }),
+    ).toThrow(/Unknown comparison run id/);
+  });
+
+  it("does not let aggregate artifacts drive selected-run verdicts", () => {
+    const files = {
+      [`${INPUT_DIR}/run-new/capture-health.json`]: JSON.stringify({
+        runId: "run-new",
+        generatedAt: "2026-07-10T00:00:00.000Z",
+        verdict: "capture-research-ready",
+        config: { durationSeconds: 600 },
+      }),
+      [`${INPUT_DIR}/run-new/top-of-book.jsonl`]: [
+        topOfBookLine({
+          receivedAtLocal: "2026-07-10T00:00:00.000Z",
+          yesBidSize: 5,
+          noBidSize: 5,
+        }),
+        topOfBookLine({
+          receivedAtLocal: "2026-07-10T00:00:01.000Z",
+          yesBidSize: 5,
+          noBidSize: 5,
+        }),
+      ].join("\n"),
+      ...artifact("data/research-results/static-parity-scan.json", {
+        metrics: {
+          bidOnlyGrossCandidateCount: 12,
+          bidOnlyBufferAdjustedCandidateCount: 8,
+        },
+      }),
+      ...artifact("data/research-results/bid-only-candidate-lifecycle.json", {
+        metrics: {
+          episodesBuilt: 7,
+          persistentCandidateEpisodes: 5,
+        },
+      }),
+      ...artifact("data/research-results/strategy-evaluation-readiness.json", {
+        summary: { overallVerdict: "ready-for-offline-strategy-evaluation" },
+      }),
+    };
+
+    const report = buildCaptureBaselineComparisonReport({
+      generatedAt: "2026-07-10T00:00:00.000Z",
+      io: buildMemoryIo(files),
+      config: createCaptureBaselineComparisonConfig({
+        forwardQuotesDir: INPUT_DIR,
+        useLatestComparisonRun: true,
+      }),
+    });
+
+    expect(report.comparison.runId).toBe("run-new");
+    expect(report.comparison.source).toBe("capture-run");
+    expect(report.comparison.grossCandidates).toBeNull();
+    expect(report.comparison.persistentCandidateEpisodes).toBeNull();
+    expect(report.comparison.strategyReadinessVerdict).toBeNull();
+    expect(report.summary.overallVerdict).not.toBe("candidate-signal-emerging");
+    expect(report.summary.overallVerdict).not.toBe("ready-for-outcome-study");
+    expect(
+      report.summary.warnings.some((warning) => warning.includes("aggregate artifact")),
+    ).toBe(true);
   });
 
   it("selects the latest run by generated timestamp", () => {
