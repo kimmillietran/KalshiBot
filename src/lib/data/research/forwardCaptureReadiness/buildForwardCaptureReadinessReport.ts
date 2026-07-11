@@ -1,5 +1,6 @@
 import { evaluateForwardCaptureReadiness } from "./evaluateForwardCaptureReadiness";
 import {
+  isResearchEligibleCaptureRun,
   loadForwardCaptureRunsWithWarnings,
 } from "./loadForwardCaptureRuns";
 import {
@@ -21,7 +22,8 @@ export function buildForwardCaptureReadinessReport(input: {
     input.io,
     input.inputPaths,
   );
-  const evaluation = evaluateForwardCaptureReadiness(runs);
+  const eligibleRuns = runs.filter(isResearchEligibleCaptureRun);
+  const evaluation = evaluateForwardCaptureReadiness(eligibleRuns);
 
   return {
     generatedAt: input.generatedAt,

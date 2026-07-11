@@ -78,6 +78,7 @@
     "research:quote-fidelity-gate": "tsx scripts/research/buildQuoteFidelityGate.ts",
     "live:forward-quote-capture": "tsx scripts/live/runForwardQuoteCapture.ts",
     "research:capture-health-audit": "tsx scripts/research/buildCaptureHealthAudit.ts",
+    "research:capture-health-reconciliation": "tsx scripts/research/buildCaptureHealthReconciliation.ts",
     "research:capture-quality-validation": "tsx scripts/research/buildCaptureQualityValidation.ts",
     "research:recommendations": "tsx scripts/research/buildResearchRecommendationEngine.ts",
     "research:feature-catalog": "tsx scripts/research/buildFeatureCatalogExplorer.ts",

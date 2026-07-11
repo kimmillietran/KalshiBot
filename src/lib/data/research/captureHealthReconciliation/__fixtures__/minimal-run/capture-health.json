@@ -1,0 +1,1 @@
+{"runId":"minimal-run","startedAt":"2026-07-11T00:00:00.000Z","endedAt":"2026-07-11T00:10:00.000Z","config":{"durationMinutes":10,"topOfBookThrottleMs":1000},"connection":{"reconnectCount":3},"orderbook":{"sequenceGapCount":12}}

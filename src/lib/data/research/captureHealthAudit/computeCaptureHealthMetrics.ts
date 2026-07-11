@@ -242,7 +242,11 @@ export function computeCaptureHealthMetrics(input: {
       gapDetectedShare: roundShare(gapDetectedCount, topOfBookRecords.length),
       sequenceGapCount: captureHealth?.orderbook?.sequenceGapCount ?? null,
       outOfOrderCount: captureHealth?.orderbook?.outOfOrderCount ?? null,
-      reconnectCount: captureHealth?.orderbook?.reconnectCount ?? null,
+      reconnectCount:
+        (captureHealth as { connection?: { reconnectCount?: number } } | null)?.connection
+          ?.reconnectCount
+        ?? captureHealth?.orderbook?.reconnectCount
+        ?? null,
     },
     spread: {
       nonZeroSpreadShare: roundShare(nonZeroSpreadCount, topOfBookRecords.length),

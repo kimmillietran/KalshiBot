@@ -452,6 +452,9 @@ function resolveRecommendedNextAction(input: {
         ? "merge-m12.8-and-recapture"
         : "run-bid-size-audit";
     case "not-ready-no-candidates":
+      if (input.inputs.staticParityScan?.generatedAt) {
+        return "build-candidate-lifecycle";
+      }
       return "run-static-parity-scan";
     case "not-ready-no-episodes":
       return "build-candidate-lifecycle";
