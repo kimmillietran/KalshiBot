@@ -12,6 +12,7 @@ export function classifyParityNearMissInterpretation(input: {
   recordsEligible: number;
   qualificationFunnel: {
     bufferPass: number;
+    finalCandidates?: number;
     grossPass: number;
     persistentPass: number;
     sizedBidPairs: number;
@@ -33,7 +34,7 @@ export function classifyParityNearMissInterpretation(input: {
     };
   }
 
-  const candidateCount = input.qualificationFunnel.bufferPass;
+  const candidateCount = input.qualificationFunnel.finalCandidates ?? input.qualificationFunnel.bufferPass;
   const closestGrossNearMissCents = input.closestGrossNearMiss;
   const closestBufferNearMissCents = input.closestBufferNearMiss;
   const grossNearMissCount = input.gateCounts.allRejectionsByGate["gross-parity-shortfall"];

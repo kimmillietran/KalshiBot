@@ -310,6 +310,10 @@ function resolveQuoteAgeBucket(quoteAgeMs: number | null): string {
   return "gt-5s";
 }
 
+function passesRankingIntegrity(metrics: ParityNearMissObservationMetrics): boolean {
+  return metrics.bookSynchronized && metrics.stalenessPass !== false;
+}
+
 /** Streams one selected capture run and produces near-miss diagnostics. */
 export async function analyzeParityNearMissForRun(input: {
   generatedAt: string;
@@ -439,7 +443,8 @@ export async function analyzeParityNearMissForRun(input: {
         marketStats.bufferPass += 1;
       }
       if (
-        metrics.grossDistanceToQualification !== null
+        passesRankingIntegrity(metrics)
+        && metrics.grossDistanceToQualification !== null
         && metrics.grossDistanceToQualification > 0
         && (
           marketStats.closestGrossNearMissCents === null
@@ -449,60 +454,21 @@ export async function analyzeParityNearMissForRun(input: {
         marketStats.closestGrossNearMissCents = metrics.grossDistanceToQualification;
       }
 
-      const rankedBase = {
-        marketTicker: metrics.marketTicker,
-        timestamp: metrics.timestamp,
-        timeRemainingMs: metrics.timeRemainingMs,
-        yesBidCents: metrics.yesBidCents,
-        noBidCents: metrics.noBidCents,
-        yesBidSize: metrics.yesBidSize,
-        noBidSize: metrics.noBidSize,
-        firstRejectingGate: metrics.firstRejectingGate,
-        allRejectingGates: metrics.allRejectingGates,
-        integrityCaveat: metrics.integrityCaveat,
-      };
+      if (passesRankingIntegrity(metrics)) {
+        const rankedBase = {
+          marketTicker: metrics.marketTicker,
+          timestamp: metrics.timestamp,
+          timeRemainingMs: metrics.timeRemainingMs,
+          yesBidCents: metrics.yesBidCents,
+          noBidCents: metrics.noBidCents,
+          yesBidSize: metrics.yesBidSize,
+          noBidSize: metrics.noBidSize,
+          firstRejectingGate: metrics.firstRejectingGate,
+          allRejectingGates: metrics.allRejectingGates,
+          integrityCaveat: metrics.integrityCaveat,
+        };
 
-      grossRanking.consider({
-        marketTicker: rankedBase.marketTicker,
-        timestamp: rankedBase.timestamp,
-        timeRemainingMs: rankedBase.timeRemainingMs,
-        yesBidCents: rankedBase.yesBidCents,
-        noBidCents: rankedBase.noBidCents,
-        yesBidSize: rankedBase.yesBidSize,
-        noBidSize: rankedBase.noBidSize,
-        firstRejectingGate: rankedBase.firstRejectingGate,
-        allRejectingGates: rankedBase.allRejectingGates,
-        integrityCaveat: rankedBase.integrityCaveat,
-        distance: metrics.grossDistanceToQualification,
-      });
-      feeRanking.consider({
-        marketTicker: rankedBase.marketTicker,
-        timestamp: rankedBase.timestamp,
-        timeRemainingMs: rankedBase.timeRemainingMs,
-        yesBidCents: rankedBase.yesBidCents,
-        noBidCents: rankedBase.noBidCents,
-        yesBidSize: rankedBase.yesBidSize,
-        noBidSize: rankedBase.noBidSize,
-        firstRejectingGate: rankedBase.firstRejectingGate,
-        allRejectingGates: rankedBase.allRejectingGates,
-        integrityCaveat: rankedBase.integrityCaveat,
-        distance: metrics.feeAdjustedDistanceToQualification,
-      });
-      bufferRanking.consider({
-        marketTicker: rankedBase.marketTicker,
-        timestamp: rankedBase.timestamp,
-        timeRemainingMs: rankedBase.timeRemainingMs,
-        yesBidCents: rankedBase.yesBidCents,
-        noBidCents: rankedBase.noBidCents,
-        yesBidSize: rankedBase.yesBidSize,
-        noBidSize: rankedBase.noBidSize,
-        firstRejectingGate: rankedBase.firstRejectingGate,
-        allRejectingGates: rankedBase.allRejectingGates,
-        integrityCaveat: rankedBase.integrityCaveat,
-        distance: metrics.bufferAdjustedDistanceToQualification,
-      });
-      if (!metrics.sizePass) {
-        executableRanking.consider({
+        grossRanking.consider({
           marketTicker: rankedBase.marketTicker,
           timestamp: rankedBase.timestamp,
           timeRemainingMs: rankedBase.timeRemainingMs,
@@ -513,14 +479,55 @@ export async function analyzeParityNearMissForRun(input: {
           firstRejectingGate: rankedBase.firstRejectingGate,
           allRejectingGates: rankedBase.allRejectingGates,
           integrityCaveat: rankedBase.integrityCaveat,
-          distance:
-            metrics.executableSize === null
-              ? null
-              : input.config.friction.minSizeContracts - metrics.executableSize,
+          distance: metrics.grossDistanceToQualification,
         });
+        feeRanking.consider({
+          marketTicker: rankedBase.marketTicker,
+          timestamp: rankedBase.timestamp,
+          timeRemainingMs: rankedBase.timeRemainingMs,
+          yesBidCents: rankedBase.yesBidCents,
+          noBidCents: rankedBase.noBidCents,
+          yesBidSize: rankedBase.yesBidSize,
+          noBidSize: rankedBase.noBidSize,
+          firstRejectingGate: rankedBase.firstRejectingGate,
+          allRejectingGates: rankedBase.allRejectingGates,
+          integrityCaveat: rankedBase.integrityCaveat,
+          distance: metrics.feeAdjustedDistanceToQualification,
+        });
+        bufferRanking.consider({
+          marketTicker: rankedBase.marketTicker,
+          timestamp: rankedBase.timestamp,
+          timeRemainingMs: rankedBase.timeRemainingMs,
+          yesBidCents: rankedBase.yesBidCents,
+          noBidCents: rankedBase.noBidCents,
+          yesBidSize: rankedBase.yesBidSize,
+          noBidSize: rankedBase.noBidSize,
+          firstRejectingGate: rankedBase.firstRejectingGate,
+          allRejectingGates: rankedBase.allRejectingGates,
+          integrityCaveat: rankedBase.integrityCaveat,
+          distance: metrics.bufferAdjustedDistanceToQualification,
+        });
+        if (!metrics.sizePass) {
+          executableRanking.consider({
+            marketTicker: rankedBase.marketTicker,
+            timestamp: rankedBase.timestamp,
+            timeRemainingMs: rankedBase.timeRemainingMs,
+            yesBidCents: rankedBase.yesBidCents,
+            noBidCents: rankedBase.noBidCents,
+            yesBidSize: rankedBase.yesBidSize,
+            noBidSize: rankedBase.noBidSize,
+            firstRejectingGate: rankedBase.firstRejectingGate,
+            allRejectingGates: rankedBase.allRejectingGates,
+            integrityCaveat: rankedBase.integrityCaveat,
+            distance:
+              metrics.executableSize === null
+                ? null
+                : input.config.friction.minSizeContracts - metrics.executableSize,
+          });
+        }
       }
 
-      if (metrics.bufferPass) {
+      if (metrics.bufferPass && metrics.stalenessPass !== false) {
         finalCandidates += 1;
       }
 
@@ -594,6 +601,10 @@ export async function analyzeParityNearMissForRun(input: {
     const distance = episode.maxBidOnlyEdgeCents === null
       ? null
       : input.config.friction.minGrossEdgeCents - episode.maxBidOnlyEdgeCents;
+    const bufferDistance = episode.maxBidOnlyEdgeCents === null
+      ? null
+      : input.config.friction.minBidOnlyEdgeCents
+        - (episode.maxBidOnlyEdgeCents - input.config.friction.feeBufferCents);
     persistenceBuckets[episode.episodeClassification] =
       (persistenceBuckets[episode.episodeClassification] ?? 0) + 1;
 
@@ -618,6 +629,22 @@ export async function analyzeParityNearMissForRun(input: {
           episodeClassification: episode.episodeClassification,
         });
       }
+      if (bufferDistance !== null && bufferDistance > 0) {
+        bufferEpisodes.push({
+          rank: 0,
+          episodeId: episode.episodeId,
+          marketTicker: episode.marketTicker,
+          startedAt: episode.startedAt,
+          endedAt: episode.endedAt,
+          durationMs: episode.durationMs,
+          recordCount: episode.recordCount,
+          maxBidOnlyEdgeCents: episode.maxBidOnlyEdgeCents,
+          distance: bufferDistance,
+          distanceKind: "buffer-adjusted",
+          firstRejectingGate: "buffer-adjusted-shortfall",
+          episodeClassification: episode.episodeClassification,
+        });
+      }
     }
 
     if (episode.classificationFamily === "buffer-adjusted-candidate") {
@@ -630,6 +657,10 @@ export async function analyzeParityNearMissForRun(input: {
 
   grossEpisodes.sort((left, right) => left.distance - right.distance);
   grossEpisodes.forEach((entry, index) => {
+    entry.rank = index + 1;
+  });
+  bufferEpisodes.sort((left, right) => left.distance - right.distance);
+  bufferEpisodes.forEach((entry, index) => {
     entry.rank = index + 1;
   });
 
@@ -704,7 +735,7 @@ export async function analyzeParityNearMissForRun(input: {
       bufferAdjusted: bufferRanking.toRankedEntries(),
       executable: executableRanking.toRankedEntries(),
       grossEpisodes: grossEpisodes.slice(0, input.config.nearMissLimit),
-      bufferEpisodes,
+      bufferEpisodes: bufferEpisodes.slice(0, input.config.nearMissLimit),
     },
     perMarketBreakdown: perMarket,
     timeRemainingBreakdown: timeRemainingBuckets,

@@ -28,9 +28,13 @@ function topOfBookLine(input: {
   noBid?: number | null;
   yesBidSize?: number | null;
   noBidSize?: number | null;
+  yesAsk?: number | null;
+  noAsk?: number | null;
   bookState?: string;
   sequence?: number;
   exchangeTimestampMs?: number;
+  isParityUsable?: boolean;
+  economicBookState?: string;
 }) {
   const record: Record<string, unknown> = {
     runId: "run-near-miss",
@@ -52,6 +56,18 @@ function topOfBookLine(input: {
     record.noBestBidSize = input.noBidSize;
   } else {
     record.noBestBidSize = 10;
+  }
+  if (input.yesAsk !== undefined) {
+    record.yesBestAskCents = input.yesAsk;
+  }
+  if (input.noAsk !== undefined) {
+    record.noBestAskCents = input.noAsk;
+  }
+  if (input.isParityUsable !== undefined) {
+    record.isParityUsable = input.isParityUsable;
+  }
+  if (input.economicBookState !== undefined) {
+    record.economicBookState = input.economicBookState;
   }
 
   return JSON.stringify(record);
@@ -347,6 +363,8 @@ describe("analyzeParityNearMissForRun", () => {
     expect(report.gateCounts.allRejectionsByGate["buffer-adjusted-shortfall"]).toBeGreaterThan(0);
     expect(report.nearMissRankings.gross.length).toBeGreaterThan(0);
     expect(report.nearMissRankings.gross[0]?.distance).toBe(1);
+    expect(report.nearMissRankings.bufferEpisodes.length).toBeGreaterThan(0);
+    expect(report.nearMissRankings.bufferEpisodes[0]?.distanceKind).toBe("buffer-adjusted");
     expect(report.ruleConfiguration.pricingModel).toBe("bid-only");
     expect(report.ruleConfiguration.feeBufferCents).toBe(
       DEFAULT_STATIC_PARITY_FRICTION_CONFIG.feeBufferCents,
@@ -385,6 +403,62 @@ describe("analyzeParityNearMissForRun", () => {
     expect(report.selectedRunQuality.bidSizeCoverageShare).toBe(0.1);
     expect(report.summary.interpretationClassification).toBe("observation-quality-inconclusive");
     expect(report.summary.recommendedNextAction).toBe("investigate-observation-integrity");
+  });
+
+  it("excludes stale/unsynchronized observations from rankings and final candidate counts", async () => {
+    const files = buildFixtureFiles();
+    files[`${RUN_DIR}/top-of-book.jsonl`] = [
+      topOfBookLine({
+        receivedAtLocal: "2026-07-11T11:00:01.000Z",
+        yesBid: 52,
+        noBid: 50,
+        yesAsk: 51,
+        noAsk: 51,
+        isParityUsable: true,
+        sequence: 1,
+      }),
+      topOfBookLine({
+        receivedAtLocal: "2026-07-11T11:00:02.000Z",
+        yesBid: 51,
+        noBid: 50,
+        exchangeTimestampMs: Date.parse("2026-07-11T11:00:02.000Z") - 120_000,
+        sequence: 2,
+      }),
+      topOfBookLine({
+        receivedAtLocal: "2026-07-11T11:00:03.000Z",
+        yesBid: 51,
+        noBid: 50,
+        exchangeTimestampMs: Date.parse("2026-07-11T11:00:03.000Z"),
+        sequence: 3,
+      }),
+      topOfBookLine({
+        receivedAtLocal: "2026-07-11T11:00:04.000Z",
+        yesBid: 56,
+        noBid: 50,
+        exchangeTimestampMs: Date.parse("2026-07-11T11:00:04.000Z") - 120_000,
+        sequence: 4,
+      }),
+    ].join("\n");
+
+    const report = await analyzeParityNearMissForRun({
+      generatedAt: "2026-07-11T12:00:00.000Z",
+      outputPath: "data/research-results/parity-near-miss-analysis.json",
+      htmlOutputPath: "data/reports/parity-near-miss-analysis.html",
+      config: createParityNearMissAnalysisConfig({
+        captureRunDir: RUN_DIR,
+        friction: {
+          minGrossEdgeCents: 3,
+        },
+      }),
+      io: createMemoryParityNearMissIo(files),
+    });
+
+    expect(report.nearMissRankings.gross).toHaveLength(1);
+    expect(report.nearMissRankings.gross[0]?.timestamp).toBe("2026-07-11T11:00:03.000Z");
+    expect(report.perMarketBreakdown[MARKET]?.closestGrossNearMissCents).toBe(2);
+    expect(report.qualificationFunnel.bufferPass).toBe(1);
+    expect(report.qualificationFunnel.finalCandidates).toBe(0);
+    expect(report.summary.candidateCount).toBe(0);
   });
 
   it("keeps rule configuration hash stable for unchanged defaults", () => {
