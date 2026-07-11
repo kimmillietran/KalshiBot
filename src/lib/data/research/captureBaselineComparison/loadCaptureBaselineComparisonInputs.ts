@@ -392,21 +392,69 @@ function buildArtifactSnapshot(
   return snapshot;
 }
 
+const AGGREGATE_READINESS_ARTIFACT_KEYS: readonly CaptureBaselineArtifactKey[] = [
+  "staticParityScan",
+  "bidOnlyCandidateLifecycle",
+  "strategyEvaluationReadiness",
+  "executableConfirmationDesign",
+  "forwardCaptureReadiness",
+];
+
+function artifactHasExcludedReadinessSignals(
+  key: CaptureBaselineArtifactKey,
+  parsed: Record<string, unknown>,
+): boolean {
+  switch (key) {
+    case "staticParityScan": {
+      const metrics = readNestedRecord(parsed, ["metrics"]);
+      if (!metrics) {
+        return false;
+      }
+
+      return (
+        (readNumber(metrics.bidOnlyGrossCandidateCount)
+          ?? readNumber(metrics.grossParityCandidateCount)
+          ?? 0) > 0
+        || (readNumber(metrics.bidOnlyBufferAdjustedCandidateCount)
+          ?? readNumber(metrics.bufferAdjustedCandidateCount)
+          ?? 0) > 0
+      );
+    }
+    case "bidOnlyCandidateLifecycle": {
+      const metrics = readNestedRecord(parsed, ["metrics"]);
+      if (!metrics) {
+        return false;
+      }
+
+      return (
+        (readNumber(metrics.episodesBuilt) ?? 0) > 0
+        || (readNumber(metrics.persistentCandidateEpisodes) ?? 0) > 0
+      );
+    }
+    case "strategyEvaluationReadiness": {
+      const summary = readNestedRecord(parsed, ["summary"]);
+      return summary !== null && readString(summary.overallVerdict) !== null;
+    }
+    case "executableConfirmationDesign": {
+      const summary = readNestedRecord(parsed, ["summary"]);
+      return summary !== null && readString(summary.confirmationStatus) !== null;
+    }
+    case "forwardCaptureReadiness": {
+      const summary = readNestedRecord(parsed, ["summary"]);
+      return summary !== null && readString(summary.overallVerdict) !== null;
+    }
+    default:
+      return false;
+  }
+}
+
 function hasAggregateArtifactReadinessSignals(
   artifacts: Partial<Record<CaptureBaselineArtifactKey, LoadedCaptureBaselineArtifact>>,
 ): boolean {
-  const overlay = buildArtifactSnapshot(artifacts);
-
-  return (
-    (overlay.grossCandidates ?? 0) > 0
-    || (overlay.bufferAdjustedCandidates ?? 0) > 0
-    || (overlay.candidateEpisodes ?? 0) > 0
-    || (overlay.persistentCandidateEpisodes ?? 0) > 0
-    || overlay.strategyReadinessVerdict !== null
-    || overlay.executableConfirmationStatus !== null
-    || overlay.forwardCaptureReadinessVerdict !== null
-    || (overlay.validBidOnlySnapshots ?? 0) > 0
-  );
+  return AGGREGATE_READINESS_ARTIFACT_KEYS.some((key) => {
+    const artifact = artifacts[key];
+    return artifact ? artifactHasExcludedReadinessSignals(key, artifact.parsed) : false;
+  });
 }
 
 function emptyCaptureBaselineSnapshotFields(): Omit<
