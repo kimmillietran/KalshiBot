@@ -21,6 +21,24 @@ Run when one of these is true:
 
 If the issue is architectural, ambiguous, or safety-critical, stop and leave a comment instead of guessing.
 
+## Trigger handling
+
+This automation may be triggered by either:
+- a PR comment containing CHANGES REQUESTED
+- the autofix-ok label being added
+
+If triggered by a PR comment:
+- use that comment as the review feedback source
+
+If triggered by the autofix-ok label:
+- inspect the PR comments
+- find the latest Cursor Automation LRM Review comment containing CHANGES REQUESTED
+- use that comment as the review feedback source
+- if no CHANGES REQUESTED comment exists, skip and comment:
+  Autofix skipped: no CHANGES REQUESTED review comment found.
+
+Do not require the triggering event itself to be a comment if the trigger was the autofix-ok label.
+
 ## Absolute constraints
 
 Never add:
