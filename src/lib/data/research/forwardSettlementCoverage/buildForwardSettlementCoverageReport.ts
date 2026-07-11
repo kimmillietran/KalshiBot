@@ -57,9 +57,12 @@ function buildJoinIntegration(input: {
   generatedAt: string;
   joinOutputPath: string | null;
 }): ForwardSettlementJoinIntegration {
-  const capturedKeys = input.markets
-    .filter((market) => market.classification !== "invalid-market")
-    .map((market) => toCapturedMarketSettlementKey(market, input.selectedRunId));
+  const joinableMarkets = input.markets.filter(
+    (market) => market.classification === "settlement-ready",
+  );
+  const capturedKeys = joinableMarkets.map((market) =>
+    toCapturedMarketSettlementKey(market, input.selectedRunId),
+  );
 
   const settlementSource = loadKnownSettlementsFromImports({
     io: input.io,

@@ -121,6 +121,7 @@ function ingestJsonlInventory(input: {
     const observedAt =
       readString(record[input.observedAtField])
       ?? readString(record.receivedAtLocal)
+      ?? readString(record.recordedAtLocal)
       ?? readString(record.timestamp);
     if (!observedAt) {
       continue;

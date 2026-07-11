@@ -198,6 +198,63 @@ describe("forwardSettlementCoverage", () => {
     expect(isRealCaptureMarketTicker("KXBTC15M-MOCK")).toBe(false);
   });
 
+  it("reads forward capture metadata timestamps from recordedAtLocal", () => {
+    const files: Record<string, string> = {};
+    const dirs: string[] = [];
+    dirs.push(RUN_DIR, "data/live-capture/forward-quotes");
+    files[`${RUN_DIR}/top-of-book.jsonl`] = JSON.stringify({
+      marketTicker: MARKET_A,
+      seriesTicker: "KXBTC15M",
+      receivedAtLocal: "2026-07-11T11:08:00.000Z",
+    });
+    files[`${RUN_DIR}/market-metadata.jsonl`] = JSON.stringify({
+      marketTicker: MARKET_A,
+      seriesTicker: "KXBTC15M",
+      closeTime: "2026-07-11T11:15:00.000Z",
+      recordedAtLocal: "2026-07-11T11:08:00.000Z",
+    });
+
+    const extracted = extractSelectedRunMarketInventory({
+      io: createIo(files, dirs),
+      captureRunDir: RUN_DIR,
+      evaluatedAt: EVALUATED_AT,
+    });
+
+    expect(extracted.inventory[0]?.marketCloseTime).toBe("2026-07-11T11:15:00.000Z");
+    expect(extracted.inventory[0]?.expectedSettlementAvailability).toBe("available");
+  });
+
+  it("excludes non-ready settlements from join inputs", async () => {
+    const files: Record<string, string> = {};
+    const dirs: string[] = [];
+    seedRun(files, dirs);
+    files[`data/imports/KXBTC15M/${MARKET_A}/import-result.json`] = createImportResult(MARKET_A, "yes");
+    files[`data/imports/KXBTC15M/${MARKET_B}/import-result.json`] = createImportResult(
+      MARKET_B,
+      "no",
+      { collectionTime: "2026-07-11T11:08:00.000Z" },
+    );
+
+    const report = await buildForwardSettlementCoverageReport({
+      generatedAt: EVALUATED_AT,
+      config: defaultConfig(),
+      io: createIo(files, dirs),
+      joinOutputPath: "data/research-results/forward-settlement-join-selected-run.json",
+      runBackfill: false,
+    });
+
+    expect(report.joinIntegration.settlementKnownMarketCount).toBe(1);
+    expect(
+      report.joinIntegration.marketsExcludedFromJoin.some(
+        (market) => market.marketTicker === MARKET_B,
+      ),
+    ).toBe(true);
+    const joinJson = JSON.parse(
+      files["data/research-results/forward-settlement-join-selected-run.json"]!,
+    ) as { marketJoins: Array<{ marketTicker: string }> };
+    expect(joinJson.marketJoins.map((join) => join.marketTicker)).toEqual([MARKET_A]);
+  });
+
   it("detects existing settlement-ready markets", () => {
     const files: Record<string, string> = {};
     const dirs: string[] = [];
