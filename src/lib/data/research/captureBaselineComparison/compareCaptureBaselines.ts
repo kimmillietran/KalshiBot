@@ -101,10 +101,12 @@ function captureQualityRegressed(deltas: readonly CaptureBaselineDelta[]): boole
 }
 
 function readyForLongCapture(comparison: CaptureBaselineSnapshot): boolean {
+  const durationSeconds = comparison.captureDurationSeconds;
   return (
     comparison.captureHealthVerdict === "capture-research-ready"
     && (comparison.bidSizeCoverageShare ?? 0) >= 0.5
-    && (comparison.captureDurationSeconds ?? 0) < 3_600
+    && durationSeconds !== null
+    && durationSeconds < 3_600
   );
 }
 

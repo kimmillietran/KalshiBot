@@ -126,7 +126,7 @@ export const DEFAULT_CONFIGURED_BASELINE: CaptureBaselineSnapshot = {
   p90TopOfBookGapMs: null,
   bidPairWithSizeCount: 47,
   bidPairWithoutSizeCount: 519,
-  bidSizeCoverageShare: 0.083,
+  bidSizeCoverageShare: 47 / 1122,
   validBidOnlySnapshots: 62,
   grossCandidates: 0,
   bufferAdjustedCandidates: 0,

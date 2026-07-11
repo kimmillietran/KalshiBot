@@ -165,12 +165,44 @@ describe("captureBaselineComparison", () => {
     const result = compareCaptureBaselines({
       baseline: DEFAULT_CONFIGURED_BASELINE,
       comparison: comparisonSnapshot({
-        bidSizeCoverageShare: 0.083,
+        bidSizeCoverageShare: 47 / 1122,
         captureHealthVerdict: "capture-too-short",
       }),
     });
 
     expect(result.overallVerdict).toBe("no-candidates-yet");
+  });
+
+  it("aligns configured baseline bid-size coverage with top-of-book denominator", () => {
+    expect(DEFAULT_CONFIGURED_BASELINE.bidSizeCoverageShare).toBeCloseTo(47 / 1122, 6);
+
+    const result = compareCaptureBaselines({
+      baseline: DEFAULT_CONFIGURED_BASELINE,
+      comparison: comparisonSnapshot({
+        topOfBookCount: 1122,
+        bidPairWithSizeCount: 47,
+        bidPairWithoutSizeCount: 519,
+        bidSizeCoverageShare: 47 / 1122,
+        captureHealthVerdict: "capture-too-short",
+      }),
+    });
+
+    expect(result.overallVerdict).not.toBe("capture-quality-regressed");
+    const bidSizeDelta = result.deltas.find((delta) => delta.metric === "bidSizeCoverageShare");
+    expect(bidSizeDelta?.direction).toBe("unchanged");
+  });
+
+  it("does not return ready-for-long-capture when duration is unknown", () => {
+    const result = compareCaptureBaselines({
+      baseline: DEFAULT_CONFIGURED_BASELINE,
+      comparison: comparisonSnapshot({
+        bidSizeCoverageShare: 0.9,
+        captureHealthVerdict: "capture-research-ready",
+        captureDurationSeconds: null,
+      }),
+    });
+
+    expect(result.overallVerdict).not.toBe("ready-for-long-capture");
   });
 
   it("returns ready-for-long-capture when health is research-ready but duration is short", () => {
