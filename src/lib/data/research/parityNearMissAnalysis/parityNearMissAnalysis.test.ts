@@ -120,7 +120,10 @@ function buildFixtureFiles() {
       },
     }),
     "data/research-results/bid-size-coverage-audit.json": JSON.stringify({
-      summary: { bidSizeCoverageShare: 0.95 },
+      comparison: {
+        bidSizeCoverageShare: 0.95,
+        topOfBookBidSizeCoverageShare: 0.95,
+      },
     }),
   };
 }
@@ -267,6 +270,31 @@ describe("analyzeParityNearMissForRun", () => {
     expect(() => validateSelectedRunDirectory(io, "missing/run")).toThrow(ParityNearMissAnalysisError);
   });
 
+  it("returns shared JSONL stream summary fields from memory IO", async () => {
+    const io = createMemoryParityNearMissIo({
+      "run/events.jsonl": `${JSON.stringify({ ok: true })}\n\nnot-json\n${JSON.stringify({ ok: true })}`,
+    });
+
+    const summary = await io.iterateJsonl("run/events.jsonl", {
+      onLine: (line) => {
+        try {
+          JSON.parse(line);
+          return "continue";
+        } catch {
+          return "skip";
+        }
+      },
+    });
+
+    expect(summary).toEqual({
+      linesRead: 4,
+      blankLinesSkipped: 1,
+      invalidLineCount: 1,
+      recordsHandled: 2,
+      truncated: false,
+    });
+  });
+
   it("requires explicit --capture-run-dir and does not default to latest", () => {
     expect(() => parseParityNearMissAnalysisArgv([])).toThrow(
       "Missing required --capture-run-dir.",
@@ -302,7 +330,38 @@ describe("analyzeParityNearMissForRun", () => {
     );
     expect(report.ruleConfigurationHash).toMatch(/^parity-near-miss-v1-/);
     expect(report.selectedRunQuality.sequenceGapCount).toBe(2);
+    expect(report.selectedRunQuality.bidSizeCoverageShare).toBe(0.95);
     expect(serializeParityNearMissAnalysisHtml(report)).toContain("Interpretation guardrails");
+  });
+
+  it("uses bid-size audit comparison coverage when classifying selected-run quality", async () => {
+    const files = buildFixtureFiles();
+    files[`${RUN_DIR}/top-of-book.jsonl`] = [
+      topOfBookLine({ receivedAtLocal: "2026-07-11T11:00:01.000Z", yesBid: 50, noBid: 51, sequence: 1 }),
+      topOfBookLine({ receivedAtLocal: "2026-07-11T11:00:02.000Z", yesBid: 50, noBid: 51, sequence: 2 }),
+    ].join("\n");
+    files["data/research-results/bid-size-coverage-audit.json"] = JSON.stringify({
+      summary: {
+        bidPairWithSizeCount: 1,
+        bidPairWithoutSizeCount: 9,
+      },
+      comparison: {
+        bidSizeCoverageShare: 0.1,
+        topOfBookBidSizeCoverageShare: 0.1,
+      },
+    });
+
+    const report = await analyzeParityNearMissForRun({
+      generatedAt: "2026-07-11T12:00:00.000Z",
+      outputPath: "data/research-results/parity-near-miss-analysis.json",
+      htmlOutputPath: "data/reports/parity-near-miss-analysis.html",
+      config: createParityNearMissAnalysisConfig({ captureRunDir: RUN_DIR }),
+      io: createMemoryParityNearMissIo(files),
+    });
+
+    expect(report.selectedRunQuality.bidSizeCoverageShare).toBe(0.1);
+    expect(report.summary.interpretationClassification).toBe("observation-quality-inconclusive");
+    expect(report.summary.recommendedNextAction).toBe("investigate-observation-integrity");
   });
 
   it("keeps rule configuration hash stable for unchanged defaults", () => {

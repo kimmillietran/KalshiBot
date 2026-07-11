@@ -1,6 +1,6 @@
 import { statSync } from "node:fs";
 
-import { createFilesystemJsonlIo } from "@/lib/data/research/jsonl";
+import { createFilesystemJsonlIo, iterateJsonlLines } from "@/lib/data/research/jsonl";
 
 import type { ParityNearMissAnalysisIo } from "./parityNearMissAnalysisTypes";
 
@@ -34,27 +34,8 @@ export function createMemoryParityNearMissIo(
     }
   }
 
-  const iterateJsonl = async (
-    path: string,
-    options: Parameters<ParityNearMissAnalysisIo["iterateJsonl"]>[1],
-  ) => {
-    const content = normalized[path.replaceAll("\\", "/")] ?? "";
-    const lines = content.split(/\r?\n/);
-    let lineNumber = 0;
-    for (const line of lines) {
-      lineNumber += 1;
-      const result = await options.onLine(line, lineNumber);
-      if (result === "stop") {
-        break;
-      }
-    }
-    return {
-      linesRead: lineNumber,
-      recordsParsed: lineNumber,
-      malformedLineCount: 0,
-      stoppedEarly: false,
-    };
-  };
+  const iterateJsonl: ParityNearMissAnalysisIo["iterateJsonl"] = async (path, options) =>
+    iterateJsonlLines((normalized[path.replaceAll("\\", "/")] ?? "").split(/\r?\n/), options);
 
   return {
     readFile: (path: string) => normalized[path.replaceAll("\\", "/")] ?? "",
