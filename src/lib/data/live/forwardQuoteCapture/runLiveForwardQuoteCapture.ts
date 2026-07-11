@@ -1,6 +1,6 @@
 import { KALSHI_WS_URL } from "@/features/market-data/orderbook/constants";
 import { OrderbookSubscriptionManager } from "@/features/market-data/orderbook/OrderbookSubscriptionManager";
-import type { KalshiWsTransport } from "@/features/market-data/orderbook/types";
+import type { KalshiWsProbeTransport } from "@/features/market-data/orderbook/types";
 
 import {
   createKalshiWebSocketAuthHeaders,
@@ -17,8 +17,14 @@ import {
   createJsonlForwardCaptureWriter,
   createRunOutputPaths,
 } from "./jsonlForwardCaptureWriter";
+import {
+  KalshiWsLivenessWatchdog,
+  resolveWatchdogConfigFromCaptureConfig,
+  type KalshiWsWatchdogDiagnostics,
+} from "./kalshiWsLivenessWatchdog";
 import type {
   BtcSpotHealthStatus,
+  CaptureEndReason,
   ForwardCaptureConnectionDiagnostics,
   ForwardCaptureMarketDiscoveryResult,
   ForwardCaptureRolloverDiagnostics,
@@ -45,7 +51,10 @@ export type LiveForwardCaptureResult = {
     topOfBook: number;
     btcSpot: number;
     marketMetadata: number;
+    lifecycle: number;
   };
+  watchdog: KalshiWsWatchdogDiagnostics | null;
+  captureEndReason: CaptureEndReason;
 };
 
 function sleep(ms: number): Promise<void> {
@@ -58,6 +67,12 @@ function resolveWsUrl(credentials: KalshiCaptureCredentials): string {
   return credentials.wsUrl ?? KALSHI_WS_URL;
 }
 
+function isProbeTransport(
+  transport: KalshiWsProbeTransport,
+): transport is KalshiWsProbeTransport {
+  return typeof transport.ping === "function";
+}
+
 export async function runLiveForwardQuoteCapture(input: {
   runId: string;
   startedAt: string;
@@ -65,9 +80,10 @@ export async function runLiveForwardQuoteCapture(input: {
   discovery: ForwardCaptureMarketDiscoveryResult;
   credentials: KalshiCaptureCredentials;
   io: ForwardQuoteCaptureIo;
-  transport?: KalshiWsTransport;
+  transport?: KalshiWsProbeTransport;
   fetchBtcSpot?: () => Promise<{ price: number; updatedAt: string }>;
   shouldStop?: () => boolean;
+  onLog?: (message: string) => void;
 }): Promise<LiveForwardCaptureResult> {
   const paths = createRunOutputPaths(input.config.outputDir, input.runId);
   const writer = createJsonlForwardCaptureWriter(input.io, paths);
@@ -75,7 +91,6 @@ export async function runLiveForwardQuoteCapture(input: {
   const errors: string[] = [];
 
   const connection = createEmptyConnectionDiagnostics();
-
   const rollover: ForwardCaptureRolloverDiagnostics = {
     marketsDiscovered: input.discovery.discoveredMarketCount,
     marketsSubscribed: 0,
@@ -90,6 +105,9 @@ export async function runLiveForwardQuoteCapture(input: {
     ? "enabled"
     : "disabled";
   let btcSpotFailures = 0;
+  let plannedShutdown = false;
+  let captureEndReason: CaptureEndReason = "duration-complete";
+  let handlerSocketGeneration = 0;
 
   const eventTickers = { ...input.discovery.eventTickers };
   const marketStatuses = { ...input.discovery.marketStatuses };
@@ -97,7 +115,14 @@ export async function runLiveForwardQuoteCapture(input: {
 
   const transport = input.transport ?? new NodeKalshiAuthenticatedWsClient();
   const subscriptionManager = new OrderbookSubscriptionManager();
-  let reconnectScheduled = false;
+  const watchdogConfig = resolveWatchdogConfigFromCaptureConfig({
+    dryRun: false,
+    wsWatchdogEnabled: input.config.wsWatchdogEnabled,
+    wsSoftSilenceThresholdMs: input.config.wsSoftSilenceThresholdMs,
+    wsHardStallThresholdMs: input.config.wsHardStallThresholdMs,
+    wsProbeGraceMs: input.config.wsProbeGraceMs,
+    wsRecoveryMaxAttempts: input.config.wsRecoveryMaxAttempts,
+  });
 
   const processor = new ForwardCaptureMessageProcessor({
     runId: input.runId,
@@ -108,8 +133,11 @@ export async function runLiveForwardQuoteCapture(input: {
     now: input.io.now,
     monotonicNowMs: input.io.monotonicNowMs,
     getLatestBtcSpot: () => latestBtcSpot,
+    onTopOfBookEmitted: () => {
+      watchdog?.recordTopOfBookEmission();
+    },
     onSequenceGap: (marketTicker) => {
-      processor.markResyncing(marketTicker);
+      processorRef.markResyncing(marketTicker);
       try {
         subscriptionManager.requestSnapshot(transport, marketTicker);
       } catch (error) {
@@ -119,6 +147,9 @@ export async function runLiveForwardQuoteCapture(input: {
       }
     },
   });
+  const processorRef = processor;
+
+  let watchdog: KalshiWsLivenessWatchdog | null = null;
 
   let authHeadersGenerated = false;
   let connectHeaders: Record<string, string> | undefined;
@@ -137,6 +168,73 @@ export async function runLiveForwardQuoteCapture(input: {
   } else {
     errors.push("Authenticated WebSocket headers could not be generated from credentials.");
   }
+
+  watchdog = watchdogConfig.enabled
+    ? new KalshiWsLivenessWatchdog(watchdogConfig, {
+      now: input.io.now,
+      monotonicNowMs: input.io.monotonicNowMs,
+      shouldStop: () => input.shouldStop?.() ?? false,
+      getActiveMarketTickers: () => [...subscribedTickers],
+      onLog: input.onLog,
+      onEvent: (event) => {
+        writer.appendLifecycleEvent({ runId: input.runId, ...event });
+        if (event.type === "wsRecoverySucceeded") {
+          processor.recordBooksResynchronized();
+        }
+      },
+      sendProbe: isProbeTransport(transport)
+        ? () => {
+          try {
+            transport.ping?.();
+          } catch (error) {
+            errors.push(error instanceof Error ? error.message : "Watchdog probe failed");
+          }
+        }
+        : undefined,
+      executeRecovery: async ({ socketGeneration, activeMarketTickers }) => {
+        writer.appendLifecycleEvent({
+          runId: input.runId,
+          type: "wsBooksMarkedUnsynchronized",
+          detectedAt: input.io.now().toISOString(),
+          socketGeneration,
+          marketTickers: activeMarketTickers,
+        });
+        processor.invalidateAllBooksForRecovery();
+        const rawBeforeRecovery = processor.diagnostics.rawMessageCount;
+        plannedShutdown = true;
+        try {
+          transport.close();
+        } catch {
+          // ignore close errors on stale sockets
+        }
+        plannedShutdown = false;
+        connection.connected = false;
+        connection.wsDisconnectCount += 1;
+        connection.reconnectCount += 1;
+        watchdog?.recordWebSocketClose();
+
+        const confirmationDeadline =
+          input.io.monotonicNowMs() + watchdogConfig.wsPostSubscribeConfirmationMs;
+        await connectTransport(socketGeneration);
+
+        while (input.io.monotonicNowMs() < confirmationDeadline) {
+          if (processor.diagnostics.rawMessageCount > rawBeforeRecovery) {
+            return {
+              status: "succeeded" as const,
+              firstRawMessageAt: input.io.now().toISOString(),
+              subscriptionsRestored: activeMarketTickers.length,
+            };
+          }
+          await sleep(50);
+        }
+
+        return {
+          status: "failed" as const,
+          reason: "no-application-messages-after-recovery",
+        };
+      },
+    })
+    : null;
 
   function appendMarketMetadata(
     ticker: string,
@@ -166,50 +264,45 @@ export async function runLiveForwardQuoteCapture(input: {
     if (connection.connected) {
       subscriptionManager.subscribe(transport, ticker);
       subscriptionManager.requestSnapshot(transport, ticker);
+      watchdog?.recordSubscriptionSuccess(subscribedTickers.size);
     }
   }
 
-  async function connectTransport(): Promise<void> {
+  async function connectTransport(socketGeneration: number): Promise<void> {
     if (!authHeadersGenerated || !connectHeaders) {
       throw new Error("Missing authenticated WebSocket headers.");
     }
 
+    handlerSocketGeneration = socketGeneration;
     await transport.connect(wsUrl, { headers: connectHeaders });
     connection.wsConnectCount += 1;
     connection.connected = true;
+    watchdog?.recordWebSocketOpen();
 
     for (const ticker of subscribedTickers) {
       subscriptionManager.subscribe(transport, ticker);
       subscriptionManager.requestSnapshot(transport, ticker);
     }
+    watchdog?.recordSubscriptionSuccess(subscribedTickers.size);
   }
 
-  async function scheduleReconnect(): Promise<void> {
-    if (reconnectScheduled || input.shouldStop?.()) {
-      return;
-    }
-
-    reconnectScheduled = true;
-    connection.reconnectCount += 1;
-
-    await sleep(1_000);
-    reconnectScheduled = false;
-
-    if (input.shouldStop?.()) {
-      return;
-    }
-
-    try {
-      await connectTransport();
-    } catch (error) {
-      connection.connected = false;
-      errors.push(error instanceof Error ? error.message : "Reconnect failed");
-    }
+  if (isProbeTransport(transport)) {
+    transport.onPong?.(() => {
+      if (watchdog && handlerSocketGeneration !== watchdog.currentSocketGeneration) {
+        return;
+      }
+      watchdog?.recordPong();
+    });
   }
 
   transport.onMessage((payload) => {
+    if (watchdog && handlerSocketGeneration !== watchdog.currentSocketGeneration) {
+      return;
+    }
+
     try {
       processor.processRawPayload(payload);
+      watchdog?.recordRawMessage();
     } catch (error) {
       errors.push(
         error instanceof Error ? error.message : "Failed to process WS payload",
@@ -218,9 +311,16 @@ export async function runLiveForwardQuoteCapture(input: {
   });
 
   transport.onClose(() => {
+    if (plannedShutdown) {
+      connection.connected = false;
+      watchdog?.recordWebSocketClose();
+      return;
+    }
+
     connection.connected = false;
     connection.wsDisconnectCount += 1;
-    void scheduleReconnect();
+    watchdog?.recordWebSocketClose();
+    watchdog?.notifyTransportClosedUnexpectedly();
   });
 
   transport.onError((error) => {
@@ -232,7 +332,9 @@ export async function runLiveForwardQuoteCapture(input: {
   }
 
   try {
-    await connectTransport();
+    const initialGeneration = watchdog?.incrementSocketGeneration() ?? 1;
+    await connectTransport(initialGeneration);
+    watchdog?.markCaptureStarted();
   } catch (error) {
     connection.connected = false;
     errors.push(error instanceof Error ? error.message : "Live WS capture failed");
@@ -244,7 +346,10 @@ export async function runLiveForwardQuoteCapture(input: {
       paths,
       discovery: input.discovery,
       processor,
-      connection,
+      connection: {
+        ...connection,
+        captureEndReason: "authentication-failure",
+      },
       rollover,
       btcSpotStatus,
       connected: false,
@@ -252,6 +357,8 @@ export async function runLiveForwardQuoteCapture(input: {
       authHeadersGenerated,
       errors,
       recordCounts: writer.counts,
+      watchdog: watchdog?.toDiagnostics() ?? null,
+      captureEndReason: "authentication-failure",
     };
   }
 
@@ -281,6 +388,7 @@ export async function runLiveForwardQuoteCapture(input: {
         priceUsd: spot.price,
       });
       btcSpotStatus = "healthy";
+      watchdog?.recordBtcActivity();
     } catch {
       btcSpotFailures += 1;
       btcSpotStatus = btcSpotFailures >= 3 ? "degraded" : "enabled";
@@ -314,6 +422,7 @@ export async function runLiveForwardQuoteCapture(input: {
         appendMarketMetadata(ticker, "closed");
         subscribedTickers.delete(ticker);
       }
+      watchdog?.recordSubscriptionSuccess(subscribedTickers.size);
     })();
   }, input.config.rolloverCheckSeconds * 1_000);
 
@@ -323,34 +432,67 @@ export async function runLiveForwardQuoteCapture(input: {
     }, 5_000)
     : null;
 
+  const watchdogHandle = watchdog
+    ? setIntervalFn(() => {
+      void watchdog.tick();
+    }, watchdogConfig.watchdogTickMs)
+    : null;
+
   if (input.config.captureBtcSpot) {
     await pollBtcSpot();
   }
 
   while (input.io.now().getTime() < endAt && !input.shouldStop?.()) {
+    if (watchdog?.isTerminal) {
+      captureEndReason = "terminal-websocket-failure";
+      break;
+    }
     await sleep(250);
+  }
+
+  if (input.shouldStop?.()) {
+    captureEndReason = "user-cancelled";
   }
 
   clearIntervalFn(rolloverHandle);
   if (btcHandle !== null) {
     clearIntervalFn(btcHandle);
   }
+  if (watchdogHandle !== null) {
+    clearIntervalFn(watchdogHandle);
+  }
 
+  await watchdog?.waitForRecovery();
+  watchdog?.disable();
+  plannedShutdown = true;
   transport.close();
   connection.connected = false;
   processor.finalize();
 
-  const connectionSemantics = {
+  const watchdogDiagnostics = watchdog?.toDiagnostics() ?? null;
+  const completedWithWarnings =
+    (watchdogDiagnostics?.wsRecoverySuccessCount ?? 0) > 0
+    || (watchdogDiagnostics?.wsStallDetectedCount ?? 0) > 0;
+  const terminalFailureReason =
+    captureEndReason === "terminal-websocket-failure"
+      ? "kalshi-websocket-recovery-exhausted"
+      : null;
+
+  Object.assign(connection, {
     everConnected: connection.wsConnectCount > 0,
     completedNormally:
-      connection.wsConnectCount > 0
-      && processor.diagnostics.rawMessageCount > 0,
+      captureEndReason === "duration-complete"
+      && connection.wsConnectCount > 0
+      && processor.diagnostics.rawMessageCount > 0
+      && terminalFailureReason === null,
     liveConnectionSucceeded:
       authHeadersGenerated
       && connection.wsConnectCount > 0
       && processor.diagnostics.rawMessageCount > 0,
-  };
-  Object.assign(connection, connectionSemantics);
+    completedWithWarnings,
+    terminalFailureReason,
+    captureEndReason,
+  });
 
   return {
     runId: input.runId,
@@ -367,5 +509,7 @@ export async function runLiveForwardQuoteCapture(input: {
     authHeadersGenerated,
     errors,
     recordCounts: writer.counts,
+    watchdog: watchdogDiagnostics,
+    captureEndReason,
   };
 }

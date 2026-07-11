@@ -70,6 +70,18 @@ export class OrderbookCaptureBook {
     }
   }
 
+  invalidateForRecovery(): void {
+    if (this.bookState === "closed") {
+      return;
+    }
+
+    this.yesBids.clear();
+    this.noBids.clear();
+    this.sequenceTracker.clear();
+    this.lastSeq = null;
+    this.bookState = "awaiting-snapshot";
+  }
+
   applySnapshot(message: KalshiOrderbookSnapshotMessage): void {
     this.yesBids.clear();
     this.noBids.clear();

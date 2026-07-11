@@ -34,6 +34,14 @@ export type ForwardCaptureRecommendedAction =
 
 export type BtcSpotHealthStatus = "enabled" | "disabled" | "degraded" | "healthy";
 
+export type CaptureEndReason =
+  | "duration-complete"
+  | "user-cancelled"
+  | "terminal-websocket-failure"
+  | "authentication-failure"
+  | "writer-failure"
+  | "unexpected-error";
+
 export type ForwardQuoteCaptureConfig = {
   series: string;
   durationMinutes: number;
@@ -46,6 +54,11 @@ export type ForwardQuoteCaptureConfig = {
   rolloverCheckSeconds: number;
   healthFlushSeconds: number;
   topOfBookThrottleMs: number;
+  wsWatchdogEnabled: boolean;
+  wsSoftSilenceThresholdMs: number;
+  wsHardStallThresholdMs: number;
+  wsProbeGraceMs: number;
+  wsRecoveryMaxAttempts: number;
 };
 
 export type ForwardRawKalshiWsRecord = {
@@ -188,6 +201,9 @@ export type ForwardCaptureConnectionDiagnostics = {
   completedNormally: boolean;
   /** Whether live auth + WS produced captured messages during the run. */
   liveConnectionSucceeded: boolean;
+  completedWithWarnings: boolean;
+  terminalFailureReason: string | null;
+  captureEndReason: CaptureEndReason | null;
 };
 
 export type ForwardCaptureRolloverDiagnostics = {
@@ -258,6 +274,20 @@ export type ForwardCaptureHealthReport = {
     status: BtcSpotHealthStatus;
     provider: string | null;
     recordsCaptured: number;
+  };
+  watchdog?: {
+    wsStallDetectedCount: number;
+    wsRecoveryAttemptCount: number;
+    wsRecoverySuccessCount: number;
+    wsRecoveryFailureCount: number;
+    postResumeRecoveryCount: number;
+    longestKalshiSilenceMs: number;
+    longestRecoveredStallMs: number;
+    terminalWebSocketFailure: boolean;
+    kalshiStreamEndedAt: string | null;
+    kalshiSilentWhileBtcActiveSeconds: number;
+    lifecycleEventCount: number;
+    lifecyclePath: string | null;
   };
   verdict: ForwardCaptureVerdict;
   recommendedNextAction: ForwardCaptureRecommendedAction;

@@ -1,6 +1,6 @@
 import WebSocket from "ws";
 
-import type { KalshiWsTransport } from "@/features/market-data/orderbook/types";
+import type { KalshiWsProbeTransport, KalshiWsTransport } from "@/features/market-data/orderbook/types";
 
 type Handler = {
   onOpen?: () => void;
@@ -14,9 +14,10 @@ export type NodeKalshiWsConnectOptions = {
 };
 
 /** Node `ws` transport with custom handshake headers for Kalshi authenticated capture. */
-export class NodeKalshiAuthenticatedWsClient implements KalshiWsTransport {
+export class NodeKalshiAuthenticatedWsClient implements KalshiWsProbeTransport {
   private socket: WebSocket | null = null;
   private handlers: Handler = {};
+  private pongHandler?: () => void;
 
   async connect(url: string, options?: NodeKalshiWsConnectOptions): Promise<void> {
     if (this.socket) {
@@ -39,6 +40,10 @@ export class NodeKalshiAuthenticatedWsClient implements KalshiWsTransport {
       socket.on("message", (data) => {
         const payload = typeof data === "string" ? data : data.toString("utf8");
         this.handlers.onMessage?.(payload);
+      });
+
+      socket.on("pong", () => {
+        this.pongHandler?.();
       });
 
       socket.once("close", (code, reason) => {
@@ -83,5 +88,17 @@ export class NodeKalshiAuthenticatedWsClient implements KalshiWsTransport {
 
   onError(handler: (error: Error) => void): void {
     this.handlers.onError = handler;
+  }
+
+  ping(): void {
+    if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
+      throw new Error("WebSocket is not connected");
+    }
+
+    this.socket.ping();
+  }
+
+  onPong(handler: () => void): void {
+    this.pongHandler = handler;
   }
 }

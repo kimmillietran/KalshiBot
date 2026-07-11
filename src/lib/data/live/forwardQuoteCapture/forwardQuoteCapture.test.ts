@@ -27,6 +27,11 @@ const BASE_CONFIG: ForwardQuoteCaptureConfig = {
   rolloverCheckSeconds: 30,
   healthFlushSeconds: 60,
   topOfBookThrottleMs: 0,
+  wsWatchdogEnabled: true,
+  wsSoftSilenceThresholdMs: 30_000,
+  wsHardStallThresholdMs: 60_000,
+  wsProbeGraceMs: 10_000,
+  wsRecoveryMaxAttempts: 5,
 };
 
 function createIo(files: Record<string, string> = {}) {
@@ -491,6 +496,9 @@ describe("buildForwardCaptureHealthReport", () => {
           everConnected: false,
           completedNormally: false,
           liveConnectionSucceeded: false,
+          completedWithWarnings: false,
+          terminalFailureReason: null,
+          captureEndReason: "duration-complete",
         },
         rollover: {
           marketsDiscovered: 2,
@@ -601,6 +609,9 @@ describe("buildForwardCaptureHealthReport economic metrics", () => {
           everConnected: false,
           completedNormally: false,
           liveConnectionSucceeded: false,
+          completedWithWarnings: false,
+          terminalFailureReason: null,
+          captureEndReason: "duration-complete",
         },
         rollover: {
           marketsDiscovered: 1,

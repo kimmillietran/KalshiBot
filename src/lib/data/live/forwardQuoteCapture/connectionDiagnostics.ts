@@ -11,6 +11,9 @@ export function createEmptyConnectionDiagnostics(
     everConnected: false,
     completedNormally: false,
     liveConnectionSucceeded: false,
+    completedWithWarnings: false,
+    terminalFailureReason: null,
+    captureEndReason: null,
     ...overrides,
   };
 }

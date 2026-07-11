@@ -3,6 +3,7 @@ import {
   DEFAULT_FORWARD_QUOTE_CAPTURE_OUTPUT_DIR,
   type ForwardQuoteCaptureConfig,
 } from "@/lib/data/live/forwardQuoteCapture";
+import { DEFAULT_KALSHI_WS_WATCHDOG_CONFIG } from "@/lib/data/live/forwardQuoteCapture/kalshiWsLivenessWatchdog";
 
 export class ForwardQuoteCaptureCommandError extends Error {
   constructor(message: string) {
@@ -69,6 +70,27 @@ export function parseForwardQuoteCaptureConfigFromArgv(
     rolloverCheckSeconds: readNumberFlag(argv, "--rollover-check-seconds", 30),
     healthFlushSeconds: readNumberFlag(argv, "--health-flush-seconds", 60),
     topOfBookThrottleMs: readNumberFlag(argv, "--top-of-book-throttle-ms", 0),
+    wsWatchdogEnabled: !argv.includes("--disable-ws-watchdog"),
+    wsSoftSilenceThresholdMs: readNumberFlag(
+      argv,
+      "--ws-stall-timeout-ms",
+      DEFAULT_KALSHI_WS_WATCHDOG_CONFIG.wsSoftSilenceThresholdMs,
+    ),
+    wsHardStallThresholdMs: readNumberFlag(
+      argv,
+      "--ws-hard-stall-timeout-ms",
+      DEFAULT_KALSHI_WS_WATCHDOG_CONFIG.wsHardStallThresholdMs,
+    ),
+    wsProbeGraceMs: readNumberFlag(
+      argv,
+      "--ws-probe-grace-ms",
+      DEFAULT_KALSHI_WS_WATCHDOG_CONFIG.wsProbeGraceMs,
+    ),
+    wsRecoveryMaxAttempts: readNumberFlag(
+      argv,
+      "--ws-recovery-max-attempts",
+      DEFAULT_KALSHI_WS_WATCHDOG_CONFIG.wsRecoveryMaxAttempts,
+    ),
   };
 }
 

@@ -127,6 +127,7 @@ export class ForwardCaptureMessageProcessor {
       monotonicNowMs: () => number;
       onSequenceGap?: (marketTicker: string) => void;
       getLatestBtcSpot?: () => LatestBtcSpot;
+      onTopOfBookEmitted?: () => void;
     },
   ) {}
 
@@ -161,6 +162,18 @@ export class ForwardCaptureMessageProcessor {
     const book = this.getOrCreateBook(marketTicker);
     book.markResyncing();
     this.diagnostics.resyncAttemptCount += 1;
+  }
+
+  invalidateAllBooksForRecovery(): void {
+    for (const book of this.books.values()) {
+      book.invalidateForRecovery();
+    }
+  }
+
+  recordBooksResynchronized(): void {
+    this.diagnostics.resyncSuccessCount += [...this.books.values()].filter(
+      (book) => book.bookState === "valid",
+    ).length;
   }
 
   recordResyncSuccess(marketTicker: string): void {
@@ -313,6 +326,7 @@ export class ForwardCaptureMessageProcessor {
     this.input.writer.appendTopOfBook(record);
     recordEconomicDiagnostics(this.diagnostics, record);
     this.lastEconomicBookState.set(book.marketTicker, record.economicBookState);
+    this.input.onTopOfBookEmitted?.();
 
     if (record.bookState === "valid") {
       this.diagnostics.validBookStateDurationMs += 1;
