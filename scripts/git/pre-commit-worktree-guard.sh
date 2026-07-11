@@ -44,6 +44,28 @@ if [[ "$branch" == merge/* ]]; then
   fail "Commits on merge/* branches are blocked. Use a feature/* branch in one builder worktree."
 fi
 
+# Standalone checkout (cloud agent / CI / plain clone outside the local worktree layout).
+# The builder/review worktree model does not exist here, so only the universal invariants
+# apply: `main` and `merge/*` are already blocked above; require the cloud-agent branch
+# convention (`cursor/*`) and skip the .worktree-branch assignment checks.
+case "$pwd_now" in
+  *kalshi-builder1*|*kalshi-builder2*|*kalshi-builder3*|*kalshi-builder4*|*kalshi-review*|*KalshiBot*)
+    : # known local worktree path — fall through to the worktree-role logic below
+    ;;
+  *)
+    if [[ "$branch" == cursor/* ]]; then
+      echo "✅ Standalone checkout commit allowed (cloud/CI @ $branch)"
+      exit 0
+    fi
+    fail "Commit blocked outside a builder/reviewer worktree.
+Current directory:
+   $pwd_now
+
+Use kalshi-builder1, kalshi-builder2, kalshi-builder3, kalshi-builder4, or kalshi-review locally,
+or a cursor/* branch for cloud agent / CI checkouts."
+    ;;
+esac
+
 worktree_role=""
 case "$pwd_now" in
   *kalshi-builder1*)
