@@ -994,7 +994,20 @@ export function normalizeCaptureQualityValidationArgv(argv: readonly string[]): 
 }
 
 export function normalizeBidOnlyCandidateLifecycleArgv(argv: readonly string[]): string[] {
-  return normalizeNpmScriptArgv(argv, BID_ONLY_CANDIDATE_LIFECYCLE_ARGV_SCHEMA);
+  const expanded = expandEqualsStyleFlags(argv);
+  if (hasCliFlags(expanded)) {
+    return normalizeNpmScriptArgv(expanded, BID_ONLY_CANDIDATE_LIFECYCLE_ARGV_SCHEMA);
+  }
+
+  if (expanded.length === 1 && !expanded[0]!.startsWith("--")) {
+    const positional = expanded[0]!;
+    const normalized = positional.replace(/\\/g, "/");
+    if (normalized.includes("forward-quotes/") || normalized.includes("live-capture/")) {
+      return ["--capture-run-dir", positional];
+    }
+  }
+
+  return normalizeNpmScriptArgv(expanded, BID_ONLY_CANDIDATE_LIFECYCLE_ARGV_SCHEMA);
 }
 
 export function normalizeStaticParityScanArgv(argv: readonly string[]): string[] {
@@ -1143,7 +1156,20 @@ export function normalizeForwardCaptureReadinessArgv(
 export function normalizeExecutableConfirmationDesignArgv(
   argv: readonly string[],
 ): string[] {
-  return normalizeNpmScriptArgv(argv, EXECUTABLE_CONFIRMATION_DESIGN_ARGV_SCHEMA);
+  const expanded = expandEqualsStyleFlags(argv);
+  if (hasCliFlags(expanded)) {
+    return normalizeNpmScriptArgv(expanded, EXECUTABLE_CONFIRMATION_DESIGN_ARGV_SCHEMA);
+  }
+
+  if (expanded.length === 1 && !expanded[0]!.startsWith("--")) {
+    const positional = expanded[0]!;
+    const normalized = positional.replace(/\\/g, "/");
+    if (normalized.includes("forward-quotes/") || normalized.includes("live-capture/")) {
+      return ["--capture-run-dir", positional];
+    }
+  }
+
+  return normalizeNpmScriptArgv(expanded, EXECUTABLE_CONFIRMATION_DESIGN_ARGV_SCHEMA);
 }
 
 export function normalizeExpansionImportPerformanceAuditArgv(

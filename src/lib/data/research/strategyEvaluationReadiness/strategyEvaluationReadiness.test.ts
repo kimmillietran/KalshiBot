@@ -589,8 +589,73 @@ describe("strategyEvaluationReadiness", () => {
     expect(report.summary.inputArtifactsUsed).not.toContain(
       DEFAULT_STRATEGY_EVALUATION_INPUT_PATHS.artifacts.bidOnlyCandidateLifecycle,
     );
+    expect(report.summary.inputArtifactsUsed).not.toContain(
+      DEFAULT_STRATEGY_EVALUATION_INPUT_PATHS.artifacts.bidSizeCoverageAudit,
+    );
     expect(report.summary.missingArtifacts).not.toContain(
       DEFAULT_STRATEGY_EVALUATION_INPUT_PATHS.artifacts.staticParityScan,
+    );
+  });
+
+  it("ignores unscoped bid-size audit metrics in selected-run mode", () => {
+    const inputPaths = buildInputPaths({
+      captureRunDir: "data/live-capture/forward-quotes/run-a",
+    });
+    const io = buildMemoryIo({
+      [DEFAULT_STRATEGY_EVALUATION_INPUT_PATHS.artifacts.forwardCaptureReadiness]:
+        buildForwardCaptureArtifact({
+          totalDurationMinutes: 30 * 60,
+          daysCovered: 5,
+          marketCount: 30,
+          topOfBookRecordCount: 8_000,
+          analysisScope: "selected-run",
+          sourceRunIds: ["run-a"],
+          selectedRunId: "run-a",
+        }),
+      [DEFAULT_STRATEGY_EVALUATION_INPUT_PATHS.artifacts.staticParityScan]:
+        buildStaticParityArtifact({
+          grossCandidates: 40,
+          bufferAdjustedCandidates: 12,
+          executableConfirmed: 3,
+          analysisScope: "selected-run",
+          sourceRunIds: ["run-a"],
+          selectedRunId: "run-a",
+        }),
+      [DEFAULT_STRATEGY_EVALUATION_INPUT_PATHS.artifacts.bidOnlyCandidateLifecycle]:
+        buildLifecycleArtifact({
+          episodeCount: 40,
+          bufferAdjustedEpisodeCount: 12,
+          settlementJoined: 35,
+          settlementCoverageShare: 0.9,
+          analysisScope: "selected-run",
+          sourceRunIds: ["run-a"],
+          selectedRunId: "run-a",
+        }),
+      [DEFAULT_STRATEGY_EVALUATION_INPUT_PATHS.artifacts.bidSizeCoverageAudit]:
+        buildBidSizeAuditArtifact({
+          bidPairWithSizeCount: 400,
+          bidPairWithoutSizeCount: 100,
+        }),
+    });
+
+    const loaded = loadStrategyEvaluationInputs({
+      io,
+      inputPaths,
+      evaluatedAt: GENERATED_AT,
+    });
+    const report = evaluateStrategyEvaluationReadiness({
+      inputs: loaded,
+      inputPaths,
+      evaluatedAt: GENERATED_AT,
+      generatedAt: GENERATED_AT,
+      outputPath: OUTPUT_PATH,
+      htmlOutputPath: HTML_PATH,
+    });
+
+    expect(loaded.bidSizeCoverageAudit?.excludedByValidation).toBe(true);
+    expect(report.summary.overallVerdict).not.toBe("ready-for-offline-strategy-evaluation");
+    expect(report.summary.inputArtifactsUsed).not.toContain(
+      DEFAULT_STRATEGY_EVALUATION_INPUT_PATHS.artifacts.bidSizeCoverageAudit,
     );
   });
 

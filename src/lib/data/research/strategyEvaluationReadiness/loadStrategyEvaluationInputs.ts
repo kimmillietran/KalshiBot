@@ -324,6 +324,7 @@ export function loadStrategyEvaluationInputs(input: {
         inputPaths.artifacts.forwardCaptureReadiness,
         inputPaths.artifacts.staticParityScan,
         inputPaths.artifacts.bidOnlyCandidateLifecycle,
+        inputPaths.artifacts.bidSizeCoverageAudit,
       ].filter((path) => io.fileExists(path)),
       evaluatedAt: input.evaluatedAt,
       staleAfterHours: DEFAULT_BID_ONLY_PARITY_EPISODE_THRESHOLDS.artifactStaleAfterHours,
@@ -349,6 +350,7 @@ export function loadStrategyEvaluationInputs(input: {
       inputPaths.artifacts.forwardCaptureReadiness,
       inputPaths.artifacts.staticParityScan,
       inputPaths.artifacts.bidOnlyCandidateLifecycle,
+      inputPaths.artifacts.bidSizeCoverageAudit,
     ].filter((path) => io.fileExists(path))
     : [];
   const usableArtifactPaths = new Set(artifactValidation.usablePaths);
@@ -381,7 +383,10 @@ export function loadStrategyEvaluationInputs(input: {
       artifact: staticParityScan,
       excludedPaths: excludedArtifactPaths,
     }),
-    bidSizeCoverageAudit,
+    bidSizeCoverageAudit: excludeInvalidSelectedRunArtifact({
+      artifact: bidSizeCoverageAudit,
+      excludedPaths: excludedArtifactPaths,
+    }),
     bidOnlyCandidateLifecycle: excludeInvalidSelectedRunArtifact({
       artifact: bidOnlyCandidateLifecycle,
       excludedPaths: excludedArtifactPaths,

@@ -1,9 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
+  normalizeBidOnlyCandidateLifecycleArgv,
   normalizeDiscoveryImportConfigsArgv,
   normalizeEventStudyArgv,
   normalizeExecuteExpansionImportArgv,
+  normalizeExecutableConfirmationDesignArgv,
   normalizeForwardCaptureReadinessArgv,
   normalizeResearchInspectArgv,
   normalizeStaticParityScanArgv,
@@ -82,6 +84,14 @@ describe("cliArgvSchemas", () => {
       normalizeForwardCaptureReadinessArgv(["data/reports/custom-forward-readiness.json"]),
     ).toEqual(["--output", "data/reports/custom-forward-readiness.json"]);
     expect(normalizeStrategyEvaluationReadinessArgv([captureRunDir])).toEqual([
+      "--capture-run-dir",
+      captureRunDir,
+    ]);
+    expect(normalizeBidOnlyCandidateLifecycleArgv([captureRunDir])).toEqual([
+      "--capture-run-dir",
+      captureRunDir,
+    ]);
+    expect(normalizeExecutableConfirmationDesignArgv([captureRunDir])).toEqual([
       "--capture-run-dir",
       captureRunDir,
     ]);
