@@ -345,8 +345,39 @@ function isSuccessfulRun(verdict: string | undefined): boolean {
     verdict === "capture-spike-success"
     || verdict === "forward-capture-success"
     || verdict === "capture-mvp-success"
+    || verdict === "capture-research-ready"
     || verdict === "degraded-capture"
   );
+}
+
+/** Excludes mock, dry-run, credential-failure, and zero-observation captures from default aggregates. */
+export function isResearchEligibleCaptureRun(run: LoadedForwardCaptureRun): boolean {
+  if (run.health.config?.dryRun === true) {
+    return false;
+  }
+
+  const verdict = run.health.verdict ?? "";
+  if (
+    verdict.includes("credential")
+    || verdict.includes("dry-run")
+    || verdict === "capture-too-short"
+  ) {
+    return false;
+  }
+
+  const tickers = [
+    ...run.topOfBookStats.marketTickers,
+    ...(run.health.marketDiscovery?.selectedMarketTickers ?? []),
+  ];
+  if (tickers.some((ticker) => ticker.includes("MOCK"))) {
+    return false;
+  }
+
+  if (run.topOfBookStats.recordCount === 0 && run.rawMessageCount === 0) {
+    return false;
+  }
+
+  return isSuccessfulRun(verdict) || run.topOfBookStats.recordCount > 0;
 }
 
 function runDurationMinutes(run: LoadedForwardCaptureRun): number {

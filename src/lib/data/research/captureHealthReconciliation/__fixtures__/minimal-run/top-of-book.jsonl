@@ -1,0 +1,2 @@
+{"marketTicker":"KXBTC15M-TEST","receivedAtLocal":"2026-07-11T00:00:00.000Z","bookState":"valid","yesBestBidCents":45,"yesBestAskCents":50,"yesSpreadCents":5,"noSpreadCents":5}
+{"marketTicker":"KXBTC15M-TEST","receivedAtLocal":"2026-07-11T00:00:01.000Z","bookState":"gap-detected","yesBestBidCents":45,"yesBestAskCents":50,"yesSpreadCents":5,"noSpreadCents":5}

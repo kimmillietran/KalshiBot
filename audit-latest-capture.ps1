@@ -44,6 +44,11 @@ Write-Host "Running bid-size coverage audit..."
 npx tsx scripts/research/buildBidSizeCoverageAudit.ts --capture-run-dir "$runDir"
 Assert-LastCommandSucceeded -StepName "bid-size-coverage-audit"
 
+Write-Host ""
+Write-Host "Running capture health reconciliation..."
+npx tsx scripts/research/buildCaptureHealthReconciliation.ts --capture-run-dir "$runDir"
+Assert-LastCommandSucceeded -StepName "capture-health-reconciliation"
+
 if ($Full) {
     Write-Host ""
     Write-Host "Running downstream research pipeline..."

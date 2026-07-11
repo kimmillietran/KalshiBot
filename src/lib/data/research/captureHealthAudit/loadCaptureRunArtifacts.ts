@@ -30,6 +30,9 @@ export type LoadedCaptureHealthJson = {
     outOfOrderCount?: number;
     reconnectCount?: number;
   };
+  connection?: {
+    reconnectCount?: number;
+  };
   capture?: {
     messagesReceived?: number;
     rawMessageCount?: number;
