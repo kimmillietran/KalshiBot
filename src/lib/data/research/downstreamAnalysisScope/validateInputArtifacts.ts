@@ -98,7 +98,7 @@ export function validateInputArtifacts(input: {
         && !artifactMatchesSelectedRun(scope, input.selection.selectedRunId)
       ) {
         mismatchedArtifacts.push(path);
-        identityWarnings.push("Artifact sourceRunIds do not include selected run.");
+        identityWarnings.push("Artifact sourceRunIds do not exactly match selected run.");
         verified = false;
       }
 

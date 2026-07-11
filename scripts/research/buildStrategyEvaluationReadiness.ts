@@ -16,6 +16,8 @@ import {
 } from "@/lib/data/research/strategyEvaluationReadiness";
 import { stableStringify } from "@/lib/trading/config/hashConfig";
 
+import { normalizeStrategyEvaluationReadinessArgv } from "../lib/cliArgvSchemas";
+
 export type StrategyEvaluationReadinessCommandIo = {
   readFile: (path: string) => string;
   fileExists: (path: string) => boolean;
@@ -45,8 +47,9 @@ export function runStrategyEvaluationReadinessCommand(
   options?: { generatedAt?: string; evaluatedAt?: string },
 ): number {
   try {
+    const normalizedArgv = normalizeStrategyEvaluationReadinessArgv(argv);
     const { outputPath, htmlOutputPath, inputPaths } =
-      parseStrategyEvaluationReadinessPathsFromArgv(argv);
+      parseStrategyEvaluationReadinessPathsFromArgv(normalizedArgv);
     const generatedAt = options?.generatedAt ?? new Date().toISOString();
 
     const report = buildStrategyEvaluationReadinessReport({

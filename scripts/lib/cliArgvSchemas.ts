@@ -338,9 +338,9 @@ export const BID_ONLY_CANDIDATE_LIFECYCLE_ARGV_SCHEMA: readonly NpmArgvField[] =
 ];
 
 export const STATIC_PARITY_SCAN_ARGV_SCHEMA: readonly NpmArgvField[] = [
+  { flag: "--capture-run-dir" },
   { flag: "--input-dir" },
   { flag: "--forward-quotes-dir" },
-  { flag: "--capture-run-dir" },
   { flag: "--output" },
   { flag: "-o" },
   { flag: "--html" },
@@ -696,18 +696,18 @@ export const CALIBRATION_FADE_FAMILY_VERDICT_ARGV_SCHEMA: readonly NpmArgvField[
 ];
 
 export const FORWARD_CAPTURE_READINESS_ARGV_SCHEMA: readonly NpmArgvField[] = [
+  { flag: "--capture-run-dir" },
   { flag: "--output" },
   { flag: "--html-output" },
   { flag: "--forward-quotes-dir" },
-  { flag: "--capture-run-dir" },
   { flag: "--kalshi-ws-spike-dir" },
 ];
 
 export const STRATEGY_EVALUATION_READINESS_ARGV_SCHEMA: readonly NpmArgvField[] = [
+  { flag: "--capture-run-dir" },
   { flag: "--output" },
   { flag: "--html-output" },
   { flag: "--forward-quotes-dir" },
-  { flag: "--capture-run-dir" },
   { flag: "--forward-capture-readiness" },
   { flag: "--static-parity-scan" },
   { flag: "--bid-size-coverage-audit" },

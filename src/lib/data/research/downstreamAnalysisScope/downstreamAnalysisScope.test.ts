@@ -99,6 +99,32 @@ describe("validateInputArtifacts", () => {
     expect(result.mismatchedArtifacts).toHaveLength(0);
   });
 
+  it("rejects implicit multi-run artifacts in selected-run mode", () => {
+    const path = "data/research-results/static-parity-scan.json";
+    const io = buildMemoryIo({
+      [path]: JSON.stringify({
+        generatedAt: "2026-07-11T12:00:00.000Z",
+        sourceRunIds: ["run-a", "run-b"],
+      }),
+    });
+
+    const result = validateInputArtifacts({
+      io,
+      selection: {
+        analysisScope: "selected-run",
+        forwardQuotesDir: "data/live-capture/forward-quotes",
+        captureRunDir: "data/live-capture/forward-quotes/run-a",
+        selectedRunId: "run-a",
+      },
+      artifactPaths: [path],
+      evaluatedAt: "2026-07-11T13:00:00.000Z",
+    });
+
+    expect(result.mismatchedArtifacts).toContain(path);
+    expect(result.usablePaths).toHaveLength(0);
+    expect(result.identities[0]?.verified).toBe(false);
+  });
+
   it("marks malformed JSON without empty parsed fallback", () => {
     const io = buildMemoryIo({
       "data/research-results/broken.json": "{not-json",
