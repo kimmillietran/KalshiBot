@@ -90,6 +90,10 @@ export function loadSelectedRunContext(input: {
     bidSize?.summary && typeof bidSize.summary === "object"
       ? (bidSize.summary as Record<string, unknown>)
       : null;
+  const bidSizeComparison =
+    bidSize?.comparison && typeof bidSize.comparison === "object"
+      ? (bidSize.comparison as Record<string, unknown>)
+      : null;
 
   const orderbook = health?.orderbook as Record<string, unknown> | undefined;
   const duration = health?.duration as Record<string, unknown> | undefined;
@@ -106,7 +110,10 @@ export function loadSelectedRunContext(input: {
     btcJoinCoverageShare:
       readNumber(health?.btcJoinCoverageShare)
       ?? readNumber(reconciliationSummary?.btcJoinCoverageShare),
-    bidSizeCoverageShare: readNumber(bidSizeSummary?.bidSizeCoverageShare),
+    bidSizeCoverageShare:
+      readNumber(bidSizeComparison?.bidSizeCoverageShare)
+      ?? readNumber(bidSizeComparison?.topOfBookBidSizeCoverageShare)
+      ?? readNumber(bidSizeSummary?.bidSizeCoverageShare),
     reconnectCount:
       readNumber(watchdog?.recoveryAttemptCount)
       ?? readNumber(reconciliationSummary?.reconnectCount),
