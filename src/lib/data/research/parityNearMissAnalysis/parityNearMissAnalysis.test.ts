@@ -215,6 +215,29 @@ describe("evaluateParityObservationGates", () => {
     expect(metrics.bufferPass).toBe(true);
     expect(metrics.bufferAdjustedDistanceToQualification).toBeLessThanOrEqual(0);
   });
+
+  it("recomputes economic fields when legacy economicBookState labels are unknown", () => {
+    const metrics = evaluateParityObservationGates(
+      {
+        marketTicker: MARKET,
+        receivedAtLocal: "2026-07-11T11:00:07.000Z",
+        receivedAtMs: Date.parse("2026-07-11T11:00:07.000Z"),
+        bookState: "valid",
+        yesBestBidCents: 55,
+        yesBestAskCents: 54,
+        noBestBidCents: 50,
+        noBestAskCents: 51,
+        yesBestBidSize: 10,
+        noBestBidSize: 10,
+        economicBookState: "crossed-yes-book",
+        isParityUsable: true,
+      },
+      rule,
+    );
+
+    expect(metrics.bookSynchronized).toBe(false);
+    expect(metrics.firstRejectingGate).toBe("unsynchronized-book");
+  });
 });
 
 describe("BoundedNearMissRanking", () => {

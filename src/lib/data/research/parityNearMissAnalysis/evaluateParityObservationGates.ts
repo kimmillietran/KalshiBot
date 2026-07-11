@@ -1,6 +1,9 @@
 import { classifyBidOnlyParitySnapshot } from "../staticParityScan/classifyBidOnlyParitySnapshot";
 import type { StaticParityFrictionConfig } from "../staticParityScan/staticParityScanTypes";
-import { resolveTopOfBookEconomicFields } from "@/lib/data/live/forwardQuoteCapture/classifyTopOfBookEconomicValidity";
+import {
+  resolveTopOfBookEconomicFields,
+  type EconomicBookState,
+} from "@/lib/data/live/forwardQuoteCapture/classifyTopOfBookEconomicValidity";
 
 import type {
   ParityNearMissObservationMetrics,
@@ -27,6 +30,15 @@ export type ParityObservationInput = {
   isParityUsable?: boolean;
   economicBookState?: string;
 };
+
+const ECONOMIC_BOOK_STATES = new Set<EconomicBookState>([
+  "economically-valid",
+  "sequence-valid-crossed",
+  "sequence-valid-locked",
+  "insufficient-depth",
+  "awaiting-snapshot",
+  "invalid-price",
+]);
 
 function createEmptyGateRecord(): Record<ParityNearMissRejectionGate, number> {
   return {
@@ -100,6 +112,15 @@ function resolveIntegrityCaveat(input: {
   return caveats.length > 0 ? caveats.join(";") : null;
 }
 
+function readEconomicBookState(value: string | undefined): EconomicBookState | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+  return ECONOMIC_BOOK_STATES.has(value as EconomicBookState)
+    ? (value as EconomicBookState)
+    : undefined;
+}
+
 /** Evaluates one top-of-book observation against frozen bid-only parity gates. */
 export function evaluateParityObservationGates(
   input: ParityObservationInput,
@@ -113,7 +134,7 @@ export function evaluateParityObservationGates(
     noBestAskCents: input.noBestAskCents ?? null,
     yesBestBidSize: input.yesBestBidSize,
     noBestBidSize: input.noBestBidSize,
-    economicBookState: input.economicBookState,
+    economicBookState: readEconomicBookState(input.economicBookState),
     isParityUsable: input.isParityUsable,
   });
 
