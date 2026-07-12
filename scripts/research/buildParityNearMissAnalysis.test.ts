@@ -73,7 +73,7 @@ function createPublishingCommandIo(options?: {
       files.delete(path);
     },
     renameFile: (from: string, to: string) => {
-      if (to === options?.failRenameTo && from.includes(`${process.pid}`)) {
+      if (to === options?.failRenameTo && from.endsWith(".tmp")) {
         throw new Error(`rename failed for ${to}`);
       }
 
