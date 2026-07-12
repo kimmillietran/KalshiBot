@@ -395,6 +395,52 @@ describe("forwardSettlementJoin", () => {
     expect(joined.summary.overallVerdict).toBe("no-candidate-episodes");
   });
 
+  it("supports market-only joins without candidate episodes", () => {
+    const joined = joinForwardCaptureSettlements({
+      markets: [
+        {
+          marketTicker: MARKET_YES,
+          eventTicker: null,
+          seriesTicker: "KXBTC15M",
+          openTime: null,
+          closeTime: null,
+          captureRunIds: ["run-a"],
+          sourceArtifacts: [],
+        },
+      ],
+      settlementSource: {
+        importsDirPresent: true,
+        settlementsByMarket: new Map([
+          [
+            MARKET_YES,
+            {
+              marketTicker: MARKET_YES,
+              eventTicker: null,
+              seriesTicker: "KXBTC15M",
+              openTime: null,
+              closeTime: null,
+              settledOutcome: "yes",
+              settlementTime: "2026-04-28T23:50:00.000Z",
+              sourceArtifact: "data/imports/KXBTC15M/import-result.json",
+              joinConfidence: "high",
+            },
+          ],
+        ]),
+        sourceArtifacts: ["data/imports"],
+        warnings: [],
+      },
+      episodes: [],
+      evaluatedAt: "2026-04-28T23:50:00.000Z",
+      inputArtifactsUsed: [],
+      missingArtifacts: [],
+      warnings: [],
+      marketOnlyJoin: true,
+    });
+
+    expect(joined.summary.overallVerdict).toBe("settlement-join-ready");
+    expect(joined.summary.recommendedNextAction).toBe("build-outcome-study");
+  });
+
   it("does not crash on malformed optional artifacts", () => {
     const files: Record<string, string> = {};
     const dirs: string[] = ["data/imports"];

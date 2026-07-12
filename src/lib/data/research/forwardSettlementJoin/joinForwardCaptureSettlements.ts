@@ -121,6 +121,7 @@ function classifyVerdict(input: {
   settlementCoverageShare: number | null;
   episodeSettlementCoverageShare: number | null;
   pendingMarketCount: number;
+  marketOnlyJoin?: boolean;
 }): {
   overallVerdict: ForwardSettlementJoinVerdict;
   recommendedNextAction: ForwardSettlementRecommendedAction;
@@ -140,9 +141,37 @@ function classifyVerdict(input: {
   }
 
   if (input.candidateEpisodeCount === 0) {
+    if (!input.marketOnlyJoin) {
+      return {
+        overallVerdict: "no-candidate-episodes",
+        recommendedNextAction: "rerun-after-capture",
+      };
+    }
+
+    if (input.pendingMarketCount > 0 && (input.settlementCoverageShare ?? 0) < 1) {
+      return {
+        overallVerdict: "stale-or-incomplete-settlements",
+        recommendedNextAction: "wait-for-markets-to-settle",
+      };
+    }
+
+    if ((input.settlementCoverageShare ?? 0) >= 1) {
+      return {
+        overallVerdict: "settlement-join-ready",
+        recommendedNextAction: "build-outcome-study",
+      };
+    }
+
+    if (input.settlementKnownMarketCount > 0) {
+      return {
+        overallVerdict: "partial-settlement-coverage",
+        recommendedNextAction: "import-settlements",
+      };
+    }
+
     return {
-      overallVerdict: "no-candidate-episodes",
-      recommendedNextAction: "rerun-after-capture",
+      overallVerdict: "stale-or-incomplete-settlements",
+      recommendedNextAction: "import-settlements",
     };
   }
 
@@ -185,6 +214,7 @@ export function joinForwardCaptureSettlements(input: {
   inputArtifactsUsed: readonly string[];
   missingArtifacts: readonly string[];
   warnings: readonly string[];
+  marketOnlyJoin?: boolean;
 }): {
   marketJoins: CapturedMarketSettlementJoin[];
   episodeJoins: CandidateEpisodeSettlementJoin[];
@@ -237,6 +267,7 @@ export function joinForwardCaptureSettlements(input: {
     settlementCoverageShare,
     episodeSettlementCoverageShare,
     pendingMarketCount,
+    marketOnlyJoin: input.marketOnlyJoin,
   });
 
   const inputArtifactsUsed = [
