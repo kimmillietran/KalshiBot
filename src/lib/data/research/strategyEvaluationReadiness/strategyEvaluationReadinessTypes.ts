@@ -146,6 +146,11 @@ export type LoadedStrategyEvaluationArtifact = {
   excludedByValidation?: boolean;
 };
 
+import type {
+  DownstreamScopeMetadata,
+  InputArtifactIdentity,
+} from "../downstreamAnalysisScope/downstreamAnalysisScopeTypes";
+
 export type StrategyEvaluationLoadedInputs = {
   forwardCaptureReadiness: LoadedStrategyEvaluationArtifact | null;
   staticParityScan: LoadedStrategyEvaluationArtifact | null;
@@ -170,6 +175,7 @@ export type StrategyEvaluationLoadedInputs = {
     selectedRunId: string | null;
   };
   artifactValidation: {
+    identities: InputArtifactIdentity[];
     staleArtifacts: string[];
     mismatchedArtifacts: string[];
     malformedArtifacts: string[];
@@ -196,8 +202,6 @@ export type StrategyEvaluationReadinessSummary = {
   inputArtifactsUsed: readonly string[];
   missingArtifacts: readonly string[];
 };
-
-import type { DownstreamScopeMetadata } from "../downstreamAnalysisScope/downstreamAnalysisScopeTypes";
 
 export type StrategyEvaluationReadinessReport = {
   generatedAt: string;

@@ -625,7 +625,7 @@ export function evaluateStrategyEvaluationReadiness(input: {
     generatedAt: input.generatedAt,
     recordsScanned: readTopOfBookRecordCount(input.inputs),
     artifactValidation: {
-      identities: [],
+      identities: input.inputs.artifactValidation.identities,
       staleArtifacts: readArtifactFreshness({
         inputs: input.inputs,
         evaluatedAt: input.evaluatedAt,

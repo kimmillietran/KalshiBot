@@ -742,6 +742,73 @@ describe("strategyEvaluationReadiness", () => {
     expect(freshness.status).toBe("fresh");
   });
 
+  it("loads capture fallback from selected-run directories outside forwardQuotesDir", () => {
+    const customRunDir = "data/custom-capture/run-custom";
+    const io = buildMemoryIo({
+      [`${customRunDir}/capture-health.json`]: JSON.stringify({
+        runId: "run-custom",
+        generatedAt: GENERATED_AT,
+        verdict: "forward-capture-success",
+        config: { durationSeconds: 600, series: "KXBTC15M" },
+        capture: { topOfBookRecordCount: 25 },
+        orderbook: { validTopOfBookRecords: 25 },
+        btcSpot: { recordsCaptured: 10 },
+      }),
+      [`${customRunDir}/top-of-book.jsonl`]:
+        '{"yesBestBidCents":45,"noBestBidCents":50,"yesBestBidSize":1,"noBestBidSize":1}\n',
+    });
+
+    const loaded = loadStrategyEvaluationInputs({
+      io,
+      inputPaths: buildInputPaths({
+        captureRunDir: customRunDir,
+        forwardQuotesDir: "data/live-capture/forward-quotes",
+      }),
+      evaluatedAt: GENERATED_AT,
+    });
+
+    expect(loaded.captureFallback).not.toBeNull();
+    expect(loaded.captureFallback?.runCount).toBe(1);
+    expect(loaded.captureFallback?.topOfBookRecordCount).toBe(25);
+  });
+
+  it("passes artifact validation identities into readiness scope metadata", () => {
+    const inputPaths = buildInputPaths({
+      captureRunDir: "data/live-capture/forward-quotes/run-a",
+    });
+    const io = buildMemoryIo({
+      [DEFAULT_STRATEGY_EVALUATION_INPUT_PATHS.artifacts.forwardCaptureReadiness]:
+        buildForwardCaptureArtifact({
+          totalDurationMinutes: 8 * 60,
+          daysCovered: 2,
+          marketCount: 25,
+          topOfBookRecordCount: 2_000,
+          analysisScope: "selected-run",
+          sourceRunIds: ["run-a"],
+          selectedRunId: "run-a",
+        }),
+    });
+
+    const loaded = loadStrategyEvaluationInputs({
+      io,
+      inputPaths,
+      evaluatedAt: GENERATED_AT,
+    });
+    const report = evaluateStrategyEvaluationReadiness({
+      inputs: loaded,
+      inputPaths,
+      evaluatedAt: GENERATED_AT,
+      generatedAt: GENERATED_AT,
+      outputPath: OUTPUT_PATH,
+      htmlOutputPath: HTML_PATH,
+    });
+
+    expect(loaded.artifactValidation.identities.length).toBeGreaterThan(0);
+    expect(report.scope.inputArtifactIdentities).toEqual(
+      loaded.artifactValidation.identities,
+    );
+  });
+
   it("builds JSON and HTML reports through the builder", () => {
     const io = buildMemoryIo({
       [DEFAULT_STRATEGY_EVALUATION_INPUT_PATHS.artifacts.forwardCaptureReadiness]:

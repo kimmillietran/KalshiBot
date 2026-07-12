@@ -1,5 +1,6 @@
 import {
   loadForwardCaptureRunsWithWarnings,
+  loadRun,
 } from "@/lib/data/research/forwardCaptureReadiness/loadForwardCaptureRuns";
 import { bidPairShare } from "@/lib/data/research/forwardCaptureReadiness/runTopOfBookStats";
 import {
@@ -11,7 +12,6 @@ import {
   artifactMatchesSelectedRun,
   isArtifactStale,
   parseArtifactScope,
-  resolveRunIdFromPath,
 } from "../downstreamAnalysisScope/downstreamAnalysisScopeUtils";
 import { validateInputArtifacts } from "../downstreamAnalysisScope/validateInputArtifacts";
 import type {
@@ -199,22 +199,35 @@ function scanBidPairWithSizeFromCapture(
   };
 }
 
+function resolveCaptureSourceRoot(captureRunDir: string, forwardQuotesDir: string): string {
+  const normalizedCapture = captureRunDir.replace(/\\/g, "/");
+  const normalizedForward = forwardQuotesDir.replace(/\\/g, "/");
+
+  if (normalizedCapture.includes(normalizedForward)) {
+    return normalizedForward;
+  }
+
+  const parts = normalizedCapture.split("/");
+  return parts.slice(0, -1).join("/") || normalizedForward;
+}
+
 function buildCaptureFallback(
   io: StrategyEvaluationReadinessIo,
   inputPaths: StrategyEvaluationInputPaths,
 ): StrategyEvaluationLoadedInputs["captureFallback"] {
-  const selectedRunId = inputPaths.captureRunDir
-    ? resolveRunIdFromPath(inputPaths.captureRunDir)
-    : null;
-
-  const { runs } = loadForwardCaptureRunsWithWarnings(io, {
-    forwardQuotesDir: inputPaths.forwardQuotesDir,
-    kalshiWsSpikeDir: inputPaths.forwardQuotesDir,
-  });
-
-  const filteredRuns = selectedRunId
-    ? runs.filter((run) => run.runId === selectedRunId)
-    : runs;
+  const filteredRuns = inputPaths.captureRunDir
+    ? (() => {
+        const loaded = loadRun(
+          io,
+          inputPaths.captureRunDir,
+          resolveCaptureSourceRoot(inputPaths.captureRunDir, inputPaths.forwardQuotesDir),
+        );
+        return loaded.run ? [loaded.run] : [];
+      })()
+    : loadForwardCaptureRunsWithWarnings(io, {
+        forwardQuotesDir: inputPaths.forwardQuotesDir,
+        kalshiWsSpikeDir: inputPaths.forwardQuotesDir,
+      }).runs;
 
   if (filteredRuns.length === 0) {
     return null;
@@ -324,6 +337,7 @@ export function loadStrategyEvaluationInputs(input: {
       requireIdentityInSelectedRun: true,
     })
     : {
+      identities: [],
       mismatchedArtifacts: [] as string[],
       malformedArtifacts,
       missingArtifacts: [] as string[],
