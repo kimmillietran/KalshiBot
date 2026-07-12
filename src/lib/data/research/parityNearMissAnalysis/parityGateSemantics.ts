@@ -126,6 +126,10 @@ export function resolveSequentialFirstRejectingGate(
   return null;
 }
 
+export function observationPassesSequentialQualification(flags: ObservationGateFlags): boolean {
+  return resolveSequentialFirstRejectingGate(flags) === null;
+}
+
 export function resolveAllRejectingGates(input: {
   flags: ObservationGateFlags;
   includeMissingBtcJoin: boolean;
@@ -143,7 +147,7 @@ export function resolveAllRejectingGates(input: {
   if (input.flags.stalenessPass === false || input.flags.stalenessPass === null) {
     gates.push("stale-quote");
   }
-  if (!input.flags.sizePass) {
+  if (input.flags.bothSidesPresent && !input.flags.sizePass) {
     gates.push("missing-executable-size");
   }
   if (input.flags.bothSidesPresent && !input.flags.grossParityPass) {
@@ -223,6 +227,8 @@ export function updateIndependentGatePassCounts(
   }
   if (input.flags.bufferPass) {
     counts.bufferThresholdPass += 1;
+  }
+  if (observationPassesSequentialQualification(input.flags)) {
     counts.finalCandidatePass += 1;
   }
 }

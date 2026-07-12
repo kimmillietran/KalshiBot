@@ -4,6 +4,7 @@ import type {
   ParityNearMissSelectedRunQuality,
   ParityNearMissSequentialQualificationFunnel,
 } from "./parityNearMissAnalysisTypes";
+import type { IndependentGatePassCounts } from "./parityGateSemantics";
 import type { createEmptyGateCounts } from "./evaluateParityObservationGates";
 
 export const NARROW_NEAR_MISS_CENTS = 1;
@@ -12,6 +13,7 @@ export function classifyParityNearMissInterpretation(input: {
   recordsScanned: number;
   recordsEligible: number;
   sequentialFunnel: ParityNearMissSequentialQualificationFunnel;
+  independentGatePassCounts: IndependentGatePassCounts;
   gateCounts: ReturnType<typeof createEmptyGateCounts>;
   closestGrossNearMiss: number | null;
   closestFeeAdjustedNearMiss: number | null;
@@ -25,6 +27,10 @@ export function classifyParityNearMissInterpretation(input: {
   const closestGrossNearMissCents = input.closestGrossNearMiss;
   const closestFeeAdjustedNearMissCents = input.closestFeeAdjustedNearMiss;
   const closestBufferNearMissCents = input.closestBufferNearMiss;
+  const executionGateRejectionCount =
+    input.gateCounts.allRejectionsByGate["unsynchronized-book"]
+    + input.gateCounts.allRejectionsByGate["stale-quote"]
+    + input.gateCounts.allRejectionsByGate["missing-executable-size"];
 
   if (input.recordsScanned === 0 || input.recordsEligible === 0) {
     return {
@@ -63,13 +69,9 @@ export function classifyParityNearMissInterpretation(input: {
     classificationRationale =
       "Selected-run quality metrics indicate the capture may not support reliable parity diagnostics.";
   } else if (
-    input.sequentialFunnel.grossThreshold > 0
+    input.independentGatePassCounts.grossThresholdPass > input.sequentialFunnel.grossThreshold
     && input.sequentialFunnel.finalCandidate === 0
-    && (
-      input.sequentialFunnel.synchronizedBook < input.sequentialFunnel.grossThreshold
-      || input.sequentialFunnel.stalenessPass < input.sequentialFunnel.grossThreshold
-      || input.sequentialFunnel.executableSize < input.sequentialFunnel.grossThreshold
-    )
+    && executionGateRejectionCount > 0
   ) {
     interpretationClassification = "execution-gates-binding";
     recommendedNextAction = "investigate-execution-constraint";

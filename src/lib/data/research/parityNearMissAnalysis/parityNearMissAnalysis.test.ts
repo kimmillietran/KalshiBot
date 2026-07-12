@@ -20,6 +20,7 @@ import {
 import { loadSelectedRunContext, validateSelectedRunDirectory } from "./loadSelectedRunContext";
 import { parseParityNearMissAnalysisArgv } from "./parseParityNearMissAnalysisArgv";
 import {
+  createEmptyIndependentGatePassCounts,
   createEmptySequentialFunnel,
   SEQUENTIAL_FUNNEL_STAGE_ORDER,
   updateSequentialFunnel,
@@ -293,8 +294,14 @@ describe("computeParityShortfalls", () => {
 
   it("still populates fee and buffer shortfalls for non-positive gross edge", () => {
     const result = computeParityShortfalls(50, 50, friction);
-    expect(result.feeAdjustedDistanceToQualification).toBe(6);
+    expect(result.feeAdjustedDistanceToQualification).toBe(5);
     expect(result.bufferAdjustedDistanceToQualification).toBe(6);
+  });
+
+  it("aligns fee shortfall with the positive net-edge gate", () => {
+    const result = computeParityShortfalls(55, 50, friction);
+    expect(result.estimatedNetEdgeCents).toBe(1);
+    expect(result.feeAdjustedDistanceToQualification).toBe(0);
   });
 });
 
@@ -345,6 +352,8 @@ describe("evaluateParityObservationGates", () => {
     );
 
     expect(metrics.grossParityPass).toBe(true);
+    expect(metrics.feePass).toBe(false);
+    expect(metrics.feeAdjustedDistanceToQualification).toBe(2);
     expect(metrics.bufferPass).toBe(false);
     expect(metrics.allRejectingGates).toContain("buffer-adjusted-shortfall");
   });
@@ -368,6 +377,26 @@ describe("evaluateParityObservationGates", () => {
 
     expect(metrics.sizePass).toBe(false);
     expect(metrics.firstRejectingGate).toBe("missing-executable-size");
+  });
+
+  it("does not duplicate missing executable-size rejection when a side is absent", () => {
+    const receivedAtMs = Date.parse("2026-07-11T11:00:06.000Z");
+    const metrics = evaluateParityObservationGates(
+      {
+        marketTicker: MARKET,
+        receivedAtLocal: "2026-07-11T11:00:06.000Z",
+        receivedAtMs,
+        bookState: "valid",
+        yesBestBidCents: 56,
+        noBestBidCents: null,
+        yesBestBidSize: 10,
+        noBestBidSize: null,
+        exchangeTimestampMs: receivedAtMs,
+      },
+      rule,
+    );
+
+    expect(metrics.allRejectingGates.filter((gate) => gate === "missing-executable-size")).toHaveLength(1);
   });
 
   it("recomputes economic fields when legacy economicBookState labels are unknown", () => {
@@ -576,6 +605,7 @@ describe("classifyParityNearMissInterpretation", () => {
         bufferThreshold: 0,
         finalCandidate: 0,
       },
+      independentGatePassCounts: createEmptyIndependentGatePassCounts(),
       gateCounts: createEmptyGateCounts(),
       closestGrossNearMiss: 0.5,
       closestFeeAdjustedNearMiss: null,
@@ -601,6 +631,7 @@ describe("classifyParityNearMissInterpretation", () => {
         grossThreshold: 0,
         finalCandidate: 0,
       },
+      independentGatePassCounts: createEmptyIndependentGatePassCounts(),
       gateCounts: createEmptyGateCounts(),
       closestGrossNearMiss: 5,
       closestFeeAdjustedNearMiss: null,
@@ -628,6 +659,7 @@ describe("classifyParityNearMissInterpretation", () => {
         grossThreshold: 0,
         finalCandidate: 0,
       },
+      independentGatePassCounts: createEmptyIndependentGatePassCounts(),
       gateCounts,
       closestGrossNearMiss: 2,
       closestFeeAdjustedNearMiss: null,
@@ -642,19 +674,29 @@ describe("classifyParityNearMissInterpretation", () => {
   });
 
   it("classifies gross-qualified observations eliminated by execution gates", () => {
+    const independentGatePassCounts = createEmptyIndependentGatePassCounts();
+    independentGatePassCounts.grossThresholdPass = 10;
+    const gateCounts = createEmptyGateCounts();
+    gateCounts.allRejectionsByGate["missing-executable-size"] = 6;
+
     const summary = classifyParityNearMissInterpretation({
       recordsScanned: 100,
       recordsEligible: 95,
       sequentialFunnel: {
         ...createEmptySequentialFunnel(),
         loaded: 100,
-        grossThreshold: 10,
+        validBook: 95,
+        synchronizedBook: 95,
+        bothSidesPresent: 95,
+        stalenessPass: 95,
         executableSize: 4,
-        stalenessPass: 8,
-        synchronizedBook: 9,
+        grossThreshold: 4,
+        feeThreshold: 4,
+        bufferThreshold: 0,
         finalCandidate: 0,
       },
-      gateCounts: createEmptyGateCounts(),
+      independentGatePassCounts,
+      gateCounts,
       closestGrossNearMiss: null,
       closestFeeAdjustedNearMiss: null,
       closestBufferNearMiss: null,
@@ -741,7 +783,7 @@ describe("analyzeParityNearMissForRun", () => {
     expect(serializeParityNearMissAnalysisHtml(report)).toContain("Sequential qualification funnel");
   });
 
-  it("regression fixture produces near-miss distances without execution-gates-binding", async () => {
+  it("regression fixture surfaces execution-gate binding from independent gross evidence", async () => {
     const report = await analyzeParityNearMissForRun({
       generatedAt: "2026-07-11T12:00:00.000Z",
       outputPath: "data/research-results/parity-near-miss-analysis.json",
@@ -753,7 +795,10 @@ describe("analyzeParityNearMissForRun", () => {
     expect(report.summary.closestGrossNearMissCents).toBe(2);
     expect(report.summary.grossNearMissCount).toBeGreaterThan(0);
     expect(report.distanceDistributions.gross["1-to-2-cents"]).toBeGreaterThan(0);
-    expect(report.summary.interpretationClassification).not.toBe("execution-gates-binding");
+    expect(report.independentGatePassCounts.grossThresholdPass).toBeGreaterThan(
+      report.sequentialQualificationFunnel.grossThreshold,
+    );
+    expect(report.summary.interpretationClassification).toBe("execution-gates-binding");
     expect(report.stalenessSummary.knownFreshCount).toBeGreaterThan(15);
     expect(report.stalenessSummary.knownStaleCount).toBe(0);
     expect(report.selectedRunQuality.runDurationSeconds).toBe(28800);
@@ -827,6 +872,40 @@ describe("analyzeParityNearMissForRun", () => {
     expect(report.qualificationFunnel.finalCandidates).toBe(1);
     expect(report.stalenessSummary.knownStaleCount).toBe(1);
     expect(report.stalenessSummary.knownFreshCount).toBe(1);
+  });
+
+  it("does not count buffer-threshold rows blocked by executable size as final candidates", async () => {
+    const receivedAtMs = Date.parse("2026-07-11T11:00:04.000Z");
+    const files = buildFixtureFiles();
+    files[`${RUN_DIR}/top-of-book.jsonl`] = [
+      topOfBookLine({
+        receivedAtLocal: "2026-07-11T11:00:04.000Z",
+        yesBid: 56,
+        noBid: 50,
+        yesBidSize: null,
+        noBidSize: null,
+        exchangeTimestampMs: receivedAtMs,
+        sequence: 1,
+      }),
+    ].join("\n");
+
+    const report = await analyzeParityNearMissForRun({
+      generatedAt: "2026-07-11T12:00:00.000Z",
+      outputPath: "data/research-results/parity-near-miss-analysis.json",
+      htmlOutputPath: "data/reports/parity-near-miss-analysis.html",
+      config: createParityNearMissAnalysisConfig({ captureRunDir: RUN_DIR }),
+      io: createMemoryParityNearMissIo(files),
+    });
+
+    expect(report.independentGatePassCounts.bufferThresholdPass).toBe(1);
+    expect(report.independentGatePassCounts.finalCandidatePass).toBe(0);
+    expect(report.sequentialQualificationFunnel.bufferThreshold).toBe(0);
+    expect(report.sequentialQualificationFunnel.finalCandidate).toBe(0);
+    expect(report.qualificationFunnel.finalCandidates).toBe(0);
+    expect(report.summary.candidateCount).toBe(0);
+    expect(report.summary.interpretationClassification).toBe("execution-gates-binding");
+    expect(report.gateCounts.episodesReachingStage.bufferEpisode).toBe(0);
+    expect(report.gateCounts.allRejectionsByGate["missing-executable-size"]).toBe(1);
   });
 
   it("keeps rule configuration hash stable for unchanged defaults", () => {
