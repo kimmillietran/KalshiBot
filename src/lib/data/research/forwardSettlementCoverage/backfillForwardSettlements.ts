@@ -87,7 +87,12 @@ function shouldSkipBackfill(
 function checkpointTerminalStatusStillApplies(input: {
   entry: ForwardSettlementBackfillCheckpointMarket;
   market: MarketSettlementCoverageEntry;
+  evaluatedAt: string;
 }): boolean {
+  if (input.entry.status === "failed") {
+    return !isCheckpointMarketEligible(input.entry, input.evaluatedAt);
+  }
+
   if (isBackfillCandidate(input.market.classification)) {
     return false;
   }
@@ -164,6 +169,7 @@ async function backfillOneMarket(input: {
     && checkpointTerminalStatusStillApplies({
       entry: existingEntry,
       market: input.market,
+      evaluatedAt: input.evaluatedAt,
     })
   ) {
     return {

@@ -618,6 +618,60 @@ describe("forwardSettlementCoverage", () => {
     expect(summary.marketResults[0]?.status).toBe("imported");
   });
 
+  it("honors failed checkpoint retry cooldown during resume", async () => {
+    const files: Record<string, string> = {};
+    const dirs: string[] = [];
+    seedRun(files, dirs);
+    const checkpoint = createForwardSettlementBackfillCheckpoint({
+      captureRunDir: RUN_DIR,
+      selectedRunId: RUN_ID,
+      importsDir: "data/imports",
+      dryRun: false,
+      startedAt: EVALUATED_AT,
+      marketTickers: [MARKET_B],
+    });
+    checkpoint.markets[0] = {
+      marketTicker: MARKET_B,
+      status: "failed",
+      attempts: 1,
+      lastAttemptAt: EVALUATED_AT,
+      nextEligibleRetryAt: "2026-07-11T18:00:00.000Z",
+      errorMessage: "import failed",
+      importResultPath: null,
+    };
+    files[defaultConfig().checkpointPath] = serializeForwardSettlementBackfillCheckpoint(checkpoint);
+
+    const io = createIo(files, dirs);
+    const runMarketImport = vi.fn(async () => ({ success: true }));
+    const inventory = extractSelectedRunMarketInventory({
+      io,
+      captureRunDir: RUN_DIR,
+      evaluatedAt: EVALUATED_AT,
+    }).inventory.find((entry) => entry.marketTicker === MARKET_B)!;
+    const markets = [
+      classifyMarketSettlementCoverage({
+        io,
+        importsDir: "data/imports",
+        inventory,
+        evaluatedAt: EVALUATED_AT,
+        staleAfterCaptureObservation: true,
+      }),
+    ];
+
+    const summary = await runForwardSettlementBackfill({
+      config: defaultConfig({ resume: true, maxRetries: 1, maxConcurrency: 1 }),
+      io,
+      markets,
+      selectedRunId: RUN_ID,
+      evaluatedAt: EVALUATED_AT,
+      deps: { runMarketImport },
+    });
+
+    expect(runMarketImport).not.toHaveBeenCalled();
+    expect(summary.marketResults[0]?.status).toBe("failed");
+    expect(summary.marketResults[0]?.nextEligibleRetryAt).toBe("2026-07-11T18:00:00.000Z");
+  });
+
   it("integrates M12.12 join semantics for zero-candidate selected-run coverage", async () => {
     const files: Record<string, string> = {};
     const dirs: string[] = [];
