@@ -8,6 +8,7 @@ import { buildBtcCandlesUpToTimestamp, resolveCausalBtcPrice } from "./buildBtcC
 import { classifyCalibrationFadeInterpretation } from "./classifyCalibrationFadeInterpretation";
 import { createMemoryCalibrationFadeForwardValidationIo } from "./createCalibrationFadeForwardValidationIo";
 import { loadFrozenHypothesisSpec } from "./loadFrozenHypothesisSpec";
+import { loadSelectedRunCalibrationFadeContext } from "./loadSelectedRunCalibrationFadeContext";
 import {
   CalibrationFadeForwardValidationError,
   DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH,
@@ -206,6 +207,18 @@ describe("loadFrozenHypothesisSpec", () => {
     const loaded = loadFrozenHypothesisSpec({ io });
     expect(loaded.provenanceAvailable).toBe(false);
   });
+
+  it("rejects ambiguous candidate when source candidate id does not match", () => {
+    const spec = JSON.parse(freezeSpecContent()) as Record<string, unknown>;
+    spec.sourceCandidateId = "\u0007tlas-volatilityProbabilityTime-vol-high-coarse-prob-1-coarse-time-early-over";
+    const io = createMemoryCalibrationFadeForwardValidationIo({
+      [DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH]: JSON.stringify(spec),
+      "data/research-results/hypothesis-candidates.json": hypothesisCandidatesFixture(),
+    });
+    const loaded = loadFrozenHypothesisSpec({ io });
+    expect(loaded.provenanceAvailable).toBe(false);
+    expect(loaded.warnings.some((warning) => warning.includes("not found"))).toBe(true);
+  });
 });
 
 describe("parseCalibrationFadeForwardValidationArgv", () => {
@@ -239,6 +252,18 @@ describe("causal BTC features", () => {
   });
 });
 
+describe("loadSelectedRunCalibrationFadeContext", () => {
+  it("rejects unknown capture run directories", () => {
+    const io = createMemoryCalibrationFadeForwardValidationIo({});
+    expect(() =>
+      loadSelectedRunCalibrationFadeContext({
+        io,
+        captureRunDir: "data/live-capture/forward-quotes/missing-run",
+      }),
+    ).toThrow(CalibrationFadeForwardValidationError);
+  });
+});
+
 describe("analyzeCalibrationFadeForwardForRun", () => {
   it("deduplicates repeated qualifying snapshots and uses first entry", async () => {
     const fixture = buildRegressionFixture();
@@ -266,6 +291,36 @@ describe("analyzeCalibrationFadeForwardForRun", () => {
     expect(report.historicalBenchmark.discoveryObservationCount).toBe(273);
     expect(report.historicalBenchmark.discoveryUniqueTradingDays).toBe(37);
     expect(eventLines.some((line) => line.includes("market-entry"))).toBe(true);
+  });
+
+  it("reports a monotonic sequential funnel and independent gate pass counts", async () => {
+    const fixture = buildRegressionFixture();
+    const io = createMemoryCalibrationFadeForwardValidationIo(fixture.files, fixture.dirs);
+    const { report } = await analyzeCalibrationFadeForwardForRun({
+      generatedAt: "2026-07-12T08:00:00.000Z",
+      outputPath: "data/research-results/calibration-fade-forward-validation.json",
+      htmlOutputPath: "data/reports/calibration-fade-forward-validation.html",
+      config: {
+        captureRunDir: RUN_DIR,
+        hypothesisConfigPath: DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH,
+        importsDir: "data/imports",
+        maximumBtcJoinAgeMs: 5000,
+        eventsOutputPath: "data/research-results/calibration-fade-forward-events.jsonl",
+        marketsOutputPath: "data/research-results/calibration-fade-forward-markets.jsonl",
+      },
+      io,
+    });
+
+    const sequentialCounts = report.funnel.map((stage) => stage.count);
+    for (let index = 1; index < sequentialCounts.length; index += 1) {
+      expect(sequentialCounts[index]).toBeLessThanOrEqual(sequentialCounts[index - 1]!);
+    }
+    expect(report.gatePassCounts.validBook).toBeGreaterThanOrEqual(
+      report.funnel.find((stage) => stage.stageId === "qualifying-observation")?.count ?? 0,
+    );
+    expect(
+      report.funnel.find((stage) => stage.stageId === "qualifying-observation")?.count,
+    ).toBe(report.qualifyingObservationCount);
   });
 });
 

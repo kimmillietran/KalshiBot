@@ -291,6 +291,17 @@ export async function analyzeCalibrationFadeForwardForRun(input: {
     timeRemainingBand: 0,
     qualifyingObservation: 0,
   };
+  const sequentialFunnel = {
+    recordsLoaded: 0,
+    validBook: 0,
+    synchronizedBook: 0,
+    btcJoinAvailable: 0,
+    volatilityAvailable: 0,
+    highVolatility: 0,
+    probabilityBand: 0,
+    timeRemainingBand: 0,
+    qualifyingObservation: 0,
+  };
 
   let recordsScanned = 0;
   const marketsSeen = new Set<string>();
@@ -314,6 +325,8 @@ export async function analyzeCalibrationFadeForwardForRun(input: {
       }
       recordsScanned += 1;
       marketsSeen.add(quote.marketTicker);
+      sequentialFunnel.recordsLoaded += 1;
+      let sequentialPassed = true;
 
       if (quote.bookValid) {
         gateCounts.validBook += 1;
@@ -346,6 +359,43 @@ export async function analyzeCalibrationFadeForwardForRun(input: {
       }
 
       const observation = buildObservation(quote, metadataByMarket.get(quote.marketTicker), annualizedVolatility);
+
+      if (sequentialPassed) {
+        if (spec.marketEligibilityRules.requireValidBook && !quote.bookValid) {
+          sequentialPassed = false;
+        } else {
+          sequentialFunnel.validBook += 1;
+        }
+      }
+      if (sequentialPassed) {
+        if (spec.marketEligibilityRules.requireSynchronizedBook && !quote.bookSynchronized) {
+          sequentialPassed = false;
+        } else {
+          sequentialFunnel.synchronizedBook += 1;
+        }
+      }
+      if (sequentialPassed) {
+        if (spec.marketEligibilityRules.requireBtcJoin && !btcJoin.joined) {
+          sequentialPassed = false;
+        } else {
+          sequentialFunnel.btcJoinAvailable += 1;
+        }
+      }
+      if (sequentialPassed) {
+        if (annualizedVolatility === null) {
+          sequentialPassed = false;
+        } else {
+          sequentialFunnel.volatilityAvailable += 1;
+        }
+      }
+      if (sequentialPassed) {
+        if (annualizedVolatility! < spec.eligibilityRules.volatility.minInclusive) {
+          sequentialPassed = false;
+        } else {
+          sequentialFunnel.highVolatility += 1;
+        }
+      }
+
       if (!observation) {
         return "skip";
       }
@@ -364,12 +414,37 @@ export async function analyzeCalibrationFadeForwardForRun(input: {
         gateCounts.timeRemainingBand += 1;
       }
 
+      if (sequentialPassed) {
+        if (
+          observation.predictedProbability < spec.eligibilityRules.probability.minInclusive
+          || observation.predictedProbability >= spec.eligibilityRules.probability.maxExclusive
+        ) {
+          sequentialPassed = false;
+        } else {
+          sequentialFunnel.probabilityBand += 1;
+        }
+      }
+      if (sequentialPassed) {
+        if (
+          observation.timeRemainingMs === null
+          || observation.timeRemainingMs < spec.eligibilityRules.timeRemainingMs.minInclusive
+          || observation.timeRemainingMs >= spec.eligibilityRules.timeRemainingMs.maxExclusive
+        ) {
+          sequentialPassed = false;
+        } else {
+          sequentialFunnel.timeRemainingBand += 1;
+        }
+      }
+
       const bookEligible =
         (!spec.marketEligibilityRules.requireValidBook || quote.bookValid)
         && (!spec.marketEligibilityRules.requireSynchronizedBook || quote.bookSynchronized)
         && (!spec.marketEligibilityRules.requireBtcJoin || btcJoin.joined);
 
       const eligible = bookEligible && qualifies(spec, observation);
+      if (sequentialPassed && eligible) {
+        sequentialFunnel.qualifyingObservation += 1;
+      }
       const state = perMarketState.get(quote.marketTicker) ?? {
         wasQualifying: false,
         episodeIndex: 0,
@@ -518,16 +593,15 @@ export async function analyzeCalibrationFadeForwardForRun(input: {
   });
 
   const funnel: CalibrationFadeFunnelStage[] = [
-    { stageId: "records-loaded", label: "Records loaded", count: recordsScanned },
-    { stageId: "markets-scanned", label: "Markets scanned", count: marketsSeen.size },
-    { stageId: "valid-book", label: "Valid book", count: gateCounts.validBook },
-    { stageId: "synchronized-book", label: "Synchronized book", count: gateCounts.synchronizedBook },
-    { stageId: "btc-join-available", label: "BTC join available", count: gateCounts.btcJoinAvailable },
-    { stageId: "volatility-available", label: "Volatility available", count: gateCounts.volatilityAvailable },
-    { stageId: "high-volatility", label: "High volatility", count: gateCounts.highVolatility },
-    { stageId: "probability-band", label: "Probability band", count: gateCounts.probabilityBand },
-    { stageId: "time-remaining-band", label: "Time remaining band", count: gateCounts.timeRemainingBand },
-    { stageId: "qualifying-observation", label: "Qualifying observations", count: qualifyingObservationCount },
+    { stageId: "records-loaded", label: "Records loaded", count: sequentialFunnel.recordsLoaded },
+    { stageId: "valid-book", label: "Valid book (sequential)", count: sequentialFunnel.validBook },
+    { stageId: "synchronized-book", label: "Synchronized book (sequential)", count: sequentialFunnel.synchronizedBook },
+    { stageId: "btc-join-available", label: "BTC join available (sequential)", count: sequentialFunnel.btcJoinAvailable },
+    { stageId: "volatility-available", label: "Volatility available (sequential)", count: sequentialFunnel.volatilityAvailable },
+    { stageId: "high-volatility", label: "High volatility (sequential)", count: sequentialFunnel.highVolatility },
+    { stageId: "probability-band", label: "Probability band (sequential)", count: sequentialFunnel.probabilityBand },
+    { stageId: "time-remaining-band", label: "Time remaining band (sequential)", count: sequentialFunnel.timeRemainingBand },
+    { stageId: "qualifying-observation", label: "Qualifying observations (sequential)", count: sequentialFunnel.qualifyingObservation },
     { stageId: "candidate-episode", label: "Candidate episodes", count: episodeEntries.length },
     { stageId: "independent-market", label: "Independent candidate markets", count: marketRecords.length },
     {

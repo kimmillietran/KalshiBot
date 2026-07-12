@@ -11,8 +11,11 @@ export function serializeCalibrationFadeForwardValidationReport(
 export function serializeCalibrationFadeForwardValidationHtml(
   report: CalibrationFadeForwardValidationReport,
 ): string {
-  const rows = report.funnel
+  const funnelRows = report.funnel
     .map((stage) => `<tr><td>${stage.label}</td><td>${stage.count}</td></tr>`)
+    .join("");
+  const gateRows = Object.entries(report.gatePassCounts)
+    .map(([gate, count]) => `<tr><td>${gate}</td><td>${count}</td></tr>`)
     .join("");
 
   return `<!DOCTYPE html>
@@ -38,9 +41,13 @@ export function serializeCalibrationFadeForwardValidationHtml(
   <p>${report.hypothesisId} (${report.hypothesisVersion})</p>
   <p>Configuration hash: ${report.hypothesisConfigurationHash}</p>
   <h2>Selected run</h2>
-  <p>${report.selectedRunId} — ${report.recordsScanned} records, ${report.candidateMarketCount} candidate markets</p>
-  <h2>Candidate funnel</h2>
-  <table><thead><tr><th>Stage</th><th>Count</th></tr></thead><tbody>${rows}</tbody></table>
+  <p>${report.selectedRunId} — ${report.recordsScanned} records across ${report.marketsScanned} markets, ${report.candidateMarketCount} candidate markets</p>
+  <h2>Sequential candidate funnel</h2>
+  <p class="muted">Observation-level stages are monotonic; each row requires all prior gates.</p>
+  <table><thead><tr><th>Stage</th><th>Count</th></tr></thead><tbody>${funnelRows}</tbody></table>
+  <h2>Independent gate pass counts</h2>
+  <p class="muted">Each gate is counted independently across all scanned records.</p>
+  <table><thead><tr><th>Gate</th><th>Count</th></tr></thead><tbody>${gateRows}</tbody></table>
   <h2>Historical benchmark</h2>
   <pre>${stableStringify(report.historicalBenchmark)}</pre>
   <h2>Forward benchmark</h2>
