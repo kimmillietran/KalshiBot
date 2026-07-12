@@ -1,6 +1,8 @@
 import type { JsonlIo } from "@/lib/data/research/jsonl";
 import type { StaticParityFrictionConfig } from "@/lib/data/research/staticParityScan/staticParityScanTypes";
 
+import type { IndependentGatePassCounts, SequentialFunnelStage } from "./parityGateSemantics";
+
 export const PARITY_NEAR_MISS_ANALYSIS_FILENAME = "parity-near-miss-analysis.json";
 export const DEFAULT_PARITY_NEAR_MISS_ANALYSIS_OUTPUT_PATH =
   "data/research-results/parity-near-miss-analysis.json";
@@ -36,7 +38,7 @@ export const PARITY_NEAR_MISS_DISTANCE_BUCKETS = [
   "2-to-5-cents",
   "5-to-10-cents",
   "more-than-10-cents",
-  "no-edge",
+  "unavailable",
 ] as const;
 
 export type ParityNearMissDistanceBucket = (typeof PARITY_NEAR_MISS_DISTANCE_BUCKETS)[number];
@@ -45,6 +47,7 @@ export const PARITY_NEAR_MISS_INTERPRETATION_CLASSIFICATIONS = [
   "no-signal-far-from-threshold",
   "no-signal-with-narrow-near-misses",
   "execution-gates-binding",
+  "fees-or-buffer-binding",
   "persistence-gate-binding",
   "observation-quality-inconclusive",
   "candidates-present",
@@ -96,6 +99,7 @@ export type ParityNearMissObservationMetrics = {
   marketOpen: boolean | null;
   btcJoinAvailable: boolean;
   quoteAgeMs: number | null;
+  quoteAgeStatus: "known" | "unknown" | "negative";
   stalenessPass: boolean | null;
   sizePass: boolean;
   grossParityPass: boolean;
@@ -117,8 +121,14 @@ export type ParityNearMissRankedEntry = {
   noBidCents: number | null;
   yesBidSize: number | null;
   noBidSize: number | null;
+  observedEdgeCents: number | null;
+  requiredEdgeCents: number;
+  shortfallCents: number;
   distance: number;
   distanceKind: "gross" | "fee-adjusted" | "buffer-adjusted" | "executable";
+  bookValid: boolean;
+  bookSynchronized: boolean;
+  quoteAgeMs: number | null;
   firstRejectingGate: ParityNearMissRejectionGate | null;
   allRejectingGates: readonly ParityNearMissRejectionGate[];
   integrityCaveat: string | null;
@@ -139,6 +149,9 @@ export type ParityNearMissEpisodeRankedEntry = {
   episodeClassification: string;
 };
 
+export type ParityNearMissSequentialQualificationFunnel = Record<SequentialFunnelStage, number>;
+
+/** @deprecated Use sequentialQualificationFunnel; retained for JSON compatibility. */
 export type ParityNearMissQualificationFunnel = {
   recordsLoaded: number;
   recordsEligible: number;
@@ -157,8 +170,15 @@ export type ParityNearMissQualificationFunnel = {
 export type ParityNearMissGateCounts = {
   firstRejectionByGate: Record<ParityNearMissRejectionGate, number>;
   allRejectionsByGate: Record<ParityNearMissRejectionGate, number>;
-  recordsReachingStage: Record<string, number>;
   episodesReachingStage: Record<string, number>;
+};
+
+export type ParityNearMissStalenessSummary = {
+  stalenessThresholdMs: number;
+  knownFreshCount: number;
+  knownStaleCount: number;
+  unknownQuoteAgeCount: number;
+  negativeQuoteAgeCount: number;
 };
 
 export type ParityNearMissSelectedRunQuality = {
@@ -170,11 +190,14 @@ export type ParityNearMissSelectedRunQuality = {
   reconnectCount: number | null;
   suspectedSystemSleepSeconds: number | null;
   sequenceGapCount: number | null;
+  captureVerdict: string | null;
+  reconciliationVerdict: string | null;
 };
 
 export type ParityNearMissInputArtifactIdentities = {
   captureHealthPath: string | null;
   captureHealthRunId: string | null;
+  captureHealthAuditPath: string | null;
   captureHealthReconciliationPath: string | null;
   bidSizeCoverageAuditPath: string | null;
 };
@@ -182,10 +205,13 @@ export type ParityNearMissInputArtifactIdentities = {
 export type ParityNearMissAnalysisSummary = {
   interpretationClassification: ParityNearMissInterpretationClassification;
   recommendedNextAction: string;
+  classificationRationale: string;
   closestGrossNearMissCents: number | null;
+  closestFeeAdjustedNearMissCents: number | null;
   closestBufferNearMissCents: number | null;
   candidateCount: number;
   grossNearMissCount: number;
+  feeAdjustedNearMissCount: number;
   bufferNearMissCount: number;
 };
 
@@ -207,8 +233,12 @@ export type ParityNearMissAnalysisReport = {
   ruleConfigurationHash: string;
   inputArtifactIdentities: ParityNearMissInputArtifactIdentities;
   selectedRunQuality: ParityNearMissSelectedRunQuality;
+  independentGatePassCounts: IndependentGatePassCounts;
+  sequentialQualificationFunnel: ParityNearMissSequentialQualificationFunnel;
+  /** @deprecated Alias mapped from sequentialQualificationFunnel for compatibility. */
   qualificationFunnel: ParityNearMissQualificationFunnel;
   gateCounts: ParityNearMissGateCounts;
+  stalenessSummary: ParityNearMissStalenessSummary;
   distanceDistributions: {
     gross: Record<ParityNearMissDistanceBucket, number>;
     feeAdjusted: Record<ParityNearMissDistanceBucket, number>;

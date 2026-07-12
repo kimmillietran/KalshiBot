@@ -5,11 +5,18 @@ import {
   type EconomicBookState,
 } from "@/lib/data/live/forwardQuoteCapture/classifyTopOfBookEconomicValidity";
 
+import { computeParityShortfalls, isDistanceEvaluable } from "./computeParityShortfalls";
+import {
+  resolveAllRejectingGates,
+  resolveSequentialFirstRejectingGate,
+  type ObservationGateFlags,
+} from "./parityGateSemantics";
 import type {
   ParityNearMissObservationMetrics,
   ParityNearMissRejectionGate,
   ParityNearMissRuleConfiguration,
 } from "./parityNearMissAnalysisTypes";
+import { evaluateQuoteStaleness } from "./resolveQuoteStaleness";
 
 export type ParityObservationInput = {
   marketTicker: string;
@@ -31,15 +38,6 @@ export type ParityObservationInput = {
   economicBookState?: string;
 };
 
-const ECONOMIC_BOOK_STATES = new Set<EconomicBookState>([
-  "economically-valid",
-  "sequence-valid-crossed",
-  "sequence-valid-locked",
-  "insufficient-depth",
-  "awaiting-snapshot",
-  "invalid-price",
-]);
-
 function createEmptyGateRecord(): Record<ParityNearMissRejectionGate, number> {
   return {
     "invalid-book": 0,
@@ -59,18 +57,6 @@ export function createEmptyGateCounts() {
   return {
     firstRejectionByGate: createEmptyGateRecord(),
     allRejectionsByGate: createEmptyGateRecord(),
-    recordsReachingStage: {
-      loaded: 0,
-      eligible: 0,
-      validBook: 0,
-      synchronizedBook: 0,
-      sizedBidPair: 0,
-      positiveEdge: 0,
-      grossPass: 0,
-      feePass: 0,
-      bufferPass: 0,
-      stalenessPass: 0,
-    },
     episodesReachingStage: {
       built: 0,
       grossEpisode: 0,
@@ -80,11 +66,34 @@ export function createEmptyGateCounts() {
   };
 }
 
-function shortfallDistance(threshold: number, value: number | null): number | null {
-  if (value === null) {
-    return null;
+export function incrementGateRejectionCounts(
+  counts: ReturnType<typeof createEmptyGateCounts>,
+  metrics: ParityNearMissObservationMetrics,
+): void {
+  if (metrics.firstRejectingGate) {
+    counts.firstRejectionByGate[metrics.firstRejectingGate] += 1;
   }
-  return threshold - value;
+  for (const gate of metrics.allRejectingGates) {
+    counts.allRejectionsByGate[gate] += 1;
+  }
+}
+
+const ECONOMIC_BOOK_STATES = new Set<EconomicBookState>([
+  "economically-valid",
+  "sequence-valid-crossed",
+  "sequence-valid-locked",
+  "insufficient-depth",
+  "awaiting-snapshot",
+  "invalid-price",
+]);
+
+function readEconomicBookState(value: string | undefined): EconomicBookState | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+  return ECONOMIC_BOOK_STATES.has(value as EconomicBookState)
+    ? (value as EconomicBookState)
+    : undefined;
 }
 
 function resolveIntegrityCaveat(input: {
@@ -92,6 +101,7 @@ function resolveIntegrityCaveat(input: {
   sequence: number | null | undefined;
   bookSynchronized: boolean;
   bookValid: boolean;
+  quoteAgeStatus: string;
 }): string | null {
   const caveats: string[] = [];
   if (
@@ -109,16 +119,44 @@ function resolveIntegrityCaveat(input: {
   if (!input.bookValid) {
     caveats.push("invalid-book-window");
   }
+  if (input.quoteAgeStatus === "unknown") {
+    caveats.push("unknown-quote-age");
+  }
+  if (input.quoteAgeStatus === "negative") {
+    caveats.push("negative-quote-age");
+  }
   return caveats.length > 0 ? caveats.join(";") : null;
 }
 
-function readEconomicBookState(value: string | undefined): EconomicBookState | undefined {
-  if (value === undefined) {
-    return undefined;
-  }
-  return ECONOMIC_BOOK_STATES.has(value as EconomicBookState)
-    ? (value as EconomicBookState)
-    : undefined;
+export function buildObservationGateFlags(input: {
+  bookValid: boolean;
+  bookSynchronized: boolean;
+  bothSidesPresent: boolean;
+  stalenessPass: boolean | null;
+  sizePass: boolean;
+  observedGrossEdgeCents: number | null;
+  estimatedNetEdgeCents: number | null;
+  friction: StaticParityFrictionConfig;
+}): ObservationGateFlags {
+  const grossParityPass =
+    input.observedGrossEdgeCents !== null
+    && input.observedGrossEdgeCents >= input.friction.minGrossEdgeCents;
+  const feePass =
+    input.estimatedNetEdgeCents !== null && input.estimatedNetEdgeCents > 0;
+  const bufferPass =
+    input.estimatedNetEdgeCents !== null
+    && input.estimatedNetEdgeCents >= input.friction.minBidOnlyEdgeCents;
+
+  return {
+    bookValid: input.bookValid,
+    bookSynchronized: input.bookSynchronized,
+    bothSidesPresent: input.bothSidesPresent,
+    stalenessPass: input.stalenessPass,
+    sizePass: input.sizePass,
+    grossParityPass,
+    feePass,
+    bufferPass,
+  };
 }
 
 /** Evaluates one top-of-book observation against frozen bid-only parity gates. */
@@ -144,7 +182,9 @@ export function evaluateParityObservationGates(
     && input.noBestAskCents !== null
     && input.noBestAskCents !== undefined;
 
-  const bookValid = input.bookState === "valid";
+  const bookValid =
+    input.bookState === "valid"
+    && economic.economicBookState !== "invalid-price";
   const bookSynchronized =
     bookValid
     && (
@@ -157,12 +197,11 @@ export function evaluateParityObservationGates(
       )
     );
 
-  const quoteAgeMs =
-    input.exchangeTimestampMs !== null && input.exchangeTimestampMs !== undefined
-      ? Math.max(0, input.receivedAtMs - input.exchangeTimestampMs)
-      : null;
-  const stalenessPass =
-    quoteAgeMs === null ? null : quoteAgeMs <= rule.stalenessBoundMs;
+  const staleness = evaluateQuoteStaleness({
+    receivedAtMs: input.receivedAtMs,
+    exchangeTimestampMs: input.exchangeTimestampMs,
+    stalenessBoundMs: rule.stalenessBoundMs,
+  });
 
   const timeRemainingMs =
     input.closeTimeMs !== null && input.closeTimeMs !== undefined
@@ -170,8 +209,15 @@ export function evaluateParityObservationGates(
       : null;
 
   const btcJoinAvailable = input.btcSpotPriceUsd !== null && input.btcSpotPriceUsd !== undefined;
+  const bothSidesPresent = isDistanceEvaluable(input.yesBestBidCents, input.noBestBidCents);
 
   const friction: StaticParityFrictionConfig = rule;
+  const shortfalls = computeParityShortfalls(
+    input.yesBestBidCents,
+    input.noBestBidCents,
+    friction,
+  );
+
   const diagnostics = classifyBidOnlyParitySnapshot(
     {
       yesBidCents: input.yesBestBidCents,
@@ -186,57 +232,29 @@ export function evaluateParityObservationGates(
   const executableSize = diagnostics.minBidSizeContracts;
   const sizePass =
     executableSize !== null && executableSize >= rule.minSizeContracts;
-  const grossParityPass = diagnostics.isGrossCandidate;
-  const bufferPass = diagnostics.isBufferAdjustedCandidate;
-  const feePass =
-    diagnostics.estimatedNetEdgeCents !== null
-    && diagnostics.estimatedNetEdgeCents > 0;
 
-  const grossDistanceToQualification = shortfallDistance(
-    rule.minGrossEdgeCents,
-    diagnostics.bidOnlyEdgeCents,
-  );
-  const feeAdjustedDistanceToQualification = shortfallDistance(
-    rule.feeBufferCents + 1,
-    diagnostics.bidOnlyEdgeCents,
-  );
-  const bufferAdjustedDistanceToQualification = shortfallDistance(
-    rule.minBidOnlyEdgeCents,
-    diagnostics.estimatedNetEdgeCents,
-  );
+  const gateFlags = buildObservationGateFlags({
+    bookValid,
+    bookSynchronized,
+    bothSidesPresent,
+    stalenessPass: staleness.stalenessPass,
+    sizePass,
+    observedGrossEdgeCents: shortfalls.observedGrossEdgeCents,
+    estimatedNetEdgeCents: shortfalls.estimatedNetEdgeCents,
+    friction,
+  });
 
-  const parityRejectingGates: ParityNearMissRejectionGate[] = [];
-  if (input.bookState !== "valid") {
-    parityRejectingGates.push("invalid-book");
-  }
-  if (!bookSynchronized) {
-    parityRejectingGates.push("unsynchronized-book");
-  }
-  if (!sizePass) {
-    parityRejectingGates.push("missing-executable-size");
-  }
-  if (diagnostics.bidOnlyEdgeCents === null || diagnostics.bidOnlyEdgeCents <= 0) {
-    parityRejectingGates.push("no-positive-edge");
-  } else if (!grossParityPass) {
-    parityRejectingGates.push("gross-parity-shortfall");
-  }
-  if (grossParityPass && !bufferPass) {
-    parityRejectingGates.push("buffer-adjusted-shortfall");
-  }
-  if (stalenessPass === false) {
-    parityRejectingGates.push("stale-quote");
-  }
+  const firstRejectingGate = resolveSequentialFirstRejectingGate(gateFlags);
+  const allRejectingGates = resolveAllRejectingGates({
+    flags: gateFlags,
+  });
 
-  const annotationGates: ParityNearMissRejectionGate[] = [];
-  if (!btcJoinAvailable) {
-    annotationGates.push("missing-btc-join");
-  }
-
-  const allRejectingGates = [...parityRejectingGates, ...annotationGates];
-  const firstRejectingGate = parityRejectingGates[0] ?? null;
   const metricUnavailableReasons: Record<string, string> = {};
-  if (quoteAgeMs === null) {
+  if (staleness.quoteAgeStatus === "unknown") {
     metricUnavailableReasons.quoteAgeMs = "exchangeTimestampMs missing";
+  }
+  if (!btcJoinAvailable) {
+    metricUnavailableReasons.btcSpotPriceUsd = "btc spot join unavailable";
   }
   metricUnavailableReasons.marketOpen = "market-open status not captured in forward quotes";
 
@@ -249,21 +267,22 @@ export function evaluateParityObservationGates(
     noBidCents: input.noBestBidCents,
     yesBidSize: input.yesBestBidSize,
     noBidSize: input.noBestBidSize,
-    bidOnlyParityValue: diagnostics.bidOnlyEdgeCents,
-    grossDistanceToQualification,
-    feeAdjustedDistanceToQualification,
-    bufferAdjustedDistanceToQualification,
+    bidOnlyParityValue: shortfalls.observedGrossEdgeCents,
+    grossDistanceToQualification: shortfalls.grossDistanceToQualification,
+    feeAdjustedDistanceToQualification: shortfalls.feeAdjustedDistanceToQualification,
+    bufferAdjustedDistanceToQualification: shortfalls.bufferAdjustedDistanceToQualification,
     executableSize,
     bookValid,
     bookSynchronized,
     marketOpen: null,
     btcJoinAvailable,
-    quoteAgeMs,
-    stalenessPass,
+    quoteAgeMs: staleness.quoteAgeMs,
+    quoteAgeStatus: staleness.quoteAgeStatus,
+    stalenessPass: staleness.stalenessPass,
     sizePass,
-    grossParityPass,
-    feePass,
-    bufferPass,
+    grossParityPass: gateFlags.grossParityPass,
+    feePass: gateFlags.feePass,
+    bufferPass: gateFlags.bufferPass,
     persistencePass: null,
     firstRejectingGate,
     allRejectingGates,
@@ -272,6 +291,7 @@ export function evaluateParityObservationGates(
       sequence: input.sequence,
       bookSynchronized,
       bookValid,
+      quoteAgeStatus: staleness.quoteAgeStatus,
     }),
     metricUnavailableReasons,
   };
@@ -283,9 +303,10 @@ export function isObservationEligible(metrics: ParityNearMissObservationMetrics)
 
 export function resolveDistanceBucket(
   distance: number | null,
+  evaluable: boolean,
 ): import("./parityNearMissAnalysisTypes").ParityNearMissDistanceBucket {
-  if (distance === null) {
-    return "no-edge";
+  if (!evaluable || distance === null) {
+    return "unavailable";
   }
   if (distance <= 0) {
     return "qualified";
@@ -306,55 +327,6 @@ export function resolveDistanceBucket(
     return "5-to-10-cents";
   }
   return "more-than-10-cents";
-}
-
-export function incrementGateCounts(
-  counts: ReturnType<typeof createEmptyGateCounts>,
-  metrics: ParityNearMissObservationMetrics,
-): void {
-  counts.recordsReachingStage.loaded += 1;
-  if (!isObservationEligible(metrics)) {
-    if (metrics.firstRejectingGate) {
-      counts.firstRejectionByGate[metrics.firstRejectingGate] += 1;
-    }
-    for (const gate of metrics.allRejectingGates) {
-      counts.allRejectionsByGate[gate] += 1;
-    }
-    return;
-  }
-
-  counts.recordsReachingStage.eligible += 1;
-  if (metrics.bookValid) {
-    counts.recordsReachingStage.validBook += 1;
-  }
-  if (metrics.bookSynchronized) {
-    counts.recordsReachingStage.synchronizedBook += 1;
-  }
-  if (metrics.sizePass) {
-    counts.recordsReachingStage.sizedBidPair += 1;
-  }
-  if (metrics.bidOnlyParityValue !== null && metrics.bidOnlyParityValue > 0) {
-    counts.recordsReachingStage.positiveEdge += 1;
-  }
-  if (metrics.grossParityPass) {
-    counts.recordsReachingStage.grossPass += 1;
-  }
-  if (metrics.feePass) {
-    counts.recordsReachingStage.feePass += 1;
-  }
-  if (metrics.bufferPass) {
-    counts.recordsReachingStage.bufferPass += 1;
-  }
-  if (metrics.stalenessPass !== false) {
-    counts.recordsReachingStage.stalenessPass += 1;
-  }
-
-  if (metrics.firstRejectingGate) {
-    counts.firstRejectionByGate[metrics.firstRejectingGate] += 1;
-  }
-  for (const gate of metrics.allRejectingGates) {
-    counts.allRejectionsByGate[gate] += 1;
-  }
 }
 
 export function buildRuleConfiguration(

@@ -8,15 +8,24 @@ import { fnv1a32, stableStringify } from "@/lib/trading/config/hashConfig";
 
 import { BoundedNearMissRanking } from "./boundedNearMissRanking";
 import {
+  buildObservationGateFlags,
   buildRuleConfiguration,
   createEmptyGateCounts,
   evaluateParityObservationGates,
-  incrementGateCounts,
+  incrementGateRejectionCounts,
   isObservationEligible,
   resolveDistanceBucket,
 } from "./evaluateParityObservationGates";
+import { MINIMUM_FEE_PASS_NET_EDGE_CENTS, isDistanceEvaluable } from "./computeParityShortfalls";
 import { loadSelectedRunContext, validateSelectedRunDirectory } from "./loadSelectedRunContext";
 import { classifyParityNearMissInterpretation } from "./classifyParityNearMissInterpretation";
+import {
+  createEmptyIndependentGatePassCounts,
+  createEmptySequentialFunnel,
+  observationPassesSequentialQualification,
+  updateIndependentGatePassCounts,
+  updateSequentialFunnel,
+} from "./parityGateSemantics";
 import type {
   ParityNearMissAnalysisConfig,
   ParityNearMissAnalysisIo,
@@ -24,6 +33,8 @@ import type {
   ParityNearMissDistanceBucket,
   ParityNearMissEpisodeRankedEntry,
   ParityNearMissObservationMetrics,
+  ParityNearMissQualificationFunnel,
+  ParityNearMissSequentialQualificationFunnel,
 } from "./parityNearMissAnalysisTypes";
 import {
   PARITY_NEAR_MISS_ANALYSIS_DISCLAIMER,
@@ -60,8 +71,9 @@ function emptyBucketRecord(): Record<ParityNearMissDistanceBucket, number> {
 function incrementBucket(
   buckets: Record<ParityNearMissDistanceBucket, number>,
   distance: number | null,
+  evaluable: boolean,
 ): void {
-  buckets[resolveDistanceBucket(distance)] += 1;
+  buckets[resolveDistanceBucket(distance, evaluable)] += 1;
 }
 
 type EpisodeDraft = {
@@ -311,8 +323,41 @@ function resolveQuoteAgeBucket(quoteAgeMs: number | null): string {
   return "gt-5s";
 }
 
-function passesRankingIntegrity(metrics: ParityNearMissObservationMetrics): boolean {
-  return metrics.bookSynchronized && metrics.stalenessPass !== false;
+function buildLegacyQualificationFunnel(input: {
+  recordsScanned: number;
+  recordsEligible: number;
+  positiveEdgeRecords: number;
+  sequentialFunnel: ParityNearMissSequentialQualificationFunnel;
+  persistentPass: number;
+  finalCandidates: number;
+}): ParityNearMissQualificationFunnel {
+  return {
+    recordsLoaded: input.recordsScanned,
+    recordsEligible: input.recordsEligible,
+    validBooks: input.sequentialFunnel.validBook,
+    synchronizedBooks: input.sequentialFunnel.synchronizedBook,
+    sizedBidPairs: input.sequentialFunnel.executableSize,
+    positiveEdgeRecords: input.positiveEdgeRecords,
+    grossPass: input.sequentialFunnel.grossThreshold,
+    feePass: input.sequentialFunnel.feeThreshold,
+    bufferPass: input.sequentialFunnel.bufferThreshold,
+    stalenessPass: input.sequentialFunnel.stalenessPass,
+    persistentPass: input.persistentPass,
+    finalCandidates: input.finalCandidates,
+  };
+}
+
+function updateClosestNearMiss(
+  current: number | null,
+  candidate: number | null,
+): number | null {
+  if (candidate === null || candidate <= 0) {
+    return current;
+  }
+  if (current === null || candidate < current) {
+    return candidate;
+  }
+  return current;
 }
 
 /** Streams one selected capture run and produces near-miss diagnostics. */
@@ -329,6 +374,8 @@ export async function analyzeParityNearMissForRun(input: {
   const ruleConfigurationHash = `parity-near-miss-v1-${fnv1a32(stableStringify(ruleConfiguration))}`;
 
   const gateCounts = createEmptyGateCounts();
+  const independentGatePassCounts = createEmptyIndependentGatePassCounts();
+  const sequentialFunnel = createEmptySequentialFunnel();
   const grossBuckets = emptyBucketRecord();
   const feeBuckets = emptyBucketRecord();
   const bufferBuckets = emptyBucketRecord();
@@ -346,7 +393,18 @@ export async function analyzeParityNearMissForRun(input: {
 
   let recordsScanned = 0;
   let recordsEligible = 0;
+  let positiveEdgeRecords = 0;
   let finalCandidates = 0;
+  let grossNearMissCount = 0;
+  let feeAdjustedNearMissCount = 0;
+  let bufferNearMissCount = 0;
+  let knownFreshCount = 0;
+  let knownStaleCount = 0;
+  let unknownQuoteAgeCount = 0;
+  let negativeQuoteAgeCount = 0;
+  let closestGrossNearMissCents: number | null = null;
+  let closestFeeAdjustedNearMissCents: number | null = null;
+  let closestBufferNearMissCents: number | null = null;
   let malformedLineCount = 0;
   const priorSequenceByMarket = new Map<string, number | null>();
 
@@ -366,6 +424,7 @@ export async function analyzeParityNearMissForRun(input: {
       }
 
       recordsScanned += 1;
+      const recordIndex = recordsScanned;
       let parsed: z.infer<typeof topOfBookSchema>;
       try {
         parsed = topOfBookSchema.parse(JSON.parse(trimmed));
@@ -409,15 +468,87 @@ export async function analyzeParityNearMissForRun(input: {
       );
 
       priorSequenceByMarket.set(parsed.marketTicker, parsed.sequence ?? null);
-      incrementGateCounts(gateCounts, metrics);
+
+      const gateFlags = buildObservationGateFlags({
+        bookValid: metrics.bookValid,
+        bookSynchronized: metrics.bookSynchronized,
+        bothSidesPresent: isDistanceEvaluable(metrics.yesBidCents, metrics.noBidCents),
+        stalenessPass: metrics.stalenessPass,
+        sizePass: metrics.sizePass,
+        observedGrossEdgeCents: metrics.bidOnlyParityValue,
+        estimatedNetEdgeCents:
+          metrics.bidOnlyParityValue !== null
+            ? metrics.bidOnlyParityValue - ruleConfiguration.feeBufferCents
+            : null,
+        friction: ruleConfiguration,
+      });
+
+      updateSequentialFunnel(sequentialFunnel, gateFlags);
+      updateIndependentGatePassCounts(independentGatePassCounts, {
+        flags: gateFlags,
+        quoteAgeStatus: metrics.quoteAgeStatus,
+        stalenessReject: metrics.stalenessPass === false,
+      });
+      incrementGateRejectionCounts(gateCounts, metrics);
+      const fullyQualifiedObservation = observationPassesSequentialQualification(gateFlags);
 
       if (isObservationEligible(metrics)) {
         recordsEligible += 1;
       }
 
-      incrementBucket(grossBuckets, metrics.grossDistanceToQualification);
-      incrementBucket(feeBuckets, metrics.feeAdjustedDistanceToQualification);
-      incrementBucket(bufferBuckets, metrics.bufferAdjustedDistanceToQualification);
+      if (metrics.bidOnlyParityValue !== null && metrics.bidOnlyParityValue > 0) {
+        positiveEdgeRecords += 1;
+      }
+
+      if (metrics.quoteAgeStatus === "unknown") {
+        unknownQuoteAgeCount += 1;
+      } else if (metrics.quoteAgeStatus === "negative") {
+        negativeQuoteAgeCount += 1;
+      } else if (metrics.stalenessPass === true) {
+        knownFreshCount += 1;
+      } else if (metrics.stalenessPass === false) {
+        knownStaleCount += 1;
+      }
+
+      const distanceEvaluable = isDistanceEvaluable(metrics.yesBidCents, metrics.noBidCents);
+      incrementBucket(grossBuckets, metrics.grossDistanceToQualification, distanceEvaluable);
+      incrementBucket(feeBuckets, metrics.feeAdjustedDistanceToQualification, distanceEvaluable);
+      incrementBucket(bufferBuckets, metrics.bufferAdjustedDistanceToQualification, distanceEvaluable);
+
+      if (
+        distanceEvaluable
+        && metrics.grossDistanceToQualification !== null
+        && metrics.grossDistanceToQualification > 0
+      ) {
+        grossNearMissCount += 1;
+        closestGrossNearMissCents = updateClosestNearMiss(
+          closestGrossNearMissCents,
+          metrics.grossDistanceToQualification,
+        );
+      }
+      if (
+        distanceEvaluable
+        && metrics.feeAdjustedDistanceToQualification !== null
+        && metrics.feeAdjustedDistanceToQualification > 0
+      ) {
+        feeAdjustedNearMissCount += 1;
+        closestFeeAdjustedNearMissCents = updateClosestNearMiss(
+          closestFeeAdjustedNearMissCents,
+          metrics.feeAdjustedDistanceToQualification,
+        );
+      }
+      if (
+        distanceEvaluable
+        && metrics.bufferAdjustedDistanceToQualification !== null
+        && metrics.bufferAdjustedDistanceToQualification > 0
+      ) {
+        bufferNearMissCount += 1;
+        closestBufferNearMissCents = updateClosestNearMiss(
+          closestBufferNearMissCents,
+          metrics.bufferAdjustedDistanceToQualification,
+        );
+      }
+
       bidSumRelationship[resolveBidSumRelationship(metrics.yesBidCents, metrics.noBidCents)] =
         (bidSumRelationship[resolveBidSumRelationship(metrics.yesBidCents, metrics.noBidCents)] ?? 0) + 1;
       executableSizeBuckets[resolveExecutableSizeBucket(metrics.executableSize)] =
@@ -444,19 +575,19 @@ export async function analyzeParityNearMissForRun(input: {
         marketStats.bufferPass += 1;
       }
       if (
-        passesRankingIntegrity(metrics)
+        distanceEvaluable
         && metrics.grossDistanceToQualification !== null
         && metrics.grossDistanceToQualification > 0
-        && (
-          marketStats.closestGrossNearMissCents === null
-          || metrics.grossDistanceToQualification < marketStats.closestGrossNearMissCents
-        )
       ) {
-        marketStats.closestGrossNearMissCents = metrics.grossDistanceToQualification;
+        marketStats.closestGrossNearMissCents = updateClosestNearMiss(
+          marketStats.closestGrossNearMissCents,
+          metrics.grossDistanceToQualification,
+        );
       }
 
-      if (passesRankingIntegrity(metrics)) {
-        const rankedBase = {
+      if (distanceEvaluable) {
+        const rankingBase = {
+          recordIndex,
           marketTicker: metrics.marketTicker,
           timestamp: metrics.timestamp,
           timeRemainingMs: metrics.timeRemainingMs,
@@ -464,76 +595,56 @@ export async function analyzeParityNearMissForRun(input: {
           noBidCents: metrics.noBidCents,
           yesBidSize: metrics.yesBidSize,
           noBidSize: metrics.noBidSize,
+          observedEdgeCents: metrics.bidOnlyParityValue,
+          bookValid: metrics.bookValid,
+          bookSynchronized: metrics.bookSynchronized,
+          quoteAgeMs: metrics.quoteAgeMs,
           firstRejectingGate: metrics.firstRejectingGate,
           allRejectingGates: metrics.allRejectingGates,
           integrityCaveat: metrics.integrityCaveat,
         };
 
         grossRanking.consider({
-          marketTicker: rankedBase.marketTicker,
-          timestamp: rankedBase.timestamp,
-          timeRemainingMs: rankedBase.timeRemainingMs,
-          yesBidCents: rankedBase.yesBidCents,
-          noBidCents: rankedBase.noBidCents,
-          yesBidSize: rankedBase.yesBidSize,
-          noBidSize: rankedBase.noBidSize,
-          firstRejectingGate: rankedBase.firstRejectingGate,
-          allRejectingGates: rankedBase.allRejectingGates,
-          integrityCaveat: rankedBase.integrityCaveat,
+          ...rankingBase,
+          requiredEdgeCents: ruleConfiguration.minGrossEdgeCents,
+          shortfallCents: metrics.grossDistanceToQualification ?? 0,
           distance: metrics.grossDistanceToQualification,
         });
         feeRanking.consider({
-          marketTicker: rankedBase.marketTicker,
-          timestamp: rankedBase.timestamp,
-          timeRemainingMs: rankedBase.timeRemainingMs,
-          yesBidCents: rankedBase.yesBidCents,
-          noBidCents: rankedBase.noBidCents,
-          yesBidSize: rankedBase.yesBidSize,
-          noBidSize: rankedBase.noBidSize,
-          firstRejectingGate: rankedBase.firstRejectingGate,
-          allRejectingGates: rankedBase.allRejectingGates,
-          integrityCaveat: rankedBase.integrityCaveat,
+          ...rankingBase,
+          requiredEdgeCents:
+            ruleConfiguration.feeBufferCents + MINIMUM_FEE_PASS_NET_EDGE_CENTS,
+          shortfallCents: metrics.feeAdjustedDistanceToQualification ?? 0,
           distance: metrics.feeAdjustedDistanceToQualification,
         });
         bufferRanking.consider({
-          marketTicker: rankedBase.marketTicker,
-          timestamp: rankedBase.timestamp,
-          timeRemainingMs: rankedBase.timeRemainingMs,
-          yesBidCents: rankedBase.yesBidCents,
-          noBidCents: rankedBase.noBidCents,
-          yesBidSize: rankedBase.yesBidSize,
-          noBidSize: rankedBase.noBidSize,
-          firstRejectingGate: rankedBase.firstRejectingGate,
-          allRejectingGates: rankedBase.allRejectingGates,
-          integrityCaveat: rankedBase.integrityCaveat,
+          ...rankingBase,
+          requiredEdgeCents: ruleConfiguration.minBidOnlyEdgeCents,
+          shortfallCents: metrics.bufferAdjustedDistanceToQualification ?? 0,
           distance: metrics.bufferAdjustedDistanceToQualification,
         });
         if (!metrics.sizePass) {
           executableRanking.consider({
-            marketTicker: rankedBase.marketTicker,
-            timestamp: rankedBase.timestamp,
-            timeRemainingMs: rankedBase.timeRemainingMs,
-            yesBidCents: rankedBase.yesBidCents,
-            noBidCents: rankedBase.noBidCents,
-            yesBidSize: rankedBase.yesBidSize,
-            noBidSize: rankedBase.noBidSize,
-            firstRejectingGate: rankedBase.firstRejectingGate,
-            allRejectingGates: rankedBase.allRejectingGates,
-            integrityCaveat: rankedBase.integrityCaveat,
+            ...rankingBase,
+            requiredEdgeCents: ruleConfiguration.minSizeContracts,
+            shortfallCents:
+              metrics.executableSize === null
+                ? ruleConfiguration.minSizeContracts
+                : Math.max(0, ruleConfiguration.minSizeContracts - metrics.executableSize),
             distance:
               metrics.executableSize === null
                 ? null
-                : input.config.friction.minSizeContracts - metrics.executableSize,
+                : ruleConfiguration.minSizeContracts - metrics.executableSize,
           });
         }
       }
 
-      if (metrics.bufferPass && metrics.stalenessPass !== false) {
+      if (fullyQualifiedObservation) {
         finalCandidates += 1;
       }
 
       const classification =
-        metrics.bufferPass
+        fullyQualifiedObservation
           ? "bid-only-buffer-adjusted-candidate"
           : metrics.grossParityPass
             ? "bid-only-gross-candidate"
@@ -653,6 +764,7 @@ export async function analyzeParityNearMissForRun(input: {
     }
     if (episode.episodeClassification === "persistent-candidate-episode") {
       gateCounts.episodesReachingStage.persistentEpisode += 1;
+      independentGatePassCounts.persistencePass += 1;
     }
   }
 
@@ -670,28 +782,27 @@ export async function analyzeParityNearMissForRun(input: {
     warnings.push(`${malformedLineCount} malformed top-of-book JSONL line(s) skipped.`);
   }
 
-  const qualificationFunnel = {
-    recordsLoaded: recordsScanned,
+  const qualificationFunnel = buildLegacyQualificationFunnel({
+    recordsScanned,
     recordsEligible,
-    validBooks: gateCounts.recordsReachingStage.validBook ?? 0,
-    synchronizedBooks: gateCounts.recordsReachingStage.synchronizedBook ?? 0,
-    sizedBidPairs: gateCounts.recordsReachingStage.sizedBidPair ?? 0,
-    positiveEdgeRecords: gateCounts.recordsReachingStage.positiveEdge ?? 0,
-    grossPass: gateCounts.recordsReachingStage.grossPass ?? 0,
-    feePass: gateCounts.recordsReachingStage.feePass ?? 0,
-    bufferPass: gateCounts.recordsReachingStage.bufferPass ?? 0,
-    stalenessPass: gateCounts.recordsReachingStage.stalenessPass ?? 0,
-    persistentPass: gateCounts.episodesReachingStage.persistentEpisode ?? 0,
+    positiveEdgeRecords,
+    sequentialFunnel,
+    persistentPass: gateCounts.episodesReachingStage.persistentEpisode,
     finalCandidates,
-  };
+  });
 
   const summary = classifyParityNearMissInterpretation({
     recordsScanned,
     recordsEligible,
-    qualificationFunnel,
+    sequentialFunnel,
+    independentGatePassCounts,
     gateCounts,
-    closestGrossNearMiss: grossRanking.toRankedEntries()[0]?.distance ?? null,
-    closestBufferNearMiss: bufferRanking.toRankedEntries()[0]?.distance ?? null,
+    closestGrossNearMiss: closestGrossNearMissCents,
+    closestFeeAdjustedNearMiss: closestFeeAdjustedNearMissCents,
+    closestBufferNearMiss: closestBufferNearMissCents,
+    grossNearMissCount,
+    feeAdjustedNearMissCount,
+    bufferNearMissCount,
     selectedRunQuality: context.selectedRunQuality,
   });
 
@@ -713,12 +824,16 @@ export async function analyzeParityNearMissForRun(input: {
     ruleConfigurationHash,
     inputArtifactIdentities: context.inputArtifactIdentities,
     selectedRunQuality: context.selectedRunQuality,
+    independentGatePassCounts,
+    sequentialQualificationFunnel: sequentialFunnel,
     qualificationFunnel,
-    gateCounts: {
-      firstRejectionByGate: gateCounts.firstRejectionByGate,
-      allRejectionsByGate: gateCounts.allRejectionsByGate,
-      recordsReachingStage: gateCounts.recordsReachingStage,
-      episodesReachingStage: gateCounts.episodesReachingStage,
+    gateCounts,
+    stalenessSummary: {
+      stalenessThresholdMs: ruleConfiguration.stalenessBoundMs,
+      knownFreshCount,
+      knownStaleCount,
+      unknownQuoteAgeCount,
+      negativeQuoteAgeCount,
     },
     distanceDistributions: {
       gross: grossBuckets,
