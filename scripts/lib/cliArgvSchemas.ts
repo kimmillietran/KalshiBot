@@ -1061,7 +1061,15 @@ export function normalizeStaticParityScanArgv(argv: readonly string[]): string[]
 }
 
 export function normalizeStrategyEvaluationReadinessArgv(argv: readonly string[]): string[] {
-  return normalizeNpmScriptArgv(argv, STRATEGY_EVALUATION_READINESS_ARGV_SCHEMA);
+  const expanded = expandEqualsStyleFlags(argv);
+  const positional = normalizeSelectedRunCaptureOutputArgv(expanded, {
+    outputOnlyWhenSingle: true,
+  });
+  if (positional) {
+    return positional;
+  }
+
+  return normalizeNpmScriptArgv(expanded, STRATEGY_EVALUATION_READINESS_ARGV_SCHEMA);
 }
 
 export function normalizeCaptureBaselineComparisonArgv(argv: readonly string[]): string[] {

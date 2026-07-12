@@ -127,6 +127,26 @@ describe("cliArgvSchemas", () => {
     ).toEqual(["--output", "data/reports/custom-static.json"]);
   });
 
+  it("maps stripped strategy readiness output-only positional argv", () => {
+    expect(
+      normalizeStrategyEvaluationReadinessArgv([
+        "data/research-results/strategy-readiness.json",
+      ]),
+    ).toEqual(["--output", "data/research-results/strategy-readiness.json"]);
+  });
+
+  it("maps stripped strategy readiness capture plus output positionals", () => {
+    const captureRunDir = "data/live-capture/forward-quotes/run-a";
+    const outputPath = "data/research-results/strategy-readiness.json";
+
+    expect(normalizeStrategyEvaluationReadinessArgv([captureRunDir, outputPath])).toEqual([
+      "--capture-run-dir",
+      captureRunDir,
+      "--output",
+      outputPath,
+    ]);
+  });
+
   it("normalizes execute expansion import max-markets from equals, space, and npm config forms", () => {
     vi.stubEnv("npm_config_max_markets", "10");
 

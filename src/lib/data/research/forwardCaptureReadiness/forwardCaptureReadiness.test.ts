@@ -514,6 +514,10 @@ describe("forwardCaptureReadiness", () => {
       ],
     });
 
+    const brokenSibling = {
+      [`${SPIKE_ROOT}/broken-run/capture-health.json`]: "not-json",
+    };
+
     const report = buildForwardCaptureReadinessReport({
       generatedAt: GENERATED_AT,
       outputPath: OUTPUT_PATH,
@@ -522,13 +526,14 @@ describe("forwardCaptureReadiness", () => {
         ...DEFAULT_FORWARD_CAPTURE_READINESS_INPUT_PATHS,
         captureRunDir: `${SPIKE_ROOT}/eligible-run`,
       },
-      io: buildMemoryIo({ ...eligibleRun, ...mockRun }),
+      io: buildMemoryIo({ ...eligibleRun, ...mockRun, ...brokenSibling }),
     });
 
     expect(report.analysisScope).toBe("selected-run");
     expect(report.sourceRunIds).toEqual(["eligible-run"]);
     expect(report.aggregates.runCount).toBe(1);
     expect(report.sequenceGapSemantics?.length).toBeGreaterThan(0);
+    expect(report.warnings.some((warning) => warning.includes("broken-run"))).toBe(false);
   });
 
   it("excludes mock runs in aggregate mode", () => {

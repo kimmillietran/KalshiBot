@@ -50,6 +50,7 @@ export function buildForwardCaptureReadinessReport(input: {
     const loaded = loadRun(input.io, selection.captureRunDir, input.inputPaths.forwardQuotesDir);
     if (loaded.run) {
       runs = [loaded.run];
+      warnings = [];
       sequenceGapSemantics = documentSequenceGapSemantics(
         loaded.run.health as Record<string, unknown>,
       );
