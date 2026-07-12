@@ -226,6 +226,7 @@ function finalizeEpisodeDraft(
     sorted,
     {
       forwardQuotesDir: config.captureRunDir,
+      captureRunDir: config.captureRunDir,
       staticParityScanPath: null,
       pricingModel: "bid-only",
       maxGapMs: config.lifecycle.maxGapMs,
