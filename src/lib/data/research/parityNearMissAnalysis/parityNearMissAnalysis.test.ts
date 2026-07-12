@@ -52,11 +52,20 @@ function topOfBookLine(input: {
     marketTicker: MARKET,
     receivedAtLocal: input.receivedAtLocal,
     bookState: input.bookState ?? "valid",
-    yesBestBidCents: input.yesBid ?? 50,
-    noBestBidCents: input.noBid ?? 50,
     sequence: input.sequence,
     exchangeTimestampMs: input.exchangeTimestampMs,
   };
+
+  if (input.yesBid !== undefined) {
+    record.yesBestBidCents = input.yesBid;
+  } else {
+    record.yesBestBidCents = 50;
+  }
+  if (input.noBid !== undefined) {
+    record.noBestBidCents = input.noBid;
+  } else {
+    record.noBestBidCents = 50;
+  }
 
   if (input.yesBidSize !== undefined) {
     record.yesBestBidSize = input.yesBidSize;
@@ -182,6 +191,154 @@ function buildFixtureFiles() {
       },
     }),
   };
+}
+
+function buildRealRunShapedFixtureFiles() {
+  const lines: string[] = [];
+  for (let index = 0; index < 40; index += 1) {
+    const second = String(index % 60).padStart(2, "0");
+    lines.push(
+      topOfBookLine({
+        receivedAtLocal: `2026-07-11T11:00:${second}.000Z`,
+        yesBid: 50,
+        noBid: 50,
+        sequence: index + 1,
+        exchangeTimestampMs: Date.parse(`2026-07-11T11:00:${second}.000Z`),
+      }),
+    );
+  }
+  lines.push(
+    topOfBookLine({
+      receivedAtLocal: "2026-07-11T11:01:00.000Z",
+      yesBid: 50,
+      noBid: null,
+      sequence: 41,
+      exchangeTimestampMs: Date.parse("2026-07-11T11:01:00.000Z"),
+    }),
+  );
+  lines.push(
+    topOfBookLine({
+      receivedAtLocal: "2026-07-11T11:01:01.000Z",
+      yesBid: 55,
+      noBid: 50,
+      yesAsk: 54,
+      noAsk: 51,
+      isParityUsable: true,
+      sequence: 43,
+      exchangeTimestampMs: Date.parse("2026-07-11T11:01:01.000Z"),
+    }),
+  );
+  lines.push(
+    topOfBookLine({
+      receivedAtLocal: "2026-07-11T11:01:02.000Z",
+      yesBid: 50,
+      noBid: 50,
+      bookState: "invalid",
+      sequence: 44,
+      exchangeTimestampMs: Date.parse("2026-07-11T11:01:02.000Z"),
+    }),
+  );
+  lines.push(
+    topOfBookLine({
+      receivedAtLocal: "2026-07-11T11:01:03.000Z",
+      yesBid: 50,
+      noBid: 51,
+      yesBidSize: null,
+      noBidSize: null,
+      sequence: 45,
+      exchangeTimestampMs: Date.parse("2026-07-11T11:01:03.000Z"),
+    }),
+  );
+
+  return {
+    ...buildFixtureFiles(),
+    [`${RUN_DIR}/capture-health.json`]: JSON.stringify({
+      runId: "run-near-miss",
+      config: { durationSeconds: 28800 },
+      capture: { topOfBookRecordCount: lines.length },
+      orderbook: { validTopOfBookRecords: lines.length - 1, sequenceGapCount: 64047 },
+      watchdog: { recoveryAttemptCount: 0 },
+    }),
+    [`${RUN_DIR}/top-of-book.jsonl`]: lines.join("\n"),
+    "data/research-results/capture-health-audit.json": JSON.stringify({
+      captureRunDir: RUN_DIR,
+      selectedRunId: "run-near-miss",
+      sourceRunIds: ["run-near-miss"],
+      summary: {
+        verdict: "capture-research-ready",
+        runDurationSeconds: 28800,
+        bookState: { validBookShare: 0.9919, sequenceGapCount: 64047, reconnectCount: 0 },
+        btcJoin: { joinCoverageShare: 1 },
+      },
+    }),
+    "data/research-results/capture-health-reconciliation.json": JSON.stringify({
+      selectedRunId: "run-near-miss",
+      sourceRunIds: ["run-near-miss"],
+      summary: { selectedRunId: "run-near-miss", overallVerdict: "capture-research-ready" },
+      durations: { configuredDurationSeconds: 28800 },
+      suspension: { suspectedSystemSleepSeconds: 0 },
+      validBookMetrics: [{ metricId: "rawTopOfBookValidShare", value: 0.9919 }],
+    }),
+    "data/research-results/bid-size-coverage-audit.json": JSON.stringify({
+      selectedRunId: "run-near-miss",
+      sourceRunIds: ["run-near-miss"],
+      comparison: { bidSizeCoverageShare: 0.9561791750925255 },
+    }),
+  };
+}
+
+function buildNoEvaluableRecordsFixtureFiles() {
+  const files = buildFixtureFiles();
+  files[`${RUN_DIR}/top-of-book.jsonl`] = [
+    topOfBookLine({
+      receivedAtLocal: "2026-07-11T11:00:01.000Z",
+      yesBid: 50,
+      noBid: null,
+      sequence: 1,
+    }),
+    topOfBookLine({
+      receivedAtLocal: "2026-07-11T11:00:02.000Z",
+      yesBid: null,
+      noBid: 51,
+      sequence: 2,
+    }),
+  ].join("\n");
+  return files;
+}
+
+function buildGrossOnlyNearMissFixtureFiles() {
+  const files = buildFixtureFiles();
+  files[`${RUN_DIR}/top-of-book.jsonl`] = [
+    topOfBookLine({
+      receivedAtLocal: "2026-07-11T11:00:01.000Z",
+      yesBid: 50,
+      noBid: 50,
+      sequence: 1,
+      exchangeTimestampMs: Date.parse("2026-07-11T11:00:01.000Z"),
+    }),
+    topOfBookLine({
+      receivedAtLocal: "2026-07-11T11:00:02.000Z",
+      yesBid: 50,
+      noBid: 50,
+      sequence: 2,
+      exchangeTimestampMs: Date.parse("2026-07-11T11:00:02.000Z"),
+    }),
+  ].join("\n");
+  return files;
+}
+
+function buildQualifiedGrossFixtureFiles() {
+  const files = buildFixtureFiles();
+  files[`${RUN_DIR}/top-of-book.jsonl`] = [
+    topOfBookLine({
+      receivedAtLocal: "2026-07-11T11:00:01.000Z",
+      yesBid: 56,
+      noBid: 50,
+      sequence: 1,
+      exchangeTimestampMs: Date.parse("2026-07-11T11:00:01.000Z"),
+    }),
+  ].join("\n");
+  return files;
 }
 
 function buildRegressionFixtureFiles() {
@@ -620,6 +777,32 @@ describe("BoundedNearMissRanking", () => {
     });
     expect(ranking.toRankedEntries()).toHaveLength(0);
   });
+
+  it("returns empty rankings when limit is zero or invalid", () => {
+    const ranking = new BoundedNearMissRanking(0, "gross");
+    ranking.consider({
+      recordIndex: 1,
+      marketTicker: MARKET,
+      timestamp: "near-miss",
+      timeRemainingMs: null,
+      yesBidCents: 50,
+      noBidCents: 50,
+      yesBidSize: 1,
+      noBidSize: 1,
+      observedEdgeCents: 0,
+      requiredEdgeCents: 2,
+      shortfallCents: 2,
+      distance: 2,
+      bookValid: true,
+      bookSynchronized: true,
+      quoteAgeMs: 0,
+      firstRejectingGate: "gross-parity-shortfall",
+      allRejectingGates: ["gross-parity-shortfall"],
+      integrityCaveat: null,
+    });
+
+    expect(ranking.toRankedEntries()).toEqual([]);
+  });
 });
 
 describe("classifyParityNearMissInterpretation", () => {
@@ -805,6 +988,15 @@ describe("analyzeParityNearMissForRun", () => {
     );
   });
 
+  it("preserves default near-miss limit when CLI flag is omitted", () => {
+    const parsed = parseParityNearMissAnalysisArgv([
+      "--capture-run-dir",
+      RUN_DIR,
+    ]);
+
+    expect(parsed.config.nearMissLimit).toBe(25);
+  });
+
   it("produces selected-run scoped report with funnel, rankings, and rule hash", async () => {
     const io = createMemoryParityNearMissIo(buildFixtureFiles());
     const report = await analyzeParityNearMissForRun({
@@ -961,6 +1153,84 @@ describe("analyzeParityNearMissForRun", () => {
     const hashA = `parity-near-miss-v1-${fnv1a32(stableStringify(buildRuleConfiguration(config)))}`;
     const hashB = `parity-near-miss-v1-${fnv1a32(stableStringify(buildRuleConfiguration(config)))}`;
     expect(hashA).toBe(hashB);
+  });
+
+  it("completes real-run-shaped fixture with zero candidates and populated gross rankings", async () => {
+    const report = await analyzeParityNearMissForRun({
+      generatedAt: "2026-07-11T12:00:00.000Z",
+      outputPath: "data/research-results/parity-near-miss-analysis.json",
+      htmlOutputPath: "data/reports/parity-near-miss-analysis.html",
+      config: createParityNearMissAnalysisConfig({ captureRunDir: RUN_DIR }),
+      io: createMemoryParityNearMissIo(buildRealRunShapedFixtureFiles()),
+    });
+
+    expect(report.summary.candidateCount).toBe(0);
+    expect(report.summary.grossNearMissCount).toBeGreaterThan(0);
+    expect(report.summary.closestGrossNearMissCents).toBeGreaterThan(0);
+    expect(report.nearMissRankings.gross.length).toBeGreaterThan(0);
+    expect(serializeParityNearMissAnalysisHtml(report)).toContain("Closest gross near misses");
+  });
+
+  it("keeps gross rankings while executable ranking stays empty when size always passes", async () => {
+    const report = await analyzeParityNearMissForRun({
+      generatedAt: "2026-07-11T12:00:00.000Z",
+      outputPath: "data/research-results/parity-near-miss-analysis.json",
+      htmlOutputPath: "data/reports/parity-near-miss-analysis.html",
+      config: createParityNearMissAnalysisConfig({ captureRunDir: RUN_DIR }),
+      io: createMemoryParityNearMissIo(buildGrossOnlyNearMissFixtureFiles()),
+    });
+
+    expect(report.nearMissRankings.gross.length).toBeGreaterThan(0);
+    expect(report.nearMissRankings.executable).toEqual([]);
+    expect(report.summary.closestGrossNearMissCents).toBe(2);
+  });
+
+  it("leaves fee-adjusted ranking empty when gross already qualifies", async () => {
+    const report = await analyzeParityNearMissForRun({
+      generatedAt: "2026-07-11T12:00:00.000Z",
+      outputPath: "data/research-results/parity-near-miss-analysis.json",
+      htmlOutputPath: "data/reports/parity-near-miss-analysis.html",
+      config: createParityNearMissAnalysisConfig({ captureRunDir: RUN_DIR }),
+      io: createMemoryParityNearMissIo(buildQualifiedGrossFixtureFiles()),
+    });
+
+    expect(report.nearMissRankings.gross).toEqual([]);
+    expect(report.nearMissRankings.feeAdjusted).toEqual([]);
+    expect(report.nearMissRankings.bufferAdjusted).toEqual([]);
+  });
+
+  it("handles no evaluable records without crashing", async () => {
+    const report = await analyzeParityNearMissForRun({
+      generatedAt: "2026-07-11T12:00:00.000Z",
+      outputPath: "data/research-results/parity-near-miss-analysis.json",
+      htmlOutputPath: "data/reports/parity-near-miss-analysis.html",
+      config: createParityNearMissAnalysisConfig({ captureRunDir: RUN_DIR }),
+      io: createMemoryParityNearMissIo(buildNoEvaluableRecordsFixtureFiles()),
+    });
+
+    expect(report.summary.closestGrossNearMissCents).toBeNull();
+    expect(report.nearMissRankings.gross).toEqual([]);
+    expect(report.nearMissRankings.feeAdjusted).toEqual([]);
+    expect(report.nearMissRankings.bufferAdjusted).toEqual([]);
+    expect(report.nearMissRankings.executable).toEqual([]);
+    expect(report.nearMissRankings.grossEpisodes).toEqual([]);
+    expect(report.nearMissRankings.bufferEpisodes).toEqual([]);
+    expect(report.recordsEligible).toBeGreaterThan(0);
+    expect(report.summary.closestGrossNearMissCents).toBeNull();
+  });
+
+  it("renders HTML when ranking categories are empty", async () => {
+    const report = await analyzeParityNearMissForRun({
+      generatedAt: "2026-07-11T12:00:00.000Z",
+      outputPath: "data/research-results/parity-near-miss-analysis.json",
+      htmlOutputPath: "data/reports/parity-near-miss-analysis.html",
+      config: createParityNearMissAnalysisConfig({ captureRunDir: RUN_DIR }),
+      io: createMemoryParityNearMissIo(buildQualifiedGrossFixtureFiles()),
+    });
+
+    const html = serializeParityNearMissAnalysisHtml(report);
+    expect(html).toContain("No near misses in this category.");
+    expect(html).toContain("Closest gross near miss");
   });
 });
 

@@ -23,7 +23,7 @@ function renderRankedTable(
         <td>${row.rank}</td>
         <td>${escapeHtml(row.marketTicker)}</td>
         <td>${escapeHtml(row.timestamp)}</td>
-        <td>${row.shortfallCents.toFixed(2)}</td>
+        <td>${typeof row.shortfallCents === "number" ? row.shortfallCents.toFixed(2) : "—"}</td>
         <td>${row.observedEdgeCents ?? "—"}</td>
         <td>${row.requiredEdgeCents}</td>
         <td>${row.yesBidCents ?? "—"}</td>

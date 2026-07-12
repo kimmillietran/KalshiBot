@@ -23,6 +23,14 @@ export type NearMissCandidateInput = {
   integrityCaveat: string | null;
 };
 
+function normalizeRankingLimit(limit: number): number {
+  if (!Number.isFinite(limit) || limit <= 0) {
+    return 0;
+  }
+
+  return Math.floor(limit);
+}
+
 function compareCandidates(left: NearMissCandidate, right: NearMissCandidate): number {
   if (left.shortfallCents !== right.shortfallCents) {
     return left.shortfallCents - right.shortfallCents;
@@ -40,12 +48,20 @@ function compareCandidates(left: NearMissCandidate, right: NearMissCandidate): n
 export class BoundedNearMissRanking {
   private readonly entries: NearMissCandidate[] = [];
 
+  private readonly limit: number;
+
   constructor(
-    private readonly limit: number,
+    limit: number,
     private readonly distanceKind: NearMissCandidate["distanceKind"],
-  ) {}
+  ) {
+    this.limit = normalizeRankingLimit(limit);
+  }
 
   consider(candidate: NearMissCandidateInput): void {
+    if (this.limit === 0) {
+      return;
+    }
+
     if (candidate.distance === null || candidate.distance <= 0) {
       return;
     }
