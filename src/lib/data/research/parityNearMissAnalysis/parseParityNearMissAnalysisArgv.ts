@@ -42,13 +42,16 @@ export function parseParityNearMissAnalysisArgv(argv: readonly string[]): {
     ?? readArgValue(argv, "--html-output")
     ?? DEFAULT_PARITY_NEAR_MISS_ANALYSIS_HTML_PATH;
 
+  const nearMissLimit = readNumberArg(argv, "--near-miss-limit");
+  const stalenessBoundMs = readNumberArg(argv, "--staleness-bound-ms");
+
   return {
     outputPath,
     htmlOutputPath,
     config: createParityNearMissAnalysisConfig({
       captureRunDir,
-      nearMissLimit: readNumberArg(argv, "--near-miss-limit") ?? undefined,
-      stalenessBoundMs: readNumberArg(argv, "--staleness-bound-ms") ?? undefined,
+      ...(nearMissLimit !== null ? { nearMissLimit } : {}),
+      ...(stalenessBoundMs !== null ? { stalenessBoundMs } : {}),
     }),
   };
 }

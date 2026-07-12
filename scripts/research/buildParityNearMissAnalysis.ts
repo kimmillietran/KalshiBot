@@ -1,5 +1,5 @@
 import { dirname } from "node:path";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
 
 import {
   buildParityNearMissAnalysisReport,
@@ -10,25 +10,53 @@ import {
 } from "@/lib/data/research/parityNearMissAnalysis";
 import { stableStringify } from "@/lib/trading/config/hashConfig";
 
-async function main(): Promise<void> {
+import {
+  formatCommandError,
+  type ParityNearMissAnalysisCommandIo,
+} from "./buildParityNearMissAnalysisTypes";
+
+function writeFileAtomically(
+  io: Pick<ParityNearMissAnalysisCommandIo, "writeFile" | "fileExists" | "unlinkFile" | "renameFile">,
+  outputPath: string,
+  data: string,
+): void {
+  const tempPath = `${outputPath}.${process.pid}.tmp`;
+  io.writeFile(tempPath, data);
+
   try {
-    const { outputPath, htmlOutputPath, config } = parseParityNearMissAnalysisArgv(
-      process.argv.slice(2),
-    );
+    io.renameFile(tempPath, outputPath);
+  } catch {
+    if (io.fileExists(outputPath)) {
+      io.unlinkFile(outputPath);
+    }
+    io.renameFile(tempPath, outputPath);
+  }
+}
+
+export async function runParityNearMissAnalysisCommand(
+  argv: readonly string[],
+  io: ParityNearMissAnalysisCommandIo,
+  options?: { generatedAt?: string },
+): Promise<number> {
+  try {
+    const { outputPath, htmlOutputPath, config } = parseParityNearMissAnalysisArgv(argv);
     const report = await buildParityNearMissAnalysisReport({
-      generatedAt: new Date().toISOString(),
+      generatedAt: options?.generatedAt ?? new Date().toISOString(),
       outputPath,
       htmlOutputPath,
       config,
       io: createParityNearMissAnalysisIo(),
     });
 
-    mkdirSync(dirname(outputPath), { recursive: true });
-    mkdirSync(dirname(htmlOutputPath), { recursive: true });
-    writeFileSync(outputPath, serializeParityNearMissAnalysisReport(report));
-    writeFileSync(htmlOutputPath, serializeParityNearMissAnalysisHtml(report));
+    const serializedReport = serializeParityNearMissAnalysisReport(report);
+    const serializedHtml = serializeParityNearMissAnalysisHtml(report);
 
-    process.stdout.write(
+    io.mkdirSync(dirname(outputPath), { recursive: true });
+    io.mkdirSync(dirname(htmlOutputPath), { recursive: true });
+    writeFileAtomically(io, outputPath, serializedReport);
+    writeFileAtomically(io, htmlOutputPath, serializedHtml);
+
+    io.writeStdout(
       `${stableStringify({
         outputPath: report.outputPath,
         htmlOutputPath: report.htmlOutputPath,
@@ -43,13 +71,38 @@ async function main(): Promise<void> {
         warnings: report.warnings,
       })}\n`,
     );
-    process.exitCode = 0;
+
+    return 0;
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Parity near-miss analysis failed.";
-    process.stderr.write(`${message}\n`);
-    process.exitCode = 1;
+    io.writeStderr(`${formatCommandError(error)}\n`);
+    return 1;
   }
+}
+
+async function main(): Promise<void> {
+  const exitCode = await runParityNearMissAnalysisCommand(process.argv.slice(2), {
+    writeStdout: (text) => {
+      process.stdout.write(text);
+    },
+    writeStderr: (text) => {
+      process.stderr.write(text);
+    },
+    writeFile: (path, data) => {
+      writeFileSync(path, data, "utf8");
+    },
+    mkdirSync: (path, options) => {
+      mkdirSync(path, options);
+    },
+    fileExists: (path) => existsSync(path),
+    unlinkFile: (path) => {
+      unlinkSync(path);
+    },
+    renameFile: (from, to) => {
+      renameSync(from, to);
+    },
+  });
+
+  process.exitCode = exitCode;
 }
 
 if (process.env.VITEST !== "true") {
