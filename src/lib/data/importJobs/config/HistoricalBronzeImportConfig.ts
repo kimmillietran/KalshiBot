@@ -7,6 +7,7 @@ import {
   HistoricalBronzeImportConfigError,
   HistoricalBronzeImportConfigErrorCode,
   HistoricalBronzeImportKalshiSource,
+  HistoricalBronzeImportMode,
   HistoricalBronzeImportOutputFormat,
 } from "./historicalBronzeImportConfigTypes";
 import type {
@@ -29,6 +30,9 @@ const SUPPORTED_BTC_INTERVALS = new Set<string>(
 );
 const SUPPORTED_OUTPUT_FORMATS = new Set<string>(
   Object.values(HistoricalBronzeImportOutputFormat),
+);
+const SUPPORTED_IMPORT_MODES = new Set<string>(
+  Object.values(HistoricalBronzeImportMode),
 );
 
 function deepFreeze<T>(value: T): T {
@@ -226,6 +230,43 @@ function validateTimeRange(startTime: string, endTime: string): void {
   }
 }
 
+function validateImportMode(value: unknown): HistoricalBronzeImportMode {
+  if (typeof value !== "string" || !SUPPORTED_IMPORT_MODES.has(value)) {
+    throw new HistoricalBronzeImportConfigError(
+      "importMode must be a supported historical import mode",
+      HistoricalBronzeImportConfigErrorCode.INVALID_IMPORT_MODE,
+    );
+  }
+
+  return value as HistoricalBronzeImportMode;
+}
+
+function resolveImportMode(input: BuildHistoricalBronzeImportConfigInput): HistoricalBronzeImportMode {
+  if (input.importMode === undefined) {
+    return HistoricalBronzeImportMode.FULL_BRONZE;
+  }
+
+  return validateImportMode(input.importMode);
+}
+
+function resolveBtcConfig(
+  input: BuildHistoricalBronzeImportConfigInput,
+  importMode: HistoricalBronzeImportMode,
+): HistoricalBronzeImportBtcConfig | null {
+  if (importMode === HistoricalBronzeImportMode.SETTLEMENT_ONLY) {
+    return input.btc === undefined || input.btc === null ? null : validateBtcConfig(input.btc);
+  }
+
+  if (input.btc === undefined || input.btc === null) {
+    throw new HistoricalBronzeImportConfigError(
+      "btc config is required for full-bronze imports",
+      HistoricalBronzeImportConfigErrorCode.MISSING_BTC_CONFIG,
+    );
+  }
+
+  return validateBtcConfig(input.btc);
+}
+
 /** Validates and freezes a historical bronze import job configuration. */
 export function buildHistoricalBronzeImportConfig(
   input: BuildHistoricalBronzeImportConfigInput,
@@ -247,8 +288,9 @@ export function buildHistoricalBronzeImportConfig(
   validateTimeRange(startTime, endTime);
   const collectionTime = validateUtcTimestamp(input.collectionTime, "collectionTime");
   const observedAt = validateUtcTimestamp(input.observedAt, "observedAt");
+  const importMode = resolveImportMode(input);
   const kalshi = validateKalshiConfig(input.kalshi);
-  const btc = validateBtcConfig(input.btc);
+  const btc = resolveBtcConfig(input, importMode);
   const output = validateOutputConfig(input.output);
   const metadata = cloneMetadata(input.metadata);
 
@@ -259,8 +301,9 @@ export function buildHistoricalBronzeImportConfig(
     endTime: endTime as HistoricalBronzeImportConfig["endTime"],
     collectionTime: collectionTime as HistoricalBronzeImportConfig["collectionTime"],
     observedAt: observedAt as HistoricalBronzeImportConfig["observedAt"],
+    importMode,
     kalshi: deepFreeze({ ...kalshi }),
-    btc: deepFreeze({ ...btc }),
+    btc: btc === null ? null : deepFreeze({ ...btc }),
     output: deepFreeze({ ...output }),
     metadata,
   });

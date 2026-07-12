@@ -120,11 +120,13 @@ export function buildImportedMarketMetadata(
         candleSource: config.kalshi.candleSource,
         settlementSource: config.kalshi.settlementSource,
       },
-      btc: {
-        provider: config.btc.provider,
-        symbol: config.btc.symbol,
-        interval: config.btc.interval,
-      },
+      btc: config.btc
+        ? {
+            provider: config.btc.provider,
+            symbol: config.btc.symbol,
+            interval: config.btc.interval,
+          }
+        : null,
     },
     bronzeRecordCount: statistics.totalRecords,
     btcBarCount: statistics.btcBarCount,
@@ -197,7 +199,12 @@ export function parseImportedMarketMetadataJson(json: string): ImportedMarketMet
 
   assertPlainObject(parsed.sourceProviders, "metadata.json sourceProviders");
   assertPlainObject(parsed.sourceProviders.kalshi, "metadata.json sourceProviders.kalshi");
-  assertPlainObject(parsed.sourceProviders.btc, "metadata.json sourceProviders.btc");
+  if (
+    parsed.sourceProviders.btc !== null
+    && parsed.sourceProviders.btc !== undefined
+  ) {
+    assertPlainObject(parsed.sourceProviders.btc, "metadata.json sourceProviders.btc");
+  }
   assertPlainObject(parsed.validationStatus, "metadata.json validationStatus");
   assertPlainObject(parsed.provenance, "metadata.json provenance");
 

@@ -22,11 +22,13 @@ import { DataQualityFlag } from "@/lib/data/schemas";
 import {
   HistoricalBronzeImportBtcInterval,
   HistoricalBronzeImportBtcProvider,
+  HistoricalBronzeImportMode,
 } from "../config/historicalBronzeImportConfigTypes";
 import type { HistoricalBronzeImportConfig } from "../config/historicalBronzeImportConfigTypes";
 import { runConfiguredHistoricalBronzeImport } from "../harness/HistoricalImportHarness";
 import type { HistoricalBronzeImportJobResult } from "../historicalBronzeImportJobTypes";
 import { createBtcHistoricalBronzeProviderFromImporter } from "../providers/btc";
+import { createInMemoryBtcHistoricalBronzeProvider } from "../providers/btc/InMemoryBtcHistoricalBronzeProvider";
 import { createPrefetchedKalshiHistoricalBronzeProvider } from "../providers/kalshi";
 
 import {
@@ -79,6 +81,13 @@ function createBtcImporterFromConfig(
   config: HistoricalBronzeImportConfig,
   fetchImpl: HistoricalImportFetchLike,
 ): BtcHistoricalImporter {
+  if (!config.btc) {
+    throw new HistoricalImportBootstrapError(
+      "btc config is required for full-bronze imports",
+      HistoricalImportBootstrapErrorCode.UNSUPPORTED_BTC_PROVIDER,
+    );
+  }
+
   if (config.btc.provider === HistoricalBronzeImportBtcProvider.BINANCE_SPOT) {
     const httpAdapter = new BtcHistoricalHttpAdapter({ fetchImpl });
     return createBtcHistoricalImporter({
@@ -101,7 +110,7 @@ function createBtcImporterFromConfig(
 }
 
 function mapBtcInterval(
-  interval: HistoricalBronzeImportConfig["btc"]["interval"],
+  interval: HistoricalBronzeImportBtcInterval,
 ): BtcHistoricalInterval {
   if (interval === HistoricalBronzeImportBtcInterval.ONE_MINUTE) {
     return BtcHistoricalInterval.ONE_MINUTE;
@@ -170,6 +179,7 @@ async function createKalshiProviderFromConfig(
         }
       : null,
     settlementQualityFlags,
+    skipCandlesticks: config.importMode === HistoricalBronzeImportMode.SETTLEMENT_ONLY,
   });
 }
 
@@ -177,6 +187,17 @@ async function createBtcProviderFromConfig(
   config: HistoricalBronzeImportConfig,
   fetchImpl: HistoricalImportFetchLike,
 ) {
+  if (config.importMode === HistoricalBronzeImportMode.SETTLEMENT_ONLY) {
+    return createInMemoryBtcHistoricalBronzeProvider({ bars: [] });
+  }
+
+  if (!config.btc) {
+    throw new HistoricalImportBootstrapError(
+      "btc config is required for full-bronze imports",
+      HistoricalImportBootstrapErrorCode.UNSUPPORTED_BTC_PROVIDER,
+    );
+  }
+
   const importer = createBtcImporterFromConfig(config, fetchImpl);
   const interval = mapBtcInterval(config.btc.interval);
   const bars = await importer.getHistoricalBars({

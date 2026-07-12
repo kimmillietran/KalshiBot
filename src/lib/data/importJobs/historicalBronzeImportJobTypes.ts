@@ -1,6 +1,8 @@
 import type { HistoricalBronzeValidationResult } from "@/lib/data/datasets/validation";
 import type { RawHistoricalRecord } from "@/lib/data/types";
 
+import type { HistoricalBronzeImportMode } from "./config/historicalBronzeImportConfigTypes";
+
 export type HistoricalBronzeProviderImportInput = {
   marketTicker: string;
   startTime: string;
@@ -36,6 +38,7 @@ export type RunHistoricalBronzeImportJobInput = {
   btcProvider: BtcHistoricalBronzeProvider;
   collectionTime: string;
   observedAt: string;
+  importMode?: HistoricalBronzeImportMode;
 };
 
 export type HistoricalBronzeImportJobMetadata = {

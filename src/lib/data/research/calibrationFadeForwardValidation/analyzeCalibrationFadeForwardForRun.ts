@@ -153,6 +153,12 @@ function computeGrossReturnCents(side: "no" | "yes", entryPriceCents: number, ou
 
 function computeMetricsFromMarkets(markets: readonly CalibrationFadeMarketRecord[]) {
   const settled = markets.filter((market) => market.settledOutcome === "yes" || market.settledOutcome === "no");
+  const executableEntryAvailable = markets.filter(
+    (market) => market.executableAvailable && market.noAskCents !== null,
+  );
+  const evaluatedExecutable = executableEntryAvailable.filter(
+    (market) => market.settledOutcome === "yes" || market.settledOutcome === "no",
+  );
   const implied = settled.map((market) => market.impliedYesProbability);
   const yesRate = settled.length
     ? settled.filter((market) => market.settledOutcome === "yes").length / settled.length
@@ -187,7 +193,7 @@ function computeMetricsFromMarkets(markets: readonly CalibrationFadeMarketRecord
         )
       : null;
 
-  const executable = settled.filter((market) => market.executableAvailable && market.noAskCents !== null);
+  const executable = evaluatedExecutable;
   const grossReturns = executable.map((market) => market.grossReturnCents ?? 0);
   const feeReturns = executable.map((market) => market.feeAdjustedReturnCents ?? 0);
   let cumulative = 0;
@@ -216,8 +222,11 @@ function computeMetricsFromMarkets(markets: readonly CalibrationFadeMarketRecord
       descriptiveObservationSignedGap: null,
     },
     executable: {
-      executableCandidateCount: executable.length,
-      unavailableExecutablePriceCount: markets.length - executable.length,
+      executableCandidateCount: evaluatedExecutable.length,
+      evaluatedExecutableCandidateCount: evaluatedExecutable.length,
+      executableEntryAvailableCount: executableEntryAvailable.length,
+      unavailableExecutablePriceCount:
+        markets.length - executableEntryAvailable.length,
       grossReturnCents: grossReturns.length ? grossReturns.reduce((a, b) => a + b, 0) : null,
       feeAdjustedReturnCents: feeReturns.length ? feeReturns.reduce((a, b) => a + b, 0) : null,
       winRate: executable.length
@@ -607,10 +616,14 @@ export async function analyzeCalibrationFadeForwardForRun(input: {
     {
       stageId: "executable-entry",
       label: "Executable entry available",
-      count: metrics.executable.executableCandidateCount,
+      count: metrics.executable.executableEntryAvailableCount,
     },
     { stageId: "settlement-joined", label: "Settlement joined", count: joinedCount },
-    { stageId: "evaluated-candidate", label: "Final evaluated candidates", count: joinedCount },
+    {
+      stageId: "evaluated-candidate",
+      label: "Final evaluated candidates",
+      count: metrics.executable.evaluatedExecutableCandidateCount,
+    },
   ];
 
   const warnings = [
@@ -644,7 +657,7 @@ export async function analyzeCalibrationFadeForwardForRun(input: {
     qualifyingObservationCount,
     candidateEpisodeCount: episodeEntries.length,
     candidateMarketCount: marketRecords.length,
-    executableCandidateCount: metrics.executable.executableCandidateCount,
+    executableCandidateCount: metrics.executable.evaluatedExecutableCandidateCount,
     settlementCoverageShare: settlementCoverage.settlementCoverageShare,
     warnings,
     inputArtifactIdentities: context.inputArtifactIdentities,

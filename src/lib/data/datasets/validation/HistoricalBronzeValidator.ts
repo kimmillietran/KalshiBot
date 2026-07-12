@@ -8,11 +8,14 @@ import { stableStringify } from "@/lib/trading/config/hashConfig";
 
 import { DATASET_BRONZE_CONTENT_TYPE } from "../datasetTypes";
 
+import { HistoricalBronzeImportMode } from "@/lib/data/importJobs/config/historicalBronzeImportConfigTypes";
+
 import {
   HistoricalBronzeValidationErrorCode,
 } from "./historicalBronzeValidationTypes";
 import type {
   HistoricalBronzeValidationIssue,
+  HistoricalBronzeValidationOptions,
   HistoricalBronzeValidationResult,
   HistoricalBronzeValidationSeverity,
   HistoricalBronzeValidationStatistics,
@@ -639,6 +642,7 @@ function validateGroupCompleteness(
   ticker: string,
   group: MarketGroup,
   issues: HistoricalBronzeValidationIssue[],
+  settlementOnly: boolean,
 ): void {
   const hasMarket = group.market.length > 0;
   const hasCandles = group.candles.length > 0;
@@ -671,6 +675,33 @@ function validateGroupCompleteness(
         ),
       );
     }
+  }
+
+  if (settlementOnly) {
+    if (hasAnyKalshi && !hasMarket) {
+      const anchor = group.settlements[0] ?? group.other[0] ?? null;
+      issues.push(
+        createIssue(
+          HistoricalBronzeValidationErrorCode.INCOMPLETE_MARKET_GROUP,
+          "error",
+          `Settlement-only import for ticker "${ticker}" requires market metadata`,
+          anchor,
+        ),
+      );
+    }
+
+    if (hasMarket && !hasSettlement) {
+      issues.push(
+        createIssue(
+          HistoricalBronzeValidationErrorCode.INCOMPLETE_MARKET_GROUP,
+          "warning",
+          `Settlement-only import for ticker "${ticker}" has market metadata but no settlement outcome yet`,
+          group.market[0] ?? null,
+        ),
+      );
+    }
+
+    return;
   }
 
   if (hasAnyKalshi || hasBtc) {
@@ -734,6 +765,7 @@ function buildStatistics(
 /** Validates bronze historical records before dataset assembly. */
 export function validateHistoricalBronzeDataset(
   records: readonly RawHistoricalRecord[],
+  options?: HistoricalBronzeValidationOptions,
 ): HistoricalBronzeValidationResult {
   const errors: HistoricalBronzeValidationIssue[] = [];
   const warnings: HistoricalBronzeValidationIssue[] = [];
@@ -789,11 +821,14 @@ export function validateHistoricalBronzeDataset(
     groups.set(record.ticker, group);
   }
 
+  const settlementOnly =
+    options?.importMode === HistoricalBronzeImportMode.SETTLEMENT_ONLY;
+
   const tickers = [...groups.keys()].sort((left, right) => left.localeCompare(right));
   for (const ticker of tickers) {
     const group = groups.get(ticker)!;
     validateGroupDuplicates(ticker, group, errors);
-    validateGroupCompleteness(ticker, group, errors);
+    validateGroupCompleteness(ticker, group, errors, settlementOnly);
   }
 
   const sortedErrors = sortIssues(errors);

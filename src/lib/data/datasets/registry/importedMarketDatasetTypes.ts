@@ -34,7 +34,7 @@ export class DatasetRegistryError extends Error {
 
 export type ImportedMarketSourceProviders = {
   kalshi: HistoricalBronzeImportKalshiConfig;
-  btc: HistoricalBronzeImportBtcConfig;
+  btc: HistoricalBronzeImportBtcConfig | null;
 };
 
 export type ImportedMarketMetadataProvenance = {

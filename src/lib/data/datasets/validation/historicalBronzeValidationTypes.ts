@@ -47,3 +47,7 @@ export type HistoricalBronzeValidationResult = {
   warnings: readonly HistoricalBronzeValidationIssue[];
   statistics: HistoricalBronzeValidationStatistics;
 };
+
+export type HistoricalBronzeValidationOptions = {
+  importMode?: import("@/lib/data/importJobs/config/historicalBronzeImportConfigTypes").HistoricalBronzeImportMode;
+};

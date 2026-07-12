@@ -7,6 +7,7 @@ import {
   HistoricalBronzeImportConfigError,
   HistoricalBronzeImportConfigErrorCode,
   HistoricalBronzeImportKalshiSource,
+  HistoricalBronzeImportMode,
   HistoricalBronzeImportOutputFormat,
   serializeHistoricalBronzeImportConfig,
 } from "./index";
@@ -61,6 +62,7 @@ describe("buildHistoricalBronzeImportConfig", () => {
       endTime: END_TIME,
       collectionTime: COLLECTION_TIME,
       observedAt: OBSERVED_AT,
+      importMode: HistoricalBronzeImportMode.FULL_BRONZE,
       kalshi: {
         marketSource: HistoricalBronzeImportKalshiSource.KALSHI_REST,
         candleSource: HistoricalBronzeImportKalshiSource.KALSHI_CANDLES,

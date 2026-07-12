@@ -103,7 +103,7 @@ export function classifyCalibrationFadeInterpretation(input: {
     input.executable.feeAdjustedReturnCents !== null
     && input.executable.feeAdjustedReturnCents
       >= input.spec.minimumEvidenceRequirements.materialExecutableNetReturnCents
-    && input.executable.executableCandidateCount > 0;
+    && input.executable.evaluatedExecutableCandidateCount > 0;
 
   if (calibrationSupported && executableSupported) {
     return action(

@@ -23,7 +23,7 @@ export type HistoricalBronzeImportPlan = {
   endTime: string;
   providerSelections: {
     kalshi: HistoricalBronzeImportKalshiConfig;
-    btc: HistoricalBronzeImportBtcConfig;
+    btc: HistoricalBronzeImportBtcConfig | null;
   };
   outputSelections: HistoricalBronzeImportOutputConfig;
   serializedConfig: string;
@@ -67,11 +67,13 @@ export function buildHistoricalBronzeImportPlan(
         candleSource: config.kalshi.candleSource,
         settlementSource: config.kalshi.settlementSource,
       },
-      btc: {
-        provider: config.btc.provider,
-        symbol: config.btc.symbol,
-        interval: config.btc.interval,
-      },
+      btc: config.btc
+        ? {
+            provider: config.btc.provider,
+            symbol: config.btc.symbol,
+            interval: config.btc.interval,
+          }
+        : null,
     },
     outputSelections: {
       format: config.output.format,
@@ -97,11 +99,13 @@ export function serializeHistoricalBronzeImportPlan(
         candleSource: plan.providerSelections.kalshi.candleSource,
         settlementSource: plan.providerSelections.kalshi.settlementSource,
       },
-      btc: {
-        provider: plan.providerSelections.btc.provider,
-        symbol: plan.providerSelections.btc.symbol,
-        interval: plan.providerSelections.btc.interval,
-      },
+      btc: plan.providerSelections.btc
+        ? {
+            provider: plan.providerSelections.btc.provider,
+            symbol: plan.providerSelections.btc.symbol,
+            interval: plan.providerSelections.btc.interval,
+          }
+        : null,
     },
     outputSelections: {
       format: plan.outputSelections.format,

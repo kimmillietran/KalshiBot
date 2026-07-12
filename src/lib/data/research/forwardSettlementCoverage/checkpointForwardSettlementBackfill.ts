@@ -33,6 +33,7 @@ export function createForwardSettlementBackfillCheckpoint(input: {
       lastAttemptAt: null,
       nextEligibleRetryAt: null,
       errorMessage: null,
+      errorCategory: null,
       importResultPath: null,
     })),
   };
@@ -104,6 +105,7 @@ export function mergeCheckpointWithMarkets(
         lastAttemptAt: null,
         nextEligibleRetryAt: null,
         errorMessage: null,
+        errorCategory: null,
         importResultPath: null,
       }),
   };

@@ -21,6 +21,7 @@ export function runConfiguredHistoricalBronzeImport(
     endTime: config.endTime,
     collectionTime: config.collectionTime,
     observedAt: config.observedAt,
+    importMode: config.importMode,
     kalshiProvider,
     btcProvider,
   });

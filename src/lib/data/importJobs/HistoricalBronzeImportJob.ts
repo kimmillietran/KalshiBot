@@ -3,8 +3,11 @@ import {
   serializeHistoricalBronzeValidation,
   validateHistoricalBronzeDataset,
 } from "@/lib/data/datasets/validation";
+import type { HistoricalBronzeValidationOptions } from "@/lib/data/datasets/validation/historicalBronzeValidationTypes";
 import type { RawHistoricalRecord } from "@/lib/data/types";
 import { stableStringify } from "@/lib/trading/config/hashConfig";
+
+import { HistoricalBronzeImportMode } from "./config/historicalBronzeImportConfigTypes";
 
 import type {
   HistoricalBronzeImportJobCoreResult,
@@ -90,11 +93,16 @@ export function runHistoricalBronzeImportJob(
   input: RunHistoricalBronzeImportJobInput,
 ): HistoricalBronzeImportJobResult {
   const providerInput = buildProviderInput(input);
+  const settlementOnly = input.importMode === HistoricalBronzeImportMode.SETTLEMENT_ONLY;
 
   const marketRecords = input.kalshiProvider.importKalshiMarketRecords(providerInput);
-  const candleRecords = input.kalshiProvider.importKalshiCandleRecords(providerInput);
+  const candleRecords = settlementOnly
+    ? []
+    : input.kalshiProvider.importKalshiCandleRecords(providerInput);
   const settlementRecords = input.kalshiProvider.importKalshiSettlementRecords(providerInput);
-  const btcRecords = input.btcProvider.importBtcKlineRecords(providerInput);
+  const btcRecords = settlementOnly
+    ? []
+    : input.btcProvider.importBtcKlineRecords(providerInput);
 
   const bronzeRecords = sortBronzeRecords([
     ...marketRecords,
@@ -103,7 +111,10 @@ export function runHistoricalBronzeImportJob(
     ...btcRecords,
   ]);
 
-  const validationResult = validateHistoricalBronzeDataset(bronzeRecords);
+  const validationOptions: HistoricalBronzeValidationOptions = {
+    importMode: input.importMode ?? HistoricalBronzeImportMode.FULL_BRONZE,
+  };
+  const validationResult = validateHistoricalBronzeDataset(bronzeRecords, validationOptions);
 
   const coreResult: HistoricalBronzeImportJobCoreResult = {
     jobId: input.jobId,

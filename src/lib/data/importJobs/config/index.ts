@@ -4,6 +4,7 @@ export {
   HistoricalBronzeImportConfigError,
   HistoricalBronzeImportConfigErrorCode,
   HistoricalBronzeImportKalshiSource,
+  HistoricalBronzeImportMode,
   HistoricalBronzeImportOutputFormat,
 } from "./historicalBronzeImportConfigTypes";
 export type {

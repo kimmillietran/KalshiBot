@@ -6,6 +6,7 @@ import {
   HistoricalBronzeImportBtcProvider,
   HistoricalBronzeImportConfigError,
   HistoricalBronzeImportKalshiSource,
+  HistoricalBronzeImportMode,
   HistoricalBronzeImportOutputFormat,
 } from "@/lib/data/importJobs/config";
 import type {
@@ -178,6 +179,42 @@ describe("createHistoricalImportProvidersFromConfig", () => {
     ).toBe(true);
 
     btcFetchSpy.mockRestore();
+  });
+
+  it("does not call BTC klines HTTP for settlement-only imports", async () => {
+    const fetchImpl = createBootstrapFetchImpl();
+    const btcFetchSpy = vi.spyOn(BtcHistoricalHttpAdapter.prototype, "fetchKlines");
+    const coinbaseFetchSpy = vi.spyOn(CoinbaseHistoricalHttpAdapter.prototype, "fetchCandles");
+    const config = buildHistoricalBronzeImportConfig(
+      validConfigInput({
+        importMode: HistoricalBronzeImportMode.SETTLEMENT_ONLY,
+        btc: null,
+      }),
+    );
+
+    const { btcProvider } = await createHistoricalImportProvidersFromConfig({
+      config,
+      fetchImpl,
+    });
+    const btcRecords = btcProvider.importBtcKlineRecords({
+      marketTicker: MARKET_TICKER,
+      startTime: START_TIME,
+      endTime: END_TIME,
+      collectionTime: COLLECTION_TIME,
+      observedAt: OBSERVED_AT,
+    });
+
+    expect(btcFetchSpy).not.toHaveBeenCalled();
+    expect(coinbaseFetchSpy).not.toHaveBeenCalled();
+    expect(btcRecords).toEqual([]);
+    expect(
+      (fetchImpl as ReturnType<typeof vi.fn>).mock.calls.some(([url]) =>
+        String(url).includes("/api/v3/klines"),
+      ),
+    ).toBe(false);
+
+    btcFetchSpy.mockRestore();
+    coinbaseFetchSpy.mockRestore();
   });
 
   it("selects the Binance BTC importer for BINANCE_SPOT", async () => {

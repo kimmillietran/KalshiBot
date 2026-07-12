@@ -1,9 +1,8 @@
 import { posix } from "node:path";
 
 import {
-  HistoricalBronzeImportBtcInterval,
-  HistoricalBronzeImportBtcProvider,
   HistoricalBronzeImportKalshiSource,
+  HistoricalBronzeImportMode,
   HistoricalBronzeImportOutputFormat,
   buildHistoricalBronzeImportConfig,
 } from "@/lib/data/importJobs/config";
@@ -79,16 +78,13 @@ export function buildCaptureMarketImportConfig(input: {
     endTime,
     collectionTime,
     observedAt: input.evaluatedAt,
+    importMode: HistoricalBronzeImportMode.SETTLEMENT_ONLY,
     kalshi: {
       marketSource: HistoricalBronzeImportKalshiSource.KALSHI_REST,
       candleSource: HistoricalBronzeImportKalshiSource.KALSHI_CANDLES,
       settlementSource: HistoricalBronzeImportKalshiSource.KALSHI_REST,
     },
-    btc: {
-      provider: HistoricalBronzeImportBtcProvider.BINANCE_SPOT,
-      symbol: "BTCUSDT",
-      interval: HistoricalBronzeImportBtcInterval.ONE_MINUTE,
-    },
+    btc: null,
     output: {
       format: HistoricalBronzeImportOutputFormat.JSON,
       includeValidationReport: true,
