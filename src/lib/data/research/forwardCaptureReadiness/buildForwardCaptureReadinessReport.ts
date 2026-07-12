@@ -49,11 +49,26 @@ export function buildForwardCaptureReadinessReport(input: {
   if (selection.analysisScope === "selected-run" && selection.captureRunDir) {
     const loaded = loadRun(input.io, selection.captureRunDir, input.inputPaths.forwardQuotesDir);
     if (loaded.run) {
-      runs = [loaded.run];
-      warnings = [];
-      sequenceGapSemantics = documentSequenceGapSemantics(
-        loaded.run.health as Record<string, unknown>,
-      );
+      const exclusionReason = getResearchEligibilityExclusionReason(loaded.run);
+      if (exclusionReason) {
+        runs = [];
+        warnings = [{
+          runId: loaded.run.runId,
+          runDir: selection.captureRunDir,
+          message: exclusionReason,
+        }];
+        excludedRuns.push({
+          runId: loaded.run.runId,
+          runDir: selection.captureRunDir,
+          reason: exclusionReason,
+        });
+      } else {
+        runs = [loaded.run];
+        warnings = [];
+        sequenceGapSemantics = documentSequenceGapSemantics(
+          loaded.run.health as Record<string, unknown>,
+        );
+      }
     } else {
       runs = [];
       if (loaded.warning) {

@@ -175,10 +175,18 @@ export function buildBidOnlyCandidateLifecycleReport(input: {
   });
   const scopeFields = spreadDownstreamScopeFields(scope, { sourceRunIds });
 
+  const artifactValidationFailed =
+    (loaded.artifactValidation?.mismatchedArtifacts.length ?? 0) > 0
+    || (loaded.artifactValidation?.staleArtifacts.length ?? 0) > 0
+    || (loaded.artifactValidation?.malformedArtifacts.length ?? 0) > 0;
+
   const enoughForStrategyEvaluation =
-    metrics.persistentCandidateEpisodes > 0
-    || metrics.bufferAdjustedCandidateEpisodes > 0
-    || metrics.grossCandidateEpisodes > 0;
+    !artifactValidationFailed
+    && (
+      metrics.persistentCandidateEpisodes > 0
+      || metrics.bufferAdjustedCandidateEpisodes > 0
+      || metrics.grossCandidateEpisodes > 0
+    );
 
   return {
     generatedAt: input.generatedAt,

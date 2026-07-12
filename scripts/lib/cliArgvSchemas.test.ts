@@ -147,6 +147,12 @@ describe("cliArgvSchemas", () => {
     ]);
   });
 
+  it("maps stripped bid-only lifecycle output-only positional argv", () => {
+    expect(
+      normalizeBidOnlyCandidateLifecycleArgv(["data/research-results/custom.json"]),
+    ).toEqual(["--output", "data/research-results/custom.json"]);
+  });
+
   it("normalizes execute expansion import max-markets from equals, space, and npm config forms", () => {
     vi.stubEnv("npm_config_max_markets", "10");
 

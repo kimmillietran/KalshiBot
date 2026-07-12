@@ -1036,7 +1036,9 @@ export function normalizeCaptureQualityValidationArgv(argv: readonly string[]): 
 
 export function normalizeBidOnlyCandidateLifecycleArgv(argv: readonly string[]): string[] {
   const expanded = expandEqualsStyleFlags(argv);
-  const positional = normalizeSelectedRunCaptureOutputArgv(expanded);
+  const positional = normalizeSelectedRunCaptureOutputArgv(expanded, {
+    outputOnlyWhenSingle: true,
+  });
   if (positional) {
     return positional;
   }
