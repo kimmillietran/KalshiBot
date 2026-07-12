@@ -1,4 +1,5 @@
 import type { ParityNearMissAnalysisReport } from "./parityNearMissAnalysisTypes";
+import { SEQUENTIAL_FUNNEL_STAGE_ORDER } from "./parityGateSemantics";
 
 function escapeHtml(value: string): string {
   return value
@@ -22,9 +23,12 @@ function renderRankedTable(
         <td>${row.rank}</td>
         <td>${escapeHtml(row.marketTicker)}</td>
         <td>${escapeHtml(row.timestamp)}</td>
-        <td>${row.distance.toFixed(2)}</td>
+        <td>${row.shortfallCents.toFixed(2)}</td>
+        <td>${row.observedEdgeCents ?? "—"}</td>
+        <td>${row.requiredEdgeCents}</td>
         <td>${row.yesBidCents ?? "—"}</td>
         <td>${row.noBidCents ?? "—"}</td>
+        <td>${row.quoteAgeMs ?? "—"}</td>
         <td>${escapeHtml(row.firstRejectingGate ?? "—")}</td>
         <td>${escapeHtml(row.integrityCaveat ?? "—")}</td>
       </tr>`,
@@ -36,8 +40,9 @@ function renderRankedTable(
     <table>
       <thead>
         <tr>
-          <th>Rank</th><th>Market</th><th>Timestamp</th><th>Distance</th>
-          <th>YES bid</th><th>NO bid</th><th>First gate</th><th>Integrity</th>
+          <th>Rank</th><th>Market</th><th>Timestamp</th><th>Shortfall</th>
+          <th>Observed edge</th><th>Required edge</th><th>YES bid</th><th>NO bid</th>
+          <th>Quote age (ms)</th><th>First gate</th><th>Integrity</th>
         </tr>
       </thead>
       <tbody>${body}</tbody>
@@ -55,7 +60,8 @@ function renderCountRows(record: Record<string, number>): string {
 export function serializeParityNearMissAnalysisHtml(
   report: ParityNearMissAnalysisReport,
 ): string {
-  const funnel = report.qualificationFunnel;
+  const funnel = report.sequentialQualificationFunnel;
+  const staleness = report.stalenessSummary;
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -78,15 +84,17 @@ export function serializeParityNearMissAnalysisHtml(
     <h2>Executive result</h2>
     <p><strong>Classification:</strong> ${escapeHtml(report.summary.interpretationClassification)}</p>
     <p><strong>Recommended next action:</strong> ${escapeHtml(report.summary.recommendedNextAction)}</p>
+    <p><strong>Classification rationale:</strong> ${escapeHtml(report.summary.classificationRationale)}</p>
     <p><strong>Selected run:</strong> <code>${escapeHtml(report.selectedRunId)}</code></p>
     <p><strong>Records scanned:</strong> ${report.recordsScanned}</p>
     <p><strong>Final buffer-adjusted candidates:</strong> ${report.summary.candidateCount}</p>
     <p><strong>Closest gross near miss:</strong> ${report.summary.closestGrossNearMissCents ?? "—"}</p>
+    <p><strong>Closest fee-adjusted near miss:</strong> ${report.summary.closestFeeAdjustedNearMissCents ?? "—"}</p>
     <p><strong>Closest buffer near miss:</strong> ${report.summary.closestBufferNearMissCents ?? "—"}</p>
   </section>
 
   <section>
-    <h2>Selected-run quality</h2>
+    <h2>Selected-run health</h2>
     <table>
       <tbody>
         <tr><td>Run duration (s)</td><td>${report.selectedRunQuality.runDurationSeconds ?? "—"}</td></tr>
@@ -94,27 +102,39 @@ export function serializeParityNearMissAnalysisHtml(
         <tr><td>BTC join coverage</td><td>${report.selectedRunQuality.btcJoinCoverageShare ?? "—"}</td></tr>
         <tr><td>Bid size coverage</td><td>${report.selectedRunQuality.bidSizeCoverageShare ?? "—"}</td></tr>
         <tr><td>Reconnect count</td><td>${report.selectedRunQuality.reconnectCount ?? "—"}</td></tr>
+        <tr><td>Suspected system sleep (s)</td><td>${report.selectedRunQuality.suspectedSystemSleepSeconds ?? "—"}</td></tr>
         <tr><td>Sequence gaps</td><td>${report.selectedRunQuality.sequenceGapCount ?? "—"}</td></tr>
+        <tr><td>Capture verdict</td><td>${escapeHtml(report.selectedRunQuality.captureVerdict ?? "—")}</td></tr>
+        <tr><td>Reconciliation verdict</td><td>${escapeHtml(report.selectedRunQuality.reconciliationVerdict ?? "—")}</td></tr>
       </tbody>
     </table>
   </section>
 
   <section>
-    <h2>Qualification funnel</h2>
+    <h2>Staleness summary</h2>
     <table>
       <tbody>
-        <tr><td>Records loaded</td><td>${funnel.recordsLoaded}</td></tr>
-        <tr><td>Records eligible</td><td>${funnel.recordsEligible}</td></tr>
-        <tr><td>Valid books</td><td>${funnel.validBooks}</td></tr>
-        <tr><td>Synchronized books</td><td>${funnel.synchronizedBooks}</td></tr>
-        <tr><td>Sized bid pairs</td><td>${funnel.sizedBidPairs}</td></tr>
-        <tr><td>Positive edge</td><td>${funnel.positiveEdgeRecords}</td></tr>
-        <tr><td>Gross pass</td><td>${funnel.grossPass}</td></tr>
-        <tr><td>Fee pass</td><td>${funnel.feePass}</td></tr>
-        <tr><td>Buffer pass</td><td>${funnel.bufferPass}</td></tr>
-        <tr><td>Staleness pass</td><td>${funnel.stalenessPass}</td></tr>
-        <tr><td>Persistent episodes</td><td>${funnel.persistentPass}</td></tr>
-        <tr><td>Final candidates</td><td>${funnel.finalCandidates}</td></tr>
+        <tr><td>Threshold (ms)</td><td>${staleness.stalenessThresholdMs}</td></tr>
+        <tr><td>Known fresh</td><td>${staleness.knownFreshCount}</td></tr>
+        <tr><td>Known stale</td><td>${staleness.knownStaleCount}</td></tr>
+        <tr><td>Unknown quote age</td><td>${staleness.unknownQuoteAgeCount}</td></tr>
+        <tr><td>Negative quote age</td><td>${staleness.negativeQuoteAgeCount}</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Independent gate pass counts</h2>
+    <table><tbody>${renderCountRows(report.independentGatePassCounts as unknown as Record<string, number>)}</tbody></table>
+  </section>
+
+  <section>
+    <h2>Sequential qualification funnel</h2>
+    <table>
+      <tbody>
+        ${SEQUENTIAL_FUNNEL_STAGE_ORDER.map(
+          (stage) => `<tr><td>${escapeHtml(stage)}</td><td>${funnel[stage]}</td></tr>`,
+        ).join("")}
       </tbody>
     </table>
   </section>
@@ -122,9 +142,13 @@ export function serializeParityNearMissAnalysisHtml(
   <section>
     <h2>Distance distributions</h2>
     <p><strong>Sign convention:</strong> ${escapeHtml(report.distanceSignConvention)}</p>
-    <h3>Gross distance buckets</h3>
+    <h3>Bid-sum relationship</h3>
+    <table><tbody>${renderCountRows(report.distanceDistributions.bidSumRelationship)}</tbody></table>
+    <h3>Gross shortfall buckets</h3>
     <table><tbody>${renderCountRows(report.distanceDistributions.gross)}</tbody></table>
-    <h3>Buffer-adjusted distance buckets</h3>
+    <h3>Fee-adjusted shortfall buckets</h3>
+    <table><tbody>${renderCountRows(report.distanceDistributions.feeAdjusted)}</tbody></table>
+    <h3>Buffer-adjusted shortfall buckets</h3>
     <table><tbody>${renderCountRows(report.distanceDistributions.bufferAdjusted)}</tbody></table>
   </section>
 
@@ -160,11 +184,6 @@ export function serializeParityNearMissAnalysisHtml(
           .join("")}
       </tbody>
     </table>
-  </section>
-
-  <section>
-    <h2>Time-remaining breakdown</h2>
-    <table><tbody>${renderCountRows(report.timeRemainingBreakdown)}</tbody></table>
   </section>
 
   <section class="guardrail">

@@ -15,7 +15,18 @@ export {
   evaluateParityObservationGates,
   resolveDistanceBucket,
   buildRuleConfiguration,
+  buildObservationGateFlags,
+  incrementGateRejectionCounts,
+  createEmptyGateCounts,
 } from "./evaluateParityObservationGates";
+export { computeParityShortfalls, computeObservedGrossEdgeCents } from "./computeParityShortfalls";
+export { evaluateQuoteStaleness, normalizeExchangeTimestampMs } from "./resolveQuoteStaleness";
+export {
+  SEQUENTIAL_FUNNEL_STAGE_ORDER,
+  createEmptyIndependentGatePassCounts,
+  createEmptySequentialFunnel,
+} from "./parityGateSemantics";
+export { NARROW_NEAR_MISS_CENTS } from "./classifyParityNearMissInterpretation";
 export { parseParityNearMissAnalysisArgv } from "./parseParityNearMissAnalysisArgv";
 export { serializeParityNearMissAnalysisHtml } from "./serializeParityNearMissAnalysisHtml";
 export { classifyParityNearMissInterpretation } from "./classifyParityNearMissInterpretation";
