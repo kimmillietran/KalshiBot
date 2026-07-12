@@ -67,22 +67,6 @@ export function classifyMarketSettlementCoverage(input: {
   const marketNotYetSettled =
     Number.isFinite(closeMs) && closeMs > evaluatedMs;
 
-  if (importState.importFailed) {
-    return {
-      marketTicker: input.inventory.marketTicker,
-      seriesTicker: input.inventory.seriesTicker,
-      classification: "import-failed",
-      settledOutcome: "unknown",
-      settlementTime: null,
-      sourceArtifact: importState.importResultPath,
-      retrievedAt: importState.retrievedAt,
-      conflictReason: null,
-      exclusionReason: importState.importErrorMessage,
-      nextEligibleRetryAt: addHours(input.evaluatedAt, 6),
-      inventory: input.inventory,
-    };
-  }
-
   if (marketNotYetSettled) {
     return {
       marketTicker: input.inventory.marketTicker,
@@ -95,6 +79,22 @@ export function classifyMarketSettlementCoverage(input: {
       conflictReason: null,
       exclusionReason: "market close time is after evaluation time",
       nextEligibleRetryAt: closeTime,
+      inventory: input.inventory,
+    };
+  }
+
+  if (importState.importFailed) {
+    return {
+      marketTicker: input.inventory.marketTicker,
+      seriesTicker: input.inventory.seriesTicker,
+      classification: "import-failed",
+      settledOutcome: "unknown",
+      settlementTime: null,
+      sourceArtifact: importState.importResultPath,
+      retrievedAt: importState.retrievedAt,
+      conflictReason: null,
+      exclusionReason: importState.importErrorMessage,
+      nextEligibleRetryAt: addHours(input.evaluatedAt, 6),
       inventory: input.inventory,
     };
   }

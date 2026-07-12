@@ -1,6 +1,5 @@
 import {
   buildMarketArtifactPath,
-  findBronzeSettlementRecords,
   isRecord,
   readString,
   resolveSeriesTicker,
@@ -132,23 +131,6 @@ export function parseAllImportResultSettlements(input: {
   const candidates: ParsedSettlementCandidate[] = [];
 
   for (const record of parsed.bronzeRecords) {
-    if (!isRecord(record)) {
-      continue;
-    }
-
-    const candidate = extractCandidateFromBronzeRecord({
-      record,
-      marketTicker: input.marketTicker,
-      importPath: input.importPath,
-    });
-    if (candidate) {
-      candidates.push(candidate);
-    }
-  }
-
-  const bronzeMatches = findBronzeSettlementRecords(parsed.bronzeRecords);
-  for (const match of bronzeMatches) {
-    const record = parsed.bronzeRecords[match.index];
     if (!isRecord(record)) {
       continue;
     }

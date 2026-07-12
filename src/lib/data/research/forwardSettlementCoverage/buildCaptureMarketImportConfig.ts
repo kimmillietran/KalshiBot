@@ -14,9 +14,29 @@ import { resolveSeriesTicker } from "@/lib/data/audit/settlementTrace/settlement
 import type { CapturedMarketInventoryEntry } from "./forwardSettlementCoverageTypes";
 
 const POST_CLOSE_COLLECTION_OFFSET_MS = 10_000;
+const MIN_IMPORT_WINDOW_MS = 1_000;
 
 function addMilliseconds(isoTimestamp: string, offsetMs: number): string {
   return new Date(Date.parse(isoTimestamp) + offsetMs).toISOString();
+}
+
+function ensureImportWindowEndTime(input: {
+  startTime: string;
+  endTime: string;
+  lastObservedAt: string;
+}): string {
+  const startMs = Date.parse(input.startTime);
+  let endMs = Date.parse(input.endTime);
+
+  if (!Number.isFinite(endMs) || endMs <= startMs) {
+    endMs = Date.parse(input.lastObservedAt);
+  }
+
+  if (!Number.isFinite(endMs) || endMs <= startMs) {
+    return addMilliseconds(input.startTime, MIN_IMPORT_WINDOW_MS);
+  }
+
+  return new Date(endMs).toISOString();
 }
 
 function requireTimestamp(value: string | null, fallback: string): string {
@@ -33,15 +53,20 @@ export function buildCaptureMarketImportConfig(input: {
   evaluatedAt: string;
 }): HistoricalBronzeImportConfig {
   const startTime = requireTimestamp(
-    input.market.marketCloseTime
-      ? input.market.firstObservedAt
-      : input.market.firstObservedAt,
+    input.market.firstObservedAt,
     input.market.firstObservedAt,
   );
-  const endTime = requireTimestamp(
-    input.market.marketCloseTime ?? input.market.lastObservedAt,
-    input.market.lastObservedAt,
-  );
+  const endTime = ensureImportWindowEndTime({
+    startTime,
+    endTime: requireTimestamp(
+      input.market.marketCloseTime ?? input.market.lastObservedAt,
+      input.market.lastObservedAt,
+    ),
+    lastObservedAt: requireTimestamp(
+      input.market.lastObservedAt,
+      input.market.firstObservedAt,
+    ),
+  });
   const collectionTime = addMilliseconds(
     requireTimestamp(input.market.marketCloseTime, endTime),
     POST_CLOSE_COLLECTION_OFFSET_MS,

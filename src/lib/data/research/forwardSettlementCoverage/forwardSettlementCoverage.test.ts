@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { runForwardSettlementBackfill, createProductionForwardSettlementBackfillDeps } from "./backfillForwardSettlements";
 import { buildForwardSettlementCoverageReport } from "./buildForwardSettlementCoverageReport";
-import { resolveMarketImportPaths } from "./buildCaptureMarketImportConfig";
+import { buildCaptureMarketImportConfig, resolveMarketImportPaths } from "./buildCaptureMarketImportConfig";
 import {
   classifyInvalidMarketEntry,
   classifyMarketSettlementCoverage,
@@ -938,5 +938,179 @@ describe("forwardSettlementCoverage", () => {
       checkpointPath: defaultConfig().checkpointPath,
     });
     expect(checkpoint?.markets[0]?.status).toBe("skipped-not-candidate");
+  });
+
+  it("builds import config for post-close single-observation windows", () => {
+    const closeTime = "2026-07-11T11:15:00.000Z";
+    const config = buildCaptureMarketImportConfig({
+      market: {
+        marketTicker: MARKET_A,
+        seriesTicker: "KXBTC15M",
+        firstObservedAt: closeTime,
+        lastObservedAt: closeTime,
+        observationCount: 1,
+        marketCloseTime: closeTime,
+        expectedSettlementAvailability: "available",
+        eventTicker: null,
+        sourceArtifacts: [],
+      },
+      evaluatedAt: EVALUATED_AT,
+    });
+
+    expect(Date.parse(config.startTime)).toBeLessThan(Date.parse(config.endTime));
+  });
+
+  it("reports resumed false and preserves checkpoint when capture run mismatches", async () => {
+    const files: Record<string, string> = {};
+    const dirs: string[] = [];
+    seedRun(files, dirs);
+    const otherRunDir = "data/live-capture/forward-quotes/other-run";
+    dirs.push(otherRunDir);
+    const checkpoint = createForwardSettlementBackfillCheckpoint({
+      captureRunDir: otherRunDir,
+      selectedRunId: "other-run",
+      importsDir: "data/imports",
+      dryRun: false,
+      startedAt: EVALUATED_AT,
+      marketTickers: [MARKET_B],
+    });
+    checkpoint.markets[0] = {
+      marketTicker: MARKET_B,
+      status: "failed",
+      attempts: 2,
+      lastAttemptAt: EVALUATED_AT,
+      nextEligibleRetryAt: "2026-07-11T18:00:00.000Z",
+      errorMessage: "prior run failure",
+      importResultPath: null,
+    };
+    const checkpointPath = defaultConfig().checkpointPath;
+    const serializedCheckpoint = serializeForwardSettlementBackfillCheckpoint(checkpoint);
+    files[checkpointPath] = serializedCheckpoint;
+
+    const io = createIo(files, dirs);
+    const runMarketImport = vi.fn(async ({ market }) => {
+      files[`data/imports/KXBTC15M/${market.marketTicker}/import-result.json`] =
+        createImportResult(market.marketTicker, "no");
+      return { success: true };
+    });
+    const inventory = extractSelectedRunMarketInventory({
+      io,
+      captureRunDir: RUN_DIR,
+      evaluatedAt: EVALUATED_AT,
+    }).inventory.find((entry) => entry.marketTicker === MARKET_B)!;
+    const markets = [
+      classifyMarketSettlementCoverage({
+        io,
+        importsDir: "data/imports",
+        inventory,
+        evaluatedAt: EVALUATED_AT,
+        staleAfterCaptureObservation: true,
+      }),
+    ];
+
+    const summary = await runForwardSettlementBackfill({
+      config: defaultConfig({ resume: true, maxRetries: 1, maxConcurrency: 1 }),
+      io,
+      markets,
+      selectedRunId: RUN_ID,
+      evaluatedAt: EVALUATED_AT,
+      deps: { runMarketImport },
+    });
+
+    expect(summary.resumed).toBe(false);
+    expect(files[checkpointPath]).toBe(serializedCheckpoint);
+    expect(
+      loadForwardSettlementBackfillCheckpoint({
+        readFile: io.readFile,
+        fileExists: io.fileExists,
+        checkpointPath,
+      })?.markets[0]?.errorMessage,
+    ).toBe("prior run failure");
+  });
+
+  it("classifies future-close markets as not-yet-settled before import-failed", () => {
+    const files: Record<string, string> = {};
+    const dirs: string[] = [];
+    seedRun(files, dirs);
+    files[`data/imports/KXBTC15M/${MARKET_PENDING}/metadata.json`] = JSON.stringify({
+      valid: false,
+      closeTime: "2026-07-11T13:00:00.000Z",
+    });
+    files[`data/imports/KXBTC15M/${MARKET_PENDING}/import-result.json`] = JSON.stringify({
+      metadata: {
+        valid: false,
+        collectionTime: "2026-07-11T11:31:00.000Z",
+        settlementPresent: false,
+      },
+      bronzeRecords: [],
+    });
+
+    const extracted = extractSelectedRunMarketInventory({
+      io: createIo(files, dirs),
+      captureRunDir: RUN_DIR,
+      evaluatedAt: EVALUATED_AT,
+    });
+
+    const classified = classifyMarketSettlementCoverage({
+      io: createIo(files, dirs),
+      importsDir: "data/imports",
+      inventory: extracted.inventory.find((entry) => entry.marketTicker === MARKET_PENDING)!,
+      evaluatedAt: EVALUATED_AT,
+      staleAfterCaptureObservation: true,
+    });
+
+    expect(classified.classification).toBe("market-not-yet-settled");
+  });
+
+  it("recommends resolve-missing-metadata instead of backfill for missing metadata", async () => {
+    const files: Record<string, string> = {};
+    const dirs: string[] = [];
+    dirs.push(RUN_DIR, "data/live-capture/forward-quotes");
+    files[`${RUN_DIR}/top-of-book.jsonl`] = JSON.stringify({
+      marketTicker: MARKET_A,
+      seriesTicker: "KXBTC15M",
+      receivedAtLocal: "2026-07-11T11:08:00.000Z",
+    });
+    files[`${RUN_DIR}/market-metadata.jsonl`] = "";
+
+    const report = await buildForwardSettlementCoverageReport({
+      generatedAt: EVALUATED_AT,
+      config: defaultConfig(),
+      io: createIo(files, dirs),
+      runBackfill: false,
+    });
+
+    expect(report.markets[0]?.classification).toBe("missing-market-metadata");
+    expect(report.summary.recommendedNextAction).toBe("resolve-missing-metadata");
+  });
+
+  it("parses flat settlement bronze records once without duplicate candidates", () => {
+    const candidates = parseAllImportResultSettlements({
+      marketTicker: MARKET_A,
+      importPath: "data/imports/KXBTC15M/MARKET/import-result.json",
+      content: JSON.stringify({
+        metadata: {
+          valid: true,
+          collectionTime: "2026-07-11T11:30:00.000Z",
+          settlementPresent: true,
+        },
+        bronzeRecords: [
+          {
+            contentType: "kalshi.historical.settlement",
+            ticker: MARKET_A,
+            collectionTime: "2026-07-11T11:30:00.000Z",
+            payload: {
+              result: "yes",
+              settlement_ts: "2026-07-11T11:15:00.000Z",
+              open_time: "2026-07-11T11:00:00.000Z",
+              close_time: "2026-07-11T11:15:00.000Z",
+            },
+          },
+        ],
+      }),
+    });
+
+    expect(candidates).toHaveLength(1);
+    expect(detectSettlementConflicts(candidates)).toBeNull();
   });
 });

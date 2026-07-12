@@ -367,11 +367,18 @@ export async function runForwardSettlementBackfill(input: {
         checkpointPath: input.config.checkpointPath,
       })
     : null;
+  const checkpointResumed = Boolean(
+    existingCheckpoint
+    && existingCheckpoint.captureRunDir === input.config.captureRunDir,
+  );
+  const checkpointMismatch = Boolean(
+    existingCheckpoint
+    && existingCheckpoint.captureRunDir !== input.config.captureRunDir,
+  );
 
   let checkpoint =
-    existingCheckpoint
-    && existingCheckpoint.captureRunDir === input.config.captureRunDir
-      ? mergeCheckpointWithMarkets(existingCheckpoint, marketTickers, input.evaluatedAt)
+    checkpointResumed
+      ? mergeCheckpointWithMarkets(existingCheckpoint!, marketTickers, input.evaluatedAt)
       : createForwardSettlementBackfillCheckpoint({
           captureRunDir: input.config.captureRunDir,
           selectedRunId: input.selectedRunId,
@@ -387,7 +394,8 @@ export async function runForwardSettlementBackfill(input: {
 
   const persistCheckpoint = () => {
     if (
-      input.config.dryRun
+      checkpointMismatch
+      || input.config.dryRun
       || !input.io.writeFile
       || !input.io.mkdirSync
     ) {
@@ -491,7 +499,7 @@ export async function runForwardSettlementBackfill(input: {
 
   return {
     dryRun: input.config.dryRun,
-    resumed: Boolean(existingCheckpoint),
+    resumed: checkpointResumed,
     attemptedMarketCount: results.filter((result) =>
       result.status === "imported"
       || result.status === "failed"

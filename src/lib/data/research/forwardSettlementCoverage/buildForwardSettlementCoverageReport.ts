@@ -164,6 +164,7 @@ function resolveRecommendedNextAction(input: {
   const missing = countByClassification(input.markets, "missing-settlement-source");
   const stale = countByClassification(input.markets, "settlement-present-but-stale");
   const pending = countByClassification(input.markets, "market-not-yet-settled");
+  const missingMetadata = countByClassification(input.markets, "missing-market-metadata");
   const conflicts = countByClassification(
     input.markets,
     "settlement-present-but-conflicting",
@@ -175,6 +176,10 @@ function resolveRecommendedNextAction(input: {
 
   if (pending > 0) {
     return "wait-for-markets-to-settle";
+  }
+
+  if (missingMetadata > 0 && missing === 0 && stale === 0) {
+    return "resolve-missing-metadata";
   }
 
   if ((input.coverageShare ?? 0) < 1 && (missing > 0 || stale > 0)) {
