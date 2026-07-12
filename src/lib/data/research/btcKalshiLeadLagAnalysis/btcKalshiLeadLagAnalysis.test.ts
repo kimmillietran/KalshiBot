@@ -20,7 +20,7 @@ import {
 import type { BtcSpotPoint } from "./causalBtcJoin";
 import type { QuoteSnapshot } from "./btcKalshiLeadLagAnalysisTypes";
 import { crossedMagnitudeBoundary, resolveBtcMagnitudeBin } from "./leadLagBins";
-import { basisPointsChange } from "./leadLagUtils";
+import { basisPointsChange, resolveQuoteRetentionWindowMs } from "./leadLagUtils";
 
 const RUN_DIR = "data/live-capture/forward-quotes/run-lead-lag";
 const MARKET_A = "KXBTC15M-26JUL111200-00";
@@ -266,6 +266,35 @@ describe("triggerDetection", () => {
     expect(result.triggers.length).toBeGreaterThan(0);
     expect(crossedMagnitudeBoundary(0, 8, 5)).toBe(true);
     expect(resolveBtcMagnitudeBin(8)).toBe("5-to-10-bps");
+  });
+
+  it("suppresses repeated crossings inside the cooldown window", () => {
+    const points: BtcSpotPoint[] = [
+      { timestampMs: 0, receivedAtLocal: isoAt(0), priceUsd: 100_000 },
+      { timestampMs: 5_000, receivedAtLocal: isoAt(5_000), priceUsd: 100_060 },
+      { timestampMs: 5_500, receivedAtLocal: isoAt(5_500), priceUsd: 100_000 },
+      { timestampMs: 6_000, receivedAtLocal: isoAt(6_000), priceUsd: 100_060 },
+    ];
+    const result = detectBtcTriggers({
+      points,
+      horizonsMs: [5_000],
+      triggerCooldownMs: 30_000,
+    });
+    expect(result.suppressedOverlappingTriggerCount).toBeGreaterThan(0);
+    expect(result.triggers).toHaveLength(1);
+  });
+});
+
+describe("quote retention window", () => {
+  it("bounds retained quote timestamps around trigger and response horizons", () => {
+    const window = resolveQuoteRetentionWindowMs({
+      triggerTimestampsMs: [10_000, 40_000],
+      maximumBtcHorizonMs: 60_000,
+      maximumResponseWindowMs: 60_000,
+      responseMatchToleranceMs: 1_500,
+    });
+    expect(window?.startMs).toBe(10_000 - 60_000 - 5_000);
+    expect(window?.endMs).toBe(40_000 + 60_000 + 1_500);
   });
 });
 

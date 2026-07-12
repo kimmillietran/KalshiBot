@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync, appendFileSync, statSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync, appendFileSync, statSync, unlinkSync, renameSync } from "node:fs";
 
 import { createFilesystemJsonlIo, iterateJsonlLines } from "../jsonl";
 import type { BtcKalshiLeadLagAnalysisIo } from "./btcKalshiLeadLagAnalysisTypes";
@@ -19,6 +19,12 @@ export function createBtcKalshiLeadLagAnalysisIo(): BtcKalshiLeadLagAnalysisIo {
     },
     mkdirSync: (path, options) => {
       mkdirSync(path, options);
+    },
+    unlinkFile: (path) => {
+      unlinkSync(path);
+    },
+    renameFile: (from, to) => {
+      renameSync(from, to);
     },
   };
 }
@@ -57,6 +63,20 @@ export function createMemoryBtcKalshiLeadLagIo(
       files[path] = normalized[key]!;
     },
     mkdirSync: () => {},
+    unlinkFile: (path) => {
+      const key = path.replaceAll("\\", "/");
+      delete normalized[key];
+      delete files[path];
+    },
+    renameFile: (from, to) => {
+      const fromKey = from.replaceAll("\\", "/");
+      const toKey = to.replaceAll("\\", "/");
+      const data = normalized[fromKey] ?? "";
+      normalized[toKey] = data;
+      files[to] = data;
+      delete normalized[fromKey];
+      delete files[from];
+    },
     streamJsonl: iterateJsonl,
     iterateJsonl,
   };

@@ -103,6 +103,8 @@ export type BtcKalshiLeadLagAnalysisIo = JsonlIo & {
   writeFile: (path: string, data: string) => void;
   appendFile: (path: string, data: string) => void;
   mkdirSync: (path: string, options?: { recursive?: boolean }) => void;
+  unlinkFile: (path: string) => void;
+  renameFile: (from: string, to: string) => void;
 };
 
 export type BtcKalshiLeadLagInputArtifactIdentities = {

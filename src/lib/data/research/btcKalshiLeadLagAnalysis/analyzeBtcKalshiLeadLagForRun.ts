@@ -15,7 +15,7 @@ import {
   resolveImpliedProbabilityBin,
   resolveTimeRemainingBin,
 } from "./leadLagBins";
-import { joinPath, parseIsoTimestampMs, readString } from "./leadLagUtils";
+import { joinPath, parseIsoTimestampMs, publishStagedFileAtomically, readString, resolveQuoteRetentionWindowMs } from "./leadLagUtils";
 import {
   buildQuoteSnapshot,
   findLastQuoteAtOrBefore,
@@ -105,6 +105,12 @@ export async function analyzeBtcKalshiLeadLagForRun(input: {
     horizonsMs: BTC_RETURN_HORIZONS_MS,
     triggerCooldownMs: input.config.triggerCooldownMs,
   });
+  const quoteRetentionWindow = resolveQuoteRetentionWindowMs({
+    triggerTimestampsMs: triggers.map((trigger) => trigger.triggerTimestampMs),
+    maximumBtcHorizonMs: Math.max(...BTC_RETURN_HORIZONS_MS),
+    maximumResponseWindowMs: Math.max(...RESPONSE_WINDOWS_MS),
+    responseMatchToleranceMs: input.config.responseMatchToleranceMs,
+  });
 
   const quotesByMarket = new Map<string, QuoteSnapshot[]>();
   let recordsScanned = 0;
@@ -135,6 +141,13 @@ export async function analyzeBtcKalshiLeadLagForRun(input: {
       const receivedAtMs = receivedAtLocal ? parseIsoTimestampMs(receivedAtLocal) : null;
       const timestampMs = parseTopOfBookTimestampMs(parsed);
       if (!marketTicker || receivedAtMs === null || timestampMs === null) {
+        return "skip";
+      }
+
+      if (
+        quoteRetentionWindow
+        && (timestampMs < quoteRetentionWindow.startMs || timestampMs > quoteRetentionWindow.endMs)
+      ) {
         return "skip";
       }
 
@@ -174,7 +187,8 @@ export async function analyzeBtcKalshiLeadLagForRun(input: {
   }
 
   input.io.mkdirSync(dirname(input.eventsOutputPath), { recursive: true });
-  input.io.writeFile(input.eventsOutputPath, "");
+  const eventsStagingPath = `${input.eventsOutputPath}.${process.pid}.events.staging`;
+  input.io.writeFile(eventsStagingPath, "");
 
   const collector = new LeadLagAggregateCollector();
   let eventCounter = 0;
@@ -300,10 +314,12 @@ export async function analyzeBtcKalshiLeadLagForRun(input: {
         dataQualityCaveats: join.stale ? ["stale-btc-join-at-trigger"] : [],
       };
 
-      input.io.appendFile(input.eventsOutputPath, `${stableStringify(event)}\n`);
+      input.io.appendFile(eventsStagingPath, `${stableStringify(event)}\n`);
       collector.addEvent(event);
     }
   }
+
+  publishStagedFileAtomically(input.io, input.eventsOutputPath, eventsStagingPath);
 
   const aggregateMaps = collector.finalizeMaps();
   const marketsWithDirectionalSemantics = [...context.marketSemantics.values()].filter(

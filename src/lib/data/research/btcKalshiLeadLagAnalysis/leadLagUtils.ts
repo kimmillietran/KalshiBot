@@ -105,3 +105,60 @@ export function quantile(values: readonly number[], q: number): number | null {
   const weight = index - lower;
   return sorted[lower]! * (1 - weight) + sorted[upper]! * weight;
 }
+
+export function resolveQuoteRetentionWindowMs(input: {
+  triggerTimestampsMs: readonly number[];
+  maximumBtcHorizonMs: number;
+  maximumResponseWindowMs: number;
+  responseMatchToleranceMs: number;
+  preTriggerQuoteBufferMs?: number;
+}): { startMs: number; endMs: number } | null {
+  if (input.triggerTimestampsMs.length === 0) {
+    return null;
+  }
+
+  const minTriggerMs = Math.min(...input.triggerTimestampsMs);
+  const maxTriggerMs = Math.max(...input.triggerTimestampsMs);
+  const preTriggerQuoteBufferMs = input.preTriggerQuoteBufferMs ?? 5_000;
+
+  return {
+    startMs: minTriggerMs - input.maximumBtcHorizonMs - preTriggerQuoteBufferMs,
+    endMs: maxTriggerMs + input.maximumResponseWindowMs + input.responseMatchToleranceMs,
+  };
+}
+
+export function publishStagedFileAtomically(
+  io: {
+    fileExists: (path: string) => boolean;
+    unlinkFile: (path: string) => void;
+    renameFile: (from: string, to: string) => void;
+  },
+  outputPath: string,
+  stagingPath: string,
+): void {
+  const backupPath = `${outputPath}.${process.pid}.bak`;
+  let backupCreated = false;
+
+  try {
+    if (io.fileExists(outputPath)) {
+      io.renameFile(outputPath, backupPath);
+      backupCreated = true;
+    }
+
+    io.renameFile(stagingPath, outputPath);
+
+    if (backupCreated && io.fileExists(backupPath)) {
+      io.unlinkFile(backupPath);
+    }
+  } catch (error) {
+    if (io.fileExists(stagingPath)) {
+      io.unlinkFile(stagingPath);
+    }
+
+    if (backupCreated && io.fileExists(backupPath) && !io.fileExists(outputPath)) {
+      io.renameFile(backupPath, outputPath);
+    }
+
+    throw error;
+  }
+}
