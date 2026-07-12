@@ -159,6 +159,12 @@ describe("runParityNearMissAnalysisCommand", () => {
     const reportSpy = vi
       .spyOn(parityNearMissModule, "buildParityNearMissAnalysisReport")
       .mockResolvedValue(minimalReport);
+    const reportSerializerSpy = vi
+      .spyOn(parityNearMissModule, "serializeParityNearMissAnalysisReport")
+      .mockReturnValue("{\"ok\":true}\n");
+    const htmlSerializerSpy = vi
+      .spyOn(parityNearMissModule, "serializeParityNearMissAnalysisHtml")
+      .mockReturnValue("<!doctype html><p>ok</p>");
     const { io, files, getStderr } = createPublishingCommandIo({
       initialFiles: {
         [minimalReport.outputPath]: "previous json",
@@ -173,6 +179,8 @@ describe("runParityNearMissAnalysisCommand", () => {
     );
 
     reportSpy.mockRestore();
+    reportSerializerSpy.mockRestore();
+    htmlSerializerSpy.mockRestore();
     expect(exitCode).toBe(1);
     expect(getStderr()).toContain(`rename failed for ${minimalReport.htmlOutputPath}`);
     expect(files.get(minimalReport.outputPath)).toBe("previous json");
