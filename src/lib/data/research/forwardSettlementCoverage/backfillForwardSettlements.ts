@@ -232,7 +232,15 @@ async function backfillOneMarket(input: {
 
   const sleep = input.deps.sleep ?? DEFAULT_SLEEP;
   let attempts = existingEntry?.attempts ?? 0;
-  let lastError: string | null = null;
+  if (
+    existingEntry?.status === "failed"
+    && isCheckpointMarketEligible(existingEntry, input.evaluatedAt)
+  ) {
+    attempts = 0;
+  }
+  let lastError: string | null = existingEntry?.status === "failed"
+    ? existingEntry.errorMessage
+    : null;
 
   while (attempts < input.config.maxRetries) {
     attempts += 1;
@@ -375,7 +383,33 @@ export async function runForwardSettlementBackfill(input: {
 
   const results: ForwardSettlementBackfillMarketResult[] = [];
   const candidates = input.markets.filter((market) => isBackfillCandidate(market.classification));
-  const checkpointUpdates: ForwardSettlementBackfillCheckpointMarket[] = [];
+  let checkpointPersistQueue = Promise.resolve();
+
+  const persistCheckpoint = () => {
+    if (
+      input.config.dryRun
+      || !input.io.writeFile
+      || !input.io.mkdirSync
+    ) {
+      return;
+    }
+
+    input.io.mkdirSync(posix.dirname(input.config.checkpointPath), { recursive: true });
+    input.io.writeFile(
+      input.config.checkpointPath,
+      serializeForwardSettlementBackfillCheckpoint(checkpoint),
+    );
+  };
+
+  const queueCheckpointUpdate = (
+    update: ForwardSettlementBackfillCheckpointMarket,
+  ) => {
+    checkpointPersistQueue = checkpointPersistQueue.then(() => {
+      checkpoint = updateCheckpointMarket(checkpoint, update, input.evaluatedAt);
+      persistCheckpoint();
+    });
+    return checkpointPersistQueue;
+  };
 
   await runWithConcurrency(
     candidates,
@@ -399,16 +433,15 @@ export async function runForwardSettlementBackfill(input: {
         evaluatedAt: input.evaluatedAt,
         existingImportResultContent,
       });
-      checkpointUpdates.push(
-        outcome.checkpoint.markets.find((entry) => entry.marketTicker === market.marketTicker)!,
-      );
+      const marketUpdate = outcome.checkpoint.markets.find(
+        (entry) => entry.marketTicker === market.marketTicker,
+      )!;
+      await queueCheckpointUpdate(marketUpdate);
       results.push(outcome.result);
     },
   );
 
-  for (const update of checkpointUpdates) {
-    checkpoint = updateCheckpointMarket(checkpoint, update, input.evaluatedAt);
-  }
+  await checkpointPersistQueue;
 
   for (const market of input.markets) {
     if (results.some((result) => result.marketTicker === market.marketTicker)) {
@@ -436,6 +469,7 @@ export async function runForwardSettlementBackfill(input: {
       },
       input.evaluatedAt,
     );
+    persistCheckpoint();
 
     results.push({
       marketTicker: market.marketTicker,
@@ -452,11 +486,7 @@ export async function runForwardSettlementBackfill(input: {
     && input.io.writeFile
     && input.io.mkdirSync
   ) {
-    input.io.mkdirSync(posix.dirname(input.config.checkpointPath), { recursive: true });
-    input.io.writeFile(
-      input.config.checkpointPath,
-      serializeForwardSettlementBackfillCheckpoint(checkpoint),
-    );
+    persistCheckpoint();
   }
 
   return {
