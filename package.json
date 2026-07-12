@@ -90,6 +90,7 @@
     "research:strategy-evaluation-readiness": "tsx scripts/research/buildStrategyEvaluationReadiness.ts",
     "research:executable-confirmation-design": "tsx scripts/research/buildExecutableConfirmationDesign.ts",
     "research:parity-near-miss-analysis": "tsx scripts/research/buildParityNearMissAnalysis.ts",
+    "research:btc-kalshi-lead-lag-analysis": "tsx scripts/research/buildBtcKalshiLeadLagAnalysis.ts",
     "research:forward-settlement-join": "tsx scripts/research/buildForwardSettlementJoin.ts",
     "research:forward-settlement-coverage": "tsx scripts/research/buildForwardSettlementCoverage.ts",
     "research:backfill-forward-settlements": "tsx scripts/research/backfillForwardSettlements.ts",
