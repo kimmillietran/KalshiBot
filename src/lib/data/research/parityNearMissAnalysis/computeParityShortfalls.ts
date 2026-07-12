@@ -8,6 +8,10 @@ export type ParityShortfallResult = {
   bufferAdjustedDistanceToQualification: number | null;
 };
 
+// The fee gate passes on estimated net edge > 0; with integer-cent inputs,
+// one cent is the first qualifying net edge.
+export const MINIMUM_FEE_PASS_NET_EDGE_CENTS = 1;
+
 /** Observed bid-only gross edge in integer cents; not clamped to non-negative. */
 export function computeObservedGrossEdgeCents(
   yesBidCents: number | null,
@@ -55,8 +59,8 @@ export function computeParityShortfalls(
       observedGrossEdgeCents,
     ),
     feeAdjustedDistanceToQualification: shortfallDistance(
-      friction.minGrossEdgeCents + friction.feeBufferCents,
-      observedGrossEdgeCents,
+      MINIMUM_FEE_PASS_NET_EDGE_CENTS,
+      estimatedNetEdgeCents,
     ),
     bufferAdjustedDistanceToQualification: shortfallDistance(
       friction.minBidOnlyEdgeCents,

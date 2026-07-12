@@ -16,12 +16,13 @@ import {
   isObservationEligible,
   resolveDistanceBucket,
 } from "./evaluateParityObservationGates";
-import { isDistanceEvaluable } from "./computeParityShortfalls";
+import { MINIMUM_FEE_PASS_NET_EDGE_CENTS, isDistanceEvaluable } from "./computeParityShortfalls";
 import { loadSelectedRunContext, validateSelectedRunDirectory } from "./loadSelectedRunContext";
 import { classifyParityNearMissInterpretation } from "./classifyParityNearMissInterpretation";
 import {
   createEmptyIndependentGatePassCounts,
   createEmptySequentialFunnel,
+  observationPassesSequentialQualification,
   updateIndependentGatePassCounts,
   updateSequentialFunnel,
 } from "./parityGateSemantics";
@@ -489,6 +490,7 @@ export async function analyzeParityNearMissForRun(input: {
         stalenessReject: metrics.stalenessPass === false,
       });
       incrementGateRejectionCounts(gateCounts, metrics);
+      const fullyQualifiedObservation = observationPassesSequentialQualification(gateFlags);
 
       if (isObservationEligible(metrics)) {
         recordsEligible += 1;
@@ -610,7 +612,8 @@ export async function analyzeParityNearMissForRun(input: {
         });
         feeRanking.consider({
           ...rankingBase,
-          requiredEdgeCents: ruleConfiguration.minGrossEdgeCents + ruleConfiguration.feeBufferCents,
+          requiredEdgeCents:
+            ruleConfiguration.feeBufferCents + MINIMUM_FEE_PASS_NET_EDGE_CENTS,
           shortfallCents: metrics.feeAdjustedDistanceToQualification ?? 0,
           distance: metrics.feeAdjustedDistanceToQualification,
         });
@@ -636,12 +639,12 @@ export async function analyzeParityNearMissForRun(input: {
         }
       }
 
-      if (metrics.bufferPass && metrics.stalenessPass === true) {
+      if (fullyQualifiedObservation) {
         finalCandidates += 1;
       }
 
       const classification =
-        metrics.bufferPass
+        fullyQualifiedObservation
           ? "bid-only-buffer-adjusted-candidate"
           : metrics.grossParityPass
             ? "bid-only-gross-candidate"
@@ -792,6 +795,7 @@ export async function analyzeParityNearMissForRun(input: {
     recordsScanned,
     recordsEligible,
     sequentialFunnel,
+    independentGatePassCounts,
     gateCounts,
     closestGrossNearMiss: closestGrossNearMissCents,
     closestFeeAdjustedNearMiss: closestFeeAdjustedNearMissCents,
