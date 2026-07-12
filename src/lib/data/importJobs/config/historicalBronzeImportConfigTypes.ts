@@ -31,6 +31,14 @@ export const HistoricalBronzeImportOutputFormat = {
 export type HistoricalBronzeImportOutputFormat =
   (typeof HistoricalBronzeImportOutputFormat)[keyof typeof HistoricalBronzeImportOutputFormat];
 
+export const HistoricalBronzeImportMode = {
+  FULL_BRONZE: "full-bronze",
+  SETTLEMENT_ONLY: "settlement-only",
+} as const;
+
+export type HistoricalBronzeImportMode =
+  (typeof HistoricalBronzeImportMode)[keyof typeof HistoricalBronzeImportMode];
+
 export type HistoricalBronzeImportKalshiConfig = {
   marketSource: HistoricalBronzeImportKalshiSource;
   candleSource: HistoricalBronzeImportKalshiSource;
@@ -58,8 +66,9 @@ export type HistoricalBronzeImportConfig = {
   endTime: EventTime;
   collectionTime: CollectionTime;
   observedAt: ObservedAt;
+  importMode: HistoricalBronzeImportMode;
   kalshi: HistoricalBronzeImportKalshiConfig;
-  btc: HistoricalBronzeImportBtcConfig;
+  btc: HistoricalBronzeImportBtcConfig | null;
   output: HistoricalBronzeImportOutputConfig;
   metadata: HistoricalBronzeImportConfigMetadata;
 };
@@ -71,8 +80,9 @@ export type BuildHistoricalBronzeImportConfigInput = {
   endTime: string;
   collectionTime: string;
   observedAt: string;
+  importMode?: HistoricalBronzeImportMode;
   kalshi: HistoricalBronzeImportKalshiConfig;
-  btc: HistoricalBronzeImportBtcConfig;
+  btc?: HistoricalBronzeImportBtcConfig | null;
   output: HistoricalBronzeImportOutputConfig;
   metadata?: HistoricalBronzeImportConfigMetadata;
 };
@@ -88,6 +98,8 @@ export const HistoricalBronzeImportConfigErrorCode = {
   INVALID_BTC_SYMBOL: "invalid-btc-symbol",
   INVALID_BTC_INTERVAL: "invalid-btc-interval",
   INVALID_OUTPUT_FORMAT: "invalid-output-format",
+  INVALID_IMPORT_MODE: "invalid-import-mode",
+  MISSING_BTC_CONFIG: "missing-btc-config",
 } as const;
 
 export type HistoricalBronzeImportConfigErrorCode =

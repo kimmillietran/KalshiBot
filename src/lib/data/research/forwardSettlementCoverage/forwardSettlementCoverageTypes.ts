@@ -123,6 +123,9 @@ export type ForwardSettlementCoverageSummary = {
   pendingMarketCount: number;
   missingSourceMarketCount: number;
   importFailedMarketCount: number;
+  neverAttemptedMarketCount: number;
+  retryDeferredMarketCount: number;
+  attemptedMarketCount: number;
   invalidMarketCount: number;
   excludedFromJoinCount: number;
   recommendedNextAction: string;
@@ -157,6 +160,15 @@ export type ForwardSettlementCoverageReport = {
   backfill: ForwardSettlementBackfillSummary | null;
 };
 
+export type ForwardSettlementBackfillErrorCategory =
+  | "btc-provider-unexpectedly-required"
+  | "kalshi-market-request-failed"
+  | "kalshi-settlement-request-failed"
+  | "market-not-settled"
+  | "normalization-failed"
+  | "artifact-write-failed"
+  | "unknown";
+
 export type ForwardSettlementBackfillCheckpointMarket = {
   marketTicker: string;
   status: BackfillMarketStatus;
@@ -164,6 +176,7 @@ export type ForwardSettlementBackfillCheckpointMarket = {
   lastAttemptAt: string | null;
   nextEligibleRetryAt: string | null;
   errorMessage: string | null;
+  errorCategory: ForwardSettlementBackfillErrorCategory | null;
   importResultPath: string | null;
 };
 
@@ -183,6 +196,7 @@ export type ForwardSettlementBackfillMarketResult = {
   status: BackfillMarketStatus;
   attempts: number;
   errorMessage: string | null;
+  errorCategory: ForwardSettlementBackfillErrorCategory | null;
   importResultPath: string | null;
   nextEligibleRetryAt: string | null;
 };
@@ -194,6 +208,8 @@ export type ForwardSettlementBackfillSummary = {
   importedMarketCount: number;
   skippedMarketCount: number;
   failedMarketCount: number;
+  retryDeferredMarketCount: number;
+  unsettledMarketCount: number;
   checkpointPath: string;
   marketResults: readonly ForwardSettlementBackfillMarketResult[];
 };

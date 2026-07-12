@@ -322,6 +322,155 @@ describe("analyzeCalibrationFadeForwardForRun", () => {
       report.funnel.find((stage) => stage.stageId === "qualifying-observation")?.count,
     ).toBe(report.qualifyingObservationCount);
   });
+
+  it("counts executable entry available before settlement joins (real-run shape)", async () => {
+    const btcPrices = [100_000, 102_000, 99_000, 104_000, 98_000, 106_000, 97_000, 108_000, 96_000, 110_000, 95_000, 112_000, 94_000, 115_000, 93_000, 118_000];
+    const btcSpots = btcPrices.map((priceUsd, index) => btcLine(index * 60_000, priceUsd));
+    const io = createMemoryCalibrationFadeForwardValidationIo(
+      {
+        [DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH]: freezeSpecContent(),
+        "data/research-results/hypothesis-candidates.json": hypothesisCandidatesFixture(),
+        [`${RUN_DIR}/capture-health.json`]: JSON.stringify({
+          runId: "run-calibration-fade",
+          config: { durationSeconds: 3600 },
+          orderbook: { validTopOfBookRecords: 1, reconnectCount: 0, sequenceGapCount: 0 },
+        }),
+        [`${RUN_DIR}/market-metadata.jsonl`]: JSON.stringify({
+          marketTicker: MARKET_A,
+          closeTime: isoAt(1_200_000),
+        }),
+        [`${RUN_DIR}/top-of-book.jsonl`]: topOfBookLine({
+          marketTicker: MARKET_A,
+          offsetMs: 720_000,
+          yesBid: 55,
+          yesAsk: 57,
+          noAsk: 43,
+        }),
+        [`${RUN_DIR}/btc-spot.jsonl`]: btcSpots.join("\n"),
+        "data/research-results/capture-health-audit.json": JSON.stringify({
+          selectedRunId: "run-calibration-fade",
+          summary: {
+            verdict: "capture-research-ready",
+            runDurationSeconds: 3600,
+            bookState: { validBookShare: 0.99, reconnectCount: 0, sequenceGapCount: 0 },
+            btcJoin: { joinCoverageShare: 1 },
+          },
+        }),
+      },
+      [RUN_DIR],
+    );
+
+    const { report, marketLines } = await analyzeCalibrationFadeForwardForRun({
+      generatedAt: "2026-07-12T08:00:00.000Z",
+      outputPath: "data/research-results/calibration-fade-forward-validation.json",
+      htmlOutputPath: "data/reports/calibration-fade-forward-validation.html",
+      config: {
+        captureRunDir: RUN_DIR,
+        hypothesisConfigPath: DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH,
+        importsDir: "data/imports",
+        maximumBtcJoinAgeMs: 5000,
+        eventsOutputPath: "data/research-results/calibration-fade-forward-events.jsonl",
+        marketsOutputPath: "data/research-results/calibration-fade-forward-markets.jsonl",
+      },
+      io,
+    });
+
+    expect(report.candidateMarketCount).toBe(1);
+    expect(report.forwardBenchmark.executable.executableEntryAvailableCount).toBe(1);
+    expect(report.forwardBenchmark.executable.unavailableExecutablePriceCount).toBe(0);
+    expect(report.forwardBenchmark.executable.evaluatedExecutableCandidateCount).toBe(0);
+    expect(report.funnel.find((stage) => stage.stageId === "independent-market")?.count).toBe(1);
+    expect(report.funnel.find((stage) => stage.stageId === "executable-entry")?.count).toBe(1);
+    expect(report.funnel.find((stage) => stage.stageId === "settlement-joined")?.count).toBe(0);
+    expect(report.funnel.find((stage) => stage.stageId === "evaluated-candidate")?.count).toBe(0);
+    const marketRecord = JSON.parse(marketLines[0] ?? "{}") as {
+      noAskCents: number;
+      executableAvailable: boolean;
+      settlementStatus: string;
+    };
+    expect(marketRecord.noAskCents).toBe(43);
+    expect(marketRecord.executableAvailable).toBe(true);
+    expect(marketRecord.settlementStatus).toBe("missing-source");
+  });
+
+  it("computes NO-entry settlement returns at 43 cents after settlement joins", async () => {
+    const btcPrices = [100_000, 102_000, 99_000, 104_000, 98_000, 106_000, 97_000, 108_000, 96_000, 110_000, 95_000, 112_000, 94_000, 115_000, 93_000, 118_000];
+    const btcSpots = btcPrices.map((priceUsd, index) => btcLine(index * 60_000, priceUsd));
+    const io = createMemoryCalibrationFadeForwardValidationIo(
+      {
+        [DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH]: freezeSpecContent(),
+        "data/research-results/hypothesis-candidates.json": hypothesisCandidatesFixture(),
+        [`${RUN_DIR}/capture-health.json`]: JSON.stringify({
+          runId: "run-calibration-fade",
+          config: { durationSeconds: 3600 },
+          orderbook: { validTopOfBookRecords: 1, reconnectCount: 0, sequenceGapCount: 0 },
+        }),
+        [`${RUN_DIR}/market-metadata.jsonl`]: JSON.stringify({
+          marketTicker: MARKET_A,
+          closeTime: isoAt(1_200_000),
+        }),
+        [`${RUN_DIR}/top-of-book.jsonl`]: topOfBookLine({
+          marketTicker: MARKET_A,
+          offsetMs: 720_000,
+          yesBid: 55,
+          yesAsk: 57,
+          noAsk: 43,
+        }),
+        [`${RUN_DIR}/btc-spot.jsonl`]: btcSpots.join("\n"),
+        "data/research-results/capture-health-audit.json": JSON.stringify({
+          selectedRunId: "run-calibration-fade",
+          summary: {
+            verdict: "capture-research-ready",
+            runDurationSeconds: 3600,
+            bookState: { validBookShare: 0.99, reconnectCount: 0, sequenceGapCount: 0 },
+            btcJoin: { joinCoverageShare: 1 },
+          },
+        }),
+        [`data/imports/KXBTC15M/${MARKET_A}/import-result.json`]: JSON.stringify({
+          metadata: { valid: true, settlementPresent: true },
+          bronzeRecords: [
+            {
+              ticker: MARKET_A,
+              contentType: "kalshi.historical.settlement",
+              payload: { result: "no", settlement_ts: isoAt(700_000) },
+            },
+          ],
+        }),
+      },
+      [RUN_DIR, "data/imports", `data/imports/KXBTC15M/${MARKET_A}`],
+    );
+
+    const { report, marketLines } = await analyzeCalibrationFadeForwardForRun({
+      generatedAt: "2026-07-12T08:00:00.000Z",
+      outputPath: "data/research-results/calibration-fade-forward-validation.json",
+      htmlOutputPath: "data/reports/calibration-fade-forward-validation.html",
+      config: {
+        captureRunDir: RUN_DIR,
+        hypothesisConfigPath: DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH,
+        importsDir: "data/imports",
+        maximumBtcJoinAgeMs: 5000,
+        eventsOutputPath: "data/research-results/calibration-fade-forward-events.jsonl",
+        marketsOutputPath: "data/research-results/calibration-fade-forward-markets.jsonl",
+      },
+      io,
+    });
+
+    expect(report.forwardBenchmark.executable.executableEntryAvailableCount).toBe(1);
+    expect(report.forwardBenchmark.executable.evaluatedExecutableCandidateCount).toBe(1);
+    expect(report.funnel.find((stage) => stage.stageId === "settlement-joined")?.count).toBe(1);
+    expect(report.funnel.find((stage) => stage.stageId === "evaluated-candidate")?.count).toBe(1);
+
+    const marketRecord = JSON.parse(marketLines[0] ?? "{}") as {
+      noAskCents: number;
+      grossReturnCents: number;
+      feeAdjustedReturnCents: number;
+      settledOutcome: string;
+    };
+    expect(marketRecord.noAskCents).toBe(43);
+    expect(marketRecord.settledOutcome).toBe("no");
+    expect(marketRecord.grossReturnCents).toBe(57);
+    expect(marketRecord.feeAdjustedReturnCents).toBe(56);
+  });
 });
 
 describe("classifyCalibrationFadeInterpretation", () => {
@@ -371,6 +520,8 @@ describe("classifyCalibrationFadeInterpretation", () => {
       },
       executable: {
         executableCandidateCount: 0,
+        evaluatedExecutableCandidateCount: 0,
+        executableEntryAvailableCount: 0,
         unavailableExecutablePriceCount: 1,
         grossReturnCents: null,
         feeAdjustedReturnCents: null,

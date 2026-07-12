@@ -14,6 +14,8 @@ import {
   classifyMarketSettlementCoverage,
   countByClassification,
 } from "./classifyMarketSettlementCoverage";
+import { loadForwardSettlementBackfillCheckpoint } from "./checkpointForwardSettlementBackfill";
+import { applyCheckpointCoverageOverride } from "./reconcileForwardSettlementCoverage";
 import { extractSelectedRunMarketInventory } from "./extractSelectedRunMarketInventory";
 import {
   FORWARD_SETTLEMENT_COVERAGE_CAVEATS,
@@ -199,6 +201,7 @@ function buildSummary(input: {
   inventoryCount: number;
   markets: readonly MarketSettlementCoverageEntry[];
   joinIntegration: ForwardSettlementJoinIntegration;
+  backfill: import("./forwardSettlementCoverageTypes").ForwardSettlementBackfillSummary | null;
   warnings: string[];
   errors: string[];
 }): ForwardSettlementCoverageSummary {
@@ -240,6 +243,12 @@ function buildSummary(input: {
       "missing-settlement-source",
     ),
     importFailedMarketCount: countByClassification(input.markets, "import-failed"),
+    neverAttemptedMarketCount: countByClassification(
+      input.markets,
+      "missing-settlement-source",
+    ),
+    retryDeferredMarketCount: input.backfill?.retryDeferredMarketCount ?? 0,
+    attemptedMarketCount: input.backfill?.attemptedMarketCount ?? 0,
     invalidMarketCount: countByClassification(input.markets, "invalid-market"),
     excludedFromJoinCount: input.joinIntegration.marketsExcludedFromJoin.length,
     recommendedNextAction: resolveRecommendedNextAction({
@@ -256,15 +265,24 @@ function classifyExtractedMarkets(input: {
   io: ForwardSettlementCoverageIo;
   extracted: ReturnType<typeof extractSelectedRunMarketInventory>;
   evaluatedAt: string;
+  checkpoint?: import("./forwardSettlementCoverageTypes").ForwardSettlementBackfillCheckpoint | null;
 }): MarketSettlementCoverageEntry[] {
+  const checkpointByTicker = new Map(
+    (input.checkpoint?.markets ?? []).map((entry) => [entry.marketTicker, entry]),
+  );
+
   return [
     ...input.extracted.inventory.map((inventory) =>
-      classifyMarketSettlementCoverage({
-        io: input.io,
-        importsDir: input.config.importsDir,
-        inventory,
+      applyCheckpointCoverageOverride({
+        market: classifyMarketSettlementCoverage({
+          io: input.io,
+          importsDir: input.config.importsDir,
+          inventory,
+          evaluatedAt: input.evaluatedAt,
+          staleAfterCaptureObservation: input.config.staleAfterCaptureObservation,
+        }),
+        checkpointEntry: checkpointByTicker.get(inventory.marketTicker) ?? null,
         evaluatedAt: input.evaluatedAt,
-        staleAfterCaptureObservation: input.config.staleAfterCaptureObservation,
       })),
     ...input.extracted.excludedTickers.map((entry) =>
       classifyInvalidMarketEntry(entry)),
@@ -290,11 +308,20 @@ export async function buildForwardSettlementCoverageReport(input: {
   });
   warnings.push(...extracted.warnings);
 
+  const existingCheckpoint = input.config.resume
+    ? loadForwardSettlementBackfillCheckpoint({
+        readFile: input.io.readFile,
+        fileExists: input.io.fileExists,
+        checkpointPath: input.config.checkpointPath,
+      })
+    : null;
+
   let markets = classifyExtractedMarkets({
     config: input.config,
     io: input.io,
     extracted,
     evaluatedAt: input.generatedAt,
+    checkpoint: existingCheckpoint,
   });
 
   let backfill = null;
@@ -308,11 +335,18 @@ export async function buildForwardSettlementCoverageReport(input: {
       deps: input.backfillDeps,
     });
 
+    const refreshedCheckpoint = loadForwardSettlementBackfillCheckpoint({
+      readFile: input.io.readFile,
+      fileExists: input.io.fileExists,
+      checkpointPath: input.config.checkpointPath,
+    });
+
     markets = classifyExtractedMarkets({
       config: input.config,
       io: input.io,
       extracted,
       evaluatedAt: input.generatedAt,
+      checkpoint: refreshedCheckpoint,
     });
   }
 
@@ -331,6 +365,7 @@ export async function buildForwardSettlementCoverageReport(input: {
     inventoryCount: extracted.inventory.length,
     markets,
     joinIntegration,
+    backfill,
     warnings,
     errors,
   });

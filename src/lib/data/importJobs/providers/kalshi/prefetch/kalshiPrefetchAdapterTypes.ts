@@ -23,6 +23,7 @@ export type PrefetchKalshiHistoricalBronzeImporterInput = {
   endTime: string;
   listMarketWire?: KalshiMarketWireShape | null;
   reconciliationTrace?: PrefetchKalshiHistoricalReconciliationTraceCallbacks | null;
+  skipCandlesticks?: boolean;
 };
 
 export type PrefetchedKalshiHistoricalBronzeState = {
@@ -45,4 +46,5 @@ export type CreatePrefetchedKalshiHistoricalBronzeProviderInput = {
   listMarketWire?: KalshiMarketWireShape | null;
   reconciliationTrace?: PrefetchKalshiHistoricalReconciliationTraceCallbacks | null;
   settlementQualityFlags?: readonly DataQualityFlag[];
+  skipCandlesticks?: boolean;
 };

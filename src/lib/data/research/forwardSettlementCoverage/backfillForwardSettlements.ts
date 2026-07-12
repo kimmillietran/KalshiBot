@@ -12,6 +12,9 @@ import {
   isBackfillCandidate,
 } from "./classifyMarketSettlementCoverage";
 import {
+  classifyBackfillErrorCategory,
+} from "./reconcileForwardSettlementCoverage";
+import {
   buildCaptureMarketImportConfig,
   resolveMarketImportPaths,
 } from "./buildCaptureMarketImportConfig";
@@ -39,6 +42,15 @@ const DEFAULT_SLEEP = (ms: number) =>
   new Promise<void>((resolve) => {
     setTimeout(resolve, ms);
   });
+
+function withErrorCategory<T extends { errorMessage: string | null }>(
+  result: T,
+): T & { errorCategory: ReturnType<typeof classifyBackfillErrorCategory> } {
+  return {
+    ...result,
+    errorCategory: classifyBackfillErrorCategory(result.errorMessage),
+  };
+}
 
 async function runWithConcurrency<T>(
   items: readonly T[],
@@ -144,6 +156,7 @@ async function backfillOneMarket(input: {
       status: skipStatus,
       attempts: existingEntry?.attempts ?? 0,
       errorMessage: input.market.exclusionReason,
+      errorCategory: null,
       importResultPath: input.market.sourceArtifact,
       nextEligibleRetryAt: input.market.nextEligibleRetryAt,
     };
@@ -156,6 +169,7 @@ async function backfillOneMarket(input: {
         lastAttemptAt: input.evaluatedAt,
         nextEligibleRetryAt: input.market.nextEligibleRetryAt,
         errorMessage: input.market.exclusionReason,
+        errorCategory: null,
         importResultPath: input.market.sourceArtifact,
       },
       input.evaluatedAt,
@@ -179,6 +193,7 @@ async function backfillOneMarket(input: {
         status: existingEntry.status,
         attempts: existingEntry.attempts,
         errorMessage: existingEntry.errorMessage,
+        errorCategory: existingEntry.errorCategory,
         importResultPath: existingEntry.importResultPath,
         nextEligibleRetryAt: existingEntry.nextEligibleRetryAt,
       },
@@ -197,6 +212,7 @@ async function backfillOneMarket(input: {
         status: "skipped-ready",
         attempts: existingEntry?.attempts ?? 0,
         errorMessage: null,
+        errorCategory: null,
         importResultPath: paths.importResultPath,
         nextEligibleRetryAt: null,
       },
@@ -209,6 +225,7 @@ async function backfillOneMarket(input: {
       status: "dry-run-planned",
       attempts: (existingEntry?.attempts ?? 0) + 1,
       errorMessage: null,
+      errorCategory: null,
       importResultPath: paths.importResultPath,
       nextEligibleRetryAt: null,
     };
@@ -222,6 +239,7 @@ async function backfillOneMarket(input: {
           lastAttemptAt: input.evaluatedAt,
           nextEligibleRetryAt: null,
           errorMessage: null,
+          errorCategory: null,
           importResultPath: paths.importResultPath,
         },
         input.evaluatedAt,
@@ -258,6 +276,7 @@ async function backfillOneMarket(input: {
           status: "skipped-ready",
           attempts,
           errorMessage: null,
+          errorCategory: null,
           importResultPath: paths.importResultPath,
           nextEligibleRetryAt: null,
         };
@@ -271,6 +290,7 @@ async function backfillOneMarket(input: {
               lastAttemptAt: input.evaluatedAt,
               nextEligibleRetryAt: null,
               errorMessage: null,
+              errorCategory: null,
               importResultPath: paths.importResultPath,
             },
             input.evaluatedAt,
@@ -293,6 +313,7 @@ async function backfillOneMarket(input: {
         status: "imported",
         attempts,
         errorMessage: null,
+        errorCategory: null,
         importResultPath: paths.importResultPath,
         nextEligibleRetryAt: null,
       };
@@ -306,6 +327,7 @@ async function backfillOneMarket(input: {
             lastAttemptAt: input.evaluatedAt,
             nextEligibleRetryAt: null,
             errorMessage: null,
+            errorCategory: null,
             importResultPath: paths.importResultPath,
           },
           input.evaluatedAt,
@@ -323,14 +345,14 @@ async function backfillOneMarket(input: {
   const nextEligibleRetryAt = new Date(
     Date.parse(input.evaluatedAt) + 6 * 60 * 60 * 1000,
   ).toISOString();
-  const result: ForwardSettlementBackfillMarketResult = {
+  const result = withErrorCategory({
     marketTicker: input.market.marketTicker,
-    status: "failed",
+    status: "failed" as const,
     attempts,
     errorMessage: lastError,
     importResultPath: paths.importResultPath,
     nextEligibleRetryAt,
-  };
+  });
 
   return {
     checkpoint: updateCheckpointMarket(
@@ -341,6 +363,7 @@ async function backfillOneMarket(input: {
         attempts,
         lastAttemptAt: input.evaluatedAt,
         errorMessage: lastError,
+        errorCategory: result.errorCategory,
         nextEligibleRetryAt,
         importResultPath: paths.importResultPath,
       },
@@ -473,6 +496,7 @@ export async function runForwardSettlementBackfill(input: {
         lastAttemptAt: input.evaluatedAt,
         nextEligibleRetryAt: market.nextEligibleRetryAt,
         errorMessage: market.exclusionReason,
+        errorCategory: null,
         importResultPath: market.sourceArtifact,
       },
       input.evaluatedAt,
@@ -484,6 +508,7 @@ export async function runForwardSettlementBackfill(input: {
       status: skipStatus,
       attempts: 0,
       errorMessage: market.exclusionReason,
+      errorCategory: null,
       importResultPath: market.sourceArtifact,
       nextEligibleRetryAt: market.nextEligibleRetryAt,
     });
@@ -508,6 +533,14 @@ export async function runForwardSettlementBackfill(input: {
     skippedMarketCount: results.filter((result) =>
       result.status.startsWith("skipped")).length,
     failedMarketCount: results.filter((result) => result.status === "failed").length,
+    retryDeferredMarketCount: results.filter(
+      (result) =>
+        result.status === "failed"
+        && result.nextEligibleRetryAt
+        && Date.parse(result.nextEligibleRetryAt) > Date.parse(input.evaluatedAt),
+    ).length,
+    unsettledMarketCount: results.filter((result) => result.status === "skipped-unsettled")
+      .length,
     checkpointPath: input.config.checkpointPath,
     marketResults: results.sort((left, right) =>
       left.marketTicker.localeCompare(right.marketTicker)),

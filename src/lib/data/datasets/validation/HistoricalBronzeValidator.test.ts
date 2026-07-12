@@ -534,4 +534,25 @@ describe("validateHistoricalBronzeDataset", () => {
     expect(codes).toContain(HistoricalBronzeValidationErrorCode.INVALID_OHLC);
     expect(codes).toContain(HistoricalBronzeValidationErrorCode.INVALID_VOLUME);
   });
+
+  it("accepts settlement-only bronze datasets without BTC or candle records", () => {
+    const records = completeMarketRecords(
+      "KXBTC15M-SETTLEMENT-ONLY",
+      "2026-07-11T11:00:00.000Z",
+      "2026-07-11T11:15:00.000Z",
+      "settlement-only",
+    ).filter(
+      (record) =>
+        record.contentType === "kalshi.historical.market"
+        || record.contentType === "kalshi.historical.settlement",
+    );
+
+    const result = validateHistoricalBronzeDataset(records, {
+      importMode: "settlement-only",
+    });
+
+    expect(result.valid).toBe(true);
+    expect(result.statistics.btcBarCount).toBe(0);
+    expect(result.statistics.settlementCount).toBe(1);
+  });
 });

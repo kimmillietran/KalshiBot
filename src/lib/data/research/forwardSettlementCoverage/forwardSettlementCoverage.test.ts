@@ -637,6 +637,7 @@ describe("forwardSettlementCoverage", () => {
       lastAttemptAt: EVALUATED_AT,
       nextEligibleRetryAt: "2026-07-11T18:00:00.000Z",
       errorMessage: "import failed",
+      errorCategory: "unknown",
       importResultPath: null,
     };
     files[defaultConfig().checkpointPath] = serializeForwardSettlementBackfillCheckpoint(checkpoint);
@@ -691,6 +692,7 @@ describe("forwardSettlementCoverage", () => {
       lastAttemptAt: "2026-07-11T10:00:00.000Z",
       nextEligibleRetryAt: "2026-07-11T11:00:00.000Z",
       errorMessage: "import failed",
+      errorCategory: "unknown",
       importResultPath: null,
     };
     files[defaultConfig().checkpointPath] = serializeForwardSettlementBackfillCheckpoint(checkpoint);
@@ -958,6 +960,8 @@ describe("forwardSettlementCoverage", () => {
     });
 
     expect(Date.parse(config.startTime)).toBeLessThan(Date.parse(config.endTime));
+    expect(config.importMode).toBe("settlement-only");
+    expect(config.btc).toBeNull();
   });
 
   it("reports resumed false and preserves checkpoint when capture run mismatches", async () => {
@@ -981,6 +985,7 @@ describe("forwardSettlementCoverage", () => {
       lastAttemptAt: EVALUATED_AT,
       nextEligibleRetryAt: "2026-07-11T18:00:00.000Z",
       errorMessage: "prior run failure",
+      errorCategory: "unknown",
       importResultPath: null,
     };
     const checkpointPath = defaultConfig().checkpointPath;
@@ -1112,5 +1117,45 @@ describe("forwardSettlementCoverage", () => {
 
     expect(candidates).toHaveLength(1);
     expect(detectSettlementConflicts(candidates)).toBeNull();
+  });
+
+  it("reconciles failed checkpoint entries as import-failed instead of missing-source", async () => {
+    const files: Record<string, string> = {};
+    const dirs: string[] = [];
+    seedRun(files, dirs);
+    const checkpoint = createForwardSettlementBackfillCheckpoint({
+      captureRunDir: RUN_DIR,
+      selectedRunId: RUN_ID,
+      importsDir: "data/imports",
+      dryRun: false,
+      startedAt: EVALUATED_AT,
+      marketTickers: [MARKET_B],
+    });
+    checkpoint.markets[0] = {
+      marketTicker: MARKET_B,
+      status: "failed",
+      attempts: 3,
+      lastAttemptAt: EVALUATED_AT,
+      nextEligibleRetryAt: "2026-07-11T18:00:00.000Z",
+      errorMessage: "BTC historical klines request failed (451)",
+      errorCategory: "btc-provider-unexpectedly-required",
+      importResultPath: null,
+    };
+    files[defaultConfig().checkpointPath] =
+      serializeForwardSettlementBackfillCheckpoint(checkpoint);
+
+    const report = await buildForwardSettlementCoverageReport({
+      generatedAt: EVALUATED_AT,
+      config: defaultConfig({ resume: true }),
+      io: createIo(files, dirs),
+      runBackfill: false,
+    });
+
+    const marketB = report.markets.find((market) => market.marketTicker === MARKET_B);
+    expect(marketB?.classification).toBe("import-failed");
+    expect(report.summary.importFailedMarketCount).toBeGreaterThanOrEqual(1);
+    expect(report.summary.missingSourceMarketCount).toBeLessThan(
+      report.summary.capturedMarketCount,
+    );
   });
 });

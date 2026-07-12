@@ -220,7 +220,10 @@ export type CalibrationFadeCalibrationMetrics = {
 };
 
 export type CalibrationFadeExecutableMetrics = {
+  /** Evaluated candidates with executable entry and joined settlement. */
   executableCandidateCount: number;
+  evaluatedExecutableCandidateCount: number;
+  executableEntryAvailableCount: number;
   unavailableExecutablePriceCount: number;
   grossReturnCents: number | null;
   feeAdjustedReturnCents: number | null;
