@@ -1,0 +1,94 @@
+{
+  "hypothesisId": "atlas-volatilityProbabilityTime-vol-high-coarse-prob-1-coarse-time-early-over",
+  "hypothesisVersion": "v1",
+  "description": "High (>=60% annualized BTC realized volatility) × YES implied probability [0.3, 0.7) × < 15 minutes remaining; overconfident NO fade (buy NO at executable ask, hold to settlement).",
+  "canonicalSourceArtifacts": [
+    "data/research-results/hypothesis-candidates.json",
+    "data/research-results/hypothesis-validation.json",
+    "data/research-results/mispricing-atlas.json"
+  ],
+  "sourceCandidateId": "atlas-volatilityProbabilityTime-vol-high-coarse-prob-1-coarse-time-early-over",
+  "axisGroupId": "volatilityProbabilityTime",
+  "bucketId": "vol-high-coarse-prob-1-coarse-time-early",
+  "calibrationDirection": "over",
+  "targetOutcomeSide": "no",
+  "suggestedStrategyFamily": "calibration-no-fade",
+  "eligibilityRules": {
+    "volatility": {
+      "bucketId": "vol-high",
+      "minInclusive": 0.6,
+      "maxExclusive": null,
+      "intervalInclusivity": "[minInclusive, maxExclusive)"
+    },
+    "probability": {
+      "bucketId": "coarse-prob-1",
+      "minInclusive": 0.3,
+      "maxExclusive": 0.7,
+      "intervalInclusivity": "[minInclusive, maxExclusive)"
+    },
+    "timeRemainingMs": {
+      "bucketId": "coarse-time-early",
+      "minInclusive": 0,
+      "maxExclusive": 900000,
+      "intervalInclusivity": "[minInclusive, maxExclusive)"
+    }
+  },
+  "probabilityMeasure": {
+    "id": "yes-bid-ask-midpoint",
+    "definition": "YES bid/ask midpoint implied probability",
+    "formula": "(yesBidCents + yesAskCents) / 2 / 100"
+  },
+  "volatilityDefinition": {
+    "sourceInstrument": "BTC",
+    "returnIntervalMs": 60000,
+    "lookbackBars": 10,
+    "method": "realized-log-return-annualized",
+    "causalOnly": true,
+    "maximumSourceGapMs": 5000
+  },
+  "marketEligibilityRules": {
+    "requireValidBook": true,
+    "requireSynchronizedBook": true,
+    "requireOpenMarket": true,
+    "requireBtcJoin": true
+  },
+  "deduplicationPolicy": {
+    "episodeBreakOnDisqualification": true,
+    "entryRule": "first-crossing-into-eligibility",
+    "primaryValidationUnit": "one-first-entry-per-market",
+    "suppressRepeatedQualifyingSnapshots": true
+  },
+  "entryPriceMeasures": {
+    "calibrationLayer": "yes-bid-ask-midpoint",
+    "executableLayer": "no-ask-cross-spread",
+    "diagnosticLayer": "yes-bid-ask-midpoint"
+  },
+  "settlementMapping": {
+    "yesWinOutcome": 1,
+    "noWinOutcome": 0,
+    "targetSideWinsWhen": "observedOutcome === 0 for NO fade"
+  },
+  "minimumEvidenceRequirements": {
+    "minimumIndependentCandidateMarkets": 5,
+    "minimumSettlementCoverageShare": 0.8,
+    "minimumValidBookShare": 0.9,
+    "minimumBtcJoinCoverageShare": 0.9,
+    "materialRejectionCalibrationGap": 0.05,
+    "materialSupportCalibrationGap": 0.03,
+    "materialExecutableNetReturnCents": 1
+  },
+  "classificationRules": {
+    "precedence": [
+      "hypothesis-provenance-unavailable",
+      "forward-feature-incompatible",
+      "insufficient-forward-events",
+      "settlement-coverage-incomplete",
+      "observation-quality-inconclusive",
+      "forward-rejects-hypothesis",
+      "forward-inconclusive",
+      "forward-contradicts-executability",
+      "forward-supports-calibration-effect",
+      "forward-supports-executable-fade"
+    ]
+  }
+}
