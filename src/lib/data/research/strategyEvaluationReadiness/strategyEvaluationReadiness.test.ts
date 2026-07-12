@@ -4,6 +4,7 @@ import { buildStrategyEvaluationReadinessReport } from "./buildStrategyEvaluatio
 import { evaluateStrategyEvaluationReadiness } from "./evaluateStrategyEvaluationReadiness";
 import {
   loadStrategyEvaluationInputs,
+  listInputArtifactsUsed,
   readArtifactFreshness,
 } from "./loadStrategyEvaluationInputs";
 import { serializeStrategyEvaluationReadinessHtml } from "./serializeStrategyEvaluationReadinessHtml";
@@ -806,6 +807,38 @@ describe("strategyEvaluationReadiness", () => {
     expect(loaded.artifactValidation.identities.length).toBeGreaterThan(0);
     expect(report.scope.inputArtifactIdentities).toEqual(
       loaded.artifactValidation.identities,
+    );
+  });
+
+  it("excludes mismatched optional artifacts from selected-run readiness inputs", () => {
+    const inputPaths = buildInputPaths({
+      captureRunDir: "data/live-capture/forward-quotes/run-a",
+      artifacts: {
+        ...DEFAULT_STRATEGY_EVALUATION_INPUT_PATHS.artifacts,
+        captureQualityValidation: "data/research-results/cqv.json",
+      },
+    });
+    const io = buildMemoryIo({
+      [inputPaths.artifacts.captureQualityValidation]: JSON.stringify({
+        generatedAt: GENERATED_AT,
+        analysisScope: "selected-run",
+        sourceRunIds: ["run-b"],
+        selectedRunId: "run-b",
+      }),
+    });
+
+    const loaded = loadStrategyEvaluationInputs({
+      io,
+      inputPaths,
+      evaluatedAt: GENERATED_AT,
+    });
+
+    expect(loaded.artifactValidation.mismatchedArtifacts).toContain(
+      inputPaths.artifacts.captureQualityValidation,
+    );
+    expect(loaded.captureQualityValidation?.excludedByValidation).toBe(true);
+    expect(listInputArtifactsUsed(loaded)).not.toContain(
+      inputPaths.artifacts.captureQualityValidation,
     );
   });
 

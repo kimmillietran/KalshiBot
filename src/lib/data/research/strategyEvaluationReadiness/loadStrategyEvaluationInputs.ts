@@ -331,6 +331,8 @@ export function loadStrategyEvaluationInputs(input: {
         inputPaths.artifacts.staticParityScan,
         inputPaths.artifacts.bidOnlyCandidateLifecycle,
         inputPaths.artifacts.bidSizeCoverageAudit,
+        inputPaths.artifacts.captureQualityValidation,
+        inputPaths.artifacts.validBookCoverageInvestigation,
       ].filter((path) => io.fileExists(path)),
       evaluatedAt: input.evaluatedAt,
       staleAfterHours: DEFAULT_BID_ONLY_PARITY_EPISODE_THRESHOLDS.artifactStaleAfterHours,
@@ -358,6 +360,8 @@ export function loadStrategyEvaluationInputs(input: {
       inputPaths.artifacts.staticParityScan,
       inputPaths.artifacts.bidOnlyCandidateLifecycle,
       inputPaths.artifacts.bidSizeCoverageAudit,
+      inputPaths.artifacts.captureQualityValidation,
+      inputPaths.artifacts.validBookCoverageInvestigation,
     ].filter((path) => io.fileExists(path))
     : [];
   const usableArtifactPaths = new Set(artifactValidation.usablePaths);
@@ -398,8 +402,14 @@ export function loadStrategyEvaluationInputs(input: {
       artifact: bidOnlyCandidateLifecycle,
       excludedPaths: excludedArtifactPaths,
     }),
-    captureQualityValidation,
-    validBookCoverageInvestigation,
+    captureQualityValidation: excludeInvalidSelectedRunArtifact({
+      artifact: captureQualityValidation,
+      excludedPaths: excludedArtifactPaths,
+    }),
+    validBookCoverageInvestigation: excludeInvalidSelectedRunArtifact({
+      artifact: validBookCoverageInvestigation,
+      excludedPaths: excludedArtifactPaths,
+    }),
     captureFallback,
     selection,
     artifactValidation,

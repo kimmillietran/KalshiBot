@@ -97,6 +97,36 @@ describe("cliArgvSchemas", () => {
     ]);
   });
 
+  it("maps stripped selected-run capture plus output positionals", () => {
+    const captureRunDir = "data/live-capture/forward-quotes/run-a";
+    const outputPath = "data/research-results/custom.json";
+
+    expect(normalizeBidOnlyCandidateLifecycleArgv([captureRunDir, outputPath])).toEqual([
+      "--capture-run-dir",
+      captureRunDir,
+      "--output",
+      outputPath,
+    ]);
+    expect(normalizeExecutableConfirmationDesignArgv([captureRunDir, outputPath])).toEqual([
+      "--capture-run-dir",
+      captureRunDir,
+      "--output",
+      outputPath,
+    ]);
+    expect(normalizeStaticParityScanArgv([captureRunDir, outputPath])).toEqual([
+      "--capture-run-dir",
+      captureRunDir,
+      "--output",
+      outputPath,
+    ]);
+  });
+
+  it("maps stripped static parity output-only positional argv", () => {
+    expect(
+      normalizeStaticParityScanArgv(["data/reports/custom-static.json"]),
+    ).toEqual(["--output", "data/reports/custom-static.json"]);
+  });
+
   it("normalizes execute expansion import max-markets from equals, space, and npm config forms", () => {
     vi.stubEnv("npm_config_max_markets", "10");
 

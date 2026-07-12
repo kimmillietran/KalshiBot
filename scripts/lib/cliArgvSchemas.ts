@@ -801,6 +801,47 @@ const WALK_FORWARD_SWEEP_POSITIONAL_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--concurrency" },
 ];
 
+function normalizeCapturePath(path: string): string {
+  return path.replace(/\\/g, "/");
+}
+
+function isCaptureRunPositional(path: string): boolean {
+  const normalized = normalizeCapturePath(path);
+  return normalized.includes("forward-quotes/") || normalized.includes("live-capture/");
+}
+
+function normalizeSelectedRunCaptureOutputArgv(
+  expanded: readonly string[],
+  options?: { outputOnlyWhenSingle?: boolean },
+): string[] | null {
+  if (hasCliFlags(expanded)) {
+    return null;
+  }
+
+  const positionals = expanded.filter((token) => !token.startsWith("--"));
+  if (positionals.length === 1) {
+    const positional = positionals[0]!;
+    if (isCaptureRunPositional(positional)) {
+      return ["--capture-run-dir", positional];
+    }
+
+    if (options?.outputOnlyWhenSingle) {
+      return ["--output", positional];
+    }
+
+    return null;
+  }
+
+  if (positionals.length === 2) {
+    const [first, second] = positionals;
+    if (first && second && isCaptureRunPositional(first)) {
+      return ["--capture-run-dir", first, "--output", second];
+    }
+  }
+
+  return null;
+}
+
 function normalizeStrategySelectionArgv(
   argv: readonly string[],
   positionalSchema: readonly NpmArgvField[],
@@ -995,23 +1036,28 @@ export function normalizeCaptureQualityValidationArgv(argv: readonly string[]): 
 
 export function normalizeBidOnlyCandidateLifecycleArgv(argv: readonly string[]): string[] {
   const expanded = expandEqualsStyleFlags(argv);
-  if (hasCliFlags(expanded)) {
-    return normalizeNpmScriptArgv(expanded, BID_ONLY_CANDIDATE_LIFECYCLE_ARGV_SCHEMA);
+  const positional = normalizeSelectedRunCaptureOutputArgv(expanded);
+  if (positional) {
+    return positional;
   }
 
-  if (expanded.length === 1 && !expanded[0]!.startsWith("--")) {
-    const positional = expanded[0]!;
-    const normalized = positional.replace(/\\/g, "/");
-    if (normalized.includes("forward-quotes/") || normalized.includes("live-capture/")) {
-      return ["--capture-run-dir", positional];
-    }
+  if (hasCliFlags(expanded)) {
+    return normalizeNpmScriptArgv(expanded, BID_ONLY_CANDIDATE_LIFECYCLE_ARGV_SCHEMA);
   }
 
   return normalizeNpmScriptArgv(expanded, BID_ONLY_CANDIDATE_LIFECYCLE_ARGV_SCHEMA);
 }
 
 export function normalizeStaticParityScanArgv(argv: readonly string[]): string[] {
-  return normalizeNpmScriptArgv(argv, STATIC_PARITY_SCAN_ARGV_SCHEMA);
+  const expanded = expandEqualsStyleFlags(argv);
+  const positional = normalizeSelectedRunCaptureOutputArgv(expanded, {
+    outputOnlyWhenSingle: true,
+  });
+  if (positional) {
+    return positional;
+  }
+
+  return normalizeNpmScriptArgv(expanded, STATIC_PARITY_SCAN_ARGV_SCHEMA);
 }
 
 export function normalizeStrategyEvaluationReadinessArgv(argv: readonly string[]): string[] {
@@ -1157,16 +1203,13 @@ export function normalizeExecutableConfirmationDesignArgv(
   argv: readonly string[],
 ): string[] {
   const expanded = expandEqualsStyleFlags(argv);
-  if (hasCliFlags(expanded)) {
-    return normalizeNpmScriptArgv(expanded, EXECUTABLE_CONFIRMATION_DESIGN_ARGV_SCHEMA);
+  const positional = normalizeSelectedRunCaptureOutputArgv(expanded);
+  if (positional) {
+    return positional;
   }
 
-  if (expanded.length === 1 && !expanded[0]!.startsWith("--")) {
-    const positional = expanded[0]!;
-    const normalized = positional.replace(/\\/g, "/");
-    if (normalized.includes("forward-quotes/") || normalized.includes("live-capture/")) {
-      return ["--capture-run-dir", positional];
-    }
+  if (hasCliFlags(expanded)) {
+    return normalizeNpmScriptArgv(expanded, EXECUTABLE_CONFIRMATION_DESIGN_ARGV_SCHEMA);
   }
 
   return normalizeNpmScriptArgv(expanded, EXECUTABLE_CONFIRMATION_DESIGN_ARGV_SCHEMA);
