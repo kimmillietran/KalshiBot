@@ -15,21 +15,79 @@ import {
   type ParityNearMissAnalysisCommandIo,
 } from "./buildParityNearMissAnalysisTypes";
 
-function writeFileAtomically(
-  io: Pick<ParityNearMissAnalysisCommandIo, "writeFile" | "fileExists" | "unlinkFile" | "renameFile">,
-  outputPath: string,
-  data: string,
+type ArtifactPublish = {
+  outputPath: string;
+  data: string;
+};
+
+type PreparedArtifactPublish = ArtifactPublish & {
+  tempPath: string;
+  backupPath: string;
+  backupCreated: boolean;
+  committed: boolean;
+};
+
+function cleanupIfPresent(
+  io: Pick<ParityNearMissAnalysisCommandIo, "fileExists" | "unlinkFile">,
+  path: string,
 ): void {
-  const tempPath = `${outputPath}.${process.pid}.tmp`;
-  io.writeFile(tempPath, data);
+  if (io.fileExists(path)) {
+    io.unlinkFile(path);
+  }
+}
+
+function rollbackPublishedArtifacts(
+  io: Pick<ParityNearMissAnalysisCommandIo, "fileExists" | "unlinkFile" | "renameFile">,
+  artifacts: readonly PreparedArtifactPublish[],
+): void {
+  for (const artifact of [...artifacts].reverse()) {
+    if (artifact.committed) {
+      cleanupIfPresent(io, artifact.outputPath);
+    }
+
+    if (artifact.backupCreated && io.fileExists(artifact.backupPath)) {
+      io.renameFile(artifact.backupPath, artifact.outputPath);
+    }
+
+    cleanupIfPresent(io, artifact.tempPath);
+  }
+}
+
+function publishArtifactsAtomically(
+  io: Pick<ParityNearMissAnalysisCommandIo, "writeFile" | "fileExists" | "unlinkFile" | "renameFile">,
+  artifacts: readonly ArtifactPublish[],
+): void {
+  const preparedArtifacts = artifacts.map((artifact, index) => ({
+    ...artifact,
+    tempPath: `${artifact.outputPath}.${process.pid}.${index}.tmp`,
+    backupPath: `${artifact.outputPath}.${process.pid}.${index}.bak`,
+    backupCreated: false,
+    committed: false,
+  }));
 
   try {
-    io.renameFile(tempPath, outputPath);
-  } catch {
-    if (io.fileExists(outputPath)) {
-      io.unlinkFile(outputPath);
+    for (const artifact of preparedArtifacts) {
+      io.writeFile(artifact.tempPath, artifact.data);
     }
-    io.renameFile(tempPath, outputPath);
+
+    for (const artifact of preparedArtifacts) {
+      if (io.fileExists(artifact.outputPath)) {
+        io.renameFile(artifact.outputPath, artifact.backupPath);
+        artifact.backupCreated = true;
+      }
+
+      io.renameFile(artifact.tempPath, artifact.outputPath);
+      artifact.committed = true;
+    }
+
+    for (const artifact of preparedArtifacts) {
+      if (artifact.backupCreated) {
+        cleanupIfPresent(io, artifact.backupPath);
+      }
+    }
+  } catch (error) {
+    rollbackPublishedArtifacts(io, preparedArtifacts);
+    throw error;
   }
 }
 
@@ -53,8 +111,10 @@ export async function runParityNearMissAnalysisCommand(
 
     io.mkdirSync(dirname(outputPath), { recursive: true });
     io.mkdirSync(dirname(htmlOutputPath), { recursive: true });
-    writeFileAtomically(io, outputPath, serializedReport);
-    writeFileAtomically(io, htmlOutputPath, serializedHtml);
+    publishArtifactsAtomically(io, [
+      { outputPath, data: serializedReport },
+      { outputPath: htmlOutputPath, data: serializedHtml },
+    ]);
 
     io.writeStdout(
       `${stableStringify({

@@ -52,6 +52,44 @@ function createCommandIo() {
   return { io, writes, getStderr: () => stderr };
 }
 
+function createPublishingCommandIo(options?: {
+  initialFiles?: Record<string, string>;
+  failRenameTo?: string;
+}) {
+  const files = new Map(Object.entries(options?.initialFiles ?? {}));
+  let stderr = "";
+
+  const io = {
+    writeStdout: () => {},
+    writeStderr: (text: string) => {
+      stderr += text;
+    },
+    writeFile: (path: string, data: string) => {
+      files.set(path, data);
+    },
+    mkdirSync: () => {},
+    fileExists: (path: string) => files.has(path),
+    unlinkFile: (path: string) => {
+      files.delete(path);
+    },
+    renameFile: (from: string, to: string) => {
+      if (to === options?.failRenameTo && from.endsWith(".tmp")) {
+        throw new Error(`rename failed for ${to}`);
+      }
+
+      const data = files.get(from);
+      if (data === undefined) {
+        throw new Error(`missing source ${from}`);
+      }
+
+      files.delete(from);
+      files.set(to, data);
+    },
+  };
+
+  return { io, files, getStderr: () => stderr };
+}
+
 describe("formatCommandError", () => {
   it("returns message only for expected parity analysis errors", () => {
     expect(formatCommandError(new ParityNearMissAnalysisError("expected failure"))).toBe(
@@ -115,5 +153,38 @@ describe("runParityNearMissAnalysisCommand", () => {
     htmlSpy.mockRestore();
     expect(exitCode).toBe(1);
     expect(writes).toEqual([]);
+  });
+
+  it("restores existing artifacts when the second artifact publish fails", async () => {
+    const reportSpy = vi
+      .spyOn(parityNearMissModule, "buildParityNearMissAnalysisReport")
+      .mockResolvedValue(minimalReport);
+    const reportSerializerSpy = vi
+      .spyOn(parityNearMissModule, "serializeParityNearMissAnalysisReport")
+      .mockReturnValue("{\"ok\":true}\n");
+    const htmlSerializerSpy = vi
+      .spyOn(parityNearMissModule, "serializeParityNearMissAnalysisHtml")
+      .mockReturnValue("<!doctype html><p>ok</p>");
+    const { io, files, getStderr } = createPublishingCommandIo({
+      initialFiles: {
+        [minimalReport.outputPath]: "previous json",
+        [minimalReport.htmlOutputPath]: "previous html",
+      },
+      failRenameTo: minimalReport.htmlOutputPath,
+    });
+
+    const exitCode = await runParityNearMissAnalysisCommand(
+      ["--capture-run-dir", "data/live-capture/forward-quotes/run-test"],
+      io,
+    );
+
+    reportSpy.mockRestore();
+    reportSerializerSpy.mockRestore();
+    htmlSerializerSpy.mockRestore();
+    expect(exitCode).toBe(1);
+    expect(getStderr()).toContain(`rename failed for ${minimalReport.htmlOutputPath}`);
+    expect(files.get(minimalReport.outputPath)).toBe("previous json");
+    expect(files.get(minimalReport.htmlOutputPath)).toBe("previous html");
+    expect([...files.keys()].filter((path) => path.includes(`${process.pid}`))).toEqual([]);
   });
 });
