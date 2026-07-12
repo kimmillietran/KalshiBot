@@ -235,7 +235,7 @@ function resolveBtcSpotRecordCount(
   return health.btcSpot?.recordsCaptured ?? stats.recordCount;
 }
 
-function loadRun(
+export function loadRun(
   io: ForwardCaptureReadinessIo,
   runDir: string,
   sourceRoot: string,
@@ -351,18 +351,24 @@ function isSuccessfulRun(verdict: string | undefined): boolean {
 }
 
 /** Excludes mock, dry-run, credential-failure, and zero-observation captures from default aggregates. */
-export function isResearchEligibleCaptureRun(run: LoadedForwardCaptureRun): boolean {
+export function getResearchEligibilityExclusionReason(
+  run: LoadedForwardCaptureRun,
+): string | null {
   if (run.health.config?.dryRun === true) {
-    return false;
+    return "dry-run capture";
   }
 
   const verdict = run.health.verdict ?? "";
-  if (
-    verdict.includes("credential")
-    || verdict.includes("dry-run")
-    || verdict === "capture-too-short"
-  ) {
-    return false;
+  if (verdict.includes("credential")) {
+    return "credential failure capture";
+  }
+
+  if (verdict.includes("dry-run")) {
+    return "dry-run verdict";
+  }
+
+  if (verdict === "capture-too-short") {
+    return "capture-too-short verdict";
   }
 
   const tickers = [
@@ -370,14 +376,22 @@ export function isResearchEligibleCaptureRun(run: LoadedForwardCaptureRun): bool
     ...(run.health.marketDiscovery?.selectedMarketTickers ?? []),
   ];
   if (tickers.some((ticker) => ticker.includes("MOCK"))) {
-    return false;
+    return "mock market ticker";
   }
 
   if (run.topOfBookStats.recordCount === 0 && run.rawMessageCount === 0) {
-    return false;
+    return "zero observations";
   }
 
-  return isSuccessfulRun(verdict) || run.topOfBookStats.recordCount > 0;
+  if (!isSuccessfulRun(verdict) && run.topOfBookStats.recordCount === 0) {
+    return `ineligible verdict: ${verdict || "unknown"}`;
+  }
+
+  return null;
+}
+
+export function isResearchEligibleCaptureRun(run: LoadedForwardCaptureRun): boolean {
+  return getResearchEligibilityExclusionReason(run) === null;
 }
 
 function runDurationMinutes(run: LoadedForwardCaptureRun): number {

@@ -54,8 +54,11 @@ export const BTC_MOVE_BUCKETS = [
 
 export type BtcMoveBucket = (typeof BTC_MOVE_BUCKETS)[number];
 
+import type { DownstreamScopeMetadata } from "../downstreamAnalysisScope/downstreamAnalysisScopeTypes";
+
 export type BidOnlyCandidateLifecycleConfig = {
   forwardQuotesDir: string;
+  captureRunDir: string | null;
   staticParityScanPath: string | null;
   pricingModel: "bid-only";
   maxGapMs: number;
@@ -166,6 +169,10 @@ export type BidOnlyCandidateLifecycleReport = {
   config: BidOnlyCandidateLifecycleConfig;
   summary: BidOnlyCandidateLifecycleSummary;
   metrics: BidOnlyCandidateLifecycleMetrics;
+  scope: DownstreamScopeMetadata;
+  analysisScope: DownstreamScopeMetadata["analysisScope"];
+  selectedRunId: string | null;
+  sourceRunIds: readonly string[];
   episodes: readonly BidOnlyCandidateEpisode[];
 };
 

@@ -1,5 +1,10 @@
 import { z } from "zod";
 
+import { resolveCaptureRunDirectories } from "../downstreamAnalysisScope/discoverCaptureRunDirectories";
+import {
+  validateInputArtifacts,
+  type ArtifactValidationIo,
+} from "../downstreamAnalysisScope/validateInputArtifacts";
 import { classifyBidOnlyParitySnapshot } from "../staticParityScan/classifyBidOnlyParitySnapshot";
 import type {
   BidOnlyCandidateLifecycleConfig,
@@ -72,19 +77,10 @@ export type LoadedBidOnlyRunInput = {
 export type LoadedBidOnlyParityInputs = {
   runs: LoadedBidOnlyRunInput[];
   warnings: string[];
+  scopeWarnings: string[];
+  dataQualityWarnings: string[];
+  artifactValidation: ReturnType<typeof validateInputArtifacts> | null;
 };
-
-function discoverRunDirectories(io: BidOnlyCandidateLifecycleIo, rootPath: string): string[] {
-  if (!io.fileExists(rootPath) || !io.isDirectory(rootPath)) {
-    return [];
-  }
-
-  return io
-    .readdir(rootPath)
-    .map((entry) => joinPath(rootPath, entry))
-    .filter((entryPath) => io.isDirectory(entryPath))
-    .filter((entryPath) => io.fileExists(joinPath(entryPath, "capture-health.json")));
-}
 
 function loadBtcSpots(io: BidOnlyCandidateLifecycleIo, runDir: string): LoadedBtcSpotPoint[] {
   const path = joinPath(runDir, "btc-spot.jsonl");
@@ -223,11 +219,71 @@ function loadRunRecords(
 export function loadBidOnlyParityInputs(input: {
   config: BidOnlyCandidateLifecycleConfig;
   io: BidOnlyCandidateLifecycleIo;
+  evaluatedAt?: string;
 }): LoadedBidOnlyParityInputs {
   const warnings: string[] = [];
+  const scopeWarnings: string[] = [];
+  const dataQualityWarnings: string[] = [];
   const runs: LoadedBidOnlyRunInput[] = [];
+  const evaluatedAt = input.evaluatedAt ?? new Date().toISOString();
+  const selection = {
+    analysisScope: input.config.captureRunDir ? "selected-run" as const : "aggregate" as const,
+    forwardQuotesDir: input.config.forwardQuotesDir,
+    captureRunDir: input.config.captureRunDir,
+    selectedRunId: input.config.captureRunDir
+      ? input.config.captureRunDir.split("/").pop() ?? null
+      : null,
+  };
 
-  for (const runDir of discoverRunDirectories(input.io, input.config.forwardQuotesDir)) {
+  let artifactValidation: ReturnType<typeof validateInputArtifacts> | null = null;
+  if (
+    selection.analysisScope === "selected-run"
+    && input.config.staticParityScanPath
+  ) {
+    const validationIo: ArtifactValidationIo = {
+      readFile: input.io.readFile,
+      fileExists: input.io.fileExists,
+    };
+    artifactValidation = validateInputArtifacts({
+      io: validationIo,
+      selection,
+      artifactPaths: [input.config.staticParityScanPath],
+      evaluatedAt,
+      requireIdentityInSelectedRun: true,
+    });
+
+    if (artifactValidation.mismatchedArtifacts.length > 0) {
+      scopeWarnings.push(
+        ...artifactValidation.mismatchedArtifacts.map(
+          (path) => `Scope mismatch: static parity artifact ${path} does not match selected run.`,
+        ),
+      );
+    }
+
+    if (artifactValidation.malformedArtifacts.length > 0) {
+      scopeWarnings.push(
+        ...artifactValidation.malformedArtifacts.map(
+          (path) => `Scope mismatch: malformed static parity artifact ${path}.`,
+        ),
+      );
+    }
+
+    if (artifactValidation.missingArtifacts.length > 0) {
+      scopeWarnings.push(
+        ...artifactValidation.missingArtifacts.map(
+          (path) => `Scope mismatch: missing static parity artifact ${path}.`,
+        ),
+      );
+    }
+  }
+
+  const runDirs = resolveCaptureRunDirectories({
+    io: input.io,
+    forwardQuotesDir: input.config.forwardQuotesDir,
+    captureRunDir: input.config.captureRunDir,
+  });
+
+  for (const runDir of runDirs) {
     const healthPath = joinPath(runDir, "capture-health.json");
     let runId = runDir.split("/").pop() ?? runDir;
 
@@ -249,13 +305,22 @@ export function loadBidOnlyParityInputs(input: {
       warnings: loadedRecords.warnings,
     });
     warnings.push(...loadedRecords.warnings.map((warning) => `${runId}: ${warning}`));
+    dataQualityWarnings.push(
+      ...loadedRecords.warnings.map((warning) => `${runId}: ${warning}`),
+    );
   }
 
   if (runs.length === 0) {
-    warnings.push(`No capture runs found under ${input.config.forwardQuotesDir}`);
+    if (selection.analysisScope === "selected-run") {
+      scopeWarnings.push(
+        `No capture run found at ${input.config.captureRunDir ?? "selected path"}.`,
+      );
+    } else {
+      warnings.push(`No capture runs found under ${input.config.forwardQuotesDir}`);
+    }
   }
 
-  return { runs, warnings };
+  return { runs, warnings, scopeWarnings, dataQualityWarnings, artifactValidation };
 }
 
 export function countBidOnlyCandidateRecords(records: readonly BidOnlyClassifiedRecord[]): number {

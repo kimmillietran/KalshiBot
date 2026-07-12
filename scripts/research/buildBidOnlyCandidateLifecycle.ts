@@ -26,6 +26,7 @@ function main(): void {
   const config = createBidOnlyCandidateLifecycleConfig({
     forwardQuotesDir: parsed.forwardQuotesDir,
     staticParityScanPath: parsed.staticParityScanPath,
+    captureRunDir: parsed.configOverrides.captureRunDir ?? null,
     ...(parsed.configOverrides.maxGapMs !== undefined
       ? { maxGapMs: parsed.configOverrides.maxGapMs }
       : {}),

@@ -71,10 +71,12 @@ export const DEFAULT_STATIC_PARITY_FRICTION_CONFIG: StaticParityFrictionConfig =
 
 export type StaticParityScanInputPaths = {
   forwardQuotesDir: string;
+  captureRunDir: string | null;
 };
 
 export const DEFAULT_STATIC_PARITY_SCAN_INPUT_PATHS: StaticParityScanInputPaths = {
   forwardQuotesDir: DEFAULT_STATIC_PARITY_SCAN_INPUT_DIR,
+  captureRunDir: null,
 };
 
 export type StaticParityCandidateSample = {
@@ -143,6 +145,8 @@ export type StaticParityScanSummary = {
   recommendedNextAction: string;
 };
 
+import type { DownstreamScopeMetadata } from "../downstreamAnalysisScope/downstreamAnalysisScopeTypes";
+
 export type StaticParityScanReport = {
   generatedAt: string;
   outputPath: string;
@@ -153,6 +157,10 @@ export type StaticParityScanReport = {
   friction: StaticParityFrictionConfig;
   summary: StaticParityScanSummary;
   metrics: StaticParityScanMetrics;
+  scope: DownstreamScopeMetadata;
+  analysisScope: DownstreamScopeMetadata["analysisScope"];
+  selectedRunId: string | null;
+  sourceRunIds: readonly string[];
   candidateSamples: readonly StaticParityCandidateSample[];
   runs: readonly {
     runId: string;

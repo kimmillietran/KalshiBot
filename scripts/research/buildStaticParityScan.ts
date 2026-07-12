@@ -17,6 +17,8 @@ import {
 } from "@/lib/data/research/staticParityScan";
 import { stableStringify } from "@/lib/trading/config/hashConfig";
 
+import { normalizeStaticParityScanArgv } from "../lib/cliArgvSchemas";
+
 export type StaticParityScanCommandIo = {
   readFile: (path: string) => string;
   fileExists: (path: string) => boolean;
@@ -46,9 +48,10 @@ export function runStaticParityScanCommand(
   options?: { generatedAt?: string },
 ): number {
   try {
+    const normalizedArgv = normalizeStaticParityScanArgv(argv);
     const { outputPath, htmlOutputPath, inputPaths } =
-      parseStaticParityScanPathsFromArgv(argv);
-    const friction = parseStaticParityScanFrictionFromArgv(argv);
+      parseStaticParityScanPathsFromArgv(normalizedArgv);
+    const friction = parseStaticParityScanFrictionFromArgv(normalizedArgv);
     const generatedAt = options?.generatedAt ?? new Date().toISOString();
 
     const report = buildStaticParityScanReport({
@@ -70,6 +73,9 @@ export function runStaticParityScanCommand(
         stableStringify({
           outputPath: report.outputPath,
           htmlOutputPath: report.htmlOutputPath,
+          analysisScope: report.analysisScope,
+          selectedRunId: report.selectedRunId,
+          sourceRunIds: report.sourceRunIds,
           pricingModel: report.summary.pricingModel,
           overallClassification: report.summary.overallClassification,
           recommendedNextAction: report.summary.recommendedNextAction,

@@ -326,6 +326,7 @@ export const CAPTURE_QUALITY_VALIDATION_ARGV_SCHEMA: readonly NpmArgvField[] = [
 
 export const BID_ONLY_CANDIDATE_LIFECYCLE_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--forward-quotes-dir" },
+  { flag: "--capture-run-dir" },
   { flag: "--output" },
   { flag: "--html-output" },
   { flag: "--static-parity-scan" },
@@ -334,6 +335,21 @@ export const BID_ONLY_CANDIDATE_LIFECYCLE_ARGV_SCHEMA: readonly NpmArgvField[] =
   { flag: "--min-edge-cents" },
   { flag: "--min-size-contracts" },
   { flag: "--pricing-model" },
+];
+
+export const STATIC_PARITY_SCAN_ARGV_SCHEMA: readonly NpmArgvField[] = [
+  { flag: "--capture-run-dir" },
+  { flag: "--input-dir" },
+  { flag: "--forward-quotes-dir" },
+  { flag: "--output" },
+  { flag: "-o" },
+  { flag: "--html" },
+  { flag: "--html-output" },
+  { flag: "--pricing-model" },
+  { flag: "--fee-buffer-cents" },
+  { flag: "--min-gross-edge-cents" },
+  { flag: "--min-bid-only-edge-cents" },
+  { flag: "--min-size-contracts" },
 ];
 
 export const CAPTURE_BASELINE_COMPARISON_ARGV_SCHEMA: readonly NpmArgvField[] = [
@@ -680,15 +696,30 @@ export const CALIBRATION_FADE_FAMILY_VERDICT_ARGV_SCHEMA: readonly NpmArgvField[
 ];
 
 export const FORWARD_CAPTURE_READINESS_ARGV_SCHEMA: readonly NpmArgvField[] = [
+  { flag: "--capture-run-dir" },
   { flag: "--output" },
   { flag: "--html-output" },
   { flag: "--forward-quotes-dir" },
   { flag: "--kalshi-ws-spike-dir" },
 ];
 
+export const STRATEGY_EVALUATION_READINESS_ARGV_SCHEMA: readonly NpmArgvField[] = [
+  { flag: "--capture-run-dir" },
+  { flag: "--output" },
+  { flag: "--html-output" },
+  { flag: "--forward-quotes-dir" },
+  { flag: "--forward-capture-readiness" },
+  { flag: "--static-parity-scan" },
+  { flag: "--bid-size-coverage-audit" },
+  { flag: "--bid-only-candidate-lifecycle" },
+  { flag: "--capture-quality-validation" },
+  { flag: "--valid-book-coverage" },
+];
+
 export const EXECUTABLE_CONFIRMATION_DESIGN_ARGV_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--output" },
   { flag: "--html-output" },
+  { flag: "--capture-run-dir" },
   { flag: "--static-parity-scan" },
   { flag: "--bid-only-lifecycle" },
   { flag: "--forward-capture-readiness" },
@@ -769,6 +800,47 @@ const WALK_FORWARD_SWEEP_POSITIONAL_SCHEMA: readonly NpmArgvField[] = [
   { flag: "--output-dir" },
   { flag: "--concurrency" },
 ];
+
+function normalizeCapturePath(path: string): string {
+  return path.replace(/\\/g, "/");
+}
+
+function isCaptureRunPositional(path: string): boolean {
+  const normalized = normalizeCapturePath(path);
+  return normalized.includes("forward-quotes/") || normalized.includes("live-capture/");
+}
+
+function normalizeSelectedRunCaptureOutputArgv(
+  expanded: readonly string[],
+  options?: { outputOnlyWhenSingle?: boolean },
+): string[] | null {
+  if (hasCliFlags(expanded)) {
+    return null;
+  }
+
+  const positionals = expanded.filter((token) => !token.startsWith("--"));
+  if (positionals.length === 1) {
+    const positional = positionals[0]!;
+    if (isCaptureRunPositional(positional)) {
+      return ["--capture-run-dir", positional];
+    }
+
+    if (options?.outputOnlyWhenSingle) {
+      return ["--output", positional];
+    }
+
+    return null;
+  }
+
+  if (positionals.length === 2) {
+    const [first, second] = positionals;
+    if (first && second && isCaptureRunPositional(first)) {
+      return ["--capture-run-dir", first, "--output", second];
+    }
+  }
+
+  return null;
+}
 
 function normalizeStrategySelectionArgv(
   argv: readonly string[],
@@ -963,7 +1035,43 @@ export function normalizeCaptureQualityValidationArgv(argv: readonly string[]): 
 }
 
 export function normalizeBidOnlyCandidateLifecycleArgv(argv: readonly string[]): string[] {
-  return normalizeNpmScriptArgv(argv, BID_ONLY_CANDIDATE_LIFECYCLE_ARGV_SCHEMA);
+  const expanded = expandEqualsStyleFlags(argv);
+  const positional = normalizeSelectedRunCaptureOutputArgv(expanded, {
+    outputOnlyWhenSingle: true,
+  });
+  if (positional) {
+    return positional;
+  }
+
+  if (hasCliFlags(expanded)) {
+    return normalizeNpmScriptArgv(expanded, BID_ONLY_CANDIDATE_LIFECYCLE_ARGV_SCHEMA);
+  }
+
+  return normalizeNpmScriptArgv(expanded, BID_ONLY_CANDIDATE_LIFECYCLE_ARGV_SCHEMA);
+}
+
+export function normalizeStaticParityScanArgv(argv: readonly string[]): string[] {
+  const expanded = expandEqualsStyleFlags(argv);
+  const positional = normalizeSelectedRunCaptureOutputArgv(expanded, {
+    outputOnlyWhenSingle: true,
+  });
+  if (positional) {
+    return positional;
+  }
+
+  return normalizeNpmScriptArgv(expanded, STATIC_PARITY_SCAN_ARGV_SCHEMA);
+}
+
+export function normalizeStrategyEvaluationReadinessArgv(argv: readonly string[]): string[] {
+  const expanded = expandEqualsStyleFlags(argv);
+  const positional = normalizeSelectedRunCaptureOutputArgv(expanded, {
+    outputOnlyWhenSingle: true,
+  });
+  if (positional) {
+    return positional;
+  }
+
+  return normalizeNpmScriptArgv(expanded, STRATEGY_EVALUATION_READINESS_ARGV_SCHEMA);
 }
 
 export function normalizeCaptureBaselineComparisonArgv(argv: readonly string[]): string[] {
@@ -1083,13 +1191,38 @@ export function normalizeCalibrationFadeFamilyVerdictArgv(
 export function normalizeForwardCaptureReadinessArgv(
   argv: readonly string[],
 ): string[] {
-  return normalizeNpmScriptArgv(argv, FORWARD_CAPTURE_READINESS_ARGV_SCHEMA);
+  const expanded = expandEqualsStyleFlags(argv);
+  if (hasCliFlags(expanded)) {
+    return normalizeNpmScriptArgv(expanded, FORWARD_CAPTURE_READINESS_ARGV_SCHEMA);
+  }
+
+  if (expanded.length === 1 && !expanded[0]!.startsWith("--")) {
+    const positional = expanded[0]!;
+    const normalized = positional.replace(/\\/g, "/");
+    if (normalized.includes("forward-quotes/") || normalized.includes("live-capture/")) {
+      return ["--capture-run-dir", positional];
+    }
+
+    return ["--output", positional];
+  }
+
+  return normalizeNpmScriptArgv(expanded, FORWARD_CAPTURE_READINESS_ARGV_SCHEMA);
 }
 
 export function normalizeExecutableConfirmationDesignArgv(
   argv: readonly string[],
 ): string[] {
-  return normalizeNpmScriptArgv(argv, EXECUTABLE_CONFIRMATION_DESIGN_ARGV_SCHEMA);
+  const expanded = expandEqualsStyleFlags(argv);
+  const positional = normalizeSelectedRunCaptureOutputArgv(expanded);
+  if (positional) {
+    return positional;
+  }
+
+  if (hasCliFlags(expanded)) {
+    return normalizeNpmScriptArgv(expanded, EXECUTABLE_CONFIRMATION_DESIGN_ARGV_SCHEMA);
+  }
+
+  return normalizeNpmScriptArgv(expanded, EXECUTABLE_CONFIRMATION_DESIGN_ARGV_SCHEMA);
 }
 
 export function normalizeExpansionImportPerformanceAuditArgv(

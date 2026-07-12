@@ -8,6 +8,7 @@ import { DEFAULT_STATIC_PARITY_FRICTION_CONFIG } from "../staticParityScan/stati
 export const DEFAULT_BID_ONLY_CANDIDATE_LIFECYCLE_CONFIG: BidOnlyCandidateLifecycleConfig =
   {
     forwardQuotesDir: DEFAULT_BID_ONLY_CANDIDATE_LIFECYCLE_INPUT_DIR,
+    captureRunDir: null,
     staticParityScanPath: DEFAULT_STATIC_PARITY_SCAN_ARTIFACT_PATH,
     pricingModel: "bid-only",
     maxGapMs: 2_500,

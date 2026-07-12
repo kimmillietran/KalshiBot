@@ -4,6 +4,7 @@ import {
   DEFAULT_FORWARD_CAPTURE_READINESS_OUTPUT_PATH,
   type ForwardCaptureReadinessInputPaths,
 } from "./forwardCaptureReadinessTypes";
+import { resolveCaptureRunSelection } from "../downstreamAnalysisScope/resolveCaptureRunSelection";
 
 function readFlagValue(argv: readonly string[], flag: string, defaultValue: string): string {
   for (let index = 0; index < argv.length; index += 1) {
@@ -26,6 +27,11 @@ export function parseForwardCaptureReadinessPathsFromArgv(
   htmlOutputPath: string;
   inputPaths: ForwardCaptureReadinessInputPaths;
 } {
+  const selection = resolveCaptureRunSelection({
+    argv,
+    defaultForwardQuotesDir: DEFAULT_FORWARD_CAPTURE_READINESS_INPUT_PATHS.forwardQuotesDir,
+  });
+
   return {
     outputPath: readFlagValue(
       argv,
@@ -38,11 +44,8 @@ export function parseForwardCaptureReadinessPathsFromArgv(
       DEFAULT_FORWARD_CAPTURE_READINESS_HTML_PATH,
     ),
     inputPaths: {
-      forwardQuotesDir: readFlagValue(
-        argv,
-        "--forward-quotes-dir",
-        DEFAULT_FORWARD_CAPTURE_READINESS_INPUT_PATHS.forwardQuotesDir,
-      ),
+      forwardQuotesDir: selection.forwardQuotesDir,
+      captureRunDir: selection.captureRunDir,
       kalshiWsSpikeDir: readFlagValue(
         argv,
         "--kalshi-ws-spike-dir",

@@ -363,4 +363,53 @@ describe("bidOnlyCandidateLifecycle", () => {
     expect(html).toContain("not trade recommendations");
     expect(html).toContain("Executable confirmation is required");
   });
+
+  it("loads only the selected run without cross-run aggregation", () => {
+    const files = {
+      ...createRunFiles("run-a", [
+        topOfBookLine({ receivedAtLocal: "2026-07-10T00:00:00.000Z", yesBid: 55, noBid: 55 }),
+      ]),
+      ...createRunFiles("run-b", [
+        topOfBookLine({ receivedAtLocal: "2026-07-10T00:00:01.000Z", yesBid: 55, noBid: 55 }),
+      ]),
+    };
+
+    const loaded = loadBidOnlyParityInputs({
+      config: createBidOnlyCandidateLifecycleConfig({
+        captureRunDir: `${INPUT_DIR}/run-a`,
+      }),
+      io: buildMemoryIo(files),
+    });
+
+    expect(loaded.runs).toHaveLength(1);
+    expect(loaded.runs[0]?.runId).toBe("run-a");
+  });
+
+  it("rejects aggregate static parity artifact in selected-run mode", () => {
+    const files = {
+      ...createRunFiles("run-a", [
+        topOfBookLine({ receivedAtLocal: "2026-07-10T00:00:00.000Z" }),
+      ]),
+      "data/research-results/static-parity-scan.json": JSON.stringify({
+        generatedAt: "2026-07-10T00:00:00.000Z",
+        analysisScope: "aggregate",
+        sourceRunIds: ["run-a", "run-b"],
+      }),
+    };
+
+    const report = buildBidOnlyCandidateLifecycleReport({
+      generatedAt: "2026-07-10T00:00:00.000Z",
+      outputPath: "out.json",
+      htmlOutputPath: "out.html",
+      config: createBidOnlyCandidateLifecycleConfig({
+        captureRunDir: `${INPUT_DIR}/run-a`,
+        staticParityScanPath: "data/research-results/static-parity-scan.json",
+      }),
+      io: buildMemoryIo(files),
+    });
+
+    expect(report.analysisScope).toBe("selected-run");
+    expect(report.sourceRunIds).toEqual(["run-a"]);
+    expect(report.metrics.warnings.some((warning) => warning.includes("Scope mismatch"))).toBe(true);
+  });
 });

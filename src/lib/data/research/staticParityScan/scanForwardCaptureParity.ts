@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { resolveCaptureRunDirectories } from "../downstreamAnalysisScope/discoverCaptureRunDirectories";
 import { classifyBidOnlyParitySnapshot } from "./classifyBidOnlyParitySnapshot";
 import { classifyParitySnapshot } from "./classifyParitySnapshot";
 import {
@@ -71,18 +72,6 @@ export type ScanForwardCaptureParityResult = {
 
 function joinPath(root: string, child: string): string {
   return `${root.replace(/[\\/]+$/, "")}/${child}`;
-}
-
-function discoverRunDirectories(io: StaticParityScanIo, rootPath: string): string[] {
-  if (!io.fileExists(rootPath) || !io.isDirectory(rootPath)) {
-    return [];
-  }
-
-  return io
-    .readdir(rootPath)
-    .map((entry) => joinPath(rootPath, entry))
-    .filter((entryPath) => io.isDirectory(entryPath))
-    .filter((entryPath) => io.fileExists(joinPath(entryPath, "capture-health.json")));
 }
 
 function createEmptyMetrics(pricingModel: StaticParityFrictionConfig["pricingModel"]): StaticParityScanMetrics {
@@ -480,6 +469,7 @@ function updateCandidateTimestamps(
 export function scanForwardCaptureParity(input: {
   io: StaticParityScanIo;
   forwardQuotesDir: string;
+  captureRunDir?: string | null;
   friction: StaticParityFrictionConfig;
 }): ScanForwardCaptureParityResult {
   const metrics = createEmptyMetrics(input.friction.pricingModel);
@@ -490,7 +480,13 @@ export function scanForwardCaptureParity(input: {
   const events = new Set<string>();
   const runs: ScannedParityRun[] = [];
 
-  for (const runDir of discoverRunDirectories(input.io, input.forwardQuotesDir)) {
+  const runDirs = resolveCaptureRunDirectories({
+    io: input.io,
+    forwardQuotesDir: input.forwardQuotesDir,
+    captureRunDir: input.captureRunDir ?? null,
+  });
+
+  for (const runDir of runDirs) {
     runs.push(
       scanRunDirectory({
         io: input.io,

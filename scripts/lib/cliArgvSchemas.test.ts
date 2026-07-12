@@ -1,10 +1,15 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
+  normalizeBidOnlyCandidateLifecycleArgv,
   normalizeDiscoveryImportConfigsArgv,
   normalizeEventStudyArgv,
   normalizeExecuteExpansionImportArgv,
+  normalizeExecutableConfirmationDesignArgv,
+  normalizeForwardCaptureReadinessArgv,
   normalizeResearchInspectArgv,
+  normalizeStaticParityScanArgv,
+  normalizeStrategyEvaluationReadinessArgv,
   normalizeStrategySweepArgv,
 } from "./cliArgvSchemas";
 
@@ -62,6 +67,90 @@ describe("cliArgvSchemas", () => {
       "--events",
       "data/events/events.json",
     ]);
+  });
+
+  it("maps stripped selected-run capture paths to --capture-run-dir", () => {
+    const captureRunDir = "data/live-capture/forward-quotes/run-a";
+
+    expect(normalizeStaticParityScanArgv([captureRunDir])).toEqual([
+      "--capture-run-dir",
+      captureRunDir,
+    ]);
+    expect(normalizeForwardCaptureReadinessArgv([captureRunDir])).toEqual([
+      "--capture-run-dir",
+      captureRunDir,
+    ]);
+    expect(
+      normalizeForwardCaptureReadinessArgv(["data/reports/custom-forward-readiness.json"]),
+    ).toEqual(["--output", "data/reports/custom-forward-readiness.json"]);
+    expect(normalizeStrategyEvaluationReadinessArgv([captureRunDir])).toEqual([
+      "--capture-run-dir",
+      captureRunDir,
+    ]);
+    expect(normalizeBidOnlyCandidateLifecycleArgv([captureRunDir])).toEqual([
+      "--capture-run-dir",
+      captureRunDir,
+    ]);
+    expect(normalizeExecutableConfirmationDesignArgv([captureRunDir])).toEqual([
+      "--capture-run-dir",
+      captureRunDir,
+    ]);
+  });
+
+  it("maps stripped selected-run capture plus output positionals", () => {
+    const captureRunDir = "data/live-capture/forward-quotes/run-a";
+    const outputPath = "data/research-results/custom.json";
+
+    expect(normalizeBidOnlyCandidateLifecycleArgv([captureRunDir, outputPath])).toEqual([
+      "--capture-run-dir",
+      captureRunDir,
+      "--output",
+      outputPath,
+    ]);
+    expect(normalizeExecutableConfirmationDesignArgv([captureRunDir, outputPath])).toEqual([
+      "--capture-run-dir",
+      captureRunDir,
+      "--output",
+      outputPath,
+    ]);
+    expect(normalizeStaticParityScanArgv([captureRunDir, outputPath])).toEqual([
+      "--capture-run-dir",
+      captureRunDir,
+      "--output",
+      outputPath,
+    ]);
+  });
+
+  it("maps stripped static parity output-only positional argv", () => {
+    expect(
+      normalizeStaticParityScanArgv(["data/reports/custom-static.json"]),
+    ).toEqual(["--output", "data/reports/custom-static.json"]);
+  });
+
+  it("maps stripped strategy readiness output-only positional argv", () => {
+    expect(
+      normalizeStrategyEvaluationReadinessArgv([
+        "data/research-results/strategy-readiness.json",
+      ]),
+    ).toEqual(["--output", "data/research-results/strategy-readiness.json"]);
+  });
+
+  it("maps stripped strategy readiness capture plus output positionals", () => {
+    const captureRunDir = "data/live-capture/forward-quotes/run-a";
+    const outputPath = "data/research-results/strategy-readiness.json";
+
+    expect(normalizeStrategyEvaluationReadinessArgv([captureRunDir, outputPath])).toEqual([
+      "--capture-run-dir",
+      captureRunDir,
+      "--output",
+      outputPath,
+    ]);
+  });
+
+  it("maps stripped bid-only lifecycle output-only positional argv", () => {
+    expect(
+      normalizeBidOnlyCandidateLifecycleArgv(["data/research-results/custom.json"]),
+    ).toEqual(["--output", "data/research-results/custom.json"]);
   });
 
   it("normalizes execute expansion import max-markets from equals, space, and npm config forms", () => {

@@ -67,6 +67,10 @@ export const STRATEGY_EVALUATION_RECOMMENDED_NEXT_ACTIONS = [
   "run-static-parity-scan",
   "refresh-stale-artifacts",
   "continue-capture",
+  "fix-artifact-scope",
+  "proceed-strategy-evaluation",
+  "continue-clean-capture",
+  "run-near-miss-analysis",
 ] as const;
 
 export type StrategyEvaluationRecommendedNextAction =
@@ -123,20 +127,29 @@ export const DEFAULT_BID_ONLY_PARITY_EPISODE_THRESHOLDS = {
 
 export type StrategyEvaluationInputPaths = {
   forwardQuotesDir: string;
+  captureRunDir: string | null;
   artifacts: Record<StrategyEvaluationArtifactKey, string>;
 };
 
 export const DEFAULT_STRATEGY_EVALUATION_INPUT_PATHS: StrategyEvaluationInputPaths =
   {
     forwardQuotesDir: DEFAULT_FORWARD_QUOTES_CAPTURE_DIR,
+    captureRunDir: null,
     artifacts: STRATEGY_EVALUATION_ARTIFACT_PATHS,
   };
 
 export type LoadedStrategyEvaluationArtifact = {
   path: string;
   generatedAt: string | null;
-  parsed: Record<string, unknown>;
+  parsed: Record<string, unknown> | null;
+  malformed: boolean;
+  excludedByValidation?: boolean;
 };
+
+import type {
+  DownstreamScopeMetadata,
+  InputArtifactIdentity,
+} from "../downstreamAnalysisScope/downstreamAnalysisScopeTypes";
 
 export type StrategyEvaluationLoadedInputs = {
   forwardCaptureReadiness: LoadedStrategyEvaluationArtifact | null;
@@ -155,6 +168,21 @@ export type StrategyEvaluationLoadedInputs = {
     bidPairWithSizeShare: number | null;
     bidSizeCoverageShare: number | null;
   } | null;
+  selection: {
+    analysisScope: "selected-run" | "aggregate";
+    forwardQuotesDir: string;
+    captureRunDir: string | null;
+    selectedRunId: string | null;
+  };
+  artifactValidation: {
+    identities: InputArtifactIdentity[];
+    staleArtifacts: string[];
+    mismatchedArtifacts: string[];
+    malformedArtifacts: string[];
+    missingArtifacts: string[];
+    warnings: string[];
+    usablePaths: string[];
+  };
   warnings: string[];
 };
 
@@ -185,6 +213,10 @@ export type StrategyEvaluationReadinessReport = {
   thresholds: typeof DEFAULT_BID_ONLY_PARITY_EPISODE_THRESHOLDS;
   dimensions: readonly ReadinessDimensionEntry[];
   summary: StrategyEvaluationReadinessSummary;
+  scope: DownstreamScopeMetadata;
+  analysisScope: DownstreamScopeMetadata["analysisScope"];
+  selectedRunId: string | null;
+  sourceRunIds: readonly string[];
 };
 
 export type StrategyEvaluationReadinessIo = {
