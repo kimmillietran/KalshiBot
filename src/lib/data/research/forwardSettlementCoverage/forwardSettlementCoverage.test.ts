@@ -853,14 +853,15 @@ describe("forwardSettlementCoverage", () => {
     expect(classified.classification).toBe("settlement-ready");
   });
 
-  it("marks non-backfillable markets as skipped-not-candidate", async () => {
+  it("persists skipped terminal statuses into the backfill checkpoint", async () => {
     const files: Record<string, string> = {};
     const dirs: string[] = [];
     seedRun(files, dirs);
+    const io = createIo(files, dirs);
 
     const summary = await runForwardSettlementBackfill({
-      config: defaultConfig({ dryRun: true }),
-      io: createIo(files, dirs),
+      config: defaultConfig(),
+      io,
       markets: [
         classifyInvalidMarketEntry({
           marketTicker: "KXBTC15M-MOCK",
@@ -873,5 +874,11 @@ describe("forwardSettlementCoverage", () => {
     });
 
     expect(summary.marketResults[0]?.status).toBe("skipped-not-candidate");
+    const checkpoint = loadForwardSettlementBackfillCheckpoint({
+      readFile: io.readFile,
+      fileExists: io.fileExists,
+      checkpointPath: defaultConfig().checkpointPath,
+    });
+    expect(checkpoint?.markets[0]?.status).toBe("skipped-not-candidate");
   });
 });

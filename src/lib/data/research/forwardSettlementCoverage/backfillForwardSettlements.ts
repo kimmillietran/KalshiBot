@@ -420,6 +420,23 @@ export async function runForwardSettlementBackfill(input: {
       continue;
     }
 
+    const existingEntry = checkpoint.markets.find(
+      (entry) => entry.marketTicker === market.marketTicker,
+    );
+    checkpoint = updateCheckpointMarket(
+      checkpoint,
+      {
+        marketTicker: market.marketTicker,
+        status: skipStatus,
+        attempts: existingEntry?.attempts ?? 0,
+        lastAttemptAt: input.evaluatedAt,
+        nextEligibleRetryAt: market.nextEligibleRetryAt,
+        errorMessage: market.exclusionReason,
+        importResultPath: market.sourceArtifact,
+      },
+      input.evaluatedAt,
+    );
+
     results.push({
       marketTicker: market.marketTicker,
       status: skipStatus,
