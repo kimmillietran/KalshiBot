@@ -182,7 +182,9 @@ export function evaluateParityObservationGates(
     && input.noBestAskCents !== null
     && input.noBestAskCents !== undefined;
 
-  const bookValid = input.bookState === "valid";
+  const bookValid =
+    input.bookState === "valid"
+    && economic.economicBookState !== "invalid-price";
   const bookSynchronized =
     bookValid
     && (
@@ -245,12 +247,14 @@ export function evaluateParityObservationGates(
   const firstRejectingGate = resolveSequentialFirstRejectingGate(gateFlags);
   const allRejectingGates = resolveAllRejectingGates({
     flags: gateFlags,
-    includeMissingBtcJoin: !btcJoinAvailable,
   });
 
   const metricUnavailableReasons: Record<string, string> = {};
   if (staleness.quoteAgeStatus === "unknown") {
     metricUnavailableReasons.quoteAgeMs = "exchangeTimestampMs missing";
+  }
+  if (!btcJoinAvailable) {
+    metricUnavailableReasons.btcSpotPriceUsd = "btc spot join unavailable";
   }
   metricUnavailableReasons.marketOpen = "market-open status not captured in forward quotes";
 

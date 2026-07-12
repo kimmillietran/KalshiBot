@@ -399,6 +399,54 @@ describe("evaluateParityObservationGates", () => {
     expect(metrics.allRejectingGates.filter((gate) => gate === "missing-executable-size")).toHaveLength(1);
   });
 
+  it("rejects impossible bid prices from sequential qualification and shortfalls", () => {
+    const receivedAtMs = Date.parse("2026-07-11T11:00:08.000Z");
+    const metrics = evaluateParityObservationGates(
+      {
+        marketTicker: MARKET,
+        receivedAtLocal: "2026-07-11T11:00:08.000Z",
+        receivedAtMs,
+        bookState: "valid",
+        yesBestBidCents: 150,
+        noBestBidCents: 50,
+        yesBestBidSize: 10,
+        noBestBidSize: 10,
+        exchangeTimestampMs: receivedAtMs,
+        btcSpotPriceUsd: 100000,
+      },
+      rule,
+    );
+
+    expect(metrics.firstRejectingGate).toBe("invalid-book");
+    expect(metrics.allRejectingGates).toContain("invalid-book");
+    expect(metrics.grossDistanceToQualification).toBeNull();
+    expect(metrics.bufferPass).toBe(false);
+  });
+
+  it("treats missing BTC join as quality annotation rather than a rejection gate", () => {
+    const receivedAtMs = Date.parse("2026-07-11T11:00:09.000Z");
+    const metrics = evaluateParityObservationGates(
+      {
+        marketTicker: MARKET,
+        receivedAtLocal: "2026-07-11T11:00:09.000Z",
+        receivedAtMs,
+        bookState: "valid",
+        yesBestBidCents: 56,
+        noBestBidCents: 50,
+        yesBestBidSize: 10,
+        noBestBidSize: 10,
+        exchangeTimestampMs: receivedAtMs,
+        btcSpotPriceUsd: null,
+      },
+      rule,
+    );
+
+    expect(metrics.btcJoinAvailable).toBe(false);
+    expect(metrics.allRejectingGates).not.toContain("missing-btc-join");
+    expect(metrics.metricUnavailableReasons.btcSpotPriceUsd).toBe("btc spot join unavailable");
+    expect(metrics.firstRejectingGate).toBeNull();
+  });
+
   it("recomputes economic fields when legacy economicBookState labels are unknown", () => {
     const receivedAtMs = Date.parse("2026-07-11T11:00:07.000Z");
     const metrics = evaluateParityObservationGates(

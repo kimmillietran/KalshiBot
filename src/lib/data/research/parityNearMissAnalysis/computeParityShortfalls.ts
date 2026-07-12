@@ -12,12 +12,16 @@ export type ParityShortfallResult = {
 // one cent is the first qualifying net edge.
 export const MINIMUM_FEE_PASS_NET_EDGE_CENTS = 1;
 
+function isValidBidPriceCents(value: number | null): value is number {
+  return value !== null && Number.isFinite(value) && value >= 0 && value <= 100;
+}
+
 /** Observed bid-only gross edge in integer cents; not clamped to non-negative. */
 export function computeObservedGrossEdgeCents(
   yesBidCents: number | null,
   noBidCents: number | null,
 ): number | null {
-  if (yesBidCents === null || noBidCents === null) {
+  if (!isValidBidPriceCents(yesBidCents) || !isValidBidPriceCents(noBidCents)) {
     return null;
   }
 
@@ -73,5 +77,5 @@ export function isDistanceEvaluable(
   yesBidCents: number | null,
   noBidCents: number | null,
 ): boolean {
-  return yesBidCents !== null && noBidCents !== null;
+  return isValidBidPriceCents(yesBidCents) && isValidBidPriceCents(noBidCents);
 }

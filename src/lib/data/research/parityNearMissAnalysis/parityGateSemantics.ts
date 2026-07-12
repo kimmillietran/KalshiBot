@@ -132,7 +132,6 @@ export function observationPassesSequentialQualification(flags: ObservationGateF
 
 export function resolveAllRejectingGates(input: {
   flags: ObservationGateFlags;
-  includeMissingBtcJoin: boolean;
 }): ParityNearMissRejectionGate[] {
   const gates: ParityNearMissRejectionGate[] = [];
   if (!input.flags.bookValid) {
@@ -158,9 +157,6 @@ export function resolveAllRejectingGates(input: {
   }
   if (input.flags.grossParityPass && input.flags.feePass && !input.flags.bufferPass) {
     gates.push("buffer-adjusted-shortfall");
-  }
-  if (input.includeMissingBtcJoin) {
-    gates.push("missing-btc-join");
   }
 
   return gates;
