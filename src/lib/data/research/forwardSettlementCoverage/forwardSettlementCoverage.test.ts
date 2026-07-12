@@ -7,6 +7,7 @@ import {
   classifyInvalidMarketEntry,
   classifyMarketSettlementCoverage,
 } from "./classifyMarketSettlementCoverage";
+import { applyCheckpointCoverageOverride } from "./reconcileForwardSettlementCoverage";
 import {
   createForwardSettlementBackfillCheckpoint,
   loadForwardSettlementBackfillCheckpoint,
@@ -1157,5 +1158,173 @@ describe("forwardSettlementCoverage", () => {
     expect(report.summary.missingSourceMarketCount).toBeLessThan(
       report.summary.capturedMarketCount,
     );
+    expect(report.summary.neverAttemptedMarketCount).toBe(
+      report.summary.missingSourceMarketCount - report.summary.importFailedMarketCount,
+    );
+  });
+
+  it("retries 34 stale BTC 451 checkpoint failures through settlement-only backfill", async () => {
+    const MARKET_COUNT = 34;
+    const tickers = Array.from(
+      { length: MARKET_COUNT },
+      (_, index) => `KXBTC15M-26JUL11${1100 + index}-${String(index).padStart(2, "0")}`,
+    );
+    const files: Record<string, string> = {};
+    const dirs: string[] = [RUN_DIR, "data/live-capture/forward-quotes", "data/imports"];
+    const closeTime = "2026-07-11T11:15:00.000Z";
+    files[`${RUN_DIR}/top-of-book.jsonl`] = tickers
+      .map((marketTicker) =>
+        JSON.stringify({
+          marketTicker,
+          seriesTicker: "KXBTC15M",
+          receivedAtLocal: "2026-07-11T11:08:00.000Z",
+        }))
+      .join("\n");
+    files[`${RUN_DIR}/market-metadata.jsonl`] = tickers
+      .map((marketTicker) =>
+        JSON.stringify({
+          marketTicker,
+          seriesTicker: "KXBTC15M",
+          closeTime,
+          receivedAtLocal: "2026-07-11T11:08:00.000Z",
+        }))
+      .join("\n");
+
+    const retryEligibleAt = "2026-07-12T08:00:00.000Z";
+    const checkpoint = createForwardSettlementBackfillCheckpoint({
+      captureRunDir: RUN_DIR,
+      selectedRunId: RUN_ID,
+      importsDir: "data/imports",
+      dryRun: false,
+      startedAt: EVALUATED_AT,
+      marketTickers: tickers,
+    });
+    checkpoint.markets = tickers.map((marketTicker) => ({
+      marketTicker,
+      status: "failed" as const,
+      attempts: 3,
+      lastAttemptAt: EVALUATED_AT,
+      nextEligibleRetryAt: retryEligibleAt,
+      errorMessage: "BTC historical klines request failed (451)",
+      errorCategory: "btc-provider-unexpectedly-required" as const,
+      importResultPath: null,
+    }));
+    files[defaultConfig().checkpointPath] =
+      serializeForwardSettlementBackfillCheckpoint(checkpoint);
+
+    const io = createIo(files, dirs);
+    const importConfigs: unknown[] = [];
+    const runMarketImport = vi.fn(async ({ market, importResultPath }) => {
+      const config = buildCaptureMarketImportConfig({
+        market,
+        evaluatedAt: "2026-07-12T12:00:00.000Z",
+      });
+      importConfigs.push(config);
+      expect(config.importMode).toBe("settlement-only");
+      expect(config.btc).toBeNull();
+      files[importResultPath] = createImportResult(market.marketTicker, "no");
+      return { success: true };
+    });
+
+    const inventory = extractSelectedRunMarketInventory({
+      io,
+      captureRunDir: RUN_DIR,
+      evaluatedAt: "2026-07-12T12:00:00.000Z",
+    }).inventory;
+    expect(inventory).toHaveLength(MARKET_COUNT);
+
+    const markets = inventory.map((entry) =>
+      applyCheckpointCoverageOverride({
+        market: classifyMarketSettlementCoverage({
+          io,
+          importsDir: "data/imports",
+          inventory: entry,
+          evaluatedAt: "2026-07-12T12:00:00.000Z",
+          staleAfterCaptureObservation: true,
+        }),
+        checkpointEntry:
+          checkpoint.markets.find((item) => item.marketTicker === entry.marketTicker) ?? null,
+        evaluatedAt: "2026-07-12T12:00:00.000Z",
+      }));
+
+    expect(markets.every((market) => market.classification === "import-failed")).toBe(true);
+
+    const backfill = await runForwardSettlementBackfill({
+      config: defaultConfig({ resume: true, maxRetries: 1, maxConcurrency: 4 }),
+      io,
+      markets,
+      selectedRunId: RUN_ID,
+      evaluatedAt: "2026-07-12T12:00:00.000Z",
+      deps: { runMarketImport },
+    });
+
+    expect(runMarketImport).toHaveBeenCalledTimes(MARKET_COUNT);
+    expect(importConfigs).toHaveLength(MARKET_COUNT);
+    expect(backfill.importedMarketCount).toBe(MARKET_COUNT);
+    expect(backfill.failedMarketCount).toBe(0);
+    expect(backfill.retryDeferredMarketCount).toBe(0);
+
+    const report = await buildForwardSettlementCoverageReport({
+      generatedAt: "2026-07-12T12:00:00.000Z",
+      config: defaultConfig({ resume: true }),
+      io,
+      runBackfill: false,
+    });
+
+    expect(report.summary.importFailedMarketCount).toBe(0);
+    expect(report.summary.settledMarketCount).toBe(MARKET_COUNT);
+    expect(report.summary.neverAttemptedMarketCount).toBe(0);
+    expect(report.summary.missingSourceMarketCount).toBe(0);
+    expect(
+      report.summary.readyMarketCount
+      + report.summary.importFailedMarketCount
+      + report.summary.pendingMarketCount
+      + report.summary.neverAttemptedMarketCount
+      + report.summary.invalidMarketCount,
+    ).toBeGreaterThanOrEqual(MARKET_COUNT);
+  });
+
+  it("assigns each captured market to exactly one terminal coverage category", async () => {
+    const files: Record<string, string> = {};
+    const dirs: string[] = [];
+    seedRun(files, dirs);
+    files[`data/imports/KXBTC15M/${MARKET_A}/import-result.json`] =
+      createImportResult(MARKET_A, "yes");
+    files[`data/imports/KXBTC15M/${MARKET_B}/import-result.json`] =
+      createImportResult(MARKET_B, "no");
+
+    const report = await buildForwardSettlementCoverageReport({
+      generatedAt: EVALUATED_AT,
+      config: defaultConfig(),
+      io: createIo(files, dirs),
+      runBackfill: false,
+    });
+
+    const terminalClassifications = new Set([
+      "settlement-ready",
+      "settlement-present-but-stale",
+      "settlement-present-but-conflicting",
+      "market-not-yet-settled",
+      "missing-settlement-source",
+      "missing-market-metadata",
+      "import-failed",
+      "invalid-market",
+    ]);
+    expect(report.markets).toHaveLength(
+      report.summary.capturedMarketCount + report.summary.invalidMarketCount,
+    );
+    for (const market of report.markets) {
+      expect(terminalClassifications.has(market.classification)).toBe(true);
+    }
+    const classificationTotals = report.markets.reduce<Record<string, number>>(
+      (accumulator, market) => {
+        accumulator[market.classification] = (accumulator[market.classification] ?? 0) + 1;
+        return accumulator;
+      },
+      {},
+    );
+    expect(
+      Object.values(classificationTotals).reduce((left, right) => left + right, 0),
+    ).toBe(report.markets.length);
   });
 });

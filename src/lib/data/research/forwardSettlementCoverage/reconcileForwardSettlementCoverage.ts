@@ -38,12 +38,16 @@ export function applyCheckpointCoverageOverride(input: {
   }
 
   if (checkpointEntry.status === "failed") {
+    const retryDeferred = isRetryDeferred(checkpointEntry, input.evaluatedAt);
     return {
       ...input.market,
       classification: "import-failed",
-      exclusionReason:
-        checkpointEntry.errorMessage
-        ?? "settlement import failed",
+      exclusionReason: retryDeferred
+        ? `retry deferred until ${checkpointEntry.nextEligibleRetryAt}: ${
+          checkpointEntry.errorMessage ?? "settlement import failed"
+        }`
+        : checkpointEntry.errorMessage
+          ?? "settlement import failed",
       nextEligibleRetryAt: checkpointEntry.nextEligibleRetryAt,
       sourceArtifact: checkpointEntry.importResultPath ?? input.market.sourceArtifact,
     };

@@ -238,10 +238,11 @@ function buildSummary(input: {
       "settlement-present-but-conflicting",
     ),
     pendingMarketCount: countByClassification(input.markets, "market-not-yet-settled"),
-    missingSourceMarketCount: countByClassification(
-      input.markets,
-      "missing-settlement-source",
-    ),
+    missingSourceMarketCount: input.markets.filter(
+      (market) =>
+        market.classification === "missing-settlement-source"
+        || market.classification === "import-failed",
+    ).length,
     importFailedMarketCount: countByClassification(input.markets, "import-failed"),
     neverAttemptedMarketCount: countByClassification(
       input.markets,
