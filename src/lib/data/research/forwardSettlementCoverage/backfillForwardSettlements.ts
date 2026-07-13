@@ -13,6 +13,7 @@ import {
 } from "./classifyMarketSettlementCoverage";
 import {
   classifyBackfillErrorCategory,
+  isBackfillErrorRetryable,
 } from "./reconcileForwardSettlementCoverage";
 import {
   buildCaptureMarketImportConfig,
@@ -37,6 +38,7 @@ import type {
   ForwardSettlementCoverageIo,
   MarketSettlementCoverageEntry,
 } from "./forwardSettlementCoverageTypes";
+import { FORWARD_SETTLEMENT_BACKFILL_IMPLEMENTATION_VERSION } from "./forwardSettlementCoverageTypes";
 
 const DEFAULT_SLEEP = (ms: number) =>
   new Promise<void>((resolve) => {
@@ -100,9 +102,10 @@ function checkpointTerminalStatusStillApplies(input: {
   entry: ForwardSettlementBackfillCheckpointMarket;
   market: MarketSettlementCoverageEntry;
   evaluatedAt: string;
+  checkpoint: ForwardSettlementBackfillCheckpoint;
 }): boolean {
   if (input.entry.status === "failed") {
-    return !isCheckpointMarketEligible(input.entry, input.evaluatedAt);
+    return !isCheckpointMarketEligible(input.entry, input.evaluatedAt, input.checkpoint);
   }
 
   if (isBackfillCandidate(input.market.classification)) {
@@ -179,11 +182,12 @@ async function backfillOneMarket(input: {
 
   if (
     existingEntry
-    && !isCheckpointMarketEligible(existingEntry, input.evaluatedAt)
+    && !isCheckpointMarketEligible(existingEntry, input.evaluatedAt, input.checkpoint)
     && checkpointTerminalStatusStillApplies({
       entry: existingEntry,
       market: input.market,
       evaluatedAt: input.evaluatedAt,
+      checkpoint: input.checkpoint,
     })
   ) {
     return {
@@ -252,7 +256,7 @@ async function backfillOneMarket(input: {
   let attempts = existingEntry?.attempts ?? 0;
   if (
     existingEntry?.status === "failed"
-    && isCheckpointMarketEligible(existingEntry, input.evaluatedAt)
+    && isCheckpointMarketEligible(existingEntry, input.evaluatedAt, input.checkpoint)
   ) {
     attempts = 0;
   }
@@ -301,6 +305,15 @@ async function backfillOneMarket(input: {
 
       if (!importOutcome.success) {
         lastError = importOutcome.errorMessage ?? "import failed";
+        const errorCategory = classifyBackfillErrorCategory(lastError);
+        if (
+          !isBackfillErrorRetryable({
+            errorMessage: lastError,
+            errorCategory,
+          })
+        ) {
+          break;
+        }
         if (attempts < input.config.maxRetries) {
           await sleep(input.config.retryBaseDelayMs * attempts);
           continue;
@@ -336,15 +349,29 @@ async function backfillOneMarket(input: {
       };
     } catch (error) {
       lastError = error instanceof Error ? error.message : "import failed";
+      const errorCategory = classifyBackfillErrorCategory(lastError);
+      if (
+        !isBackfillErrorRetryable({
+          errorMessage: lastError,
+          errorCategory,
+        })
+      ) {
+        break;
+      }
       if (attempts < input.config.maxRetries) {
         await sleep(input.config.retryBaseDelayMs * attempts);
       }
     }
   }
 
-  const nextEligibleRetryAt = new Date(
-    Date.parse(input.evaluatedAt) + 6 * 60 * 60 * 1000,
-  ).toISOString();
+  const errorCategory = classifyBackfillErrorCategory(lastError);
+  const retryable = isBackfillErrorRetryable({
+    errorMessage: lastError,
+    errorCategory,
+  });
+  const nextEligibleRetryAt = retryable
+    ? new Date(Date.parse(input.evaluatedAt) + 6 * 60 * 60 * 1000).toISOString()
+    : null;
   const result = withErrorCategory({
     marketTicker: input.market.marketTicker,
     status: "failed" as const,
@@ -401,7 +428,10 @@ export async function runForwardSettlementBackfill(input: {
 
   let checkpoint =
     checkpointResumed
-      ? mergeCheckpointWithMarkets(existingCheckpoint!, marketTickers, input.evaluatedAt)
+      ? {
+          ...mergeCheckpointWithMarkets(existingCheckpoint!, marketTickers, input.evaluatedAt),
+          implementationVersion: FORWARD_SETTLEMENT_BACKFILL_IMPLEMENTATION_VERSION,
+        }
       : createForwardSettlementBackfillCheckpoint({
           captureRunDir: input.config.captureRunDir,
           selectedRunId: input.selectedRunId,

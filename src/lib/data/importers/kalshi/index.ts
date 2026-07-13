@@ -63,6 +63,19 @@ export {
   DEFAULT_KALSHI_HISTORICAL_API_BASE,
   HISTORICAL_ENDPOINTS,
 } from "./historicalEndpoints";
+export {
+  buildKalshiRestMarketPath,
+  KALSHI_REST_ENDPOINTS,
+} from "./kalshiRestEndpoints";
+export {
+  classifyKalshiSettlementState,
+  fetchKalshiMarketWireWithFallback,
+  fetchKalshiMarketWithSettlementFallback,
+  isKalshiSettlementErrorRetryable,
+  mapKalshiImporterErrorToBackfillCategory,
+  type KalshiMarketIdentifierType,
+  type KalshiSettlementRetrievalErrorKind,
+} from "./kalshiSettlementRetrieval";
 export type {
   HistoricalCandlestickInterval,
   HistoricalCandlestickRecord,

@@ -17,7 +17,7 @@ export type HistoricalPaginationOptions = {
 };
 
 export type HistoricalImportProvenance = {
-  source: "kalshi-historical-api";
+  source: "kalshi-historical-api" | "kalshi-rest-api";
   fetchedAt: string;
   requestPath: string;
   cursor?: string | null;

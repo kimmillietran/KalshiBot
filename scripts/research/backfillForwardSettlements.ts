@@ -16,6 +16,35 @@ import {
   serializeForwardSettlementCoverageReport,
 } from "@/lib/data/research/forwardSettlementCoverage";
 import { stableStringify } from "@/lib/trading/config/hashConfig";
+import type { ForwardSettlementBackfillMarketResult } from "@/lib/data/research/forwardSettlementCoverage/forwardSettlementCoverageTypes";
+
+function summarizeBackfillFailures(
+  results: readonly ForwardSettlementBackfillMarketResult[],
+): readonly {
+  errorCategory: string;
+  affectedMarketCount: number;
+  retryDeferredMarketCount: number;
+  sampleErrorMessage: string | null;
+}[] {
+  const failed = results.filter((result) => result.status === "failed");
+  const grouped = new Map<string, ForwardSettlementBackfillMarketResult[]>();
+
+  for (const result of failed) {
+    const key = result.errorCategory ?? "unknown";
+    const bucket = grouped.get(key) ?? [];
+    bucket.push(result);
+    grouped.set(key, bucket);
+  }
+
+  return [...grouped.entries()]
+    .map(([errorCategory, bucket]) => ({
+      errorCategory,
+      affectedMarketCount: bucket.length,
+      retryDeferredMarketCount: bucket.filter((entry) => Boolean(entry.nextEligibleRetryAt)).length,
+      sampleErrorMessage: bucket[0]?.errorMessage ?? null,
+    }))
+    .sort((left, right) => right.affectedMarketCount - left.affectedMarketCount);
+}
 
 function main(): void {
   const parsed = parseForwardSettlementCoverageArgv(process.argv.slice(2));
@@ -70,6 +99,7 @@ function main(): void {
         failedMarketCount: report.backfill?.failedMarketCount ?? 0,
         checkpointPath: report.backfill?.checkpointPath ?? parsed.checkpointPath,
         recommendedNextAction: report.summary.recommendedNextAction,
+        backfillFailureDiagnostics: summarizeBackfillFailures(report.backfill?.marketResults ?? []),
       })}\n`,
     );
 

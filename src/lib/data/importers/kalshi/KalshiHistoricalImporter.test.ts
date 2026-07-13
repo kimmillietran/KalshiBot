@@ -336,7 +336,7 @@ describe("KalshiHistoricalImporter", () => {
     });
   });
 
-  it("returns null when historical market endpoint responds with 404", async () => {
+  it("returns null when historical and REST market endpoints respond with 404", async () => {
     const client = createFakeClient(() => ({
       status: 404,
       body: { code: "not_found", message: "market not found" },
@@ -345,6 +345,22 @@ describe("KalshiHistoricalImporter", () => {
     const importer = createImporter(client);
 
     await expect(importer.getHistoricalMarket("KXBTC-MISSING")).resolves.toBeNull();
+    expect(client.get).toHaveBeenCalledTimes(2);
+  });
+
+  it("falls back to REST market endpoint when historical market returns 404", async () => {
+    const client = createFakeClient((url) => {
+      if (url.includes("/historical/markets/")) {
+        return { status: 404, body: { message: "not found" } };
+      }
+      return { status: 200, body: { market: sampleMarketWire } };
+    });
+
+    const importer = createImporter(client);
+    const market = await importer.getHistoricalMarket("KXBTC15M-26JUN270115-15");
+
+    expect(market?.result).toBe("yes");
+    expect(client.get).toHaveBeenCalledTimes(2);
   });
 
   it("throws actionable diagnostics for KXBTC15M-25DEC311900-00 detail payload missing expiration_value", async () => {
@@ -438,6 +454,23 @@ describe("KalshiHistoricalImporter", () => {
     expect(settlement.result).toBe("yes");
     expect(settlement.settlementValueDollars).toBe("1.0000");
     expect(settlement.settlementTs).toBe("2026-06-27T01:20:00Z");
+    expect(settlement.provenance.source).toBe("kalshi-historical-api");
+  });
+
+  it("falls back to REST market endpoint for settlement when historical returns 404", async () => {
+    const client = createFakeClient((url) => {
+      if (url.includes("/historical/markets/")) {
+        return { status: 404, body: { message: "not found" } };
+      }
+      return { status: 200, body: { market: sampleMarketWire } };
+    });
+
+    const importer = createImporter(client);
+    const settlement = await importer.getSettlementResult("KXBTC15M-26JUN270115-15");
+
+    expect(settlement.result).toBe("yes");
+    expect(settlement.provenance.source).toBe("kalshi-rest-api");
+    expect(client.get).toHaveBeenCalledTimes(2);
   });
 
   it("throws KalshiHistoricalImporterError on API errors", async () => {
@@ -456,7 +489,7 @@ describe("KalshiHistoricalImporter", () => {
     } satisfies Partial<KalshiHistoricalImporterError>);
   });
 
-  it("preserves null settlement fields truthfully", async () => {
+  it("rejects finalized markets without authoritative settlement fields", async () => {
     const client = createFakeClient(() => ({
       status: 200,
       body: {
@@ -470,11 +503,11 @@ describe("KalshiHistoricalImporter", () => {
     }));
 
     const importer = createImporter(client);
-    const settlement = await importer.getSettlementResult("KXBTC-OPEN");
 
-    expect(settlement.settlementTs).toBeNull();
-    expect(settlement.settlementValueDollars).toBeNull();
-    expect(settlement.result).toBe("");
+    await expect(importer.getSettlementResult("KXBTC-OPEN")).rejects.toMatchObject({
+      errorKind: "kalshi-settlement-not-found",
+      retryable: false,
+    });
   });
 
   it("is deterministic for identical fake responses", async () => {

@@ -4,7 +4,10 @@ import type {
   ForwardSettlementBackfillCheckpoint,
   ForwardSettlementBackfillCheckpointMarket,
 } from "./forwardSettlementCoverageTypes";
-import { ForwardSettlementCoverageError } from "./forwardSettlementCoverageTypes";
+import {
+  FORWARD_SETTLEMENT_BACKFILL_IMPLEMENTATION_VERSION,
+  ForwardSettlementCoverageError,
+} from "./forwardSettlementCoverageTypes";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -20,6 +23,7 @@ export function createForwardSettlementBackfillCheckpoint(input: {
 }): ForwardSettlementBackfillCheckpoint {
   return {
     version: 1,
+    implementationVersion: FORWARD_SETTLEMENT_BACKFILL_IMPLEMENTATION_VERSION,
     captureRunDir: input.captureRunDir,
     selectedRunId: input.selectedRunId,
     importsDir: input.importsDir,
@@ -111,9 +115,41 @@ export function mergeCheckpointWithMarkets(
   };
 }
 
+export function isBackfillCheckpointFailureStale(
+  entry: ForwardSettlementBackfillCheckpointMarket,
+): boolean {
+  if (entry.status !== "failed") {
+    return false;
+  }
+
+  const message = (entry.errorMessage ?? "").toLowerCase();
+  if (entry.errorCategory === "btc-provider-unexpectedly-required") {
+    return true;
+  }
+
+  if (entry.errorCategory === "unknown" && message.includes("404")) {
+    return true;
+  }
+
+  if (entry.errorCategory === "kalshi-market-not-found" && message.includes("historical")) {
+    return true;
+  }
+
+  return false;
+}
+
+export function isCheckpointImplementationStale(
+  checkpoint: ForwardSettlementBackfillCheckpoint,
+): boolean {
+  return (
+    checkpoint.implementationVersion !== FORWARD_SETTLEMENT_BACKFILL_IMPLEMENTATION_VERSION
+  );
+}
+
 export function isCheckpointMarketEligible(
   market: ForwardSettlementBackfillCheckpointMarket,
   evaluatedAt: string,
+  checkpoint?: ForwardSettlementBackfillCheckpoint,
 ): boolean {
   if (market.status === "imported" || market.status === "skipped-ready") {
     return false;
@@ -128,6 +164,18 @@ export function isCheckpointMarketEligible(
   }
 
   if (market.status === "failed") {
+    if (
+      checkpoint
+      && isCheckpointImplementationStale(checkpoint)
+      && isBackfillCheckpointFailureStale(market)
+    ) {
+      return true;
+    }
+
+    if (isBackfillCheckpointFailureStale(market) && !market.nextEligibleRetryAt) {
+      return true;
+    }
+
     if (!market.nextEligibleRetryAt) {
       return true;
     }
