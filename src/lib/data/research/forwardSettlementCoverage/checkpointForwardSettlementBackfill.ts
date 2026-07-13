@@ -164,15 +164,7 @@ export function isCheckpointMarketEligible(
   }
 
   if (market.status === "failed") {
-    if (
-      checkpoint
-      && isCheckpointImplementationStale(checkpoint)
-      && isBackfillCheckpointFailureStale(market)
-    ) {
-      return true;
-    }
-
-    if (isBackfillCheckpointFailureStale(market) && !market.nextEligibleRetryAt) {
+    if (isBackfillCheckpointFailureStale(market)) {
       return true;
     }
 
