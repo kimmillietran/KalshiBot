@@ -160,10 +160,17 @@ export type ForwardSettlementCoverageReport = {
   backfill: ForwardSettlementBackfillSummary | null;
 };
 
+export const FORWARD_SETTLEMENT_BACKFILL_IMPLEMENTATION_VERSION =
+  "m13.2b-kalshi-rest-settlement-fallback";
+
 export type ForwardSettlementBackfillErrorCategory =
   | "btc-provider-unexpectedly-required"
   | "kalshi-market-request-failed"
   | "kalshi-settlement-request-failed"
+  | "kalshi-market-not-found"
+  | "kalshi-event-not-found"
+  | "kalshi-endpoint-not-found"
+  | "kalshi-settlement-not-found"
   | "market-not-settled"
   | "normalization-failed"
   | "artifact-write-failed"
@@ -182,6 +189,7 @@ export type ForwardSettlementBackfillCheckpointMarket = {
 
 export type ForwardSettlementBackfillCheckpoint = {
   version: 1;
+  implementationVersion?: string;
   captureRunDir: string;
   selectedRunId: string;
   importsDir: string;

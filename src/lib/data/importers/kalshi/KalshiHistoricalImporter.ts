@@ -6,6 +6,12 @@ import {
   buildHistoricalTradesPath,
   DEFAULT_KALSHI_HISTORICAL_API_BASE,
 } from "./historicalEndpoints";
+import type { KalshiMarketIdentifierType, KalshiSettlementRetrievalErrorKind } from "./kalshiSettlementRetrieval";
+import {
+  fetchKalshiMarketWireWithFallback,
+  fetchKalshiMarketWithSettlementFallback,
+  marketWireToHistoricalRecord,
+} from "./kalshiSettlementRetrieval";
 import {
   buildKalshiMarketDebugArtifactPath,
   buildKalshiMarketParseDiagnostic,
@@ -60,13 +66,35 @@ export class KalshiHistoricalImporterError extends Error {
   readonly status: number;
   readonly code?: string;
   readonly retryAfterMs?: number;
+  readonly errorKind?: KalshiSettlementRetrievalErrorKind;
+  readonly retryable: boolean;
+  readonly requestOperation?: string;
+  readonly identifierType?: KalshiMarketIdentifierType;
+  readonly requestPath?: string;
 
-  constructor(message: string, status: number, code?: string, retryAfterMs?: number) {
+  constructor(
+    message: string,
+    status: number,
+    code?: string,
+    retryAfterMs?: number,
+    metadata?: {
+      errorKind?: KalshiSettlementRetrievalErrorKind;
+      retryable?: boolean;
+      requestOperation?: string;
+      identifierType?: KalshiMarketIdentifierType;
+      requestPath?: string;
+    },
+  ) {
     super(message);
     this.name = "KalshiHistoricalImporterError";
     this.status = status;
     this.code = code;
     this.retryAfterMs = retryAfterMs;
+    this.errorKind = metadata?.errorKind;
+    this.retryable = metadata?.retryable ?? (status === 429 || status >= 500);
+    this.requestOperation = metadata?.requestOperation;
+    this.identifierType = metadata?.identifierType;
+    this.requestPath = metadata?.requestPath;
   }
 }
 
@@ -388,7 +416,14 @@ export class KalshiHistoricalImporter implements HistoricalImporter {
       );
 
       if (status === 404) {
-        return null;
+        const fallback = await fetchKalshiMarketWireWithFallback({
+          httpClient: this.httpClient,
+          baseUrl: this.baseUrl,
+          marketTicker: ticker,
+          historicalAlreadyMissing: true,
+        });
+
+        return fallback ? marketWireToHistoricalRecord(fallback.wire) : null;
       }
 
       const response = assertKalshiResponse<KalshiMarketResponseWire>(
@@ -447,32 +482,15 @@ export class KalshiHistoricalImporter implements HistoricalImporter {
     ticker: string,
     options?: KalshiHistoricalMarketFetchOptions,
   ): Promise<HistoricalSettlementResult> {
-    const requestPath = buildHistoricalMarketPath(ticker);
-    const { status, body, headers } = await this.httpClient.get(
-      `${this.baseUrl}${requestPath}`,
-    );
-    const response = assertKalshiResponse<KalshiMarketResponseWire>(
-      body,
-      status,
-      "market",
-      headers,
-    );
-    const reconciliation = mergeKalshiMarketWireFromListDetail({
-      listMarket: options?.listMarketWire,
-      detailMarket: response.market,
-    });
-    const market = parseMarketRecord(reconciliation.mergedWire as KalshiMarketWire);
+    void options;
     const fetchedAt = this.now().toISOString();
-
-    return {
-      ticker: market.ticker,
-      result: market.result,
-      status: market.status,
-      settlementTs: market.settlementTs,
-      settlementValueDollars: market.settlementValueDollars,
-      expirationValue: market.expirationValue,
-      provenance: buildProvenance(requestPath, fetchedAt),
-    };
+    const resolved = await fetchKalshiMarketWithSettlementFallback({
+      httpClient: this.httpClient,
+      baseUrl: this.baseUrl,
+      marketTicker: ticker,
+      fetchedAt,
+    });
+    return resolved.settlement;
   }
 
   private async request<T>(path: string, label: string): Promise<T> {

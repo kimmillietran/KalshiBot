@@ -1327,4 +1327,97 @@ describe("forwardSettlementCoverage", () => {
       Object.values(classificationTotals).reduce((left, right) => left + right, 0),
     ).toBe(report.markets.length);
   });
+
+  it("retries stale unknown 404 checkpoint failures after implementation version change", async () => {
+    const files: Record<string, string> = {};
+    const dirs: string[] = [RUN_DIR, "data/live-capture/forward-quotes", "data/imports"];
+    files[`${RUN_DIR}/top-of-book.jsonl`] = JSON.stringify({
+      marketTicker: MARKET_B,
+      seriesTicker: "KXBTC15M",
+      receivedAtLocal: "2026-07-11T11:09:00.000Z",
+    });
+    files[`${RUN_DIR}/market-metadata.jsonl`] = JSON.stringify({
+      marketTicker: MARKET_B,
+      seriesTicker: "KXBTC15M",
+      closeTime: "2026-07-11T11:30:00.000Z",
+      receivedAtLocal: "2026-07-11T11:09:00.000Z",
+    });
+    const checkpoint = createForwardSettlementBackfillCheckpoint({
+      captureRunDir: RUN_DIR,
+      selectedRunId: RUN_ID,
+      importsDir: "data/imports",
+      dryRun: false,
+      startedAt: EVALUATED_AT,
+      marketTickers: [MARKET_B],
+    });
+    delete checkpoint.implementationVersion;
+    checkpoint.markets[0] = {
+      marketTicker: MARKET_B,
+      status: "failed",
+      attempts: 3,
+      lastAttemptAt: EVALUATED_AT,
+      nextEligibleRetryAt: "2026-07-12T08:00:00.000Z",
+      errorMessage: "Kalshi historical API error (404)",
+      errorCategory: "unknown",
+      importResultPath: null,
+    };
+    files[defaultConfig().checkpointPath] =
+      serializeForwardSettlementBackfillCheckpoint(checkpoint);
+
+    const runMarketImport = vi.fn(async ({ importResultPath }) => {
+      files[importResultPath] = createImportResult(MARKET_B, "no");
+      return { success: true };
+    });
+
+    const report = await buildForwardSettlementCoverageReport({
+      generatedAt: "2026-07-12T12:00:00.000Z",
+      config: defaultConfig({ resume: true, maxRetries: 3 }),
+      io: createIo(files, dirs),
+      runBackfill: true,
+      backfillDeps: { runMarketImport },
+    });
+
+    expect(runMarketImport).toHaveBeenCalledTimes(1);
+    expect(report.backfill?.importedMarketCount).toBe(1);
+    expect(report.backfill?.failedMarketCount).toBe(0);
+    expect(report.summary.settledMarketCount).toBeGreaterThanOrEqual(1);
+  });
+
+  it("does not retry deterministic 404 failures three times", async () => {
+    const files: Record<string, string> = {};
+    const dirs: string[] = [];
+    seedRun(files, dirs);
+
+    const runMarketImport = vi.fn(async () => ({
+      success: false,
+      errorMessage:
+        "Kalshi get-rest-market returned 404 for marketTicker on /markets/KXBTC15M-26JUL111115-15",
+    }));
+
+    const backfill = await runForwardSettlementBackfill({
+      config: defaultConfig({ maxRetries: 3, maxConcurrency: 1 }),
+      io: createIo(files, dirs),
+      markets: [
+        classifyMarketSettlementCoverage({
+          io: createIo(files, dirs),
+          importsDir: "data/imports",
+          inventory: extractSelectedRunMarketInventory({
+            io: createIo(files, dirs),
+            captureRunDir: RUN_DIR,
+            evaluatedAt: EVALUATED_AT,
+          }).inventory.find((entry) => entry.marketTicker === MARKET_B)!,
+          evaluatedAt: EVALUATED_AT,
+          staleAfterCaptureObservation: true,
+        }),
+      ],
+      selectedRunId: RUN_ID,
+      evaluatedAt: EVALUATED_AT,
+      deps: { runMarketImport },
+    });
+
+    expect(runMarketImport).toHaveBeenCalledTimes(1);
+    expect(backfill.failedMarketCount).toBe(1);
+    expect(backfill.marketResults[0]?.errorCategory).toBe("kalshi-market-not-found");
+    expect(backfill.marketResults[0]?.nextEligibleRetryAt).toBeNull();
+  });
 });
