@@ -1,11 +1,15 @@
 import {
+  GLOBAL_CAPTURE_HEALTH_AUDIT_PATH,
+  SelectedRunCaptureHealthError,
+  validateSelectedRunCaptureDirectory,
+} from "../selectedRunCaptureHealth";
+import {
   CalibrationFadeForwardValidationError,
   type CalibrationFadeForwardValidationIo,
   type CalibrationFadeSelectedRunQuality,
 } from "./calibrationFadeForwardValidationTypes";
 import { joinPath, readNumber, readString, resolveSelectedRunId } from "./calibrationFadeForwardValidationUtils";
 
-const CAPTURE_HEALTH_AUDIT_PATH = "data/research-results/capture-health-audit.json";
 const CAPTURE_HEALTH_RECONCILIATION_PATH =
   "data/research-results/capture-health-reconciliation.json";
 const BID_SIZE_COVERAGE_AUDIT_PATH = "data/research-results/bid-size-coverage-audit.json";
@@ -41,20 +45,22 @@ function artifactMatchesRun(artifact: Record<string, unknown> | null, runId: str
   return Array.isArray(sourceRunIds) && sourceRunIds.includes(runId);
 }
 
+function mapCaptureHealthError(error: unknown): never {
+  if (error instanceof SelectedRunCaptureHealthError) {
+    throw new CalibrationFadeForwardValidationError(error.message);
+  }
+  throw error;
+}
+
 export function validateSelectedRunDirectory(
   io: CalibrationFadeForwardValidationIo,
   captureRunDir: string,
 ): string {
-  const normalized = captureRunDir.replace(/\\/g, "/");
-  if (!io.isDirectory(normalized)) {
-    throw new CalibrationFadeForwardValidationError(`Unknown capture run directory: ${captureRunDir}`);
+  try {
+    return validateSelectedRunCaptureDirectory({ io, captureRunDir }).captureRunDir;
+  } catch (error) {
+    mapCaptureHealthError(error);
   }
-  for (const required of ["capture-health.json", "top-of-book.jsonl", "btc-spot.jsonl"]) {
-    if (!io.fileExists(joinPath(normalized, required))) {
-      throw new CalibrationFadeForwardValidationError(`Missing required capture artifact: ${required}`);
-    }
-  }
-  return normalized;
 }
 
 export function loadSelectedRunCalibrationFadeContext(input: {
@@ -66,21 +72,19 @@ export function loadSelectedRunCalibrationFadeContext(input: {
   inputArtifactIdentities: readonly Record<string, unknown>[];
   warnings: string[];
 } {
-  const captureRunDir = validateSelectedRunDirectory(input.io, input.captureRunDir);
-  const runId = resolveSelectedRunId(captureRunDir);
-  const warnings: string[] = [];
-  const health = readJsonRecord(input.io, joinPath(captureRunDir, "capture-health.json"));
-  const healthRunId = readString(health?.runId) ?? runId;
-
-  const audit = readJsonRecord(input.io, CAPTURE_HEALTH_AUDIT_PATH);
-  const auditSummary =
-    audit?.summary && typeof audit.summary === "object"
-      ? (audit.summary as Record<string, unknown>)
-      : null;
-  const auditMatches = artifactMatchesRun(audit, healthRunId);
-  if (audit && !auditMatches) {
-    warnings.push("capture-health-audit.json run identity does not match selected run.");
+  let captureRunDir: string;
+  let resolvedHealth;
+  try {
+    const validated = validateSelectedRunCaptureDirectory({ io: input.io, captureRunDir: input.captureRunDir });
+    captureRunDir = validated.captureRunDir;
+    resolvedHealth = validated.health;
+  } catch (error) {
+    mapCaptureHealthError(error);
   }
+
+  const runId = resolveSelectedRunId(captureRunDir);
+  const warnings = [...resolvedHealth.warnings];
+  const healthRunId = resolvedHealth.selectedRunId;
 
   const reconciliation = readJsonRecord(input.io, CAPTURE_HEALTH_RECONCILIATION_PATH);
   const reconciliationMatches = artifactMatchesRun(reconciliation, healthRunId);
@@ -98,18 +102,6 @@ export function loadSelectedRunCalibrationFadeContext(input: {
     warnings.push("bid-size-coverage-audit.json run identity does not match selected run.");
   }
 
-  const orderbook =
-    health?.orderbook && typeof health.orderbook === "object"
-      ? (health.orderbook as Record<string, unknown>)
-      : null;
-  const auditBookState =
-    auditSummary?.bookState && typeof auditSummary.bookState === "object"
-      ? (auditSummary.bookState as Record<string, unknown>)
-      : null;
-  const auditBtcJoin =
-    auditSummary?.btcJoin && typeof auditSummary.btcJoin === "object"
-      ? (auditSummary.btcJoin as Record<string, unknown>)
-      : null;
   const durations =
     reconciliation?.durations && typeof reconciliation.durations === "object"
       ? (reconciliation.durations as Record<string, unknown>)
@@ -121,25 +113,21 @@ export function loadSelectedRunCalibrationFadeContext(input: {
 
   const selectedRunQuality: CalibrationFadeSelectedRunQuality = {
     selectedRunId: healthRunId,
+    captureHealthSource: resolvedHealth.healthSource,
     runDurationSeconds:
-      (auditMatches ? readNumber(auditSummary?.runDurationSeconds) : null)
-      ?? (reconciliationMatches ? readNumber(durations?.configuredDurationSeconds) : null)
-      ?? readNumber((health?.config as Record<string, unknown> | undefined)?.durationSeconds),
-    validBookShare: auditMatches ? readNumber(auditBookState?.validBookShare) : null,
-    btcJoinCoverageShare: auditMatches ? readNumber(auditBtcJoin?.joinCoverageShare) : null,
+      resolvedHealth.runDurationSeconds
+      ?? (reconciliationMatches ? readNumber(durations?.configuredDurationSeconds) : null),
+    validBookShare: resolvedHealth.validBookShare,
+    btcJoinCoverageShare: resolvedHealth.btcJoinCoverageShare,
     bidSizeCoverageShare: bidSizeMatches
       ? readNumber(bidSizeComparison?.bidSizeCoverageShare)
       : null,
-    reconnectCount:
-      (auditMatches ? readNumber(auditBookState?.reconnectCount) : null)
-      ?? readNumber(orderbook?.reconnectCount),
-    sequenceGapCount:
-      (auditMatches ? readNumber(auditBookState?.sequenceGapCount) : null)
-      ?? readNumber(orderbook?.sequenceGapCount),
+    reconnectCount: resolvedHealth.reconnectCount,
+    sequenceGapCount: resolvedHealth.sequenceGapCount,
     suspectedSystemSleepSeconds: reconciliationMatches
       ? readNumber(suspension?.suspectedSystemSleepSeconds)
       : null,
-    captureVerdict: auditMatches ? readString(auditSummary?.verdict) : null,
+    captureVerdict: resolvedHealth.captureVerdict,
     reconciliationVerdict: reconciliationMatches
       ? readString((reconciliation?.summary as Record<string, unknown> | undefined)?.verdict)
       : null,
@@ -149,8 +137,23 @@ export function loadSelectedRunCalibrationFadeContext(input: {
     runId,
     selectedRunQuality,
     inputArtifactIdentities: [
-      { path: joinPath(captureRunDir, "capture-health.json"), selectedRunId: healthRunId },
-      { path: CAPTURE_HEALTH_AUDIT_PATH, matchesSelectedRun: auditMatches },
+      {
+        path: resolvedHealth.nativeHealthPath ?? joinPath(captureRunDir, "capture-health.json"),
+        selectedRunId: healthRunId,
+        present: resolvedHealth.nativeHealthPath !== null,
+      },
+      {
+        path: resolvedHealth.runScopedAuditPath ?? joinPath(captureRunDir, "capture-health-audit.json"),
+        matchesSelectedRun:
+          resolvedHealth.healthSource === "run-scoped-capture-health-audit"
+          || resolvedHealth.healthSource === "native-capture-health",
+        present: resolvedHealth.runScopedAuditPath !== null,
+      },
+      {
+        path: resolvedHealth.globalAuditPath ?? GLOBAL_CAPTURE_HEALTH_AUDIT_PATH,
+        matchesSelectedRun: resolvedHealth.healthSource === "matching-global-capture-health-audit",
+        present: resolvedHealth.globalAuditPath !== null,
+      },
       { path: CAPTURE_HEALTH_RECONCILIATION_PATH, matchesSelectedRun: reconciliationMatches },
       { path: BID_SIZE_COVERAGE_AUDIT_PATH, matchesSelectedRun: bidSizeMatches },
     ],

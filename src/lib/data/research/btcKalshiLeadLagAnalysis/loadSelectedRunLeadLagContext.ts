@@ -1,4 +1,9 @@
 import { joinPath, parseIsoTimestampMs, readNumber, readString } from "./leadLagUtils";
+import {
+  GLOBAL_CAPTURE_HEALTH_AUDIT_PATH,
+  SelectedRunCaptureHealthError,
+  validateSelectedRunCaptureDirectory,
+} from "../selectedRunCaptureHealth";
 import type {
   BtcKalshiLeadLagAnalysisIo,
   BtcKalshiLeadLagInputArtifactIdentities,
@@ -12,7 +17,6 @@ import {
   resolveMarketContractSemantics,
 } from "./resolveMarketContractSemantics";
 
-const CAPTURE_HEALTH_AUDIT_PATH = "data/research-results/capture-health-audit.json";
 const CAPTURE_HEALTH_RECONCILIATION_PATH =
   "data/research-results/capture-health-reconciliation.json";
 const BID_SIZE_COVERAGE_AUDIT_PATH = "data/research-results/bid-size-coverage-audit.json";
@@ -48,6 +52,13 @@ function artifactMatchesRun(artifact: Record<string, unknown> | null, runId: str
   return Array.isArray(sourceRunIds) && sourceRunIds.includes(runId);
 }
 
+function mapCaptureHealthError(error: unknown): never {
+  if (error instanceof SelectedRunCaptureHealthError) {
+    throw new BtcKalshiLeadLagAnalysisError(error.message);
+  }
+  throw error;
+}
+
 export function resolveSelectedRunId(captureRunDir: string): string {
   const normalized = captureRunDir.replace(/\\/g, "/").replace(/\/$/, "");
   const parts = normalized.split("/");
@@ -58,16 +69,11 @@ export function validateSelectedRunDirectory(
   io: BtcKalshiLeadLagAnalysisIo,
   captureRunDir: string,
 ): string {
-  if (!io.isDirectory(captureRunDir)) {
-    throw new BtcKalshiLeadLagAnalysisError(`Capture run directory not found: ${captureRunDir}`);
+  try {
+    return validateSelectedRunCaptureDirectory({ io, captureRunDir }).captureRunDir;
+  } catch (error) {
+    mapCaptureHealthError(error);
   }
-  for (const required of ["capture-health.json", "top-of-book.jsonl", "btc-spot.jsonl"]) {
-    const path = joinPath(captureRunDir, required);
-    if (!io.fileExists(path)) {
-      throw new BtcKalshiLeadLagAnalysisError(`Missing required capture artifact: ${path}`);
-    }
-  }
-  return captureRunDir;
 }
 
 export function loadSelectedRunLeadLagContext(input: {
@@ -80,23 +86,19 @@ export function loadSelectedRunLeadLagContext(input: {
   marketSemantics: Map<string, MarketContractSemantics>;
   warnings: string[];
 } {
-  const captureRunDir = validateSelectedRunDirectory(input.io, input.captureRunDir);
-  const runId = resolveSelectedRunId(captureRunDir);
-  const warnings: string[] = [];
-
-  const healthPath = joinPath(captureRunDir, "capture-health.json");
-  const health = readJsonRecord(input.io, healthPath);
-  const healthRunId = readString(health?.runId) ?? runId;
-
-  const audit = readJsonRecord(input.io, CAPTURE_HEALTH_AUDIT_PATH);
-  const auditSummary =
-    audit?.summary && typeof audit.summary === "object"
-      ? (audit.summary as Record<string, unknown>)
-      : null;
-  const auditMatches = artifactMatchesRun(audit, healthRunId);
-  if (audit && !auditMatches) {
-    warnings.push("capture-health-audit.json run identity does not match selected run.");
+  let captureRunDir: string;
+  let resolvedHealth;
+  try {
+    const validated = validateSelectedRunCaptureDirectory({ io: input.io, captureRunDir: input.captureRunDir });
+    captureRunDir = validated.captureRunDir;
+    resolvedHealth = validated.health;
+  } catch (error) {
+    mapCaptureHealthError(error);
   }
+
+  const runId = resolveSelectedRunId(captureRunDir);
+  const warnings = [...resolvedHealth.warnings];
+  const healthRunId = resolvedHealth.selectedRunId;
 
   const reconciliation = readJsonRecord(input.io, CAPTURE_HEALTH_RECONCILIATION_PATH);
   const reconciliationSummary =
@@ -118,18 +120,6 @@ export function loadSelectedRunLeadLagContext(input: {
     warnings.push("bid-size-coverage-audit.json run identity does not match selected run.");
   }
 
-  const orderbook =
-    health?.orderbook && typeof health.orderbook === "object"
-      ? (health.orderbook as Record<string, unknown>)
-      : null;
-  const auditBookState =
-    auditSummary?.bookState && typeof auditSummary.bookState === "object"
-      ? (auditSummary.bookState as Record<string, unknown>)
-      : null;
-  const auditBtcJoin =
-    auditSummary?.btcJoin && typeof auditSummary.btcJoin === "object"
-      ? (auditSummary.btcJoin as Record<string, unknown>)
-      : null;
   const durations =
     reconciliation?.durations && typeof reconciliation.durations === "object"
       ? (reconciliation.durations as Record<string, unknown>)
@@ -141,32 +131,22 @@ export function loadSelectedRunLeadLagContext(input: {
 
   const selectedRunQuality: BtcKalshiLeadLagSelectedRunQuality = {
     selectedRunId: healthRunId,
+    captureHealthSource: resolvedHealth.healthSource,
     runDurationSeconds:
-      (auditMatches ? readNumber(auditSummary?.runDurationSeconds) : null)
-      ?? (reconciliationMatches ? readNumber(durations?.configuredDurationSeconds) : null)
-      ?? readNumber((health?.config as Record<string, unknown> | undefined)?.durationSeconds),
-    validBookShare:
-      (auditMatches ? readNumber(auditBookState?.validBookShare) : null)
-      ?? (() => {
-        const valid = readNumber(orderbook?.validTopOfBookRecords);
-        const total = readNumber((health?.capture as Record<string, unknown> | undefined)?.topOfBookRecordCount);
-        return valid !== null && total !== null && total > 0 ? valid / total : null;
-      })(),
-    btcJoinCoverageShare: auditMatches ? readNumber(auditBtcJoin?.joinCoverageShare) : null,
+      resolvedHealth.runDurationSeconds
+      ?? (reconciliationMatches ? readNumber(durations?.configuredDurationSeconds) : null),
+    validBookShare: resolvedHealth.validBookShare,
+    btcJoinCoverageShare: resolvedHealth.btcJoinCoverageShare,
     bidSizeCoverageShare: bidSizeMatches
       ? readNumber(bidSizeComparison?.bidSizeCoverageShare)
       ?? readNumber(bidSizeComparison?.topOfBookBidSizeCoverageShare)
       : null,
-    reconnectCount:
-      (auditMatches ? readNumber(auditBookState?.reconnectCount) : null)
-      ?? readNumber(orderbook?.reconnectCount),
-    sequenceGapCount:
-      (auditMatches ? readNumber(auditBookState?.sequenceGapCount) : null)
-      ?? readNumber(orderbook?.sequenceGapCount),
+    reconnectCount: resolvedHealth.reconnectCount,
+    sequenceGapCount: resolvedHealth.sequenceGapCount,
     suspectedSystemSleepSeconds: reconciliationMatches
       ? readNumber(suspension?.suspectedSystemSleepSeconds)
       : null,
-    captureVerdict: auditMatches ? readString(auditSummary?.verdict) : null,
+    captureVerdict: resolvedHealth.captureVerdict,
     reconciliationVerdict: reconciliationMatches
       ? readString(reconciliationSummary?.overallVerdict)
       : null,
@@ -210,13 +190,15 @@ export function loadSelectedRunLeadLagContext(input: {
     runId,
     selectedRunQuality,
     inputArtifactIdentities: {
-      captureHealthPath: healthPath,
+      captureHealthPath: resolvedHealth.nativeHealthPath,
       topOfBookPath: joinPath(captureRunDir, "top-of-book.jsonl"),
       btcSpotPath: joinPath(captureRunDir, "btc-spot.jsonl"),
       marketMetadataPath: metadataPath,
-      captureHealthAuditPath: input.io.fileExists(CAPTURE_HEALTH_AUDIT_PATH)
-        ? CAPTURE_HEALTH_AUDIT_PATH
-        : null,
+      captureHealthAuditPath:
+        resolvedHealth.runScopedAuditPath
+        ?? (input.io.fileExists(GLOBAL_CAPTURE_HEALTH_AUDIT_PATH)
+          ? GLOBAL_CAPTURE_HEALTH_AUDIT_PATH
+          : null),
       captureHealthReconciliationPath: input.io.fileExists(CAPTURE_HEALTH_RECONCILIATION_PATH)
         ? CAPTURE_HEALTH_RECONCILIATION_PATH
         : null,

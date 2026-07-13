@@ -1,8 +1,9 @@
-import { dirname } from "node:path";
-import { mkdirSync, statSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { mkdirSync, renameSync, statSync, unlinkSync, writeFileSync } from "node:fs";
 
 import {
   buildCaptureHealthAuditReport,
+  CAPTURE_HEALTH_AUDIT_FILENAME,
   createCaptureHealthAuditConfig,
   serializeCaptureHealthAuditHtml,
   serializeCaptureHealthAuditReport,
@@ -22,6 +23,34 @@ import {
 } from "./buildCaptureHealthAuditTypes";
 import type { CaptureHealthAuditCommandIo } from "./buildCaptureHealthAuditTypes";
 
+function writeFileAtomically(
+  io: Pick<CaptureHealthAuditCommandIo, "writeFile"> & {
+    fileExists?: (path: string) => boolean;
+    unlinkFile?: (path: string) => void;
+    renameFile?: (from: string, to: string) => void;
+  },
+  outputPath: string,
+  data: string,
+): void {
+  const tempPath = `${outputPath}.${process.pid}.tmp`;
+  io.writeFile(tempPath, data);
+
+  if (io.renameFile && io.fileExists && io.unlinkFile) {
+    try {
+      io.renameFile(tempPath, outputPath);
+      return;
+    } catch {
+      if (io.fileExists(outputPath)) {
+        io.unlinkFile(outputPath);
+      }
+      io.renameFile(tempPath, outputPath);
+      return;
+    }
+  }
+
+  io.writeFile(outputPath, data);
+}
+
 export async function runCaptureHealthAuditCommand(
   argv: readonly string[],
   io: CaptureHealthAuditCommandIo,
@@ -30,8 +59,12 @@ export async function runCaptureHealthAuditCommand(
   try {
     const normalizedArgv = normalizeCaptureHealthAuditArgv(argv);
     const captureRunDir = parseCaptureRunDirFromArgv(normalizedArgv);
-    const outputPath = parseOutputPathFromArgv(normalizedArgv);
+    const aggregateOutputPath = parseOutputPathFromArgv(normalizedArgv);
     const htmlOutputPath = parseHtmlOutputPathFromArgv(normalizedArgv);
+    const runScopedOutputPath = join(
+      captureRunDir.replace(/\\/g, "/"),
+      CAPTURE_HEALTH_AUDIT_FILENAME,
+    );
     const thresholdOverrides = parseThresholdOverridesFromArgv(normalizedArgv);
     const config = createCaptureHealthAuditConfig({
       ...(thresholdOverrides.minDurationSeconds !== undefined
@@ -57,24 +90,46 @@ export async function runCaptureHealthAuditCommand(
 
     const report = await buildCaptureHealthAuditReport({
       generatedAt,
-      outputPath,
+      outputPath: aggregateOutputPath,
       htmlOutputPath,
       captureRunDir,
       config,
       io,
     });
 
-    io.mkdirSync(dirname(outputPath), { recursive: true });
+    const serializedReport = serializeCaptureHealthAuditReport({
+      ...report,
+      outputPath: aggregateOutputPath,
+    });
+    const runScopedSerialized = serializeCaptureHealthAuditReport({
+      ...report,
+      outputPath: runScopedOutputPath,
+    });
+    const serializedHtml = serializeCaptureHealthAuditHtml(report);
+
+    io.mkdirSync(dirname(aggregateOutputPath), { recursive: true });
     io.mkdirSync(dirname(htmlOutputPath), { recursive: true });
-    io.writeFile(outputPath, serializeCaptureHealthAuditReport(report));
-    io.writeFile(htmlOutputPath, serializeCaptureHealthAuditHtml(report));
+    io.mkdirSync(dirname(runScopedOutputPath), { recursive: true });
+
+    writeFileAtomically(io, aggregateOutputPath, serializedReport);
+    writeFileAtomically(io, runScopedOutputPath, runScopedSerialized);
+    writeFileAtomically(io, htmlOutputPath, serializedHtml);
+
+    if (report.summary.verdict !== "capture-research-ready") {
+      io.writeStderr(
+        `Capture health audit verdict: ${report.summary.verdict}\n`,
+      );
+      return 1;
+    }
 
     io.writeStdout(
       formatStdoutOutput(
         stableStringify({
-          outputPath: report.outputPath,
-          htmlOutputPath: report.htmlOutputPath,
+          selectedRunId: report.selectedRunId,
           captureRunDir: report.captureRunDir,
+          runScopedOutputPath,
+          aggregateOutputPath,
+          htmlOutputPath: report.htmlOutputPath,
           verdict: report.summary.verdict,
           recommendedNextAction: report.summary.recommendedNextAction,
           runDurationSeconds: report.summary.runDurationSeconds,
@@ -111,6 +166,20 @@ async function main(): Promise<void> {
       mkdirSync(path, options);
     },
     isDirectory: (path) => statSync(path).isDirectory(),
+    fileExists: (path) => {
+      try {
+        statSync(path);
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    unlinkFile: (path) => {
+      unlinkSync(path);
+    },
+    renameFile: (from, to) => {
+      renameSync(from, to);
+    },
   });
 
   process.exitCode = exitCode;

@@ -1,4 +1,5 @@
 import type { JsonlIo } from "@/lib/data/research/jsonl";
+import type { SelectedRunCaptureHealthSource } from "@/lib/data/research/selectedRunCaptureHealth";
 
 export const CALIBRATION_FADE_FORWARD_VALIDATION_VERSION =
   "calibration-fade-forward-validation-v1";
@@ -148,6 +149,7 @@ export type CalibrationFadeForwardValidationIo = JsonlIo & {
 
 export type CalibrationFadeSelectedRunQuality = {
   selectedRunId: string;
+  captureHealthSource: SelectedRunCaptureHealthSource;
   runDurationSeconds: number | null;
   validBookShare: number | null;
   btcJoinCoverageShare: number | null;

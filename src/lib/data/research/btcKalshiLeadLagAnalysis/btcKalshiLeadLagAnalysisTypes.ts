@@ -119,6 +119,7 @@ export type BtcKalshiLeadLagInputArtifactIdentities = {
 
 export type BtcKalshiLeadLagSelectedRunQuality = {
   selectedRunId: string;
+  captureHealthSource: import("../selectedRunCaptureHealth").SelectedRunCaptureHealthSource;
   runDurationSeconds: number | null;
   validBookShare: number | null;
   btcJoinCoverageShare: number | null;

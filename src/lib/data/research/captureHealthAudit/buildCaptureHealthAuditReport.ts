@@ -7,6 +7,8 @@ import type { CaptureHealthAuditConfig, CaptureHealthAuditReport } from "./captu
 import { evaluateCaptureReadinessVerdict } from "./evaluateCaptureReadinessVerdict";
 import { loadCaptureRunArtifacts } from "./loadCaptureRunArtifacts";
 import type { CaptureHealthAuditIo } from "./captureHealthAuditTypes";
+import { SELECTED_RUN_CAPTURE_HEALTH_ANALYSIS_VERSION } from "../selectedRunCaptureHealth/selectedRunCaptureHealthTypes";
+import { resolveSelectedRunId } from "../selectedRunCaptureHealth/selectedRunCaptureHealthUtils";
 
 /** Loads capture artifacts and builds the full capture health audit report. */
 export async function buildCaptureHealthAuditReport(input: {
@@ -51,6 +53,17 @@ export async function buildCaptureHealthAuditReport(input: {
     caveats: [...CAPTURE_HEALTH_AUDIT_CAVEATS],
     warnings,
     captureRunDir: loaded.artifacts.captureRunDir,
+    selectedRunId: resolveSelectedRunId(loaded.artifacts.captureRunDir),
+    sourceRunIds: [resolveSelectedRunId(loaded.artifacts.captureRunDir)],
+    analysisVersion: SELECTED_RUN_CAPTURE_HEALTH_ANALYSIS_VERSION,
+    inputArtifactIdentities: [
+      { path: loaded.artifacts.topOfBookPath ?? "", role: "top-of-book" },
+      { path: loaded.artifacts.btcSpotPath ?? "", role: "btc-spot" },
+      { path: loaded.artifacts.rawMessagesPath ?? "", role: "raw-messages" },
+      { path: loaded.artifacts.marketMetadataPath ?? "", role: "market-metadata" },
+      { path: loaded.artifacts.captureHealthPath ?? "", role: "native-capture-health" },
+    ].filter((entry) => entry.path.length > 0),
+    recordsScanned: loaded.topOfBookRecords.length,
     artifacts: loaded.artifacts,
     config: input.config,
     summary: {

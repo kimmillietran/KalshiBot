@@ -184,6 +184,11 @@ export type CaptureHealthAuditReport = {
   caveats: readonly string[];
   warnings: readonly string[];
   captureRunDir: string;
+  selectedRunId: string;
+  sourceRunIds: readonly string[];
+  analysisVersion: string;
+  inputArtifactIdentities: readonly { path: string; role: string }[];
+  recordsScanned: number;
   artifacts: CaptureArtifactPaths;
   config: CaptureHealthAuditConfig;
   summary: CaptureHealthAuditSummary;
