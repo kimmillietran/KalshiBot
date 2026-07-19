@@ -8,9 +8,11 @@ import {
   SelectedRunCaptureHealthError,
 } from "./selectedRunCaptureHealthTypes";
 import {
-  artifactMatchesRun,
+  assertCaptureHealthAuditNotStale,
+  captureHealthAuditMatchesSelectedRun,
   computeValidBookShareFromNativeHealth,
   joinCapturePath,
+  normalizeCapturePath,
   parseCaptureHealthAuditReport,
   readJsonRecord,
   readNumber,
@@ -105,11 +107,22 @@ function normalizeFromNative(
   };
 }
 
+function requireParsedAudit(
+  record: Record<string, unknown>,
+  label: string,
+): CaptureHealthAuditReport {
+  const parsed = parseCaptureHealthAuditReport(record);
+  if (!parsed) {
+    throw new SelectedRunCaptureHealthError(`Malformed ${label}: missing summary object.`);
+  }
+  return parsed;
+}
+
 export function resolveSelectedRunCaptureHealth(input: {
   io: SelectedRunCaptureHealthIo;
   captureRunDir: string;
 }): ResolvedSelectedRunCaptureHealth {
-  const captureRunDir = input.captureRunDir.replace(/\\/g, "/").replace(/\/$/, "");
+  const captureRunDir = normalizeCapturePath(input.captureRunDir);
   const selectedRunId = resolveSelectedRunId(captureRunDir);
   const warnings: string[] = [];
 
@@ -127,12 +140,16 @@ export function resolveSelectedRunCaptureHealth(input: {
     GLOBAL_CAPTURE_HEALTH_AUDIT_PATH,
   );
 
-  const runScopedAudit = parseCaptureHealthAuditReport(runScopedAuditRecord);
-  const globalAudit = parseCaptureHealthAuditReport(globalAuditRecord);
-  const runScopedMatches =
-    runScopedAuditRecord !== null && artifactMatchesRun(runScopedAuditRecord, selectedRunId);
-  const globalMatches =
-    globalAuditRecord !== null && artifactMatchesRun(globalAuditRecord, selectedRunId);
+  const runScopedMatches = captureHealthAuditMatchesSelectedRun(
+    runScopedAuditRecord,
+    selectedRunId,
+    captureRunDir,
+  );
+  const globalMatches = captureHealthAuditMatchesSelectedRun(
+    globalAuditRecord,
+    selectedRunId,
+    captureRunDir,
+  );
 
   if (runScopedAuditRecord && !runScopedMatches) {
     warnings.push("Run-scoped capture-health-audit.json identity does not match selected run.");
@@ -142,19 +159,47 @@ export function resolveSelectedRunCaptureHealth(input: {
   }
 
   if (nativeHealth) {
-    const healthRunId = readString(nativeHealth.runId) ?? selectedRunId;
-    if (healthRunId !== selectedRunId) {
-      warnings.push(
-        `capture-health.json runId (${healthRunId}) differs from directory name (${selectedRunId}).`,
+    const healthRunId = readString(nativeHealth.runId);
+    if (healthRunId !== null && healthRunId !== selectedRunId) {
+      throw new SelectedRunCaptureHealthError(
+        `capture-health.json runId (${healthRunId}) does not match selected run directory (${selectedRunId}).`,
       );
     }
-    const matchingAudit = runScopedMatches ? runScopedAudit : globalMatches ? globalAudit : null;
-    const resolved = normalizeFromNative(nativeHealth, captureRunDir, healthRunId, matchingAudit);
+    const matchingAuditRecord = runScopedMatches
+      ? runScopedAuditRecord
+      : globalMatches
+        ? globalAuditRecord
+        : null;
+    const matchingAudit = matchingAuditRecord
+      ? requireParsedAudit(
+          matchingAuditRecord,
+          runScopedMatches
+            ? "run-scoped capture-health-audit.json"
+            : "global capture-health-audit.json",
+        )
+      : null;
+    const resolved = normalizeFromNative(nativeHealth, captureRunDir, selectedRunId, matchingAudit);
     resolved.warnings = warnings;
     return resolved;
   }
 
-  if (runScopedMatches && runScopedAudit && isResearchReadyAudit(runScopedAudit)) {
+  if (runScopedAuditRecord && runScopedMatches) {
+    const runScopedAudit = requireParsedAudit(
+      runScopedAuditRecord,
+      "run-scoped capture-health-audit.json",
+    );
+    if (!isResearchReadyAudit(runScopedAudit)) {
+      throw new SelectedRunCaptureHealthError(
+        `Run-scoped capture-health-audit verdict is ${runScopedAudit.summary.verdict}; capture-research-ready required.`,
+      );
+    }
+    warnings.push(
+      ...assertCaptureHealthAuditNotStale({
+        auditRecord: runScopedAuditRecord,
+        io: input.io,
+        sourceLabel: "Run-scoped capture-health-audit.json",
+      }),
+    );
     const resolved = normalizeFromAudit(
       runScopedAudit,
       "run-scoped-capture-health-audit",
@@ -165,13 +210,26 @@ export function resolveSelectedRunCaptureHealth(input: {
     return resolved;
   }
 
-  if (runScopedMatches && runScopedAudit && !isResearchReadyAudit(runScopedAudit)) {
-    throw new SelectedRunCaptureHealthError(
-      `Run-scoped capture-health-audit verdict is ${runScopedAudit.summary.verdict}; capture-research-ready required.`,
+  if (globalAuditRecord && globalMatches) {
+    const globalAudit = requireParsedAudit(
+      globalAuditRecord,
+      "global capture-health-audit.json",
     );
-  }
-
-  if (globalMatches && globalAudit && isResearchReadyAudit(globalAudit)) {
+    if (!isResearchReadyAudit(globalAudit)) {
+      throw new SelectedRunCaptureHealthError(
+        `Global capture-health-audit verdict is ${globalAudit.summary.verdict}; capture-research-ready required.`,
+      );
+    }
+    warnings.push(
+      "Using matching-global-capture-health-audit as last-resort health source; prefer native capture-health.json or run-scoped capture-health-audit.json.",
+    );
+    warnings.push(
+      ...assertCaptureHealthAuditNotStale({
+        auditRecord: globalAuditRecord,
+        io: input.io,
+        sourceLabel: "Global capture-health-audit.json",
+      }),
+    );
     const resolved = normalizeFromAudit(
       globalAudit,
       "matching-global-capture-health-audit",
@@ -181,12 +239,6 @@ export function resolveSelectedRunCaptureHealth(input: {
     resolved.warnings = warnings;
     resolved.globalAuditPath = GLOBAL_CAPTURE_HEALTH_AUDIT_PATH;
     return resolved;
-  }
-
-  if (globalMatches && globalAudit && !isResearchReadyAudit(globalAudit)) {
-    throw new SelectedRunCaptureHealthError(
-      `Global capture-health-audit verdict is ${globalAudit.summary.verdict}; capture-research-ready required.`,
-    );
   }
 
   throw new SelectedRunCaptureHealthError(
@@ -199,7 +251,7 @@ export function validateSelectedRunCaptureDirectory(input: {
   captureRunDir: string;
   requireBtcSpot?: boolean;
 }): { captureRunDir: string; health: ResolvedSelectedRunCaptureHealth } {
-  const normalized = input.captureRunDir.replace(/\\/g, "/").replace(/\/$/, "");
+  const normalized = normalizeCapturePath(input.captureRunDir);
   if (!input.io.isDirectory(normalized)) {
     throw new SelectedRunCaptureHealthError(`Unknown capture run directory: ${input.captureRunDir}`);
   }

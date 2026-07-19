@@ -1,4 +1,4 @@
-import { dirname, join } from "node:path";
+import { dirname } from "node:path";
 import { mkdirSync, renameSync, statSync, unlinkSync, writeFileSync } from "node:fs";
 
 import {
@@ -8,6 +8,7 @@ import {
   serializeCaptureHealthAuditHtml,
   serializeCaptureHealthAuditReport,
 } from "@/lib/data/research/captureHealthAudit";
+import { publishResearchArtifactsAtomically } from "@/lib/data/research/calibrationFadeForwardValidation";
 import { createFilesystemJsonlIo } from "@/lib/data/research/jsonl";
 import { stableStringify } from "@/lib/trading/config/hashConfig";
 
@@ -23,32 +24,23 @@ import {
 } from "./buildCaptureHealthAuditTypes";
 import type { CaptureHealthAuditCommandIo } from "./buildCaptureHealthAuditTypes";
 
-function writeFileAtomically(
-  io: Pick<CaptureHealthAuditCommandIo, "writeFile"> & {
-    fileExists?: (path: string) => boolean;
-    unlinkFile?: (path: string) => void;
-    renameFile?: (from: string, to: string) => void;
-  },
-  outputPath: string,
-  data: string,
-): void {
-  const tempPath = `${outputPath}.${process.pid}.tmp`;
-  io.writeFile(tempPath, data);
-
-  if (io.renameFile && io.fileExists && io.unlinkFile) {
-    try {
-      io.renameFile(tempPath, outputPath);
-      return;
-    } catch {
-      if (io.fileExists(outputPath)) {
-        io.unlinkFile(outputPath);
-      }
-      io.renameFile(tempPath, outputPath);
-      return;
-    }
+function requirePublishIo(
+  io: CaptureHealthAuditCommandIo,
+): CaptureHealthAuditCommandIo & {
+  fileExists: (path: string) => boolean;
+  unlinkFile: (path: string) => void;
+  renameFile: (from: string, to: string) => void;
+} {
+  if (!io.fileExists || !io.unlinkFile || !io.renameFile) {
+    throw new Error(
+      "Capture health audit publication requires fileExists, unlinkFile, and renameFile IO methods.",
+    );
   }
-
-  io.writeFile(outputPath, data);
+  return io as CaptureHealthAuditCommandIo & {
+    fileExists: (path: string) => boolean;
+    unlinkFile: (path: string) => void;
+    renameFile: (from: string, to: string) => void;
+  };
 }
 
 export async function runCaptureHealthAuditCommand(
@@ -61,10 +53,8 @@ export async function runCaptureHealthAuditCommand(
     const captureRunDir = parseCaptureRunDirFromArgv(normalizedArgv);
     const aggregateOutputPath = parseOutputPathFromArgv(normalizedArgv);
     const htmlOutputPath = parseHtmlOutputPathFromArgv(normalizedArgv);
-    const runScopedOutputPath = join(
-      captureRunDir.replace(/\\/g, "/"),
-      CAPTURE_HEALTH_AUDIT_FILENAME,
-    );
+    const runScopedOutputPath =
+      `${captureRunDir.replace(/\\/g, "/").replace(/\/$/, "")}/${CAPTURE_HEALTH_AUDIT_FILENAME}`;
     const thresholdOverrides = parseThresholdOverridesFromArgv(normalizedArgv);
     const config = createCaptureHealthAuditConfig({
       ...(thresholdOverrides.minDurationSeconds !== undefined
@@ -111,14 +101,25 @@ export async function runCaptureHealthAuditCommand(
     io.mkdirSync(dirname(htmlOutputPath), { recursive: true });
     io.mkdirSync(dirname(runScopedOutputPath), { recursive: true });
 
-    writeFileAtomically(io, aggregateOutputPath, serializedReport);
-    writeFileAtomically(io, runScopedOutputPath, runScopedSerialized);
-    writeFileAtomically(io, htmlOutputPath, serializedHtml);
+    const publishIo = requirePublishIo(io);
+    publishResearchArtifactsAtomically(publishIo, [
+      { outputPath: aggregateOutputPath, data: serializedReport },
+      { outputPath: runScopedOutputPath, data: runScopedSerialized },
+      { outputPath: htmlOutputPath, data: serializedHtml },
+    ]);
+
+    const pathSummary =
+      `runScopedOutputPath=${runScopedOutputPath}; `
+      + `aggregateOutputPath=${aggregateOutputPath}; `
+      + `htmlOutputPath=${htmlOutputPath}`;
 
     if (report.summary.verdict !== "capture-research-ready") {
+      // Intentional: write truthful audit artifacts, then exit nonzero so automation
+      // can distinguish report generation from quality approval.
       io.writeStderr(
-        `Capture health audit verdict: ${report.summary.verdict}\n`,
+        `Capture health audit verdict: ${report.summary.verdict} (artifacts written; quality not approved)\n`,
       );
+      io.writeStderr(`${pathSummary}\n`);
       return 1;
     }
 

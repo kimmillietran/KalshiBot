@@ -4,7 +4,9 @@ export {
 } from "./resolveSelectedRunCaptureHealth";
 export {
   artifactMatchesRun,
+  captureHealthAuditMatchesSelectedRun,
   joinCapturePath,
+  normalizeCapturePath,
   resolveRunScopedCaptureHealthAuditPath,
   resolveSelectedRunId,
 } from "./selectedRunCaptureHealthUtils";

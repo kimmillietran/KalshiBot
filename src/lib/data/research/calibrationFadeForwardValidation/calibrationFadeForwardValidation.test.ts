@@ -265,20 +265,42 @@ describe("loadSelectedRunCalibrationFadeContext", () => {
 
   it("proceeds with matching run-scoped audit when native capture-health.json is missing", () => {
     const realRunDir = "data/live-capture/forward-quotes/2026-07-12T10-18-27-409Z";
+    const topPath = `${realRunDir}/top-of-book.jsonl`;
+    const btcPath = `${realRunDir}/btc-spot.jsonl`;
+    const topContent = topOfBookLine({
+      marketTicker: MARKET_A,
+      offsetMs: 720_000,
+      yesBid: 48,
+      yesAsk: 52,
+      noAsk: 50,
+    });
+    const btcContent = btcLine(0, 100_000);
+    const topSize = Buffer.byteLength(topContent, "utf8");
+    const btcSize = Buffer.byteLength(btcContent, "utf8");
     const io = createMemoryCalibrationFadeForwardValidationIo(
       {
-        [`${realRunDir}/top-of-book.jsonl`]: topOfBookLine({
-          marketTicker: MARKET_A,
-          offsetMs: 720_000,
-          yesBid: 48,
-          yesAsk: 52,
-          noAsk: 50,
-        }),
-        [`${realRunDir}/btc-spot.jsonl`]: btcLine(0, 100_000),
+        [topPath]: topContent,
+        [btcPath]: btcContent,
         [`${realRunDir}/capture-health-audit.json`]: JSON.stringify({
           selectedRunId: "2026-07-12T10-18-27-409Z",
           captureRunDir: realRunDir,
           sourceRunIds: ["2026-07-12T10-18-27-409Z"],
+          inputArtifactIdentities: [
+            {
+              path: topPath,
+              role: "top-of-book",
+              sizeBytes: topSize,
+              mtimeMs: topSize,
+              recordCount: 1,
+            },
+            {
+              path: btcPath,
+              role: "btc-spot",
+              sizeBytes: btcSize,
+              mtimeMs: btcSize,
+              recordCount: 1,
+            },
+          ],
           summary: {
             verdict: "capture-research-ready",
             runDurationSeconds: 28_655,
@@ -314,6 +336,7 @@ describe("loadSelectedRunCalibrationFadeContext", () => {
         [`${realRunDir}/btc-spot.jsonl`]: "{}",
         [`${realRunDir}/capture-health-audit.json`]: JSON.stringify({
           selectedRunId: "degraded-audit-run",
+          captureRunDir: realRunDir,
           sourceRunIds: ["degraded-audit-run"],
           summary: {
             verdict: "capture-degraded",

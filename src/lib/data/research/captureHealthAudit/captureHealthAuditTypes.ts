@@ -114,6 +114,7 @@ export type ParsedMarketMetadataRecord = {
 
 export type CaptureHealthAuditIo = JsonlIo & {
   isDirectory: (path: string) => boolean;
+  fileMtimeMs?: (path: string) => number | null;
 };
 
 export type CaptureContinuityMetrics = {
@@ -187,7 +188,13 @@ export type CaptureHealthAuditReport = {
   selectedRunId: string;
   sourceRunIds: readonly string[];
   analysisVersion: string;
-  inputArtifactIdentities: readonly { path: string; role: string }[];
+  inputArtifactIdentities: readonly {
+    path: string;
+    role: string;
+    sizeBytes: number | null;
+    mtimeMs: number | null;
+    recordCount: number | null;
+  }[];
   recordsScanned: number;
   artifacts: CaptureArtifactPaths;
   config: CaptureHealthAuditConfig;

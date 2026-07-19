@@ -1,12 +1,21 @@
 import { CAPTURE_HEALTH_AUDIT_FILENAME } from "../captureHealthAudit/captureHealthAuditTypes";
 import type { CaptureHealthAuditReport } from "../captureHealthAudit/captureHealthAuditTypes";
 
+import {
+  SelectedRunCaptureHealthError,
+  type SelectedRunCaptureHealthIo,
+} from "./selectedRunCaptureHealthTypes";
+
 export function joinCapturePath(captureRunDir: string, filename: string): string {
-  return `${captureRunDir.replace(/\\/g, "/").replace(/\/$/, "")}/${filename}`;
+  return `${normalizeCapturePath(captureRunDir)}/${filename}`;
+}
+
+export function normalizeCapturePath(path: string): string {
+  return path.replace(/\\/g, "/").replace(/\/$/, "");
 }
 
 export function resolveSelectedRunId(captureRunDir: string): string {
-  const normalized = captureRunDir.replace(/\\/g, "/").replace(/\/$/, "");
+  const normalized = normalizeCapturePath(captureRunDir);
   const parts = normalized.split("/");
   return parts[parts.length - 1] ?? captureRunDir;
 }
@@ -28,12 +37,20 @@ export function readJsonRecord(
     return null;
   }
   try {
-    return JSON.parse(readFile(path).replace(/^\uFEFF/, "")) as Record<string, unknown>;
-  } catch {
-    return null;
+    const parsed = JSON.parse(readFile(path).replace(/^\uFEFF/, "")) as unknown;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      throw new SelectedRunCaptureHealthError(`Malformed JSON object at ${path}`);
+    }
+    return parsed as Record<string, unknown>;
+  } catch (error) {
+    if (error instanceof SelectedRunCaptureHealthError) {
+      throw error;
+    }
+    throw new SelectedRunCaptureHealthError(`Malformed JSON at ${path}`);
   }
 }
 
+/** Loose identity helper for optional secondary artifacts (reconciliation / bid-size). */
 export function artifactMatchesRun(
   artifact: Record<string, unknown> | null,
   runId: string,
@@ -60,6 +77,55 @@ export function artifactMatchesRun(
   return Array.isArray(sourceRunIds) && sourceRunIds.includes(runId);
 }
 
+/**
+ * Strict identity for capture-health audits used as selected-run health sources.
+ * Requires exact selectedRunId, singleton sourceRunIds, and captureRunDir basename match.
+ */
+export function captureHealthAuditMatchesSelectedRun(
+  artifact: Record<string, unknown> | null,
+  selectedRunId: string,
+  selectedCaptureRunDir: string,
+): boolean {
+  if (!artifact) {
+    return false;
+  }
+
+  const artifactSelectedRunId = readString(artifact.selectedRunId);
+  if (artifactSelectedRunId !== selectedRunId) {
+    return false;
+  }
+
+  const sourceRunIds = artifact.sourceRunIds;
+  if (
+    !Array.isArray(sourceRunIds)
+    || sourceRunIds.length !== 1
+    || sourceRunIds[0] !== selectedRunId
+  ) {
+    return false;
+  }
+
+  const artifactCaptureRunDir = readString(artifact.captureRunDir);
+  if (!artifactCaptureRunDir) {
+    return false;
+  }
+
+  if (resolveSelectedRunId(artifactCaptureRunDir) !== selectedRunId) {
+    return false;
+  }
+
+  const normalizedSelected = normalizeCapturePath(selectedCaptureRunDir);
+  const normalizedArtifact = normalizeCapturePath(artifactCaptureRunDir);
+  if (normalizedSelected === normalizedArtifact) {
+    return true;
+  }
+
+  // Allow absolute vs relative path forms when both resolve to the same run id.
+  return (
+    resolveSelectedRunId(normalizedSelected) === selectedRunId
+    && resolveSelectedRunId(normalizedArtifact) === selectedRunId
+  );
+}
+
 export function resolveRunScopedCaptureHealthAuditPath(captureRunDir: string): string {
   return joinCapturePath(captureRunDir, CAPTURE_HEALTH_AUDIT_FILENAME);
 }
@@ -71,6 +137,84 @@ export function parseCaptureHealthAuditReport(
     return null;
   }
   return record as unknown as CaptureHealthAuditReport;
+}
+
+export function assertCaptureHealthAuditNotStale(input: {
+  auditRecord: Record<string, unknown>;
+  io: SelectedRunCaptureHealthIo;
+  sourceLabel: string;
+}): string[] {
+  const warnings: string[] = [];
+  const identities = input.auditRecord.inputArtifactIdentities;
+  if (!Array.isArray(identities) || identities.length === 0) {
+    warnings.push(
+      `${input.sourceLabel} lacks source artifact fingerprints; staleness cannot be verified.`,
+    );
+    return warnings;
+  }
+
+  const trackedRoles = new Set(["top-of-book", "btc-spot", "market-metadata"]);
+  let fingerprintChecked = false;
+
+  for (const entry of identities) {
+    if (!entry || typeof entry !== "object") {
+      continue;
+    }
+    const identity = entry as Record<string, unknown>;
+    const role = readString(identity.role);
+    const path = readString(identity.path);
+    if (!role || !path || !trackedRoles.has(role)) {
+      continue;
+    }
+
+    const expectedSize = readNumber(identity.sizeBytes);
+    const expectedMtime = readNumber(identity.mtimeMs);
+    if (expectedSize === null && expectedMtime === null) {
+      warnings.push(
+        `${input.sourceLabel} fingerprint incomplete for ${role}; staleness cannot be fully verified.`,
+      );
+      continue;
+    }
+
+    fingerprintChecked = true;
+    const normalizedPath = normalizeCapturePath(path);
+    if (!input.io.fileExists(normalizedPath) && !input.io.fileExists(path)) {
+      throw new SelectedRunCaptureHealthError(
+        `${input.sourceLabel} is stale: missing source artifact ${path}`,
+      );
+    }
+
+    const existingPath = input.io.fileExists(normalizedPath) ? normalizedPath : path;
+    const currentSize = input.io.fileSizeBytes?.(existingPath) ?? null;
+    const currentMtime = input.io.fileMtimeMs?.(existingPath) ?? null;
+
+    if (expectedSize !== null && currentSize !== null && expectedSize !== currentSize) {
+      throw new SelectedRunCaptureHealthError(
+        `${input.sourceLabel} is stale: ${role} size changed (${expectedSize} -> ${currentSize}).`,
+      );
+    }
+    if (expectedMtime !== null && currentMtime !== null && expectedMtime !== currentMtime) {
+      throw new SelectedRunCaptureHealthError(
+        `${input.sourceLabel} is stale: ${role} mtime changed (${expectedMtime} -> ${currentMtime}).`,
+      );
+    }
+    if (
+      (expectedSize !== null && currentSize === null)
+      || (expectedMtime !== null && currentMtime === null)
+    ) {
+      warnings.push(
+        `${input.sourceLabel} fingerprint for ${role} could not be revalidated; IO lacks file stats.`,
+      );
+    }
+  }
+
+  if (!fingerprintChecked) {
+    warnings.push(
+      `${input.sourceLabel} lacks usable source artifact fingerprints; staleness cannot be verified.`,
+    );
+  }
+
+  return warnings;
 }
 
 export function computeValidBookShareFromNativeHealth(

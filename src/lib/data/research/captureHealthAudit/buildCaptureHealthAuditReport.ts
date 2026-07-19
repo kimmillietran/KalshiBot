@@ -45,6 +45,47 @@ export async function buildCaptureHealthAuditReport(input: {
     warnings.push(...evaluation.blockingReasons);
   }
 
+  const normalizePath = (path: string) => path.replace(/\\/g, "/");
+  const fingerprint = (
+    path: string | null,
+    role: string,
+    recordCount: number | null,
+  ): {
+    path: string;
+    role: string;
+    sizeBytes: number | null;
+    mtimeMs: number | null;
+    recordCount: number | null;
+  } | null => {
+    if (!path) {
+      return null;
+    }
+    const normalizedPath = normalizePath(path);
+    return {
+      path: normalizedPath,
+      role,
+      sizeBytes: input.io.fileSizeBytes?.(normalizedPath) ?? input.io.fileSizeBytes?.(path) ?? null,
+      mtimeMs: input.io.fileMtimeMs?.(normalizedPath) ?? input.io.fileMtimeMs?.(path) ?? null,
+      recordCount,
+    };
+  };
+
+  const inputArtifactIdentities = [
+    fingerprint(loaded.artifacts.topOfBookPath, "top-of-book", loaded.topOfBookRecords.length),
+    fingerprint(loaded.artifacts.btcSpotPath, "btc-spot", loaded.btcSpotRecords.length),
+    fingerprint(loaded.artifacts.rawMessagesPath, "raw-messages", loaded.rawMessageCount),
+    fingerprint(
+      loaded.artifacts.marketMetadataPath,
+      "market-metadata",
+      loaded.marketMetadataRecords.length,
+    ),
+    fingerprint(
+      loaded.artifacts.captureHealthPath,
+      "native-capture-health",
+      loaded.captureHealth ? 1 : 0,
+    ),
+  ].filter((entry): entry is NonNullable<typeof entry> => entry !== null);
+
   return {
     generatedAt: input.generatedAt,
     outputPath: input.outputPath,
@@ -52,17 +93,11 @@ export async function buildCaptureHealthAuditReport(input: {
     disclaimer: CAPTURE_HEALTH_AUDIT_DISCLAIMER,
     caveats: [...CAPTURE_HEALTH_AUDIT_CAVEATS],
     warnings,
-    captureRunDir: loaded.artifacts.captureRunDir,
+    captureRunDir: normalizePath(loaded.artifacts.captureRunDir).replace(/\/$/, ""),
     selectedRunId: resolveSelectedRunId(loaded.artifacts.captureRunDir),
     sourceRunIds: [resolveSelectedRunId(loaded.artifacts.captureRunDir)],
     analysisVersion: SELECTED_RUN_CAPTURE_HEALTH_ANALYSIS_VERSION,
-    inputArtifactIdentities: [
-      { path: loaded.artifacts.topOfBookPath ?? "", role: "top-of-book" },
-      { path: loaded.artifacts.btcSpotPath ?? "", role: "btc-spot" },
-      { path: loaded.artifacts.rawMessagesPath ?? "", role: "raw-messages" },
-      { path: loaded.artifacts.marketMetadataPath ?? "", role: "market-metadata" },
-      { path: loaded.artifacts.captureHealthPath ?? "", role: "native-capture-health" },
-    ].filter((entry) => entry.path.length > 0),
+    inputArtifactIdentities,
     recordsScanned: loaded.topOfBookRecords.length,
     artifacts: loaded.artifacts,
     config: input.config,

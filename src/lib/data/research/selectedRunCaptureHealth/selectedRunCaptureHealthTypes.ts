@@ -35,6 +35,8 @@ export type SelectedRunCaptureHealthIo = {
   readFile: (path: string) => string;
   fileExists: (path: string) => boolean;
   isDirectory: (path: string) => boolean;
+  fileSizeBytes?: (path: string) => number | null;
+  fileMtimeMs?: (path: string) => number | null;
 };
 
 export class SelectedRunCaptureHealthError extends Error {
