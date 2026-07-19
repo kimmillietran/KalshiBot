@@ -262,6 +262,120 @@ describe("loadSelectedRunCalibrationFadeContext", () => {
       }),
     ).toThrow(CalibrationFadeForwardValidationError);
   });
+
+  it("proceeds with matching run-scoped audit when native capture-health.json is missing", () => {
+    const realRunDir = "data/live-capture/forward-quotes/2026-07-12T10-18-27-409Z";
+    const topPath = `${realRunDir}/top-of-book.jsonl`;
+    const btcPath = `${realRunDir}/btc-spot.jsonl`;
+    const topContent = topOfBookLine({
+      marketTicker: MARKET_A,
+      offsetMs: 720_000,
+      yesBid: 48,
+      yesAsk: 52,
+      noAsk: 50,
+    });
+    const btcContent = btcLine(0, 100_000);
+    const topSize = Buffer.byteLength(topContent, "utf8");
+    const btcSize = Buffer.byteLength(btcContent, "utf8");
+    const io = createMemoryCalibrationFadeForwardValidationIo(
+      {
+        [topPath]: topContent,
+        [btcPath]: btcContent,
+        [`${realRunDir}/capture-health-audit.json`]: JSON.stringify({
+          selectedRunId: "2026-07-12T10-18-27-409Z",
+          captureRunDir: realRunDir,
+          sourceRunIds: ["2026-07-12T10-18-27-409Z"],
+          inputArtifactIdentities: [
+            {
+              path: topPath,
+              role: "top-of-book",
+              sizeBytes: topSize,
+              mtimeMs: topSize,
+              recordCount: 1,
+            },
+            {
+              path: btcPath,
+              role: "btc-spot",
+              sizeBytes: btcSize,
+              mtimeMs: btcSize,
+              recordCount: 1,
+            },
+          ],
+          summary: {
+            verdict: "capture-research-ready",
+            runDurationSeconds: 28_655,
+            topOfBookCount: 44_870,
+            btcSpotCount: 5_726,
+            bookState: { validBookShare: 0.9729, reconnectCount: 0, sequenceGapCount: 0 },
+            btcJoin: { joinCoverageShare: 1 },
+            continuity: { p90TopOfBookGapMs: 1049 },
+          },
+        }),
+      },
+      [realRunDir],
+    );
+
+    const context = loadSelectedRunCalibrationFadeContext({
+      io,
+      captureRunDir: realRunDir,
+    });
+
+    expect(context.selectedRunQuality.selectedRunId).toBe("2026-07-12T10-18-27-409Z");
+    expect(context.selectedRunQuality.captureHealthSource).toBe("run-scoped-capture-health-audit");
+    expect(context.selectedRunQuality.captureVerdict).toBe("capture-research-ready");
+    expect(context.selectedRunQuality.runDurationSeconds).toBe(28_655);
+    expect(context.selectedRunQuality.btcJoinCoverageShare).toBe(1);
+    expect(context.selectedRunQuality.validBookShare).toBe(0.9729);
+  });
+
+  it("rejects degraded run-scoped audit when native health is missing", () => {
+    const realRunDir = "data/live-capture/forward-quotes/degraded-audit-run";
+    const io = createMemoryCalibrationFadeForwardValidationIo(
+      {
+        [`${realRunDir}/top-of-book.jsonl`]: "{}",
+        [`${realRunDir}/btc-spot.jsonl`]: "{}",
+        [`${realRunDir}/capture-health-audit.json`]: JSON.stringify({
+          selectedRunId: "degraded-audit-run",
+          captureRunDir: realRunDir,
+          sourceRunIds: ["degraded-audit-run"],
+          summary: {
+            verdict: "capture-degraded",
+            bookState: { validBookShare: 0.5, reconnectCount: 0, sequenceGapCount: 0 },
+            btcJoin: { joinCoverageShare: 0.5 },
+          },
+        }),
+      },
+      [realRunDir],
+    );
+
+    expect(() =>
+      loadSelectedRunCalibrationFadeContext({ io, captureRunDir: realRunDir }),
+    ).toThrow(/capture-research-ready required/);
+  });
+
+  it("rejects mismatched run-scoped audit for selected run", () => {
+    const realRunDir = "data/live-capture/forward-quotes/mismatch-audit-run";
+    const io = createMemoryCalibrationFadeForwardValidationIo(
+      {
+        [`${realRunDir}/top-of-book.jsonl`]: "{}",
+        [`${realRunDir}/btc-spot.jsonl`]: "{}",
+        [`${realRunDir}/capture-health-audit.json`]: JSON.stringify({
+          selectedRunId: "other-run",
+          sourceRunIds: ["other-run"],
+          summary: {
+            verdict: "capture-research-ready",
+            bookState: { validBookShare: 0.99, reconnectCount: 0, sequenceGapCount: 0 },
+            btcJoin: { joinCoverageShare: 1 },
+          },
+        }),
+      },
+      [realRunDir],
+    );
+
+    expect(() =>
+      loadSelectedRunCalibrationFadeContext({ io, captureRunDir: realRunDir }),
+    ).toThrow(/Missing capture health source/);
+  });
 });
 
 describe("analyzeCalibrationFadeForwardForRun", () => {
@@ -493,6 +607,7 @@ describe("classifyCalibrationFadeInterpretation", () => {
       },
       selectedRunQuality: {
         selectedRunId: "run",
+        captureHealthSource: "native-capture-health",
         runDurationSeconds: 3600,
         validBookShare: 0.99,
         btcJoinCoverageShare: 1,

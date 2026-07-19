@@ -82,4 +82,7 @@ export type CaptureHealthAuditCommandIo = JsonlIo & {
   writeFile: (path: string, data: string) => void;
   mkdirSync: (path: string, options: { recursive: boolean }) => void;
   isDirectory: (path: string) => boolean;
+  fileExists?: (path: string) => boolean;
+  unlinkFile?: (path: string) => void;
+  renameFile?: (from: string, to: string) => void;
 };

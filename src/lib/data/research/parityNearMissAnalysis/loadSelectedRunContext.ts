@@ -1,4 +1,9 @@
 import { joinPath, parseIsoTimestampMs } from "../bidOnlyCandidateLifecycle/bidOnlyCandidateLifecycleUtils";
+import {
+  GLOBAL_CAPTURE_HEALTH_AUDIT_PATH,
+  SelectedRunCaptureHealthError,
+  validateSelectedRunCaptureDirectory,
+} from "../selectedRunCaptureHealth";
 import type {
   ParityNearMissAnalysisIo,
   ParityNearMissInputArtifactIdentities,
@@ -6,10 +11,16 @@ import type {
 } from "./parityNearMissAnalysisTypes";
 import { ParityNearMissAnalysisError } from "./parityNearMissAnalysisTypes";
 
-const CAPTURE_HEALTH_AUDIT_PATH = "data/research-results/capture-health-audit.json";
 const CAPTURE_HEALTH_RECONCILIATION_PATH =
   "data/research-results/capture-health-reconciliation.json";
 const BID_SIZE_COVERAGE_AUDIT_PATH = "data/research-results/bid-size-coverage-audit.json";
+
+function mapCaptureHealthError(error: unknown): never {
+  if (error instanceof SelectedRunCaptureHealthError) {
+    throw new ParityNearMissAnalysisError(error.message);
+  }
+  throw error;
+}
 
 function readJsonRecord(io: ParityNearMissAnalysisIo, path: string): Record<string, unknown> | null {
   if (!io.fileExists(path)) {
@@ -64,71 +75,6 @@ function artifactMatchesRun(
   return Array.isArray(sourceRunIds) && sourceRunIds.includes(runId);
 }
 
-function computeValidBookShareFromHealth(health: Record<string, unknown> | null): number | null {
-  const orderbook =
-    health?.orderbook && typeof health.orderbook === "object"
-      ? (health.orderbook as Record<string, unknown>)
-      : null;
-  const capture =
-    health?.capture && typeof health.capture === "object"
-      ? (health.capture as Record<string, unknown>)
-      : null;
-
-  const validCount = readNumber(orderbook?.validTopOfBookRecords);
-  const totalCount =
-    readNumber(capture?.topOfBookRecordCount)
-    ?? readNumber(orderbook?.topOfBookRecordsEmitted);
-
-  if (validCount === null || totalCount === null || totalCount <= 0) {
-    return null;
-  }
-
-  return Math.round((validCount / totalCount) * 10_000) / 10_000;
-}
-
-function resolveConfiguredDurationSeconds(health: Record<string, unknown> | null): number | null {
-  const config =
-    health?.config && typeof health.config === "object"
-      ? (health.config as Record<string, unknown>)
-      : null;
-  const durationSeconds = readNumber(config?.durationSeconds);
-  if (durationSeconds !== null) {
-    return durationSeconds;
-  }
-
-  const durationMinutes = readNumber(config?.durationMinutes);
-  if (durationMinutes !== null) {
-    return Math.round(durationMinutes * 60);
-  }
-
-  const legacyDuration =
-    health?.duration && typeof health.duration === "object"
-      ? (health.duration as Record<string, unknown>)
-      : null;
-  return readNumber(legacyDuration?.runDurationSeconds);
-}
-
-function resolveReconnectCount(health: Record<string, unknown> | null): number | null {
-  const watchdog =
-    health?.watchdog && typeof health.watchdog === "object"
-      ? (health.watchdog as Record<string, unknown>)
-      : null;
-  const connection =
-    health?.connection && typeof health.connection === "object"
-      ? (health.connection as Record<string, unknown>)
-      : null;
-  const orderbook =
-    health?.orderbook && typeof health.orderbook === "object"
-      ? (health.orderbook as Record<string, unknown>)
-      : null;
-
-  return (
-    readNumber(watchdog?.recoveryAttemptCount)
-    ?? readNumber(connection?.reconnectCount)
-    ?? readNumber(orderbook?.reconnectCount)
-  );
-}
-
 function resolveReconciledValidBookShare(
   reconciliation: Record<string, unknown> | null,
 ): number | null {
@@ -170,28 +116,11 @@ export function validateSelectedRunDirectory(
   io: ParityNearMissAnalysisIo,
   captureRunDir: string,
 ): string {
-  const normalized = captureRunDir.replaceAll("\\", "/");
-  if (!io.fileExists(normalized) || !io.isDirectory(normalized)) {
-    throw new ParityNearMissAnalysisError(
-      `Unknown capture run directory: ${captureRunDir}. Provide an explicit --capture-run-dir.`,
-    );
+  try {
+    return validateSelectedRunCaptureDirectory({ io, captureRunDir }).captureRunDir;
+  } catch (error) {
+    mapCaptureHealthError(error);
   }
-
-  const healthPath = joinPath(normalized, "capture-health.json");
-  if (!io.fileExists(healthPath)) {
-    throw new ParityNearMissAnalysisError(
-      `Capture run directory missing capture-health.json: ${captureRunDir}`,
-    );
-  }
-
-  const topOfBookPath = joinPath(normalized, "top-of-book.jsonl");
-  if (!io.fileExists(topOfBookPath)) {
-    throw new ParityNearMissAnalysisError(
-      `Capture run directory missing top-of-book.jsonl: ${captureRunDir}`,
-    );
-  }
-
-  return normalized;
 }
 
 export function loadSelectedRunContext(input: {
@@ -204,30 +133,18 @@ export function loadSelectedRunContext(input: {
   marketCloseTimes: Map<string, number | null>;
   warnings: string[];
 } {
-  const captureRunDir = validateSelectedRunDirectory(input.io, input.captureRunDir);
-  const runId = resolveSelectedRunId(captureRunDir);
-  const warnings: string[] = [];
-
-  const healthPath = joinPath(captureRunDir, "capture-health.json");
-  const health = readJsonRecord(input.io, healthPath);
-  const healthRunId = readString(health?.runId) ?? runId;
-  if (healthRunId !== runId) {
-    warnings.push(
-      `capture-health.json runId (${healthRunId}) differs from directory name (${runId}).`,
-    );
+  let captureRunDir: string;
+  let resolvedHealth;
+  try {
+    const validated = validateSelectedRunCaptureDirectory({ io: input.io, captureRunDir: input.captureRunDir });
+    captureRunDir = validated.captureRunDir;
+    resolvedHealth = validated.health;
+  } catch (error) {
+    mapCaptureHealthError(error);
   }
 
-  const audit = readJsonRecord(input.io, CAPTURE_HEALTH_AUDIT_PATH);
-  const auditSummary =
-    audit?.summary && typeof audit.summary === "object"
-      ? (audit.summary as Record<string, unknown>)
-      : null;
-  const auditMatches = artifactMatchesRun(audit, healthRunId);
-  if (audit && !auditMatches) {
-    warnings.push(
-      `capture-health-audit.json run identity does not match selected run ${healthRunId}; ignoring audit fields.`,
-    );
-  }
+  const warnings = [...resolvedHealth.warnings];
+  const healthRunId = resolvedHealth.selectedRunId;
 
   const reconciliation = readJsonRecord(input.io, CAPTURE_HEALTH_RECONCILIATION_PATH);
   const reconciliationSummary =
@@ -253,10 +170,6 @@ export function loadSelectedRunContext(input: {
     );
   }
 
-  const orderbook =
-    health?.orderbook && typeof health.orderbook === "object"
-      ? (health.orderbook as Record<string, unknown>)
-      : null;
   const durations =
     reconciliation?.durations && typeof reconciliation.durations === "object"
       ? (reconciliation.durations as Record<string, unknown>)
@@ -265,40 +178,43 @@ export function loadSelectedRunContext(input: {
     reconciliation?.suspension && typeof reconciliation.suspension === "object"
       ? (reconciliation.suspension as Record<string, unknown>)
       : null;
-  const auditBookState =
-    auditSummary?.bookState && typeof auditSummary.bookState === "object"
-      ? (auditSummary.bookState as Record<string, unknown>)
-      : null;
-  const auditBtcJoin =
-    auditSummary?.btcJoin && typeof auditSummary.btcJoin === "object"
-      ? (auditSummary.btcJoin as Record<string, unknown>)
-      : null;
 
   const runDurationSeconds =
-    (auditMatches ? readNumber(auditSummary?.runDurationSeconds) : null)
-    ?? (reconciliationMatches ? readNumber(durations?.configuredDurationSeconds) : null)
-    ?? resolveConfiguredDurationSeconds(health);
+    resolvedHealth.runDurationSeconds
+    ?? (reconciliationMatches ? readNumber(durations?.configuredDurationSeconds) : null);
   if (runDurationSeconds === null) {
-    warnMissingField(warnings, healthPath, healthRunId, "runDurationSeconds", "not present in matching artifacts");
+    warnMissingField(
+      warnings,
+      resolvedHealth.nativeHealthPath ?? joinPath(captureRunDir, "capture-health.json"),
+      healthRunId,
+      "runDurationSeconds",
+      "not present in matching artifacts",
+    );
   }
 
   const validBookShare =
-    (auditMatches ? readNumber(auditBookState?.validBookShare) : null)
-    ?? (reconciliationMatches ? resolveReconciledValidBookShare(reconciliation) : null)
-    ?? computeValidBookShareFromHealth(health);
+    resolvedHealth.validBookShare
+    ?? (reconciliationMatches ? resolveReconciledValidBookShare(reconciliation) : null);
   if (validBookShare === null) {
-    warnMissingField(warnings, healthPath, healthRunId, "validBookShare", "could not derive from matching artifacts");
+    warnMissingField(
+      warnings,
+      resolvedHealth.nativeHealthPath ?? joinPath(captureRunDir, "capture-health.json"),
+      healthRunId,
+      "validBookShare",
+      "could not derive from matching artifacts",
+    );
   }
 
-  const btcJoinCoverageShare =
-  auditMatches ? readNumber(auditBtcJoin?.joinCoverageShare) : null;
+  const btcJoinCoverageShare = resolvedHealth.btcJoinCoverageShare;
   if (btcJoinCoverageShare === null) {
     warnMissingField(
       warnings,
-      CAPTURE_HEALTH_AUDIT_PATH,
+      resolvedHealth.runScopedAuditPath
+        ?? resolvedHealth.globalAuditPath
+        ?? GLOBAL_CAPTURE_HEALTH_AUDIT_PATH,
       healthRunId,
       "btcJoinCoverageShare",
-      auditMatches ? "field missing" : "matching audit artifact unavailable",
+      "field missing from resolved capture health",
     );
   }
 
@@ -318,11 +234,15 @@ export function loadSelectedRunContext(input: {
     );
   }
 
-  const reconnectCount =
-    (auditMatches ? readNumber(auditBookState?.reconnectCount) : null)
-    ?? resolveReconnectCount(health);
+  const reconnectCount = resolvedHealth.reconnectCount;
   if (reconnectCount === null) {
-    warnMissingField(warnings, healthPath, healthRunId, "reconnectCount", "not present in matching artifacts");
+    warnMissingField(
+      warnings,
+      resolvedHealth.nativeHealthPath ?? joinPath(captureRunDir, "capture-health.json"),
+      healthRunId,
+      "reconnectCount",
+      "not present in matching artifacts",
+    );
   }
 
   const suspectedSystemSleepSeconds = reconciliationMatches
@@ -338,20 +258,25 @@ export function loadSelectedRunContext(input: {
     );
   }
 
-  const sequenceGapCount =
-    (auditMatches ? readNumber(auditBookState?.sequenceGapCount) : null)
-    ?? readNumber(orderbook?.sequenceGapCount);
+  const sequenceGapCount = resolvedHealth.sequenceGapCount;
   if (sequenceGapCount === null) {
-    warnMissingField(warnings, healthPath, healthRunId, "sequenceGapCount", "not present in matching artifacts");
+    warnMissingField(
+      warnings,
+      resolvedHealth.nativeHealthPath ?? joinPath(captureRunDir, "capture-health.json"),
+      healthRunId,
+      "sequenceGapCount",
+      "not present in matching artifacts",
+    );
   }
 
-  const captureVerdict = auditMatches ? readString(auditSummary?.verdict) : null;
+  const captureVerdict = resolvedHealth.captureVerdict;
   const reconciliationVerdict = reconciliationMatches
     ? readString(reconciliationSummary?.overallVerdict)
     : null;
 
   const selectedRunQuality: ParityNearMissSelectedRunQuality = {
     selectedRunId: healthRunId,
+    captureHealthSource: resolvedHealth.healthSource,
     runDurationSeconds,
     validBookShare,
     btcJoinCoverageShare,
@@ -389,11 +314,13 @@ export function loadSelectedRunContext(input: {
     runId: selectedRunQuality.selectedRunId,
     selectedRunQuality,
     inputArtifactIdentities: {
-      captureHealthPath: healthPath,
-      captureHealthRunId: readString(health?.runId),
-      captureHealthAuditPath: input.io.fileExists(CAPTURE_HEALTH_AUDIT_PATH)
-        ? CAPTURE_HEALTH_AUDIT_PATH
-        : null,
+      captureHealthPath: resolvedHealth.nativeHealthPath,
+      captureHealthRunId: resolvedHealth.nativeHealthPath ? healthRunId : null,
+      captureHealthAuditPath:
+        resolvedHealth.runScopedAuditPath
+        ?? (input.io.fileExists(GLOBAL_CAPTURE_HEALTH_AUDIT_PATH)
+          ? GLOBAL_CAPTURE_HEALTH_AUDIT_PATH
+          : null),
       captureHealthReconciliationPath: input.io.fileExists(CAPTURE_HEALTH_RECONCILIATION_PATH)
         ? CAPTURE_HEALTH_RECONCILIATION_PATH
         : null,

@@ -108,7 +108,7 @@ export type BtcKalshiLeadLagAnalysisIo = JsonlIo & {
 };
 
 export type BtcKalshiLeadLagInputArtifactIdentities = {
-  captureHealthPath: string;
+  captureHealthPath: string | null;
   topOfBookPath: string;
   btcSpotPath: string;
   marketMetadataPath: string;
@@ -119,6 +119,7 @@ export type BtcKalshiLeadLagInputArtifactIdentities = {
 
 export type BtcKalshiLeadLagSelectedRunQuality = {
   selectedRunId: string;
+  captureHealthSource: import("../selectedRunCaptureHealth").SelectedRunCaptureHealthSource;
   runDurationSeconds: number | null;
   validBookShare: number | null;
   btcJoinCoverageShare: number | null;

@@ -9,6 +9,7 @@ export type JsonlIo = {
   readFile: (path: string) => string;
   fileExists: (path: string) => boolean;
   fileSizeBytes?: (path: string) => number | null;
+  fileMtimeMs?: (path: string) => number | null;
   streamJsonl: (path: string, options: JsonlStreamOptions) => Promise<JsonlStreamSummary>;
   iterateJsonl: (path: string, options: JsonlStreamOptions) => Promise<JsonlStreamSummary>;
 };
@@ -33,6 +34,13 @@ export function createFilesystemJsonlIo(): JsonlIo {
         return null;
       }
     },
+    fileMtimeMs: (path) => {
+      try {
+        return statSync(path).mtimeMs;
+      } catch {
+        return null;
+      }
+    },
     streamJsonl: (path, options) => readJsonlStream(path, options),
     iterateJsonl: (path, options) => readJsonlStream(path, options),
   };
@@ -53,7 +61,12 @@ export function createMemoryJsonlIo(files: Record<string, string>): JsonlIo {
     fileExists: (path) => path.replaceAll("\\", "/") in normalized,
     fileSizeBytes: (path) => {
       const content = normalized[path.replaceAll("\\", "/")];
-      return content ? Buffer.byteLength(content, "utf8") : null;
+      return content !== undefined ? Buffer.byteLength(content, "utf8") : null;
+    },
+    fileMtimeMs: (path) => {
+      const content = normalized[path.replaceAll("\\", "/")];
+      // Deterministic stand-in for tests: content byte length as mtime proxy.
+      return content !== undefined ? Buffer.byteLength(content, "utf8") : null;
     },
     streamJsonl: async (path, options) =>
       iterateJsonlLines((normalized[path.replaceAll("\\", "/")] ?? "").split(/\r?\n/), options),
