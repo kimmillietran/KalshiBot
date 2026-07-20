@@ -13,7 +13,6 @@ import type {
   CalibrationFadeMarketRecord,
   FrozenHypothesisSpec,
 } from "@/lib/data/research/calibrationFadeForwardValidation/calibrationFadeForwardValidationTypes";
-import { RESEARCH_READY_CAPTURE_VERDICT } from "@/lib/data/research/selectedRunCaptureHealth";
 import { resolveSelectedRunId } from "@/lib/data/research/selectedRunCaptureHealth";
 
 import { aggregateCrossRunMetrics } from "./aggregateCrossRunMetrics";
@@ -31,6 +30,7 @@ import { collectRunSourceArtifactIdentities } from "./collectRunSourceArtifactId
 import type { CrossRunSourceIdentity } from "./collectRunSourceArtifactIdentities";
 import { computeRunSetHash } from "./computeRunSetHash";
 import { deduplicateCandidateMarkets } from "./deduplicateCandidateMarkets";
+import { isSelectedRunResearchReady } from "./isSelectedRunResearchReady";
 
 export type AnalyzePerRunFn = (input: {
   generatedAt: string;
@@ -59,10 +59,6 @@ function parseMarketLines(lines: readonly string[]): CalibrationFadeMarketRecord
     }
   }
   return markets;
-}
-
-function isResearchReady(verdict: string | null): boolean {
-  return verdict === RESEARCH_READY_CAPTURE_VERDICT || verdict === "capture-research-ready";
 }
 
 function buildLeaveOneRunOut(input: {
@@ -274,7 +270,7 @@ export async function analyzeCalibrationFadeCrossRun(input: {
   });
 
   const researchReadyRunCount = perRunSummaries.filter((run) =>
-    isResearchReady(run.captureVerdict),
+    isSelectedRunResearchReady(run),
   ).length;
 
   const metrics = aggregateCrossRunMetrics({
