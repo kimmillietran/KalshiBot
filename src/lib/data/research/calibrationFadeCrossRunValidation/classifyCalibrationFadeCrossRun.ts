@@ -4,13 +4,13 @@ import type {
   CalibrationFadeSettlementCoverage,
   FrozenHypothesisSpec,
 } from "@/lib/data/research/calibrationFadeForwardValidation/calibrationFadeForwardValidationTypes";
-import { RESEARCH_READY_CAPTURE_VERDICT } from "@/lib/data/research/selectedRunCaptureHealth";
 
 import type {
   CalibrationFadeCrossRunClassification,
   CalibrationFadeCrossRunRecommendedNextAction,
   CrossRunRunSummary,
 } from "./calibrationFadeCrossRunValidationTypes";
+import { isSelectedRunResearchReady } from "./isSelectedRunResearchReady";
 
 export function classifyCalibrationFadeCrossRun(input: {
   spec: FrozenHypothesisSpec;
@@ -46,13 +46,10 @@ export function classifyCalibrationFadeCrossRun(input: {
   }
 
   const invalidRun = input.perRunSummaries.find((run) => {
-    const verdict = run.captureVerdict;
-    const researchReady =
-      verdict === RESEARCH_READY_CAPTURE_VERDICT || verdict === "capture-research-ready";
     const qualityWeak =
       (run.runDurationSeconds !== null && run.runDurationSeconds <= 0)
       || run.recordsScanned < 0;
-    return !researchReady || qualityWeak;
+    return !isSelectedRunResearchReady(run) || qualityWeak;
   });
   if (invalidRun) {
     return result(
@@ -62,8 +59,9 @@ export function classifyCalibrationFadeCrossRun(input: {
     );
   }
 
-  // Also check frozen quality thresholds against per-run quality when available via warnings path —
-  // captureVerdict is the strict gate; below we still enforce candidate-count precedence.
+  // Native health is accepted without a derived capture-research-ready verdict.
+  // Derived audits still require an explicit research-ready verdict.
+  // Below we still enforce candidate-count precedence before outcome-based classes.
 
   if (input.uniqueCandidateMarketCount < minimumMarkets) {
     return result(

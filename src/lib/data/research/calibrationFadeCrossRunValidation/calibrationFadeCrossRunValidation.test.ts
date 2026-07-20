@@ -1001,6 +1001,113 @@ describe("classifyCalibrationFadeCrossRun", () => {
     expect(result.classification).toBe("observation-quality-inconclusive");
     expect(result.recommendedNextAction).toBe("repair-or-replace-invalid-forward-runs");
   });
+
+  it("accepts native capture-health without a derived research-ready verdict", () => {
+    const result = classifyCalibrationFadeCrossRun({
+      spec: {
+        ...(JSON.parse(freezeSpecContent()) as object),
+        configurationHash: "x",
+        minimumEvidenceRequirements: {
+          minimumIndependentCandidateMarkets: 5,
+          minimumSettlementCoverageShare: 0.8,
+          minimumValidBookShare: 0.9,
+          minimumBtcJoinCoverageShare: 0.9,
+          materialRejectionCalibrationGap: 0.05,
+          materialSupportCalibrationGap: 0.03,
+          materialExecutableNetReturnCents: 1,
+        },
+      } as never,
+      provenanceAvailable: true,
+      runSetIncompatible: false,
+      perRunSummaries: [
+        {
+          selectedRunId: "2026-07-11T11-07-38-871Z",
+          selectedRunDirectory: RUN1,
+          captureHealthSource: "native-capture-health",
+          captureVerdict: null,
+          runDurationSeconds: 28_800,
+          recordsScanned: 52_418,
+          btcRecordsScanned: 1,
+          qualifyingObservationCount: 80,
+          candidateEpisodeCount: 2,
+          rawCandidateMarketAppearanceCount: 1,
+          uniqueCandidateMarketsIntroduced: 1,
+          duplicateCandidateAppearanceCount: 0,
+          executableEntryAvailableCount: 1,
+          settlementJoinedCount: 1,
+          evaluatedExecutableCandidateCount: 1,
+          grossReturnCents: -43,
+          feeAdjustedReturnCents: -44,
+          interpretationClassification: "insufficient-forward-events",
+          recommendedNextAction: "collect-additional-clean-forward-captures",
+          warnings: [],
+          hypothesisConfigurationHash: "x",
+        },
+        {
+          selectedRunId: "2026-07-12T10-18-27-409Z",
+          selectedRunDirectory: RUN2,
+          captureHealthSource: "run-scoped-capture-health-audit",
+          captureVerdict: "capture-research-ready",
+          runDurationSeconds: 28_655,
+          recordsScanned: 44_870,
+          btcRecordsScanned: 5_726,
+          qualifyingObservationCount: 0,
+          candidateEpisodeCount: 0,
+          rawCandidateMarketAppearanceCount: 0,
+          uniqueCandidateMarketsIntroduced: 0,
+          duplicateCandidateAppearanceCount: 0,
+          executableEntryAvailableCount: 0,
+          settlementJoinedCount: 0,
+          evaluatedExecutableCandidateCount: 0,
+          grossReturnCents: null,
+          feeAdjustedReturnCents: null,
+          interpretationClassification: "insufficient-forward-events",
+          recommendedNextAction: "collect-additional-clean-forward-captures",
+          warnings: [],
+          hypothesisConfigurationHash: "x",
+        },
+      ],
+      uniqueCandidateMarketCount: 1,
+      settlementCoverage: {
+        candidateMarketCount: 1,
+        settledCandidateMarketCount: 1,
+        joinedCandidateMarketCount: 1,
+        unresolvedCandidateMarketCount: 0,
+        settlementCoverageShare: 1,
+        excludedByReason: {},
+      },
+      calibration: {
+        qualifyingObservationCount: 80,
+        candidateEpisodeCount: 2,
+        candidateMarketCount: 1,
+        meanImpliedYesProbability: null,
+        meanTargetSideProbability: null,
+        observedYesSettlementRate: null,
+        observedTargetSideSettlementRate: null,
+        calibrationGap: null,
+        signedCalibrationGap: null,
+        brierScore: null,
+        logLoss: null,
+        marketLevelSignedCalibrationGap: null,
+        descriptiveObservationSignedGap: null,
+      },
+      executable: {
+        executableCandidateCount: 1,
+        evaluatedExecutableCandidateCount: 1,
+        executableEntryAvailableCount: 1,
+        unavailableExecutablePriceCount: 0,
+        grossReturnCents: -43,
+        feeAdjustedReturnCents: -44,
+        winRate: 0,
+        averageEntryPriceCents: 43,
+        medianEntryPriceCents: 43,
+        maximumDrawdownCents: 44,
+        cumulativeReturnCents: -44,
+      },
+    });
+    expect(result.classification).toBe("insufficient-forward-events");
+    expect(result.recommendedNextAction).toBe("collect-additional-clean-forward-captures");
+  });
 });
 
 describe("publishResearchArtifactsAtomically", () => {
