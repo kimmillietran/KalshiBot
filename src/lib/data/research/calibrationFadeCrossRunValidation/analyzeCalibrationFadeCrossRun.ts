@@ -27,6 +27,8 @@ import {
   type PerRunAnalysisResult,
 } from "./calibrationFadeCrossRunValidationTypes";
 import { classifyCalibrationFadeCrossRun } from "./classifyCalibrationFadeCrossRun";
+import { collectRunSourceArtifactIdentities } from "./collectRunSourceArtifactIdentities";
+import type { CrossRunSourceIdentity } from "./collectRunSourceArtifactIdentities";
 import { computeRunSetHash } from "./computeRunSetHash";
 import { deduplicateCandidateMarkets } from "./deduplicateCandidateMarkets";
 
@@ -132,33 +134,31 @@ export async function analyzeCalibrationFadeCrossRun(input: {
       hypothesisId: input.hypothesisId,
     });
 
-  const runSetHash = computeRunSetHash({
-    captureRunDirs: input.config.captureRunDirs,
-    hypothesisId: spec.hypothesisId,
-    hypothesisVersion: spec.hypothesisVersion,
-    hypothesisConfigurationHash: spec.configurationHash,
-  });
-
   const perRunResults: PerRunAnalysisResult[] = [];
   const warnings: string[] = [...provenanceWarnings];
   let runSetIncompatible = false;
+  const sourceIdentities: CrossRunSourceIdentity[] = [];
 
-  // Intentionally never reads data/research-results/calibration-fade-forward-validation.json
+  // Intentionally never reads data/research-results/calibration-fade-forward-validation.json.
+  // analyzeCalibrationFadeForwardForRun returns in-memory report/lines only; scratch output
+  // paths below are never published by this cross-run layer.
   for (const captureRunDir of input.config.captureRunDirs) {
-    const runId = resolveSelectedRunId(captureRunDir);
-    if (!input.io.isDirectory(captureRunDir)) {
+    const normalizedDir = captureRunDir.replace(/\\/g, "/").replace(/\/$/, "");
+    const runId = resolveSelectedRunId(normalizedDir);
+    if (!input.io.isDirectory(normalizedDir) && !input.io.isDirectory(captureRunDir)) {
       throw new CalibrationFadeCrossRunValidationError(
         `Unknown capture run directory: ${captureRunDir}`,
       );
     }
 
+    sourceIdentities.push(collectRunSourceArtifactIdentities(input.io, normalizedDir));
+
     const { report, marketLines } = await analyzePerRun({
       generatedAt: input.generatedAt,
-      // Dummy paths — aggregation must not publish M13.2 global mutable outputs.
       outputPath: `${DEFAULT_CALIBRATION_FADE_FORWARD_VALIDATION_OUTPUT_PATH}.cross-run-scratch.${runId}`,
       htmlOutputPath: `${DEFAULT_CALIBRATION_FADE_FORWARD_VALIDATION_HTML_PATH}.cross-run-scratch.${runId}`,
       config: {
-        captureRunDir,
+        captureRunDir: normalizedDir,
         hypothesisConfigPath: input.config.hypothesisConfigPath,
         importsDir: input.config.importsDir,
         maximumBtcJoinAgeMs: input.config.maximumBtcJoinAgeMs,
@@ -187,6 +187,14 @@ export async function analyzeCalibrationFadeCrossRun(input: {
     warnings.push(...report.warnings.map((warning) => `[${runId}] ${warning}`));
   }
 
+  const runSetHash = computeRunSetHash({
+    captureRunDirs: input.config.captureRunDirs,
+    hypothesisId: spec.hypothesisId,
+    hypothesisVersion: spec.hypothesisVersion,
+    hypothesisConfigurationHash: spec.configurationHash,
+    sourceIdentities,
+  });
+
   const appearanceInputs = perRunResults.flatMap((result) =>
     result.marketRecords.map((market) => ({
       market,
@@ -202,35 +210,43 @@ export async function analyzeCalibrationFadeCrossRun(input: {
   const perRunSummaries: CrossRunRunSummary[] = perRunResults.map((result) => {
     const runId = result.report.selectedRunId;
     const appearances = dedupe.appearances.filter((entry) => entry.selectedRunId === runId);
-    const introduced = dedupe.uniqueMarkets.filter(
+    const canonicalForRun = dedupe.uniqueMarkets.filter(
       (market) => market.selectedCanonicalEntry.selectedRunId === runId,
-    ).length;
+    );
+    const introduced = canonicalForRun.length;
     const duplicates = appearances.filter((entry) => entry.suppressed).length;
-    const executableEntryAvailableCount = result.marketRecords.filter(
-      (market) => market.executableAvailable,
+    // Run-local appearance counts remain visible; return attribution uses canonical evaluated entries only.
+    const executableEntryAvailableCount = appearances.filter(
+      (market) => !market.suppressed && market.executableAvailable,
     ).length;
-    const settlementJoinedCount = result.marketRecords.filter(
-      (market) => market.settledOutcome === "yes" || market.settledOutcome === "no",
-    ).length;
-    const evaluatedExecutableCandidateCount = result.marketRecords.filter(
+    const settlementJoinedCount = appearances.filter(
       (market) =>
-        market.executableAvailable
+        !market.suppressed
         && (market.settledOutcome === "yes" || market.settledOutcome === "no"),
     ).length;
-    const feeAdjusted = result.marketRecords
+    const evaluatedCanonical = canonicalForRun.filter((market) => market.evaluated);
+    const evaluatedExecutableCandidateCount = evaluatedCanonical.filter(
+      (market) =>
+        market.selectedCanonicalEntry.executableAvailable
+        && (market.selectedCanonicalEntry.settledOutcome === "yes"
+          || market.selectedCanonicalEntry.settledOutcome === "no"),
+    ).length;
+    const feeAdjusted = evaluatedCanonical
       .filter(
         (market) =>
-          market.executableAvailable
-          && (market.settledOutcome === "yes" || market.settledOutcome === "no"),
+          market.selectedCanonicalEntry.executableAvailable
+          && (market.selectedCanonicalEntry.settledOutcome === "yes"
+            || market.selectedCanonicalEntry.settledOutcome === "no"),
       )
-      .map((market) => market.feeAdjustedReturnCents ?? 0);
-    const gross = result.marketRecords
+      .map((market) => market.selectedCanonicalEntry.feeAdjustedReturnCents ?? 0);
+    const gross = evaluatedCanonical
       .filter(
         (market) =>
-          market.executableAvailable
-          && (market.settledOutcome === "yes" || market.settledOutcome === "no"),
+          market.selectedCanonicalEntry.executableAvailable
+          && (market.selectedCanonicalEntry.settledOutcome === "yes"
+            || market.selectedCanonicalEntry.settledOutcome === "no"),
       )
-      .map((market) => market.grossReturnCents ?? 0);
+      .map((market) => market.selectedCanonicalEntry.grossReturnCents ?? 0);
 
     return {
       selectedRunId: runId,
@@ -337,6 +353,7 @@ export async function analyzeCalibrationFadeCrossRun(input: {
     settlementCoverageShare: metrics.settlementCoverage.settlementCoverageShare,
     warnings,
     classification: classification.classification,
+    interpretationClassification: classification.classification,
     recommendedNextAction: classification.recommendedNextAction,
     rationale: classification.rationale,
     inputArtifactIdentities: perRunResults.flatMap(

@@ -3,6 +3,11 @@ export type { AnalyzePerRunFn } from "./analyzeCalibrationFadeCrossRun";
 export { aggregateCrossRunMetrics } from "./aggregateCrossRunMetrics";
 export { buildCalibrationFadeCrossRunValidationReport } from "./buildCalibrationFadeCrossRunValidationReport";
 export { classifyCalibrationFadeCrossRun } from "./classifyCalibrationFadeCrossRun";
+export { collectRunSourceArtifactIdentities } from "./collectRunSourceArtifactIdentities";
+export type {
+  CrossRunSourceArtifactFingerprint,
+  CrossRunSourceIdentity,
+} from "./collectRunSourceArtifactIdentities";
 export { computeRunSetHash } from "./computeRunSetHash";
 export {
   createCalibrationFadeCrossRunValidationIo,

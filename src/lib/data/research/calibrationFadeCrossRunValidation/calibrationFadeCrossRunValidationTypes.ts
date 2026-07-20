@@ -166,6 +166,8 @@ export type CalibrationFadeCrossRunValidationReport = {
   settlementCoverageShare: number | null;
   warnings: readonly string[];
   classification: CalibrationFadeCrossRunClassification;
+  /** Alias of classification for M13.2 summary naming compatibility. */
+  interpretationClassification: CalibrationFadeCrossRunClassification;
   recommendedNextAction: CalibrationFadeCrossRunRecommendedNextAction;
   rationale: string;
   inputArtifactIdentities: readonly Record<string, unknown>[];

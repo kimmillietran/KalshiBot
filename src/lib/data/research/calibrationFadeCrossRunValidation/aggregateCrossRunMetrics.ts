@@ -79,7 +79,11 @@ export function aggregateCrossRunMetrics(input: {
   const meanImplied = mean(implied);
   const calibrationGap =
     meanImplied !== null && yesRate !== null ? meanImplied - yesRate : null;
-  const targetRate =
+  const targetSideImplied = settled.map(
+    (market) => 1 - market.selectedCanonicalEntry.impliedYesProbability,
+  );
+  const meanTargetSideProbability = mean(targetSideImplied);
+  const observedTargetSideSettlementRate =
     settled.length > 0
       ? settled.filter((market) => market.selectedCanonicalEntry.settledOutcome === "no").length
         / settled.length
@@ -188,9 +192,9 @@ export function aggregateCrossRunMetrics(input: {
       ),
       candidateMarketCount: evaluatedMarkets.length,
       meanImpliedYesProbability: meanImplied,
-      meanTargetSideProbability: targetRate,
+      meanTargetSideProbability,
       observedYesSettlementRate: yesRate,
-      observedTargetSideSettlementRate: targetRate,
+      observedTargetSideSettlementRate: observedTargetSideSettlementRate,
       calibrationGap,
       signedCalibrationGap: calibrationGap,
       brierScore: brier,
