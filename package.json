@@ -92,6 +92,7 @@
     "research:parity-near-miss-analysis": "tsx scripts/research/buildParityNearMissAnalysis.ts",
     "research:btc-kalshi-lead-lag-analysis": "tsx scripts/research/buildBtcKalshiLeadLagAnalysis.ts",
     "research:calibration-fade-forward-validation": "tsx scripts/research/buildCalibrationFadeForwardValidation.ts",
+    "research:calibration-fade-cross-run-validation": "tsx scripts/research/buildCalibrationFadeCrossRunValidation.ts",
     "research:forward-settlement-join": "tsx scripts/research/buildForwardSettlementJoin.ts",
     "research:forward-settlement-coverage": "tsx scripts/research/buildForwardSettlementCoverage.ts",
     "research:backfill-forward-settlements": "tsx scripts/research/backfillForwardSettlements.ts",
