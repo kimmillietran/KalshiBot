@@ -3,6 +3,10 @@ import { describe, expect, it, vi } from "vitest";
 import type { KalshiWsProbeTransport } from "@/features/market-data/orderbook/types";
 import type { KalshiCaptureCredentials } from "@/lib/data/live/kalshiWsCaptureSpike";
 
+import {
+  createJsonlForwardCaptureWriter,
+  createRunOutputPaths,
+} from "./jsonlForwardCaptureWriter";
 import { runLiveForwardQuoteCapture } from "./runLiveForwardQuoteCapture";
 import type { ForwardQuoteCaptureConfig } from "./forwardQuoteCaptureTypes";
 
@@ -444,6 +448,55 @@ describe("runLiveForwardQuoteCapture subscription and resync correctness", () =>
     expect(lifecycleLines).toContain("marketUnsubscribeRequested");
     expect(lifecycleLines).toContain("marketUnsubscribeAcknowledged");
   }, 15_000);
+});
+
+describe("runLiveForwardQuoteCapture writer failure", () => {
+  it("ends the capture with writer-failure and records a lifecycle event", async () => {
+    const transport = new ScriptedKalshiTransport();
+    const { io } = createMemoryIo();
+    const lifecycleChunks: string[] = [];
+
+    // The raw sink fails immediately; the lifecycle sink keeps working so the
+    // failure itself can be recorded.
+    const ioWithFailingRawSink = {
+      ...io,
+      createAppendStream: (path: string) => ({
+        write: (chunk: string) => {
+          if (path.endsWith("raw-kalshi-ws.jsonl")) {
+            throw new Error("EIO: i/o error");
+          }
+          if (path.endsWith("capture-lifecycle.jsonl")) {
+            lifecycleChunks.push(chunk);
+          }
+          return true;
+        },
+        onceDrain: () => {},
+        onError: () => {},
+        end: () => Promise.resolve(),
+      }),
+    };
+
+    const writer = createJsonlForwardCaptureWriter(
+      ioWithFailingRawSink,
+      createRunOutputPaths("out/capture", "run-writer-failure"),
+    );
+
+    const result = await runLiveForwardQuoteCapture({
+      runId: "run-writer-failure",
+      startedAt: "2026-07-20T00:00:00.000Z",
+      config: { ...LIVE_CONFIG, wsWatchdogEnabled: false },
+      discovery: createDiscovery(["KXBTC15M-TEST"]),
+      credentials: CREDENTIALS,
+      io: ioWithFailingRawSink,
+      writer,
+      transport,
+    });
+
+    expect(result.captureEndReason).toBe("writer-failure");
+    expect(result.connection.terminalFailureReason).toBe("capture-writer-failure");
+    expect(result.errors.join(" ")).toContain("EIO: i/o error");
+    expect(lifecycleChunks.join("")).toContain("writerFailureDetected");
+  });
 });
 
 describe("runLiveForwardQuoteCapture recovery confirmation", () => {

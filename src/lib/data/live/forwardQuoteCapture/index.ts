@@ -15,7 +15,32 @@ export { serializeForwardQuoteCaptureHtml } from "./serializeForwardQuoteCapture
 export {
   createJsonlForwardCaptureWriter,
   createRunOutputPaths,
+  DEFAULT_FORWARD_CAPTURE_WRITER_LIMITS,
+  FORWARD_CAPTURE_ARTIFACT_KEYS,
 } from "./jsonlForwardCaptureWriter";
+export type {
+  ForwardCaptureAppendStream,
+  ForwardCaptureWriter,
+  ForwardCaptureWriterDiagnostics,
+  ForwardCaptureWriterFailure,
+  ForwardCaptureWriterLimits,
+} from "./jsonlForwardCaptureWriter";
+export { createNodeForwardCaptureAppendStream } from "./nodeForwardCaptureAppendStream";
+export {
+  CAPTURE_RUN_LIFECYCLE_STATES,
+  CAPTURE_RUN_STATUS_FILENAME,
+  isTerminalCaptureRunState,
+  parseCaptureRunStatus,
+  publishCaptureRunStatus,
+  resolveTerminalCaptureRunState,
+  serializeCaptureRunStatus,
+  TERMINAL_CAPTURE_RUN_STATES,
+  writeCaptureArtifactAtomically,
+} from "./captureRunStatus";
+export type {
+  CaptureRunLifecycleState,
+  CaptureRunStatusArtifact,
+} from "./captureRunStatus";
 export { resolveKalshiCaptureCredentials } from "@/lib/data/live/kalshiWsCaptureSpike";
 export { assertForwardCaptureSafety } from "./forwardQuoteCaptureSafetyGuard";
 export {

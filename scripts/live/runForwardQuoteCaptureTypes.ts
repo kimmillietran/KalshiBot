@@ -20,6 +20,10 @@ export type ForwardQuoteCaptureCommandIo = {
   writeFile: (path: string, data: string) => void;
   appendFile: (path: string, data: string) => void;
   mkdirSync: (path: string, options: { recursive: boolean }) => void;
+  createAppendStream?: (
+    path: string,
+  ) => import("@/lib/data/live/forwardQuoteCapture/jsonlForwardCaptureWriter").ForwardCaptureAppendStream;
+  renameFile?: (from: string, to: string) => void;
   fetchImpl?: typeof fetch;
   setInterval?: (fn: () => void, ms: number) => number;
   clearInterval?: (handle: number) => void;

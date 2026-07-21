@@ -17,6 +17,7 @@ import {
 import {
   createJsonlForwardCaptureWriter,
   createRunOutputPaths,
+  type ForwardCaptureWriter,
 } from "./jsonlForwardCaptureWriter";
 import {
   KalshiWsLivenessWatchdog,
@@ -81,13 +82,15 @@ export async function runLiveForwardQuoteCapture(input: {
   discovery: ForwardCaptureMarketDiscoveryResult;
   credentials: KalshiCaptureCredentials;
   io: ForwardQuoteCaptureIo;
+  /** Pre-created buffered writer (owned by the orchestrator, which finalizes it). */
+  writer?: ForwardCaptureWriter;
   transport?: KalshiWsProbeTransport;
   fetchBtcSpot?: () => Promise<{ price: number; updatedAt: string }>;
   shouldStop?: () => boolean;
   onLog?: (message: string) => void;
 }): Promise<LiveForwardCaptureResult> {
-  const paths = createRunOutputPaths(input.config.outputDir, input.runId);
-  const writer = createJsonlForwardCaptureWriter(input.io, paths);
+  const paths = input.writer?.paths ?? createRunOutputPaths(input.config.outputDir, input.runId);
+  const writer = input.writer ?? createJsonlForwardCaptureWriter(input.io, paths);
   const wsUrl = resolveWsUrl(input.credentials);
   const errors: string[] = [];
 
@@ -552,12 +555,35 @@ export async function runLiveForwardQuoteCapture(input: {
       captureEndReason = "terminal-websocket-failure";
       break;
     }
+    if (writer.hasFailed()) {
+      captureEndReason = "writer-failure";
+      break;
+    }
     processor.checkTimeouts();
     await sleep(250);
   }
 
-  if (input.shouldStop?.()) {
+  if (captureEndReason === "duration-complete" && writer.hasFailed()) {
+    captureEndReason = "writer-failure";
+  }
+
+  if (captureEndReason === "duration-complete" && input.shouldStop?.()) {
     captureEndReason = "user-cancelled";
+  }
+
+  if (captureEndReason === "writer-failure") {
+    const failure = writer.getFailure();
+    const failureMessage = failure
+      ? `Capture writer failed for ${failure.artifact}: ${failure.reason}`
+      : "Capture writer failed";
+    errors.push(failureMessage);
+    writer.appendLifecycleEvent({
+      runId: input.runId,
+      type: "writerFailureDetected",
+      detectedAt: input.io.now().toISOString(),
+      artifact: failure?.artifact ?? null,
+      errorMessage: failure?.reason ?? "Capture writer failed",
+    });
   }
 
   clearIntervalFn(rolloverHandle);
@@ -582,7 +608,9 @@ export async function runLiveForwardQuoteCapture(input: {
   const terminalFailureReason =
     captureEndReason === "terminal-websocket-failure"
       ? "kalshi-websocket-recovery-exhausted"
-      : null;
+      : captureEndReason === "writer-failure"
+        ? "capture-writer-failure"
+        : null;
 
   Object.assign(connection, {
     everConnected: connection.wsConnectCount > 0,

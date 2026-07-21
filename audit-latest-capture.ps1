@@ -1,5 +1,6 @@
 param(
-    [switch]$Full
+    [switch]$Full,
+    [string]$RunDir
 )
 
 $ErrorActionPreference = "Stop"
@@ -20,33 +21,50 @@ if (!(Test-Path $captureRoot)) {
     throw "Capture directory not found: $captureRoot"
 }
 
-$latest = Get-ChildItem $captureRoot -Directory | Sort-Object LastWriteTime -Descending | Select-Object -First 1
-
-if ($null -eq $latest) {
-    throw "No capture runs found under $captureRoot"
+# Run selection is lifecycle-aware (M12.1E): active/finalizing runs are never
+# audited; the default is the newest terminally *completed* run; failed or
+# user-cancelled runs are auditable only via an explicit -RunDir.
+$selectorArgs = @("--capture-root", $captureRoot)
+if ($RunDir) {
+    $selectorArgs += @("--run-dir", $RunDir)
 }
 
-$runId = $latest.Name
-$runDir = $latest.FullName
+$selectionJson = npx tsx scripts/live/selectAuditableCaptureRun.ts @selectorArgs
+if ($LASTEXITCODE -ne 0) {
+    $reason = "unknown"
+    try {
+        $failed = $selectionJson | ConvertFrom-Json
+        $reason = $failed.reason
+    } catch {}
+    throw "No auditable capture run selected: $reason"
+}
+
+$selection = $selectionJson | ConvertFrom-Json
+$runId = $selection.runId
+$runDirSelected = $selection.runDir
 
 Write-Host ""
-Write-Host "Latest capture run:"
-Write-Host "  runId:  $runId"
-Write-Host "  runDir: $runDir"
+Write-Host "Selected capture run:"
+Write-Host "  runId:    $runId"
+Write-Host "  runDir:   $runDirSelected"
+Write-Host "  runState: $($selection.runState)"
+foreach ($warning in $selection.warnings) {
+    Write-Host "  warning:  $warning"
+}
 Write-Host ""
 
 Write-Host "Running capture health audit..."
-npx tsx scripts/research/buildCaptureHealthAudit.ts --capture-run-dir "$runDir"
+npx tsx scripts/research/buildCaptureHealthAudit.ts --capture-run-dir "$runDirSelected"
 Assert-LastCommandSucceeded -StepName "capture-health-audit"
 
 Write-Host ""
 Write-Host "Running bid-size coverage audit..."
-npx tsx scripts/research/buildBidSizeCoverageAudit.ts --capture-run-dir "$runDir"
+npx tsx scripts/research/buildBidSizeCoverageAudit.ts --capture-run-dir "$runDirSelected"
 Assert-LastCommandSucceeded -StepName "bid-size-coverage-audit"
 
 Write-Host ""
 Write-Host "Running capture health reconciliation..."
-npx tsx scripts/research/buildCaptureHealthReconciliation.ts --capture-run-dir "$runDir"
+npx tsx scripts/research/buildCaptureHealthReconciliation.ts --capture-run-dir "$runDirSelected"
 Assert-LastCommandSucceeded -StepName "capture-health-reconciliation"
 
 if ($Full) {
@@ -65,4 +83,4 @@ if ($Full) {
 }
 
 Write-Host ""
-Write-Host "Done auditing latest capture: $runId"
+Write-Host "Done auditing capture run: $runId"

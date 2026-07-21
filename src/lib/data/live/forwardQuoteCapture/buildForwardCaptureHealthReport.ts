@@ -4,6 +4,7 @@ import {
   redactCaptureArtifactText,
   type KalshiCaptureCredentials,
 } from "@/lib/data/live/kalshiWsCaptureSpike";
+import type { ForwardCaptureWriterDiagnostics } from "./jsonlForwardCaptureWriter";
 import type { DryRunForwardCaptureResult } from "./runDryRunForwardQuoteCapture";
 import type { LiveForwardCaptureResult } from "./runLiveForwardQuoteCapture";
 import {
@@ -214,6 +215,8 @@ export function buildForwardCaptureHealthReport(input: {
   discovery: ForwardCaptureMarketDiscoveryResult;
   captureResult: CaptureRunResult;
   errors?: string[];
+  /** Snapshot taken after writer finalization (streams closed and drained). */
+  writerDiagnostics?: ForwardCaptureWriterDiagnostics;
 }): ForwardCaptureHealthReport {
   const diagnostics = input.captureResult.processor.diagnostics;
   const authHeadersGenerated = input.captureResult.authHeadersGenerated;
@@ -337,6 +340,16 @@ export function buildForwardCaptureHealthReport(input: {
   if (input.captureResult.btcSpotStatus === "degraded") {
     warnings.push("BTC spot capture degraded; Kalshi capture continued.");
   }
+  if (input.writerDiagnostics?.failure) {
+    warnings.push(
+      `Capture writer failed for ${input.writerDiagnostics.failure.artifact}: ${input.writerDiagnostics.failure.reason}. Already-written data was preserved.`,
+    );
+  }
+  if (input.writerDiagnostics && input.writerDiagnostics.allStreamsDrained === false) {
+    warnings.push(
+      "Not all capture writer streams drained before finalization; trailing records may be missing from JSONL artifacts.",
+    );
+  }
   if (
     !input.config.dryRun
     && connectionSemantics.everConnected
@@ -440,6 +453,7 @@ export function buildForwardCaptureHealthReport(input: {
       provider: input.config.captureBtcSpot ? "coinbase" : null,
       recordsCaptured: input.captureResult.recordCounts.btcSpot,
     },
+    writer: input.writerDiagnostics,
     watchdog:
       "watchdog" in input.captureResult && input.captureResult.watchdog
         ? {

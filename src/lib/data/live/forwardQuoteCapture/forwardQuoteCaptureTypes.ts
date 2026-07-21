@@ -266,7 +266,8 @@ export type ForwardCaptureSubscriptionLifecycleEventType =
   | "marketUnsubscribeFailed"
   | "commandAcknowledgementTimeout"
   | "pendingCommandsInvalidatedOnReconnect"
-  | "unknownControlResponseReceived";
+  | "unknownControlResponseReceived"
+  | "writerFailureDetected";
 
 export type ForwardCaptureSubscriptionLifecycleEvent = {
   type: ForwardCaptureSubscriptionLifecycleEventType;
@@ -386,6 +387,11 @@ export type ForwardCaptureHealthReport = {
     provider: string | null;
     recordsCaptured: number;
   };
+  /**
+   * Buffered-writer diagnostics (M12.1E). Absent for legacy reports generated
+   * before buffered persistence existed.
+   */
+  writer?: import("./jsonlForwardCaptureWriter").ForwardCaptureWriterDiagnostics;
   watchdog?: {
     wsStallDetectedCount: number;
     wsRecoveryAttemptCount: number;
@@ -411,6 +417,15 @@ export type ForwardQuoteCaptureIo = {
   writeFile: (path: string, data: string) => void;
   appendFile: (path: string, data: string) => void;
   mkdirSync: (path: string, options: { recursive: boolean }) => void;
+  /**
+   * Buffered append sink factory for JSONL artifacts. When absent, the writer
+   * falls back to a synchronous appendFile shim (legacy/dry-run behavior).
+   */
+  createAppendStream?: (
+    path: string,
+  ) => import("./jsonlForwardCaptureWriter").ForwardCaptureAppendStream;
+  /** Required for atomic temp-file-plus-rename publication when available. */
+  renameFile?: (from: string, to: string) => void;
   now: () => Date;
   monotonicNowMs: () => number;
   fetchImpl?: typeof fetch;
