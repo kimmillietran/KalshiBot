@@ -100,6 +100,8 @@
     "research:valid-book-coverage": "tsx scripts/research/buildValidBookCoverageInvestigation.ts",
     "research:orderbook-reconstruction-audit": "tsx scripts/research/buildOrderbookReconstructionAudit.ts",
     "research:orderbook-semantics-validation": "tsx scripts/research/buildOrderbookSemanticsValidation.ts",
+    "research:capture-recovery-acceptance": "tsx scripts/research/runCaptureRecoveryAcceptance.ts",
+    "research:capture-restart-gate": "tsx scripts/research/evaluateCaptureRestartGate.ts",
     "experiments:register": "tsx scripts/experiments/registerExperiments.ts",
     "leaderboard:strategies": "tsx scripts/leaderboard/runStrategyLeaderboard.ts",
     "data:audit-bid-ask": "tsx scripts/data/auditBidAskFidelity.ts",

@@ -1,6 +1,7 @@
 import { join } from "node:path";
 
 import { fetchBtcSpotPrice } from "@/features/btc-feed/api/btcServer";
+import type { KalshiWsProbeTransport } from "@/features/market-data/orderbook/types";
 
 import {
   buildForwardCaptureHealthReport,
@@ -44,6 +45,18 @@ export async function runForwardQuoteCapture(input: {
   io: ForwardQuoteCaptureIo;
   htmlOutputPath?: string;
   shouldStop?: () => boolean;
+  /**
+   * Deterministic-harness injection (M12.1F): overrides the environment used
+   * for credential resolution so acceptance runs never read real process.env
+   * credentials. Production callers omit this.
+   */
+  credentialEnv?: NodeJS.ProcessEnv;
+  /**
+   * Deterministic-harness injection (M12.1F): scripted WebSocket transport
+   * forwarded to the live capture. Production callers omit this and get the
+   * authenticated Node WebSocket client.
+   */
+  transport?: KalshiWsProbeTransport;
 }): Promise<ForwardQuoteCaptureRunResult> {
   const startedAt = input.io.now().toISOString();
   const runId = createRunId(input.io.now());
@@ -81,6 +94,7 @@ export async function runForwardQuoteCapture(input: {
   // active/finalizing forever.
   try {
     const credentials = resolveKalshiCaptureCredentials({
+      ...(input.credentialEnv ? { env: input.credentialEnv } : {}),
       readFile: input.io.readFile,
       privateKeyPathOverride: input.config.privateKeyPath,
     });
@@ -187,6 +201,7 @@ export async function runForwardQuoteCapture(input: {
         credentials,
         io: input.io,
         writer,
+        transport: input.transport,
         shouldStop: input.shouldStop,
         fetchBtcSpot: input.config.captureBtcSpot
           ? async () => {
