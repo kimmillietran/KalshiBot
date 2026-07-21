@@ -162,6 +162,18 @@ export class KalshiWsLivenessWatchdog {
     void this.beginRecovery("transport-closed");
   }
 
+  /**
+   * External escalation: application-level recovery (e.g. bounded snapshot
+   * recovery) exhausted its retries; force a socket-level recovery cycle.
+   */
+  requestEscalatedRecovery(reason: string): void {
+    if (this.disabled || this.deps.shouldStop() || this.state === "recovering") {
+      return;
+    }
+
+    void this.beginRecovery(reason);
+  }
+
   async tick(): Promise<void> {
     if (!this.config.enabled || this.disabled || this.deps.shouldStop()) {
       return;

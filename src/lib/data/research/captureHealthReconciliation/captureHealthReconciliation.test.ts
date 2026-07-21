@@ -383,7 +383,7 @@ describe("captureHealthReconciliation", () => {
       expect(semantics.find((item) => item.fieldName === "sequenceGapCount")?.reportedValue).toBe(68282);
       expect(
         semantics.find((item) => item.fieldName === "sequenceGapCount")?.semanticDefinition,
-      ).toContain("applyDelta returned gap");
+      ).toContain("distinct sequence-gap episode");
     });
   });
 

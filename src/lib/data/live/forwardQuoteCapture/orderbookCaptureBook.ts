@@ -10,15 +10,20 @@ import {
   isMeaningfulOrderbookLevelSize,
   shouldRemoveOrderbookLevelSize,
 } from "./orderbookLevelSize";
-import type {
-  ForwardTopOfBookBookState,
-  ForwardTopOfBookRecord,
+import {
+  FORWARD_CAPTURE_PRICE_REPRESENTATION,
+  type ForwardCapturePriceRepresentation,
+  type ForwardTopOfBookBookState,
+  type ForwardTopOfBookRecord,
 } from "./forwardQuoteCaptureTypes";
 
 /**
  * YES asks / NO asks are derived from opposite-side best bids:
  * yesAsk = 100 - noBid, noAsk = 100 - yesBid.
  * Ask sizes use the opposite-side bid size at the implied ask level.
+ *
+ * Price representation: legacy no-leg (`use_yes_price: false`). Yes-side
+ * levels carry yes-leg prices; no-side levels carry no-leg prices.
  */
 function bestBid(
   levels: ReadonlyMap<number, number>,
@@ -38,15 +43,41 @@ function bestBid(
   return best;
 }
 
+export type CaptureBookDeltaResult =
+  /** Contiguous delta applied to a synchronized book. */
+  | "accepted"
+  /** Duplicate/out-of-order sequence ignored. */
+  | "duplicate"
+  /** First discontinuity while synchronized: starts a gap episode. */
+  | "gap-initiated"
+  /** Delta received while unsynchronized: quarantined, not applied. */
+  | "quarantined"
+  /** Message for a closed market: ignored entirely. */
+  | "closed-ignored";
+
+export type CaptureBookSnapshotResult =
+  /** Snapshot applied; book is valid and synchronized. */
+  | "applied"
+  /** Snapshot older than data already seen on the same sid: rejected. */
+  | "stale-rejected"
+  /** Snapshot for a closed market: ignored, book stays closed. */
+  | "closed-ignored";
+
 export class OrderbookCaptureBook {
   readonly marketTicker: string;
   readonly seriesTicker: string;
   readonly eventTicker: string | null;
+  /** Provenance: the representation the capture actually subscribed with. */
+  readonly priceRepresentation: ForwardCapturePriceRepresentation;
 
   yesBids = new Map<number, number>();
   noBids = new Map<number, number>();
   bookState: ForwardTopOfBookBookState = "awaiting-snapshot";
   lastSeq: number | null = null;
+  /** Server subscription id (sid) the book is currently synchronized to. */
+  currentSid: number | null = null;
+  /** Highest sequence observed per active sid (stale-snapshot detection). */
+  private highestSeqSeen: number | null = null;
 
   private readonly sequenceTracker = new SequenceTracker();
 
@@ -54,10 +85,13 @@ export class OrderbookCaptureBook {
     marketTicker: string;
     seriesTicker: string;
     eventTicker?: string | null;
+    priceRepresentation?: ForwardCapturePriceRepresentation;
   }) {
     this.marketTicker = input.marketTicker;
     this.seriesTicker = input.seriesTicker;
     this.eventTicker = input.eventTicker ?? null;
+    this.priceRepresentation =
+      input.priceRepresentation ?? FORWARD_CAPTURE_PRICE_REPRESENTATION;
   }
 
   markClosed(): void {
@@ -70,6 +104,14 @@ export class OrderbookCaptureBook {
     }
   }
 
+  isUnsynchronized(): boolean {
+    return (
+      this.bookState === "awaiting-snapshot"
+      || this.bookState === "gap-detected"
+      || this.bookState === "resyncing"
+    );
+  }
+
   invalidateForRecovery(): void {
     if (this.bookState === "closed") {
       return;
@@ -79,10 +121,27 @@ export class OrderbookCaptureBook {
     this.noBids.clear();
     this.sequenceTracker.clear();
     this.lastSeq = null;
+    this.currentSid = null;
+    this.highestSeqSeen = null;
     this.bookState = "awaiting-snapshot";
   }
 
-  applySnapshot(message: KalshiOrderbookSnapshotMessage): void {
+  applySnapshot(message: KalshiOrderbookSnapshotMessage): CaptureBookSnapshotResult {
+    if (this.bookState === "closed") {
+      return "closed-ignored";
+    }
+
+    // A snapshot on the same sid must not be older than data already seen:
+    // an out-of-date snapshot cannot restore a gapped book.
+    if (
+      this.currentSid !== null
+      && message.sid === this.currentSid
+      && this.highestSeqSeen !== null
+      && message.seq < this.highestSeqSeen
+    ) {
+      return "stale-rejected";
+    }
+
     this.yesBids.clear();
     this.noBids.clear();
 
@@ -104,28 +163,51 @@ export class OrderbookCaptureBook {
 
     this.sequenceTracker.reset(message.seq);
     this.lastSeq = message.seq;
+    this.currentSid = message.sid;
+    this.highestSeqSeen = message.seq;
     this.bookState = "valid";
+    return "applied";
   }
 
-  applyDelta(message: KalshiOrderbookDeltaMessage): "accepted" | "duplicate" | "gap" {
+  applyDelta(message: KalshiOrderbookDeltaMessage): CaptureBookDeltaResult {
+    if (this.bookState === "closed") {
+      return "closed-ignored";
+    }
+
+    // A delta from a different sid than the one the book synchronized to
+    // cannot be sequenced against local state; quarantine until a snapshot
+    // for the new subscription arrives.
+    if (this.currentSid !== null && message.sid !== this.currentSid) {
+      if (this.isUnsynchronized()) {
+        return "quarantined";
+      }
+      this.bookState = "gap-detected";
+      return "gap-initiated";
+    }
+
+    this.trackObservedSeq(message.seq);
+
+    // While unsynchronized (awaiting snapshot, gap detected, or resyncing),
+    // deltas are quarantined -- never applied and never re-counted as
+    // independent gaps. Only a fresh snapshot restores the book.
+    if (this.isUnsynchronized()) {
+      return "quarantined";
+    }
+
     const seqResult = this.sequenceTracker.apply(message.seq);
     if (seqResult === "gap") {
       this.bookState = "gap-detected";
-      this.lastSeq = message.seq;
-      return "gap";
+      return "gap-initiated";
     }
 
     if (seqResult === "duplicate") {
       return "duplicate";
     }
 
-    if (this.bookState === "awaiting-snapshot") {
-      this.bookState = "gap-detected";
-    }
-
     const priceCents = parseKalshiDollarToCents(message.msg.price_dollars);
     if (priceCents === null) {
-      return seqResult;
+      this.lastSeq = message.seq;
+      return "accepted";
     }
 
     const levels = message.msg.side === "yes" ? this.yesBids : this.noBids;
@@ -140,12 +222,13 @@ export class OrderbookCaptureBook {
     }
 
     this.lastSeq = message.seq;
-    if (this.bookState === "gap-detected" || this.bookState === "resyncing") {
-      return "gap";
-    }
-
-    this.bookState = "valid";
     return "accepted";
+  }
+
+  private trackObservedSeq(seq: number): void {
+    if (this.highestSeqSeen === null || seq > this.highestSeqSeen) {
+      this.highestSeqSeen = seq;
+    }
   }
 
   toTopOfBookRecord(input: {
@@ -196,6 +279,7 @@ export class OrderbookCaptureBook {
       exchangeTimestampMs: input.exchangeTimestampMs,
       sequence: this.lastSeq,
       bookState: this.bookState,
+      priceRepresentation: this.priceRepresentation,
       yesBestBidCents,
       yesBestBidSize: yesBest?.size ?? null,
       yesBestAskCents,

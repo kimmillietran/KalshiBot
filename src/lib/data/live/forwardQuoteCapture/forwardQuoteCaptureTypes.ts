@@ -42,6 +42,16 @@ export type CaptureEndReason =
   | "writer-failure"
   | "unexpected-error";
 
+/**
+ * Explicitly selected Kalshi orderbook price representation.
+ * "legacy-no-leg" = subscribe with `use_yes_price: false`: yes-side levels
+ * carry yes-leg prices, no-side levels carry no-leg prices.
+ */
+export type ForwardCapturePriceRepresentation = "legacy-no-leg";
+
+export const FORWARD_CAPTURE_PRICE_REPRESENTATION: ForwardCapturePriceRepresentation =
+  "legacy-no-leg";
+
 export type ForwardQuoteCaptureConfig = {
   series: string;
   durationMinutes: number;
@@ -59,6 +69,12 @@ export type ForwardQuoteCaptureConfig = {
   wsHardStallThresholdMs: number;
   wsProbeGraceMs: number;
   wsRecoveryMaxAttempts: number;
+  /**
+   * Price representation requested via `use_yes_price` on the subscribe
+   * command. Optional for older configs; the capture always requests
+   * "legacy-no-leg" explicitly on the wire.
+   */
+  priceRepresentation?: ForwardCapturePriceRepresentation;
 };
 
 export type ForwardRawKalshiWsRecord = {
@@ -101,6 +117,8 @@ export type ForwardTopOfBookRecord = {
   exchangeTimestampMs: number | null;
   sequence: number | null;
   bookState: ForwardTopOfBookBookState;
+  /** Provenance: explicit price representation the capture subscribed with. */
+  priceRepresentation: ForwardCapturePriceRepresentation;
   yesBestBidCents: number | null;
   yesBestBidSize: number | null;
   yesBestAskCents: number | null;
@@ -163,7 +181,51 @@ export type ForwardCaptureOrderbookDiagnostics = {
   snapshotsReceived: number;
   deltasReceived: number;
   unknownMessagesReceived: number;
+  /**
+   * Compatibility field. As of M12.1D this counts distinct sequence-gap
+   * episodes (one per discontinuity), NOT every delta received while
+   * resyncing. It always equals sequenceGapEpisodeCount.
+   */
   sequenceGapCount: number;
+  /** Distinct sequence discontinuity episodes (one per gap, per market). */
+  sequenceGapEpisodeCount: number;
+  /** Raw deltas received while a market awaited snapshot recovery (not applied). */
+  deltasQuarantinedDuringResync: number;
+  /** get_snapshot recovery commands sent (with a tracked server sid). */
+  snapshotRecoveryRequestCount: number;
+  /** Recoveries completed by a fresh snapshot restoring the book to valid. */
+  snapshotRecoverySuccessCount: number;
+  /** Recovery commands that failed (WS error response or send failure). */
+  snapshotRecoveryFailureCount: number;
+  /** Recoveries that timed out (missing ack, missing snapshot, or total deadline). */
+  snapshotRecoveryTimeoutCount: number;
+  /** Markets whose bounded snapshot-recovery retries were exhausted and escalated. */
+  snapshotRecoveryExhaustedCount: number;
+  /** Pending WS commands that timed out without any acknowledgement. */
+  pendingCommandTimeoutCount: number;
+  /** Subscribe commands that never received a subscribed acknowledgement. */
+  subscribeAckTimeoutCount: number;
+  /** get_snapshot commands that never received an ok acknowledgement. */
+  snapshotAckTimeoutCount: number;
+  /** Unsubscribe/delete_markets commands that never received an acknowledgement. */
+  unsubscribeAckTimeoutCount: number;
+  /** Pending commands invalidated by a reconnect (old socket generation). */
+  pendingCommandsInvalidatedOnReconnect: number;
+  /** Control responses whose command id matched no pending command. */
+  unknownControlResponseCount: number;
+  /** Raw WS payloads that could not be parsed as JSON. */
+  malformedPayloadCount: number;
+  /** Pending WS commands still unresolved when the capture finalized. */
+  pendingCommandCountAtCaptureEnd: number;
+  /** Markets still awaiting snapshot recovery when the capture finalized. */
+  marketsWithOutstandingRecoveryAtEnd: number;
+  /** Snapshots rejected because they were older than data already seen. */
+  staleSnapshotsRejected: number;
+  /** Official WS control responses (subscribed/ok/unsubscribed/error). */
+  controlResponsesReceived: number;
+  /** WS error control responses attributed to commands. */
+  commandErrorsReceived: number;
+  /** Duplicate or out-of-order deltas ignored by the sequence tracker. */
   outOfOrderCount: number;
   resyncAttemptCount: number;
   resyncSuccessCount: number;
@@ -187,6 +249,33 @@ export type ForwardCaptureOrderbookDiagnostics = {
   marketsAwaitingSnapshot: number;
   validBookStateDurationMs: number;
   invalidBookStateDurationMs: number;
+};
+
+/** Subscription/recovery lifecycle events written to capture-lifecycle.jsonl. */
+export type ForwardCaptureSubscriptionLifecycleEventType =
+  | "subscriptionRequested"
+  | "subscriptionAcknowledged"
+  | "subscriptionFailed"
+  | "snapshotRecoveryRequested"
+  | "snapshotRecoveryAcknowledged"
+  | "snapshotRecoverySucceeded"
+  | "snapshotRecoveryFailed"
+  | "snapshotRecoveryExhausted"
+  | "marketUnsubscribeRequested"
+  | "marketUnsubscribeAcknowledged"
+  | "marketUnsubscribeFailed"
+  | "commandAcknowledgementTimeout"
+  | "pendingCommandsInvalidatedOnReconnect"
+  | "unknownControlResponseReceived";
+
+export type ForwardCaptureSubscriptionLifecycleEvent = {
+  type: ForwardCaptureSubscriptionLifecycleEventType;
+  detectedAt: string;
+  marketTickers: string[];
+  commandId: number | null;
+  sid: number | null;
+  errorCode?: number | null;
+  errorMessage?: string;
 };
 
 export type ForwardCaptureConnectionDiagnostics = {
@@ -244,6 +333,8 @@ export type ForwardCaptureHealthReport = {
     btcSpotPath: string | null;
     marketMetadataPath: string;
     captureHealthPath: string;
+    /** Explicit price representation requested on the WS subscribe command. */
+    priceRepresentation: ForwardCapturePriceRepresentation;
   };
   orderbook: {
     snapshotsReceived: number;
@@ -262,7 +353,27 @@ export type ForwardCaptureHealthReport = {
     bidPairWithSizeTopOfBookRecords: number;
     bidPairWithoutSizeTopOfBookRecords: number;
     bidSizeCoverageShare: number | null;
+    /** Compatibility: equals sequenceGapEpisodeCount as of M12.1D. */
     sequenceGapCount: number;
+    sequenceGapEpisodeCount: number;
+    deltasQuarantinedDuringResync: number;
+    snapshotRecoveryRequestCount: number;
+    snapshotRecoverySuccessCount: number;
+    snapshotRecoveryFailureCount: number;
+    snapshotRecoveryTimeoutCount: number;
+    snapshotRecoveryExhaustedCount: number;
+    pendingCommandTimeoutCount: number;
+    subscribeAckTimeoutCount: number;
+    snapshotAckTimeoutCount: number;
+    unsubscribeAckTimeoutCount: number;
+    pendingCommandsInvalidatedOnReconnect: number;
+    unknownControlResponseCount: number;
+    malformedPayloadCount: number;
+    pendingCommandCountAtCaptureEnd: number;
+    marketsWithOutstandingRecoveryAtEnd: number;
+    staleSnapshotsRejected: number;
+    controlResponsesReceived: number;
+    commandErrorsReceived: number;
     outOfOrderCount: number;
     resyncAttemptCount: number;
     resyncSuccessCount: number;

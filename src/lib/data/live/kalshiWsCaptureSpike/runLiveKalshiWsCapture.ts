@@ -95,9 +95,10 @@ export async function runLiveKalshiWsCapture(input: {
     await transport.connect(wsUrl, { headers: connectHeaders });
     connected = true;
 
+    // Kalshi sends an orderbook_snapshot immediately after a successful
+    // subscribe; get_snapshot requires an acknowledged server sid.
     for (const ticker of input.discovery.selectedMarketTickers) {
       subscriptionManager.subscribe(transport, ticker);
-      subscriptionManager.requestSnapshot(transport, ticker);
     }
 
     transport.onMessage((payload) => {

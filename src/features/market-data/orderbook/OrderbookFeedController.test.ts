@@ -17,6 +17,7 @@ describe("OrderbookSubscriptionManager", () => {
       params: {
         channels: ["orderbook_delta"],
         market_tickers: ["KXBTC15M-26JUN261930-30"],
+        use_yes_price: false,
       },
     });
   });

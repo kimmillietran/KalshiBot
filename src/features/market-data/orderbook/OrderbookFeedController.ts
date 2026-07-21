@@ -231,6 +231,13 @@ export class OrderbookFeedController {
       return;
     }
 
+    // Track server subscription ids (sids) from official control responses
+    // so get_snapshot / unsubscribe commands can reference them.
+    const controlMessage = this.subscriptions.handleControlMessage(parsed);
+    if (controlMessage) {
+      return;
+    }
+
     const snapshotResult = kalshiOrderbookSnapshotMessageSchema.safeParse(parsed);
     if (snapshotResult.success) {
       const message = snapshotResult.data;
@@ -286,6 +293,8 @@ export class OrderbookFeedController {
 
     try {
       await this.resyncFromRest(this.activeTicker);
+      // WS snapshot refresh is best-effort: it requires an acknowledged
+      // server sid. REST resync above is the primary recovery path.
       this.subscriptions.requestSnapshot(this.transport, this.activeTicker);
     } catch (error) {
       const message =

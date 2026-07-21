@@ -27,13 +27,13 @@ export function documentCounterSemantics(
       fieldName: "sequenceGapCount",
       reportedValue: sequenceGapCount,
       semanticDefinition:
-        "Count of orderbook_delta messages where applyDelta returned gap (non-contiguous sequence, awaiting snapshot, or resync state).",
+        "Compatibility counter. Captures before M12.1D: one increment per delta classified as gap (including every delta received while resyncing). Captures from M12.1D on: one increment per distinct sequence-gap episode (equals sequenceGapEpisodeCount); deltas received while awaiting recovery are counted separately in deltasQuarantinedDuringResync.",
       incrementRule:
-        "Increment once per delta message classified as gap in ForwardCaptureMessageProcessor.processRawPayload.",
+        "M12.1D+: increment once per gap-initiated delta in ForwardCaptureMessageProcessor.processRawPayload; quarantined deltas do not increment.",
       sourcePath: "capture-health.json orderbook.sequenceGapCount",
       notes: [
-        "This is a raw event count, not a count of missing sequence numbers.",
-        "Multiple gap deltas can occur during one resynchronization episode.",
+        "Legacy captures can report multimillion values from a single unresolved episode.",
+        "Use sequenceGapEpisodeCount and deltasQuarantinedDuringResync for episode-level attribution on new captures.",
       ],
     },
     {
@@ -61,13 +61,14 @@ export function documentCounterSemantics(
     },
     {
       fieldName: "sequenceGapEpisodeCount",
-      reportedValue: null,
+      reportedValue:
+        readNumber(orderbook.sequenceGapEpisodeCount) ?? null,
       semanticDefinition:
-        "Derived offline count of contiguous top-of-book gap-detected record runs.",
+        "Distinct sequence discontinuity episodes (one per gap, per market). Persisted natively from M12.1D on; derived offline from top-of-book gap-detected streaks for older captures.",
       incrementRule:
-        "Computed during timeline attribution from emitted top-of-book bookState transitions.",
-      sourcePath: "derived in capture-timeline-attribution",
-      notes: ["Not persisted in capture-health.json today."],
+        "Increment once when a synchronized book observes a non-contiguous sequence (gap-initiated), never for deltas quarantined while awaiting recovery.",
+      sourcePath: "capture-health.json orderbook.sequenceGapEpisodeCount",
+      notes: ["Null for captures recorded before M12.1D."],
     },
   ];
 }
