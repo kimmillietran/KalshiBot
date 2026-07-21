@@ -89,10 +89,45 @@ export type ForwardCaptureWriterDiagnostics = {
   failure: ForwardCaptureWriterFailure | null;
 };
 
+/**
+ * FIFO queue with a head index so draining is amortized O(1). A plain array
+ * drained with shift() copies the remaining elements on every removal, which
+ * becomes quadratic for a backlog approaching the 100k pending-record limit —
+ * exactly the event-loop stall this writer exists to eliminate.
+ */
+class PendingChunkQueue {
+  private items: (string | undefined)[] = [];
+  private head = 0;
+
+  get length(): number {
+    return this.items.length - this.head;
+  }
+
+  push(chunk: string): void {
+    this.items.push(chunk);
+  }
+
+  shift(): string | undefined {
+    if (this.head >= this.items.length) {
+      return undefined;
+    }
+    const chunk = this.items[this.head];
+    this.items[this.head] = undefined;
+    this.head += 1;
+    // Compact once the dead prefix dominates so memory is reclaimed without
+    // per-shift copying.
+    if (this.head >= 1_024 && this.head * 2 >= this.items.length) {
+      this.items = this.items.slice(this.head);
+      this.head = 0;
+    }
+    return chunk;
+  }
+}
+
 type WriterChannel = {
   key: ForwardCaptureArtifactKey;
   stream: ForwardCaptureAppendStream;
-  pendingChunks: string[];
+  pendingChunks: PendingChunkQueue;
   pendingBytes: number;
   backpressured: boolean;
   backpressureStartedAtMs: number | null;
@@ -179,7 +214,7 @@ export function createJsonlForwardCaptureWriter(
     const channel: WriterChannel = {
       key,
       stream: createStream(artifactPaths[key]),
-      pendingChunks: [],
+      pendingChunks: new PendingChunkQueue(),
       pendingBytes: 0,
       backpressured: false,
       backpressureStartedAtMs: null,

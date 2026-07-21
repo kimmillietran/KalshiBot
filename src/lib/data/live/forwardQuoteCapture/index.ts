@@ -41,6 +41,15 @@ export type {
   CaptureRunLifecycleState,
   CaptureRunStatusArtifact,
 } from "./captureRunStatus";
+export {
+  parseRunIdTimestampMs,
+  selectAuditableCaptureRun,
+} from "./selectAuditableCaptureRun";
+export type {
+  CaptureRunSelectionEntry,
+  CaptureRunStatusIntegrity,
+  SelectAuditableCaptureRunResult,
+} from "./selectAuditableCaptureRun";
 export { resolveKalshiCaptureCredentials } from "@/lib/data/live/kalshiWsCaptureSpike";
 export { assertForwardCaptureSafety } from "./forwardQuoteCaptureSafetyGuard";
 export {

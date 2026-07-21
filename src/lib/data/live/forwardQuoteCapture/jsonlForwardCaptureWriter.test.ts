@@ -343,6 +343,40 @@ describe("createJsonlForwardCaptureWriter (buffered)", () => {
     expect(writer.counts.raw).toBe(2);
   });
 
+  it("drains a near-limit accumulated backlog without record loss or reordering", async () => {
+    // Uses the default 100k pending-record limit: the backlog accumulates
+    // fully before a single drain, exercising the amortized O(1) queue path
+    // (repeated Array.shift on a 100k backlog is quadratic and stalls the
+    // event loop).
+    const { writer, rawStream } = createHarness();
+    const stream = rawStream();
+    stream.acceptWrites = false;
+
+    const totalRecords = 100_001;
+    for (let seq = 1; seq <= totalRecords; seq += 1) {
+      writer.appendRawKalshiWs({ seq });
+    }
+
+    expect(writer.hasFailed()).toBe(false);
+    expect(writer.diagnostics().perArtifact.raw.pendingRecords).toBe(100_000);
+
+    stream.emitDrain();
+
+    const diagnostics = writer.diagnostics();
+    expect(diagnostics.perArtifact.raw.pendingRecords).toBe(0);
+    expect(diagnostics.perArtifact.raw.pendingBytes).toBe(0);
+    expect(diagnostics.perArtifact.raw.recordsWritten).toBe(totalRecords);
+    expect(stream.chunks).toHaveLength(totalRecords);
+    expect((JSON.parse(stream.chunks[0]) as { seq: number }).seq).toBe(1);
+    expect((JSON.parse(stream.chunks[49_999]) as { seq: number }).seq).toBe(50_000);
+    expect(
+      (JSON.parse(stream.chunks[totalRecords - 1]) as { seq: number }).seq,
+    ).toBe(totalRecords);
+
+    await writer.finalize();
+    expect(writer.diagnostics().allStreamsDrained).toBe(true);
+  });
+
   it("stays within the bounded memory contract across a millions-of-record simulation", async () => {
     const totalRecords = 1_000_000;
     const maxPendingRecordsPerArtifact = 5_000;

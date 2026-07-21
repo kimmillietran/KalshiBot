@@ -112,6 +112,15 @@ export async function runLiveForwardQuoteCapture(input: {
   let plannedShutdown = false;
   let captureEndReason: CaptureEndReason = "duration-complete";
   let handlerSocketGeneration = 0;
+  // Producer-quiescence state: once shutdown begins no new producer work may
+  // start, and in-flight BTC polls / rollover discoveries / watchdog ticks
+  // are awaited before this function returns to the orchestrator (which then
+  // finalizes the writer). Late work must never touch a finalizing writer.
+  let shuttingDown = false;
+  let acceptingMessages = true;
+  let activeBtcPoll: Promise<void> | null = null;
+  let activeRolloverCheck: Promise<void> | null = null;
+  let activeWatchdogTick: Promise<void> | null = null;
 
   const eventTickers = { ...input.discovery.eventTickers };
   const marketStatuses = { ...input.discovery.marketStatuses };
@@ -403,6 +412,11 @@ export async function runLiveForwardQuoteCapture(input: {
   }
 
   transport.onMessage((payload) => {
+    // Late buffered messages arriving after producer shutdown must not reach
+    // the processor (and therefore the writer) once finalization can begin.
+    if (!acceptingMessages) {
+      return;
+    }
     if (watchdog && handlerSocketGeneration !== watchdog.currentSocketGeneration) {
       return;
     }
@@ -505,101 +519,168 @@ export async function runLiveForwardQuoteCapture(input: {
     }
   };
 
+  const runRolloverCheck = async () => {
+    rollover.rolloverChecks += 1;
+    const result = await discoverRolloverMarkets({
+      seriesTicker: input.config.series,
+      maxMarkets: input.config.maxMarkets,
+      currentlySubscribed: [...subscribedTickers],
+      fetchImpl: input.io.fetchImpl,
+      now: input.io.now(),
+    });
+
+    if (shuttingDown) {
+      // Discovery finished after shutdown began; do not mutate subscriptions.
+      return;
+    }
+
+    rollover.marketsDiscovered = result.discovery.discoveredMarketCount;
+    Object.assign(eventTickers, result.discovery.eventTickers);
+    Object.assign(marketStatuses, result.discovery.marketStatuses);
+    Object.assign(closeTimes, result.discovery.closeTimes);
+
+    for (const ticker of result.newTickers) {
+      subscribeMarket(ticker);
+      rollover.rolloverSubscriptionsAdded += 1;
+    }
+
+    for (const ticker of result.closedTickers) {
+      unsubscribeMarket(ticker);
+      rollover.marketsClosed += 1;
+    }
+    watchdog?.recordSubscriptionSuccess(subscribedTickers.size);
+  };
+
   const rolloverHandle = setIntervalFn(() => {
-    void (async () => {
-      rollover.rolloverChecks += 1;
-      const result = await discoverRolloverMarkets({
-        seriesTicker: input.config.series,
-        maxMarkets: input.config.maxMarkets,
-        currentlySubscribed: [...subscribedTickers],
-        fetchImpl: input.io.fetchImpl,
-        now: input.io.now(),
+    // One check at a time; a rollover rejection must not escape the lifecycle.
+    if (shuttingDown || activeRolloverCheck !== null) {
+      return;
+    }
+    activeRolloverCheck = runRolloverCheck()
+      .catch((error) => {
+        errors.push(
+          `Rollover market discovery failed: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+      })
+      .finally(() => {
+        activeRolloverCheck = null;
       });
-
-      rollover.marketsDiscovered = result.discovery.discoveredMarketCount;
-      Object.assign(eventTickers, result.discovery.eventTickers);
-      Object.assign(marketStatuses, result.discovery.marketStatuses);
-      Object.assign(closeTimes, result.discovery.closeTimes);
-
-      for (const ticker of result.newTickers) {
-        subscribeMarket(ticker);
-        rollover.rolloverSubscriptionsAdded += 1;
-      }
-
-      for (const ticker of result.closedTickers) {
-        unsubscribeMarket(ticker);
-        rollover.marketsClosed += 1;
-      }
-      watchdog?.recordSubscriptionSuccess(subscribedTickers.size);
-    })();
   }, input.config.rolloverCheckSeconds * 1_000);
 
   const btcHandle = input.config.captureBtcSpot
     ? setIntervalFn(() => {
-      void pollBtcSpot();
+      if (shuttingDown || activeBtcPoll !== null) {
+        return;
+      }
+      activeBtcPoll = pollBtcSpot().finally(() => {
+        activeBtcPoll = null;
+      });
     }, 5_000)
     : null;
 
   const watchdogHandle = watchdog
     ? setIntervalFn(() => {
-      void watchdog.tick();
+      if (shuttingDown || activeWatchdogTick !== null) {
+        return;
+      }
+      activeWatchdogTick = watchdog
+        .tick()
+        .catch((error) => {
+          errors.push(
+            error instanceof Error ? error.message : "Watchdog tick failed",
+          );
+        })
+        .finally(() => {
+          activeWatchdogTick = null;
+        });
     }, watchdogConfig.watchdogTickMs)
     : null;
 
-  if (input.config.captureBtcSpot) {
-    await pollBtcSpot();
+  /**
+   * Producer-quiescence phase: block new producer work, clear timers, await
+   * in-flight BTC polls / rollover discoveries / watchdog ticks and any
+   * outstanding watchdog recovery, stop accepting WebSocket messages, then
+   * close the transport. Only after this completes may the orchestrator
+   * begin writer finalization.
+   */
+  async function stopProducers(): Promise<void> {
+    shuttingDown = true;
+    clearIntervalFn(rolloverHandle);
+    if (btcHandle !== null) {
+      clearIntervalFn(btcHandle);
+    }
+    if (watchdogHandle !== null) {
+      clearIntervalFn(watchdogHandle);
+    }
+
+    await Promise.allSettled([
+      activeBtcPoll ?? Promise.resolve(),
+      activeRolloverCheck ?? Promise.resolve(),
+      activeWatchdogTick ?? Promise.resolve(),
+    ]);
+
+    await watchdog?.waitForRecovery();
+    watchdog?.disable();
+
+    acceptingMessages = false;
+    plannedShutdown = true;
+    try {
+      transport.close();
+    } catch {
+      // ignore close errors on already-broken sockets
+    }
+    connection.connected = false;
   }
 
-  while (input.io.now().getTime() < endAt && !input.shouldStop?.()) {
-    if (watchdog?.isTerminal) {
-      captureEndReason = "terminal-websocket-failure";
-      break;
+  try {
+    if (input.config.captureBtcSpot) {
+      await pollBtcSpot();
     }
-    if (writer.hasFailed()) {
+
+    while (input.io.now().getTime() < endAt && !input.shouldStop?.()) {
+      if (watchdog?.isTerminal) {
+        captureEndReason = "terminal-websocket-failure";
+        break;
+      }
+      if (writer.hasFailed()) {
+        captureEndReason = "writer-failure";
+        break;
+      }
+      processor.checkTimeouts();
+      await sleep(250);
+    }
+
+    if (captureEndReason === "duration-complete" && writer.hasFailed()) {
       captureEndReason = "writer-failure";
-      break;
     }
-    processor.checkTimeouts();
-    await sleep(250);
-  }
 
-  if (captureEndReason === "duration-complete" && writer.hasFailed()) {
-    captureEndReason = "writer-failure";
-  }
+    if (captureEndReason === "duration-complete" && input.shouldStop?.()) {
+      captureEndReason = "user-cancelled";
+    }
 
-  if (captureEndReason === "duration-complete" && input.shouldStop?.()) {
-    captureEndReason = "user-cancelled";
+    if (captureEndReason === "writer-failure") {
+      const failure = writer.getFailure();
+      const failureMessage = failure
+        ? `Capture writer failed for ${failure.artifact}: ${failure.reason}`
+        : "Capture writer failed";
+      errors.push(failureMessage);
+      writer.appendLifecycleEvent({
+        runId: input.runId,
+        type: "writerFailureDetected",
+        detectedAt: input.io.now().toISOString(),
+        artifact: failure?.artifact ?? null,
+        errorMessage: failure?.reason ?? "Capture writer failed",
+      });
+    }
+  } finally {
+    // Producers are quiesced even when the capture loop throws, so an
+    // exception can never leave timers or in-flight work racing the writer
+    // finalization that the orchestrator performs next.
+    await stopProducers();
+    processor.finalize();
   }
-
-  if (captureEndReason === "writer-failure") {
-    const failure = writer.getFailure();
-    const failureMessage = failure
-      ? `Capture writer failed for ${failure.artifact}: ${failure.reason}`
-      : "Capture writer failed";
-    errors.push(failureMessage);
-    writer.appendLifecycleEvent({
-      runId: input.runId,
-      type: "writerFailureDetected",
-      detectedAt: input.io.now().toISOString(),
-      artifact: failure?.artifact ?? null,
-      errorMessage: failure?.reason ?? "Capture writer failed",
-    });
-  }
-
-  clearIntervalFn(rolloverHandle);
-  if (btcHandle !== null) {
-    clearIntervalFn(btcHandle);
-  }
-  if (watchdogHandle !== null) {
-    clearIntervalFn(watchdogHandle);
-  }
-
-  await watchdog?.waitForRecovery();
-  watchdog?.disable();
-  plannedShutdown = true;
-  transport.close();
-  connection.connected = false;
-  processor.finalize();
 
   const watchdogDiagnostics = watchdog?.toDiagnostics() ?? null;
   const completedWithWarnings =

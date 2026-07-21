@@ -91,6 +91,30 @@ export function publishCaptureRunStatus(
   writeCaptureArtifactAtomically(io, statusPath, serializeCaptureRunStatus(artifact));
 }
 
+const CAPTURE_END_REASONS = [
+  "duration-complete",
+  "user-cancelled",
+  "terminal-websocket-failure",
+  "authentication-failure",
+  "writer-failure",
+  "unexpected-error",
+] as const;
+
+function isValidTimestamp(value: unknown): value is string {
+  return (
+    typeof value === "string"
+    && value.length > 0
+    && Number.isFinite(Date.parse(value))
+  );
+}
+
+/**
+ * Strict fail-closed parser for capture-run-status.json. Rather than casting
+ * whatever JSON is present, every field is validated, and cross-field
+ * coherence is enforced: terminal states must carry a valid endedAt, while
+ * active/finalizing states must not. Anything else returns null so callers
+ * treat the file as present-but-invalid (never as an absent legacy marker).
+ */
 export function parseCaptureRunStatus(text: string): CaptureRunStatusArtifact | null {
   let parsed: unknown;
   try {
@@ -98,18 +122,58 @@ export function parseCaptureRunStatus(text: string): CaptureRunStatusArtifact | 
   } catch {
     return null;
   }
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+    return null;
+  }
+  const record = parsed as Record<string, unknown>;
+
+  if (record.schemaVersion !== 1) {
+    return null;
+  }
+  if (typeof record.runId !== "string" || record.runId.length === 0) {
+    return null;
+  }
   if (
-    typeof parsed !== "object"
-    || parsed === null
-    || !("state" in parsed)
-    || typeof (parsed as { state: unknown }).state !== "string"
-    || !(CAPTURE_RUN_LIFECYCLE_STATES as readonly string[]).includes(
-      (parsed as { state: string }).state,
-    )
-    || !("runId" in parsed)
-    || typeof (parsed as { runId: unknown }).runId !== "string"
+    typeof record.state !== "string"
+    || !(CAPTURE_RUN_LIFECYCLE_STATES as readonly string[]).includes(record.state)
   ) {
     return null;
   }
-  return parsed as CaptureRunStatusArtifact;
+  const state = record.state as CaptureRunLifecycleState;
+  if (!isValidTimestamp(record.startedAt) || !isValidTimestamp(record.updatedAt)) {
+    return null;
+  }
+  if (record.endedAt !== null && !isValidTimestamp(record.endedAt)) {
+    return null;
+  }
+  if (
+    record.captureEndReason !== null
+    && !(CAPTURE_END_REASONS as readonly string[]).includes(
+      record.captureEndReason as string,
+    )
+  ) {
+    return null;
+  }
+  if (record.failureReason !== null && typeof record.failureReason !== "string") {
+    return null;
+  }
+
+  const terminal = isTerminalCaptureRunState(state);
+  if (terminal && record.endedAt === null) {
+    return null;
+  }
+  if (!terminal && record.endedAt !== null) {
+    return null;
+  }
+
+  return {
+    schemaVersion: 1,
+    runId: record.runId,
+    state,
+    startedAt: record.startedAt as string,
+    updatedAt: record.updatedAt as string,
+    endedAt: record.endedAt as string | null,
+    captureEndReason: record.captureEndReason as CaptureEndReason | null,
+    failureReason: record.failureReason as string | null,
+  };
 }

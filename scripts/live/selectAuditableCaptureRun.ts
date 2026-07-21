@@ -6,8 +6,10 @@ import {
   type CaptureRunStatusArtifact,
 } from "@/lib/data/live/forwardQuoteCapture/captureRunStatus";
 import {
+  parseRunIdTimestampMs,
   selectAuditableCaptureRun,
   type CaptureRunSelectionEntry,
+  type CaptureRunStatusIntegrity,
 } from "@/lib/data/live/forwardQuoteCapture/selectAuditableCaptureRun";
 
 function readFlagValue(argv: readonly string[], flag: string): string | undefined {
@@ -33,16 +35,45 @@ export function loadCaptureRunSelectionEntries(
     .map((dirent) => {
       const runDir = join(captureRoot, dirent.name);
       const statusPath = join(runDir, "capture-run-status.json");
+      const healthPath = join(runDir, "capture-health.json");
+      const hasCaptureHealth = existsSync(healthPath);
+
+      // A status file that exists but cannot be strictly validated is never
+      // treated like an absent legacy marker: it fails closed as "invalid"
+      // (or "identity-mismatched" when its runId disagrees with the
+      // directory name).
       let status: CaptureRunStatusArtifact | null = null;
+      let statusIntegrity: CaptureRunStatusIntegrity = "absent";
       if (existsSync(statusPath)) {
-        status = parseCaptureRunStatus(readFileSync(statusPath, "utf8"));
+        const parsed = parseCaptureRunStatus(readFileSync(statusPath, "utf8"));
+        if (parsed === null) {
+          statusIntegrity = "invalid";
+        } else if (parsed.runId !== dirent.name) {
+          statusIntegrity = "identity-mismatched";
+        } else {
+          status = parsed;
+          statusIntegrity = "valid";
+        }
       }
+
+      // Stable completion time (never the mutable directory mtime):
+      // validated status.endedAt, else the run-id timestamp, else the legacy
+      // health artifact timestamp for pre-status runs.
+      const completedAtMs =
+        status?.endedAt != null
+          ? Date.parse(status.endedAt)
+          : parseRunIdTimestampMs(dirent.name)
+            ?? (statusIntegrity === "absent" && hasCaptureHealth
+              ? statSync(healthPath).mtimeMs
+              : null);
+
       return {
         runDir,
         runId: dirent.name,
         status,
-        hasCaptureHealth: existsSync(join(runDir, "capture-health.json")),
-        lastModifiedMs: statSync(runDir).mtimeMs,
+        statusIntegrity,
+        hasCaptureHealth,
+        completedAtMs,
       };
     });
 }

@@ -84,11 +84,95 @@ describe("publishCaptureRunStatus / parseCaptureRunStatus", () => {
   it("rejects malformed or unknown-state payloads", () => {
     expect(parseCaptureRunStatus("not json")).toBeNull();
     expect(parseCaptureRunStatus("{}")).toBeNull();
+    expect(parseCaptureRunStatus("[]")).toBeNull();
     expect(
       parseCaptureRunStatus(
         serializeCaptureRunStatus({ ...STATUS, state: "half-done" as never }),
       ),
     ).toBeNull();
+  });
+
+  it("rejects an unknown schema version and an empty runId", () => {
+    expect(
+      parseCaptureRunStatus(
+        serializeCaptureRunStatus({ ...STATUS, schemaVersion: 2 as never }),
+      ),
+    ).toBeNull();
+    expect(
+      parseCaptureRunStatus(serializeCaptureRunStatus({ ...STATUS, runId: "" })),
+    ).toBeNull();
+  });
+
+  it("rejects invalid timestamps", () => {
+    expect(
+      parseCaptureRunStatus(
+        serializeCaptureRunStatus({ ...STATUS, startedAt: "not-a-date" }),
+      ),
+    ).toBeNull();
+    expect(
+      parseCaptureRunStatus(
+        serializeCaptureRunStatus({ ...STATUS, updatedAt: "" }),
+      ),
+    ).toBeNull();
+    expect(
+      parseCaptureRunStatus(
+        serializeCaptureRunStatus({ ...STATUS, endedAt: "yesterday-ish" }),
+      ),
+    ).toBeNull();
+  });
+
+  it("rejects an unknown capture end reason and a non-string failure reason", () => {
+    expect(
+      parseCaptureRunStatus(
+        serializeCaptureRunStatus({
+          ...STATUS,
+          captureEndReason: "meteor-strike" as never,
+        }),
+      ),
+    ).toBeNull();
+    expect(
+      parseCaptureRunStatus(
+        serializeCaptureRunStatus({ ...STATUS, failureReason: 42 as never }),
+      ),
+    ).toBeNull();
+  });
+
+  it("enforces terminal/endedAt coherence in both directions", () => {
+    // Terminal states must carry a valid endedAt.
+    for (const state of ["completed", "failed", "user-cancelled"] as const) {
+      expect(
+        parseCaptureRunStatus(
+          serializeCaptureRunStatus({ ...STATUS, state, endedAt: null }),
+        ),
+      ).toBeNull();
+      expect(
+        parseCaptureRunStatus(
+          serializeCaptureRunStatus({
+            ...STATUS,
+            state,
+            endedAt: "2026-07-21T01:00:00.000Z",
+          }),
+        ),
+      ).not.toBeNull();
+    }
+
+    // Non-terminal states must not carry an endedAt.
+    for (const state of ["active", "finalizing"] as const) {
+      expect(
+        parseCaptureRunStatus(
+          serializeCaptureRunStatus({
+            ...STATUS,
+            state,
+            endedAt: "2026-07-21T01:00:00.000Z",
+          }),
+        ),
+      ).toBeNull();
+      expect(
+        parseCaptureRunStatus(
+          serializeCaptureRunStatus({ ...STATUS, state, endedAt: null }),
+        ),
+      ).not.toBeNull();
+    }
   });
 });
 
