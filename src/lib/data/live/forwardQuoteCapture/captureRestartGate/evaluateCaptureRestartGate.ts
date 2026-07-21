@@ -3,6 +3,7 @@ import type { CaptureHealthAuditReport } from "@/lib/data/research/captureHealth
 import type { CaptureRunStatusArtifact } from "../captureRunStatus";
 import type { CaptureRunStatusIntegrity } from "../selectAuditableCaptureRun";
 
+import { verifyCanonicalCaptureProfile } from "./canonicalCaptureProfile";
 import {
   DEFAULT_CAPTURE_RESTART_GATE_THRESHOLDS,
   type CaptureRestartGateSummary,
@@ -17,6 +18,14 @@ function readRecord(value: unknown): Record<string, unknown> | null {
 
 function readFiniteNumber(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function parseTimestampMs(value: unknown): number | null {
+  if (typeof value !== "string" || value.length === 0) {
+    return null;
+  }
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
 function basename(path: string): string {
@@ -36,7 +45,17 @@ export type CaptureRestartGateInput = {
   auditErrors: readonly string[];
   auditFingerprintsVerified: boolean;
   auditFreshnessWarnings: readonly string[];
+  /**
+   * Operator-declared expected duration. The gate always validates against
+   * the duration recorded in the capture's own config; when this is supplied
+   * it must exactly agree with that recorded config. It can never bypass or
+   * replace duration validation.
+   */
   expectedDurationMinutes: number | null;
+  /**
+   * Test-only threshold injection. Overrides are clamped so the effective
+   * thresholds can only be stricter than the frozen defaults, never weaker.
+   */
   thresholds?: Partial<CaptureRestartGateThresholds>;
 };
 
@@ -59,14 +78,37 @@ const REQUIRED_ORDERBOOK_COUNTERS = [
   "commandErrorsReceived",
 ] as const;
 
+/**
+ * The frozen thresholds cannot be weakened: overrides (used by unit tests)
+ * are clamped so shares can only rise and tolerances can only shrink.
+ */
+export function resolveEffectiveRestartThresholds(
+  overrides?: Partial<CaptureRestartGateThresholds>,
+): CaptureRestartGateThresholds {
+  const defaults = DEFAULT_CAPTURE_RESTART_GATE_THRESHOLDS;
+  const merged = { ...defaults, ...overrides };
+  return {
+    minBtcJoinCoverageShare: Math.max(
+      defaults.minBtcJoinCoverageShare,
+      merged.minBtcJoinCoverageShare,
+    ),
+    minValidBookShare: Math.max(defaults.minValidBookShare, merged.minValidBookShare),
+    durationToleranceShare: Math.min(
+      defaults.durationToleranceShare,
+      merged.durationToleranceShare,
+    ),
+    durationToleranceFloorSeconds: Math.min(
+      defaults.durationToleranceFloorSeconds,
+      merged.durationToleranceFloorSeconds,
+    ),
+  };
+}
+
 /** Evaluates the frozen eight-hour restart acceptance criteria for one run. */
 export function evaluateCaptureRestartGate(
   input: CaptureRestartGateInput,
 ): CaptureRestartGateSummary {
-  const thresholds: CaptureRestartGateThresholds = {
-    ...DEFAULT_CAPTURE_RESTART_GATE_THRESHOLDS,
-    ...input.thresholds,
-  };
+  const thresholds = resolveEffectiveRestartThresholds(input.thresholds);
   const failures: string[] = [];
   const dirRunId = basename(input.runDir);
 
@@ -95,11 +137,13 @@ export function evaluateCaptureRestartGate(
   const capture = readRecord(health?.capture);
   const writer = readRecord(health?.writer);
   const watchdog = readRecord(health?.watchdog);
+  const config = readRecord(health?.config);
 
   const healthVerdict =
     typeof health?.verdict === "string" ? (health.verdict as string) : null;
   const healthRunId =
     typeof health?.runId === "string" ? (health.runId as string) : null;
+  const healthEndedAtMs = parseTimestampMs(health?.endedAt);
 
   if (health === null) {
     failures.push("capture-health.json is missing or unparseable");
@@ -111,6 +155,9 @@ export function evaluateCaptureRestartGate(
     if (healthRunId === null) {
       partialReasons.push("runId");
     }
+    if (healthEndedAtMs === null) {
+      partialReasons.push("endedAt");
+    }
     if (connection === null) {
       partialReasons.push("connection");
     }
@@ -119,6 +166,12 @@ export function evaluateCaptureRestartGate(
     }
     if (writer === null) {
       partialReasons.push("writer");
+    }
+    if (config === null) {
+      partialReasons.push("config");
+    }
+    if (!Array.isArray(health.errors)) {
+      partialReasons.push("errors");
     }
     if (orderbook === null) {
       partialReasons.push("orderbook");
@@ -137,6 +190,41 @@ export function evaluateCaptureRestartGate(
     if (healthRunId !== null && healthRunId !== dirRunId) {
       failures.push(
         `native health runId "${healthRunId}" does not match run directory "${dirRunId}"`,
+      );
+    }
+
+    // --- Native health success requirements (never a degraded pass) ------
+    if (healthVerdict !== null && healthVerdict !== "capture-mvp-success") {
+      failures.push(
+        `native health verdict is "${healthVerdict}", expected "capture-mvp-success"`,
+      );
+    }
+    if (connection !== null && connection.completedNormally !== true) {
+      failures.push("native health connection.completedNormally is not true");
+    }
+    if (connection !== null && connection.liveConnectionSucceeded !== true) {
+      failures.push("native health connection.liveConnectionSucceeded is not true");
+    }
+    if (Array.isArray(health.errors) && health.errors.length > 0) {
+      failures.push(
+        `native health recorded ${health.errors.length} error(s): ${health.errors
+          .slice(0, 3)
+          .map((entry) => String(entry))
+          .join("; ")}`,
+      );
+    }
+
+    // --- Canonical eight-hour capture profile (frozen workload shape) ----
+    const profileMismatches = verifyCanonicalCaptureProfile(config);
+    for (const mismatch of profileMismatches) {
+      failures.push(
+        `capture config does not match the canonical eight-hour profile: `
+          + `${mismatch.field} expected ${mismatch.expected}, got ${mismatch.actual}`,
+      );
+    }
+    if (watchdog === null) {
+      failures.push(
+        "native health watchdog diagnostics are missing; the canonical profile requires the WS watchdog",
       );
     }
   }
@@ -170,13 +258,57 @@ export function evaluateCaptureRestartGate(
     );
   }
 
-  // --- Quality thresholds -------------------------------------------------
+  // --- Audit / status / health chronology (fail closed) -------------------
+  const statusEndedAtMs = parseTimestampMs(input.runStatus?.endedAt);
+  const statusStartedAtMs = parseTimestampMs(input.runStatus?.startedAt);
+  const auditGeneratedAtMs =
+    input.audit !== null ? parseTimestampMs(input.audit.generatedAt) : null;
+
+  if (
+    statusEndedAtMs !== null
+    && statusStartedAtMs !== null
+    && statusEndedAtMs < statusStartedAtMs
+  ) {
+    failures.push(
+      `run status endedAt (${input.runStatus?.endedAt}) precedes startedAt (${input.runStatus?.startedAt})`,
+    );
+  }
+  if (input.audit !== null && auditGeneratedAtMs === null) {
+    failures.push("audit generatedAt is missing or not a valid timestamp");
+  }
+  if (auditGeneratedAtMs !== null) {
+    if (statusEndedAtMs !== null && auditGeneratedAtMs < statusEndedAtMs) {
+      failures.push(
+        `audit generatedAt (${input.audit?.generatedAt}) precedes the run's terminal endedAt (${input.runStatus?.endedAt}); the audit must be created after the run ended`,
+      );
+    }
+    if (healthEndedAtMs !== null && auditGeneratedAtMs < healthEndedAtMs) {
+      failures.push(
+        `audit generatedAt (${input.audit?.generatedAt}) precedes native health endedAt; the audit must postdate terminal health publication`,
+      );
+    }
+  }
+
+  // --- Duration (always validated against the capture's own config) -------
   const durationSeconds = input.audit?.summary.runDurationSeconds ?? null;
+  const configuredDurationMinutes = readFiniteNumber(config?.durationMinutes);
   const expectedDurationSeconds =
+    configuredDurationMinutes !== null ? configuredDurationMinutes * 60 : null;
+
+  if (
     input.expectedDurationMinutes !== null
-      ? input.expectedDurationMinutes * 60
-      : null;
-  if (expectedDurationSeconds !== null) {
+    && configuredDurationMinutes !== null
+    && input.expectedDurationMinutes !== configuredDurationMinutes
+  ) {
+    failures.push(
+      `operator-declared expected duration ${input.expectedDurationMinutes}m does not match the capture's recorded config duration ${configuredDurationMinutes}m`,
+    );
+  }
+  if (expectedDurationSeconds === null) {
+    failures.push(
+      "capture config durationMinutes is unavailable; duration validation cannot be bypassed",
+    );
+  } else {
     const tolerance = Math.max(
       expectedDurationSeconds * thresholds.durationToleranceShare,
       thresholds.durationToleranceFloorSeconds,

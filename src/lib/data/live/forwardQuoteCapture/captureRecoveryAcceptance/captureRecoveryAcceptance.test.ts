@@ -25,14 +25,21 @@ function passingObserved(
     postRecoveryAcceptedDeltaCount: 2,
     unsubscribeRequested: true,
     unsubscribeAcknowledged: true,
+    recoveryLifecycleOrdered: true,
     pendingCommandCountAtCaptureEnd: 0,
     marketsWithOutstandingRecoveryAtEnd: 0,
     commandErrorsReceived: 0,
+    bufferedStreamsUsed: true,
+    writerBackpressureCount: 1,
     allStreamsDrained: true,
     writerFailure: null,
+    terminalStatusPublishedAfterStreamsDrained: true,
     runStatusState: "completed",
     captureEndReason: "duration-complete",
     healthVerdict: "capture-mvp-success",
+    healthCompletedNormally: true,
+    healthLiveConnectionSucceeded: true,
+    healthErrors: [],
     healthPublishedAtomically: true,
     credentialLeakArtifacts: [],
     ...overrides,
@@ -66,16 +73,30 @@ describe("runCaptureRecoveryAcceptance (deterministic end-to-end lifecycle)", ()
     expect(report.observed.recoverySuccessCount).toBe(1);
     expect(report.observed.postRecoveryAcceptedDeltaCount).toBe(2);
 
-    // Unsubscribe was issued and acknowledged during rollover.
+    // Unsubscribe was issued and acknowledged during rollover, and the
+    // asynchronous recovery lifecycle held its order.
     expect(report.observed.unsubscribeRequested).toBe(true);
     expect(report.observed.unsubscribeAcknowledged).toBe(true);
+    expect(report.observed.recoveryLifecycleOrdered).toBe(true);
 
-    // Persistence and lifecycle guarantees.
+    // Persistence guarantees through the REAL buffered writer path: buffered
+    // streams (never the appendFile shim), at least one backpressure event
+    // that drained, asynchronous stream completion awaited, and terminal
+    // status published only after every stream finished.
+    expect(report.observed.bufferedStreamsUsed).toBe(true);
+    expect(report.observed.writerBackpressureCount).toBeGreaterThanOrEqual(1);
     expect(report.observed.allStreamsDrained).toBe(true);
+    expect(report.observed.terminalStatusPublishedAfterStreamsDrained).toBe(true);
     expect(report.observed.runStatusState).toBe("completed");
     expect(report.observed.captureEndReason).toBe("duration-complete");
     expect(report.observed.healthPublishedAtomically).toBe(true);
     expect(report.observed.credentialLeakArtifacts).toEqual([]);
+
+    // Native health reported a clean success end-to-end.
+    expect(report.observed.healthVerdict).toBe("capture-mvp-success");
+    expect(report.observed.healthCompletedNormally).toBe(true);
+    expect(report.observed.healthLiveConnectionSucceeded).toBe(true);
+    expect(report.observed.healthErrors).toEqual([]);
 
     // The transcript narrates the full scripted scenario in order.
     const transcript = report.transcript.join("\n");
@@ -85,6 +106,7 @@ describe("runCaptureRecoveryAcceptance (deterministic end-to-end lifecycle)", ()
     expect(transcript).toContain("recovery pending; must be quarantined");
     expect(transcript).toContain("fresh recovery snapshot");
     expect(transcript).toContain("unsubscribed ack");
+    expect(transcript).toContain("writer backpressure");
   }, 20_000);
 
   it("fails acceptance when the server never assigns a sid", async () => {
@@ -110,6 +132,23 @@ describe("runCaptureRecoveryAcceptance (deterministic end-to-end lifecycle)", ()
     expect(failedIds).toContain("fresh-snapshot-restored-validity");
     expect(report.observed.freshSnapshotRestoredValidBook).toBe(false);
     expect(report.observed.recoverySuccessCount).toBe(0);
+  }, 20_000);
+
+  it("fails acceptance through the real harness when a stream never drains", async () => {
+    const report = await runCaptureRecoveryAcceptance({ scenario: "writer-no-drain" });
+
+    expect(report.passed).toBe(false);
+    const failedIds = report.checks
+      .filter((check) => !check.passed)
+      .map((check) => check.id);
+    expect(failedIds).toContain("all-streams-drained");
+    // The failing stream must surface as a writer failure from the actual
+    // buffered writer path, not from a fabricated observation.
+    expect(report.observed.bufferedStreamsUsed).toBe(true);
+    expect(report.observed.allStreamsDrained).toBe(false);
+    expect(report.observed.writerFailure).not.toBeNull();
+    // A capture whose persistence path failed must not finish "completed".
+    expect(report.observed.runStatusState).not.toBe("completed");
   }, 20_000);
 });
 
@@ -169,5 +208,51 @@ describe("evaluateRecoveryAcceptance (pure acceptance policy)", () => {
     expect(
       failedCheckIds(passingObserved({ healthPublishedAtomically: false })),
     ).toContain("health-published-atomically");
+  });
+
+  it("denies acceptance when the only changed field is a degraded native verdict", () => {
+    const failed = failedCheckIds(passingObserved({ healthVerdict: "degraded-capture" }));
+    expect(failed).toEqual(["native-health-success"]);
+  });
+
+  it("fails when the native health report carries errors", () => {
+    expect(
+      failedCheckIds(passingObserved({ healthErrors: ["ws stall detected"] })),
+    ).toContain("native-health-success");
+  });
+
+  it("fails when the capture did not complete normally or never connected", () => {
+    expect(
+      failedCheckIds(passingObserved({ healthCompletedNormally: false })),
+    ).toContain("native-health-success");
+    expect(
+      failedCheckIds(passingObserved({ healthLiveConnectionSucceeded: false })),
+    ).toContain("native-health-success");
+  });
+
+  it("fails when the buffered writer path was bypassed", () => {
+    expect(
+      failedCheckIds(passingObserved({ bufferedStreamsUsed: false })),
+    ).toContain("buffered-writer-path-used");
+  });
+
+  it("fails when no backpressure was exercised", () => {
+    expect(
+      failedCheckIds(passingObserved({ writerBackpressureCount: 0 })),
+    ).toContain("backpressure-exercised-and-drained");
+  });
+
+  it("fails when terminal status was published before streams finished", () => {
+    expect(
+      failedCheckIds(
+        passingObserved({ terminalStatusPublishedAfterStreamsDrained: false }),
+      ),
+    ).toContain("terminal-status-after-stream-completion");
+  });
+
+  it("fails when the recovery lifecycle order was violated", () => {
+    expect(
+      failedCheckIds(passingObserved({ recoveryLifecycleOrdered: false })),
+    ).toContain("recovery-lifecycle-ordered");
   });
 });

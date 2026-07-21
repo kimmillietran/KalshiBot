@@ -16,6 +16,12 @@ import type { RecoveryAcceptanceScenario } from "./captureRecoveryAcceptanceType
  *
  * Scenario variants intentionally break one contract so the acceptance
  * evaluation can be proven to fail closed.
+ *
+ * All server responses are delivered ASYNCHRONOUSLY on the microtask queue
+ * (in scheduling order), never re-entrantly inside send(). Real WebSocket
+ * acknowledgements always arrive after the send returns, so the harness
+ * must exercise the asynchronous correlation path, not the synchronous
+ * accommodation.
  */
 export class AcceptanceScriptedTransport implements KalshiWsProbeTransport {
   readonly sentCommands: Array<Record<string, unknown>> = [];
@@ -38,7 +44,10 @@ export class AcceptanceScriptedTransport implements KalshiWsProbeTransport {
 
   private emit(payload: Record<string, unknown>, note: string): void {
     this.options.transcript.push(`received ${note}`);
-    this.onMessageHandler?.(JSON.stringify(payload));
+    const serialized = JSON.stringify(payload);
+    queueMicrotask(() => {
+      this.onMessageHandler?.(serialized);
+    });
   }
 
   private snapshot(sid: number, seq: number, ticker: string) {

@@ -60,18 +60,29 @@ export type {
   RecoveryAcceptanceScenario,
 } from "./captureRecoveryAcceptance";
 export {
+  CANONICAL_EIGHT_HOUR_CAPTURE_PROFILE,
   DEFAULT_CAPTURE_RESTART_GATE_THRESHOLDS,
   evaluateCaptureRestartGate,
-  findActiveCaptureRuns,
+  findCaptureStartBlockers,
   parseCaptureRestartGateSummary,
+  resolveEffectiveRestartThresholds,
   serializeCaptureRestartGateSummary,
+  verifyCanonicalCaptureProfile,
 } from "./captureRestartGate";
 export type {
-  ActiveCaptureRun,
+  CanonicalCaptureProfile,
+  CanonicalProfileMismatch,
   CaptureRestartGateInput,
   CaptureRestartGateSummary,
   CaptureRestartGateThresholds,
+  CaptureStartBlocker,
+  CaptureStartBlockerReason,
 } from "./captureRestartGate";
+export {
+  acquireCaptureLock,
+  CAPTURE_LOCK_FILENAME,
+  resolveCaptureLockPath,
+} from "./captureLock";
 export type {
   CaptureRunSelectionEntry,
   CaptureRunStatusIntegrity,

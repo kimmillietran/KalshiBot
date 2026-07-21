@@ -53,4 +53,18 @@ describe("runCaptureRecoveryAcceptanceCommand", () => {
     expect(report.passed).toBe(false);
     expect(stderr.join("")).toContain("Capture recovery acceptance FAILED");
   }, 20_000);
+
+  it("rejects an unknown --scenario instead of silently running the happy path", async () => {
+    const { io, stdout, stderr } = createCommandIo();
+
+    const exitCode = await runCaptureRecoveryAcceptanceCommand(
+      ["--scenario", "definitely-not-a-scenario"],
+      io,
+    );
+
+    expect(exitCode).toBe(1);
+    expect(stdout.join("")).toBe("");
+    expect(stderr.join("")).toContain('Unknown --scenario "definitely-not-a-scenario"');
+    expect(stderr.join("")).toContain("writer-no-drain");
+  });
 });

@@ -95,6 +95,12 @@ export function evaluateRecoveryAcceptance(
       + `unsubscribeAcknowledged=${observed.unsubscribeAcknowledged}`,
   );
   check(
+    "recovery-lifecycle-ordered",
+    "Recovery lifecycle events occurred in order: requested, acknowledged, succeeded",
+    observed.recoveryLifecycleOrdered,
+    `recoveryLifecycleOrdered=${observed.recoveryLifecycleOrdered}`,
+  );
+  check(
     "no-unresolved-recovery",
     "No recovery or pending command remained unresolved at capture end",
     observed.marketsWithOutstandingRecoveryAtEnd === 0
@@ -111,10 +117,29 @@ export function evaluateRecoveryAcceptance(
     `commandErrorsReceived=${observed.commandErrorsReceived}`,
   );
   check(
+    "buffered-writer-path-used",
+    "The run used real buffered append streams, never the legacy appendFile shim",
+    observed.bufferedStreamsUsed,
+    `bufferedStreamsUsed=${observed.bufferedStreamsUsed}`,
+  );
+  check(
+    "backpressure-exercised-and-drained",
+    "At least one backpressure event occurred and drained through the buffered writer",
+    observed.writerBackpressureCount >= 1 && observed.allStreamsDrained === true,
+    `writerBackpressureCount=${observed.writerBackpressureCount} `
+      + `allStreamsDrained=${observed.allStreamsDrained}`,
+  );
+  check(
     "all-streams-drained",
     "All persistence streams drained during writer finalization",
     observed.allStreamsDrained === true && observed.writerFailure === null,
     `allStreamsDrained=${observed.allStreamsDrained} writerFailure=${observed.writerFailure}`,
+  );
+  check(
+    "terminal-status-after-stream-completion",
+    "Terminal run status was published only after every append stream finished",
+    observed.terminalStatusPublishedAfterStreamsDrained,
+    `terminalStatusPublishedAfterStreamsDrained=${observed.terminalStatusPublishedAfterStreamsDrained}`,
   );
   check(
     "terminal-status-completed",
@@ -122,6 +147,18 @@ export function evaluateRecoveryAcceptance(
     observed.runStatusState === "completed"
       && observed.captureEndReason === "duration-complete",
     `runStatusState=${observed.runStatusState} captureEndReason=${observed.captureEndReason}`,
+  );
+  check(
+    "native-health-success",
+    "Native health reports capture-mvp-success with a normal, error-free completion",
+    observed.healthVerdict === "capture-mvp-success"
+      && observed.healthCompletedNormally
+      && observed.healthLiveConnectionSucceeded
+      && observed.healthErrors.length === 0,
+    `healthVerdict=${observed.healthVerdict} `
+      + `healthCompletedNormally=${observed.healthCompletedNormally} `
+      + `healthLiveConnectionSucceeded=${observed.healthLiveConnectionSucceeded} `
+      + `healthErrors=${observed.healthErrors.length}`,
   );
   check(
     "health-published-atomically",

@@ -14,6 +14,8 @@ export const RECOVERY_ACCEPTANCE_SCENARIOS = [
   "missing-sid",
   /** Recovery is acknowledged but the fresh snapshot never arrives. */
   "no-fresh-snapshot",
+  /** A buffered persistence stream backpressures and never drains. */
+  "writer-no-drain",
 ] as const;
 
 export type RecoveryAcceptanceScenario =
@@ -43,14 +45,28 @@ export type RecoveryAcceptanceObserved = {
   postRecoveryAcceptedDeltaCount: number;
   unsubscribeRequested: boolean;
   unsubscribeAcknowledged: boolean;
+  /** Recovery lifecycle order held: requested -> acknowledged -> succeeded. */
+  recoveryLifecycleOrdered: boolean;
   pendingCommandCountAtCaptureEnd: number;
   marketsWithOutstandingRecoveryAtEnd: number;
   commandErrorsReceived: number;
+  /** The run used real buffered append streams, never the legacy appendFile shim. */
+  bufferedStreamsUsed: boolean;
+  /** Backpressure events recorded by the buffered writer during the run. */
+  writerBackpressureCount: number;
   allStreamsDrained: boolean | null;
   writerFailure: string | null;
+  /** Terminal run status appeared only after every append stream finished end(). */
+  terminalStatusPublishedAfterStreamsDrained: boolean;
   runStatusState: string | null;
   captureEndReason: string | null;
   healthVerdict: string;
+  /** connection.completedNormally from the native health artifact. */
+  healthCompletedNormally: boolean;
+  /** connection.liveConnectionSucceeded from the native health artifact. */
+  healthLiveConnectionSucceeded: boolean;
+  /** errors array from the native health artifact (must be empty). */
+  healthErrors: readonly string[];
   /** capture-health.json only ever appeared via temp-file-plus-rename publication. */
   healthPublishedAtomically: boolean;
   /** Artifact paths containing credential material (must be empty). */

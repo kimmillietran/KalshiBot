@@ -1,27 +1,38 @@
 /**
  * M12.1F Part B/C: eight-hour restart gate command.
  *
- * Two modes:
+ * Three modes:
+ *
+ *   --print-canonical-profile
+ *     Prints the canonical eight-hour capture profile as JSON. The smoke
+ *     wrapper reads its capture parameters from here, so the values are
+ *     never duplicated in shell scripts.
  *
  *   --assert-no-active-capture [--capture-root <dir>]
- *     Exits nonzero when any capture run directory carries a strictly valid
- *     active/finalizing status. Used by run-capture-restart-smoke.ps1 before
- *     starting the smoke capture.
+ *     Exits nonzero when starting a capture would be unsafe: a strictly
+ *     valid active/finalizing status, a present-but-invalid or
+ *     identity-mismatched status marker (process state UNKNOWN), or an
+ *     unreleased capture lock all block. Used by
+ *     run-capture-restart-smoke.ps1 before starting the smoke capture.
  *
  *   --capture-run-dir <dir> [--expected-duration-minutes N]
  *     Evaluates the frozen restart acceptance criteria for that EXACT run
  *     directory (never "latest") and prints one machine-readable readiness
- *     summary. Exits 0 only when restartEightHourCaptures is true.
+ *     summary. The thresholds are immutable: no operator flag can weaken
+ *     them. An operator-declared expected duration must exactly match the
+ *     capture's own recorded config, which is always validated regardless.
+ *     Exits 0 only when restartEightHourCaptures is true.
  */
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 
 import {
+  CANONICAL_EIGHT_HOUR_CAPTURE_PROFILE,
   evaluateCaptureRestartGate,
-  findActiveCaptureRuns,
+  findCaptureStartBlockers,
   parseCaptureRunStatus,
+  resolveCaptureLockPath,
   serializeCaptureRestartGateSummary,
-  type CaptureRestartGateThresholds,
   type CaptureRunStatusArtifact,
   type CaptureRunStatusIntegrity,
 } from "@/lib/data/live/forwardQuoteCapture";
@@ -30,10 +41,18 @@ import {
   verifyCaptureHealthAuditFreshness,
   type SelectedRunCaptureHealthIo,
 } from "@/lib/data/research/selectedRunCaptureHealth";
+import { stableStringify } from "@/lib/trading/config/hashConfig";
 
 import { loadCaptureRunSelectionEntries } from "../live/selectAuditableCaptureRun";
 
 const DEFAULT_CAPTURE_ROOT = "data/live-capture/forward-quotes";
+
+/** Flags that could weaken the frozen gate; they are rejected explicitly. */
+const FORBIDDEN_THRESHOLD_FLAGS = [
+  "--duration-tolerance-share",
+  "--min-valid-book-share",
+  "--min-btc-join-coverage-share",
+] as const;
 
 export type CaptureRestartGateCommandIo = {
   writeStdout: (text: string) => void;
@@ -110,12 +129,28 @@ function runAssertNoActiveCapture(
   captureRoot: string,
   io: CaptureRestartGateCommandIo,
 ): number {
-  const activeRuns = findActiveCaptureRuns(loadCaptureRunSelectionEntries(captureRoot));
-  io.writeStdout(`${JSON.stringify({ captureRoot, activeRuns })}\n`);
-  if (activeRuns.length > 0) {
+  const blockers = findCaptureStartBlockers(loadCaptureRunSelectionEntries(captureRoot));
+
+  // The global capture lock blocks too: an unreleased lock means either a
+  // capture is running right now or a previous one crashed without reaching
+  // terminal status. Both require operator attention before starting.
+  const lockPath = resolveCaptureLockPath(captureRoot);
+  const lockPresent = existsSync(lockPath);
+
+  io.writeStdout(`${JSON.stringify({ captureRoot, blockers, lockPresent, lockPath })}\n`);
+
+  if (lockPresent) {
     io.writeStderr(
-      `Refusing to start: ${activeRuns.length} capture run(s) are still active/finalizing: `
-        + `${activeRuns.map((run) => `${run.runId} (${run.state})`).join(", ")}\n`,
+      `Refusing to start: capture lock is present at ${lockPath}. `
+        + "A capture is running, or a previous run crashed without releasing the lock; "
+        + "reconcile and remove it manually before starting.\n",
+    );
+    return 1;
+  }
+  if (blockers.length > 0) {
+    io.writeStderr(
+      `Refusing to start: ${blockers.length} capture run(s) block a new capture: `
+        + `${blockers.map((run) => `${run.runId} (${run.reason})`).join(", ")}\n`,
     );
     return 1;
   }
@@ -128,6 +163,19 @@ export async function runCaptureRestartGateCommand(
   options?: { generatedAt?: string },
 ): Promise<number> {
   try {
+    if (argv.includes("--print-canonical-profile")) {
+      io.writeStdout(`${stableStringify(CANONICAL_EIGHT_HOUR_CAPTURE_PROFILE)}\n`);
+      return 0;
+    }
+
+    for (const flag of FORBIDDEN_THRESHOLD_FLAGS) {
+      if (argv.includes(flag)) {
+        throw new Error(
+          `${flag} is not supported: the restart gate thresholds are frozen and cannot be weakened from the command line.`,
+        );
+      }
+    }
+
     if (argv.includes("--assert-no-active-capture")) {
       const captureRoot =
         readFlagValue(argv, "--capture-root") ?? DEFAULT_CAPTURE_ROOT;
@@ -137,7 +185,7 @@ export async function runCaptureRestartGateCommand(
     const runDir = readFlagValue(argv, "--capture-run-dir");
     if (!runDir) {
       throw new Error(
-        "Usage: --capture-run-dir <dir> [--expected-duration-minutes N] | --assert-no-active-capture [--capture-root <dir>]",
+        "Usage: --capture-run-dir <dir> [--expected-duration-minutes N] | --assert-no-active-capture [--capture-root <dir>] | --print-canonical-profile",
       );
     }
     if (!existsSync(runDir) || !statSync(runDir).isDirectory()) {
@@ -145,22 +193,6 @@ export async function runCaptureRestartGateCommand(
     }
 
     const expectedDurationMinutes = readNumberFlag(argv, "--expected-duration-minutes");
-    const thresholds: Partial<CaptureRestartGateThresholds> = {};
-    const durationToleranceShare = readNumberFlag(argv, "--duration-tolerance-share");
-    if (durationToleranceShare !== null) {
-      thresholds.durationToleranceShare = durationToleranceShare;
-    }
-    const minValidBookShare = readNumberFlag(argv, "--min-valid-book-share");
-    if (minValidBookShare !== null) {
-      thresholds.minValidBookShare = minValidBookShare;
-    }
-    const minBtcJoinCoverageShare = readNumberFlag(
-      argv,
-      "--min-btc-join-coverage-share",
-    );
-    if (minBtcJoinCoverageShare !== null) {
-      thresholds.minBtcJoinCoverageShare = minBtcJoinCoverageShare;
-    }
 
     const dirRunId = runDir.replaceAll("\\", "/").replace(/\/+$/, "").split("/").at(-1)!;
 
@@ -217,7 +249,6 @@ export async function runCaptureRestartGateCommand(
       auditFingerprintsVerified,
       auditFreshnessWarnings,
       expectedDurationMinutes,
-      thresholds,
     });
 
     io.writeStdout(serializeCaptureRestartGateSummary(summary));

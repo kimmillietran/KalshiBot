@@ -1,8 +1,11 @@
 import { generateKeyPairSync } from "node:crypto";
 
 import { runForwardQuoteCapture } from "../runForwardQuoteCapture";
-import { createRunOutputPaths } from "../jsonlForwardCaptureWriter";
-import { parseCaptureRunStatus } from "../captureRunStatus";
+import {
+  createRunOutputPaths,
+  type ForwardCaptureAppendStream,
+} from "../jsonlForwardCaptureWriter";
+import { parseCaptureRunStatus, TERMINAL_CAPTURE_RUN_STATES } from "../captureRunStatus";
 import type {
   ForwardQuoteCaptureConfig,
   ForwardQuoteCaptureIo,
@@ -23,6 +26,8 @@ const ACCEPTANCE_PRIVATE_KEY_PATH = "in-memory/acceptance-ephemeral-key.pem";
 const ACCEPTANCE_OUTPUT_DIR = "in-memory/acceptance/forward-quotes";
 const ACCEPTANCE_HTML_PATH = "in-memory/acceptance/reports/forward-quote-capture.html";
 const ACCEPTANCE_EPOCH_MS = Date.UTC(2026, 6, 20);
+/** Short drain-timeout so the writer-no-drain scenario fails fast. */
+const ACCEPTANCE_NO_DRAIN_TIMEOUT_MS = 300;
 
 /**
  * The harness signs the WebSocket handshake with a real (but ephemeral,
@@ -50,9 +55,83 @@ function parseJsonlLines(chunks: readonly string[]): ParsedJsonlRecord[] {
 }
 
 /**
+ * Deterministic buffered append stream. It exercises the writer's REAL
+ * buffered orchestration path — write acceptance, one scripted backpressure
+ * event with an asynchronous drain, and asynchronous end() completion — so
+ * `allStreamsDrained` is proven against the production code path, not a
+ * synchronous appendFile shim.
+ */
+function createAcceptanceAppendStream(input: {
+  path: string;
+  scenario: RecoveryAcceptanceScenario;
+  /** True for the one stream that receives the scripted backpressure. */
+  isBackpressureTarget: boolean;
+  /** True for the one stream whose end() completion is deliberately delayed. */
+  hasDelayedEnd: boolean;
+  sink: (path: string, chunk: string) => void;
+  /** Ordered lifecycle event log used to prove publication ordering. */
+  events: string[];
+  transcript: string[];
+}): ForwardCaptureAppendStream {
+  let writesSeen = 0;
+  let backpressureTriggered = false;
+  const neverDrain = input.scenario === "writer-no-drain" && input.isBackpressureTarget;
+
+  return {
+    write(chunk) {
+      // Node semantics: a false return means "accepted but buffer is above
+      // the high-water mark", so the chunk is still persisted.
+      input.sink(input.path, chunk);
+      writesSeen += 1;
+      if (input.isBackpressureTarget && !backpressureTriggered && writesSeen === 2) {
+        backpressureTriggered = true;
+        input.transcript.push(
+          neverDrain
+            ? `writer backpressure on ${input.path} (scripted to NEVER drain)`
+            : `writer backpressure on ${input.path} (drain scheduled asynchronously)`,
+        );
+        return false;
+      }
+      return true;
+    },
+    onceDrain(callback) {
+      if (neverDrain) {
+        // The no-drain scenario: the callback is intentionally never invoked,
+        // so the writer's bounded finalization drain must time out and fail
+        // the run closed.
+        return;
+      }
+      setTimeout(() => {
+        input.transcript.push(`writer drain completed on ${input.path}`);
+        callback();
+      }, 0);
+    },
+    onError() {},
+    end() {
+      const finish = (): void => {
+        input.events.push(`stream-drained:${input.path}`);
+      };
+      if (input.hasDelayedEnd) {
+        // Asynchronous stream completion: terminal status must not be
+        // published until this promise settles.
+        return new Promise((resolve) => {
+          setTimeout(() => {
+            finish();
+            resolve();
+          }, 20);
+        });
+      }
+      finish();
+      return Promise.resolve();
+    },
+  };
+}
+
+/**
  * Runs the full production capture orchestrator against the scripted
- * recovery scenario with in-memory IO and ephemeral credentials, then
- * evaluates the acceptance policy against the artifacts the run produced.
+ * recovery scenario with in-memory IO (including real buffered append
+ * streams) and ephemeral credentials, then evaluates the acceptance policy
+ * against the artifacts the run actually produced.
  */
 export async function runCaptureRecoveryAcceptance(options?: {
   scenario?: RecoveryAcceptanceScenario;
@@ -72,6 +151,10 @@ export async function runCaptureRecoveryAcceptance(options?: {
   const directHealthWrites: string[] = [];
   const healthRenames: string[] = [];
   const intervals: Array<{ fn: () => void; ms: number }> = [];
+  /** Ordered publication/drain events proving finalization ordering. */
+  const orderedEvents: string[] = [];
+  let artifactAppendFileCalls = 0;
+  let appendStreamsCreated = 0;
 
   let nowMs = ACCEPTANCE_EPOCH_MS;
   let monotonicMs = 0;
@@ -96,6 +179,7 @@ export async function runCaptureRecoveryAcceptance(options?: {
     wsHardStallThresholdMs: 60_000,
     wsProbeGraceMs: 10_000,
     wsRecoveryMaxAttempts: 1,
+    priceRepresentation: "legacy-no-leg",
   };
 
   const rolloverMarketsResponse = {
@@ -117,6 +201,18 @@ export async function runCaptureRecoveryAcceptance(options?: {
     );
   }) as typeof fetch;
 
+  const artifactSuffixes = [
+    "raw-kalshi-ws.jsonl",
+    "top-of-book.jsonl",
+    "btc-spot.jsonl",
+    "market-metadata.jsonl",
+    "capture-lifecycle.jsonl",
+  ];
+
+  const sink = (path: string, chunk: string): void => {
+    appended.set(path, [...(appended.get(path) ?? []), chunk]);
+  };
+
   const io: ForwardQuoteCaptureIo = {
     readFile: (path: string) => {
       if (path === ACCEPTANCE_PRIVATE_KEY_PATH) {
@@ -135,7 +231,24 @@ export async function runCaptureRecoveryAcceptance(options?: {
       }
     },
     appendFile: (path: string, data: string) => {
-      appended.set(path, [...(appended.get(path) ?? []), data]);
+      // The buffered writer must never fall back to this legacy shim for
+      // JSONL artifacts; the acceptance policy checks this stayed at zero.
+      if (artifactSuffixes.some((suffix) => path.endsWith(suffix))) {
+        artifactAppendFileCalls += 1;
+      }
+      sink(path, data);
+    },
+    createAppendStream: (path: string) => {
+      appendStreamsCreated += 1;
+      return createAcceptanceAppendStream({
+        path,
+        scenario,
+        isBackpressureTarget: path.endsWith("top-of-book.jsonl"),
+        hasDelayedEnd: path.endsWith("top-of-book.jsonl"),
+        sink,
+        events: orderedEvents,
+        transcript,
+      });
     },
     renameFile: (from: string, to: string) => {
       const contents = written.get(from);
@@ -147,6 +260,21 @@ export async function runCaptureRecoveryAcceptance(options?: {
       if (to.endsWith("capture-health.json")) {
         healthRenames.push(to);
       }
+      if (to.endsWith("capture-run-status.json")) {
+        const status = parseCaptureRunStatus(contents);
+        if (status !== null && TERMINAL_CAPTURE_RUN_STATES.includes(status.state)) {
+          orderedEvents.push(`terminal-status-published:${status.state}`);
+        }
+      }
+    },
+    createExclusiveFile: (path: string, data: string) => {
+      if (written.has(path)) {
+        throw new Error(`EEXIST (in-memory acceptance io): ${path}`);
+      }
+      written.set(path, data);
+    },
+    deleteFile: (path: string) => {
+      written.delete(path);
     },
     mkdirSync: () => {},
     now: () => {
@@ -166,20 +294,58 @@ export async function runCaptureRecoveryAcceptance(options?: {
   };
 
   // The scripted scenario is driven from shouldStop, which the capture loop
-  // polls every iteration: the first poll fires the rollover interval (which
-  // unsubscribes the primary market after recovery completed), the second
-  // jumps the clock past the configured duration so the run ends with a
-  // truthful duration-complete reason (never user-cancelled).
-  let stopCalls = 0;
-  const shouldStop = (): boolean => {
-    stopCalls += 1;
-    if (stopCalls === 1) {
-      transcript.push("fired rollover check (closes the acceptance market)");
-      for (const interval of intervals) {
-        interval.fn();
+  // polls between asynchronous message deliveries. Because acknowledgements
+  // arrive on the microtask queue (never re-entrantly inside send), the
+  // harness waits for observable lifecycle evidence before advancing:
+  //
+  //   1. fire the rollover check only after the scripted recovery reached
+  //      its scenario-specific terminal point (so the unsubscribe cannot
+  //      race the recovery lifecycle);
+  //   2. jump the clock past the configured duration only after the
+  //      unsubscribe was acknowledged (or failed, for sid-less scenarios),
+  //      so the run ends with a truthful duration-complete reason.
+  //
+  // Bounded poll-count fallbacks keep every scenario terminating.
+  let pollCount = 0;
+  let rolloverFiredAtPoll: number | null = null;
+  let clockJumped = false;
+  const lifecycleTextNow = (): string => {
+    for (const [path, chunks] of appended) {
+      if (path.endsWith("capture-lifecycle.jsonl")) {
+        return chunks.join("");
       }
-    } else if (stopCalls === 2) {
-      nowMs += durationMs + 60_000;
+    }
+    return "";
+  };
+  const shouldStop = (): boolean => {
+    pollCount += 1;
+    const lifecycle = lifecycleTextNow();
+
+    if (rolloverFiredAtPoll === null) {
+      const recoveryReachedTerminalPoint =
+        scenario === "missing-sid"
+          ? pollCount >= 4
+          : scenario === "no-fresh-snapshot"
+            ? lifecycle.includes("snapshotRecoveryAcknowledged") || pollCount >= 12
+            : lifecycle.includes("snapshotRecoverySucceeded") || pollCount >= 12;
+      if (recoveryReachedTerminalPoint) {
+        rolloverFiredAtPoll = pollCount;
+        transcript.push("fired rollover check (closes the acceptance market)");
+        for (const interval of intervals) {
+          interval.fn();
+        }
+      }
+      return false;
+    }
+
+    if (!clockJumped) {
+      const unsubscribeSettled =
+        lifecycle.includes("marketUnsubscribeAcknowledged")
+        || lifecycle.includes("marketUnsubscribeFailed");
+      if (unsubscribeSettled || pollCount >= rolloverFiredAtPoll + 12) {
+        clockJumped = true;
+        nowMs += durationMs + 60_000;
+      }
     }
     return false;
   };
@@ -195,14 +361,17 @@ export async function runCaptureRecoveryAcceptance(options?: {
       KALSHI_API_KEY_ID: ACCEPTANCE_API_KEY_ID,
       KALSHI_WS_URL: "wss://capture-recovery-acceptance.invalid/ws",
     },
+    ...(scenario === "writer-no-drain"
+      ? { writerLimits: { maxDrainDelayMs: ACCEPTANCE_NO_DRAIN_TIMEOUT_MS } }
+      : {}),
   });
-  transcript.push("capture finalized; writer drained; terminal status published");
+  transcript.push("capture finalized; writer streams ended; terminal status published");
 
   const healthReport = result.healthReport;
-  const paths = createRunOutputPaths(config.outputDir, result.runId);
+  const runPaths = createRunOutputPaths(config.outputDir, result.runId);
 
-  const lifecycleEvents = parseJsonlLines(appended.get(paths.captureLifecyclePath) ?? []);
-  const topOfBookRecords = parseJsonlLines(appended.get(paths.topOfBookPath) ?? []);
+  const lifecycleEvents = parseJsonlLines(appended.get(runPaths.captureLifecyclePath) ?? []);
+  const topOfBookRecords = parseJsonlLines(appended.get(runPaths.topOfBookPath) ?? []);
 
   const primaryRecords = topOfBookRecords.filter(
     (record) => record.marketTicker === ACCEPTANCE_PRIMARY_MARKET_TICKER,
@@ -225,6 +394,24 @@ export async function runCaptureRecoveryAcceptance(options?: {
         && Array.isArray(event.marketTickers)
         && event.marketTickers.includes(ACCEPTANCE_PRIMARY_MARKET_TICKER),
     );
+  const firstLifecycleIndex = (type: string): number =>
+    lifecycleEvents.findIndex(
+      (event) =>
+        event.type === type
+        && Array.isArray(event.marketTickers)
+        && event.marketTickers.includes(ACCEPTANCE_PRIMARY_MARKET_TICKER),
+    );
+
+  // Recovery lifecycle order: requested -> acknowledged -> succeeded.
+  const requestedIndex = firstLifecycleIndex("snapshotRecoveryRequested");
+  const acknowledgedIndex = firstLifecycleIndex("snapshotRecoveryAcknowledged");
+  const succeededIndex = firstLifecycleIndex("snapshotRecoverySucceeded");
+  const recoveryLifecycleOrdered =
+    requestedIndex !== -1
+    && acknowledgedIndex !== -1
+    && succeededIndex !== -1
+    && requestedIndex < acknowledgedIndex
+    && acknowledgedIndex < succeededIndex;
 
   const recoveryRequestSids = transport.sentCommands
     .filter((command) => {
@@ -236,8 +423,21 @@ export async function runCaptureRecoveryAcceptance(options?: {
       return (params.sids as number[])[0];
     });
 
-  const statusText = written.get(paths.captureRunStatusPath);
+  const statusText = written.get(runPaths.captureRunStatusPath);
   const runStatus = statusText !== undefined ? parseCaptureRunStatus(statusText) : null;
+
+  // Ordering proof: the terminal run status must appear only after every
+  // append stream's end() promise settled.
+  const terminalStatusEventIndex = orderedEvents.findIndex((event) =>
+    event.startsWith("terminal-status-published:"),
+  );
+  const streamDrainIndexes = orderedEvents
+    .map((event, index) => (event.startsWith("stream-drained:") ? index : -1))
+    .filter((index) => index !== -1);
+  const terminalStatusPublishedAfterStreamsDrained =
+    terminalStatusEventIndex !== -1
+    && streamDrainIndexes.length === 5
+    && streamDrainIndexes.every((index) => index < terminalStatusEventIndex);
 
   // Credential-hygiene scan: none of the secret material used for the run may
   // appear in any final artifact. Short header values (timestamps) are
@@ -265,7 +465,7 @@ export async function runCaptureRecoveryAcceptance(options?: {
 
   const observed: RecoveryAcceptanceObserved = {
     runId: result.runId,
-    runDir: paths.runDir,
+    runDir: runPaths.runDir,
     connected: healthReport.connection.everConnected,
     subscribeAcknowledged: subscriptionAck !== undefined,
     assignedSid:
@@ -282,16 +482,23 @@ export async function runCaptureRecoveryAcceptance(options?: {
     postRecoveryAcceptedDeltaCount: [101, 102].filter(validPrimaryBySequence).length,
     unsubscribeRequested: hasLifecycleEvent("marketUnsubscribeRequested"),
     unsubscribeAcknowledged: hasLifecycleEvent("marketUnsubscribeAcknowledged"),
+    recoveryLifecycleOrdered,
     pendingCommandCountAtCaptureEnd:
       healthReport.orderbook.pendingCommandCountAtCaptureEnd,
     marketsWithOutstandingRecoveryAtEnd:
       healthReport.orderbook.marketsWithOutstandingRecoveryAtEnd,
     commandErrorsReceived: healthReport.orderbook.commandErrorsReceived,
+    bufferedStreamsUsed: appendStreamsCreated === 5 && artifactAppendFileCalls === 0,
+    writerBackpressureCount: healthReport.writer?.backpressureEventCount ?? 0,
     allStreamsDrained: healthReport.writer?.allStreamsDrained ?? null,
     writerFailure: healthReport.writer?.failure?.reason ?? null,
+    terminalStatusPublishedAfterStreamsDrained,
     runStatusState: runStatus?.state ?? null,
     captureEndReason: runStatus?.captureEndReason ?? null,
     healthVerdict: healthReport.verdict,
+    healthCompletedNormally: healthReport.connection.completedNormally,
+    healthLiveConnectionSucceeded: healthReport.connection.liveConnectionSucceeded,
+    healthErrors: healthReport.errors,
     healthPublishedAtomically:
       directHealthWrites.length === 0 && healthRenames.length > 0,
     credentialLeakArtifacts,

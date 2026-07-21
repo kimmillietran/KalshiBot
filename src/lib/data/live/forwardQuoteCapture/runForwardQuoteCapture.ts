@@ -7,6 +7,7 @@ import {
   buildForwardCaptureHealthReport,
   serializeForwardCaptureHealthReport,
 } from "./buildForwardCaptureHealthReport";
+import { acquireCaptureLock } from "./captureLock";
 import {
   publishCaptureRunStatus,
   resolveTerminalCaptureRunState,
@@ -16,7 +17,11 @@ import {
 import { createEmptyConnectionDiagnostics } from "./connectionDiagnostics";
 import { createEmptyOrderbookDiagnostics } from "./createEmptyOrderbookDiagnostics";
 import { discoverCaptureMarkets } from "./discoverCaptureMarkets";
-import { createJsonlForwardCaptureWriter, createRunOutputPaths } from "./jsonlForwardCaptureWriter";
+import {
+  createJsonlForwardCaptureWriter,
+  createRunOutputPaths,
+  type ForwardCaptureWriterLimits,
+} from "./jsonlForwardCaptureWriter";
 import { resolveKalshiCaptureCredentials } from "@/lib/data/live/kalshiWsCaptureSpike";
 import { runDryRunForwardQuoteCapture } from "./runDryRunForwardQuoteCapture";
 import { runLiveForwardQuoteCapture } from "./runLiveForwardQuoteCapture";
@@ -57,13 +62,51 @@ export async function runForwardQuoteCapture(input: {
    * authenticated Node WebSocket client.
    */
   transport?: KalshiWsProbeTransport;
+  /**
+   * Deterministic-harness injection (M12.1F): overrides the buffered
+   * writer's limits (e.g. a short drain-timeout) so no-drain scenarios can
+   * be exercised quickly. Production callers omit this.
+   */
+  writerLimits?: Partial<ForwardCaptureWriterLimits>;
 }): Promise<ForwardQuoteCaptureRunResult> {
   const startedAt = input.io.now().toISOString();
   const runId = createRunId(input.io.now());
   const htmlOutputPath = input.htmlOutputPath ?? DEFAULT_FORWARD_QUOTE_CAPTURE_HTML_PATH;
 
+  // The global capture lock is acquired atomically BEFORE any run artifact
+  // (directory, writer, status) exists, and released only after terminal
+  // status publication. Two concurrent starts can therefore never both
+  // proceed, regardless of directory-scan preflights.
+  const captureLock = acquireCaptureLock({
+    io: input.io,
+    outputDir: input.config.outputDir,
+    runId,
+  });
+
+  try {
+    return await runLockedForwardQuoteCapture({ ...input, startedAt, runId, htmlOutputPath });
+  } finally {
+    captureLock?.release();
+  }
+}
+
+async function runLockedForwardQuoteCapture(input: {
+  config: ForwardQuoteCaptureConfig;
+  io: ForwardQuoteCaptureIo;
+  htmlOutputPath: string;
+  shouldStop?: () => boolean;
+  credentialEnv?: NodeJS.ProcessEnv;
+  transport?: KalshiWsProbeTransport;
+  writerLimits?: Partial<ForwardCaptureWriterLimits>;
+  startedAt: string;
+  runId: string;
+}): Promise<ForwardQuoteCaptureRunResult> {
+  const { startedAt, runId, htmlOutputPath } = input;
+
   const paths = createRunOutputPaths(input.config.outputDir, runId);
-  const writer = createJsonlForwardCaptureWriter(input.io, paths);
+  const writer = createJsonlForwardCaptureWriter(input.io, paths, {
+    ...(input.writerLimits ? { limits: input.writerLimits } : {}),
+  });
 
   function publishStatus(
     state: CaptureRunLifecycleState,

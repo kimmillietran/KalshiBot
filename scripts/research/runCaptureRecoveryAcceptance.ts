@@ -9,7 +9,11 @@
  *
  * Exits nonzero when any acceptance requirement fails.
  */
-import { runCaptureRecoveryAcceptance } from "@/lib/data/live/forwardQuoteCapture";
+import {
+  RECOVERY_ACCEPTANCE_SCENARIOS,
+  runCaptureRecoveryAcceptance,
+  type RecoveryAcceptanceScenario,
+} from "@/lib/data/live/forwardQuoteCapture";
 import { stableStringify } from "@/lib/trading/config/hashConfig";
 
 export type CaptureRecoveryAcceptanceCommandIo = {
@@ -17,17 +21,29 @@ export type CaptureRecoveryAcceptanceCommandIo = {
   writeStderr: (text: string) => void;
 };
 
+function parseScenario(argv: readonly string[]): RecoveryAcceptanceScenario {
+  const index = argv.indexOf("--scenario");
+  if (index === -1) {
+    return "happy";
+  }
+  const value = argv[index + 1];
+  if (
+    value === undefined
+    || !(RECOVERY_ACCEPTANCE_SCENARIOS as readonly string[]).includes(value)
+  ) {
+    throw new Error(
+      `Unknown --scenario "${value ?? ""}". Supported scenarios: ${RECOVERY_ACCEPTANCE_SCENARIOS.join(", ")}`,
+    );
+  }
+  return value as RecoveryAcceptanceScenario;
+}
+
 export async function runCaptureRecoveryAcceptanceCommand(
   argv: readonly string[],
   io: CaptureRecoveryAcceptanceCommandIo,
 ): Promise<number> {
   try {
-    const scenario = argv.includes("--scenario")
-      ? (argv[argv.indexOf("--scenario") + 1] as
-          | "happy"
-          | "missing-sid"
-          | "no-fresh-snapshot")
-      : "happy";
+    const scenario = parseScenario(argv);
     const report = await runCaptureRecoveryAcceptance({ scenario });
 
     io.writeStdout(`${stableStringify(report)}\n`);

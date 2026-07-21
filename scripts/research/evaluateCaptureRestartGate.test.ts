@@ -72,10 +72,21 @@ function writeHealthySmokeRun(
     JSON.stringify({
       runId,
       verdict: "capture-mvp-success",
+      endedAt: "2026-07-20T12:20:00.000Z",
+      config: {
+        series: "KXBTC15M",
+        captureBtcSpot: true,
+        topOfBookThrottleMs: 1_000,
+        maxMarkets: 5,
+        wsWatchdogEnabled: true,
+        priceRepresentation: "legacy-no-leg",
+        durationMinutes: 20,
+      },
       connection: {
         terminalFailureReason: null,
         captureEndReason: "duration-complete",
         completedNormally: true,
+        liveConnectionSucceeded: true,
       },
       capture: { topOfBookRecordCount: 4_000, btcSpotRecordCount: 240 },
       orderbook: {
@@ -94,6 +105,7 @@ function writeHealthySmokeRun(
       },
       writer: { allStreamsDrained: true, backpressureEventCount: 0, failure: null },
       watchdog: { terminalWebSocketFailure: false },
+      errors: [],
     }),
     "utf8",
   );
@@ -182,6 +194,89 @@ describe("runCaptureRestartGateCommand (filesystem)", () => {
     );
 
     expect(exitCode).toBe(0);
+  });
+
+  it("blocks capture start on an invalid (corrupt) status marker", async () => {
+    root = mkdtempSync(join(tmpdir(), "restart-gate-"));
+    const corruptDir = join(root, "run-corrupt");
+    mkdirSync(corruptDir, { recursive: true });
+    writeFileSync(join(corruptDir, "capture-run-status.json"), "{ not json", "utf8");
+
+    const { io, stderr } = createCommandIo();
+    const exitCode = await runCaptureRestartGateCommand(
+      ["--assert-no-active-capture", "--capture-root", root],
+      io,
+    );
+
+    expect(exitCode).toBe(1);
+    expect(stderr.join("")).toContain("invalid-status");
+  });
+
+  it("blocks capture start on an identity-mismatched status marker", async () => {
+    root = mkdtempSync(join(tmpdir(), "restart-gate-"));
+    const mismatchedDir = join(root, "run-mismatched");
+    mkdirSync(mismatchedDir, { recursive: true });
+    // Status claims a different runId than its own directory.
+    writeStatus(mismatchedDir, "some-other-run", "completed");
+
+    const { io, stderr } = createCommandIo();
+    const exitCode = await runCaptureRestartGateCommand(
+      ["--assert-no-active-capture", "--capture-root", root],
+      io,
+    );
+
+    expect(exitCode).toBe(1);
+    expect(stderr.join("")).toContain("identity-mismatched-status");
+  });
+
+  it("blocks capture start while the global capture lock is present", async () => {
+    root = mkdtempSync(join(tmpdir(), "restart-gate-"));
+    writeHealthySmokeRun(root, "run-completed");
+    writeFileSync(join(root, "capture.lock"), '{"runId":"run-crashed"}\n', "utf8");
+
+    const { io, stderr } = createCommandIo();
+    const exitCode = await runCaptureRestartGateCommand(
+      ["--assert-no-active-capture", "--capture-root", root],
+      io,
+    );
+
+    expect(exitCode).toBe(1);
+    expect(stderr.join("")).toContain("capture lock is present");
+  });
+
+  it("prints the canonical eight-hour capture profile", async () => {
+    const { io, stdout } = createCommandIo();
+    const exitCode = await runCaptureRestartGateCommand(
+      ["--print-canonical-profile"],
+      io,
+    );
+
+    expect(exitCode).toBe(0);
+    const profile = JSON.parse(stdout.join("")) as Record<string, unknown>;
+    expect(profile.series).toBe("KXBTC15M");
+    expect(profile.topOfBookThrottleMs).toBe(1_000);
+    expect(profile.maxMarkets).toBe(5);
+    expect(profile.smokeDurationMinutesMin).toBe(15);
+    expect(profile.smokeDurationMinutesMax).toBe(30);
+  });
+
+  it("rejects every threshold-weakening flag from the command line", async () => {
+    root = mkdtempSync(join(tmpdir(), "restart-gate-"));
+    const runDir = writeHealthySmokeRun(root, "run-target");
+
+    for (const flag of [
+      "--duration-tolerance-share",
+      "--min-valid-book-share",
+      "--min-btc-join-coverage-share",
+    ]) {
+      const { io, stderr } = createCommandIo();
+      const exitCode = await runCaptureRestartGateCommand(
+        ["--capture-run-dir", runDir, flag, "0"],
+        io,
+      );
+      expect(exitCode).toBe(1);
+      expect(stderr.join("")).toContain("cannot be weakened");
+    }
   });
 
   it("audits the exact requested run directory, never the newest one", async () => {
