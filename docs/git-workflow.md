@@ -28,6 +28,8 @@ npm run build
 npm run test
 ```
 
+In addition, GitHub Actions runs the same gates automatically on every pull request targeting `main` and every push to `main` (see `.github/workflows/quality-gates.yml`). The **Quality Gates / Lint, build, and test** check must pass before a PR is merged.
+
 ### 4. Review
 
 Have the Reviewer Agent review the branch. Address critical issues and recommended improvements before merge.
