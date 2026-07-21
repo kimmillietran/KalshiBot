@@ -5,7 +5,10 @@ import type {
   CalibrationFadeForwardValidationReport,
   CalibrationFadeMarketRecord,
 } from "@/lib/data/research/calibrationFadeForwardValidation/calibrationFadeForwardValidationTypes";
-import { DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH } from "@/lib/data/research/calibrationFadeForwardValidation";
+import {
+  CalibrationFadeForwardValidationError,
+  DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH,
+} from "@/lib/data/research/calibrationFadeForwardValidation";
 
 import { analyzeCalibrationFadeCrossRun } from "./analyzeCalibrationFadeCrossRun";
 import { classifyCalibrationFadeCrossRun } from "./classifyCalibrationFadeCrossRun";
@@ -124,9 +127,12 @@ function stubReport(input: {
   candidateEpisodeCount: number;
   markets: CalibrationFadeMarketRecord[];
   captureHealthSource: string;
-  captureVerdict: string;
+  captureVerdict: string | null;
   runDurationSeconds: number;
+  validBookShare?: number;
+  sequenceGapCount?: number;
   hypothesisConfigurationHash?: string;
+  researchReadyVerified?: boolean;
 }): CalibrationFadeForwardValidationReport {
   return {
     analysisVersion: "calibration-fade-forward-validation-v1",
@@ -161,14 +167,22 @@ function stubReport(input: {
       selectedRunId: input.runId,
       captureHealthSource: input.captureHealthSource as never,
       runDurationSeconds: input.runDurationSeconds,
-      validBookShare: 0.99,
+      validBookShare: input.validBookShare ?? 0.99,
       btcJoinCoverageShare: 1,
       bidSizeCoverageShare: null,
       reconnectCount: 0,
-      sequenceGapCount: 0,
+      sequenceGapCount: input.sequenceGapCount ?? 0,
       suspectedSystemSleepSeconds: 0,
       captureVerdict: input.captureVerdict,
       reconciliationVerdict: null,
+      nativeCaptureVerdict: null,
+      captureEndReason: null,
+      terminalFailureReason: null,
+      completedNormally: null,
+      researchReadyVerified:
+        input.researchReadyVerified ?? input.captureVerdict === "capture-research-ready",
+      auditFingerprintsVerified:
+        input.researchReadyVerified ?? input.captureVerdict === "capture-research-ready",
     },
     historicalBenchmark: {
       discoveryObservationCount: 273,
@@ -785,193 +799,604 @@ describe("analyzeCalibrationFadeCrossRun real-run-shaped fixture", () => {
     expect(report.classification).toBe("run-set-incompatible");
     expect(report.recommendedNextAction).toBe("repair-run-set-hypothesis-identity");
   });
+
+  it("rejects the July 20 gappy run set instead of asking for more data", async () => {
+    const io = createMemoryCalibrationFadeCrossRunValidationIo(
+      {
+        [DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH]: freezeSpecContent(),
+        "data/research-results/hypothesis-candidates.json": hypothesisCandidatesFixture(),
+      },
+      [RUN1, RUN2],
+    );
+    const { loadFrozenHypothesisSpec } = await import(
+      "@/lib/data/research/calibrationFadeForwardValidation"
+    );
+    const actualHash = loadFrozenHypothesisSpec({
+      io,
+      hypothesisConfigPath: DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH,
+    }).spec.configurationHash;
+
+    const analyzePerRun = vi.fn(async (input: { config: { captureRunDir: string } }) => {
+      if (input.config.captureRunDir.includes("2026-07-11")) {
+        // July 20 regression shape: gappy audit verdict with zero candidates.
+        return {
+          report: stubReport({
+            runId: "2026-07-11T11-07-38-871Z",
+            runDir: RUN1,
+            recordsScanned: 45_055,
+            qualifyingObservationCount: 0,
+            candidateEpisodeCount: 0,
+            markets: [],
+            captureHealthSource: "run-scoped-capture-health-audit",
+            captureVerdict: "capture-gappy",
+            runDurationSeconds: 28_800,
+            validBookShare: 0.8276,
+            sequenceGapCount: 3_404_777,
+            hypothesisConfigurationHash: actualHash,
+          }),
+          eventLines: [],
+          marketLines: [],
+        };
+      }
+      return {
+        report: stubReport({
+          runId: "2026-07-12T10-18-27-409Z",
+          runDir: RUN2,
+          recordsScanned: 44_870,
+          qualifyingObservationCount: 0,
+          candidateEpisodeCount: 0,
+          markets: [],
+          captureHealthSource: "run-scoped-capture-health-audit",
+          captureVerdict: "capture-research-ready",
+          runDurationSeconds: 28_655,
+          hypothesisConfigurationHash: actualHash,
+        }),
+        eventLines: [],
+        marketLines: [],
+      };
+    });
+
+    const { report } = await analyzeCalibrationFadeCrossRun({
+      generatedAt: "2026-07-20T12:00:00.000Z",
+      outputPath: "out.json",
+      htmlOutputPath: "out.html",
+      config: baseConfig([RUN1, RUN2]),
+      io,
+      analyzePerRun: analyzePerRun as never,
+    });
+
+    expect(report.researchReadyRunCount).toBe(1);
+    expect(report.classification).toBe("observation-quality-inconclusive");
+    expect(report.recommendedNextAction).toBe("repair-or-replace-invalid-forward-runs");
+    expect(report.classification).not.toBe("insufficient-forward-events");
+    expect(report.invalidSelectedRuns).toEqual([
+      {
+        selectedRunId: "2026-07-11T11-07-38-871Z",
+        failedHealthReason:
+          "Capture health verdict is capture-gappy; capture-research-ready is required.",
+        contributedCandidates: false,
+        excludedFromOutcomeEvaluation: true,
+      },
+    ]);
+  });
+
+  it("fails closed on malformed candidate market rows with run and line attribution", async () => {
+    const io = createMemoryCalibrationFadeCrossRunValidationIo(
+      {
+        [DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH]: freezeSpecContent(),
+        "data/research-results/hypothesis-candidates.json": hypothesisCandidatesFixture(),
+      },
+      [RUN1, RUN2],
+    );
+    const { loadFrozenHypothesisSpec } = await import(
+      "@/lib/data/research/calibrationFadeForwardValidation"
+    );
+    const actualHash = loadFrozenHypothesisSpec({
+      io,
+      hypothesisConfigPath: DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH,
+    }).spec.configurationHash;
+
+    const analyzePerRun = vi.fn(async (input: { config: { captureRunDir: string } }) => {
+      const isRun1 = input.config.captureRunDir.includes("2026-07-11");
+      const markets = isRun1 ? [marketRecord({})] : [];
+      return {
+        report: stubReport({
+          runId: isRun1 ? "2026-07-11T11-07-38-871Z" : "2026-07-12T10-18-27-409Z",
+          runDir: input.config.captureRunDir,
+          recordsScanned: 1000,
+          qualifyingObservationCount: markets.length,
+          candidateEpisodeCount: markets.length,
+          markets,
+          captureHealthSource: "run-scoped-capture-health-audit",
+          captureVerdict: "capture-research-ready",
+          runDurationSeconds: 1000,
+          hypothesisConfigurationHash: actualHash,
+        }),
+        eventLines: [],
+        marketLines: isRun1
+          ? [JSON.stringify(marketRecord({})), "{ this is not json"]
+          : [],
+      };
+    });
+
+    const { report } = await analyzeCalibrationFadeCrossRun({
+      generatedAt: "2026-07-20T12:00:00.000Z",
+      outputPath: "out.json",
+      htmlOutputPath: "out.html",
+      config: baseConfig([RUN1, RUN2]),
+      io,
+      analyzePerRun: analyzePerRun as never,
+    });
+
+    expect(report.candidateParsingErrorCount).toBe(1);
+    expect(report.classification).toBe("observation-quality-inconclusive");
+    expect(report.recommendedNextAction).toBe("repair-or-replace-invalid-forward-runs");
+    expect(
+      report.warnings.some(
+        (warning) =>
+          warning.includes("[2026-07-11T11-07-38-871Z]")
+          && warning.includes("malformed candidate market rows")
+          && warning.includes("2")
+          && !warning.includes("this is not json"),
+      ),
+    ).toBe(true);
+    const run1 = report.perRunSummaries.find((run) => run.selectedRunId.includes("2026-07-11"));
+    expect(run1?.candidateParsingErrorCount).toBe(1);
+  });
+
+  it("ignores blank candidate JSONL rows without failing closed", async () => {
+    const io = createMemoryCalibrationFadeCrossRunValidationIo(
+      {
+        [DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH]: freezeSpecContent(),
+        "data/research-results/hypothesis-candidates.json": hypothesisCandidatesFixture(),
+      },
+      [RUN1, RUN2],
+    );
+    const { loadFrozenHypothesisSpec } = await import(
+      "@/lib/data/research/calibrationFadeForwardValidation"
+    );
+    const actualHash = loadFrozenHypothesisSpec({
+      io,
+      hypothesisConfigPath: DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH,
+    }).spec.configurationHash;
+
+    const analyzePerRun = vi.fn(async (input: { config: { captureRunDir: string } }) => {
+      const isRun1 = input.config.captureRunDir.includes("2026-07-11");
+      const markets = isRun1 ? [marketRecord({})] : [];
+      return {
+        report: stubReport({
+          runId: isRun1 ? "2026-07-11T11-07-38-871Z" : "2026-07-12T10-18-27-409Z",
+          runDir: input.config.captureRunDir,
+          recordsScanned: 1000,
+          qualifyingObservationCount: markets.length,
+          candidateEpisodeCount: markets.length,
+          markets,
+          captureHealthSource: "run-scoped-capture-health-audit",
+          captureVerdict: "capture-research-ready",
+          runDurationSeconds: 1000,
+          hypothesisConfigurationHash: actualHash,
+        }),
+        eventLines: [],
+        marketLines: isRun1 ? ["", "   ", JSON.stringify(marketRecord({}))] : [],
+      };
+    });
+
+    const { report } = await analyzeCalibrationFadeCrossRun({
+      generatedAt: "2026-07-20T12:00:00.000Z",
+      outputPath: "out.json",
+      htmlOutputPath: "out.html",
+      config: baseConfig([RUN1, RUN2]),
+      io,
+      analyzePerRun: analyzePerRun as never,
+    });
+
+    expect(report.candidateParsingErrorCount).toBe(0);
+    expect(report.rawCandidateMarketAppearanceCount).toBe(1);
+    expect(report.classification).toBe("insufficient-forward-events");
+  });
+
+  it("preserves invalid selected runs in the ledger instead of silently subsetting", async () => {
+    const io = createMemoryCalibrationFadeCrossRunValidationIo(
+      {
+        [DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH]: freezeSpecContent(),
+        "data/research-results/hypothesis-candidates.json": hypothesisCandidatesFixture(),
+      },
+      [RUN1, RUN2],
+    );
+    const { loadFrozenHypothesisSpec } = await import(
+      "@/lib/data/research/calibrationFadeForwardValidation"
+    );
+    const actualHash = loadFrozenHypothesisSpec({
+      io,
+      hypothesisConfigPath: DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH,
+    }).spec.configurationHash;
+
+    const analyzePerRun = vi.fn(async (input: { config: { captureRunDir: string } }) => {
+      if (input.config.captureRunDir.includes("2026-07-12")) {
+        throw new CalibrationFadeForwardValidationError(
+          "Run-scoped capture-health-audit verdict is capture-gappy; capture-research-ready required.",
+        );
+      }
+      const markets = [marketRecord({})];
+      return {
+        report: stubReport({
+          runId: "2026-07-11T11-07-38-871Z",
+          runDir: RUN1,
+          recordsScanned: 1000,
+          qualifyingObservationCount: 1,
+          candidateEpisodeCount: 1,
+          markets,
+          captureHealthSource: "run-scoped-capture-health-audit",
+          captureVerdict: "capture-research-ready",
+          runDurationSeconds: 1000,
+          hypothesisConfigurationHash: actualHash,
+        }),
+        eventLines: [],
+        marketLines: markets.map((market) => JSON.stringify(market)),
+      };
+    });
+
+    const { report } = await analyzeCalibrationFadeCrossRun({
+      generatedAt: "2026-07-20T12:00:00.000Z",
+      outputPath: "out.json",
+      htmlOutputPath: "out.html",
+      config: baseConfig([RUN1, RUN2]),
+      io,
+      analyzePerRun: analyzePerRun as never,
+    });
+
+    expect(report.selectedRunCount).toBe(2);
+    const failedRun = report.perRunSummaries.find((run) =>
+      run.selectedRunId.includes("2026-07-12"),
+    );
+    expect(failedRun).toBeDefined();
+    expect(failedRun?.researchReady).toBe(false);
+    expect(failedRun?.failedHealthReason).toContain("capture-gappy");
+    expect(failedRun?.contributedCandidates).toBe(false);
+    expect(failedRun?.excludedFromOutcomeEvaluation).toBe(true);
+    expect(report.invalidSelectedRuns.map((run) => run.selectedRunId)).toEqual([
+      "2026-07-12T10-18-27-409Z",
+    ]);
+    expect(report.classification).toBe("observation-quality-inconclusive");
+    expect(report.recommendedNextAction).toBe("repair-or-replace-invalid-forward-runs");
+    expect(
+      report.runFunnel.find((stage) => stage.stageId === "successfully-analyzed-runs")?.count,
+    ).toBe(1);
+    expect(
+      report.runFunnel.find((stage) => stage.stageId === "selected-runs")?.count,
+    ).toBe(2);
+  });
+
+  it("keeps failed selected runs in their original operator position", async () => {
+    const io = createMemoryCalibrationFadeCrossRunValidationIo(
+      {
+        [DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH]: freezeSpecContent(),
+        "data/research-results/hypothesis-candidates.json": hypothesisCandidatesFixture(),
+      },
+      [RUN1, RUN2, RUN3],
+    );
+    const { loadFrozenHypothesisSpec } = await import(
+      "@/lib/data/research/calibrationFadeForwardValidation"
+    );
+    const actualHash = loadFrozenHypothesisSpec({
+      io,
+      hypothesisConfigPath: DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH,
+    }).spec.configurationHash;
+
+    // The FIRST operator-selected run fails health validation.
+    const analyzePerRun = vi.fn(async (input: { config: { captureRunDir: string } }) => {
+      if (input.config.captureRunDir.includes("2026-07-11")) {
+        throw new CalibrationFadeForwardValidationError(
+          "Run-scoped capture-health-audit verdict is capture-gappy; capture-research-ready required.",
+        );
+      }
+      const runId = input.config.captureRunDir.split("/").pop()!;
+      return {
+        report: stubReport({
+          runId,
+          runDir: input.config.captureRunDir,
+          recordsScanned: 1000,
+          qualifyingObservationCount: 0,
+          candidateEpisodeCount: 0,
+          markets: [],
+          captureHealthSource: "run-scoped-capture-health-audit",
+          captureVerdict: "capture-research-ready",
+          runDurationSeconds: 1000,
+          hypothesisConfigurationHash: actualHash,
+        }),
+        eventLines: [],
+        marketLines: [],
+      };
+    });
+
+    const { report } = await analyzeCalibrationFadeCrossRun({
+      generatedAt: "2026-07-20T12:00:00.000Z",
+      outputPath: "out.json",
+      htmlOutputPath: "out.html",
+      config: baseConfig([RUN1, RUN2, RUN3]),
+      io,
+      analyzePerRun: analyzePerRun as never,
+    });
+
+    expect(report.selectedRunCount).toBe(3);
+    expect(report.perRunSummaries.map((run) => run.selectedRunId)).toEqual([
+      "2026-07-11T11-07-38-871Z",
+      "2026-07-12T10-18-27-409Z",
+      "2026-07-13T00-00-00-000Z",
+    ]);
+    expect(report.perRunSummaries[0]?.researchReady).toBe(false);
+    expect(report.perRunSummaries[0]?.failedHealthReason).toContain("capture-gappy");
+  });
+
+  it("fails closed on a syntactically valid candidate row with an invalid shape", async () => {
+    const io = createMemoryCalibrationFadeCrossRunValidationIo(
+      {
+        [DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH]: freezeSpecContent(),
+        "data/research-results/hypothesis-candidates.json": hypothesisCandidatesFixture(),
+      },
+      [RUN1, RUN2],
+    );
+    const { loadFrozenHypothesisSpec } = await import(
+      "@/lib/data/research/calibrationFadeForwardValidation"
+    );
+    const actualHash = loadFrozenHypothesisSpec({
+      io,
+      hypothesisConfigPath: DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH,
+    }).spec.configurationHash;
+
+    const analyzePerRun = vi.fn(async (input: { config: { captureRunDir: string } }) => {
+      const isRun1 = input.config.captureRunDir.includes("2026-07-11");
+      const markets = isRun1 ? [marketRecord({})] : [];
+      return {
+        report: stubReport({
+          runId: isRun1 ? "2026-07-11T11-07-38-871Z" : "2026-07-12T10-18-27-409Z",
+          runDir: input.config.captureRunDir,
+          recordsScanned: 1000,
+          qualifyingObservationCount: markets.length,
+          candidateEpisodeCount: markets.length,
+          markets,
+          captureHealthSource: "run-scoped-capture-health-audit",
+          captureVerdict: "capture-research-ready",
+          runDurationSeconds: 1000,
+          hypothesisConfigurationHash: actualHash,
+        }),
+        eventLines: [],
+        marketLines: isRun1
+          ? [
+              JSON.stringify(marketRecord({})),
+              "{}",
+              JSON.stringify({ marketTicker: "X", entryTimestamp: "not-a-date" }),
+            ]
+          : [],
+      };
+    });
+
+    const { report } = await analyzeCalibrationFadeCrossRun({
+      generatedAt: "2026-07-20T12:00:00.000Z",
+      outputPath: "out.json",
+      htmlOutputPath: "out.html",
+      config: baseConfig([RUN1, RUN2]),
+      io,
+      analyzePerRun: analyzePerRun as never,
+    });
+
+    expect(report.candidateParsingErrorCount).toBe(2);
+    expect(report.classification).toBe("observation-quality-inconclusive");
+    expect(report.recommendedNextAction).toBe("repair-or-replace-invalid-forward-runs");
+    const run1 = report.perRunSummaries.find((run) => run.selectedRunId.includes("2026-07-11"));
+    expect(run1?.candidateParsingErrorCount).toBe(2);
+    // Line attribution without payload dumping.
+    expect(
+      report.warnings.some(
+        (warning) =>
+          warning.includes("[2026-07-11T11-07-38-871Z]")
+          && warning.includes("lines 2, 3")
+          && !warning.includes("not-a-date"),
+      ),
+    ).toBe(true);
+    // The valid row still contributes; the run remains in the ledger.
+    expect(report.rawCandidateMarketAppearanceCount).toBe(1);
+    expect(report.selectedRunCount).toBe(2);
+  });
+
+  it("blocks formal use when a ready verdict lacks verified provenance", async () => {
+    const io = createMemoryCalibrationFadeCrossRunValidationIo(
+      {
+        [DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH]: freezeSpecContent(),
+        "data/research-results/hypothesis-candidates.json": hypothesisCandidatesFixture(),
+      },
+      [RUN1, RUN2],
+    );
+    const { loadFrozenHypothesisSpec } = await import(
+      "@/lib/data/research/calibrationFadeForwardValidation"
+    );
+    const actualHash = loadFrozenHypothesisSpec({
+      io,
+      hypothesisConfigPath: DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH,
+    }).spec.configurationHash;
+
+    const analyzePerRun = vi.fn(async (input: { config: { captureRunDir: string } }) => {
+      const isRun1 = input.config.captureRunDir.includes("2026-07-11");
+      return {
+        report: stubReport({
+          runId: isRun1 ? "2026-07-11T11-07-38-871Z" : "2026-07-12T10-18-27-409Z",
+          runDir: input.config.captureRunDir,
+          recordsScanned: 1000,
+          qualifyingObservationCount: 0,
+          candidateEpisodeCount: 0,
+          markets: [],
+          captureHealthSource: "run-scoped-capture-health-audit",
+          captureVerdict: "capture-research-ready",
+          // Ready verdict whose audit freshness could not be verified.
+          researchReadyVerified: !isRun1,
+          runDurationSeconds: 1000,
+          hypothesisConfigurationHash: actualHash,
+        }),
+        eventLines: [],
+        marketLines: [],
+      };
+    });
+
+    const { report } = await analyzeCalibrationFadeCrossRun({
+      generatedAt: "2026-07-20T12:00:00.000Z",
+      outputPath: "out.json",
+      htmlOutputPath: "out.html",
+      config: baseConfig([RUN1, RUN2]),
+      io,
+      analyzePerRun: analyzePerRun as never,
+    });
+
+    expect(report.researchReadyRunCount).toBe(1);
+    expect(report.classification).toBe("observation-quality-inconclusive");
+    expect(report.recommendedNextAction).toBe("repair-or-replace-invalid-forward-runs");
+    const run1 = report.perRunSummaries.find((run) => run.selectedRunId.includes("2026-07-11"));
+    expect(run1?.researchReady).toBe(false);
+    expect(run1?.failedHealthReason).toContain("provenance or freshness");
+  });
 });
+
+function crossRunSpec(minimumMarkets = 5) {
+  return {
+    ...(JSON.parse(freezeSpecContent()) as object),
+    configurationHash: "x",
+    calibrationDirection: "over",
+    minimumEvidenceRequirements: {
+      minimumIndependentCandidateMarkets: minimumMarkets,
+      minimumSettlementCoverageShare: 0.8,
+      minimumValidBookShare: 0.9,
+      minimumBtcJoinCoverageShare: 0.9,
+      materialRejectionCalibrationGap: 0.05,
+      materialSupportCalibrationGap: 0.03,
+      materialExecutableNetReturnCents: 1,
+    },
+  } as never;
+}
+
+function runSummary(
+  overrides: Partial<import("./calibrationFadeCrossRunValidationTypes").CrossRunRunSummary> = {},
+): import("./calibrationFadeCrossRunValidationTypes").CrossRunRunSummary {
+  return {
+    selectedRunId: "a",
+    selectedRunDirectory: RUN1,
+    captureHealthSource: "run-scoped-capture-health-audit",
+    captureVerdict: "capture-research-ready",
+    researchReadyVerified: true,
+    researchReady: true,
+    failedHealthReason: null,
+    contributedCandidates: false,
+    excludedFromOutcomeEvaluation: false,
+    candidateParsingErrorCount: 0,
+    runDurationSeconds: 100,
+    recordsScanned: 10,
+    btcRecordsScanned: 1,
+    qualifyingObservationCount: 0,
+    candidateEpisodeCount: 0,
+    rawCandidateMarketAppearanceCount: 0,
+    uniqueCandidateMarketsIntroduced: 0,
+    duplicateCandidateAppearanceCount: 0,
+    executableEntryAvailableCount: 0,
+    settlementJoinedCount: 0,
+    evaluatedExecutableCandidateCount: 0,
+    grossReturnCents: null,
+    feeAdjustedReturnCents: null,
+    interpretationClassification: "insufficient-forward-events",
+    recommendedNextAction: "collect-additional-clean-forward-captures",
+    warnings: [],
+    hypothesisConfigurationHash: "x",
+    ...overrides,
+  };
+}
+
+function crossRunCoverage(count = 1) {
+  return {
+    candidateMarketCount: count,
+    settledCandidateMarketCount: count,
+    joinedCandidateMarketCount: count,
+    unresolvedCandidateMarketCount: 0,
+    settlementCoverageShare: 1,
+    excludedByReason: {},
+  };
+}
+
+function crossRunCalibration(
+  overrides: Partial<Parameters<typeof classifyCalibrationFadeCrossRun>[0]["calibration"]> = {},
+) {
+  return {
+    qualifyingObservationCount: 0,
+    candidateEpisodeCount: 0,
+    candidateMarketCount: 1,
+    meanImpliedYesProbability: null,
+    meanTargetSideProbability: null,
+    observedYesSettlementRate: null,
+    observedTargetSideSettlementRate: null,
+    calibrationGap: null,
+    signedCalibrationGap: null,
+    brierScore: null,
+    logLoss: null,
+    marketLevelSignedCalibrationGap: null,
+    descriptiveObservationSignedGap: null,
+    ...overrides,
+  };
+}
+
+function crossRunExecutable(
+  overrides: Partial<Parameters<typeof classifyCalibrationFadeCrossRun>[0]["executable"]> = {},
+) {
+  return {
+    executableCandidateCount: 0,
+    evaluatedExecutableCandidateCount: 0,
+    executableEntryAvailableCount: 0,
+    unavailableExecutablePriceCount: 0,
+    grossReturnCents: null,
+    feeAdjustedReturnCents: null,
+    winRate: null,
+    averageEntryPriceCents: null,
+    medianEntryPriceCents: null,
+    maximumDrawdownCents: null,
+    cumulativeReturnCents: null,
+    ...overrides,
+  };
+}
 
 describe("classifyCalibrationFadeCrossRun", () => {
   it("maps insufficient markets to collect-additional-clean-forward-captures", () => {
     const result = classifyCalibrationFadeCrossRun({
-      spec: {
-        ...(JSON.parse(freezeSpecContent()) as object),
-        configurationHash: "x",
-        minimumEvidenceRequirements: {
-          minimumIndependentCandidateMarkets: 5,
-          minimumSettlementCoverageShare: 0.8,
-          minimumValidBookShare: 0.9,
-          minimumBtcJoinCoverageShare: 0.9,
-          materialRejectionCalibrationGap: 0.05,
-          materialSupportCalibrationGap: 0.03,
-          materialExecutableNetReturnCents: 1,
-        },
-      } as never,
+      spec: crossRunSpec(5),
       provenanceAvailable: true,
       runSetIncompatible: false,
       perRunSummaries: [
-        {
-          selectedRunId: "a",
-          selectedRunDirectory: RUN1,
-          captureHealthSource: "native-capture-health",
-          captureVerdict: "capture-research-ready",
-          runDurationSeconds: 100,
-          recordsScanned: 10,
-          btcRecordsScanned: 1,
-          qualifyingObservationCount: 0,
-          candidateEpisodeCount: 0,
-          rawCandidateMarketAppearanceCount: 0,
-          uniqueCandidateMarketsIntroduced: 0,
-          duplicateCandidateAppearanceCount: 0,
-          executableEntryAvailableCount: 0,
-          settlementJoinedCount: 0,
-          evaluatedExecutableCandidateCount: 0,
-          grossReturnCents: null,
-          feeAdjustedReturnCents: null,
-          interpretationClassification: "insufficient-forward-events",
-          recommendedNextAction: "collect-additional-clean-forward-captures",
-          warnings: [],
-          hypothesisConfigurationHash: "x",
-        },
-        {
-          selectedRunId: "b",
-          selectedRunDirectory: RUN2,
-          captureHealthSource: "run-scoped-capture-health-audit",
-          captureVerdict: "capture-research-ready",
-          runDurationSeconds: 100,
-          recordsScanned: 10,
-          btcRecordsScanned: 1,
-          qualifyingObservationCount: 0,
-          candidateEpisodeCount: 0,
-          rawCandidateMarketAppearanceCount: 0,
-          uniqueCandidateMarketsIntroduced: 0,
-          duplicateCandidateAppearanceCount: 0,
-          executableEntryAvailableCount: 0,
-          settlementJoinedCount: 0,
-          evaluatedExecutableCandidateCount: 0,
-          grossReturnCents: null,
-          feeAdjustedReturnCents: null,
-          interpretationClassification: "insufficient-forward-events",
-          recommendedNextAction: "collect-additional-clean-forward-captures",
-          warnings: [],
-          hypothesisConfigurationHash: "x",
-        },
+        runSummary({ selectedRunId: "a", captureHealthSource: "native-capture-health" }),
+        runSummary({ selectedRunId: "b", selectedRunDirectory: RUN2 }),
       ],
       uniqueCandidateMarketCount: 1,
-      settlementCoverage: {
-        candidateMarketCount: 1,
-        settledCandidateMarketCount: 1,
-        joinedCandidateMarketCount: 1,
-        unresolvedCandidateMarketCount: 0,
-        settlementCoverageShare: 1,
-        excludedByReason: {},
-      },
-      calibration: {
-        qualifyingObservationCount: 0,
-        candidateEpisodeCount: 0,
-        candidateMarketCount: 1,
-        meanImpliedYesProbability: null,
-        meanTargetSideProbability: null,
-        observedYesSettlementRate: null,
-        observedTargetSideSettlementRate: null,
-        calibrationGap: null,
-        signedCalibrationGap: null,
-        brierScore: null,
-        logLoss: null,
-        marketLevelSignedCalibrationGap: null,
-        descriptiveObservationSignedGap: null,
-      },
-      executable: {
-        executableCandidateCount: 0,
-        evaluatedExecutableCandidateCount: 0,
-        executableEntryAvailableCount: 0,
-        unavailableExecutablePriceCount: 0,
-        grossReturnCents: null,
-        feeAdjustedReturnCents: null,
-        winRate: null,
-        averageEntryPriceCents: null,
-        medianEntryPriceCents: null,
-        maximumDrawdownCents: null,
-        cumulativeReturnCents: null,
-      },
+      settlementCoverage: crossRunCoverage(1),
+      calibration: crossRunCalibration(),
+      executable: crossRunExecutable(),
     });
     expect(result.classification).toBe("insufficient-forward-events");
   });
 
   it("precedes outcome rejection with observation-quality when a selected run is degraded", () => {
     const result = classifyCalibrationFadeCrossRun({
-      spec: {
-        ...(JSON.parse(freezeSpecContent()) as object),
-        configurationHash: "x",
-        calibrationDirection: "over",
-        minimumEvidenceRequirements: {
-          minimumIndependentCandidateMarkets: 1,
-          minimumSettlementCoverageShare: 0.8,
-          minimumValidBookShare: 0.9,
-          minimumBtcJoinCoverageShare: 0.9,
-          materialRejectionCalibrationGap: 0.05,
-          materialSupportCalibrationGap: 0.03,
-          materialExecutableNetReturnCents: 1,
-        },
-      } as never,
+      spec: crossRunSpec(1),
       provenanceAvailable: true,
       runSetIncompatible: false,
       perRunSummaries: [
-        {
+        runSummary({
           selectedRunId: "a",
-          selectedRunDirectory: RUN1,
           captureHealthSource: "native-capture-health",
           captureVerdict: "capture-degraded",
-          runDurationSeconds: 100,
-          recordsScanned: 10,
-          btcRecordsScanned: 1,
-          qualifyingObservationCount: 0,
-          candidateEpisodeCount: 0,
-          rawCandidateMarketAppearanceCount: 0,
-          uniqueCandidateMarketsIntroduced: 0,
-          duplicateCandidateAppearanceCount: 0,
-          executableEntryAvailableCount: 0,
-          settlementJoinedCount: 0,
-          evaluatedExecutableCandidateCount: 0,
-          grossReturnCents: null,
-          feeAdjustedReturnCents: null,
+          researchReady: false,
+          failedHealthReason: "Capture health verdict is capture-degraded; capture-research-ready is required.",
+          excludedFromOutcomeEvaluation: true,
           interpretationClassification: "observation-quality-inconclusive",
           recommendedNextAction: "repair-or-replace-invalid-forward-runs",
-          warnings: [],
-          hypothesisConfigurationHash: "x",
-        },
-        {
-          selectedRunId: "b",
-          selectedRunDirectory: RUN2,
-          captureHealthSource: "run-scoped-capture-health-audit",
-          captureVerdict: "capture-research-ready",
-          runDurationSeconds: 100,
-          recordsScanned: 10,
-          btcRecordsScanned: 1,
-          qualifyingObservationCount: 0,
-          candidateEpisodeCount: 0,
-          rawCandidateMarketAppearanceCount: 0,
-          uniqueCandidateMarketsIntroduced: 0,
-          duplicateCandidateAppearanceCount: 0,
-          executableEntryAvailableCount: 0,
-          settlementJoinedCount: 0,
-          evaluatedExecutableCandidateCount: 0,
-          grossReturnCents: null,
-          feeAdjustedReturnCents: null,
-          interpretationClassification: "insufficient-forward-events",
-          recommendedNextAction: "collect-additional-clean-forward-captures",
-          warnings: [],
-          hypothesisConfigurationHash: "x",
-        },
+        }),
+        runSummary({ selectedRunId: "b", selectedRunDirectory: RUN2 }),
       ],
       uniqueCandidateMarketCount: 10,
-      settlementCoverage: {
-        candidateMarketCount: 10,
-        settledCandidateMarketCount: 10,
-        joinedCandidateMarketCount: 10,
-        unresolvedCandidateMarketCount: 0,
-        settlementCoverageShare: 1,
-        excludedByReason: {},
-      },
-      calibration: {
-        qualifyingObservationCount: 0,
-        candidateEpisodeCount: 0,
+      settlementCoverage: crossRunCoverage(10),
+      calibration: crossRunCalibration({
         candidateMarketCount: 10,
         meanImpliedYesProbability: 0.9,
         meanTargetSideProbability: 0.1,
@@ -979,16 +1404,12 @@ describe("classifyCalibrationFadeCrossRun", () => {
         observedTargetSideSettlementRate: 0.8,
         calibrationGap: 0.7,
         signedCalibrationGap: 0.7,
-        brierScore: null,
-        logLoss: null,
         marketLevelSignedCalibrationGap: -0.2,
-        descriptiveObservationSignedGap: null,
-      },
-      executable: {
+      }),
+      executable: crossRunExecutable({
         executableCandidateCount: 10,
         evaluatedExecutableCandidateCount: 10,
         executableEntryAvailableCount: 10,
-        unavailableExecutablePriceCount: 0,
         grossReturnCents: -100,
         feeAdjustedReturnCents: -110,
         winRate: 0,
@@ -996,106 +1417,65 @@ describe("classifyCalibrationFadeCrossRun", () => {
         medianEntryPriceCents: 40,
         maximumDrawdownCents: 110,
         cumulativeReturnCents: -110,
-      },
+      }),
     });
     expect(result.classification).toBe("observation-quality-inconclusive");
     expect(result.recommendedNextAction).toBe("repair-or-replace-invalid-forward-runs");
   });
 
-  it("accepts native capture-health without a derived research-ready verdict", () => {
+  it("does not treat an unverified capture-research-ready verdict as research-ready", () => {
     const result = classifyCalibrationFadeCrossRun({
-      spec: {
-        ...(JSON.parse(freezeSpecContent()) as object),
-        configurationHash: "x",
-        minimumEvidenceRequirements: {
-          minimumIndependentCandidateMarkets: 5,
-          minimumSettlementCoverageShare: 0.8,
-          minimumValidBookShare: 0.9,
-          minimumBtcJoinCoverageShare: 0.9,
-          materialRejectionCalibrationGap: 0.05,
-          materialSupportCalibrationGap: 0.03,
-          materialExecutableNetReturnCents: 1,
-        },
-      } as never,
+      spec: crossRunSpec(1),
       provenanceAvailable: true,
       runSetIncompatible: false,
       perRunSummaries: [
-        {
+        runSummary({
+          selectedRunId: "a",
+          captureVerdict: "capture-research-ready",
+          researchReadyVerified: false,
+          researchReady: false,
+        }),
+      ],
+      uniqueCandidateMarketCount: 10,
+      settlementCoverage: crossRunCoverage(10),
+      calibration: crossRunCalibration({ candidateMarketCount: 10 }),
+      executable: crossRunExecutable(),
+    });
+    expect(result.classification).toBe("observation-quality-inconclusive");
+    expect(result.recommendedNextAction).toBe("repair-or-replace-invalid-forward-runs");
+    expect(result.rationale).toContain("provenance or freshness");
+  });
+
+  it("does not treat a null native verdict as research-ready", () => {
+    const result = classifyCalibrationFadeCrossRun({
+      spec: crossRunSpec(5),
+      provenanceAvailable: true,
+      runSetIncompatible: false,
+      perRunSummaries: [
+        runSummary({
           selectedRunId: "2026-07-11T11-07-38-871Z",
-          selectedRunDirectory: RUN1,
           captureHealthSource: "native-capture-health",
           captureVerdict: null,
+          researchReady: false,
+          failedHealthReason:
+            "No verified capture-research-ready health source; native capture health alone is unverified.",
           runDurationSeconds: 28_800,
           recordsScanned: 52_418,
-          btcRecordsScanned: 1,
-          qualifyingObservationCount: 80,
-          candidateEpisodeCount: 2,
-          rawCandidateMarketAppearanceCount: 1,
-          uniqueCandidateMarketsIntroduced: 1,
-          duplicateCandidateAppearanceCount: 0,
-          executableEntryAvailableCount: 1,
-          settlementJoinedCount: 1,
-          evaluatedExecutableCandidateCount: 1,
-          grossReturnCents: -43,
-          feeAdjustedReturnCents: -44,
-          interpretationClassification: "insufficient-forward-events",
-          recommendedNextAction: "collect-additional-clean-forward-captures",
-          warnings: [],
-          hypothesisConfigurationHash: "x",
-        },
-        {
+        }),
+        runSummary({
           selectedRunId: "2026-07-12T10-18-27-409Z",
           selectedRunDirectory: RUN2,
-          captureHealthSource: "run-scoped-capture-health-audit",
-          captureVerdict: "capture-research-ready",
           runDurationSeconds: 28_655,
           recordsScanned: 44_870,
-          btcRecordsScanned: 5_726,
-          qualifyingObservationCount: 0,
-          candidateEpisodeCount: 0,
-          rawCandidateMarketAppearanceCount: 0,
-          uniqueCandidateMarketsIntroduced: 0,
-          duplicateCandidateAppearanceCount: 0,
-          executableEntryAvailableCount: 0,
-          settlementJoinedCount: 0,
-          evaluatedExecutableCandidateCount: 0,
-          grossReturnCents: null,
-          feeAdjustedReturnCents: null,
-          interpretationClassification: "insufficient-forward-events",
-          recommendedNextAction: "collect-additional-clean-forward-captures",
-          warnings: [],
-          hypothesisConfigurationHash: "x",
-        },
+        }),
       ],
       uniqueCandidateMarketCount: 1,
-      settlementCoverage: {
-        candidateMarketCount: 1,
-        settledCandidateMarketCount: 1,
-        joinedCandidateMarketCount: 1,
-        unresolvedCandidateMarketCount: 0,
-        settlementCoverageShare: 1,
-        excludedByReason: {},
-      },
-      calibration: {
-        qualifyingObservationCount: 80,
-        candidateEpisodeCount: 2,
-        candidateMarketCount: 1,
-        meanImpliedYesProbability: null,
-        meanTargetSideProbability: null,
-        observedYesSettlementRate: null,
-        observedTargetSideSettlementRate: null,
-        calibrationGap: null,
-        signedCalibrationGap: null,
-        brierScore: null,
-        logLoss: null,
-        marketLevelSignedCalibrationGap: null,
-        descriptiveObservationSignedGap: null,
-      },
-      executable: {
+      settlementCoverage: crossRunCoverage(1),
+      calibration: crossRunCalibration(),
+      executable: crossRunExecutable({
         executableCandidateCount: 1,
         evaluatedExecutableCandidateCount: 1,
         executableEntryAvailableCount: 1,
-        unavailableExecutablePriceCount: 0,
         grossReturnCents: -43,
         feeAdjustedReturnCents: -44,
         winRate: 0,
@@ -1103,10 +1483,125 @@ describe("classifyCalibrationFadeCrossRun", () => {
         medianEntryPriceCents: 43,
         maximumDrawdownCents: 44,
         cumulativeReturnCents: -44,
-      },
+      }),
     });
-    expect(result.classification).toBe("insufficient-forward-events");
-    expect(result.recommendedNextAction).toBe("collect-additional-clean-forward-captures");
+    expect(result.classification).toBe("observation-quality-inconclusive");
+    expect(result.recommendedNextAction).toBe("repair-or-replace-invalid-forward-runs");
+  });
+
+  it("classifies the July 20 zero-candidate gappy run set as observation-quality-inconclusive", () => {
+    const result = classifyCalibrationFadeCrossRun({
+      spec: crossRunSpec(5),
+      provenanceAvailable: true,
+      runSetIncompatible: false,
+      perRunSummaries: [
+        runSummary({
+          selectedRunId: "2026-07-20T00-00-00-000Z",
+          captureHealthSource: "run-scoped-capture-health-audit",
+          captureVerdict: "capture-gappy",
+          researchReady: false,
+          failedHealthReason:
+            "Capture health verdict is capture-gappy; capture-research-ready is required.",
+          excludedFromOutcomeEvaluation: true,
+          runDurationSeconds: 28_800,
+          recordsScanned: 45_055,
+          btcRecordsScanned: 5_755,
+        }),
+      ],
+      uniqueCandidateMarketCount: 0,
+      settlementCoverage: crossRunCoverage(0),
+      calibration: crossRunCalibration({ candidateMarketCount: 0 }),
+      executable: crossRunExecutable(),
+    });
+    expect(result.classification).toBe("observation-quality-inconclusive");
+    expect(result.recommendedNextAction).toBe("repair-or-replace-invalid-forward-runs");
+    expect(result.rationale).toContain("capture-gappy");
+  });
+
+  it("fails closed on malformed candidate rows before support/reject classification", () => {
+    const result = classifyCalibrationFadeCrossRun({
+      spec: crossRunSpec(1),
+      provenanceAvailable: true,
+      runSetIncompatible: false,
+      candidateParsingErrorCount: 2,
+      perRunSummaries: [runSummary({ candidateParsingErrorCount: 2 })],
+      uniqueCandidateMarketCount: 10,
+      settlementCoverage: crossRunCoverage(10),
+      calibration: crossRunCalibration({
+        candidateMarketCount: 10,
+        marketLevelSignedCalibrationGap: 0.05,
+      }),
+      executable: crossRunExecutable({
+        evaluatedExecutableCandidateCount: 10,
+        feeAdjustedReturnCents: 20,
+      }),
+    });
+    expect(result.classification).toBe("observation-quality-inconclusive");
+    expect(result.recommendedNextAction).toBe("repair-or-replace-invalid-forward-runs");
+    expect(result.rationale).toContain("malformed candidate market rows");
+  });
+
+  it("reaches calibration-only support when executable evidence is unavailable", () => {
+    const result = classifyCalibrationFadeCrossRun({
+      spec: crossRunSpec(1),
+      provenanceAvailable: true,
+      runSetIncompatible: false,
+      perRunSummaries: [runSummary({})],
+      uniqueCandidateMarketCount: 5,
+      settlementCoverage: crossRunCoverage(5),
+      calibration: crossRunCalibration({
+        candidateMarketCount: 5,
+        marketLevelSignedCalibrationGap: 0.05,
+      }),
+      executable: crossRunExecutable({
+        evaluatedExecutableCandidateCount: 0,
+        feeAdjustedReturnCents: null,
+      }),
+    });
+    expect(result.classification).toBe("cross-run-supports-calibration-effect");
+    expect(result.recommendedNextAction).toBe(
+      "build-executable-calibration-fade-candidate-dataset",
+    );
+  });
+
+  it("contradicts executability only on evaluated negative executable evidence", () => {
+    const result = classifyCalibrationFadeCrossRun({
+      spec: crossRunSpec(1),
+      provenanceAvailable: true,
+      runSetIncompatible: false,
+      perRunSummaries: [runSummary({})],
+      uniqueCandidateMarketCount: 5,
+      settlementCoverage: crossRunCoverage(5),
+      calibration: crossRunCalibration({
+        candidateMarketCount: 5,
+        marketLevelSignedCalibrationGap: 0.05,
+      }),
+      executable: crossRunExecutable({
+        evaluatedExecutableCandidateCount: 5,
+        feeAdjustedReturnCents: -44,
+      }),
+    });
+    expect(result.classification).toBe("cross-run-contradicts-executability");
+  });
+
+  it("supports executable fade on evaluated positive executable evidence", () => {
+    const result = classifyCalibrationFadeCrossRun({
+      spec: crossRunSpec(1),
+      provenanceAvailable: true,
+      runSetIncompatible: false,
+      perRunSummaries: [runSummary({})],
+      uniqueCandidateMarketCount: 5,
+      settlementCoverage: crossRunCoverage(5),
+      calibration: crossRunCalibration({
+        candidateMarketCount: 5,
+        marketLevelSignedCalibrationGap: 0.05,
+      }),
+      executable: crossRunExecutable({
+        evaluatedExecutableCandidateCount: 5,
+        feeAdjustedReturnCents: 10,
+      }),
+    });
+    expect(result.classification).toBe("cross-run-supports-executable-fade");
   });
 });
 
@@ -1145,9 +1640,15 @@ describe("publishResearchArtifactsAtomically", () => {
 });
 
 describe("no cherry-picking guards", () => {
-  it("does not expose parameter-scan helpers", async () => {
+  it("does not expose parameter-scan or best-subset helpers", async () => {
     const mod = await import("./index");
     expect("scanVolatilityThresholds" in mod).toBe(false);
     expect("selectBestRunSubset" in mod).toBe(false);
+    expect("scanAlternateVolatilityBands" in mod).toBe(false);
+    expect("optimizeHypothesisThresholds" in mod).toBe(false);
+
+    const forwardMod = await import("@/lib/data/research/calibrationFadeForwardValidation");
+    expect("scanVolatilityThresholds" in forwardMod).toBe(false);
+    expect("selectBestRunSubset" in forwardMod).toBe(false);
   });
 });

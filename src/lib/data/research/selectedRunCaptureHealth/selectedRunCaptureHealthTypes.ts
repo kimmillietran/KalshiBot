@@ -13,8 +13,29 @@ export type ResolvedSelectedRunCaptureHealth = {
   selectedRunId: string;
   captureRunDir: string;
   healthSource: SelectedRunCaptureHealthSource;
+  /** Derived research-audit verdict (e.g. capture-research-ready, capture-gappy) when a matching audit exists. */
   captureVerdict: string | null;
   recommendedNextAction: string | null;
+  /** Top-level verdict written by the capture process itself (e.g. capture-mvp-success). */
+  nativeCaptureVerdict: string | null;
+  nativeRecommendedNextAction: string | null;
+  /** connection.captureEndReason from native capture-health.json. */
+  captureEndReason: string | null;
+  /** connection.terminalFailureReason from native capture-health.json. */
+  terminalFailureReason: string | null;
+  startedAt: string | null;
+  endedAt: string | null;
+  /**
+   * Whether the matching audit's source-artifact fingerprints were positively
+   * revalidated against the current files. Null when no matching audit exists.
+   */
+  auditFingerprintsVerified: boolean | null;
+  /**
+   * True only when a strictly matching, schema-valid capture-health audit
+   * carries a capture-research-ready verdict AND its freshness fingerprints
+   * were positively verified. Unverifiable freshness fails closed to false.
+   */
+  researchReadyVerified: boolean;
   runDurationSeconds: number | null;
   topOfBookCount: number | null;
   btcSpotCount: number | null;

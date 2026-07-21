@@ -40,6 +40,7 @@ export const CALIBRATION_FADE_RECOMMENDED_ACTIONS = [
   "collect-additional-clean-forward-captures",
   "backfill-and-rejoin-settlements",
   "fix-forward-observation-integrity",
+  "repair-or-replace-invalid-forward-runs",
   "deprioritize-calibration-fade-family",
   "continue-frozen-forward-validation",
   "build-executable-calibration-fade-candidate-dataset",
@@ -159,6 +160,15 @@ export type CalibrationFadeSelectedRunQuality = {
   suspectedSystemSleepSeconds: number | null;
   captureVerdict: string | null;
   reconciliationVerdict: string | null;
+  /** Top-level verdict written by the capture process itself (not a research-ready signal). */
+  nativeCaptureVerdict: string | null;
+  captureEndReason: string | null;
+  terminalFailureReason: string | null;
+  completedNormally: boolean | null;
+  /** True only when a strictly matching capture-health audit carries capture-research-ready. */
+  researchReadyVerified: boolean;
+  /** Fingerprint freshness verification status of the matching audit; null when no audit matched. */
+  auditFingerprintsVerified: boolean | null;
 };
 
 export type CalibrationFadeFunnelStage = {

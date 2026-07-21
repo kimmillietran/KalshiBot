@@ -5,17 +5,23 @@ import type {
   FrozenHypothesisSpec,
 } from "@/lib/data/research/calibrationFadeForwardValidation/calibrationFadeForwardValidationTypes";
 
+import { classifyExecutableEvidence } from "@/lib/data/research/calibrationFadeForwardValidation";
+
 import type {
   CalibrationFadeCrossRunClassification,
   CalibrationFadeCrossRunRecommendedNextAction,
   CrossRunRunSummary,
 } from "./calibrationFadeCrossRunValidationTypes";
-import { isSelectedRunResearchReady } from "./isSelectedRunResearchReady";
+import {
+  describeSelectedRunHealthFailure,
+  isSelectedRunResearchReady,
+} from "./isSelectedRunResearchReady";
 
 export function classifyCalibrationFadeCrossRun(input: {
   spec: FrozenHypothesisSpec;
   provenanceAvailable: boolean;
   runSetIncompatible: boolean;
+  candidateParsingErrorCount?: number;
   perRunSummaries: readonly CrossRunRunSummary[];
   uniqueCandidateMarketCount: number;
   settlementCoverage: CalibrationFadeSettlementCoverage;
@@ -45,6 +51,17 @@ export function classifyCalibrationFadeCrossRun(input: {
     );
   }
 
+  // Malformed candidate rows fail closed before any support/reject classification.
+  if ((input.candidateParsingErrorCount ?? 0) > 0) {
+    return result(
+      "observation-quality-inconclusive",
+      "repair-or-replace-invalid-forward-runs",
+      `${input.candidateParsingErrorCount} malformed candidate market rows were detected; support/reject classification is blocked until inputs are repaired.`,
+    );
+  }
+
+  // Observation quality precedes evidence quantity: an unverified, gappy, or
+  // otherwise degraded run must not be classified as merely lacking events.
   const invalidRun = input.perRunSummaries.find((run) => {
     const qualityWeak =
       (run.runDurationSeconds !== null && run.runDurationSeconds <= 0)
@@ -52,16 +69,15 @@ export function classifyCalibrationFadeCrossRun(input: {
     return !isSelectedRunResearchReady(run) || qualityWeak;
   });
   if (invalidRun) {
+    const healthFailure = describeSelectedRunHealthFailure(invalidRun);
     return result(
       "observation-quality-inconclusive",
       "repair-or-replace-invalid-forward-runs",
-      `Selected run ${invalidRun.selectedRunId} failed required research-ready quality or identity checks.`,
+      `Selected run ${invalidRun.selectedRunId} failed required research-ready quality or identity checks${
+        healthFailure ? `: ${healthFailure}` : "."
+      }`,
     );
   }
-
-  // Native health is accepted without a derived capture-research-ready verdict.
-  // Derived audits still require an explicit research-ready verdict.
-  // Below we still enforce candidate-count precedence before outcome-based classes.
 
   if (input.uniqueCandidateMarketCount < minimumMarkets) {
     return result(
@@ -102,13 +118,14 @@ export function classifyCalibrationFadeCrossRun(input: {
     && ((input.spec.calibrationDirection === "over" && signedGap >= supportGap)
       || (input.spec.calibrationDirection === "under" && signedGap <= -supportGap));
 
-  const executableSupported =
-    input.executable.feeAdjustedReturnCents !== null
-    && input.executable.feeAdjustedReturnCents
-      >= input.spec.minimumEvidenceRequirements.materialExecutableNetReturnCents
-    && input.executable.evaluatedExecutableCandidateCount > 0;
+  const executableEvidence = classifyExecutableEvidence({
+    evaluatedExecutableCandidateCount: input.executable.evaluatedExecutableCandidateCount,
+    feeAdjustedReturnCents: input.executable.feeAdjustedReturnCents,
+    materialExecutableNetReturnCents:
+      input.spec.minimumEvidenceRequirements.materialExecutableNetReturnCents,
+  });
 
-  if (calibrationSupported && executableSupported) {
+  if (calibrationSupported && executableEvidence === "supportive") {
     return result(
       "cross-run-supports-executable-fade",
       "build-paper-execution-harness",
@@ -116,11 +133,11 @@ export function classifyCalibrationFadeCrossRun(input: {
     );
   }
 
-  if (calibrationSupported && !executableSupported) {
+  if (calibrationSupported && executableEvidence === "contradictory") {
     return result(
       "cross-run-contradicts-executability",
       "retain-calibration-research-but-deprioritize-trading-rule",
-      "Pooled calibration is supportive but executable pricing does not support trading.",
+      "Pooled calibration is supportive but evaluated executable pricing contradicts trading.",
     );
   }
 
@@ -128,7 +145,7 @@ export function classifyCalibrationFadeCrossRun(input: {
     return result(
       "cross-run-supports-calibration-effect",
       "build-executable-calibration-fade-candidate-dataset",
-      "Pooled calibration gap supports the frozen historical direction at unique-market level.",
+      "Pooled calibration gap supports the frozen historical direction at unique-market level; executable evidence is unavailable or insufficient and requires executable follow-up.",
     );
   }
 

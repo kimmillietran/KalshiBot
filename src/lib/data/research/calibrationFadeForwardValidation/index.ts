@@ -3,10 +3,13 @@ export { buildCalibrationFadeForwardValidationReport } from "./buildCalibrationF
 export { buildBtcCandlesUpToTimestamp, resolveCausalBtcPrice } from "./buildBtcCandlesCausal";
 export {
   classifyCalibrationFadeInterpretation,
+  classifyExecutableEvidence,
   buildHistoricalVersusForwardComparison,
 } from "./classifyCalibrationFadeInterpretation";
+export type { ExecutableEvidenceState } from "./classifyCalibrationFadeInterpretation";
 export { createCalibrationFadeForwardValidationIo, createMemoryCalibrationFadeForwardValidationIo } from "./createCalibrationFadeForwardValidationIo";
 export { publishResearchArtifactsAtomically } from "./publishResearchArtifactsAtomically";
+export { validateCalibrationFadeMarketRecord } from "./parseCalibrationFadeMarketRecord";
 export { loadFrozenHypothesisSpec } from "./loadFrozenHypothesisSpec";
 export { loadSelectedRunCalibrationFadeContext, validateSelectedRunDirectory } from "./loadSelectedRunCalibrationFadeContext";
 export {

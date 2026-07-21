@@ -1,3 +1,8 @@
+import {
+  isVerifiedResearchReady,
+  RESEARCH_READY_CAPTURE_VERDICT,
+} from "@/lib/data/research/selectedRunCaptureHealth";
+
 import type {
   CalibrationFadeCalibrationMetrics,
   CalibrationFadeExecutableMetrics,
@@ -10,6 +15,29 @@ import type {
   HistoricalHypothesisBenchmark,
 } from "./calibrationFadeForwardValidationTypes";
 import { roundMetric } from "./calibrationFadeForwardValidationUtils";
+
+export type ExecutableEvidenceState =
+  | "supportive"
+  | "contradictory"
+  | "unavailable-or-insufficient";
+
+/**
+ * Tri-state executable evidence. Zero evaluated executable candidates is not
+ * negative evidence; it means executable evidence is unavailable or insufficient.
+ */
+export function classifyExecutableEvidence(input: {
+  evaluatedExecutableCandidateCount: number;
+  feeAdjustedReturnCents: number | null;
+  materialExecutableNetReturnCents: number;
+}): ExecutableEvidenceState {
+  if (input.evaluatedExecutableCandidateCount <= 0 || input.feeAdjustedReturnCents === null) {
+    return "unavailable-or-insufficient";
+  }
+  if (input.feeAdjustedReturnCents >= input.materialExecutableNetReturnCents) {
+    return "supportive";
+  }
+  return "contradictory";
+}
 
 export function classifyCalibrationFadeInterpretation(input: {
   spec: FrozenHypothesisSpec;
@@ -44,6 +72,66 @@ export function classifyCalibrationFadeInterpretation(input: {
     );
   }
 
+  // Observation quality is classified before evidence quantity so a failed or
+  // unverified run cannot masquerade as a clean run that merely lacks events.
+  // A capture-research-ready verdict string alone is insufficient; provenance
+  // (matching identity, valid audit schema, fresh fingerprints) must verify.
+  const quality = input.selectedRunQuality;
+  if (!isVerifiedResearchReady(quality)) {
+    if (quality.captureVerdict !== null && quality.captureVerdict !== RESEARCH_READY_CAPTURE_VERDICT) {
+      return action(
+        "observation-quality-inconclusive",
+        "repair-or-replace-invalid-forward-runs",
+        `Selected run capture verdict is ${quality.captureVerdict}; capture-research-ready is required before evidence-quantity classification.`,
+      );
+    }
+    if (quality.captureVerdict === null) {
+      return action(
+        "observation-quality-inconclusive",
+        "repair-or-replace-invalid-forward-runs",
+        "Selected run has no verified capture-research-ready health source; run the capture health audit before formal validation.",
+      );
+    }
+    return action(
+      "observation-quality-inconclusive",
+      "repair-or-replace-invalid-forward-runs",
+      "Selected run capture verdict is capture-research-ready but its audit provenance or freshness could not be verified.",
+    );
+  }
+
+  if (quality.terminalFailureReason !== null || quality.completedNormally === false) {
+    return action(
+      "observation-quality-inconclusive",
+      "fix-forward-observation-integrity",
+      "Selected run ended with a terminal failure or did not complete normally; forward evidence from it is not usable.",
+    );
+  }
+
+  // Metric completeness policy: the frozen formal policy requires
+  // validBookShare and btcJoinCoverageShare, so null means unverified (fail
+  // closed), never pass. Other diagnostics (bid-size coverage, reconciliation
+  // verdict, suspected sleep) remain optional and advisory only.
+  if (quality.validBookShare === null || quality.btcJoinCoverageShare === null) {
+    return action(
+      "observation-quality-inconclusive",
+      "fix-forward-observation-integrity",
+      "Required selected-run quality metrics (validBookShare, btcJoinCoverageShare) are unavailable and cannot be verified against frozen minimums.",
+    );
+  }
+
+  const qualityWeak =
+    quality.validBookShare < input.spec.minimumEvidenceRequirements.minimumValidBookShare
+    || quality.btcJoinCoverageShare
+      < input.spec.minimumEvidenceRequirements.minimumBtcJoinCoverageShare;
+
+  if (qualityWeak) {
+    return action(
+      "observation-quality-inconclusive",
+      "fix-forward-observation-integrity",
+      "Selected-run quality metrics are below frozen minimums for reliable forward validation.",
+    );
+  }
+
   if (input.candidateMarketCount < minimumMarkets) {
     return action(
       "insufficient-forward-events",
@@ -60,22 +148,6 @@ export function classifyCalibrationFadeInterpretation(input: {
       "settlement-coverage-incomplete",
       "backfill-and-rejoin-settlements",
       "Candidate settlement coverage is below the frozen minimum evidence threshold.",
-    );
-  }
-
-  const qualityWeak =
-    (input.selectedRunQuality.validBookShare !== null
-      && input.selectedRunQuality.validBookShare
-        < input.spec.minimumEvidenceRequirements.minimumValidBookShare)
-    || (input.selectedRunQuality.btcJoinCoverageShare !== null
-      && input.selectedRunQuality.btcJoinCoverageShare
-        < input.spec.minimumEvidenceRequirements.minimumBtcJoinCoverageShare);
-
-  if (qualityWeak) {
-    return action(
-      "observation-quality-inconclusive",
-      "fix-forward-observation-integrity",
-      "Selected-run quality metrics are below frozen minimums for reliable forward validation.",
     );
   }
 
@@ -99,13 +171,14 @@ export function classifyCalibrationFadeInterpretation(input: {
     && ((input.spec.calibrationDirection === "over" && signedGap >= supportGap)
       || (input.spec.calibrationDirection === "under" && signedGap <= -supportGap));
 
-  const executableSupported =
-    input.executable.feeAdjustedReturnCents !== null
-    && input.executable.feeAdjustedReturnCents
-      >= input.spec.minimumEvidenceRequirements.materialExecutableNetReturnCents
-    && input.executable.evaluatedExecutableCandidateCount > 0;
+  const executableEvidence = classifyExecutableEvidence({
+    evaluatedExecutableCandidateCount: input.executable.evaluatedExecutableCandidateCount,
+    feeAdjustedReturnCents: input.executable.feeAdjustedReturnCents,
+    materialExecutableNetReturnCents:
+      input.spec.minimumEvidenceRequirements.materialExecutableNetReturnCents,
+  });
 
-  if (calibrationSupported && executableSupported) {
+  if (calibrationSupported && executableEvidence === "supportive") {
     return action(
       "forward-supports-executable-fade",
       "build-paper-execution-harness",
@@ -113,11 +186,11 @@ export function classifyCalibrationFadeInterpretation(input: {
     );
   }
 
-  if (calibrationSupported && !executableSupported) {
+  if (calibrationSupported && executableEvidence === "contradictory") {
     return action(
       "forward-contradicts-executability",
       "retain-calibration-research-but-deprioritize-trading-rule",
-      "Calibration effect is directionally supportive but executable pricing does not support trading.",
+      "Calibration effect is directionally supportive but evaluated executable pricing contradicts trading.",
     );
   }
 
@@ -125,7 +198,7 @@ export function classifyCalibrationFadeInterpretation(input: {
     return action(
       "forward-supports-calibration-effect",
       "build-executable-calibration-fade-candidate-dataset",
-      "Forward calibration gap supports the frozen historical direction at market level.",
+      "Forward calibration gap supports the frozen historical direction at market level; executable evidence is unavailable or insufficient and requires executable follow-up.",
     );
   }
 

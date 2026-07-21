@@ -105,6 +105,18 @@ export type CrossRunRunSummary = {
   selectedRunDirectory: string;
   captureHealthSource: string | null;
   captureVerdict: string | null;
+  /** Whether the verdict's audit provenance (schema, identity, freshness) was verified. */
+  researchReadyVerified: boolean;
+  /** True only when the run carries a verified capture-research-ready verdict. */
+  researchReady: boolean;
+  /** Why the run failed the research-ready health gate; null when it passed. */
+  failedHealthReason: string | null;
+  /** Whether the run contributed any candidate market appearances. */
+  contributedCandidates: boolean;
+  /** Whether the run's canonical candidates were excluded from outcome evaluation. */
+  excludedFromOutcomeEvaluation: boolean;
+  /** Malformed candidate/market JSONL rows attributed to this run. */
+  candidateParsingErrorCount: number;
   runDurationSeconds: number | null;
   recordsScanned: number;
   btcRecordsScanned: number;
@@ -164,6 +176,15 @@ export type CalibrationFadeCrossRunValidationReport = {
   executableCandidateCount: number;
   unavailableExecutablePriceCount: number;
   settlementCoverageShare: number | null;
+  /** Total malformed candidate/market JSONL rows across all selected runs. */
+  candidateParsingErrorCount: number;
+  /** Selected runs that failed the research-ready health gate but remain in the ledger. */
+  invalidSelectedRuns: readonly {
+    selectedRunId: string;
+    failedHealthReason: string;
+    contributedCandidates: boolean;
+    excludedFromOutcomeEvaluation: boolean;
+  }[];
   warnings: readonly string[];
   classification: CalibrationFadeCrossRunClassification;
   /** Alias of classification for M13.2 summary naming compatibility. */

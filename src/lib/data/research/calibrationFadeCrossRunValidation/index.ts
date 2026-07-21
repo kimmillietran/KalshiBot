@@ -14,6 +14,10 @@ export {
   createMemoryCalibrationFadeCrossRunValidationIo,
 } from "./createCalibrationFadeCrossRunValidationIo";
 export { deduplicateCandidateMarkets } from "./deduplicateCandidateMarkets";
+export {
+  describeSelectedRunHealthFailure,
+  isSelectedRunResearchReady,
+} from "./isSelectedRunResearchReady";
 export { parseCalibrationFadeCrossRunValidationArgv } from "./parseCalibrationFadeCrossRunValidationArgv";
 export {
   serializeCalibrationFadeCrossRunValidationHtml,

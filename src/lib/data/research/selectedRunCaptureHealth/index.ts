@@ -5,10 +5,13 @@ export {
 export {
   artifactMatchesRun,
   captureHealthAuditMatchesSelectedRun,
+  isVerifiedResearchReady,
   joinCapturePath,
   normalizeCapturePath,
+  parseCaptureHealthAuditReport,
   resolveRunScopedCaptureHealthAuditPath,
   resolveSelectedRunId,
+  verifyCaptureHealthAuditFreshness,
 } from "./selectedRunCaptureHealthUtils";
 export {
   GLOBAL_CAPTURE_HEALTH_AUDIT_PATH,
