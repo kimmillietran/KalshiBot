@@ -22,6 +22,7 @@ export {
   DEFAULT_FORWARD_QUOTE_CAPTURE_OUTPUT_DIR,
   DEFAULT_FORWARD_QUOTE_CAPTURE_HTML_PATH,
   FORWARD_CAPTURE_DISCLAIMER,
+  FORWARD_CAPTURE_PRICE_REPRESENTATION,
 } from "./forwardQuoteCaptureTypes";
 export {
   classifyTopOfBookEconomicValidity,
@@ -35,6 +36,9 @@ export type {
 export { createEmptyOrderbookDiagnostics } from "./createEmptyOrderbookDiagnostics";
 export type {
   ForwardCaptureHealthReport,
+  ForwardCapturePriceRepresentation,
+  ForwardCaptureSubscriptionLifecycleEvent,
+  ForwardCaptureSubscriptionLifecycleEventType,
   ForwardCaptureVerdict,
   ForwardQuoteCaptureConfig,
   ForwardTopOfBookRecord,

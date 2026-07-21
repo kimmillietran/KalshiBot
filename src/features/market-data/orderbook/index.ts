@@ -12,7 +12,19 @@ export {
 } from "./KalshiOrderbookWsClient";
 
 export { OrderbookFeedController } from "./OrderbookFeedController";
-export { OrderbookSubscriptionManager } from "./OrderbookSubscriptionManager";
+export {
+  ORDERBOOK_PRICE_REPRESENTATION,
+  ORDERBOOK_USE_YES_PRICE,
+  OrderbookSubscriptionManager,
+} from "./OrderbookSubscriptionManager";
+export type {
+  KalshiOrderbookPriceRepresentation,
+  OrderbookControlMessage,
+  OrderbookServerSubscription,
+  OrderbookSubscriptionCommand,
+  SnapshotRequestResult,
+  UnsubscribeRequestResult,
+} from "./OrderbookSubscriptionManager";
 export { OrderbookFeedError, OrderbookFeedErrorCode } from "./errors";
 export { mapTopOfBookToContractPricing } from "./mapTopOfBookToPricing";
 export {
@@ -22,9 +34,13 @@ export {
   createEmptyOrderbookState,
 } from "./orderbookReducer";
 export {
+  kalshiOkResponseSchema,
   kalshiOrderbookDeltaMessageSchema,
   kalshiOrderbookSnapshotMessageSchema,
   kalshiRestOrderbookSchema,
+  kalshiSubscribedResponseSchema,
+  kalshiUnsubscribedResponseSchema,
+  kalshiWsErrorResponseSchema,
 } from "./schemas";
 export { SequenceTracker } from "./sequenceTracker";
 export { extractTopOfBook } from "./topOfBook";

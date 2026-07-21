@@ -27,6 +27,8 @@ export type LoadedCaptureHealthJson = {
   };
   orderbook?: {
     sequenceGapCount?: number;
+    sequenceGapEpisodeCount?: number;
+    deltasQuarantinedDuringResync?: number;
     outOfOrderCount?: number;
     reconnectCount?: number;
   };

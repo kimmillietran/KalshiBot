@@ -136,18 +136,32 @@ export async function runLiveForwardQuoteCapture(input: {
     onTopOfBookEmitted: () => {
       watchdog?.recordTopOfBookEmission();
     },
-    onSequenceGap: (marketTicker) => {
-      processorRef.markResyncing(marketTicker);
+    onControlMessage: (payload) => subscriptionManager.handleControlMessage(payload),
+    requestSnapshotRecovery: (marketTicker) => {
       try {
-        subscriptionManager.requestSnapshot(transport, marketTicker);
+        const result = subscriptionManager.requestSnapshot(transport, marketTicker);
+        if (result.status === "requested") {
+          return result;
+        }
+        return {
+          status: "unavailable",
+          reason: "No acknowledged server subscription id (sid) for market",
+        };
       } catch (error) {
-        errors.push(
-          error instanceof Error ? error.message : "Resync snapshot request failed",
-        );
+        return {
+          status: "send-failed",
+          reason:
+            error instanceof Error ? error.message : "Resync snapshot request failed",
+        };
       }
     },
+    onLifecycleEvent: (event) => {
+      writer.appendLifecycleEvent({ runId: input.runId, ...event });
+    },
+    onCommandError: (message) => {
+      errors.push(message);
+    },
   });
-  const processorRef = processor;
 
   let watchdog: KalshiWsLivenessWatchdog | null = null;
 
@@ -252,6 +266,43 @@ export async function runLiveForwardQuoteCapture(input: {
     });
   }
 
+  function appendSubscriptionLifecycle(
+    type:
+      | "subscriptionRequested"
+      | "subscriptionFailed"
+      | "marketUnsubscribeRequested"
+      | "marketUnsubscribeFailed",
+    marketTickers: string[],
+    detail?: { commandId?: number | null; sid?: number | null; errorMessage?: string },
+  ): void {
+    writer.appendLifecycleEvent({
+      runId: input.runId,
+      type,
+      detectedAt: input.io.now().toISOString(),
+      marketTickers,
+      commandId: detail?.commandId ?? null,
+      sid: detail?.sid ?? null,
+      ...(detail?.errorMessage ? { errorMessage: detail.errorMessage } : {}),
+    });
+  }
+
+  function sendSubscribe(ticker: string): void {
+    // Kalshi sends an orderbook_snapshot immediately after a successful
+    // subscribe; no separate get_snapshot command is needed (and none can be
+    // sent until the server sid is acknowledged).
+    try {
+      const commandId = subscriptionManager.subscribe(transport, ticker);
+      appendSubscriptionLifecycle("subscriptionRequested", [ticker], { commandId });
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Subscribe command failed";
+      errors.push(`Kalshi WS subscribe send failed for ${ticker}: ${message}`);
+      appendSubscriptionLifecycle("subscriptionFailed", [ticker], {
+        errorMessage: message,
+      });
+    }
+  }
+
   function subscribeMarket(ticker: string): void {
     if (subscribedTickers.has(ticker)) {
       return;
@@ -262,9 +313,49 @@ export async function runLiveForwardQuoteCapture(input: {
     appendMarketMetadata(ticker, "subscribed");
 
     if (connection.connected) {
-      subscriptionManager.subscribe(transport, ticker);
-      subscriptionManager.requestSnapshot(transport, ticker);
+      sendSubscribe(ticker);
       watchdog?.recordSubscriptionSuccess(subscribedTickers.size);
+    }
+  }
+
+  /**
+   * Rollover unsubscribe lifecycle: the book is marked closed (late messages
+   * are ignored, never reactivate the book), a server-side unsubscribe /
+   * delete_markets command is sent with the acknowledged sid, and the ticker
+   * leaves local active state at request time. Acknowledgement or failure is
+   * recorded via marketUnsubscribeAcknowledged / marketUnsubscribeFailed.
+   */
+  function unsubscribeMarket(ticker: string): void {
+    processor.markMarketClosed(ticker);
+    appendMarketMetadata(ticker, "closed");
+    subscribedTickers.delete(ticker);
+
+    if (!connection.connected) {
+      return;
+    }
+
+    try {
+      const result = subscriptionManager.unsubscribe(transport, [ticker]);
+      if (result.commandIds.length > 0) {
+        appendSubscriptionLifecycle("marketUnsubscribeRequested", [ticker], {
+          commandId: result.commandIds[0],
+        });
+      }
+      if (result.unmappedTickers.length > 0) {
+        appendSubscriptionLifecycle("marketUnsubscribeFailed", result.unmappedTickers, {
+          errorMessage: "No acknowledged server subscription id (sid) for market",
+        });
+        errors.push(
+          `Kalshi WS unsubscribe unavailable for ${result.unmappedTickers.join(", ")}: no acknowledged sid`,
+        );
+      }
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Unsubscribe command failed";
+      errors.push(`Kalshi WS unsubscribe send failed for ${ticker}: ${message}`);
+      appendSubscriptionLifecycle("marketUnsubscribeFailed", [ticker], {
+        errorMessage: message,
+      });
     }
   }
 
@@ -274,14 +365,16 @@ export async function runLiveForwardQuoteCapture(input: {
     }
 
     handlerSocketGeneration = socketGeneration;
+    // Server subscription ids do not survive a socket; drop all sid mappings
+    // before rebuilding subscriptions on the new connection.
+    subscriptionManager.resetForReconnect();
     await transport.connect(wsUrl, { headers: connectHeaders });
     connection.wsConnectCount += 1;
     connection.connected = true;
     watchdog?.recordWebSocketOpen();
 
     for (const ticker of subscribedTickers) {
-      subscriptionManager.subscribe(transport, ticker);
-      subscriptionManager.requestSnapshot(transport, ticker);
+      sendSubscribe(ticker);
     }
     watchdog?.recordSubscriptionSuccess(subscribedTickers.size);
   }
@@ -420,10 +513,8 @@ export async function runLiveForwardQuoteCapture(input: {
       }
 
       for (const ticker of result.closedTickers) {
-        processor.markMarketClosed(ticker);
+        unsubscribeMarket(ticker);
         rollover.marketsClosed += 1;
-        appendMarketMetadata(ticker, "closed");
-        subscribedTickers.delete(ticker);
       }
       watchdog?.recordSubscriptionSuccess(subscribedTickers.size);
     })();

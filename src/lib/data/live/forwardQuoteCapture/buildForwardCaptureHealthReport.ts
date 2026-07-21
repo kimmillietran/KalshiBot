@@ -8,6 +8,7 @@ import type { DryRunForwardCaptureResult } from "./runDryRunForwardQuoteCapture"
 import type { LiveForwardCaptureResult } from "./runLiveForwardQuoteCapture";
 import {
   FORWARD_CAPTURE_DISCLAIMER,
+  FORWARD_CAPTURE_PRICE_REPRESENTATION,
   type ForwardCaptureConnectionDiagnostics,
   type ForwardCaptureRecommendedAction,
   type ForwardCaptureVerdict,
@@ -241,9 +242,23 @@ export function buildForwardCaptureHealthReport(input: {
   if (input.config.dryRun) {
     warnings.push("Dry-run mode used mock orderbook messages; live liquidity was not observed.");
   }
-  if (diagnostics.sequenceGapCount > 0) {
+  if (diagnostics.sequenceGapEpisodeCount > 0 || diagnostics.sequenceGapCount > 0) {
     warnings.push(
-      `Detected ${diagnostics.sequenceGapCount} sequence gap(s); resync attempts=${diagnostics.resyncAttemptCount}, successes=${diagnostics.resyncSuccessCount}.`,
+      `Detected ${diagnostics.sequenceGapEpisodeCount} sequence-gap episode(s); `
+      + `quarantined deltas=${diagnostics.deltasQuarantinedDuringResync}, `
+      + `recovery requests=${diagnostics.snapshotRecoveryRequestCount}, `
+      + `successes=${diagnostics.snapshotRecoverySuccessCount}, `
+      + `failures=${diagnostics.snapshotRecoveryFailureCount}.`,
+    );
+  }
+  if (diagnostics.commandErrorsReceived > 0) {
+    warnings.push(
+      `Received ${diagnostics.commandErrorsReceived} WebSocket command error response(s); see capture errors and lifecycle JSONL.`,
+    );
+  }
+  if (diagnostics.staleSnapshotsRejected > 0) {
+    warnings.push(
+      `Rejected ${diagnostics.staleSnapshotsRejected} stale orderbook snapshot(s) older than already-observed sequence data.`,
     );
   }
   if (
@@ -319,6 +334,8 @@ export function buildForwardCaptureHealthReport(input: {
         : null,
       marketMetadataPath: input.captureResult.paths.marketMetadataPath,
       captureHealthPath: input.captureResult.paths.captureHealthPath,
+      priceRepresentation:
+        input.config.priceRepresentation ?? FORWARD_CAPTURE_PRICE_REPRESENTATION,
     },
     orderbook: {
       snapshotsReceived: diagnostics.snapshotsReceived,
@@ -341,6 +358,14 @@ export function buildForwardCaptureHealthReport(input: {
           ? diagnostics.bidPairWithSizeTopOfBookRecords / diagnostics.topOfBookRecordsEmitted
           : null,
       sequenceGapCount: diagnostics.sequenceGapCount,
+      sequenceGapEpisodeCount: diagnostics.sequenceGapEpisodeCount,
+      deltasQuarantinedDuringResync: diagnostics.deltasQuarantinedDuringResync,
+      snapshotRecoveryRequestCount: diagnostics.snapshotRecoveryRequestCount,
+      snapshotRecoverySuccessCount: diagnostics.snapshotRecoverySuccessCount,
+      snapshotRecoveryFailureCount: diagnostics.snapshotRecoveryFailureCount,
+      staleSnapshotsRejected: diagnostics.staleSnapshotsRejected,
+      controlResponsesReceived: diagnostics.controlResponsesReceived,
+      commandErrorsReceived: diagnostics.commandErrorsReceived,
       outOfOrderCount: diagnostics.outOfOrderCount,
       resyncAttemptCount: diagnostics.resyncAttemptCount,
       resyncSuccessCount: diagnostics.resyncSuccessCount,
