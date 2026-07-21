@@ -426,6 +426,14 @@ export type ForwardQuoteCaptureIo = {
   ) => import("./jsonlForwardCaptureWriter").ForwardCaptureAppendStream;
   /** Required for atomic temp-file-plus-rename publication when available. */
   renameFile?: (from: string, to: string) => void;
+  /**
+   * Atomically creates a file, throwing when it already exists (O_EXCL
+   * semantics). Required for the global capture lock; when absent no lock
+   * is taken (legacy in-memory test io).
+   */
+  createExclusiveFile?: (path: string, data: string) => void;
+  /** Deletes a file; used to release the global capture lock. */
+  deleteFile?: (path: string) => void;
   now: () => Date;
   monotonicNowMs: () => number;
   fetchImpl?: typeof fetch;

@@ -45,6 +45,44 @@ export {
   parseRunIdTimestampMs,
   selectAuditableCaptureRun,
 } from "./selectAuditableCaptureRun";
+export {
+  ACCEPTANCE_PRIMARY_MARKET_TICKER,
+  ACCEPTANCE_ROLLOVER_MARKET_TICKER,
+  evaluateRecoveryAcceptance,
+  RECOVERY_ACCEPTANCE_SCENARIOS,
+  runCaptureRecoveryAcceptance,
+} from "./captureRecoveryAcceptance";
+export type {
+  RecoveryAcceptanceCheck,
+  RecoveryAcceptanceEvaluation,
+  RecoveryAcceptanceObserved,
+  RecoveryAcceptanceReport,
+  RecoveryAcceptanceScenario,
+} from "./captureRecoveryAcceptance";
+export {
+  CANONICAL_EIGHT_HOUR_CAPTURE_PROFILE,
+  DEFAULT_CAPTURE_RESTART_GATE_THRESHOLDS,
+  evaluateCaptureRestartGate,
+  findCaptureStartBlockers,
+  parseCaptureRestartGateSummary,
+  resolveEffectiveRestartThresholds,
+  serializeCaptureRestartGateSummary,
+  verifyCanonicalCaptureProfile,
+} from "./captureRestartGate";
+export type {
+  CanonicalCaptureProfile,
+  CanonicalProfileMismatch,
+  CaptureRestartGateInput,
+  CaptureRestartGateSummary,
+  CaptureRestartGateThresholds,
+  CaptureStartBlocker,
+  CaptureStartBlockerReason,
+} from "./captureRestartGate";
+export {
+  acquireCaptureLock,
+  CAPTURE_LOCK_FILENAME,
+  resolveCaptureLockPath,
+} from "./captureLock";
 export type {
   CaptureRunSelectionEntry,
   CaptureRunStatusIntegrity,

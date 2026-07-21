@@ -24,6 +24,9 @@ export type ForwardQuoteCaptureCommandIo = {
     path: string,
   ) => import("@/lib/data/live/forwardQuoteCapture/jsonlForwardCaptureWriter").ForwardCaptureAppendStream;
   renameFile?: (from: string, to: string) => void;
+  /** Atomic exclusive file creation (O_EXCL) for the global capture lock. */
+  createExclusiveFile?: (path: string, data: string) => void;
+  deleteFile?: (path: string) => void;
   fetchImpl?: typeof fetch;
   setInterval?: (fn: () => void, ms: number) => number;
   clearInterval?: (handle: number) => void;

@@ -1,4 +1,11 @@
-import { appendFileSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import {
+  appendFileSync,
+  mkdirSync,
+  readFileSync,
+  renameSync,
+  unlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { performance } from "node:perf_hooks";
 
 import { runForwardQuoteCapture } from "@/lib/data/live/forwardQuoteCapture";
@@ -42,6 +49,8 @@ export async function runForwardQuoteCaptureCommand(
         mkdirSync: io.mkdirSync,
         createAppendStream: io.createAppendStream,
         renameFile: io.renameFile,
+        createExclusiveFile: io.createExclusiveFile,
+        deleteFile: io.deleteFile,
         now: () => new Date(),
         monotonicNowMs: () => performance.now(),
         fetchImpl: io.fetchImpl,
@@ -118,6 +127,13 @@ function main(): void {
     createAppendStream: createNodeForwardCaptureAppendStream,
     renameFile: (from, to) => {
       renameSync(from, to);
+    },
+    createExclusiveFile: (path, data) => {
+      // "wx" fails when the file already exists — the atomic capture lock.
+      writeFileSync(path, data, { encoding: "utf8", flag: "wx" });
+    },
+    deleteFile: (path) => {
+      unlinkSync(path);
     },
     fetchImpl: fetch,
   });
