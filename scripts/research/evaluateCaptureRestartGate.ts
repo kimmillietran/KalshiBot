@@ -1,12 +1,18 @@
 /**
  * M12.1F Part B/C: eight-hour restart gate command.
  *
- * Three modes:
+ * Four modes (exactly one per invocation):
+ *
+ *   --write-canonical-profile <path>
+ *     Writes the canonical eight-hour capture profile as UTF-8 JSON (with a
+ *     trailing newline) to the given file. run-capture-restart-smoke.ps1
+ *     reads its capture parameters from this file: transporting the JSON
+ *     through captured native stdout broke on Windows PowerShell 5.1, which
+ *     mangled the payload before ConvertFrom-Json.
  *
  *   --print-canonical-profile
- *     Prints the canonical eight-hour capture profile as JSON. The smoke
- *     wrapper reads its capture parameters from here, so the values are
- *     never duplicated in shell scripts.
+ *     Prints the canonical eight-hour capture profile as JSON to stdout.
+ *     Kept for humans and tests; shell wrappers must use the file mode.
  *
  *   --assert-no-active-capture [--capture-root <dir>]
  *     Exits nonzero when starting a capture would be unsafe: a strictly
@@ -23,7 +29,7 @@
  *     capture's own recorded config, which is always validated regardless.
  *     Exits 0 only when restartEightHourCaptures is true.
  */
-import { existsSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 import {
@@ -53,6 +59,26 @@ const FORBIDDEN_THRESHOLD_FLAGS = [
   "--min-valid-book-share",
   "--min-btc-join-coverage-share",
 ] as const;
+
+/** Mutually exclusive mode flags: exactly one per invocation. */
+const MODE_FLAGS = [
+  "--write-canonical-profile",
+  "--print-canonical-profile",
+  "--assert-no-active-capture",
+  "--capture-run-dir",
+] as const;
+
+/** Every flag this command accepts; anything else fails closed. */
+const KNOWN_FLAGS = new Set<string>([
+  ...MODE_FLAGS,
+  "--capture-root",
+  "--expected-duration-minutes",
+]);
+
+const USAGE =
+  "Usage: --write-canonical-profile <path> | --print-canonical-profile | "
+  + "--assert-no-active-capture [--capture-root <dir>] | "
+  + "--capture-run-dir <dir> [--expected-duration-minutes N]";
 
 export type CaptureRestartGateCommandIo = {
   writeStdout: (text: string) => void;
@@ -163,17 +189,50 @@ export async function runCaptureRestartGateCommand(
   options?: { generatedAt?: string },
 ): Promise<number> {
   try {
-    if (argv.includes("--print-canonical-profile")) {
-      io.writeStdout(`${stableStringify(CANONICAL_EIGHT_HOUR_CAPTURE_PROFILE)}\n`);
-      return 0;
-    }
-
     for (const flag of FORBIDDEN_THRESHOLD_FLAGS) {
       if (argv.includes(flag)) {
         throw new Error(
           `${flag} is not supported: the restart gate thresholds are frozen and cannot be weakened from the command line.`,
         );
       }
+    }
+
+    const unknownFlags = argv.filter(
+      (arg) => arg.startsWith("--") && !KNOWN_FLAGS.has(arg),
+    );
+    if (unknownFlags.length > 0) {
+      throw new Error(`Unknown argument(s): ${unknownFlags.join(", ")}. ${USAGE}`);
+    }
+
+    const activeModes = MODE_FLAGS.filter((flag) => argv.includes(flag));
+    if (activeModes.length > 1) {
+      throw new Error(
+        `Conflicting mode flags: ${activeModes.join(", ")}. Use exactly one mode. ${USAGE}`,
+      );
+    }
+
+    if (argv.includes("--write-canonical-profile")) {
+      const pathIndex = argv.indexOf("--write-canonical-profile") + 1;
+      const outputPath = argv[pathIndex];
+      if (!outputPath || outputPath.startsWith("--")) {
+        throw new Error(
+          "Missing output path: --write-canonical-profile <path> requires a file path to write the canonical profile JSON to.",
+        );
+      }
+      // UTF-8 JSON with a trailing newline and nothing else: shell wrappers
+      // parse this file instead of captured native stdout, which Windows
+      // PowerShell 5.1 mangles.
+      writeFileSync(
+        outputPath,
+        `${stableStringify(CANONICAL_EIGHT_HOUR_CAPTURE_PROFILE)}\n`,
+        "utf8",
+      );
+      return 0;
+    }
+
+    if (argv.includes("--print-canonical-profile")) {
+      io.writeStdout(`${stableStringify(CANONICAL_EIGHT_HOUR_CAPTURE_PROFILE)}\n`);
+      return 0;
     }
 
     if (argv.includes("--assert-no-active-capture")) {
@@ -184,9 +243,7 @@ export async function runCaptureRestartGateCommand(
 
     const runDir = readFlagValue(argv, "--capture-run-dir");
     if (!runDir) {
-      throw new Error(
-        "Usage: --capture-run-dir <dir> [--expected-duration-minutes N] | --assert-no-active-capture [--capture-root <dir>] | --print-canonical-profile",
-      );
+      throw new Error(USAGE);
     }
     if (!existsSync(runDir) || !statSync(runDir).isDirectory()) {
       throw new Error(`Capture run directory not found: ${runDir}`);

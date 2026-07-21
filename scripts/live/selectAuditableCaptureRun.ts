@@ -1,5 +1,6 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 
 import {
   parseCaptureRunStatus,
@@ -93,6 +94,19 @@ function main(): void {
   process.exitCode = result.outcome === "selected" ? 0 : 1;
 }
 
-if (process.env.VITEST !== "true") {
+/**
+ * Run main() only when this file is the CLI entrypoint. Before this guard,
+ * importing loadCaptureRunSelectionEntries (as evaluateCaptureRestartGate.ts
+ * does) executed main() as an import side effect and printed a selection
+ * JSON line to stdout ahead of the importer's own output — which corrupted
+ * the canonical-profile JSON captured by run-capture-restart-smoke.ps1.
+ * Case-insensitive compare: Windows paths are case-insensitive.
+ */
+const isDirectInvocation =
+  process.argv[1] !== undefined
+  && pathToFileURL(resolve(process.argv[1])).href.toLowerCase()
+    === import.meta.url.toLowerCase();
+
+if (process.env.VITEST !== "true" && isDirectInvocation) {
   main();
 }
