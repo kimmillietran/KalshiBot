@@ -5,6 +5,7 @@ import { ForwardCaptureMessageProcessor } from "./forwardCaptureMessageProcessor
 import {
   createJsonlForwardCaptureWriter,
   createRunOutputPaths,
+  type ForwardCaptureWriter,
 } from "./jsonlForwardCaptureWriter";
 import {
   createMockBtcSpotRecords,
@@ -45,9 +46,11 @@ export function runDryRunForwardQuoteCapture(input: {
   config: ForwardQuoteCaptureConfig;
   discovery: ForwardCaptureMarketDiscoveryResult;
   io: ForwardQuoteCaptureIo;
+  /** Pre-created buffered writer (owned by the orchestrator, which finalizes it). */
+  writer?: ForwardCaptureWriter;
 }): DryRunForwardCaptureResult {
-  const paths = createRunOutputPaths(input.config.outputDir, input.runId);
-  const writer = createJsonlForwardCaptureWriter(input.io, paths);
+  const paths = input.writer?.paths ?? createRunOutputPaths(input.config.outputDir, input.runId);
+  const writer = input.writer ?? createJsonlForwardCaptureWriter(input.io, paths);
   const marketTicker =
     input.discovery.selectedMarketTickers[0] ?? `${input.config.series}-MOCK`;
 

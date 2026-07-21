@@ -6,6 +6,12 @@ import {
   buildForwardCaptureHealthReport,
   serializeForwardCaptureHealthReport,
 } from "./buildForwardCaptureHealthReport";
+import {
+  publishCaptureRunStatus,
+  resolveTerminalCaptureRunState,
+  writeCaptureArtifactAtomically,
+  type CaptureRunLifecycleState,
+} from "./captureRunStatus";
 import { createEmptyConnectionDiagnostics } from "./connectionDiagnostics";
 import { createEmptyOrderbookDiagnostics } from "./createEmptyOrderbookDiagnostics";
 import { discoverCaptureMarkets } from "./discoverCaptureMarkets";
@@ -16,6 +22,7 @@ import { runLiveForwardQuoteCapture } from "./runLiveForwardQuoteCapture";
 import { serializeForwardQuoteCaptureHtml } from "./serializeForwardQuoteCaptureHtml";
 import {
   DEFAULT_FORWARD_QUOTE_CAPTURE_HTML_PATH,
+  type CaptureEndReason,
   type ForwardCaptureHealthReport,
   type ForwardCaptureMarketDiscoveryResult,
   type ForwardQuoteCaptureConfig,
@@ -42,141 +49,273 @@ export async function runForwardQuoteCapture(input: {
   const runId = createRunId(input.io.now());
   const htmlOutputPath = input.htmlOutputPath ?? DEFAULT_FORWARD_QUOTE_CAPTURE_HTML_PATH;
 
-  const credentials = resolveKalshiCaptureCredentials({
-    readFile: input.io.readFile,
-    privateKeyPathOverride: input.config.privateKeyPath,
-  });
+  const paths = createRunOutputPaths(input.config.outputDir, runId);
+  const writer = createJsonlForwardCaptureWriter(input.io, paths);
 
-  const discovery = input.config.dryRun
-    ? input.config.marketTicker
-      ? await discoverCaptureMarkets({
+  function publishStatus(
+    state: CaptureRunLifecycleState,
+    detail: {
+      endedAt?: string | null;
+      captureEndReason?: CaptureEndReason | null;
+      failureReason?: string | null;
+    } = {},
+  ): void {
+    publishCaptureRunStatus(input.io, paths.captureRunStatusPath, {
+      schemaVersion: 1,
+      runId,
+      state,
+      startedAt,
+      updatedAt: input.io.now().toISOString(),
+      endedAt: detail.endedAt ?? null,
+      captureEndReason: detail.captureEndReason ?? null,
+      failureReason: detail.failureReason ?? null,
+    });
+  }
+
+  publishStatus("active");
+
+  // Everything after the run directory and "active" status exist is guarded:
+  // a failure anywhere in credential resolution, discovery, capture execution,
+  // writer finalization, or artifact publication must drain the writer and
+  // leave a truthful terminal "failed" marker instead of stranding the run at
+  // active/finalizing forever.
+  try {
+    const credentials = resolveKalshiCaptureCredentials({
+      readFile: input.io.readFile,
+      privateKeyPathOverride: input.config.privateKeyPath,
+    });
+
+    const discovery = input.config.dryRun
+      ? input.config.marketTicker
+        ? await discoverCaptureMarkets({
+          seriesTicker: input.config.series,
+          maxMarkets: input.config.maxMarkets,
+          marketTickerOverride: input.config.marketTicker,
+          fetchImpl: input.io.fetchImpl,
+          now: input.io.now(),
+        })
+        : ({
+          attempted: true,
+          succeeded: true,
+          seriesTicker: input.config.series,
+          discoveredMarketCount: 1,
+          selectedMarketTickers: [`${input.config.series}-MOCK`],
+          marketStatuses: { [`${input.config.series}-MOCK`]: "mock" },
+          eventTickers: { [`${input.config.series}-MOCK`]: null },
+          closeTimes: { [`${input.config.series}-MOCK`]: null },
+          error: null,
+        } satisfies ForwardCaptureMarketDiscoveryResult)
+      : await discoverCaptureMarkets({
         seriesTicker: input.config.series,
         maxMarkets: input.config.maxMarkets,
         marketTickerOverride: input.config.marketTicker,
         fetchImpl: input.io.fetchImpl,
         now: input.io.now(),
-      })
-      : ({
-        attempted: true,
-        succeeded: true,
-        seriesTicker: input.config.series,
-        discoveredMarketCount: 1,
-        selectedMarketTickers: [`${input.config.series}-MOCK`],
-        marketStatuses: { [`${input.config.series}-MOCK`]: "mock" },
-        eventTickers: { [`${input.config.series}-MOCK`]: null },
-        closeTimes: { [`${input.config.series}-MOCK`]: null },
-        error: null,
-      } satisfies ForwardCaptureMarketDiscoveryResult)
-    : await discoverCaptureMarkets({
-      seriesTicker: input.config.series,
-      maxMarkets: input.config.maxMarkets,
-      marketTickerOverride: input.config.marketTicker,
-      fetchImpl: input.io.fetchImpl,
-      now: input.io.now(),
-    });
+      });
 
-  let captureResult;
-  if (input.config.dryRun) {
-    captureResult = runDryRunForwardQuoteCapture({
+    let blockedBeforeCapture = false;
+    let captureResult;
+    if (input.config.dryRun) {
+      captureResult = runDryRunForwardQuoteCapture({
+        runId,
+        startedAt,
+        config: input.config,
+        discovery,
+        io: input.io,
+        writer,
+      });
+    } else if (credentials.status !== "available") {
+      blockedBeforeCapture = true;
+      captureResult = {
+        runId,
+        startedAt,
+        endedAt: input.io.now().toISOString(),
+        paths,
+        discovery,
+        processor: {
+          diagnostics: createEmptyOrderbookDiagnostics(),
+          finalize: () => {},
+        },
+        connection: createEmptyConnectionDiagnostics(),
+        rollover: {
+          marketsDiscovered: discovery.discoveredMarketCount,
+          marketsSubscribed: 0,
+          marketsClosed: 0,
+          rolloverChecks: 0,
+          rolloverSubscriptionsAdded: 0,
+        },
+        btcSpotStatus: input.config.captureBtcSpot ? "degraded" : "disabled",
+        connected: false,
+        wsUrl: credentials.wsUrl,
+        authHeadersGenerated: false,
+        errors: ["Missing or invalid Kalshi credentials."],
+        recordCounts: { raw: 0, topOfBook: 0, btcSpot: 0, marketMetadata: 0 },
+      };
+    } else if (!discovery.succeeded) {
+      blockedBeforeCapture = true;
+      captureResult = {
+        runId,
+        startedAt,
+        endedAt: input.io.now().toISOString(),
+        paths,
+        discovery,
+        processor: {
+          diagnostics: createEmptyOrderbookDiagnostics(),
+          finalize: () => {},
+        },
+        connection: createEmptyConnectionDiagnostics(),
+        rollover: {
+          marketsDiscovered: 0,
+          marketsSubscribed: 0,
+          marketsClosed: 0,
+          rolloverChecks: 0,
+          rolloverSubscriptionsAdded: 0,
+        },
+        btcSpotStatus: input.config.captureBtcSpot ? "degraded" : "disabled",
+        connected: false,
+        wsUrl: credentials.wsUrl,
+        authHeadersGenerated: false,
+        errors: [discovery.error ?? "Market discovery failed"],
+        recordCounts: { raw: 0, topOfBook: 0, btcSpot: 0, marketMetadata: 0 },
+      };
+    } else {
+      captureResult = await runLiveForwardQuoteCapture({
+        runId,
+        startedAt,
+        config: input.config,
+        discovery,
+        credentials,
+        io: input.io,
+        writer,
+        shouldStop: input.shouldStop,
+        fetchBtcSpot: input.config.captureBtcSpot
+          ? async () => {
+            const response = await fetchBtcSpotPrice();
+            return { price: response.price, updatedAt: response.updatedAt };
+          }
+          : undefined,
+      });
+    }
+
+    const endedAt = "endedAt" in captureResult ? captureResult.endedAt : input.io.now().toISOString();
+    let captureEndReason: CaptureEndReason | null =
+      "captureEndReason" in captureResult
+        ? (captureResult.captureEndReason as CaptureEndReason)
+        : null;
+
+    // Finalization ordering contract (M12.1E): producers are quiesced inside
+    // the capture run; mark finalizing, drain and close all writer streams,
+    // publish terminal health atomically, then (and only then) publish the
+    // terminal run status atomically.
+    publishStatus("finalizing", { captureEndReason });
+    await writer.finalize();
+    const writerDiagnostics = writer.diagnostics();
+
+    // A writer failure discovered at any point — including one first detected
+    // while draining or closing streams during finalization — must fail the
+    // run everywhere: capture end reason, terminal failure reason, health
+    // errors/verdict, run status, and (via terminalFailureReason) the CLI
+    // exit code. Warnings alone are not enough.
+    if (writerDiagnostics.failure !== null && !blockedBeforeCapture) {
+      const failureMessage =
+        `Capture writer failed for ${writerDiagnostics.failure.artifact}: `
+        + writerDiagnostics.failure.reason;
+      if (
+        captureEndReason !== "terminal-websocket-failure"
+        && captureEndReason !== "authentication-failure"
+        && captureEndReason !== "unexpected-error"
+      ) {
+        captureEndReason = "writer-failure";
+      }
+      if (!captureResult.errors.includes(failureMessage)) {
+        captureResult.errors.push(failureMessage);
+      }
+      Object.assign(captureResult.connection, {
+        captureEndReason,
+        terminalFailureReason:
+          captureResult.connection.terminalFailureReason ?? "capture-writer-failure",
+        completedNormally: false,
+      });
+    }
+
+    const healthReport = buildForwardCaptureHealthReport({
       runId,
+      generatedAt: input.io.now().toISOString(),
       startedAt,
+      endedAt,
       config: input.config,
-      discovery,
-      io: input.io,
-    });
-  } else if (credentials.status !== "available") {
-    const paths = createRunOutputPaths(input.config.outputDir, runId);
-    createJsonlForwardCaptureWriter(input.io, paths);
-    captureResult = {
-      runId,
-      startedAt,
-      endedAt: input.io.now().toISOString(),
-      paths,
-      discovery,
-      processor: {
-        diagnostics: createEmptyOrderbookDiagnostics(),
-        finalize: () => {},
-      },
-      connection: createEmptyConnectionDiagnostics(),
-      rollover: {
-        marketsDiscovered: discovery.discoveredMarketCount,
-        marketsSubscribed: 0,
-        marketsClosed: 0,
-        rolloverChecks: 0,
-        rolloverSubscriptionsAdded: 0,
-      },
-      btcSpotStatus: input.config.captureBtcSpot ? "degraded" : "disabled",
-      connected: false,
-      wsUrl: credentials.wsUrl,
-      authHeadersGenerated: false,
-      errors: ["Missing or invalid Kalshi credentials."],
-      recordCounts: { raw: 0, topOfBook: 0, btcSpot: 0, marketMetadata: 0 },
-    };
-  } else if (!discovery.succeeded) {
-    const paths = createRunOutputPaths(input.config.outputDir, runId);
-    createJsonlForwardCaptureWriter(input.io, paths);
-    captureResult = {
-      runId,
-      startedAt,
-      endedAt: input.io.now().toISOString(),
-      paths,
-      discovery,
-      processor: {
-        diagnostics: createEmptyOrderbookDiagnostics(),
-        finalize: () => {},
-      },
-      connection: createEmptyConnectionDiagnostics(),
-      rollover: {
-        marketsDiscovered: 0,
-        marketsSubscribed: 0,
-        marketsClosed: 0,
-        rolloverChecks: 0,
-        rolloverSubscriptionsAdded: 0,
-      },
-      btcSpotStatus: input.config.captureBtcSpot ? "degraded" : "disabled",
-      connected: false,
-      wsUrl: credentials.wsUrl,
-      authHeadersGenerated: false,
-      errors: [discovery.error ?? "Market discovery failed"],
-      recordCounts: { raw: 0, topOfBook: 0, btcSpot: 0, marketMetadata: 0 },
-    };
-  } else {
-    captureResult = await runLiveForwardQuoteCapture({
-      runId,
-      startedAt,
-      config: input.config,
-      discovery,
       credentials,
-      io: input.io,
-      shouldStop: input.shouldStop,
-      fetchBtcSpot: input.config.captureBtcSpot
-        ? async () => {
-          const response = await fetchBtcSpotPrice();
-          return { price: response.price, updatedAt: response.updatedAt };
-        }
-        : undefined,
+      discovery,
+      captureResult: captureResult as Parameters<typeof buildForwardCaptureHealthReport>[0]["captureResult"],
+      errors: captureResult.errors,
+      writerDiagnostics,
     });
+
+    writeCaptureArtifactAtomically(
+      input.io,
+      captureResult.paths.captureHealthPath,
+      serializeForwardCaptureHealthReport(healthReport),
+    );
+
+    try {
+      input.io.mkdirSync(join(htmlOutputPath, ".."), { recursive: true });
+      input.io.writeFile(htmlOutputPath, serializeForwardQuoteCaptureHtml(healthReport));
+    } catch (htmlError) {
+      // The HTML report is a convenience artifact: its failure is recorded
+      // visibly in the health report (republished atomically) but must not
+      // strand the run at "finalizing" or fail an otherwise healthy capture.
+      healthReport.warnings.push(
+        `HTML report publication failed: ${
+          htmlError instanceof Error ? htmlError.message : String(htmlError)
+        }`,
+      );
+      writeCaptureArtifactAtomically(
+        input.io,
+        captureResult.paths.captureHealthPath,
+        serializeForwardCaptureHealthReport(healthReport),
+      );
+    }
+
+    const terminalState = resolveTerminalCaptureRunState({
+      captureEndReason,
+      hadFatalError: blockedBeforeCapture || writerDiagnostics.failure !== null,
+    });
+    publishStatus(terminalState, {
+      endedAt,
+      captureEndReason,
+      failureReason:
+        terminalState === "failed"
+          ? writerDiagnostics.failure?.reason
+            ?? healthReport.errors[0]
+            ?? healthReport.connection.terminalFailureReason
+            ?? null
+          : null,
+    });
+
+    return { runId, healthReport, htmlOutputPath };
+  } catch (error) {
+    // Best-effort failure path: drain what we can and leave a truthful
+    // terminal "failed" marker so tools never mistake this directory for an
+    // active or completed run. Nothing here may mask the original error.
+    try {
+      publishStatus("finalizing", { captureEndReason: "unexpected-error" });
+    } catch {
+      // The status file may itself be unwritable; the thrown error remains.
+    }
+    try {
+      await writer.finalize();
+    } catch {
+      // preserve the original error
+    }
+    try {
+      publishStatus("failed", {
+        endedAt: input.io.now().toISOString(),
+        captureEndReason: "unexpected-error",
+        failureReason: error instanceof Error ? error.message : "Forward quote capture failed",
+      });
+    } catch {
+      // The status file may itself be unwritable; the thrown error remains.
+    }
+    throw error;
   }
-
-  const endedAt = "endedAt" in captureResult ? captureResult.endedAt : input.io.now().toISOString();
-  const healthReport = buildForwardCaptureHealthReport({
-    runId,
-    generatedAt: input.io.now().toISOString(),
-    startedAt,
-    endedAt,
-    config: input.config,
-    credentials,
-    discovery,
-    captureResult: captureResult as Parameters<typeof buildForwardCaptureHealthReport>[0]["captureResult"],
-    errors: "errors" in captureResult ? captureResult.errors : [],
-  });
-
-  input.io.writeFile(
-    captureResult.paths.captureHealthPath,
-    serializeForwardCaptureHealthReport(healthReport),
-  );
-  input.io.mkdirSync(join(htmlOutputPath, ".."), { recursive: true });
-  input.io.writeFile(htmlOutputPath, serializeForwardQuoteCaptureHtml(healthReport));
-
-  return { runId, healthReport, htmlOutputPath };
 }

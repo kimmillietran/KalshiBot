@@ -1,7 +1,8 @@
-import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { appendFileSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { performance } from "node:perf_hooks";
 
 import { runForwardQuoteCapture } from "@/lib/data/live/forwardQuoteCapture";
+import { createNodeForwardCaptureAppendStream } from "@/lib/data/live/forwardQuoteCapture/nodeForwardCaptureAppendStream";
 import { stableStringify } from "@/lib/trading/config/hashConfig";
 
 import {
@@ -39,6 +40,8 @@ export async function runForwardQuoteCaptureCommand(
         writeFile: io.writeFile,
         appendFile: io.appendFile,
         mkdirSync: io.mkdirSync,
+        createAppendStream: io.createAppendStream,
+        renameFile: io.renameFile,
         now: () => new Date(),
         monotonicNowMs: () => performance.now(),
         fetchImpl: io.fetchImpl,
@@ -77,6 +80,12 @@ export async function runForwardQuoteCaptureCommand(
       return 1;
     }
 
+    if (result.healthReport.connection.captureEndReason === "user-cancelled") {
+      // Conventional SIGINT exit code; the run drained gracefully and
+      // published a user-cancelled status before we reach this point.
+      return 130;
+    }
+
     return 0;
   } catch (error) {
     io.writeStderr(`${mapCommandError(error)}\n`);
@@ -105,6 +114,10 @@ function main(): void {
     },
     mkdirSync: (path, options) => {
       mkdirSync(path, options);
+    },
+    createAppendStream: createNodeForwardCaptureAppendStream,
+    renameFile: (from, to) => {
+      renameSync(from, to);
     },
     fetchImpl: fetch,
   });

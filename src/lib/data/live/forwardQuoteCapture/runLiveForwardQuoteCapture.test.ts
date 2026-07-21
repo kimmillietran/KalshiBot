@@ -3,6 +3,10 @@ import { describe, expect, it, vi } from "vitest";
 import type { KalshiWsProbeTransport } from "@/features/market-data/orderbook/types";
 import type { KalshiCaptureCredentials } from "@/lib/data/live/kalshiWsCaptureSpike";
 
+import {
+  createJsonlForwardCaptureWriter,
+  createRunOutputPaths,
+} from "./jsonlForwardCaptureWriter";
 import { runLiveForwardQuoteCapture } from "./runLiveForwardQuoteCapture";
 import type { ForwardQuoteCaptureConfig } from "./forwardQuoteCaptureTypes";
 
@@ -443,6 +447,285 @@ describe("runLiveForwardQuoteCapture subscription and resync correctness", () =>
     const lifecycleLines = (appended[result.paths.captureLifecyclePath] ?? []).join("");
     expect(lifecycleLines).toContain("marketUnsubscribeRequested");
     expect(lifecycleLines).toContain("marketUnsubscribeAcknowledged");
+  }, 15_000);
+});
+
+describe("runLiveForwardQuoteCapture writer failure", () => {
+  it("ends the capture with writer-failure and records a lifecycle event", async () => {
+    const transport = new ScriptedKalshiTransport();
+    const { io } = createMemoryIo();
+    const lifecycleChunks: string[] = [];
+
+    // The raw sink fails immediately; the lifecycle sink keeps working so the
+    // failure itself can be recorded.
+    const ioWithFailingRawSink = {
+      ...io,
+      createAppendStream: (path: string) => ({
+        write: (chunk: string) => {
+          if (path.endsWith("raw-kalshi-ws.jsonl")) {
+            throw new Error("EIO: i/o error");
+          }
+          if (path.endsWith("capture-lifecycle.jsonl")) {
+            lifecycleChunks.push(chunk);
+          }
+          return true;
+        },
+        onceDrain: () => {},
+        onError: () => {},
+        end: () => Promise.resolve(),
+      }),
+    };
+
+    const writer = createJsonlForwardCaptureWriter(
+      ioWithFailingRawSink,
+      createRunOutputPaths("out/capture", "run-writer-failure"),
+    );
+
+    const result = await runLiveForwardQuoteCapture({
+      runId: "run-writer-failure",
+      startedAt: "2026-07-20T00:00:00.000Z",
+      config: { ...LIVE_CONFIG, wsWatchdogEnabled: false },
+      discovery: createDiscovery(["KXBTC15M-TEST"]),
+      credentials: CREDENTIALS,
+      io: ioWithFailingRawSink,
+      writer,
+      transport,
+    });
+
+    expect(result.captureEndReason).toBe("writer-failure");
+    expect(result.connection.terminalFailureReason).toBe("capture-writer-failure");
+    expect(result.errors.join(" ")).toContain("EIO: i/o error");
+    expect(lifecycleChunks.join("")).toContain("writerFailureDetected");
+  });
+});
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
+describe("runLiveForwardQuoteCapture producer quiescence", () => {
+  it("awaits in-flight BTC and rollover work before returning for writer finalization", async () => {
+    const transport = new ScriptedKalshiTransport();
+    const { io } = createMemoryIo();
+    const intervals: Array<{ fn: () => void; ms: number }> = [];
+
+    let releaseBtc!: (value: { price: number; updatedAt: string }) => void;
+    const heldBtc = new Promise<{ price: number; updatedAt: string }>((resolve) => {
+      releaseBtc = resolve;
+    });
+    let btcCalls = 0;
+    const fetchBtcSpot = () => {
+      btcCalls += 1;
+      // The startup poll resolves immediately; the interval poll hangs until
+      // the test releases it.
+      return btcCalls === 1
+        ? Promise.resolve({ price: 50_000, updatedAt: "2026-07-20T00:00:00.000Z" })
+        : heldBtc;
+    };
+
+    let releaseRollover!: () => void;
+    const heldRollover = new Promise<void>((resolve) => {
+      releaseRollover = resolve;
+    });
+    const fetchImpl = (async () => {
+      await heldRollover;
+      return new Response(JSON.stringify({ markets: [] }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }) as typeof fetch;
+
+    let stopCalls = 0;
+    let resolved = false;
+    const resultPromise = runLiveForwardQuoteCapture({
+      runId: "run-quiescence",
+      startedAt: "2026-07-20T00:00:00.000Z",
+      config: {
+        ...LIVE_CONFIG,
+        durationMinutes: 60,
+        captureBtcSpot: true,
+        wsWatchdogEnabled: false,
+      },
+      discovery: createDiscovery(["KXBTC15M-TEST"]),
+      credentials: CREDENTIALS,
+      io: {
+        ...io,
+        now: () => new Date("2026-07-20T00:00:00.000Z"),
+        fetchImpl,
+        setInterval: (fn: () => void, ms: number) => {
+          intervals.push({ fn, ms });
+          return intervals.length;
+        },
+        clearInterval: () => {},
+      },
+      transport,
+      fetchBtcSpot,
+      shouldStop: () => {
+        stopCalls += 1;
+        if (stopCalls === 1) {
+          // Start an in-flight BTC poll and rollover discovery, then request
+          // shutdown on the next loop iteration.
+          for (const interval of intervals) {
+            interval.fn();
+          }
+          return false;
+        }
+        return true;
+      },
+    }).then((result) => {
+      resolved = true;
+      return result;
+    });
+
+    // Shutdown was requested while both producers are in flight; the capture
+    // must not return (and therefore the orchestrator cannot begin writer
+    // finalization) until they settle.
+    await sleep(800);
+    expect(resolved).toBe(false);
+
+    releaseBtc({ price: 50_100, updatedAt: "2026-07-20T00:00:05.000Z" });
+    releaseRollover();
+    const result = await resultPromise;
+
+    expect(resolved).toBe(true);
+    // The rollover discovery settled after shutdown began, so it must not
+    // have mutated subscriptions.
+    expect(result.rollover.rolloverChecks).toBe(1);
+    expect(result.rollover.rolloverSubscriptionsAdded).toBe(0);
+  }, 15_000);
+
+  it("ignores late WebSocket messages after producer shutdown", async () => {
+    class ManualTransport implements KalshiWsProbeTransport {
+      handler: ((payload: string) => void) | null = null;
+
+      async connect(): Promise<void> {}
+
+      send(payload: string): void {
+        const command = JSON.parse(payload) as { cmd?: string; id?: number };
+        if (command.cmd === "subscribe") {
+          this.handler?.(
+            JSON.stringify({
+              id: command.id,
+              type: "subscribed",
+              msg: { channel: "orderbook_delta", sid: 1 },
+            }),
+          );
+          this.handler?.(
+            JSON.stringify({
+              type: "orderbook_snapshot",
+              sid: 1,
+              seq: 1,
+              msg: {
+                market_ticker: "KXBTC15M-TEST",
+                market_id: "market-id",
+                yes_dollars_fp: [["0.4500", "100.00"]],
+                no_dollars_fp: [["0.5000", "80.00"]],
+              },
+            }),
+          );
+        }
+      }
+
+      close(): void {}
+      onOpen(): void {}
+      onMessage(handler: (payload: string) => void): void {
+        this.handler = handler;
+      }
+      onClose(): void {}
+      onError(): void {}
+      ping(): void {}
+      onPong(): void {}
+    }
+
+    const transport = new ManualTransport();
+    const { io } = createMemoryIo();
+
+    const result = await runLiveForwardQuoteCapture({
+      runId: "run-late-messages",
+      startedAt: "2026-07-20T00:00:00.000Z",
+      config: { ...LIVE_CONFIG, wsWatchdogEnabled: false },
+      discovery: createDiscovery(["KXBTC15M-TEST"]),
+      credentials: CREDENTIALS,
+      io,
+      transport,
+    });
+
+    const rawMessagesAtEnd = result.processor.diagnostics.rawMessageCount;
+    expect(rawMessagesAtEnd).toBeGreaterThan(0);
+
+    // A buffered message delivered after shutdown must not reach the
+    // processor (and therefore can never reach a finalizing writer).
+    transport.handler?.(
+      JSON.stringify({
+        type: "orderbook_delta",
+        sid: 1,
+        seq: 2,
+        msg: {
+          market_ticker: "KXBTC15M-TEST",
+          market_id: "market-id",
+          price_dollars: "0.4600",
+          delta_fp: "5.00",
+          side: "yes",
+        },
+      }),
+    );
+
+    expect(result.processor.diagnostics.rawMessageCount).toBe(rawMessagesAtEnd);
+  });
+
+  it("records a rollover check rejection instead of leaking an unhandled error", async () => {
+    const transport = new ScriptedKalshiTransport();
+    const { io } = createMemoryIo();
+    const intervals: Array<{ fn: () => void; ms: number }> = [];
+
+    // One-shot poison: the next io.now() call (made synchronously inside the
+    // rollover check) throws, producing a rejected check promise.
+    let nowShouldThrow = false;
+    const poisonedIo = {
+      ...io,
+      now: () => {
+        if (nowShouldThrow) {
+          nowShouldThrow = false;
+          throw new Error("rollover check exploded");
+        }
+        return new Date("2026-07-20T00:00:00.000Z");
+      },
+      setInterval: (fn: () => void, ms: number) => {
+        intervals.push({ fn, ms });
+        return intervals.length;
+      },
+      clearInterval: () => {},
+    };
+
+    let stopCalls = 0;
+    const result = await runLiveForwardQuoteCapture({
+      runId: "run-rollover-rejection",
+      startedAt: "2026-07-20T00:00:00.000Z",
+      config: { ...LIVE_CONFIG, durationMinutes: 60, wsWatchdogEnabled: false },
+      discovery: createDiscovery(["KXBTC15M-TEST"]),
+      credentials: CREDENTIALS,
+      io: poisonedIo,
+      transport,
+      shouldStop: () => {
+        stopCalls += 1;
+        if (stopCalls === 1) {
+          nowShouldThrow = true;
+          for (const interval of intervals) {
+            interval.fn();
+          }
+          return false;
+        }
+        return stopCalls > 2;
+      },
+    });
+
+    expect(
+      result.errors.some((message) =>
+        message.includes("Rollover market discovery failed: rollover check exploded"),
+      ),
+    ).toBe(true);
   }, 15_000);
 });
 
