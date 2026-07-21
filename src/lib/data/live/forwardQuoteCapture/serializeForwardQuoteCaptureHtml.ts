@@ -109,7 +109,7 @@ export function serializeForwardQuoteCaptureHtml(
       <section class="panel">
         <h2>Orderbook Validity</h2>
         <p>Snapshots: ${report.orderbook.snapshotsReceived} | Deltas: ${report.orderbook.deltasReceived} | Sequence-valid markets: ${report.orderbook.marketsWithValidBook}</p>
-        <p>Gaps: ${report.orderbook.sequenceGapCount} | Resync attempts: ${report.orderbook.resyncAttemptCount} | Resync successes: ${report.orderbook.resyncSuccessCount}</p>
+        <p>Gap episodes: ${report.orderbook.sequenceGapEpisodeCount} | Quarantined deltas: ${report.orderbook.deltasQuarantinedDuringResync} | Recovery requests: ${report.orderbook.snapshotRecoveryRequestCount} | Recovery successes: ${report.orderbook.snapshotRecoverySuccessCount} | Recovery failures: ${report.orderbook.snapshotRecoveryFailureCount}</p>
         <div class="stat-grid">
           <div class="stat">
             <div class="label">Records emitted</div>

@@ -1,6 +1,7 @@
 import {
   DEFAULT_FORWARD_QUOTE_CAPTURE_HTML_PATH,
   DEFAULT_FORWARD_QUOTE_CAPTURE_OUTPUT_DIR,
+  FORWARD_CAPTURE_PRICE_REPRESENTATION,
   type ForwardQuoteCaptureConfig,
 } from "@/lib/data/live/forwardQuoteCapture";
 import { DEFAULT_KALSHI_WS_WATCHDOG_CONFIG } from "@/lib/data/live/forwardQuoteCapture/kalshiWsLivenessWatchdog";
@@ -91,6 +92,7 @@ export function parseForwardQuoteCaptureConfigFromArgv(
       "--ws-recovery-max-attempts",
       DEFAULT_KALSHI_WS_WATCHDOG_CONFIG.wsRecoveryMaxAttempts,
     ),
+    priceRepresentation: FORWARD_CAPTURE_PRICE_REPRESENTATION,
   };
 }
 
