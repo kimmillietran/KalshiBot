@@ -13,7 +13,11 @@ import type {
   CalibrationFadeMarketRecord,
   FrozenHypothesisSpec,
 } from "@/lib/data/research/calibrationFadeForwardValidation/calibrationFadeForwardValidationTypes";
-import { resolveSelectedRunId } from "@/lib/data/research/selectedRunCaptureHealth";
+import { CalibrationFadeForwardValidationError } from "@/lib/data/research/calibrationFadeForwardValidation/calibrationFadeForwardValidationTypes";
+import {
+  resolveSelectedRunId,
+  SelectedRunCaptureHealthError,
+} from "@/lib/data/research/selectedRunCaptureHealth";
 
 import { aggregateCrossRunMetrics } from "./aggregateCrossRunMetrics";
 import {
@@ -30,7 +34,10 @@ import { collectRunSourceArtifactIdentities } from "./collectRunSourceArtifactId
 import type { CrossRunSourceIdentity } from "./collectRunSourceArtifactIdentities";
 import { computeRunSetHash } from "./computeRunSetHash";
 import { deduplicateCandidateMarkets } from "./deduplicateCandidateMarkets";
-import { isSelectedRunResearchReady } from "./isSelectedRunResearchReady";
+import {
+  describeSelectedRunHealthFailure,
+  isSelectedRunResearchReady,
+} from "./isSelectedRunResearchReady";
 
 export type AnalyzePerRunFn = (input: {
   generatedAt: string;
@@ -45,20 +52,34 @@ export type AnalyzePerRunFn = (input: {
   marketLines: string[];
 }>;
 
-function parseMarketLines(lines: readonly string[]): CalibrationFadeMarketRecord[] {
+/**
+ * Parses candidate market JSONL rows failing closed: blank lines are ignored,
+ * but malformed rows are counted with their 1-based line numbers so the run
+ * can be reported without dumping row payloads.
+ */
+function parseMarketLines(lines: readonly string[]): {
+  markets: CalibrationFadeMarketRecord[];
+  malformedLineNumbers: number[];
+} {
   const markets: CalibrationFadeMarketRecord[] = [];
-  for (const line of lines) {
+  const malformedLineNumbers: number[] = [];
+  for (const [index, line] of lines.entries()) {
     const trimmed = line.trim();
     if (!trimmed) {
       continue;
     }
     try {
-      markets.push(JSON.parse(trimmed) as CalibrationFadeMarketRecord);
+      const parsed = JSON.parse(trimmed) as unknown;
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+        malformedLineNumbers.push(index + 1);
+        continue;
+      }
+      markets.push(parsed as CalibrationFadeMarketRecord);
     } catch {
-      // skip malformed
+      malformedLineNumbers.push(index + 1);
     }
   }
-  return markets;
+  return { markets, malformedLineNumbers };
 }
 
 function buildLeaveOneRunOut(input: {
@@ -68,6 +89,7 @@ function buildLeaveOneRunOut(input: {
   spec: FrozenHypothesisSpec;
   provenanceAvailable: boolean;
   runSetIncompatible: boolean;
+  candidateParsingErrorCount: number;
 }): CalibrationFadeCrossRunValidationReport["leaveOneRunOut"] {
   if (!input.applicable || input.perRunSummaries.length < 3) {
     return { applicable: false, folds: [] };
@@ -88,6 +110,7 @@ function buildLeaveOneRunOut(input: {
       spec: input.spec,
       provenanceAvailable: input.provenanceAvailable,
       runSetIncompatible: input.runSetIncompatible,
+      candidateParsingErrorCount: input.candidateParsingErrorCount,
       perRunSummaries: remainingRuns,
       uniqueCandidateMarketCount: remainingMarkets.filter((market) => market.evaluated).length,
       settlementCoverage: metrics.settlementCoverage,
@@ -134,6 +157,8 @@ export async function analyzeCalibrationFadeCrossRun(input: {
   const warnings: string[] = [...provenanceWarnings];
   let runSetIncompatible = false;
   const sourceIdentities: CrossRunSourceIdentity[] = [];
+  const parsingErrorsByRun = new Map<string, number[]>();
+  const failedRuns: { runId: string; runDir: string; reason: string }[] = [];
 
   // Intentionally never reads data/research-results/calibration-fade-forward-validation.json.
   // analyzeCalibrationFadeForwardForRun returns in-memory report/lines only; scratch output
@@ -149,21 +174,39 @@ export async function analyzeCalibrationFadeCrossRun(input: {
 
     sourceIdentities.push(collectRunSourceArtifactIdentities(input.io, normalizedDir));
 
-    const { report, marketLines } = await analyzePerRun({
-      generatedAt: input.generatedAt,
-      outputPath: `${DEFAULT_CALIBRATION_FADE_FORWARD_VALIDATION_OUTPUT_PATH}.cross-run-scratch.${runId}`,
-      htmlOutputPath: `${DEFAULT_CALIBRATION_FADE_FORWARD_VALIDATION_HTML_PATH}.cross-run-scratch.${runId}`,
-      config: {
-        captureRunDir: normalizedDir,
-        hypothesisConfigPath: input.config.hypothesisConfigPath,
-        importsDir: input.config.importsDir,
-        maximumBtcJoinAgeMs: input.config.maximumBtcJoinAgeMs,
-        eventsOutputPath: `${DEFAULT_CALIBRATION_FADE_FORWARD_EVENTS_PATH}.cross-run-scratch.${runId}`,
-        marketsOutputPath: `${DEFAULT_CALIBRATION_FADE_FORWARD_MARKETS_PATH}.cross-run-scratch.${runId}`,
-      },
-      io: input.io,
-      hypothesisId: input.hypothesisId ?? spec.hypothesisId,
-    });
+    let report: CalibrationFadeForwardValidationReport;
+    let marketLines: string[];
+    try {
+      const analyzed = await analyzePerRun({
+        generatedAt: input.generatedAt,
+        outputPath: `${DEFAULT_CALIBRATION_FADE_FORWARD_VALIDATION_OUTPUT_PATH}.cross-run-scratch.${runId}`,
+        htmlOutputPath: `${DEFAULT_CALIBRATION_FADE_FORWARD_VALIDATION_HTML_PATH}.cross-run-scratch.${runId}`,
+        config: {
+          captureRunDir: normalizedDir,
+          hypothesisConfigPath: input.config.hypothesisConfigPath,
+          importsDir: input.config.importsDir,
+          maximumBtcJoinAgeMs: input.config.maximumBtcJoinAgeMs,
+          eventsOutputPath: `${DEFAULT_CALIBRATION_FADE_FORWARD_EVENTS_PATH}.cross-run-scratch.${runId}`,
+          marketsOutputPath: `${DEFAULT_CALIBRATION_FADE_FORWARD_MARKETS_PATH}.cross-run-scratch.${runId}`,
+        },
+        io: input.io,
+        hypothesisId: input.hypothesisId ?? spec.hypothesisId,
+      });
+      report = analyzed.report;
+      marketLines = analyzed.marketLines;
+    } catch (error) {
+      // Health/validation failures keep the selected run in the ledger instead of
+      // silently subsetting the operator-provided run set.
+      if (
+        error instanceof CalibrationFadeForwardValidationError
+        || error instanceof SelectedRunCaptureHealthError
+      ) {
+        failedRuns.push({ runId, runDir: normalizedDir, reason: error.message });
+        warnings.push(`[${runId}] Selected run failed health validation: ${error.message}`);
+        continue;
+      }
+      throw error;
+    }
 
     if (
       report.hypothesisId !== spec.hypothesisId
@@ -176,12 +219,25 @@ export async function analyzeCalibrationFadeCrossRun(input: {
       );
     }
 
+    const parsedMarkets = parseMarketLines(marketLines);
+    if (parsedMarkets.malformedLineNumbers.length > 0) {
+      parsingErrorsByRun.set(runId, parsedMarkets.malformedLineNumbers);
+      warnings.push(
+        `[${runId}] ${parsedMarkets.malformedLineNumbers.length} malformed candidate market rows at lines ${parsedMarkets.malformedLineNumbers.join(", ")}.`,
+      );
+    }
+
     perRunResults.push({
       report,
-      marketRecords: parseMarketLines(marketLines),
+      marketRecords: parsedMarkets.markets,
     });
     warnings.push(...report.warnings.map((warning) => `[${runId}] ${warning}`));
   }
+
+  const candidateParsingErrorCount = [...parsingErrorsByRun.values()].reduce(
+    (sum, lines) => sum + lines.length,
+    0,
+  );
 
   const runSetHash = computeRunSetHash({
     captureRunDirs: input.config.captureRunDirs,
@@ -203,10 +259,29 @@ export async function analyzeCalibrationFadeCrossRun(input: {
 
   const dedupe = deduplicateCandidateMarkets({ appearances: appearanceInputs });
 
+  const researchReadyByRunId = new Map<string, boolean>(
+    perRunResults.map((result) => [
+      result.report.selectedRunId,
+      isSelectedRunResearchReady({
+        captureHealthSource: result.report.selectedRunQuality.captureHealthSource ?? null,
+        captureVerdict: result.report.selectedRunQuality.captureVerdict,
+      }),
+    ]),
+  );
+
+  // Canonical candidates whose source run failed the research-ready gate are
+  // preserved in the ledger but excluded from outcome evaluation.
+  const uniqueMarkets = dedupe.uniqueMarkets.map((market) => {
+    if (researchReadyByRunId.get(market.selectedCanonicalEntry.selectedRunId) !== false) {
+      return market;
+    }
+    return { ...market, evaluated: false };
+  });
+
   const perRunSummaries: CrossRunRunSummary[] = perRunResults.map((result) => {
     const runId = result.report.selectedRunId;
     const appearances = dedupe.appearances.filter((entry) => entry.selectedRunId === runId);
-    const canonicalForRun = dedupe.uniqueMarkets.filter(
+    const canonicalForRun = uniqueMarkets.filter(
       (market) => market.selectedCanonicalEntry.selectedRunId === runId,
     );
     const introduced = canonicalForRun.length;
@@ -244,11 +319,22 @@ export async function analyzeCalibrationFadeCrossRun(input: {
       )
       .map((market) => market.selectedCanonicalEntry.grossReturnCents ?? 0);
 
+    const researchReady = researchReadyByRunId.get(runId) === true;
+    const failedHealthReason = describeSelectedRunHealthFailure({
+      captureHealthSource: result.report.selectedRunQuality.captureHealthSource ?? null,
+      captureVerdict: result.report.selectedRunQuality.captureVerdict,
+    });
+
     return {
       selectedRunId: runId,
       selectedRunDirectory: result.report.selectedRunDirectory,
       captureHealthSource: result.report.selectedRunQuality.captureHealthSource ?? null,
       captureVerdict: result.report.selectedRunQuality.captureVerdict,
+      researchReady,
+      failedHealthReason,
+      contributedCandidates: appearances.length > 0,
+      excludedFromOutcomeEvaluation: !researchReady,
+      candidateParsingErrorCount: parsingErrorsByRun.get(runId)?.length ?? 0,
       runDurationSeconds: result.report.selectedRunQuality.runDurationSeconds,
       recordsScanned: result.report.recordsScanned,
       btcRecordsScanned: result.report.btcRecordsScanned,
@@ -269,21 +355,64 @@ export async function analyzeCalibrationFadeCrossRun(input: {
     };
   });
 
+  // Failed selected runs stay in the ledger; they are never silently subset out.
+  for (const failed of failedRuns) {
+    perRunSummaries.push({
+      selectedRunId: failed.runId,
+      selectedRunDirectory: failed.runDir,
+      captureHealthSource: null,
+      captureVerdict: null,
+      researchReady: false,
+      failedHealthReason: failed.reason,
+      contributedCandidates: false,
+      excludedFromOutcomeEvaluation: true,
+      candidateParsingErrorCount: 0,
+      runDurationSeconds: null,
+      recordsScanned: 0,
+      btcRecordsScanned: 0,
+      qualifyingObservationCount: 0,
+      candidateEpisodeCount: 0,
+      rawCandidateMarketAppearanceCount: 0,
+      uniqueCandidateMarketsIntroduced: 0,
+      duplicateCandidateAppearanceCount: 0,
+      executableEntryAvailableCount: 0,
+      settlementJoinedCount: 0,
+      evaluatedExecutableCandidateCount: 0,
+      grossReturnCents: null,
+      feeAdjustedReturnCents: null,
+      interpretationClassification: "observation-quality-inconclusive",
+      recommendedNextAction: "repair-or-replace-invalid-forward-runs",
+      warnings: [failed.reason],
+      hypothesisConfigurationHash: spec.configurationHash,
+    });
+  }
+
   const researchReadyRunCount = perRunSummaries.filter((run) =>
     isSelectedRunResearchReady(run),
   ).length;
 
+  const invalidSelectedRuns = perRunSummaries
+    .filter((run) => !run.researchReady)
+    .map((run) => ({
+      selectedRunId: run.selectedRunId,
+      failedHealthReason:
+        run.failedHealthReason ?? "Selected run failed required research-ready health checks.",
+      contributedCandidates: run.contributedCandidates,
+      excludedFromOutcomeEvaluation: run.excludedFromOutcomeEvaluation,
+    }));
+
   const metrics = aggregateCrossRunMetrics({
-    uniqueMarkets: dedupe.uniqueMarkets,
+    uniqueMarkets,
     perRunSummaries,
   });
 
-  const evaluatedUniqueCount = dedupe.uniqueMarkets.filter((market) => market.evaluated).length;
+  const evaluatedUniqueCount = uniqueMarkets.filter((market) => market.evaluated).length;
 
   const classification = classifyCalibrationFadeCrossRun({
     spec,
     provenanceAvailable,
     runSetIncompatible,
+    candidateParsingErrorCount,
     perRunSummaries,
     uniqueCandidateMarketCount: evaluatedUniqueCount,
     settlementCoverage: metrics.settlementCoverage,
@@ -307,10 +436,11 @@ export async function analyzeCalibrationFadeCrossRun(input: {
   const leaveOneRunOut = buildLeaveOneRunOut({
     applicable: perRunSummaries.length >= 3,
     perRunSummaries,
-    uniqueMarkets: dedupe.uniqueMarkets,
+    uniqueMarkets,
     spec,
     provenanceAvailable,
     runSetIncompatible,
+    candidateParsingErrorCount,
   });
 
   const report: CalibrationFadeCrossRunValidationReport = {
@@ -347,6 +477,8 @@ export async function analyzeCalibrationFadeCrossRun(input: {
     executableCandidateCount: metrics.evaluatedExecutableCandidateCount,
     unavailableExecutablePriceCount: metrics.unavailableExecutablePriceCount,
     settlementCoverageShare: metrics.settlementCoverage.settlementCoverageShare,
+    candidateParsingErrorCount,
+    invalidSelectedRuns,
     warnings,
     classification: classification.classification,
     interpretationClassification: classification.classification,
@@ -367,7 +499,7 @@ export async function analyzeCalibrationFadeCrossRun(input: {
       minimumEvidenceRequirements: spec.minimumEvidenceRequirements,
     },
     perRunSummaries,
-    uniqueMarkets: dedupe.uniqueMarkets,
+    uniqueMarkets,
     appearances: dedupe.appearances,
     calibration: metrics.calibration,
     executable: metrics.executable,
@@ -378,7 +510,7 @@ export async function analyzeCalibrationFadeCrossRun(input: {
       {
         stageId: "successfully-analyzed-runs",
         label: "Successfully analyzed runs",
-        count: perRunSummaries.length,
+        count: perRunResults.length,
       },
     ],
     candidateFunnel: [
@@ -422,7 +554,7 @@ export async function analyzeCalibrationFadeCrossRun(input: {
 
   return {
     report,
-    marketLines: dedupe.uniqueMarkets.map((market) => JSON.stringify(market)),
+    marketLines: uniqueMarkets.map((market) => JSON.stringify(market)),
     runLines: perRunSummaries.map((run) => JSON.stringify(run)),
     appearanceLines: dedupe.appearances.map((appearance) => JSON.stringify(appearance)),
   };

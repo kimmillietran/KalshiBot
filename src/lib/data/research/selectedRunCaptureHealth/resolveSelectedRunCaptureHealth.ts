@@ -39,6 +39,13 @@ function normalizeFromAudit(
     healthSource,
     captureVerdict: audit.summary.verdict,
     recommendedNextAction: audit.summary.recommendedNextAction,
+    nativeCaptureVerdict: null,
+    nativeRecommendedNextAction: null,
+    captureEndReason: null,
+    terminalFailureReason: null,
+    startedAt: null,
+    endedAt: null,
+    researchReadyVerified: audit.summary.verdict === RESEARCH_READY_CAPTURE_VERDICT,
     runDurationSeconds: audit.summary.runDurationSeconds,
     topOfBookCount: audit.summary.topOfBookCount,
     btcSpotCount: audit.summary.btcSpotCount,
@@ -62,6 +69,25 @@ function normalizeFromAudit(
   };
 }
 
+function readBoolean(value: unknown): boolean | null {
+  return typeof value === "boolean" ? value : null;
+}
+
+function resolveActualRunDurationSeconds(
+  startedAt: string | null,
+  endedAt: string | null,
+): number | null {
+  if (startedAt === null || endedAt === null) {
+    return null;
+  }
+  const startedMs = Date.parse(startedAt);
+  const endedMs = Date.parse(endedAt);
+  if (!Number.isFinite(startedMs) || !Number.isFinite(endedMs) || endedMs < startedMs) {
+    return null;
+  }
+  return Math.round((endedMs - startedMs) / 1000);
+}
+
 function normalizeFromNative(
   nativeHealth: Record<string, unknown>,
   captureRunDir: string,
@@ -76,6 +102,18 @@ function normalizeFromNative(
     nativeHealth.capture && typeof nativeHealth.capture === "object"
       ? (nativeHealth.capture as Record<string, unknown>)
       : null;
+  const connection =
+    nativeHealth.connection && typeof nativeHealth.connection === "object"
+      ? (nativeHealth.connection as Record<string, unknown>)
+      : null;
+
+  const startedAt = readString(nativeHealth.startedAt);
+  const endedAt = readString(nativeHealth.endedAt);
+  const captureEndReason = readString(connection?.captureEndReason);
+  // completedNormally lives on connection; there is no top-level endReason field in native health.
+  const completedNormally =
+    readBoolean(connection?.completedNormally)
+    ?? (captureEndReason === "duration-complete" ? true : null);
 
   return {
     selectedRunId,
@@ -83,8 +121,16 @@ function normalizeFromNative(
     healthSource: "native-capture-health",
     captureVerdict: audit?.summary.verdict ?? null,
     recommendedNextAction: audit?.summary.recommendedNextAction ?? null,
+    nativeCaptureVerdict: readString(nativeHealth.verdict),
+    nativeRecommendedNextAction: readString(nativeHealth.recommendedNextAction),
+    captureEndReason,
+    terminalFailureReason: readString(connection?.terminalFailureReason),
+    startedAt,
+    endedAt,
+    researchReadyVerified: audit?.summary.verdict === RESEARCH_READY_CAPTURE_VERDICT,
     runDurationSeconds:
       audit?.summary.runDurationSeconds
+      ?? resolveActualRunDurationSeconds(startedAt, endedAt)
       ?? resolveConfiguredDurationSecondsFromNative(nativeHealth),
     topOfBookCount:
       audit?.summary.topOfBookCount ?? readNumber(capture?.topOfBookRecordCount),
@@ -99,7 +145,7 @@ function normalizeFromNative(
     sequenceGapCount:
       audit?.summary.bookState?.sequenceGapCount ?? readNumber(orderbook?.sequenceGapCount),
     suspectedSystemSleepSeconds: null,
-    completedNormally: readString(nativeHealth.endReason) === "duration-complete" ? true : null,
+    completedNormally,
     nativeHealthPath: joinCapturePath(captureRunDir, "capture-health.json"),
     runScopedAuditPath: null,
     globalAuditPath: null,

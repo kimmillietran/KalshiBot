@@ -17,6 +17,9 @@ export function serializeCalibrationFadeCrossRunValidationHtml(
       <td>${run.selectedRunId}</td>
       <td>${run.captureHealthSource ?? "n/a"}</td>
       <td>${run.captureVerdict ?? "n/a"}</td>
+      <td>${run.researchReady ? "yes" : "no"}</td>
+      <td>${run.failedHealthReason ?? ""}</td>
+      <td>${run.excludedFromOutcomeEvaluation ? "yes" : "no"}</td>
       <td>${run.recordsScanned}</td>
       <td>${run.qualifyingObservationCount}</td>
       <td>${run.candidateEpisodeCount}</td>
@@ -65,7 +68,8 @@ export function serializeCalibrationFadeCrossRunValidationHtml(
   <table>
     <thead>
       <tr>
-        <th>Run</th><th>Health source</th><th>Verdict</th><th>Records</th>
+        <th>Run</th><th>Health source</th><th>Verdict</th><th>Research ready</th>
+        <th>Failed health reason</th><th>Excluded from outcomes</th><th>Records</th>
         <th>Qualifying</th><th>Episodes</th><th>Appearances</th><th>Fee-adj ¢</th><th>Classification</th>
       </tr>
     </thead>

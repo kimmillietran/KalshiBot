@@ -1,3 +1,5 @@
+import { RESEARCH_READY_CAPTURE_VERDICT } from "@/lib/data/research/selectedRunCaptureHealth";
+
 import type {
   CalibrationFadeCalibrationMetrics,
   CalibrationFadeExecutableMetrics,
@@ -10,6 +12,29 @@ import type {
   HistoricalHypothesisBenchmark,
 } from "./calibrationFadeForwardValidationTypes";
 import { roundMetric } from "./calibrationFadeForwardValidationUtils";
+
+export type ExecutableEvidenceState =
+  | "supportive"
+  | "contradictory"
+  | "unavailable-or-insufficient";
+
+/**
+ * Tri-state executable evidence. Zero evaluated executable candidates is not
+ * negative evidence; it means executable evidence is unavailable or insufficient.
+ */
+export function classifyExecutableEvidence(input: {
+  evaluatedExecutableCandidateCount: number;
+  feeAdjustedReturnCents: number | null;
+  materialExecutableNetReturnCents: number;
+}): ExecutableEvidenceState {
+  if (input.evaluatedExecutableCandidateCount <= 0 || input.feeAdjustedReturnCents === null) {
+    return "unavailable-or-insufficient";
+  }
+  if (input.feeAdjustedReturnCents >= input.materialExecutableNetReturnCents) {
+    return "supportive";
+  }
+  return "contradictory";
+}
 
 export function classifyCalibrationFadeInterpretation(input: {
   spec: FrozenHypothesisSpec;
@@ -44,22 +69,22 @@ export function classifyCalibrationFadeInterpretation(input: {
     );
   }
 
-  if (input.candidateMarketCount < minimumMarkets) {
+  // Observation quality is classified before evidence quantity so a failed or
+  // unverified run cannot masquerade as a clean run that merely lacks events.
+  const captureVerdict = input.selectedRunQuality.captureVerdict;
+  if (captureVerdict !== null && captureVerdict !== RESEARCH_READY_CAPTURE_VERDICT) {
     return action(
-      "insufficient-forward-events",
-      "collect-additional-clean-forward-captures",
-      `Only ${input.candidateMarketCount} independent candidate markets; minimum is ${minimumMarkets}.`,
+      "observation-quality-inconclusive",
+      "repair-or-replace-invalid-forward-runs",
+      `Selected run capture verdict is ${captureVerdict}; capture-research-ready is required before evidence-quantity classification.`,
     );
   }
 
-  if (
-    input.settlementCoverage.settlementCoverageShare !== null
-    && input.settlementCoverage.settlementCoverageShare < minimumSettlementShare
-  ) {
+  if (captureVerdict === null) {
     return action(
-      "settlement-coverage-incomplete",
-      "backfill-and-rejoin-settlements",
-      "Candidate settlement coverage is below the frozen minimum evidence threshold.",
+      "observation-quality-inconclusive",
+      "repair-or-replace-invalid-forward-runs",
+      "Selected run has no verified capture-research-ready health source; run the capture health audit before formal validation.",
     );
   }
 
@@ -76,6 +101,25 @@ export function classifyCalibrationFadeInterpretation(input: {
       "observation-quality-inconclusive",
       "fix-forward-observation-integrity",
       "Selected-run quality metrics are below frozen minimums for reliable forward validation.",
+    );
+  }
+
+  if (input.candidateMarketCount < minimumMarkets) {
+    return action(
+      "insufficient-forward-events",
+      "collect-additional-clean-forward-captures",
+      `Only ${input.candidateMarketCount} independent candidate markets; minimum is ${minimumMarkets}.`,
+    );
+  }
+
+  if (
+    input.settlementCoverage.settlementCoverageShare !== null
+    && input.settlementCoverage.settlementCoverageShare < minimumSettlementShare
+  ) {
+    return action(
+      "settlement-coverage-incomplete",
+      "backfill-and-rejoin-settlements",
+      "Candidate settlement coverage is below the frozen minimum evidence threshold.",
     );
   }
 
@@ -99,13 +143,14 @@ export function classifyCalibrationFadeInterpretation(input: {
     && ((input.spec.calibrationDirection === "over" && signedGap >= supportGap)
       || (input.spec.calibrationDirection === "under" && signedGap <= -supportGap));
 
-  const executableSupported =
-    input.executable.feeAdjustedReturnCents !== null
-    && input.executable.feeAdjustedReturnCents
-      >= input.spec.minimumEvidenceRequirements.materialExecutableNetReturnCents
-    && input.executable.evaluatedExecutableCandidateCount > 0;
+  const executableEvidence = classifyExecutableEvidence({
+    evaluatedExecutableCandidateCount: input.executable.evaluatedExecutableCandidateCount,
+    feeAdjustedReturnCents: input.executable.feeAdjustedReturnCents,
+    materialExecutableNetReturnCents:
+      input.spec.minimumEvidenceRequirements.materialExecutableNetReturnCents,
+  });
 
-  if (calibrationSupported && executableSupported) {
+  if (calibrationSupported && executableEvidence === "supportive") {
     return action(
       "forward-supports-executable-fade",
       "build-paper-execution-harness",
@@ -113,11 +158,11 @@ export function classifyCalibrationFadeInterpretation(input: {
     );
   }
 
-  if (calibrationSupported && !executableSupported) {
+  if (calibrationSupported && executableEvidence === "contradictory") {
     return action(
       "forward-contradicts-executability",
       "retain-calibration-research-but-deprioritize-trading-rule",
-      "Calibration effect is directionally supportive but executable pricing does not support trading.",
+      "Calibration effect is directionally supportive but evaluated executable pricing contradicts trading.",
     );
   }
 
@@ -125,7 +170,7 @@ export function classifyCalibrationFadeInterpretation(input: {
     return action(
       "forward-supports-calibration-effect",
       "build-executable-calibration-fade-candidate-dataset",
-      "Forward calibration gap supports the frozen historical direction at market level.",
+      "Forward calibration gap supports the frozen historical direction at market level; executable evidence is unavailable or insufficient and requires executable follow-up.",
     );
   }
 

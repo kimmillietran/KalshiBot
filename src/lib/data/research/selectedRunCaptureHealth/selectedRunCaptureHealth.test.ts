@@ -121,6 +121,129 @@ describe("resolveSelectedRunCaptureHealth", () => {
     expect(resolved.completedNormally).toBeNull();
   });
 
+  it("parses the real native verdict, connection fields, and timestamps", () => {
+    const files = {
+      [TOP_OF_BOOK]: "{}",
+      [BTC_SPOT]: "{}",
+      [`${RUN_DIR}/capture-health.json`]: nativeHealth({
+        verdict: "capture-mvp-success",
+        recommendedNextAction: "continue-capture",
+        startedAt: "2026-07-12T10:18:27.409Z",
+        endedAt: "2026-07-12T18:18:27.409Z",
+        connection: {
+          captureEndReason: "duration-complete",
+          terminalFailureReason: null,
+          completedNormally: true,
+          reconnectCount: 2,
+        },
+      }),
+    };
+    const io = createIo(files);
+
+    const resolved = resolveSelectedRunCaptureHealth({ io, captureRunDir: RUN_DIR });
+    expect(resolved.nativeCaptureVerdict).toBe("capture-mvp-success");
+    expect(resolved.nativeRecommendedNextAction).toBe("continue-capture");
+    expect(resolved.captureEndReason).toBe("duration-complete");
+    expect(resolved.terminalFailureReason).toBeNull();
+    expect(resolved.completedNormally).toBe(true);
+    expect(resolved.startedAt).toBe("2026-07-12T10:18:27.409Z");
+    expect(resolved.endedAt).toBe("2026-07-12T18:18:27.409Z");
+    expect(resolved.runDurationSeconds).toBe(28_800);
+  });
+
+  it("preserves native completedNormally=false and terminal failure reason", () => {
+    const files = {
+      [TOP_OF_BOOK]: "{}",
+      [BTC_SPOT]: "{}",
+      [`${RUN_DIR}/capture-health.json`]: nativeHealth({
+        verdict: "degraded-capture",
+        connection: {
+          captureEndReason: "terminal-websocket-failure",
+          terminalFailureReason: "ws-close-1006",
+          completedNormally: false,
+        },
+      }),
+    };
+    const io = createIo(files);
+
+    const resolved = resolveSelectedRunCaptureHealth({ io, captureRunDir: RUN_DIR });
+    expect(resolved.nativeCaptureVerdict).toBe("degraded-capture");
+    expect(resolved.captureEndReason).toBe("terminal-websocket-failure");
+    expect(resolved.terminalFailureReason).toBe("ws-close-1006");
+    expect(resolved.completedNormally).toBe(false);
+  });
+
+  it("does not read a nonexistent top-level endReason field", () => {
+    const files = {
+      [TOP_OF_BOOK]: "{}",
+      [BTC_SPOT]: "{}",
+      [`${RUN_DIR}/capture-health.json`]: nativeHealth({
+        endReason: "duration-complete",
+      }),
+    };
+    const io = createIo(files);
+
+    const resolved = resolveSelectedRunCaptureHealth({ io, captureRunDir: RUN_DIR });
+    expect(resolved.completedNormally).toBeNull();
+    expect(resolved.captureEndReason).toBeNull();
+  });
+
+  it("does not mark a null native verdict as research-ready verified", () => {
+    const files = {
+      [TOP_OF_BOOK]: "{}",
+      [BTC_SPOT]: "{}",
+      [`${RUN_DIR}/capture-health.json`]: nativeHealth(),
+    };
+    const io = createIo(files);
+
+    const resolved = resolveSelectedRunCaptureHealth({ io, captureRunDir: RUN_DIR });
+    expect(resolved.captureVerdict).toBeNull();
+    expect(resolved.researchReadyVerified).toBe(false);
+  });
+
+  it("marks research-ready verified only via a matching research-ready audit", () => {
+    const files = {
+      [TOP_OF_BOOK]: "{}",
+      [BTC_SPOT]: "{}",
+      [`${RUN_DIR}/capture-health.json`]: nativeHealth(),
+    };
+    files[`${RUN_DIR}/capture-health-audit.json`] = researchReadyAudit(files);
+    const io = createIo(files);
+
+    const resolved = resolveSelectedRunCaptureHealth({ io, captureRunDir: RUN_DIR });
+    expect(resolved.healthSource).toBe("native-capture-health");
+    expect(resolved.captureVerdict).toBe(RESEARCH_READY_CAPTURE_VERDICT);
+    expect(resolved.researchReadyVerified).toBe(true);
+  });
+
+  it("surfaces a matching gappy audit verdict alongside native health", () => {
+    const files = {
+      [TOP_OF_BOOK]: "{}",
+      [BTC_SPOT]: "{}",
+      [`${RUN_DIR}/capture-health.json`]: nativeHealth(),
+    };
+    files[`${RUN_DIR}/capture-health-audit.json`] = researchReadyAudit(files, {
+      summary: {
+        verdict: "capture-gappy",
+        recommendedNextAction: "repair-capture-continuity",
+        runDurationSeconds: 28_800,
+        topOfBookCount: 45_055,
+        btcSpotCount: 5_755,
+        bookState: { validBookShare: 0.8276, reconnectCount: 0, sequenceGapCount: 3_404_777 },
+        btcJoin: { joinCoverageShare: 1 },
+        continuity: { p90TopOfBookGapMs: 1018 },
+      },
+    });
+    const io = createIo(files);
+
+    const resolved = resolveSelectedRunCaptureHealth({ io, captureRunDir: RUN_DIR });
+    expect(resolved.healthSource).toBe("native-capture-health");
+    expect(resolved.captureVerdict).toBe("capture-gappy");
+    expect(resolved.researchReadyVerified).toBe(false);
+    expect(resolved.sequenceGapCount).toBe(3_404_777);
+    expect(resolved.validBookShare).toBe(0.8276);
+  });
+
   it("falls back to matching run-scoped audit when native health is missing", () => {
     const files = {
       [TOP_OF_BOOK]: "{}",

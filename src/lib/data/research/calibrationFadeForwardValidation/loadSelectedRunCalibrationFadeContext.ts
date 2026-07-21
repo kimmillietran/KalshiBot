@@ -131,6 +131,11 @@ export function loadSelectedRunCalibrationFadeContext(input: {
     reconciliationVerdict: reconciliationMatches
       ? readString((reconciliation?.summary as Record<string, unknown> | undefined)?.verdict)
       : null,
+    nativeCaptureVerdict: resolvedHealth.nativeCaptureVerdict,
+    captureEndReason: resolvedHealth.captureEndReason,
+    terminalFailureReason: resolvedHealth.terminalFailureReason,
+    completedNormally: resolvedHealth.completedNormally,
+    researchReadyVerified: resolvedHealth.researchReadyVerified,
   };
 
   return {
