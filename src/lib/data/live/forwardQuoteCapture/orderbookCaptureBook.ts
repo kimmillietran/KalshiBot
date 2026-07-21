@@ -10,9 +10,11 @@ import {
   isMeaningfulOrderbookLevelSize,
   shouldRemoveOrderbookLevelSize,
 } from "./orderbookLevelSize";
-import type {
-  ForwardTopOfBookBookState,
-  ForwardTopOfBookRecord,
+import {
+  FORWARD_CAPTURE_PRICE_REPRESENTATION,
+  type ForwardCapturePriceRepresentation,
+  type ForwardTopOfBookBookState,
+  type ForwardTopOfBookRecord,
 } from "./forwardQuoteCaptureTypes";
 
 /**
@@ -65,6 +67,8 @@ export class OrderbookCaptureBook {
   readonly marketTicker: string;
   readonly seriesTicker: string;
   readonly eventTicker: string | null;
+  /** Provenance: the representation the capture actually subscribed with. */
+  readonly priceRepresentation: ForwardCapturePriceRepresentation;
 
   yesBids = new Map<number, number>();
   noBids = new Map<number, number>();
@@ -81,10 +85,13 @@ export class OrderbookCaptureBook {
     marketTicker: string;
     seriesTicker: string;
     eventTicker?: string | null;
+    priceRepresentation?: ForwardCapturePriceRepresentation;
   }) {
     this.marketTicker = input.marketTicker;
     this.seriesTicker = input.seriesTicker;
     this.eventTicker = input.eventTicker ?? null;
+    this.priceRepresentation =
+      input.priceRepresentation ?? FORWARD_CAPTURE_PRICE_REPRESENTATION;
   }
 
   markClosed(): void {
@@ -272,7 +279,7 @@ export class OrderbookCaptureBook {
       exchangeTimestampMs: input.exchangeTimestampMs,
       sequence: this.lastSeq,
       bookState: this.bookState,
-      priceRepresentation: "legacy-no-leg",
+      priceRepresentation: this.priceRepresentation,
       yesBestBidCents,
       yesBestBidSize: yesBest?.size ?? null,
       yesBestAskCents,

@@ -34,6 +34,9 @@ export type ForwardCaptureVerdictInput = {
   resyncSuccessCount: number;
   errors: string[];
   terminalWebSocketFailure?: boolean;
+  snapshotRecoveryTimeoutCount?: number;
+  pendingCommandTimeoutCount?: number;
+  marketsWithOutstandingRecoveryAtEnd?: number;
 };
 
 export function evaluateForwardCaptureVerdict(
@@ -87,6 +90,16 @@ export function evaluateForwardCaptureVerdict(
   }
 
   if (input.terminalWebSocketFailure) {
+    return "degraded-capture";
+  }
+
+  // Unresolved recovery or acknowledgement-timeout state means the stream was
+  // not verifiably synchronized; a clean classification is not appropriate.
+  if (
+    (input.snapshotRecoveryTimeoutCount ?? 0) > 0
+    || (input.pendingCommandTimeoutCount ?? 0) > 0
+    || (input.marketsWithOutstandingRecoveryAtEnd ?? 0) > 0
+  ) {
     return "degraded-capture";
   }
 
@@ -224,6 +237,9 @@ export function buildForwardCaptureHealthReport(input: {
       "watchdog" in input.captureResult
         ? input.captureResult.watchdog?.terminalWebSocketFailure
         : undefined,
+    snapshotRecoveryTimeoutCount: diagnostics.snapshotRecoveryTimeoutCount,
+    pendingCommandTimeoutCount: diagnostics.pendingCommandTimeoutCount,
+    marketsWithOutstandingRecoveryAtEnd: diagnostics.marketsWithOutstandingRecoveryAtEnd,
   });
 
   const connectionSemantics = deriveConnectionSemantics({
@@ -259,6 +275,39 @@ export function buildForwardCaptureHealthReport(input: {
   if (diagnostics.staleSnapshotsRejected > 0) {
     warnings.push(
       `Rejected ${diagnostics.staleSnapshotsRejected} stale orderbook snapshot(s) older than already-observed sequence data.`,
+    );
+  }
+  if (diagnostics.snapshotRecoveryTimeoutCount > 0) {
+    warnings.push(
+      `Snapshot recovery timed out ${diagnostics.snapshotRecoveryTimeoutCount} time(s) (missing acknowledgement or missing fresh snapshot).`,
+    );
+  }
+  if (diagnostics.snapshotRecoveryExhaustedCount > 0) {
+    warnings.push(
+      `Bounded snapshot-recovery retries were exhausted ${diagnostics.snapshotRecoveryExhaustedCount} time(s); socket-level recovery was escalated.`,
+    );
+  }
+  if (diagnostics.pendingCommandTimeoutCount > 0) {
+    warnings.push(
+      `${diagnostics.pendingCommandTimeoutCount} pending WS command(s) timed out without acknowledgement (subscribe=${diagnostics.subscribeAckTimeoutCount}, get_snapshot=${diagnostics.snapshotAckTimeoutCount}, unsubscribe=${diagnostics.unsubscribeAckTimeoutCount}).`,
+    );
+  }
+  if (diagnostics.unknownControlResponseCount > 0) {
+    warnings.push(
+      `${diagnostics.unknownControlResponseCount} uncorrelated control response(s) were classified and ignored (no subscription state mutated).`,
+    );
+  }
+  if (diagnostics.malformedPayloadCount > 0) {
+    warnings.push(
+      `${diagnostics.malformedPayloadCount} raw WS payload(s) could not be parsed as JSON.`,
+    );
+  }
+  if (
+    diagnostics.marketsWithOutstandingRecoveryAtEnd > 0
+    || diagnostics.pendingCommandCountAtCaptureEnd > 0
+  ) {
+    warnings.push(
+      `Capture ended with unresolved state: ${diagnostics.marketsWithOutstandingRecoveryAtEnd} market(s) awaiting snapshot recovery, ${diagnostics.pendingCommandCountAtCaptureEnd} pending WS command(s).`,
     );
   }
   if (
@@ -363,6 +412,19 @@ export function buildForwardCaptureHealthReport(input: {
       snapshotRecoveryRequestCount: diagnostics.snapshotRecoveryRequestCount,
       snapshotRecoverySuccessCount: diagnostics.snapshotRecoverySuccessCount,
       snapshotRecoveryFailureCount: diagnostics.snapshotRecoveryFailureCount,
+      snapshotRecoveryTimeoutCount: diagnostics.snapshotRecoveryTimeoutCount,
+      snapshotRecoveryExhaustedCount: diagnostics.snapshotRecoveryExhaustedCount,
+      pendingCommandTimeoutCount: diagnostics.pendingCommandTimeoutCount,
+      subscribeAckTimeoutCount: diagnostics.subscribeAckTimeoutCount,
+      snapshotAckTimeoutCount: diagnostics.snapshotAckTimeoutCount,
+      unsubscribeAckTimeoutCount: diagnostics.unsubscribeAckTimeoutCount,
+      pendingCommandsInvalidatedOnReconnect:
+        diagnostics.pendingCommandsInvalidatedOnReconnect,
+      unknownControlResponseCount: diagnostics.unknownControlResponseCount,
+      malformedPayloadCount: diagnostics.malformedPayloadCount,
+      pendingCommandCountAtCaptureEnd: diagnostics.pendingCommandCountAtCaptureEnd,
+      marketsWithOutstandingRecoveryAtEnd:
+        diagnostics.marketsWithOutstandingRecoveryAtEnd,
       staleSnapshotsRejected: diagnostics.staleSnapshotsRejected,
       controlResponsesReceived: diagnostics.controlResponsesReceived,
       commandErrorsReceived: diagnostics.commandErrorsReceived,

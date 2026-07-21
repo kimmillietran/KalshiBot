@@ -229,6 +229,106 @@ describe("OrderbookSubscriptionManager command lifecycle", () => {
     expect(manager.handleControlMessage("not-an-object")).toBeNull();
   });
 
+  it("classifies unknown subscribed command ids without creating sid mappings", () => {
+    const manager = new OrderbookSubscriptionManager();
+    const transport = new MockKalshiWsTransport();
+    subscribeAndAcknowledge(manager, transport, TICKER, 456);
+
+    const control = manager.handleControlMessage({
+      id: 9_999,
+      type: "subscribed",
+      msg: { channel: "orderbook_delta", sid: 777, market_tickers: [TICKER] },
+    });
+
+    expect(control).toEqual({
+      kind: "unknownControlResponse",
+      responseType: "subscribed",
+      commandId: 9_999,
+      sid: 777,
+    });
+    expect(manager.getSidForTicker(TICKER)).toBe(456);
+    expect(manager.getSubscriptions()).toHaveLength(1);
+  });
+
+  it("classifies unknown ok and unsubscribed command ids without mutating state", () => {
+    const manager = new OrderbookSubscriptionManager();
+    const transport = new MockKalshiWsTransport();
+    subscribeAndAcknowledge(manager, transport, TICKER, 456);
+
+    const okControl = manager.handleControlMessage({
+      id: 9_998,
+      sid: 456,
+      seq: 3,
+      type: "ok",
+      msg: { market_tickers: [TICKER] },
+    });
+    const unsubscribedControl = manager.handleControlMessage({
+      id: 9_997,
+      sid: 456,
+      seq: 4,
+      type: "unsubscribed",
+    });
+
+    expect(okControl?.kind).toBe("unknownControlResponse");
+    expect(unsubscribedControl?.kind).toBe("unknownControlResponse");
+    expect(manager.getSidForTicker(TICKER)).toBe(456);
+    expect(manager.getSubscriptions()).toHaveLength(1);
+  });
+
+  it("invalidates pending commands on reconnect so old-generation responses cannot mutate new state", () => {
+    const manager = new OrderbookSubscriptionManager();
+    const transport = new MockKalshiWsTransport();
+    const generationBefore = manager.currentSocketGeneration;
+    const oldCommandId = manager.subscribe(transport, TICKER);
+
+    const invalidated = manager.resetForReconnect();
+    expect(invalidated).toHaveLength(1);
+    expect(invalidated[0]?.id).toBe(oldCommandId);
+    expect(manager.currentSocketGeneration).toBe(generationBefore + 1);
+
+    subscribeAndAcknowledge(manager, transport, TICKER, 901);
+
+    const staleControl = manager.handleControlMessage({
+      id: oldCommandId,
+      type: "subscribed",
+      msg: { channel: "orderbook_delta", sid: 456, market_tickers: [TICKER] },
+    });
+
+    expect(staleControl?.kind).toBe("unknownControlResponse");
+    expect(manager.getSidForTicker(TICKER)).toBe(901);
+  });
+
+  it("rolls back pending state when the transport send throws", () => {
+    const manager = new OrderbookSubscriptionManager();
+    const transport = new MockKalshiWsTransport();
+    const throwingTransport = {
+      ...transport,
+      send: () => {
+        throw new Error("send failed");
+      },
+    };
+
+    expect(() => manager.subscribe(throwingTransport, TICKER)).toThrow("send failed");
+    expect(manager.getPendingCommands()).toHaveLength(0);
+  });
+
+  it("expires pending commands past the acknowledgement deadline", () => {
+    let nowMs = 0;
+    const manager = new OrderbookSubscriptionManager(() => nowMs);
+    const transport = new MockKalshiWsTransport();
+    manager.subscribe(transport, TICKER);
+    expect(manager.getPendingCommands()).toHaveLength(1);
+
+    nowMs = 9_999;
+    expect(manager.expirePendingCommands(nowMs, 10_000)).toHaveLength(0);
+
+    nowMs = 10_000;
+    const expired = manager.expirePendingCommands(nowMs, 10_000);
+    expect(expired).toHaveLength(1);
+    expect(expired[0]?.kind).toBe("subscribe");
+    expect(manager.getPendingCommands()).toHaveLength(0);
+  });
+
   it("rebuilds sid mappings safely across reconnects", () => {
     const manager = new OrderbookSubscriptionManager();
     const transport = new MockKalshiWsTransport();

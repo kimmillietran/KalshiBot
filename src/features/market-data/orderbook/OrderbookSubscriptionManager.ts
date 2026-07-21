@@ -53,6 +53,8 @@ export type PendingOrderbookCommand = {
   channel: "orderbook_delta";
   marketTickers: string[];
   sids: number[];
+  /** Monotonic timestamp when the command was sent (for ack timeouts). */
+  requestedAtMs: number;
 };
 
 export type OrderbookServerSubscription = {
@@ -89,6 +91,18 @@ export type OrderbookControlMessage =
     marketTickers: string[];
     errorCode: number | null;
     errorMessage: string;
+  }
+  | {
+    /**
+     * A subscribed/ok/unsubscribed control response whose command id cannot
+     * be correlated to a pending command (stale response after reconnect,
+     * previous socket generation, or unknown origin). No subscription state
+     * is mutated for these.
+     */
+    kind: "unknownControlResponse";
+    responseType: "subscribed" | "ok" | "unsubscribed";
+    commandId: number | null;
+    sid: number | null;
   };
 
 export type SnapshotRequestResult =
@@ -115,6 +129,17 @@ export class OrderbookSubscriptionManager {
   private readonly pendingCommands = new Map<number, PendingOrderbookCommand>();
   private readonly subscriptionsBySid = new Map<number, OrderbookServerSubscription>();
   private readonly sidByTicker = new Map<string, number>();
+  /** Increments on every reconnect; pending commands belong to a generation. */
+  private socketGeneration = 1;
+
+  constructor(
+    private readonly monotonicNowMs: () => number = () =>
+      typeof performance !== "undefined" ? performance.now() : Date.now(),
+  ) {}
+
+  get currentSocketGeneration(): number {
+    return this.socketGeneration;
+  }
 
   buildSubscribeCommand(tickers: string[]): OrderbookSubscriptionCommand {
     return {
@@ -162,16 +187,37 @@ export class OrderbookSubscriptionManager {
     };
   }
 
+  /**
+   * Registers pending state, then sends. If the transport send throws, the
+   * pending command is rolled back (it can never be acknowledged) and the
+   * error is rethrown for the caller to surface.
+   */
+  private sendTracked(
+    transport: KalshiWsTransport,
+    command: OrderbookSubscriptionCommand,
+    pending: Omit<PendingOrderbookCommand, "id" | "requestedAtMs">,
+  ): void {
+    this.pendingCommands.set(command.id, {
+      ...pending,
+      id: command.id,
+      requestedAtMs: this.monotonicNowMs(),
+    });
+    try {
+      transport.send(JSON.stringify(command));
+    } catch (error) {
+      this.pendingCommands.delete(command.id);
+      throw error;
+    }
+  }
+
   subscribe(transport: KalshiWsTransport, ticker: string): number {
     const command = this.buildSubscribeCommand([ticker]);
-    this.pendingCommands.set(command.id, {
-      id: command.id,
+    this.sendTracked(transport, command, {
       kind: "subscribe",
       channel: "orderbook_delta",
       marketTickers: [ticker],
       sids: [],
     });
-    transport.send(JSON.stringify(command));
     return command.id;
   }
 
@@ -182,14 +228,12 @@ export class OrderbookSubscriptionManager {
     }
 
     const command = this.buildSnapshotCommand(sid, [ticker]);
-    this.pendingCommands.set(command.id, {
-      id: command.id,
+    this.sendTracked(transport, command, {
       kind: "get_snapshot",
       channel: "orderbook_delta",
       marketTickers: [ticker],
       sids: [sid],
     });
-    transport.send(JSON.stringify(command));
     return { status: "requested", commandId: command.id, sid };
   }
 
@@ -220,14 +264,12 @@ export class OrderbookSubscriptionManager {
         ? this.buildUnsubscribeCommand(sid)
         : this.buildDeleteMarketsCommand(sid, sidTickers);
 
-      this.pendingCommands.set(command.id, {
-        id: command.id,
+      this.sendTracked(transport, command, {
         kind: removesWholeSubscription ? "unsubscribe" : "delete_markets",
         channel: "orderbook_delta",
         marketTickers: sidTickers,
         sids: [sid],
       });
-      transport.send(JSON.stringify(command));
       result.requestedTickers.push(...sidTickers);
       result.commandIds.push(command.id);
     }
@@ -245,9 +287,22 @@ export class OrderbookSubscriptionManager {
     if (subscribed.success) {
       const commandId = subscribed.data.id ?? null;
       const pending = commandId !== null ? this.pendingCommands.get(commandId) : undefined;
-      const marketTickers =
-        subscribed.data.msg.market_tickers ?? pending?.marketTickers ?? [];
       const sid = subscribed.data.msg.sid;
+
+      // A subscribed response that cannot be correlated to a pending command
+      // (stale response after reconnect, previous socket generation, unknown
+      // origin) must not create or overwrite sid mappings.
+      if (!pending) {
+        return {
+          kind: "unknownControlResponse",
+          responseType: "subscribed",
+          commandId,
+          sid,
+        };
+      }
+
+      const marketTickers =
+        subscribed.data.msg.market_tickers ?? pending.marketTickers;
 
       this.subscriptionsBySid.set(sid, {
         sid,
@@ -257,9 +312,7 @@ export class OrderbookSubscriptionManager {
       for (const ticker of marketTickers) {
         this.sidByTicker.set(ticker, sid);
       }
-      if (commandId !== null) {
-        this.pendingCommands.delete(commandId);
-      }
+      this.pendingCommands.delete(pending.id);
 
       return {
         kind: "subscriptionAcknowledged",
@@ -274,16 +327,27 @@ export class OrderbookSubscriptionManager {
     if (unsubscribedResult.success) {
       const commandId = unsubscribedResult.data.id ?? null;
       const pending = commandId !== null ? this.pendingCommands.get(commandId) : undefined;
-      const sid = unsubscribedResult.data.sid ?? pending?.sids[0] ?? null;
-      const marketTickers = pending?.marketTickers
-        ?? (sid !== null ? this.subscriptionsBySid.get(sid)?.marketTickers ?? [] : []);
+
+      // An unsubscribed response without a correlated pending command must
+      // not remove active subscription state.
+      if (!pending) {
+        return {
+          kind: "unknownControlResponse",
+          responseType: "unsubscribed",
+          commandId,
+          sid: unsubscribedResult.data.sid ?? null,
+        };
+      }
+
+      const sid = unsubscribedResult.data.sid ?? pending.sids[0] ?? null;
+      const marketTickers = pending.marketTickers.length > 0
+        ? pending.marketTickers
+        : (sid !== null ? this.subscriptionsBySid.get(sid)?.marketTickers ?? [] : []);
 
       if (sid !== null) {
         this.removeSubscription(sid);
       }
-      if (commandId !== null) {
-        this.pendingCommands.delete(commandId);
-      }
+      this.pendingCommands.delete(pending.id);
 
       return {
         kind: "unsubscribeAcknowledged",
@@ -297,10 +361,21 @@ export class OrderbookSubscriptionManager {
     if (ok.success && typeof payload === "object" && payload !== null) {
       const commandId = ok.data.id ?? null;
       const pending = commandId !== null ? this.pendingCommands.get(commandId) : undefined;
-      const sid = ok.data.sid ?? pending?.sids[0] ?? null;
+
+      // An ok response without a correlated pending command carries no
+      // trustworthy meaning; classify it and mutate nothing.
+      if (!pending) {
+        return {
+          kind: "unknownControlResponse",
+          responseType: "ok",
+          commandId,
+          sid: ok.data.sid ?? null,
+        };
+      }
+
+      const sid = ok.data.sid ?? pending.sids[0] ?? null;
       const marketTickers = this.extractMarketTickers(ok.data.msg)
-        ?? pending?.marketTickers
-        ?? [];
+        ?? pending.marketTickers;
 
       if (pending?.kind === "delete_markets" && sid !== null) {
         this.removeMarketsFromSubscription(sid, pending.marketTickers);
@@ -368,11 +443,35 @@ export class OrderbookSubscriptionManager {
     return [...this.pendingCommands.values()];
   }
 
-  /** Server sids do not survive a socket; clear all mappings on reconnect. */
-  resetForReconnect(): void {
+  /**
+   * Removes and returns pending commands whose acknowledgement deadline has
+   * elapsed. Timed-out commands can never be trusted to complete; callers
+   * must surface the timeout visibly.
+   */
+  expirePendingCommands(nowMs: number, timeoutMs: number): PendingOrderbookCommand[] {
+    const expired: PendingOrderbookCommand[] = [];
+    for (const [id, command] of this.pendingCommands) {
+      if (nowMs - command.requestedAtMs >= timeoutMs) {
+        expired.push(command);
+        this.pendingCommands.delete(id);
+      }
+    }
+    return expired;
+  }
+
+  /**
+   * Server sids do not survive a socket; clear all mappings on reconnect and
+   * advance the socket generation. Returns the pending commands invalidated
+   * by the reconnect (they can never be acknowledged on the new socket) so
+   * callers can surface them.
+   */
+  resetForReconnect(): PendingOrderbookCommand[] {
+    const invalidated = [...this.pendingCommands.values()];
     this.pendingCommands.clear();
     this.subscriptionsBySid.clear();
     this.sidByTicker.clear();
+    this.socketGeneration += 1;
+    return invalidated;
   }
 
   private removeSubscription(sid: number): void {

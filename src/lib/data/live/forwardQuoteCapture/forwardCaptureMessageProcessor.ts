@@ -2,7 +2,10 @@ import {
   kalshiOrderbookDeltaMessageSchema,
   kalshiOrderbookSnapshotMessageSchema,
 } from "@/features/market-data/orderbook/schemas";
-import type { OrderbookControlMessage } from "@/features/market-data/orderbook/OrderbookSubscriptionManager";
+import type {
+  OrderbookControlMessage,
+  PendingOrderbookCommand,
+} from "@/features/market-data/orderbook/OrderbookSubscriptionManager";
 
 import type { EconomicBookState } from "./classifyTopOfBookEconomicValidity";
 import {
@@ -12,12 +15,13 @@ import {
 import { createEmptyOrderbookDiagnostics } from "./createEmptyOrderbookDiagnostics";
 import { OrderbookCaptureBook } from "./orderbookCaptureBook";
 import type { ForwardCaptureWriter } from "./jsonlForwardCaptureWriter";
-import type {
-  ForwardCaptureOrderbookDiagnostics,
-  ForwardCaptureSubscriptionLifecycleEvent,
-  ForwardQuoteCaptureConfig,
-  ForwardRawKalshiWsRecord,
-  ForwardTopOfBookRecord,
+import {
+  FORWARD_CAPTURE_PRICE_REPRESENTATION,
+  type ForwardCaptureOrderbookDiagnostics,
+  type ForwardCaptureSubscriptionLifecycleEvent,
+  type ForwardQuoteCaptureConfig,
+  type ForwardRawKalshiWsRecord,
+  type ForwardTopOfBookRecord,
 } from "./forwardQuoteCaptureTypes";
 
 export type LatestBtcSpot = {
@@ -41,6 +45,27 @@ export type SnapshotRecoveryDispatchResult =
 
 /** Minimum wait before re-requesting recovery after a failed command. */
 const RECOVERY_RETRY_COOLDOWN_MS = 5_000;
+
+/**
+ * Bounded, monotonic snapshot-recovery lifecycle deadlines. A recovery that
+ * misses any of these deadlines fails visibly and is retried (bounded) or
+ * escalated; the book can never remain silently resyncing indefinitely.
+ */
+export const RECOVERY_ACK_TIMEOUT_MS = 10_000;
+/** After an ok acknowledgement, a fresh snapshot must arrive within this window. */
+export const RECOVERY_SNAPSHOT_TIMEOUT_MS = 20_000;
+/** Absolute cap on one recovery request, acknowledged or not. */
+export const RECOVERY_TOTAL_TIMEOUT_MS = 45_000;
+/** Max snapshot-recovery attempts per gap episode before escalation. */
+export const RECOVERY_MAX_ATTEMPTS = 3;
+/** Acknowledgement deadline for all pending WS commands. */
+export const COMMAND_ACK_TIMEOUT_MS = 10_000;
+
+type OutstandingRecovery = {
+  commandId: number | null;
+  requestedAtMs: number;
+  acknowledgedAtMs: number | null;
+};
 
 function isEmptyAwaitingSnapshot(record: ForwardTopOfBookRecord): boolean {
   return (
@@ -134,11 +159,12 @@ export class ForwardCaptureMessageProcessor {
   private lastTopOfBookEmitMs = new Map<string, number>();
   private lastEconomicBookState = new Map<string, EconomicBookState>();
   /** Markets with exactly one outstanding snapshot recovery request. */
-  private readonly outstandingRecovery = new Map<
-    string,
-    { commandId: number | null; requestedAtMs: number }
-  >();
+  private readonly outstandingRecovery = new Map<string, OutstandingRecovery>();
   private readonly lastRecoveryFailureAtMs = new Map<string, number>();
+  /** Snapshot-recovery attempts per market for the current gap episode. */
+  private readonly recoveryAttempts = new Map<string, number>();
+  /** Markets whose bounded retries were exhausted (until a snapshot or reset). */
+  private readonly recoveryExhausted = new Set<string>();
 
   constructor(
     private readonly input: {
@@ -161,6 +187,16 @@ export class ForwardCaptureMessageProcessor {
       onLifecycleEvent?: (event: ForwardCaptureSubscriptionLifecycleEvent) => void;
       /** Surfaces command failures into capture errors. */
       onCommandError?: (message: string) => void;
+      /**
+       * Escalation hook: bounded snapshot-recovery retries were exhausted
+       * for a market; the caller should trigger WebSocket/socket-level
+       * recovery (or terminal degradation).
+       */
+      onRecoveryExhausted?: (marketTicker: string) => void;
+      /** Removes and returns pending WS commands past their ack deadline. */
+      expirePendingCommands?: (nowMs: number) => PendingOrderbookCommand[];
+      /** Pending WS command count for finalization reporting. */
+      getPendingCommandCount?: () => number;
       getLatestBtcSpot?: () => LatestBtcSpot;
       onTopOfBookEmitted?: () => void;
     },
@@ -190,6 +226,8 @@ export class ForwardCaptureMessageProcessor {
       marketTicker,
       seriesTicker: this.input.seriesTicker,
       eventTicker: this.input.eventTickers?.[marketTicker] ?? null,
+      priceRepresentation:
+        this.input.config.priceRepresentation ?? FORWARD_CAPTURE_PRICE_REPRESENTATION,
     });
     this.books.set(marketTicker, book);
     return book;
@@ -201,6 +239,8 @@ export class ForwardCaptureMessageProcessor {
       book.markClosed();
     }
     this.outstandingRecovery.delete(marketTicker);
+    this.recoveryAttempts.delete(marketTicker);
+    this.recoveryExhausted.delete(marketTicker);
   }
 
   markResyncing(marketTicker: string): void {
@@ -215,6 +255,8 @@ export class ForwardCaptureMessageProcessor {
     }
     this.outstandingRecovery.clear();
     this.lastRecoveryFailureAtMs.clear();
+    this.recoveryAttempts.clear();
+    this.recoveryExhausted.clear();
   }
 
   recordBooksResynchronized(): void {
@@ -234,31 +276,62 @@ export class ForwardCaptureMessageProcessor {
   }
 
   /**
-   * Issues at most one outstanding get_snapshot recovery request per market.
-   * Re-requests after a failed command only once the cooldown elapses.
+   * Issues at most one outstanding get_snapshot recovery request per market,
+   * bounded by RECOVERY_MAX_ATTEMPTS per gap episode. Re-requests after a
+   * failure only once the cooldown elapses; exhaustion escalates once via
+   * onRecoveryExhausted (socket-level recovery or terminal degradation).
    */
   private ensureRecoveryRequested(marketTicker: string): void {
-    if (this.outstandingRecovery.has(marketTicker)) {
+    const nowMs = this.input.monotonicNowMs();
+    this.expireOutstandingRecovery(marketTicker, nowMs);
+
+    if (
+      this.outstandingRecovery.has(marketTicker)
+      || this.recoveryExhausted.has(marketTicker)
+    ) {
       return;
     }
 
-    const nowMs = this.input.monotonicNowMs();
     const lastFailureAt = this.lastRecoveryFailureAtMs.get(marketTicker);
     if (lastFailureAt !== undefined && nowMs - lastFailureAt < RECOVERY_RETRY_COOLDOWN_MS) {
       return;
     }
 
+    const attempts = this.recoveryAttempts.get(marketTicker) ?? 0;
+    if (attempts >= RECOVERY_MAX_ATTEMPTS) {
+      this.escalateRecoveryExhausted(marketTicker, attempts);
+      return;
+    }
+
+    // Pre-register attempt and outstanding state BEFORE dispatch: synchronous
+    // transports can deliver the ok acknowledgement and fresh snapshot during
+    // the send itself, and those handlers must find (and may complete/clear)
+    // this recovery.
+    this.recoveryAttempts.set(marketTicker, attempts + 1);
+    this.outstandingRecovery.set(marketTicker, {
+      commandId: null,
+      requestedAtMs: nowMs,
+      acknowledgedAtMs: null,
+    });
+
     const dispatch = this.input.requestSnapshotRecovery?.(marketTicker);
     if (!dispatch) {
+      this.outstandingRecovery.delete(marketTicker);
+      this.recoveryAttempts.set(marketTicker, attempts);
       return;
     }
 
     if (dispatch.status === "requested") {
-      this.outstandingRecovery.set(marketTicker, {
-        commandId: dispatch.commandId,
-        requestedAtMs: nowMs,
-      });
       this.diagnostics.snapshotRecoveryRequestCount += 1;
+      // A synchronous snapshot may already have completed this recovery; only
+      // attach the command id if the entry is still outstanding.
+      const outstanding = this.outstandingRecovery.get(marketTicker);
+      if (outstanding && outstanding.commandId === null) {
+        this.outstandingRecovery.set(marketTicker, {
+          ...outstanding,
+          commandId: dispatch.commandId,
+        });
+      }
       this.emitLifecycle({
         type: "snapshotRecoveryRequested",
         marketTickers: [marketTicker],
@@ -268,18 +341,185 @@ export class ForwardCaptureMessageProcessor {
       return;
     }
 
-    this.diagnostics.snapshotRecoveryFailureCount += 1;
+    this.outstandingRecovery.delete(marketTicker);
+    this.recordRecoveryFailure(marketTicker, nowMs, {
+      commandId: null,
+      errorMessage: `Snapshot recovery request failed for ${marketTicker}: ${dispatch.reason}`,
+    });
+  }
+
+  /** Marks one recovery failed: counters, cooldown, lifecycle event, error. */
+  private recordRecoveryFailure(
+    marketTicker: string,
+    nowMs: number,
+    detail: { commandId: number | null; errorMessage: string; isTimeout?: boolean },
+  ): void {
+    this.outstandingRecovery.delete(marketTicker);
     this.lastRecoveryFailureAtMs.set(marketTicker, nowMs);
+    this.diagnostics.snapshotRecoveryFailureCount += 1;
+    if (detail.isTimeout) {
+      this.diagnostics.snapshotRecoveryTimeoutCount += 1;
+    }
     this.emitLifecycle({
       type: "snapshotRecoveryFailed",
       marketTickers: [marketTicker],
+      commandId: detail.commandId,
+      sid: null,
+      errorMessage: detail.errorMessage,
+    });
+    this.input.onCommandError?.(detail.errorMessage);
+  }
+
+  private escalateRecoveryExhausted(marketTicker: string, attempts: number): void {
+    this.recoveryExhausted.add(marketTicker);
+    this.diagnostics.snapshotRecoveryExhaustedCount += 1;
+    const message =
+      `Snapshot recovery exhausted for ${marketTicker} after ${attempts} attempt(s); escalating to socket-level recovery`;
+    this.emitLifecycle({
+      type: "snapshotRecoveryExhausted",
+      marketTickers: [marketTicker],
       commandId: null,
       sid: null,
-      errorMessage: dispatch.reason,
+      errorMessage: message,
     });
-    this.input.onCommandError?.(
-      `Snapshot recovery request failed for ${marketTicker}: ${dispatch.reason}`,
-    );
+    this.input.onCommandError?.(message);
+    this.input.onRecoveryExhausted?.(marketTicker);
+  }
+
+  /** Fails one outstanding recovery if any of its monotonic deadlines passed. */
+  private expireOutstandingRecovery(marketTicker: string, nowMs: number): void {
+    const outstanding = this.outstandingRecovery.get(marketTicker);
+    if (!outstanding) {
+      return;
+    }
+
+    if (nowMs - outstanding.requestedAtMs >= RECOVERY_TOTAL_TIMEOUT_MS) {
+      this.recordRecoveryFailure(marketTicker, nowMs, {
+        commandId: outstanding.commandId,
+        errorMessage:
+          `Snapshot recovery for ${marketTicker} exceeded the total deadline (${RECOVERY_TOTAL_TIMEOUT_MS}ms) without a fresh snapshot`,
+        isTimeout: true,
+      });
+      return;
+    }
+
+    if (
+      outstanding.acknowledgedAtMs === null
+      && nowMs - outstanding.requestedAtMs >= RECOVERY_ACK_TIMEOUT_MS
+    ) {
+      this.recordRecoveryFailure(marketTicker, nowMs, {
+        commandId: outstanding.commandId,
+        errorMessage:
+          `Snapshot recovery command for ${marketTicker} was never acknowledged within ${RECOVERY_ACK_TIMEOUT_MS}ms`,
+        isTimeout: true,
+      });
+      return;
+    }
+
+    if (
+      outstanding.acknowledgedAtMs !== null
+      && nowMs - outstanding.acknowledgedAtMs >= RECOVERY_SNAPSHOT_TIMEOUT_MS
+    ) {
+      this.recordRecoveryFailure(marketTicker, nowMs, {
+        commandId: outstanding.commandId,
+        errorMessage:
+          `Snapshot recovery for ${marketTicker} was acknowledged but no fresh snapshot arrived within ${RECOVERY_SNAPSHOT_TIMEOUT_MS}ms`,
+        isTimeout: true,
+      });
+    }
+  }
+
+  /**
+   * Periodic timeout sweep: expires outstanding snapshot recoveries and
+   * pending WS commands past their acknowledgement deadline. Must be called
+   * on a monotonic cadence by the capture loop (and is also evaluated
+   * opportunistically as messages arrive).
+   */
+  checkTimeouts(): void {
+    const nowMs = this.input.monotonicNowMs();
+    for (const marketTicker of [...this.outstandingRecovery.keys()]) {
+      this.expireOutstandingRecovery(marketTicker, nowMs);
+    }
+
+    const expired = this.input.expirePendingCommands?.(nowMs) ?? [];
+    for (const command of expired) {
+      this.recordPendingCommandTimeout(command);
+    }
+  }
+
+  /** Surfaces a pending WS command that timed out without acknowledgement. */
+  recordPendingCommandTimeout(command: PendingOrderbookCommand): void {
+    this.diagnostics.pendingCommandTimeoutCount += 1;
+    const nowMs = this.input.monotonicNowMs();
+    const message =
+      `Kalshi WS ${command.kind} command (id=${command.id}) was never acknowledged within ${COMMAND_ACK_TIMEOUT_MS}ms`;
+
+    this.emitLifecycle({
+      type: "commandAcknowledgementTimeout",
+      marketTickers: [...command.marketTickers],
+      commandId: command.id,
+      sid: command.sids[0] ?? null,
+      errorMessage: message,
+    });
+
+    switch (command.kind) {
+      case "subscribe":
+        this.diagnostics.subscribeAckTimeoutCount += 1;
+        this.emitLifecycle({
+          type: "subscriptionFailed",
+          marketTickers: [...command.marketTickers],
+          commandId: command.id,
+          sid: null,
+          errorMessage: message,
+        });
+        break;
+      case "get_snapshot": {
+        this.diagnostics.snapshotAckTimeoutCount += 1;
+        for (const ticker of command.marketTickers) {
+          const outstanding = this.outstandingRecovery.get(ticker);
+          if (outstanding && outstanding.commandId === command.id) {
+            this.recordRecoveryFailure(ticker, nowMs, {
+              commandId: command.id,
+              errorMessage: message,
+              isTimeout: true,
+            });
+          }
+        }
+        break;
+      }
+      case "unsubscribe":
+      case "delete_markets":
+        this.diagnostics.unsubscribeAckTimeoutCount += 1;
+        this.emitLifecycle({
+          type: "marketUnsubscribeFailed",
+          marketTickers: [...command.marketTickers],
+          commandId: command.id,
+          sid: null,
+          errorMessage: message,
+        });
+        break;
+      default:
+        break;
+    }
+
+    this.input.onCommandError?.(message);
+  }
+
+  /** Surfaces pending commands invalidated by a reconnect (old generation). */
+  recordPendingCommandsInvalidated(commands: readonly PendingOrderbookCommand[]): void {
+    if (commands.length === 0) {
+      return;
+    }
+
+    this.diagnostics.pendingCommandsInvalidatedOnReconnect += commands.length;
+    this.emitLifecycle({
+      type: "pendingCommandsInvalidatedOnReconnect",
+      marketTickers: [...new Set(commands.flatMap((command) => command.marketTickers))],
+      commandId: null,
+      sid: null,
+      errorMessage:
+        `${commands.length} pending WS command(s) invalidated by reconnect; they can never be acknowledged on the new socket`,
+    });
   }
 
   private handleControlMessage(
@@ -298,6 +538,21 @@ export class ForwardCaptureMessageProcessor {
         return;
       case "commandAcknowledged":
         if (control.commandKind === "get_snapshot") {
+          // Acknowledgement starts the snapshot-arrival deadline; it does NOT
+          // complete recovery. Only a fresh orderbook_snapshot does.
+          const ackAtMs = this.input.monotonicNowMs();
+          for (const [ticker, outstanding] of this.outstandingRecovery) {
+            if (
+              control.commandId !== null
+              && outstanding.commandId === control.commandId
+              && outstanding.acknowledgedAtMs === null
+            ) {
+              this.outstandingRecovery.set(ticker, {
+                ...outstanding,
+                acknowledgedAtMs: ackAtMs,
+              });
+            }
+          }
           this.emitLifecycle({
             type: "snapshotRecoveryAcknowledged",
             marketTickers: control.marketTickers,
@@ -305,6 +560,17 @@ export class ForwardCaptureMessageProcessor {
             sid: control.sid,
           });
         }
+        return;
+      case "unknownControlResponse":
+        this.diagnostics.unknownControlResponseCount += 1;
+        this.emitLifecycle({
+          type: "unknownControlResponseReceived",
+          marketTickers: [],
+          commandId: control.commandId,
+          sid: control.sid,
+          errorMessage:
+            `Uncorrelated ${control.responseType} control response (command id=${control.commandId ?? "none"}); no subscription state was mutated`,
+        });
         return;
       case "unsubscribeAcknowledged":
         this.emitLifecycle({
@@ -387,8 +653,44 @@ export class ForwardCaptureMessageProcessor {
     const receivedAtLocal = this.input.now().toISOString();
     const receivedAtMonotonicMs = this.input.monotonicNowMs();
 
-    const payload =
-      typeof rawPayload === "string" ? JSON.parse(rawPayload) : rawPayload;
+    let payload: unknown;
+    if (typeof rawPayload === "string") {
+      try {
+        payload = JSON.parse(rawPayload);
+      } catch {
+        // A malformed WS payload must not crash the message handler or write
+        // misleading parsed state; count it and preserve a bounded raw
+        // diagnostic (server payloads never contain local credentials, and
+        // artifact serialization redacts secrets defensively).
+        this.diagnostics.malformedPayloadCount += 1;
+        this.diagnostics.unknownMessagesReceived += 1;
+        this.input.writer.appendRawKalshiWs({
+          runId: this.input.runId,
+          captureId: this.nextCaptureId(),
+          receivedAtLocal,
+          receivedAtMonotonicMs,
+          source: "kalshi-ws",
+          channel: null,
+          messageType: "malformed-json",
+          marketTicker: null,
+          eventTicker: null,
+          seriesTicker: this.input.seriesTicker,
+          sequence: null,
+          exchangeTimestampMs: null,
+          rawPayload: {
+            malformed: true,
+            textPreview: rawPayload.slice(0, 512),
+            textLength: rawPayload.length,
+          },
+        });
+        this.input.onCommandError?.(
+          `Malformed Kalshi WS payload could not be parsed as JSON (${rawPayload.length} chars)`,
+        );
+        return { messageType: null, marketTicker: null, expectedMarketMessage: false };
+      }
+    } else {
+      payload = rawPayload;
+    }
     const messageType =
       typeof payload === "object"
       && payload !== null
@@ -476,6 +778,8 @@ export class ForwardCaptureMessageProcessor {
         this.recordResyncSuccess(ticker);
         this.outstandingRecovery.delete(ticker);
         this.lastRecoveryFailureAtMs.delete(ticker);
+        this.recoveryAttempts.delete(ticker);
+        this.recoveryExhausted.delete(ticker);
         this.emitLifecycle({
           type: "snapshotRecoverySucceeded",
           marketTickers: [ticker],
@@ -581,7 +885,11 @@ export class ForwardCaptureMessageProcessor {
     this.input.writer.appendTopOfBook(record);
     recordEconomicDiagnostics(this.diagnostics, record);
     this.lastEconomicBookState.set(book.marketTicker, record.economicBookState);
-    this.input.onTopOfBookEmitted?.();
+    // Only sequence-valid emissions count as synchronized-stream liveness;
+    // a stream of quarantined/resyncing records is not a healthy market feed.
+    if (record.bookState === "valid") {
+      this.input.onTopOfBookEmitted?.();
+    }
 
     if (record.bookState === "valid") {
       this.diagnostics.validBookStateDurationMs += 1;
@@ -597,5 +905,17 @@ export class ForwardCaptureMessageProcessor {
     this.diagnostics.marketsWithValidBook = [...this.books.values()].filter(
       (book) => book.bookState === "valid",
     ).length;
+
+    // Unresolved recovery/pending-command state must be visible at capture
+    // end; it prevents a clean health classification.
+    this.diagnostics.marketsWithOutstandingRecoveryAtEnd = this.outstandingRecovery.size;
+    this.diagnostics.pendingCommandCountAtCaptureEnd =
+      this.input.getPendingCommandCount?.() ?? 0;
+    if (this.outstandingRecovery.size > 0) {
+      const tickers = [...this.outstandingRecovery.keys()];
+      this.input.onCommandError?.(
+        `Capture ended with ${tickers.length} market(s) still awaiting snapshot recovery: ${tickers.join(", ")}`,
+      );
+    }
   }
 }

@@ -197,6 +197,28 @@ export type ForwardCaptureOrderbookDiagnostics = {
   snapshotRecoverySuccessCount: number;
   /** Recovery commands that failed (WS error response or send failure). */
   snapshotRecoveryFailureCount: number;
+  /** Recoveries that timed out (missing ack, missing snapshot, or total deadline). */
+  snapshotRecoveryTimeoutCount: number;
+  /** Markets whose bounded snapshot-recovery retries were exhausted and escalated. */
+  snapshotRecoveryExhaustedCount: number;
+  /** Pending WS commands that timed out without any acknowledgement. */
+  pendingCommandTimeoutCount: number;
+  /** Subscribe commands that never received a subscribed acknowledgement. */
+  subscribeAckTimeoutCount: number;
+  /** get_snapshot commands that never received an ok acknowledgement. */
+  snapshotAckTimeoutCount: number;
+  /** Unsubscribe/delete_markets commands that never received an acknowledgement. */
+  unsubscribeAckTimeoutCount: number;
+  /** Pending commands invalidated by a reconnect (old socket generation). */
+  pendingCommandsInvalidatedOnReconnect: number;
+  /** Control responses whose command id matched no pending command. */
+  unknownControlResponseCount: number;
+  /** Raw WS payloads that could not be parsed as JSON. */
+  malformedPayloadCount: number;
+  /** Pending WS commands still unresolved when the capture finalized. */
+  pendingCommandCountAtCaptureEnd: number;
+  /** Markets still awaiting snapshot recovery when the capture finalized. */
+  marketsWithOutstandingRecoveryAtEnd: number;
   /** Snapshots rejected because they were older than data already seen. */
   staleSnapshotsRejected: number;
   /** Official WS control responses (subscribed/ok/unsubscribed/error). */
@@ -238,9 +260,13 @@ export type ForwardCaptureSubscriptionLifecycleEventType =
   | "snapshotRecoveryAcknowledged"
   | "snapshotRecoverySucceeded"
   | "snapshotRecoveryFailed"
+  | "snapshotRecoveryExhausted"
   | "marketUnsubscribeRequested"
   | "marketUnsubscribeAcknowledged"
-  | "marketUnsubscribeFailed";
+  | "marketUnsubscribeFailed"
+  | "commandAcknowledgementTimeout"
+  | "pendingCommandsInvalidatedOnReconnect"
+  | "unknownControlResponseReceived";
 
 export type ForwardCaptureSubscriptionLifecycleEvent = {
   type: ForwardCaptureSubscriptionLifecycleEventType;
@@ -334,6 +360,17 @@ export type ForwardCaptureHealthReport = {
     snapshotRecoveryRequestCount: number;
     snapshotRecoverySuccessCount: number;
     snapshotRecoveryFailureCount: number;
+    snapshotRecoveryTimeoutCount: number;
+    snapshotRecoveryExhaustedCount: number;
+    pendingCommandTimeoutCount: number;
+    subscribeAckTimeoutCount: number;
+    snapshotAckTimeoutCount: number;
+    unsubscribeAckTimeoutCount: number;
+    pendingCommandsInvalidatedOnReconnect: number;
+    unknownControlResponseCount: number;
+    malformedPayloadCount: number;
+    pendingCommandCountAtCaptureEnd: number;
+    marketsWithOutstandingRecoveryAtEnd: number;
     staleSnapshotsRejected: number;
     controlResponsesReceived: number;
     commandErrorsReceived: number;

@@ -10,6 +10,7 @@ import {
 import { createEmptyConnectionDiagnostics } from "./connectionDiagnostics";
 import { discoverRolloverMarkets } from "./discoverCaptureMarkets";
 import {
+  COMMAND_ACK_TIMEOUT_MS,
   ForwardCaptureMessageProcessor,
   type LatestBtcSpot,
 } from "./forwardCaptureMessageProcessor";
@@ -114,7 +115,7 @@ export async function runLiveForwardQuoteCapture(input: {
   const closeTimes = { ...input.discovery.closeTimes };
 
   const transport = input.transport ?? new NodeKalshiAuthenticatedWsClient();
-  const subscriptionManager = new OrderbookSubscriptionManager();
+  const subscriptionManager = new OrderbookSubscriptionManager(input.io.monotonicNowMs);
   const watchdogConfig = resolveWatchdogConfigFromCaptureConfig({
     dryRun: false,
     wsWatchdogEnabled: input.config.wsWatchdogEnabled,
@@ -161,6 +162,14 @@ export async function runLiveForwardQuoteCapture(input: {
     onCommandError: (message) => {
       errors.push(message);
     },
+    onRecoveryExhausted: () => {
+      // Bounded snapshot-recovery retries were exhausted; escalate to a full
+      // socket-level recovery so the book cannot stay resyncing indefinitely.
+      watchdog?.requestEscalatedRecovery("snapshot-recovery-exhausted");
+    },
+    expirePendingCommands: (nowMs) =>
+      subscriptionManager.expirePendingCommands(nowMs, COMMAND_ACK_TIMEOUT_MS),
+    getPendingCommandCount: () => subscriptionManager.getPendingCommands().length,
   });
 
   let watchdog: KalshiWsLivenessWatchdog | null = null;
@@ -366,8 +375,10 @@ export async function runLiveForwardQuoteCapture(input: {
 
     handlerSocketGeneration = socketGeneration;
     // Server subscription ids do not survive a socket; drop all sid mappings
-    // before rebuilding subscriptions on the new connection.
-    subscriptionManager.resetForReconnect();
+    // before rebuilding subscriptions on the new connection. Invalidated
+    // pending commands are surfaced visibly (they can never be acknowledged).
+    const invalidatedCommands = subscriptionManager.resetForReconnect();
+    processor.recordPendingCommandsInvalidated(invalidatedCommands);
     await transport.connect(wsUrl, { headers: connectHeaders });
     connection.wsConnectCount += 1;
     connection.connected = true;
@@ -541,6 +552,7 @@ export async function runLiveForwardQuoteCapture(input: {
       captureEndReason = "terminal-websocket-failure";
       break;
     }
+    processor.checkTimeouts();
     await sleep(250);
   }
 
