@@ -1,4 +1,7 @@
-import { RESEARCH_READY_CAPTURE_VERDICT } from "@/lib/data/research/selectedRunCaptureHealth";
+import {
+  isVerifiedResearchReady,
+  RESEARCH_READY_CAPTURE_VERDICT,
+} from "@/lib/data/research/selectedRunCaptureHealth";
 
 import type {
   CalibrationFadeCalibrationMetrics,
@@ -71,30 +74,55 @@ export function classifyCalibrationFadeInterpretation(input: {
 
   // Observation quality is classified before evidence quantity so a failed or
   // unverified run cannot masquerade as a clean run that merely lacks events.
-  const captureVerdict = input.selectedRunQuality.captureVerdict;
-  if (captureVerdict !== null && captureVerdict !== RESEARCH_READY_CAPTURE_VERDICT) {
+  // A capture-research-ready verdict string alone is insufficient; provenance
+  // (matching identity, valid audit schema, fresh fingerprints) must verify.
+  const quality = input.selectedRunQuality;
+  if (!isVerifiedResearchReady(quality)) {
+    if (quality.captureVerdict !== null && quality.captureVerdict !== RESEARCH_READY_CAPTURE_VERDICT) {
+      return action(
+        "observation-quality-inconclusive",
+        "repair-or-replace-invalid-forward-runs",
+        `Selected run capture verdict is ${quality.captureVerdict}; capture-research-ready is required before evidence-quantity classification.`,
+      );
+    }
+    if (quality.captureVerdict === null) {
+      return action(
+        "observation-quality-inconclusive",
+        "repair-or-replace-invalid-forward-runs",
+        "Selected run has no verified capture-research-ready health source; run the capture health audit before formal validation.",
+      );
+    }
     return action(
       "observation-quality-inconclusive",
       "repair-or-replace-invalid-forward-runs",
-      `Selected run capture verdict is ${captureVerdict}; capture-research-ready is required before evidence-quantity classification.`,
+      "Selected run capture verdict is capture-research-ready but its audit provenance or freshness could not be verified.",
     );
   }
 
-  if (captureVerdict === null) {
+  if (quality.terminalFailureReason !== null || quality.completedNormally === false) {
     return action(
       "observation-quality-inconclusive",
-      "repair-or-replace-invalid-forward-runs",
-      "Selected run has no verified capture-research-ready health source; run the capture health audit before formal validation.",
+      "fix-forward-observation-integrity",
+      "Selected run ended with a terminal failure or did not complete normally; forward evidence from it is not usable.",
+    );
+  }
+
+  // Metric completeness policy: the frozen formal policy requires
+  // validBookShare and btcJoinCoverageShare, so null means unverified (fail
+  // closed), never pass. Other diagnostics (bid-size coverage, reconciliation
+  // verdict, suspected sleep) remain optional and advisory only.
+  if (quality.validBookShare === null || quality.btcJoinCoverageShare === null) {
+    return action(
+      "observation-quality-inconclusive",
+      "fix-forward-observation-integrity",
+      "Required selected-run quality metrics (validBookShare, btcJoinCoverageShare) are unavailable and cannot be verified against frozen minimums.",
     );
   }
 
   const qualityWeak =
-    (input.selectedRunQuality.validBookShare !== null
-      && input.selectedRunQuality.validBookShare
-        < input.spec.minimumEvidenceRequirements.minimumValidBookShare)
-    || (input.selectedRunQuality.btcJoinCoverageShare !== null
-      && input.selectedRunQuality.btcJoinCoverageShare
-        < input.spec.minimumEvidenceRequirements.minimumBtcJoinCoverageShare);
+    quality.validBookShare < input.spec.minimumEvidenceRequirements.minimumValidBookShare
+    || quality.btcJoinCoverageShare
+      < input.spec.minimumEvidenceRequirements.minimumBtcJoinCoverageShare;
 
   if (qualityWeak) {
     return action(

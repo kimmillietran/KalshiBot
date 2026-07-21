@@ -167,6 +167,8 @@ export type CalibrationFadeSelectedRunQuality = {
   completedNormally: boolean | null;
   /** True only when a strictly matching capture-health audit carries capture-research-ready. */
   researchReadyVerified: boolean;
+  /** Fingerprint freshness verification status of the matching audit; null when no audit matched. */
+  auditFingerprintsVerified: boolean | null;
 };
 
 export type CalibrationFadeFunnelStage = {

@@ -105,6 +105,8 @@ export type CrossRunRunSummary = {
   selectedRunDirectory: string;
   captureHealthSource: string | null;
   captureVerdict: string | null;
+  /** Whether the verdict's audit provenance (schema, identity, freshness) was verified. */
+  researchReadyVerified: boolean;
   /** True only when the run carries a verified capture-research-ready verdict. */
   researchReady: boolean;
   /** Why the run failed the research-ready health gate; null when it passed. */

@@ -1,6 +1,7 @@
 import {
   analyzeCalibrationFadeForwardForRun,
   loadFrozenHypothesisSpec,
+  validateCalibrationFadeMarketRecord,
   DEFAULT_CALIBRATION_FADE_FORWARD_EVENTS_PATH,
   DEFAULT_CALIBRATION_FADE_FORWARD_MARKETS_PATH,
   DEFAULT_CALIBRATION_FADE_FORWARD_VALIDATION_HTML_PATH,
@@ -54,8 +55,9 @@ export type AnalyzePerRunFn = (input: {
 
 /**
  * Parses candidate market JSONL rows failing closed: blank lines are ignored,
- * but malformed rows are counted with their 1-based line numbers so the run
- * can be reported without dumping row payloads.
+ * but malformed JSON rows and syntactically valid rows with an invalid record
+ * shape (including `{}`) are counted with their 1-based line numbers so the
+ * run can be reported without dumping row payloads.
  */
 function parseMarketLines(lines: readonly string[]): {
   markets: CalibrationFadeMarketRecord[];
@@ -70,11 +72,12 @@ function parseMarketLines(lines: readonly string[]): {
     }
     try {
       const parsed = JSON.parse(trimmed) as unknown;
-      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      const validated = validateCalibrationFadeMarketRecord(parsed);
+      if (!validated.record) {
         malformedLineNumbers.push(index + 1);
         continue;
       }
-      markets.push(parsed as CalibrationFadeMarketRecord);
+      markets.push(validated.record);
     } catch {
       malformedLineNumbers.push(index + 1);
     }
@@ -158,7 +161,13 @@ export async function analyzeCalibrationFadeCrossRun(input: {
   let runSetIncompatible = false;
   const sourceIdentities: CrossRunSourceIdentity[] = [];
   const parsingErrorsByRun = new Map<string, number[]>();
-  const failedRuns: { runId: string; runDir: string; reason: string }[] = [];
+  // Preserves the operator-provided run order across analyzed AND failed runs
+  // so failed runs keep their original ledger position instead of being
+  // appended at the end.
+  type OrderedRunEntry =
+    | { kind: "analyzed"; result: PerRunAnalysisResult }
+    | { kind: "failed"; runId: string; runDir: string; reason: string };
+  const orderedRunEntries: OrderedRunEntry[] = [];
 
   // Intentionally never reads data/research-results/calibration-fade-forward-validation.json.
   // analyzeCalibrationFadeForwardForRun returns in-memory report/lines only; scratch output
@@ -201,7 +210,7 @@ export async function analyzeCalibrationFadeCrossRun(input: {
         error instanceof CalibrationFadeForwardValidationError
         || error instanceof SelectedRunCaptureHealthError
       ) {
-        failedRuns.push({ runId, runDir: normalizedDir, reason: error.message });
+        orderedRunEntries.push({ kind: "failed", runId, runDir: normalizedDir, reason: error.message });
         warnings.push(`[${runId}] Selected run failed health validation: ${error.message}`);
         continue;
       }
@@ -227,10 +236,12 @@ export async function analyzeCalibrationFadeCrossRun(input: {
       );
     }
 
-    perRunResults.push({
+    const result: PerRunAnalysisResult = {
       report,
       marketRecords: parsedMarkets.markets,
-    });
+    };
+    perRunResults.push(result);
+    orderedRunEntries.push({ kind: "analyzed", result });
     warnings.push(...report.warnings.map((warning) => `[${runId}] ${warning}`));
   }
 
@@ -265,6 +276,7 @@ export async function analyzeCalibrationFadeCrossRun(input: {
       isSelectedRunResearchReady({
         captureHealthSource: result.report.selectedRunQuality.captureHealthSource ?? null,
         captureVerdict: result.report.selectedRunQuality.captureVerdict,
+        researchReadyVerified: result.report.selectedRunQuality.researchReadyVerified,
       }),
     ]),
   );
@@ -278,7 +290,7 @@ export async function analyzeCalibrationFadeCrossRun(input: {
     return { ...market, evaluated: false };
   });
 
-  const perRunSummaries: CrossRunRunSummary[] = perRunResults.map((result) => {
+  const buildAnalyzedRunSummary = (result: PerRunAnalysisResult): CrossRunRunSummary => {
     const runId = result.report.selectedRunId;
     const appearances = dedupe.appearances.filter((entry) => entry.selectedRunId === runId);
     const canonicalForRun = uniqueMarkets.filter(
@@ -323,6 +335,7 @@ export async function analyzeCalibrationFadeCrossRun(input: {
     const failedHealthReason = describeSelectedRunHealthFailure({
       captureHealthSource: result.report.selectedRunQuality.captureHealthSource ?? null,
       captureVerdict: result.report.selectedRunQuality.captureVerdict,
+      researchReadyVerified: result.report.selectedRunQuality.researchReadyVerified,
     });
 
     return {
@@ -330,6 +343,7 @@ export async function analyzeCalibrationFadeCrossRun(input: {
       selectedRunDirectory: result.report.selectedRunDirectory,
       captureHealthSource: result.report.selectedRunQuality.captureHealthSource ?? null,
       captureVerdict: result.report.selectedRunQuality.captureVerdict,
+      researchReadyVerified: result.report.selectedRunQuality.researchReadyVerified,
       researchReady,
       failedHealthReason,
       contributedCandidates: appearances.length > 0,
@@ -353,17 +367,22 @@ export async function analyzeCalibrationFadeCrossRun(input: {
       warnings: result.report.warnings,
       hypothesisConfigurationHash: result.report.hypothesisConfigurationHash,
     };
-  });
+  };
 
-  // Failed selected runs stay in the ledger; they are never silently subset out.
-  for (const failed of failedRuns) {
-    perRunSummaries.push({
-      selectedRunId: failed.runId,
-      selectedRunDirectory: failed.runDir,
+  // Failed selected runs stay in the ledger in their original operator
+  // position; they are never silently subset out or reordered to the end.
+  const perRunSummaries: CrossRunRunSummary[] = orderedRunEntries.map((entry) => {
+    if (entry.kind === "analyzed") {
+      return buildAnalyzedRunSummary(entry.result);
+    }
+    return {
+      selectedRunId: entry.runId,
+      selectedRunDirectory: entry.runDir,
       captureHealthSource: null,
       captureVerdict: null,
+      researchReadyVerified: false,
       researchReady: false,
-      failedHealthReason: failed.reason,
+      failedHealthReason: entry.reason,
       contributedCandidates: false,
       excludedFromOutcomeEvaluation: true,
       candidateParsingErrorCount: 0,
@@ -382,10 +401,10 @@ export async function analyzeCalibrationFadeCrossRun(input: {
       feeAdjustedReturnCents: null,
       interpretationClassification: "observation-quality-inconclusive",
       recommendedNextAction: "repair-or-replace-invalid-forward-runs",
-      warnings: [failed.reason],
+      warnings: [entry.reason],
       hypothesisConfigurationHash: spec.configurationHash,
-    });
-  }
+    };
+  });
 
   const researchReadyRunCount = perRunSummaries.filter((run) =>
     isSelectedRunResearchReady(run),

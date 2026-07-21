@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+
 import { describe, expect, it } from "vitest";
 
 import { fnv1a32, stableStringify } from "@/lib/trading/config/hashConfig";
@@ -159,11 +161,17 @@ function buildRegressionFixture() {
         selectedRunId: "run-calibration-fade",
         captureRunDir: RUN_DIR,
         sourceRunIds: ["run-calibration-fade"],
+        analysisVersion: "capture-health-audit-v1",
+        inputArtifactIdentities: [],
         summary: {
           verdict: "capture-research-ready",
+          recommendedNextAction: "proceed-offline-microstructure-research",
           runDurationSeconds: 3600,
+          topOfBookCount: 5,
+          btcSpotCount: 16,
           bookState: { validBookShare: 0.99, reconnectCount: 0, sequenceGapCount: 0 },
           btcJoin: { joinCoverageShare: 1 },
+          continuity: { p90TopOfBookGapMs: 1000 },
         },
       }),
       [`data/imports/KXBTC15M/${MARKET_A}/import-result.json`]: JSON.stringify({
@@ -287,6 +295,7 @@ describe("loadSelectedRunCalibrationFadeContext", () => {
           selectedRunId: "2026-07-12T10-18-27-409Z",
           captureRunDir: realRunDir,
           sourceRunIds: ["2026-07-12T10-18-27-409Z"],
+          analysisVersion: "capture-health-audit-v1",
           inputArtifactIdentities: [
             {
               path: topPath,
@@ -305,6 +314,7 @@ describe("loadSelectedRunCalibrationFadeContext", () => {
           ],
           summary: {
             verdict: "capture-research-ready",
+            recommendedNextAction: "proceed-offline-microstructure-research",
             runDurationSeconds: 28_655,
             topOfBookCount: 44_870,
             btcSpotCount: 5_726,
@@ -340,10 +350,17 @@ describe("loadSelectedRunCalibrationFadeContext", () => {
           selectedRunId: "degraded-audit-run",
           captureRunDir: realRunDir,
           sourceRunIds: ["degraded-audit-run"],
+          analysisVersion: "capture-health-audit-v1",
+          inputArtifactIdentities: [],
           summary: {
-            verdict: "capture-degraded",
-            bookState: { validBookShare: 0.5, reconnectCount: 0, sequenceGapCount: 0 },
+            verdict: "capture-gappy",
+            recommendedNextAction: "fix-capture-gaps",
+            runDurationSeconds: 3600,
+            topOfBookCount: 1,
+            btcSpotCount: 1,
+            bookState: { validBookShare: 0.5, reconnectCount: 0, sequenceGapCount: 100 },
             btcJoin: { joinCoverageShare: 0.5 },
+            continuity: { p90TopOfBookGapMs: 5000 },
           },
         }),
       },
@@ -467,11 +484,17 @@ describe("analyzeCalibrationFadeForwardForRun", () => {
           selectedRunId: "run-calibration-fade",
           captureRunDir: RUN_DIR,
           sourceRunIds: ["run-calibration-fade"],
+          analysisVersion: "capture-health-audit-v1",
+          inputArtifactIdentities: [],
           summary: {
             verdict: "capture-research-ready",
+            recommendedNextAction: "proceed-offline-microstructure-research",
             runDurationSeconds: 3600,
+            topOfBookCount: 1,
+            btcSpotCount: 16,
             bookState: { validBookShare: 0.99, reconnectCount: 0, sequenceGapCount: 0 },
             btcJoin: { joinCoverageShare: 1 },
+            continuity: { p90TopOfBookGapMs: 1000 },
           },
         }),
       },
@@ -539,11 +562,17 @@ describe("analyzeCalibrationFadeForwardForRun", () => {
           selectedRunId: "run-calibration-fade",
           captureRunDir: RUN_DIR,
           sourceRunIds: ["run-calibration-fade"],
+          analysisVersion: "capture-health-audit-v1",
+          inputArtifactIdentities: [],
           summary: {
             verdict: "capture-research-ready",
+            recommendedNextAction: "proceed-offline-microstructure-research",
             runDurationSeconds: 3600,
+            topOfBookCount: 1,
+            btcSpotCount: 16,
             bookState: { validBookShare: 0.99, reconnectCount: 0, sequenceGapCount: 0 },
             btcJoin: { joinCoverageShare: 1 },
+            continuity: { p90TopOfBookGapMs: 1000 },
           },
         }),
         [`data/imports/KXBTC15M/${MARKET_A}/import-result.json`]: JSON.stringify({
@@ -621,6 +650,8 @@ describe("analyzeCalibrationFadeForwardForRun", () => {
       selectedRunId: "run-calibration-fade",
       captureRunDir: RUN_DIR,
       sourceRunIds: ["run-calibration-fade"],
+      analysisVersion: "capture-health-audit-v1",
+      inputArtifactIdentities: [],
       summary: {
         verdict: "capture-gappy",
         recommendedNextAction: "repair-capture-continuity",
@@ -703,6 +734,7 @@ describe("classifyCalibrationFadeInterpretation", () => {
         terminalFailureReason: null,
         completedNormally: true,
         researchReadyVerified: true,
+        auditFingerprintsVerified: true,
         ...overrides.quality,
       },
       calibration: {
@@ -771,6 +803,43 @@ describe("classifyCalibrationFadeInterpretation", () => {
     expect(result.recommendedNextAction).toBe("repair-or-replace-invalid-forward-runs");
   });
 
+  it("blocks formal use when the ready verdict is not verified", () => {
+    const result = classifyCalibrationFadeInterpretation(
+      classifyInput({
+        quality: {
+          captureVerdict: "capture-research-ready",
+          researchReadyVerified: false,
+          auditFingerprintsVerified: false,
+        },
+      }),
+    );
+    expect(result.interpretationClassification).toBe("observation-quality-inconclusive");
+    expect(result.recommendedNextAction).toBe("repair-or-replace-invalid-forward-runs");
+    expect(result.rationale).toContain("provenance or freshness");
+  });
+
+  it("treats a null required quality metric as unverified, not passing", () => {
+    for (const quality of [
+      { validBookShare: null },
+      { btcJoinCoverageShare: null },
+    ]) {
+      const result = classifyCalibrationFadeInterpretation(classifyInput({ quality }));
+      expect(result.interpretationClassification).toBe("observation-quality-inconclusive");
+      expect(result.recommendedNextAction).toBe("fix-forward-observation-integrity");
+    }
+  });
+
+  it("fails closed on terminal failure or abnormal completion", () => {
+    for (const quality of [
+      { terminalFailureReason: "ws-close-1006" },
+      { completedNormally: false },
+    ]) {
+      const result = classifyCalibrationFadeInterpretation(classifyInput({ quality }));
+      expect(result.interpretationClassification).toBe("observation-quality-inconclusive");
+      expect(result.recommendedNextAction).toBe("fix-forward-observation-integrity");
+    }
+  });
+
   it("reaches calibration-only support when executable evidence is unavailable", () => {
     const result = classifyCalibrationFadeInterpretation(
       classifyInput({
@@ -805,6 +874,28 @@ describe("classifyCalibrationFadeInterpretation", () => {
       }),
     );
     expect(result.interpretationClassification).toBe("forward-supports-executable-fade");
+  });
+});
+
+describe("frozen hypothesis integrity", () => {
+  it("keeps the frozen Hypothesis #3 config unchanged", () => {
+    const raw = readFileSync(DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH, "utf8");
+    const frozen = JSON.parse(raw) as Record<string, unknown>;
+    expect(frozen.hypothesisId).toBe(
+      "atlas-volatilityProbabilityTime-vol-high-coarse-prob-1-coarse-time-early-over",
+    );
+    expect(frozen.hypothesisVersion).toBe("v1");
+    expect(frozen.calibrationDirection).toBe("over");
+    expect(frozen.targetOutcomeSide).toBe("no");
+    expect(frozen.minimumEvidenceRequirements).toEqual({
+      minimumIndependentCandidateMarkets: 5,
+      minimumSettlementCoverageShare: 0.8,
+      minimumValidBookShare: 0.9,
+      minimumBtcJoinCoverageShare: 0.9,
+      materialRejectionCalibrationGap: 0.05,
+      materialSupportCalibrationGap: 0.03,
+      materialExecutableNetReturnCents: 1,
+    });
   });
 });
 

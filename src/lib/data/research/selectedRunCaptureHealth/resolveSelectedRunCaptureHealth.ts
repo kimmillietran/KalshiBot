@@ -8,7 +8,6 @@ import {
   SelectedRunCaptureHealthError,
 } from "./selectedRunCaptureHealthTypes";
 import {
-  assertCaptureHealthAuditNotStale,
   captureHealthAuditMatchesSelectedRun,
   computeValidBookShareFromNativeHealth,
   joinCapturePath,
@@ -21,6 +20,7 @@ import {
   resolveReconnectCountFromNative,
   resolveRunScopedCaptureHealthAuditPath,
   resolveSelectedRunId,
+  verifyCaptureHealthAuditFreshness,
 } from "./selectedRunCaptureHealthUtils";
 
 function isResearchReadyAudit(audit: CaptureHealthAuditReport | null): boolean {
@@ -32,6 +32,7 @@ function normalizeFromAudit(
   healthSource: SelectedRunCaptureHealthSource,
   captureRunDir: string,
   selectedRunId: string,
+  auditFingerprintsVerified: boolean,
 ): ResolvedSelectedRunCaptureHealth {
   return {
     selectedRunId,
@@ -45,7 +46,9 @@ function normalizeFromAudit(
     terminalFailureReason: null,
     startedAt: null,
     endedAt: null,
-    researchReadyVerified: audit.summary.verdict === RESEARCH_READY_CAPTURE_VERDICT,
+    auditFingerprintsVerified,
+    researchReadyVerified:
+      audit.summary.verdict === RESEARCH_READY_CAPTURE_VERDICT && auditFingerprintsVerified,
     runDurationSeconds: audit.summary.runDurationSeconds,
     topOfBookCount: audit.summary.topOfBookCount,
     btcSpotCount: audit.summary.btcSpotCount,
@@ -93,6 +96,11 @@ function normalizeFromNative(
   captureRunDir: string,
   selectedRunId: string,
   audit: CaptureHealthAuditReport | null,
+  auditProvenance: {
+    runScopedAuditPath: string | null;
+    globalAuditPath: string | null;
+    auditFingerprintsVerified: boolean | null;
+  },
 ): ResolvedSelectedRunCaptureHealth {
   const orderbook =
     nativeHealth.orderbook && typeof nativeHealth.orderbook === "object"
@@ -127,7 +135,10 @@ function normalizeFromNative(
     terminalFailureReason: readString(connection?.terminalFailureReason),
     startedAt,
     endedAt,
-    researchReadyVerified: audit?.summary.verdict === RESEARCH_READY_CAPTURE_VERDICT,
+    auditFingerprintsVerified: auditProvenance.auditFingerprintsVerified,
+    researchReadyVerified:
+      audit?.summary.verdict === RESEARCH_READY_CAPTURE_VERDICT
+      && auditProvenance.auditFingerprintsVerified === true,
     runDurationSeconds:
       audit?.summary.runDurationSeconds
       ?? resolveActualRunDurationSeconds(startedAt, endedAt)
@@ -147,8 +158,8 @@ function normalizeFromNative(
     suspectedSystemSleepSeconds: null,
     completedNormally,
     nativeHealthPath: joinCapturePath(captureRunDir, "capture-health.json"),
-    runScopedAuditPath: null,
-    globalAuditPath: null,
+    runScopedAuditPath: auditProvenance.runScopedAuditPath,
+    globalAuditPath: auditProvenance.globalAuditPath,
     warnings: [],
   };
 }
@@ -158,10 +169,12 @@ function requireParsedAudit(
   label: string,
 ): CaptureHealthAuditReport {
   const parsed = parseCaptureHealthAuditReport(record);
-  if (!parsed) {
-    throw new SelectedRunCaptureHealthError(`Malformed ${label}: missing summary object.`);
+  if (!parsed.report) {
+    throw new SelectedRunCaptureHealthError(
+      `Malformed ${label}: ${parsed.errors.join("; ")}.`,
+    );
   }
-  return parsed;
+  return parsed.report;
 }
 
 export function resolveSelectedRunCaptureHealth(input: {
@@ -216,15 +229,31 @@ export function resolveSelectedRunCaptureHealth(input: {
       : globalMatches
         ? globalAuditRecord
         : null;
+    const matchingAuditLabel = runScopedMatches
+      ? "Run-scoped capture-health-audit.json"
+      : "Global capture-health-audit.json";
     const matchingAudit = matchingAuditRecord
-      ? requireParsedAudit(
-          matchingAuditRecord,
-          runScopedMatches
-            ? "run-scoped capture-health-audit.json"
-            : "global capture-health-audit.json",
-        )
+      ? requireParsedAudit(matchingAuditRecord, matchingAuditLabel)
       : null;
-    const resolved = normalizeFromNative(nativeHealth, captureRunDir, selectedRunId, matchingAudit);
+    // A matching audit verdict is only usable alongside native health when the
+    // audit is provably fresh; a stale audit fails closed instead of granting
+    // a possibly outdated capture-research-ready verdict.
+    let auditFingerprintsVerified: boolean | null = null;
+    if (matchingAuditRecord) {
+      const freshness = verifyCaptureHealthAuditFreshness({
+        auditRecord: matchingAuditRecord,
+        io: input.io,
+        sourceLabel: matchingAuditLabel,
+      });
+      warnings.push(...freshness.warnings);
+      auditFingerprintsVerified = freshness.fingerprintsVerified;
+    }
+    const resolved = normalizeFromNative(nativeHealth, captureRunDir, selectedRunId, matchingAudit, {
+      runScopedAuditPath: runScopedMatches ? runScopedAuditPath : null,
+      globalAuditPath:
+        !runScopedMatches && globalMatches ? GLOBAL_CAPTURE_HEALTH_AUDIT_PATH : null,
+      auditFingerprintsVerified,
+    });
     resolved.warnings = warnings;
     return resolved;
   }
@@ -239,18 +268,18 @@ export function resolveSelectedRunCaptureHealth(input: {
         `Run-scoped capture-health-audit verdict is ${runScopedAudit.summary.verdict}; capture-research-ready required.`,
       );
     }
-    warnings.push(
-      ...assertCaptureHealthAuditNotStale({
-        auditRecord: runScopedAuditRecord,
-        io: input.io,
-        sourceLabel: "Run-scoped capture-health-audit.json",
-      }),
-    );
+    const freshness = verifyCaptureHealthAuditFreshness({
+      auditRecord: runScopedAuditRecord,
+      io: input.io,
+      sourceLabel: "Run-scoped capture-health-audit.json",
+    });
+    warnings.push(...freshness.warnings);
     const resolved = normalizeFromAudit(
       runScopedAudit,
       "run-scoped-capture-health-audit",
       captureRunDir,
       selectedRunId,
+      freshness.fingerprintsVerified,
     );
     resolved.warnings = warnings;
     return resolved;
@@ -269,18 +298,18 @@ export function resolveSelectedRunCaptureHealth(input: {
     warnings.push(
       "Using matching-global-capture-health-audit as last-resort health source; prefer native capture-health.json or run-scoped capture-health-audit.json.",
     );
-    warnings.push(
-      ...assertCaptureHealthAuditNotStale({
-        auditRecord: globalAuditRecord,
-        io: input.io,
-        sourceLabel: "Global capture-health-audit.json",
-      }),
-    );
+    const freshness = verifyCaptureHealthAuditFreshness({
+      auditRecord: globalAuditRecord,
+      io: input.io,
+      sourceLabel: "Global capture-health-audit.json",
+    });
+    warnings.push(...freshness.warnings);
     const resolved = normalizeFromAudit(
       globalAudit,
       "matching-global-capture-health-audit",
       captureRunDir,
       selectedRunId,
+      freshness.fingerprintsVerified,
     );
     resolved.warnings = warnings;
     resolved.globalAuditPath = GLOBAL_CAPTURE_HEALTH_AUDIT_PATH;

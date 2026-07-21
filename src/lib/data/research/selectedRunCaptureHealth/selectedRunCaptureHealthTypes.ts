@@ -25,7 +25,16 @@ export type ResolvedSelectedRunCaptureHealth = {
   terminalFailureReason: string | null;
   startedAt: string | null;
   endedAt: string | null;
-  /** True only when a strictly matching capture-health audit carries a capture-research-ready verdict. */
+  /**
+   * Whether the matching audit's source-artifact fingerprints were positively
+   * revalidated against the current files. Null when no matching audit exists.
+   */
+  auditFingerprintsVerified: boolean | null;
+  /**
+   * True only when a strictly matching, schema-valid capture-health audit
+   * carries a capture-research-ready verdict AND its freshness fingerprints
+   * were positively verified. Unverifiable freshness fails closed to false.
+   */
   researchReadyVerified: boolean;
   runDurationSeconds: number | null;
   topOfBookCount: number | null;

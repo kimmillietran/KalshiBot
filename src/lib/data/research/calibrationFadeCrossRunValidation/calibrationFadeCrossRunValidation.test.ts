@@ -132,6 +132,7 @@ function stubReport(input: {
   validBookShare?: number;
   sequenceGapCount?: number;
   hypothesisConfigurationHash?: string;
+  researchReadyVerified?: boolean;
 }): CalibrationFadeForwardValidationReport {
   return {
     analysisVersion: "calibration-fade-forward-validation-v1",
@@ -178,7 +179,10 @@ function stubReport(input: {
       captureEndReason: null,
       terminalFailureReason: null,
       completedNormally: null,
-      researchReadyVerified: input.captureVerdict === "capture-research-ready",
+      researchReadyVerified:
+        input.researchReadyVerified ?? input.captureVerdict === "capture-research-ready",
+      auditFingerprintsVerified:
+        input.researchReadyVerified ?? input.captureVerdict === "capture-research-ready",
     },
     historicalBenchmark: {
       discoveryObservationCount: 273,
@@ -1062,6 +1066,193 @@ describe("analyzeCalibrationFadeCrossRun real-run-shaped fixture", () => {
       report.runFunnel.find((stage) => stage.stageId === "selected-runs")?.count,
     ).toBe(2);
   });
+
+  it("keeps failed selected runs in their original operator position", async () => {
+    const io = createMemoryCalibrationFadeCrossRunValidationIo(
+      {
+        [DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH]: freezeSpecContent(),
+        "data/research-results/hypothesis-candidates.json": hypothesisCandidatesFixture(),
+      },
+      [RUN1, RUN2, RUN3],
+    );
+    const { loadFrozenHypothesisSpec } = await import(
+      "@/lib/data/research/calibrationFadeForwardValidation"
+    );
+    const actualHash = loadFrozenHypothesisSpec({
+      io,
+      hypothesisConfigPath: DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH,
+    }).spec.configurationHash;
+
+    // The FIRST operator-selected run fails health validation.
+    const analyzePerRun = vi.fn(async (input: { config: { captureRunDir: string } }) => {
+      if (input.config.captureRunDir.includes("2026-07-11")) {
+        throw new CalibrationFadeForwardValidationError(
+          "Run-scoped capture-health-audit verdict is capture-gappy; capture-research-ready required.",
+        );
+      }
+      const runId = input.config.captureRunDir.split("/").pop()!;
+      return {
+        report: stubReport({
+          runId,
+          runDir: input.config.captureRunDir,
+          recordsScanned: 1000,
+          qualifyingObservationCount: 0,
+          candidateEpisodeCount: 0,
+          markets: [],
+          captureHealthSource: "run-scoped-capture-health-audit",
+          captureVerdict: "capture-research-ready",
+          runDurationSeconds: 1000,
+          hypothesisConfigurationHash: actualHash,
+        }),
+        eventLines: [],
+        marketLines: [],
+      };
+    });
+
+    const { report } = await analyzeCalibrationFadeCrossRun({
+      generatedAt: "2026-07-20T12:00:00.000Z",
+      outputPath: "out.json",
+      htmlOutputPath: "out.html",
+      config: baseConfig([RUN1, RUN2, RUN3]),
+      io,
+      analyzePerRun: analyzePerRun as never,
+    });
+
+    expect(report.selectedRunCount).toBe(3);
+    expect(report.perRunSummaries.map((run) => run.selectedRunId)).toEqual([
+      "2026-07-11T11-07-38-871Z",
+      "2026-07-12T10-18-27-409Z",
+      "2026-07-13T00-00-00-000Z",
+    ]);
+    expect(report.perRunSummaries[0]?.researchReady).toBe(false);
+    expect(report.perRunSummaries[0]?.failedHealthReason).toContain("capture-gappy");
+  });
+
+  it("fails closed on a syntactically valid candidate row with an invalid shape", async () => {
+    const io = createMemoryCalibrationFadeCrossRunValidationIo(
+      {
+        [DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH]: freezeSpecContent(),
+        "data/research-results/hypothesis-candidates.json": hypothesisCandidatesFixture(),
+      },
+      [RUN1, RUN2],
+    );
+    const { loadFrozenHypothesisSpec } = await import(
+      "@/lib/data/research/calibrationFadeForwardValidation"
+    );
+    const actualHash = loadFrozenHypothesisSpec({
+      io,
+      hypothesisConfigPath: DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH,
+    }).spec.configurationHash;
+
+    const analyzePerRun = vi.fn(async (input: { config: { captureRunDir: string } }) => {
+      const isRun1 = input.config.captureRunDir.includes("2026-07-11");
+      const markets = isRun1 ? [marketRecord({})] : [];
+      return {
+        report: stubReport({
+          runId: isRun1 ? "2026-07-11T11-07-38-871Z" : "2026-07-12T10-18-27-409Z",
+          runDir: input.config.captureRunDir,
+          recordsScanned: 1000,
+          qualifyingObservationCount: markets.length,
+          candidateEpisodeCount: markets.length,
+          markets,
+          captureHealthSource: "run-scoped-capture-health-audit",
+          captureVerdict: "capture-research-ready",
+          runDurationSeconds: 1000,
+          hypothesisConfigurationHash: actualHash,
+        }),
+        eventLines: [],
+        marketLines: isRun1
+          ? [
+              JSON.stringify(marketRecord({})),
+              "{}",
+              JSON.stringify({ marketTicker: "X", entryTimestamp: "not-a-date" }),
+            ]
+          : [],
+      };
+    });
+
+    const { report } = await analyzeCalibrationFadeCrossRun({
+      generatedAt: "2026-07-20T12:00:00.000Z",
+      outputPath: "out.json",
+      htmlOutputPath: "out.html",
+      config: baseConfig([RUN1, RUN2]),
+      io,
+      analyzePerRun: analyzePerRun as never,
+    });
+
+    expect(report.candidateParsingErrorCount).toBe(2);
+    expect(report.classification).toBe("observation-quality-inconclusive");
+    expect(report.recommendedNextAction).toBe("repair-or-replace-invalid-forward-runs");
+    const run1 = report.perRunSummaries.find((run) => run.selectedRunId.includes("2026-07-11"));
+    expect(run1?.candidateParsingErrorCount).toBe(2);
+    // Line attribution without payload dumping.
+    expect(
+      report.warnings.some(
+        (warning) =>
+          warning.includes("[2026-07-11T11-07-38-871Z]")
+          && warning.includes("lines 2, 3")
+          && !warning.includes("not-a-date"),
+      ),
+    ).toBe(true);
+    // The valid row still contributes; the run remains in the ledger.
+    expect(report.rawCandidateMarketAppearanceCount).toBe(1);
+    expect(report.selectedRunCount).toBe(2);
+  });
+
+  it("blocks formal use when a ready verdict lacks verified provenance", async () => {
+    const io = createMemoryCalibrationFadeCrossRunValidationIo(
+      {
+        [DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH]: freezeSpecContent(),
+        "data/research-results/hypothesis-candidates.json": hypothesisCandidatesFixture(),
+      },
+      [RUN1, RUN2],
+    );
+    const { loadFrozenHypothesisSpec } = await import(
+      "@/lib/data/research/calibrationFadeForwardValidation"
+    );
+    const actualHash = loadFrozenHypothesisSpec({
+      io,
+      hypothesisConfigPath: DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH,
+    }).spec.configurationHash;
+
+    const analyzePerRun = vi.fn(async (input: { config: { captureRunDir: string } }) => {
+      const isRun1 = input.config.captureRunDir.includes("2026-07-11");
+      return {
+        report: stubReport({
+          runId: isRun1 ? "2026-07-11T11-07-38-871Z" : "2026-07-12T10-18-27-409Z",
+          runDir: input.config.captureRunDir,
+          recordsScanned: 1000,
+          qualifyingObservationCount: 0,
+          candidateEpisodeCount: 0,
+          markets: [],
+          captureHealthSource: "run-scoped-capture-health-audit",
+          captureVerdict: "capture-research-ready",
+          // Ready verdict whose audit freshness could not be verified.
+          researchReadyVerified: !isRun1,
+          runDurationSeconds: 1000,
+          hypothesisConfigurationHash: actualHash,
+        }),
+        eventLines: [],
+        marketLines: [],
+      };
+    });
+
+    const { report } = await analyzeCalibrationFadeCrossRun({
+      generatedAt: "2026-07-20T12:00:00.000Z",
+      outputPath: "out.json",
+      htmlOutputPath: "out.html",
+      config: baseConfig([RUN1, RUN2]),
+      io,
+      analyzePerRun: analyzePerRun as never,
+    });
+
+    expect(report.researchReadyRunCount).toBe(1);
+    expect(report.classification).toBe("observation-quality-inconclusive");
+    expect(report.recommendedNextAction).toBe("repair-or-replace-invalid-forward-runs");
+    const run1 = report.perRunSummaries.find((run) => run.selectedRunId.includes("2026-07-11"));
+    expect(run1?.researchReady).toBe(false);
+    expect(run1?.failedHealthReason).toContain("provenance or freshness");
+  });
 });
 
 function crossRunSpec(minimumMarkets = 5) {
@@ -1089,6 +1280,7 @@ function runSummary(
     selectedRunDirectory: RUN1,
     captureHealthSource: "run-scoped-capture-health-audit",
     captureVerdict: "capture-research-ready",
+    researchReadyVerified: true,
     researchReady: true,
     failedHealthReason: null,
     contributedCandidates: false,
@@ -1229,6 +1421,29 @@ describe("classifyCalibrationFadeCrossRun", () => {
     });
     expect(result.classification).toBe("observation-quality-inconclusive");
     expect(result.recommendedNextAction).toBe("repair-or-replace-invalid-forward-runs");
+  });
+
+  it("does not treat an unverified capture-research-ready verdict as research-ready", () => {
+    const result = classifyCalibrationFadeCrossRun({
+      spec: crossRunSpec(1),
+      provenanceAvailable: true,
+      runSetIncompatible: false,
+      perRunSummaries: [
+        runSummary({
+          selectedRunId: "a",
+          captureVerdict: "capture-research-ready",
+          researchReadyVerified: false,
+          researchReady: false,
+        }),
+      ],
+      uniqueCandidateMarketCount: 10,
+      settlementCoverage: crossRunCoverage(10),
+      calibration: crossRunCalibration({ candidateMarketCount: 10 }),
+      executable: crossRunExecutable(),
+    });
+    expect(result.classification).toBe("observation-quality-inconclusive");
+    expect(result.recommendedNextAction).toBe("repair-or-replace-invalid-forward-runs");
+    expect(result.rationale).toContain("provenance or freshness");
   });
 
   it("does not treat a null native verdict as research-ready", () => {

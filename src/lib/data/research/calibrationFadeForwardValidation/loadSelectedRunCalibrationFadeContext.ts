@@ -136,6 +136,7 @@ export function loadSelectedRunCalibrationFadeContext(input: {
     terminalFailureReason: resolvedHealth.terminalFailureReason,
     completedNormally: resolvedHealth.completedNormally,
     researchReadyVerified: resolvedHealth.researchReadyVerified,
+    auditFingerprintsVerified: resolvedHealth.auditFingerprintsVerified,
   };
 
   return {
@@ -151,13 +152,25 @@ export function loadSelectedRunCalibrationFadeContext(input: {
         path: resolvedHealth.runScopedAuditPath ?? joinPath(captureRunDir, "capture-health-audit.json"),
         matchesSelectedRun:
           resolvedHealth.healthSource === "run-scoped-capture-health-audit"
-          || resolvedHealth.healthSource === "native-capture-health",
+          || (resolvedHealth.healthSource === "native-capture-health"
+            && resolvedHealth.runScopedAuditPath !== null),
         present: resolvedHealth.runScopedAuditPath !== null,
+        fingerprintsVerified:
+          resolvedHealth.runScopedAuditPath !== null
+            ? resolvedHealth.auditFingerprintsVerified
+            : null,
       },
       {
         path: resolvedHealth.globalAuditPath ?? GLOBAL_CAPTURE_HEALTH_AUDIT_PATH,
-        matchesSelectedRun: resolvedHealth.healthSource === "matching-global-capture-health-audit",
+        matchesSelectedRun:
+          resolvedHealth.healthSource === "matching-global-capture-health-audit"
+          || (resolvedHealth.healthSource === "native-capture-health"
+            && resolvedHealth.globalAuditPath !== null),
         present: resolvedHealth.globalAuditPath !== null,
+        fingerprintsVerified:
+          resolvedHealth.globalAuditPath !== null
+            ? resolvedHealth.auditFingerprintsVerified
+            : null,
       },
       { path: CAPTURE_HEALTH_RECONCILIATION_PATH, matchesSelectedRun: reconciliationMatches },
       { path: BID_SIZE_COVERAGE_AUDIT_PATH, matchesSelectedRun: bidSizeMatches },
