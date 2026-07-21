@@ -6,8 +6,9 @@
 # acceptance criteria. Exits nonzero unless every restart gate passes.
 #
 # The capture workload (series, throttle, market count, watchdog, BTC spot)
-# comes from the canonical eight-hour profile printed by the gate command —
-# it is intentionally NOT parameterized here, so the smoke always exercises
+# comes from the canonical eight-hour profile, which the gate command writes
+# to a temporary UTF-8 JSON file read back with Get-Content -Raw — it is
+# intentionally NOT parameterized here, so the smoke always exercises
 # the exact configuration an eight-hour capture will use. The only allowed
 # difference is duration (15-30 minutes instead of 480), which the gate
 # verifies as the documented smoke exception.
@@ -28,15 +29,84 @@ $ErrorActionPreference = "Stop"
 # ---------------------------------------------------------------------------
 # Canonical capture profile: the single source of truth lives in TypeScript
 # (CANONICAL_EIGHT_HOUR_CAPTURE_PROFILE); this wrapper never duplicates it.
+#
+# The profile travels through a unique temporary UTF-8 JSON file, NOT through
+# captured native stdout: Windows PowerShell 5.1 mangled the stdout transport
+# (the opening "{" was lost before ConvertFrom-Json). The wrapper always
+# generates its own temp path, so it never deletes an operator-provided file.
 # ---------------------------------------------------------------------------
-$profileJson = npx tsx scripts/research/evaluateCaptureRestartGate.ts --print-canonical-profile
-if ($LASTEXITCODE -ne 0) {
-    throw "Could not read the canonical capture profile (exit code $LASTEXITCODE)."
-}
-$profile = ($profileJson -join "") | ConvertFrom-Json
+$profilePath = Join-Path `
+    ([System.IO.Path]::GetTempPath()) `
+    ("kalshibot-capture-profile-" + [guid]::NewGuid().ToString("N") + ".json")
 
-if ($DurationMinutes -lt $profile.smokeDurationMinutesMin -or $DurationMinutes -gt $profile.smokeDurationMinutesMax) {
-    throw "DurationMinutes must be between $($profile.smokeDurationMinutesMin) and $($profile.smokeDurationMinutesMax) (got $DurationMinutes). This is a smoke gate, not an eight-hour capture."
+try {
+    npx tsx scripts/research/evaluateCaptureRestartGate.ts `
+        --write-canonical-profile "$profilePath"
+
+    if ($LASTEXITCODE -ne 0) {
+        throw "Could not write the canonical capture profile (exit code $LASTEXITCODE)."
+    }
+
+    if (-not (Test-Path $profilePath -PathType Leaf)) {
+        throw "Canonical capture profile file was not created."
+    }
+
+    $captureProfile = Get-Content -Raw -Encoding UTF8 $profilePath |
+        ConvertFrom-Json
+}
+finally {
+    Remove-Item $profilePath -Force -ErrorAction SilentlyContinue
+}
+
+# ---------------------------------------------------------------------------
+# Validate the loaded profile shape before anything else runs. Only types and
+# presence are checked here; the VALUES always come from the TypeScript
+# profile and are never duplicated in this wrapper. A malformed profile must
+# fail here — before the capture-start preflight and the capture itself.
+# ---------------------------------------------------------------------------
+function Test-CaptureProfileField {
+    param($Value, [string]$Name, [string]$Kind)
+
+    switch ($Kind) {
+        "string" {
+            if ($Value -isnot [string] -or [string]::IsNullOrWhiteSpace($Value)) {
+                return "$Name must be a non-empty string (got: '$Value')"
+            }
+        }
+        "number" {
+            $isNumber = $Value -is [int] -or $Value -is [long] -or
+                $Value -is [double] -or $Value -is [decimal]
+            if (-not $isNumber) {
+                return "$Name must be a number (got: '$Value')"
+            }
+        }
+        "bool" {
+            if ($Value -isnot [bool]) {
+                return "$Name must be a boolean (got: '$Value')"
+            }
+        }
+    }
+    return $null
+}
+
+$profileProblems = @(
+    (Test-CaptureProfileField $captureProfile.series "series" "string"),
+    (Test-CaptureProfileField $captureProfile.maxMarkets "maxMarkets" "number"),
+    (Test-CaptureProfileField $captureProfile.topOfBookThrottleMs "topOfBookThrottleMs" "number"),
+    (Test-CaptureProfileField $captureProfile.captureBtcSpot "captureBtcSpot" "bool"),
+    (Test-CaptureProfileField $captureProfile.wsWatchdogEnabled "wsWatchdogEnabled" "bool"),
+    (Test-CaptureProfileField $captureProfile.priceRepresentation "priceRepresentation" "string"),
+    (Test-CaptureProfileField $captureProfile.smokeDurationMinutesMin "smokeDurationMinutesMin" "number"),
+    (Test-CaptureProfileField $captureProfile.smokeDurationMinutesMax "smokeDurationMinutesMax" "number"),
+    (Test-CaptureProfileField $captureProfile.eightHourDurationMinutes "eightHourDurationMinutes" "number")
+) | Where-Object { $_ -ne $null }
+
+if ($profileProblems.Count -gt 0) {
+    throw "Canonical capture profile is invalid; refusing to start a capture. Problems: $($profileProblems -join '; ')"
+}
+
+if ($DurationMinutes -lt $captureProfile.smokeDurationMinutesMin -or $DurationMinutes -gt $captureProfile.smokeDurationMinutesMax) {
+    throw "DurationMinutes must be between $($captureProfile.smokeDurationMinutesMin) and $($captureProfile.smokeDurationMinutesMax) (got $DurationMinutes). This is a smoke gate, not an eight-hour capture."
 }
 
 $captureRoot = "data/live-capture/forward-quotes"
@@ -60,13 +130,13 @@ if ($LASTEXITCODE -ne 0) {
 # fully drained, and the terminal run status is published — so process exit
 # IS terminal writer completion.
 # ---------------------------------------------------------------------------
-Write-Host "Step 2/5: running $DurationMinutes-minute authenticated live capture (series $($profile.series), throttle $($profile.topOfBookThrottleMs)ms, $($profile.maxMarkets) markets)..."
+Write-Host "Step 2/5: running $DurationMinutes-minute authenticated live capture (series $($captureProfile.series), throttle $($captureProfile.topOfBookThrottleMs)ms, $($captureProfile.maxMarkets) markets)..."
 $captureStdout = npx tsx scripts/live/runForwardQuoteCapture.ts `
-    --series $profile.series `
+    --series $captureProfile.series `
     --duration-minutes $DurationMinutes `
-    --max-markets $profile.maxMarkets `
+    --max-markets $captureProfile.maxMarkets `
     --capture-btc-spot `
-    --top-of-book-throttle-ms $profile.topOfBookThrottleMs
+    --top-of-book-throttle-ms $captureProfile.topOfBookThrottleMs
 $captureExitCode = $LASTEXITCODE
 Write-Host $captureStdout
 
