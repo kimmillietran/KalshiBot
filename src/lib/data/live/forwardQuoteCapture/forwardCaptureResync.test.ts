@@ -810,7 +810,83 @@ describe("direct orderbook_snapshot get_snapshot response correlation (M12.1F)",
     expect(harness.processor.diagnostics.pendingCommandTimeoutCount).toBe(0);
   });
 
-  it("does not acknowledge on unknown, wrong-kind, sid, or ticker mismatches", () => {
+  it("fail-closes on unknown command id without recovery success or clearing outstanding", () => {
+    const harness = createHarness();
+    harness.subscribeAndAck(1);
+    harness.processor.processRawPayload(snapshotMessage(1, 1));
+    harness.processor.processRawPayload(deltaMessage(1, 10));
+    const recoveryCommand = sentCommands(harness.transport).find(
+      (command) => command.params?.action === "get_snapshot",
+    );
+    expect(recoveryCommand).toBeDefined();
+    expect(harness.processor.hasOutstandingRecovery(TICKER)).toBe(true);
+    expect(harness.processor.books.get(TICKER)?.bookState).not.toBe("valid");
+
+    harness.processor.processRawPayload({
+      ...snapshotMessage(1, 50),
+      id: recoveryCommand.id + 50,
+    });
+
+    expect(harness.processor.diagnostics.snapshotRecoverySuccessCount).toBe(0);
+    expect(harness.processor.hasOutstandingRecovery(TICKER)).toBe(true);
+    expect(harness.manager.getPendingCommands()).toHaveLength(1);
+    expect(harness.processor.books.get(TICKER)?.bookState).not.toBe("valid");
+    expect(
+      harness.lifecycleEvents.some((event) => event.type === "snapshotRecoverySucceeded"),
+    ).toBe(false);
+    expect(
+      harness.lifecycleEvents.some((event) => event.type === "snapshotRecoveryAcknowledged"),
+    ).toBe(false);
+
+    harness.advanceMonotonic(COMMAND_ACK_TIMEOUT_MS + 1);
+    harness.processor.checkTimeouts();
+    expect(harness.processor.diagnostics.pendingCommandTimeoutCount).toBe(1);
+    expect(harness.processor.diagnostics.snapshotAckTimeoutCount).toBe(1);
+    expect(
+      harness.lifecycleEvents.some((event) => event.type === "commandAcknowledgementTimeout"),
+    ).toBe(true);
+  });
+
+  it("fail-closes on wrong command kind without recovery success or clearing outstanding", () => {
+    const harness = createHarness();
+    harness.subscribeAndAck(1);
+    harness.processor.processRawPayload(snapshotMessage(1, 1));
+    harness.processor.processRawPayload(deltaMessage(1, 10));
+    const recoveryCommand = sentCommands(harness.transport).find(
+      (command) => command.params?.action === "get_snapshot",
+    );
+    expect(recoveryCommand).toBeDefined();
+
+    const subscribePending = harness.manager.subscribe(harness.transport, "KXBTC15M-OTHER");
+    harness.processor.processRawPayload({
+      ...snapshotMessage(1, 50),
+      id: subscribePending,
+    });
+
+    expect(harness.processor.diagnostics.snapshotRecoverySuccessCount).toBe(0);
+    expect(harness.processor.hasOutstandingRecovery(TICKER)).toBe(true);
+    expect(
+      harness.manager.getPendingCommands().some((command) => command.id === recoveryCommand.id),
+    ).toBe(true);
+    expect(
+      harness.manager.getPendingCommands().some((command) => command.id === subscribePending),
+    ).toBe(true);
+    expect(harness.processor.books.get(TICKER)?.bookState).not.toBe("valid");
+
+    harness.advanceMonotonic(COMMAND_ACK_TIMEOUT_MS + 1);
+    harness.processor.checkTimeouts();
+    expect(harness.processor.diagnostics.pendingCommandTimeoutCount).toBeGreaterThanOrEqual(1);
+    expect(
+      harness.lifecycleEvents.some(
+        (event) =>
+          event.type === "commandAcknowledgementTimeout"
+          && event.commandId === recoveryCommand.id,
+      ),
+    ).toBe(true);
+    expect(harness.processor.diagnostics.snapshotRecoverySuccessCount).toBe(0);
+  });
+
+  it("fail-closes on wrong sid without recovery success or clearing outstanding", () => {
     const harness = createHarness();
     harness.subscribeAndAck(1);
     harness.processor.processRawPayload(snapshotMessage(1, 1));
@@ -821,39 +897,42 @@ describe("direct orderbook_snapshot get_snapshot response correlation (M12.1F)",
     expect(recoveryCommand).toBeDefined();
 
     harness.processor.processRawPayload({
-      ...snapshotMessage(1, 50),
-      id: recoveryCommand.id + 50,
-    });
-    expect(harness.manager.getPendingCommands()).toHaveLength(1);
-    expect(
-      harness.lifecycleEvents.filter((event) => event.type === "snapshotRecoveryAcknowledged"),
-    ).toHaveLength(0);
-
-    const subscribePending = harness.manager.subscribe(harness.transport, "KXBTC15M-OTHER");
-    harness.processor.processRawPayload({
-      ...snapshotMessage(1, 51),
-      id: subscribePending,
-    });
-    expect(
-      harness.manager.getPendingCommands().some((command) => command.id === subscribePending),
-    ).toBe(true);
-
-    harness.processor.processRawPayload({
-      ...snapshotMessage(99, 52),
+      ...snapshotMessage(99, 50),
       id: recoveryCommand.id,
     });
+
+    expect(harness.processor.diagnostics.snapshotRecoverySuccessCount).toBe(0);
+    expect(harness.processor.hasOutstandingRecovery(TICKER)).toBe(true);
     expect(
       harness.manager.getPendingCommands().some((command) => command.id === recoveryCommand.id),
     ).toBe(true);
+    expect(harness.processor.books.get(TICKER)?.bookState).not.toBe("valid");
     expect(
-      harness.lifecycleEvents.filter((event) => event.type === "snapshotRecoveryAcknowledged"),
-    ).toHaveLength(0);
+      harness.lifecycleEvents.some((event) => event.type === "snapshotRecoverySucceeded"),
+    ).toBe(false);
+
+    harness.advanceMonotonic(COMMAND_ACK_TIMEOUT_MS + 1);
+    harness.processor.checkTimeouts();
+    expect(harness.processor.diagnostics.pendingCommandTimeoutCount).toBe(1);
+    expect(harness.processor.diagnostics.snapshotAckTimeoutCount).toBe(1);
+    expect(harness.processor.diagnostics.snapshotRecoverySuccessCount).toBe(0);
+  });
+
+  it("fail-closes on wrong ticker without mutating the legitimate recovery command", () => {
+    const harness = createHarness();
+    harness.subscribeAndAck(1);
+    harness.processor.processRawPayload(snapshotMessage(1, 1));
+    harness.processor.processRawPayload(deltaMessage(1, 10));
+    const recoveryCommand = sentCommands(harness.transport).find(
+      (command) => command.params?.action === "get_snapshot",
+    );
+    expect(recoveryCommand).toBeDefined();
 
     harness.processor.processRawPayload({
       type: "orderbook_snapshot",
       id: recoveryCommand.id,
       sid: 1,
-      seq: 53,
+      seq: 50,
       msg: {
         market_ticker: "KXBTC15M-OTHER",
         market_id: "market-id",
@@ -861,9 +940,87 @@ describe("direct orderbook_snapshot get_snapshot response correlation (M12.1F)",
         no_dollars_fp: [["0.5000", "12.00"]],
       },
     });
+
+    expect(harness.processor.diagnostics.snapshotRecoverySuccessCount).toBe(0);
+    expect(harness.processor.hasOutstandingRecovery(TICKER)).toBe(true);
     expect(
       harness.manager.getPendingCommands().some((command) => command.id === recoveryCommand.id),
     ).toBe(true);
+
+    harness.advanceMonotonic(COMMAND_ACK_TIMEOUT_MS + 1);
+    harness.processor.checkTimeouts();
+    expect(harness.processor.diagnostics.pendingCommandTimeoutCount).toBe(1);
+    expect(harness.processor.diagnostics.snapshotAckTimeoutCount).toBe(1);
+  });
+
+  it("allows ok-then-id-bearing snapshot to complete recovery once without double acknowledgement", () => {
+    const harness = createHarness();
+    harness.subscribeAndAck(1);
+    harness.processor.processRawPayload(snapshotMessage(1, 1));
+    harness.processor.processRawPayload(deltaMessage(1, 10));
+    const recoveryCommand = sentCommands(harness.transport).find(
+      (command) => command.params?.action === "get_snapshot",
+    );
+    expect(recoveryCommand).toBeDefined();
+
+    harness.processor.processRawPayload({
+      id: recoveryCommand.id,
+      sid: 1,
+      seq: 99,
+      type: "ok",
+      msg: { market_tickers: [TICKER] },
+    });
+    expect(
+      harness.lifecycleEvents.filter((event) => event.type === "snapshotRecoveryAcknowledged"),
+    ).toHaveLength(1);
+
+    harness.processor.processRawPayload({
+      ...snapshotMessage(1, 100),
+      id: recoveryCommand.id,
+    });
+
+    expect(harness.processor.diagnostics.snapshotRecoverySuccessCount).toBe(1);
+    expect(
+      harness.lifecycleEvents.filter((event) => event.type === "snapshotRecoveryAcknowledged"),
+    ).toHaveLength(1);
+    expect(
+      harness.lifecycleEvents.find((event) => event.type === "snapshotRecoverySucceeded")
+        ?.commandId,
+    ).toBe(recoveryCommand.id);
+    expect(harness.manager.getPendingCommands()).toHaveLength(0);
+
+    harness.advanceMonotonic(COMMAND_ACK_TIMEOUT_MS + 1);
+    harness.processor.checkTimeouts();
+    expect(harness.processor.diagnostics.pendingCommandTimeoutCount).toBe(0);
+  });
+
+  it("fail-closes processor path when pending command belongs to a stale socket generation", () => {
+    const harness = createHarness();
+    harness.subscribeAndAck(1);
+    harness.processor.processRawPayload(snapshotMessage(1, 1));
+    harness.processor.processRawPayload(deltaMessage(1, 10));
+    const recoveryCommand = sentCommands(harness.transport).find(
+      (command) => command.params?.action === "get_snapshot",
+    );
+    expect(recoveryCommand).toBeDefined();
+
+    harness.manager.advanceSocketGenerationForTests();
+    harness.processor.processRawPayload({
+      ...snapshotMessage(1, 100),
+      id: recoveryCommand.id,
+    });
+
+    expect(harness.processor.diagnostics.snapshotRecoverySuccessCount).toBe(0);
+    expect(harness.processor.hasOutstandingRecovery(TICKER)).toBe(true);
+    expect(
+      harness.manager.getPendingCommands().some((command) => command.id === recoveryCommand.id),
+    ).toBe(true);
+    expect(harness.processor.books.get(TICKER)?.bookState).not.toBe("valid");
+
+    harness.advanceMonotonic(COMMAND_ACK_TIMEOUT_MS + 1);
+    harness.processor.checkTimeouts();
+    expect(harness.processor.diagnostics.pendingCommandTimeoutCount).toBe(1);
+    expect(harness.processor.diagnostics.snapshotAckTimeoutCount).toBe(1);
   });
 
   it("does not complete recovery on a stale correlated snapshot after acknowledging the command", () => {

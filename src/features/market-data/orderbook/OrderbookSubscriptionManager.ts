@@ -55,6 +55,8 @@ export type PendingOrderbookCommand = {
   sids: number[];
   /** Monotonic timestamp when the command was sent (for ack timeouts). */
   requestedAtMs: number;
+  /** Socket generation that owned this command when it was sent. */
+  socketGeneration: number;
 };
 
 export type OrderbookServerSubscription = {
@@ -106,7 +108,7 @@ export type OrderbookControlMessage =
   };
 
 export type SnapshotRequestResult =
-  | { status: "requested"; commandId: number; sid: number }
+  | { status: "requested"; commandId: number; sid: number; socketGeneration: number }
   | { status: "unavailable"; reason: "no-server-sid" };
 
 export type UnsubscribeRequestResult = {
@@ -142,11 +144,13 @@ export type SnapshotResponseCorrelationResult =
         | "wrong-command-kind"
         | "sid-mismatch"
         | "ticker-mismatch"
-        | "duplicate-or-stale";
+        | "duplicate-or-stale"
+        | "stale-generation";
       commandId: number;
       pendingKind: OrderbookCommandKind | null;
       pendingSid: number | null;
       pendingTickers: string[];
+      pendingSocketGeneration: number | null;
     };
 
 /**
@@ -234,12 +238,13 @@ export class OrderbookSubscriptionManager {
   private sendTracked(
     transport: KalshiWsTransport,
     command: OrderbookSubscriptionCommand,
-    pending: Omit<PendingOrderbookCommand, "id" | "requestedAtMs">,
+    pending: Omit<PendingOrderbookCommand, "id" | "requestedAtMs" | "socketGeneration">,
   ): void {
     this.pendingCommands.set(command.id, {
       ...pending,
       id: command.id,
       requestedAtMs: this.monotonicNowMs(),
+      socketGeneration: this.socketGeneration,
     });
     try {
       transport.send(JSON.stringify(command));
@@ -273,7 +278,12 @@ export class OrderbookSubscriptionManager {
       marketTickers: [ticker],
       sids: [sid],
     });
-    return { status: "requested", commandId: command.id, sid };
+    return {
+      status: "requested",
+      commandId: command.id,
+      sid,
+      socketGeneration: this.socketGeneration,
+    };
   }
 
   unsubscribe(transport: KalshiWsTransport, tickers: string[]): UnsubscribeRequestResult {
@@ -495,10 +505,9 @@ export class OrderbookSubscriptionManager {
    * Validation (all required):
    * - commandId present and pending
    * - pending kind is get_snapshot
+   * - pending socket generation matches the current socket generation
    * - pending sid matches
    * - pending market tickers include the snapshot ticker
-   * - pending belongs to the current socket generation (pending is cleared on
-   *   reconnect, so any remaining pending entry is current-generation)
    *
    * Fail-closed on any mismatch: no pending mutation, no subscription mutation.
    */
@@ -513,6 +522,7 @@ export class OrderbookSubscriptionManager {
         pendingKind: null,
         pendingSid: null,
         pendingTickers: [],
+        pendingSocketGeneration: null,
       };
     }
 
@@ -525,6 +535,19 @@ export class OrderbookSubscriptionManager {
         pendingKind: null,
         pendingSid: null,
         pendingTickers: [],
+        pendingSocketGeneration: null,
+      };
+    }
+
+    if (pending.socketGeneration !== this.socketGeneration) {
+      return {
+        status: "rejected",
+        reason: "stale-generation",
+        commandId: input.commandId,
+        pendingKind: pending.kind,
+        pendingSid: pending.sids[0] ?? null,
+        pendingTickers: [...pending.marketTickers],
+        pendingSocketGeneration: pending.socketGeneration,
       };
     }
 
@@ -536,6 +559,7 @@ export class OrderbookSubscriptionManager {
         pendingKind: pending.kind,
         pendingSid: pending.sids[0] ?? null,
         pendingTickers: [...pending.marketTickers],
+        pendingSocketGeneration: pending.socketGeneration,
       };
     }
 
@@ -548,6 +572,7 @@ export class OrderbookSubscriptionManager {
         pendingKind: pending.kind,
         pendingSid,
         pendingTickers: [...pending.marketTickers],
+        pendingSocketGeneration: pending.socketGeneration,
       };
     }
 
@@ -559,6 +584,7 @@ export class OrderbookSubscriptionManager {
         pendingKind: pending.kind,
         pendingSid,
         pendingTickers: [...pending.marketTickers],
+        pendingSocketGeneration: pending.socketGeneration,
       };
     }
 
@@ -572,6 +598,16 @@ export class OrderbookSubscriptionManager {
       sid: input.sid,
       marketTickers: [...pending.marketTickers],
     };
+  }
+
+  /**
+   * Advances the socket generation while retaining pending commands.
+   * Production reconnects always call `resetForReconnect()` (which clears
+   * pending). This helper exists so unit tests can prove stale-generation
+   * correlation rejection without inventing a second ownership model.
+   */
+  advanceSocketGenerationForTests(): void {
+    this.socketGeneration += 1;
   }
 
   /**

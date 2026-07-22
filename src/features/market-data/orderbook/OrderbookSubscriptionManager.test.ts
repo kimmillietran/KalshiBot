@@ -519,6 +519,31 @@ describe("OrderbookSubscriptionManager.correlateSnapshotResponse", () => {
     expect(pending[0]?.id).toBe(unsubscribe.commandIds[0]);
   });
 
+  it("rejects stale-generation pending commands without consuming them", () => {
+    const manager = new OrderbookSubscriptionManager();
+    const transport = new MockKalshiWsTransport();
+    const commandId = pendingGetSnapshot(manager, transport, 1);
+    const generationBefore = manager.currentSocketGeneration;
+
+    manager.advanceSocketGenerationForTests();
+    expect(manager.currentSocketGeneration).toBe(generationBefore + 1);
+
+    const result = manager.correlateSnapshotResponse({
+      commandId,
+      sid: 1,
+      marketTicker: TICKER,
+    });
+
+    expect(result).toMatchObject({
+      status: "rejected",
+      reason: "stale-generation",
+      pendingSocketGeneration: generationBefore,
+    });
+    expect(manager.getPendingCommands().some((command) => command.id === commandId)).toBe(
+      true,
+    );
+  });
+
   it("clears consumed snapshot ids on reconnect so generations stay isolated", () => {
     const manager = new OrderbookSubscriptionManager();
     const transport = new MockKalshiWsTransport();
