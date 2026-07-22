@@ -55,6 +55,8 @@ export type PendingOrderbookCommand = {
   sids: number[];
   /** Monotonic timestamp when the command was sent (for ack timeouts). */
   requestedAtMs: number;
+  /** Socket generation that owned this command when it was sent. */
+  socketGeneration: number;
 };
 
 export type OrderbookServerSubscription = {
@@ -106,7 +108,7 @@ export type OrderbookControlMessage =
   };
 
 export type SnapshotRequestResult =
-  | { status: "requested"; commandId: number; sid: number }
+  | { status: "requested"; commandId: number; sid: number; socketGeneration: number }
   | { status: "unavailable"; reason: "no-server-sid" };
 
 export type UnsubscribeRequestResult = {
@@ -115,6 +117,41 @@ export type UnsubscribeRequestResult = {
   /** Tickers with no acknowledged server subscription; no command could be sent. */
   unmappedTickers: string[];
 };
+
+/** Input for correlating an inbound orderbook_snapshot to a pending get_snapshot. */
+export type SnapshotResponseCorrelationInput = {
+  commandId: number;
+  sid: number;
+  marketTicker: string;
+};
+
+/**
+ * Result of correlating an orderbook_snapshot that carries a client command id.
+ * Fail-closed: mismatches never clear pending state or mutate subscriptions.
+ */
+export type SnapshotResponseCorrelationResult =
+  | {
+      status: "acknowledged";
+      commandId: number;
+      commandKind: "get_snapshot";
+      sid: number;
+      marketTickers: string[];
+    }
+  | {
+      status: "rejected";
+      reason:
+        | "unknown-command-id"
+        | "wrong-command-kind"
+        | "sid-mismatch"
+        | "ticker-mismatch"
+        | "duplicate-or-stale"
+        | "stale-generation";
+      commandId: number;
+      pendingKind: OrderbookCommandKind | null;
+      pendingSid: number | null;
+      pendingTickers: string[];
+      pendingSocketGeneration: number | null;
+    };
 
 /**
  * Builds Kalshi orderbook_delta commands and tracks the WebSocket command
@@ -131,6 +168,12 @@ export class OrderbookSubscriptionManager {
   private readonly sidByTicker = new Map<string, number>();
   /** Increments on every reconnect; pending commands belong to a generation. */
   private socketGeneration = 1;
+  /**
+   * Command ids already consumed as get_snapshot acknowledgements via an
+   * id-bearing orderbook_snapshot. Used to distinguish duplicates from
+   * truly unknown ids after the pending entry is deleted.
+   */
+  private readonly consumedSnapshotCommandIds = new Set<number>();
 
   constructor(
     private readonly monotonicNowMs: () => number = () =>
@@ -195,12 +238,13 @@ export class OrderbookSubscriptionManager {
   private sendTracked(
     transport: KalshiWsTransport,
     command: OrderbookSubscriptionCommand,
-    pending: Omit<PendingOrderbookCommand, "id" | "requestedAtMs">,
+    pending: Omit<PendingOrderbookCommand, "id" | "requestedAtMs" | "socketGeneration">,
   ): void {
     this.pendingCommands.set(command.id, {
       ...pending,
       id: command.id,
       requestedAtMs: this.monotonicNowMs(),
+      socketGeneration: this.socketGeneration,
     });
     try {
       transport.send(JSON.stringify(command));
@@ -234,7 +278,12 @@ export class OrderbookSubscriptionManager {
       marketTickers: [ticker],
       sids: [sid],
     });
-    return { status: "requested", commandId: command.id, sid };
+    return {
+      status: "requested",
+      commandId: command.id,
+      sid,
+      socketGeneration: this.socketGeneration,
+    };
   }
 
   unsubscribe(transport: KalshiWsTransport, tickers: string[]): UnsubscribeRequestResult {
@@ -385,6 +434,11 @@ export class OrderbookSubscriptionManager {
       }
       if (commandId !== null) {
         this.pendingCommands.delete(commandId);
+        // An explicit ok for get_snapshot also consumes the command id so a
+        // later id-bearing snapshot cannot double-acknowledge it.
+        if (pending?.kind === "get_snapshot") {
+          this.consumedSnapshotCommandIds.add(commandId);
+        }
       }
 
       const acknowledgedKind = pending?.kind ?? null;
@@ -444,6 +498,119 @@ export class OrderbookSubscriptionManager {
   }
 
   /**
+   * Correlates an inbound orderbook_snapshot that carries a client command id
+   * to a pending get_snapshot command. On a valid match the pending command is
+   * deleted exactly once and treated as acknowledged.
+   *
+   * Validation (all required):
+   * - commandId present and pending
+   * - pending kind is get_snapshot
+   * - pending socket generation matches the current socket generation
+   * - pending sid matches
+   * - pending market tickers include the snapshot ticker
+   *
+   * Fail-closed on any mismatch: no pending mutation, no subscription mutation.
+   */
+  correlateSnapshotResponse(
+    input: SnapshotResponseCorrelationInput,
+  ): SnapshotResponseCorrelationResult {
+    if (this.consumedSnapshotCommandIds.has(input.commandId)) {
+      return {
+        status: "rejected",
+        reason: "duplicate-or-stale",
+        commandId: input.commandId,
+        pendingKind: null,
+        pendingSid: null,
+        pendingTickers: [],
+        pendingSocketGeneration: null,
+      };
+    }
+
+    const pending = this.pendingCommands.get(input.commandId);
+    if (!pending) {
+      return {
+        status: "rejected",
+        reason: "unknown-command-id",
+        commandId: input.commandId,
+        pendingKind: null,
+        pendingSid: null,
+        pendingTickers: [],
+        pendingSocketGeneration: null,
+      };
+    }
+
+    if (pending.socketGeneration !== this.socketGeneration) {
+      return {
+        status: "rejected",
+        reason: "stale-generation",
+        commandId: input.commandId,
+        pendingKind: pending.kind,
+        pendingSid: pending.sids[0] ?? null,
+        pendingTickers: [...pending.marketTickers],
+        pendingSocketGeneration: pending.socketGeneration,
+      };
+    }
+
+    if (pending.kind !== "get_snapshot") {
+      return {
+        status: "rejected",
+        reason: "wrong-command-kind",
+        commandId: input.commandId,
+        pendingKind: pending.kind,
+        pendingSid: pending.sids[0] ?? null,
+        pendingTickers: [...pending.marketTickers],
+        pendingSocketGeneration: pending.socketGeneration,
+      };
+    }
+
+    const pendingSid = pending.sids[0] ?? null;
+    if (pendingSid === null || pendingSid !== input.sid) {
+      return {
+        status: "rejected",
+        reason: "sid-mismatch",
+        commandId: input.commandId,
+        pendingKind: pending.kind,
+        pendingSid,
+        pendingTickers: [...pending.marketTickers],
+        pendingSocketGeneration: pending.socketGeneration,
+      };
+    }
+
+    if (!pending.marketTickers.includes(input.marketTicker)) {
+      return {
+        status: "rejected",
+        reason: "ticker-mismatch",
+        commandId: input.commandId,
+        pendingKind: pending.kind,
+        pendingSid,
+        pendingTickers: [...pending.marketTickers],
+        pendingSocketGeneration: pending.socketGeneration,
+      };
+    }
+
+    this.pendingCommands.delete(input.commandId);
+    this.consumedSnapshotCommandIds.add(input.commandId);
+
+    return {
+      status: "acknowledged",
+      commandId: input.commandId,
+      commandKind: "get_snapshot",
+      sid: input.sid,
+      marketTickers: [...pending.marketTickers],
+    };
+  }
+
+  /**
+   * Advances the socket generation while retaining pending commands.
+   * Production reconnects always call `resetForReconnect()` (which clears
+   * pending). This helper exists so unit tests can prove stale-generation
+   * correlation rejection without inventing a second ownership model.
+   */
+  advanceSocketGenerationForTests(): void {
+    this.socketGeneration += 1;
+  }
+
+  /**
    * Removes and returns pending commands whose acknowledgement deadline has
    * elapsed. Timed-out commands can never be trusted to complete; callers
    * must surface the timeout visibly.
@@ -470,6 +637,7 @@ export class OrderbookSubscriptionManager {
     this.pendingCommands.clear();
     this.subscriptionsBySid.clear();
     this.sidByTicker.clear();
+    this.consumedSnapshotCommandIds.clear();
     this.socketGeneration += 1;
     return invalidated;
   }

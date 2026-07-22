@@ -491,6 +491,52 @@ describe("evaluateCaptureRestartGate", () => {
       "persistence streams did not all drain",
     );
   });
+
+  it("allows restart after a successful correlated snapshot recovery with clean timeouts", () => {
+    const health = healthyNativeHealth();
+    const orderbook = health.orderbook as Record<string, unknown>;
+    orderbook.sequenceGapEpisodeCount = 1;
+    orderbook.sequenceGapCount = 1;
+    orderbook.snapshotRecoveryRequestCount = 1;
+    orderbook.snapshotRecoverySuccessCount = 1;
+    orderbook.snapshotRecoveryFailureCount = 0;
+    orderbook.pendingCommandTimeoutCount = 0;
+    orderbook.pendingCommandCountAtCaptureEnd = 0;
+    orderbook.marketsWithOutstandingRecoveryAtEnd = 0;
+    orderbook.commandErrorsReceived = 0;
+
+    const summary = evaluateCaptureRestartGate(passingInput({ nativeHealth: health }));
+    expect(summary.restartEightHourCaptures).toBe(true);
+    expect(summary.failureReasons).toEqual([]);
+  });
+
+  it("still refuses restart for a genuine unacknowledged get_snapshot timeout", () => {
+    const health = healthyNativeHealth();
+    const orderbook = health.orderbook as Record<string, unknown>;
+    orderbook.sequenceGapEpisodeCount = 1;
+    orderbook.sequenceGapCount = 1;
+    orderbook.snapshotRecoveryRequestCount = 1;
+    orderbook.snapshotRecoverySuccessCount = 0;
+    orderbook.pendingCommandTimeoutCount = 1;
+    orderbook.snapshotAckTimeoutCount = 1;
+    health.errors = [
+      "Kalshi WS get_snapshot command (id=3) was never acknowledged within 10000ms",
+    ];
+
+    const summary = evaluateCaptureRestartGate(passingInput({ nativeHealth: health }));
+    expect(summary.restartEightHourCaptures).toBe(false);
+    expect(summary.failureReasons.join("\n")).toMatch(/pending|timeout|error|recovery/i);
+  });
+
+  it("still refuses restart when pending commands remain at capture end", () => {
+    const health = healthyNativeHealth();
+    const orderbook = health.orderbook as Record<string, unknown>;
+    orderbook.pendingCommandCountAtCaptureEnd = 1;
+
+    const summary = evaluateCaptureRestartGate(passingInput({ nativeHealth: health }));
+    expect(summary.restartEightHourCaptures).toBe(false);
+    expect(summary.failureReasons.join("\n")).toContain("unresolved recovery");
+  });
 });
 
 describe("findCaptureStartBlockers", () => {

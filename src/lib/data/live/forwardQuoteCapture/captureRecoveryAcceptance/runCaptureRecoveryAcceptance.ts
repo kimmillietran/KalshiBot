@@ -309,6 +309,7 @@ export async function runCaptureRecoveryAcceptance(options?: {
   let pollCount = 0;
   let rolloverFiredAtPoll: number | null = null;
   let clockJumped = false;
+  let ackTimeoutSweepAdvanced = false;
   const lifecycleTextNow = (): string => {
     for (const [path, chunks] of appended) {
       if (path.endsWith("capture-lifecycle.jsonl")) {
@@ -320,6 +321,21 @@ export async function runCaptureRecoveryAcceptance(options?: {
   const shouldStop = (): boolean => {
     pollCount += 1;
     const lifecycle = lifecycleTextNow();
+
+    // Form 2 acceptance: after recovery succeeds, advance the monotonic clock
+    // past the 10s command-ack deadline and let the capture loop sweep so a
+    // falsely retained pending command would surface as a timeout.
+    if (
+      scenario === "snapshot-as-response"
+      && !ackTimeoutSweepAdvanced
+      && lifecycle.includes("snapshotRecoverySucceeded")
+    ) {
+      monotonicMs += 15_000;
+      ackTimeoutSweepAdvanced = true;
+      transcript.push(
+        "advanced monotonic clock past 10s command-ack timeout for pending-command sweep",
+      );
+    }
 
     if (rolloverFiredAtPoll === null) {
       const recoveryReachedTerminalPoint =
@@ -463,6 +479,15 @@ export async function runCaptureRecoveryAcceptance(options?: {
     }
   }
 
+  const succeededEvent = lifecycleEvents.find(
+    (event) =>
+      event.type === "snapshotRecoverySucceeded"
+      && Array.isArray(event.marketTickers)
+      && event.marketTickers.includes(ACCEPTANCE_PRIMARY_MARKET_TICKER),
+  );
+  const recoverySuccessCommandId =
+    typeof succeededEvent?.commandId === "number" ? succeededEvent.commandId : null;
+
   const observed: RecoveryAcceptanceObserved = {
     runId: result.runId,
     runDir: runPaths.runDir,
@@ -483,11 +508,14 @@ export async function runCaptureRecoveryAcceptance(options?: {
     unsubscribeRequested: hasLifecycleEvent("marketUnsubscribeRequested"),
     unsubscribeAcknowledged: hasLifecycleEvent("marketUnsubscribeAcknowledged"),
     recoveryLifecycleOrdered,
+    recoverySuccessCommandId,
     pendingCommandCountAtCaptureEnd:
       healthReport.orderbook.pendingCommandCountAtCaptureEnd,
     marketsWithOutstandingRecoveryAtEnd:
       healthReport.orderbook.marketsWithOutstandingRecoveryAtEnd,
     commandErrorsReceived: healthReport.orderbook.commandErrorsReceived,
+    pendingCommandTimeoutCount: healthReport.orderbook.pendingCommandTimeoutCount,
+    snapshotAckTimeoutCount: healthReport.orderbook.snapshotAckTimeoutCount,
     bufferedStreamsUsed: appendStreamsCreated === 5 && artifactAppendFileCalls === 0,
     writerBackpressureCount: healthReport.writer?.backpressureEventCount ?? 0,
     allStreamsDrained: healthReport.writer?.allStreamsDrained ?? null,

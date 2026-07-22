@@ -11,6 +11,12 @@ export const kalshiRestOrderbookSchema = z.object({
 
 export const kalshiOrderbookSnapshotMessageSchema = z.object({
   type: z.literal("orderbook_snapshot"),
+  /**
+   * Optional client command id. Present when the server delivers a
+   * get_snapshot response as an orderbook_snapshot (no separate type:"ok").
+   * Command ids start at ORDERBOOK_SUBSCRIPTION_ID_START (1).
+   */
+  id: z.number().int().positive().optional(),
   sid: z.number().int().positive(),
   seq: z.number().int().positive(),
   msg: z.object({

@@ -8,8 +8,13 @@
  */
 
 export const RECOVERY_ACCEPTANCE_SCENARIOS = [
-  /** Full happy path: one gap, one recovery, unsubscribe, clean completion. */
+  /** Full happy path: one gap, one recovery via ok-then-snapshot, unsubscribe, clean completion. */
   "happy",
+  /**
+   * Live-observed Form 2: get_snapshot is acknowledged by an id-bearing
+   * orderbook_snapshot (no standalone type:"ok"), then recovery succeeds.
+   */
+  "snapshot-as-response",
   /** Server acknowledges the subscription without a sid; recovery must be impossible. */
   "missing-sid",
   /** Recovery is acknowledged but the fresh snapshot never arrives. */
@@ -47,9 +52,18 @@ export type RecoveryAcceptanceObserved = {
   unsubscribeAcknowledged: boolean;
   /** Recovery lifecycle order held: requested -> acknowledged -> succeeded. */
   recoveryLifecycleOrdered: boolean;
+  /**
+   * commandId recorded on snapshotRecoverySucceeded (null when the server
+   * used Form 1 ok-then-snapshot without an id on the snapshot).
+   */
+  recoverySuccessCommandId: number | null;
   pendingCommandCountAtCaptureEnd: number;
   marketsWithOutstandingRecoveryAtEnd: number;
   commandErrorsReceived: number;
+  /** Pending WS command acknowledgement timeouts recorded during the run. */
+  pendingCommandTimeoutCount: number;
+  /** get_snapshot acknowledgement timeouts recorded during the run. */
+  snapshotAckTimeoutCount: number;
   /** The run used real buffered append streams, never the legacy appendFile shim. */
   bufferedStreamsUsed: boolean;
   /** Backpressure events recorded by the buffered writer during the run. */

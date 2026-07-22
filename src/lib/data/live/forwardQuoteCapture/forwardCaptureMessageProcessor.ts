@@ -5,6 +5,8 @@ import {
 import type {
   OrderbookControlMessage,
   PendingOrderbookCommand,
+  SnapshotResponseCorrelationInput,
+  SnapshotResponseCorrelationResult,
 } from "@/features/market-data/orderbook/OrderbookSubscriptionManager";
 
 import type { EconomicBookState } from "./classifyTopOfBookEconomicValidity";
@@ -39,7 +41,7 @@ export type ForwardCaptureMessageProcessingResult = {
 
 /** Outcome of dispatching a get_snapshot recovery command to the transport. */
 export type SnapshotRecoveryDispatchResult =
-  | { status: "requested"; commandId: number; sid: number }
+  | { status: "requested"; commandId: number; sid: number; socketGeneration: number }
   | { status: "unavailable"; reason: string }
   | { status: "send-failed"; reason: string };
 
@@ -63,9 +65,32 @@ export const COMMAND_ACK_TIMEOUT_MS = 10_000;
 
 type OutstandingRecovery = {
   commandId: number | null;
+  sid: number | null;
+  socketGeneration: number | null;
   requestedAtMs: number;
   acknowledgedAtMs: number | null;
 };
+
+/**
+ * Explicit eligibility for treating an inbound snapshot as recovery completion.
+ * `wasRecovering` alone is never sufficient for an id-bearing snapshot.
+ */
+type SnapshotRecoveryEligibility =
+  | { status: "ordinary-snapshot" }
+  | {
+      status: "newly-acknowledged";
+      commandId: number;
+      sid: number;
+      marketTickers: string[];
+    }
+  | { status: "already-acknowledged"; commandId: number; sid: number }
+  | {
+      status: "rejected";
+      reason: string;
+      commandId: number;
+      pendingTickers: string[];
+      pendingSid: number | null;
+    };
 
 function isEmptyAwaitingSnapshot(record: ForwardTopOfBookRecord): boolean {
   return (
@@ -182,6 +207,13 @@ export class ForwardCaptureMessageProcessor {
        * error) to the subscription manager and returns the classification.
        */
       onControlMessage?: (payload: unknown) => OrderbookControlMessage | null;
+      /**
+       * Correlates an id-bearing orderbook_snapshot to a pending get_snapshot
+       * command. Fail-closed; mismatches must not clear pending state.
+       */
+      correlateSnapshotResponse?: (
+        input: SnapshotResponseCorrelationInput,
+      ) => SnapshotResponseCorrelationResult;
       /** Sends one get_snapshot command with the tracked server sid. */
       requestSnapshotRecovery?: (marketTicker: string) => SnapshotRecoveryDispatchResult;
       onLifecycleEvent?: (event: ForwardCaptureSubscriptionLifecycleEvent) => void;
@@ -310,6 +342,8 @@ export class ForwardCaptureMessageProcessor {
     this.recoveryAttempts.set(marketTicker, attempts + 1);
     this.outstandingRecovery.set(marketTicker, {
       commandId: null,
+      sid: null,
+      socketGeneration: null,
       requestedAtMs: nowMs,
       acknowledgedAtMs: null,
     });
@@ -330,6 +364,8 @@ export class ForwardCaptureMessageProcessor {
         this.outstandingRecovery.set(marketTicker, {
           ...outstanding,
           commandId: dispatch.commandId,
+          sid: dispatch.sid,
+          socketGeneration: dispatch.socketGeneration,
         });
       }
       this.emitLifecycle({
@@ -550,6 +586,7 @@ export class ForwardCaptureMessageProcessor {
               this.outstandingRecovery.set(ticker, {
                 ...outstanding,
                 acknowledgedAtMs: ackAtMs,
+                sid: control.sid ?? outstanding.sid,
               });
             }
           }
@@ -761,21 +798,93 @@ export class ForwardCaptureMessageProcessor {
         book.bookState === "gap-detected"
         || book.bookState === "resyncing"
         || this.outstandingRecovery.has(ticker);
+
+      const eligibility = this.resolveSnapshotRecoveryEligibility({
+        snapshotId: parsed.data.id,
+        sid: parsed.data.sid,
+        marketTicker: ticker,
+      });
+
+      if (eligibility.status === "rejected") {
+        this.diagnostics.unknownControlResponseCount += 1;
+        this.emitLifecycle({
+          type: "unknownControlResponseReceived",
+          marketTickers: eligibility.pendingTickers,
+          commandId: eligibility.commandId,
+          sid: eligibility.pendingSid,
+          errorMessage:
+            `Snapshot response correlation rejected (${eligibility.reason}) `
+              + `for command id=${eligibility.commandId}; raw payload preserved, `
+              + `book/recovery state not mutated`,
+        });
+        // Fail closed: do not apply a rejected id-bearing snapshot as trusted
+        // recovery input, and do not clear outstanding/pending recovery state.
+        return { messageType, marketTicker: ticker, expectedMarketMessage: true };
+      }
+
+      if (eligibility.status === "newly-acknowledged") {
+        this.diagnostics.controlResponsesReceived += 1;
+        const ackAtMs = this.input.monotonicNowMs();
+        for (const [market, outstanding] of this.outstandingRecovery) {
+          if (
+            outstanding.commandId === eligibility.commandId
+            && outstanding.acknowledgedAtMs === null
+          ) {
+            this.outstandingRecovery.set(market, {
+              ...outstanding,
+              acknowledgedAtMs: ackAtMs,
+              sid: outstanding.sid ?? eligibility.sid,
+            });
+          }
+        }
+        this.emitLifecycle({
+          type: "snapshotRecoveryAcknowledged",
+          marketTickers: eligibility.marketTickers,
+          commandId: eligibility.commandId,
+          sid: eligibility.sid,
+        });
+      }
+
       const snapshotResult = book.applySnapshot(parsed.data);
 
       if (snapshotResult === "stale-rejected") {
         this.diagnostics.staleSnapshotsRejected += 1;
+        // Newly/already acknowledged commands stay acknowledged; recovery is
+        // not successful and remains bounded by the snapshot-arrival deadline.
         return { messageType, marketTicker: ticker, expectedMarketMessage: true };
       }
 
       if (snapshotResult === "closed-ignored") {
+        // Closed markets must not produce false recovery success. Clear any
+        // outstanding recovery consistently with markMarketClosed.
+        if (
+          wasRecovering
+          || eligibility.status === "newly-acknowledged"
+          || eligibility.status === "already-acknowledged"
+        ) {
+          this.outstandingRecovery.delete(ticker);
+          this.recoveryAttempts.delete(ticker);
+          this.recoveryExhausted.delete(ticker);
+        }
         return { messageType, marketTicker: ticker, expectedMarketMessage: true };
       }
 
       this.diagnostics.snapshotsReceived += 1;
-      if (wasRecovering) {
+
+      const mayCompleteRecovery =
+        eligibility.status === "newly-acknowledged"
+        || eligibility.status === "already-acknowledged"
+        || (eligibility.status === "ordinary-snapshot" && wasRecovering);
+
+      if (mayCompleteRecovery) {
         this.diagnostics.snapshotRecoverySuccessCount += 1;
         this.recordResyncSuccess(ticker);
+        const outstanding = this.outstandingRecovery.get(ticker);
+        const successCommandId =
+          eligibility.status === "newly-acknowledged"
+          || eligibility.status === "already-acknowledged"
+            ? eligibility.commandId
+            : outstanding?.commandId ?? null;
         this.outstandingRecovery.delete(ticker);
         this.lastRecoveryFailureAtMs.delete(ticker);
         this.recoveryAttempts.delete(ticker);
@@ -783,7 +892,7 @@ export class ForwardCaptureMessageProcessor {
         this.emitLifecycle({
           type: "snapshotRecoverySucceeded",
           marketTickers: [ticker],
-          commandId: null,
+          commandId: successCommandId,
           sid: parsed.data.sid,
         });
       }
@@ -843,6 +952,73 @@ export class ForwardCaptureMessageProcessor {
 
     this.diagnostics.unknownMessagesReceived += 1;
     return { messageType, marketTicker, expectedMarketMessage: false };
+  }
+
+  /**
+   * Decides whether an inbound snapshot may acknowledge and/or complete
+   * recovery. Id-bearing snapshots require trustworthy correlation; a rejected
+   * correlation never falls through to `wasRecovering`-based success.
+   */
+  private resolveSnapshotRecoveryEligibility(input: {
+    snapshotId: number | undefined;
+    sid: number;
+    marketTicker: string;
+  }): SnapshotRecoveryEligibility {
+    if (input.snapshotId === undefined) {
+      return { status: "ordinary-snapshot" };
+    }
+
+    const correlation = this.input.correlateSnapshotResponse?.({
+      commandId: input.snapshotId,
+      sid: input.sid,
+      marketTicker: input.marketTicker,
+    });
+
+    if (!correlation) {
+      return {
+        status: "rejected",
+        reason: "correlation-unavailable",
+        commandId: input.snapshotId,
+        pendingTickers: [],
+        pendingSid: null,
+      };
+    }
+
+    if (correlation.status === "acknowledged") {
+      return {
+        status: "newly-acknowledged",
+        commandId: correlation.commandId,
+        sid: correlation.sid,
+        marketTickers: correlation.marketTickers,
+      };
+    }
+
+    // Mixed protocol form: standalone ok already consumed the pending command.
+    // An id-bearing snapshot for the same already-acknowledged outstanding
+    // recovery may complete recovery once without a second acknowledgement.
+    const outstanding = this.outstandingRecovery.get(input.marketTicker);
+    if (
+      outstanding
+      && outstanding.commandId === input.snapshotId
+      && outstanding.acknowledgedAtMs !== null
+      && outstanding.sid === input.sid
+      && (correlation.reason === "duplicate-or-stale"
+        || correlation.reason === "unknown-command-id")
+    ) {
+      return {
+        status: "already-acknowledged",
+        commandId: input.snapshotId,
+        sid: input.sid,
+      };
+    }
+
+    return {
+      status: "rejected",
+      reason: correlation.reason,
+      commandId: correlation.commandId,
+      pendingTickers: correlation.pendingTickers,
+      pendingSid: correlation.pendingSid,
+    };
   }
 
   private emitTopOfBook(

@@ -150,6 +150,8 @@ export async function runLiveForwardQuoteCapture(input: {
       watchdog?.recordTopOfBookEmission();
     },
     onControlMessage: (payload) => subscriptionManager.handleControlMessage(payload),
+    correlateSnapshotResponse: (input) =>
+      subscriptionManager.correlateSnapshotResponse(input),
     requestSnapshotRecovery: (marketTicker) => {
       try {
         const result = subscriptionManager.requestSnapshot(transport, marketTicker);
