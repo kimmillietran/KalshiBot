@@ -141,7 +141,11 @@ $captureExitCode = $LASTEXITCODE
 Write-Host $captureStdout
 
 # Identify the EXACT run this wrapper created from the capture CLI's own
-# machine-readable output. Never fall back to "newest directory".
+# machine-readable output. Never fall back to "newest directory". A failed
+# capture (exit code 1) that still emitted runId JSON — for example an HTTP
+# 401 WebSocket handshake rejection that finalized normally — must be
+# identified here so the exact-run diagnostics and restart gate can deny
+# restart against that run.
 $captureJsonLine = @($captureStdout) | Where-Object { $_ -match '"runId"' } | Select-Object -Last 1
 if (-not $captureJsonLine) {
     throw "Could not identify the capture run: no runId JSON found in capture output (exit code $captureExitCode)."
@@ -158,6 +162,9 @@ Write-Host "Smoke capture run:"
 Write-Host "  runId:   $runId"
 Write-Host "  runDir:  $runDir"
 Write-Host "  capture exit code: $captureExitCode"
+if ($captureExitCode -ne 0) {
+    Write-Host "  capture failed; continuing exact-run diagnostics and restart gate (restart will be denied)."
+}
 Write-Host ""
 
 # ---------------------------------------------------------------------------

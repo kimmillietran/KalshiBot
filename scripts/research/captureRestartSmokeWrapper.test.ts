@@ -99,4 +99,17 @@ describe("run-capture-restart-smoke.ps1 canonical profile transport", () => {
     expect(wrapper).toContain("RESTART GATE FAILED");
     expect(wrapper).toContain("exit 1");
   });
+
+  it("identifies the exact run from stdout even when captureExitCode is nonzero", () => {
+    // A finalized authentication-failure still emits runId JSON; the wrapper
+    // must not throw "Could not identify the capture run" and must not fall
+    // back to newest-directory selection.
+    expect(wrapper).toContain('Where-Object { $_ -match \'"runId"\' }');
+    expect(wrapper).toContain("capture exit code: $captureExitCode");
+    expect(wrapper).toContain("if ($captureExitCode -ne 0)");
+    expect(wrapper).toContain("restart will be denied");
+    expect(wrapper).not.toMatch(/Get-ChildItem.*Sort-Object.*LastWriteTime/);
+    expect(wrapper).toContain("Never fall back to");
+    expect(wrapper).toContain('if ($captureExitCode -ne 0) { $failedSteps += "capture ($captureExitCode)" }');
+  });
 });

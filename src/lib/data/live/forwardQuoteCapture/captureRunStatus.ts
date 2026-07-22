@@ -114,11 +114,17 @@ function isValidTimestamp(value: unknown): value is string {
  * coherence is enforced: terminal states must carry a valid endedAt, while
  * active/finalizing states must not. Anything else returns null so callers
  * treat the file as present-but-invalid (never as an absent legacy marker).
+ *
+ * Exactly one leading UTF-8 BOM (U+FEFF) is tolerated: Windows PowerShell 5.1
+ * `Set-Content -Encoding UTF8` writes a BOM, and an otherwise-valid terminal
+ * status must not be classified as invalid-status for that alone. No other
+ * characters are stripped. Serialization never introduces a BOM.
  */
 export function parseCaptureRunStatus(text: string): CaptureRunStatusArtifact | null {
   let parsed: unknown;
   try {
-    parsed = JSON.parse(text);
+    const normalized = text.charCodeAt(0) === 0xfeff ? text.slice(1) : text;
+    parsed = JSON.parse(normalized);
   } catch {
     return null;
   }

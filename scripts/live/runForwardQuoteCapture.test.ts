@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   resetForwardCaptureShutdown,
@@ -7,6 +7,17 @@ import {
 import {
   parseForwardQuoteCaptureConfigFromArgv,
 } from "./runForwardQuoteCaptureTypes";
+
+vi.mock("@/lib/data/live/forwardQuoteCapture", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@/lib/data/live/forwardQuoteCapture")>();
+  return {
+    ...actual,
+    runForwardQuoteCapture: vi.fn(actual.runForwardQuoteCapture),
+  };
+});
+
+import { runForwardQuoteCapture } from "@/lib/data/live/forwardQuoteCapture";
 
 describe("parseForwardQuoteCaptureConfigFromArgv", () => {
   it("parses duration-minutes and capture-btc-spot", () => {
@@ -114,5 +125,65 @@ describe("runForwardQuoteCaptureCommand", () => {
     const output = stdout.join("");
     expect(output).toContain("writer-failure");
     expect(output).toContain("capture-writer-failure");
+  });
+
+  it("returns exit code 1 with runId JSON for an authentication-failure capture", async () => {
+    resetForwardCaptureShutdown();
+    vi.mocked(runForwardQuoteCapture).mockResolvedValueOnce({
+      runId: "2026-07-21T23-37-23-813Z",
+      htmlOutputPath: "out/report.html",
+      healthReport: {
+        verdict: "blocked-ws-auth",
+        recommendedNextAction: "fix-credentials-and-retry",
+        credentialStatus: "available",
+        marketDiscovery: { marketsSubscribed: 1 },
+        capture: {
+          rawMessageCount: 0,
+          topOfBookRecordCount: 0,
+          btcSpotRecordCount: 0,
+        },
+        orderbook: { sequenceGapCount: 0 },
+        connection: {
+          reconnectCount: 0,
+          captureEndReason: "authentication-failure",
+          terminalFailureReason: null,
+          completedNormally: false,
+          liveConnectionSucceeded: false,
+        },
+        errors: ["Unexpected server response: 401"],
+      },
+    } as never);
+
+    const stdout: string[] = [];
+    const stderr: string[] = [];
+    const exitCode = await runForwardQuoteCaptureCommand(
+      [
+        "--series",
+        "KXBTC15M",
+        "--duration-minutes",
+        "20",
+        "--max-markets",
+        "5",
+        "--capture-btc-spot",
+        "--output-dir",
+        "data/live-capture/forward-quotes",
+      ],
+      {
+        writeStdout: (text) => stdout.push(text),
+        writeStderr: (text) => stderr.push(text),
+        writeFile: () => {},
+        appendFile: () => {},
+        mkdirSync: () => {},
+      },
+    );
+
+    expect(exitCode).toBe(1);
+    const parsed = JSON.parse(stdout.join("")) as Record<string, unknown>;
+    expect(parsed.runId).toBe("2026-07-21T23-37-23-813Z");
+    expect(parsed.outputDir).toBe("data/live-capture/forward-quotes");
+    expect(parsed.captureEndReason).toBe("authentication-failure");
+    expect(parsed.verdict).not.toBe("capture-mvp-success");
+    expect(stderr.join("")).not.toContain("mock-private-key");
+    expect(stdout.join("")).not.toContain("mock-private-key");
   });
 });
