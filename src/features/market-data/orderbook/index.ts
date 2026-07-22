@@ -23,6 +23,8 @@ export type {
   OrderbookServerSubscription,
   OrderbookSubscriptionCommand,
   SnapshotRequestResult,
+  SnapshotResponseCorrelationInput,
+  SnapshotResponseCorrelationResult,
   UnsubscribeRequestResult,
 } from "./OrderbookSubscriptionManager";
 export { OrderbookFeedError, OrderbookFeedErrorCode } from "./errors";

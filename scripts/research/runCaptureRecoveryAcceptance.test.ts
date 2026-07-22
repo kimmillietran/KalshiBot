@@ -20,25 +20,35 @@ function createCommandIo() {
 }
 
 describe("runCaptureRecoveryAcceptanceCommand", () => {
-  it("exits 0 and prints a machine-readable passing report for the happy scenario", async () => {
-    const { io, stdout } = createCommandIo();
+  it("exits 0 and prints a machine-readable passing report for the default dual-scenario gate", async () => {
+    const { io, stdout, stderr } = createCommandIo();
 
     const exitCode = await runCaptureRecoveryAcceptanceCommand([], io);
 
     expect(exitCode).toBe(0);
     const report = JSON.parse(stdout.join("")) as {
       passed: boolean;
-      scenario: string;
-      failures: string[];
-      checks: Array<{ id: string; passed: boolean }>;
-      transcript: string[];
+      mode: string;
+      scenarios: string[];
+      reports: Array<{
+        scenario: string;
+        passed: boolean;
+        failures: string[];
+        checks: Array<{ id: string; passed: boolean }>;
+        transcript: string[];
+      }>;
     };
     expect(report.passed).toBe(true);
-    expect(report.scenario).toBe("happy");
-    expect(report.failures).toEqual([]);
-    expect(report.checks.length).toBeGreaterThanOrEqual(15);
-    expect(report.transcript.length).toBeGreaterThan(5);
-  }, 20_000);
+    expect(report.mode).toBe("default-gate");
+    expect(report.scenarios).toEqual(["happy", "snapshot-as-response"]);
+    expect(report.reports).toHaveLength(2);
+    expect(report.reports.every((entry) => entry.passed)).toBe(true);
+    expect(report.reports[0]?.checks.length).toBeGreaterThanOrEqual(15);
+    expect(report.reports[1]?.transcript.join("\n")).toContain(
+      "direct snapshot response; no standalone ok",
+    );
+    expect(stderr.join("")).toContain("snapshot-as-response");
+  }, 30_000);
 
   it("exits nonzero when an acceptance requirement fails", async () => {
     const { io, stdout, stderr } = createCommandIo();
@@ -65,6 +75,7 @@ describe("runCaptureRecoveryAcceptanceCommand", () => {
     expect(exitCode).toBe(1);
     expect(stdout.join("")).toBe("");
     expect(stderr.join("")).toContain('Unknown --scenario "definitely-not-a-scenario"');
+    expect(stderr.join("")).toContain("snapshot-as-response");
     expect(stderr.join("")).toContain("writer-no-drain");
   });
 });

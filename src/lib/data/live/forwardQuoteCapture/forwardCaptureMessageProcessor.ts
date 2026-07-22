@@ -5,6 +5,8 @@ import {
 import type {
   OrderbookControlMessage,
   PendingOrderbookCommand,
+  SnapshotResponseCorrelationInput,
+  SnapshotResponseCorrelationResult,
 } from "@/features/market-data/orderbook/OrderbookSubscriptionManager";
 
 import type { EconomicBookState } from "./classifyTopOfBookEconomicValidity";
@@ -182,6 +184,13 @@ export class ForwardCaptureMessageProcessor {
        * error) to the subscription manager and returns the classification.
        */
       onControlMessage?: (payload: unknown) => OrderbookControlMessage | null;
+      /**
+       * Correlates an id-bearing orderbook_snapshot to a pending get_snapshot
+       * command. Fail-closed; mismatches must not clear pending state.
+       */
+      correlateSnapshotResponse?: (
+        input: SnapshotResponseCorrelationInput,
+      ) => SnapshotResponseCorrelationResult;
       /** Sends one get_snapshot command with the tracked server sid. */
       requestSnapshotRecovery?: (marketTicker: string) => SnapshotRecoveryDispatchResult;
       onLifecycleEvent?: (event: ForwardCaptureSubscriptionLifecycleEvent) => void;
@@ -761,14 +770,71 @@ export class ForwardCaptureMessageProcessor {
         book.bookState === "gap-detected"
         || book.bookState === "resyncing"
         || this.outstandingRecovery.has(ticker);
+
+      // Two-phase recovery: an id-bearing snapshot may acknowledge the
+      // pending get_snapshot command before the book accepts the payload.
+      // Correlation must run before apply so a valid response cannot later
+      // time out in pendingCommands, and command identity is preserved.
+      let correlatedCommandId: number | null = null;
+      if (parsed.data.id !== undefined) {
+        const correlation = this.input.correlateSnapshotResponse?.({
+          commandId: parsed.data.id,
+          sid: parsed.data.sid,
+          marketTicker: ticker,
+        });
+
+        if (correlation?.status === "acknowledged") {
+          correlatedCommandId = correlation.commandId;
+          this.diagnostics.controlResponsesReceived += 1;
+          const ackAtMs = this.input.monotonicNowMs();
+          for (const [market, outstanding] of this.outstandingRecovery) {
+            if (
+              outstanding.commandId === correlation.commandId
+              && outstanding.acknowledgedAtMs === null
+            ) {
+              this.outstandingRecovery.set(market, {
+                ...outstanding,
+                acknowledgedAtMs: ackAtMs,
+              });
+            }
+          }
+          this.emitLifecycle({
+            type: "snapshotRecoveryAcknowledged",
+            marketTickers: correlation.marketTickers,
+            commandId: correlation.commandId,
+            sid: correlation.sid,
+          });
+        } else if (correlation?.status === "rejected") {
+          this.diagnostics.unknownControlResponseCount += 1;
+          this.emitLifecycle({
+            type: "unknownControlResponseReceived",
+            marketTickers: correlation.pendingTickers,
+            commandId: correlation.commandId,
+            sid: correlation.pendingSid,
+            errorMessage:
+              `Snapshot response correlation rejected (${correlation.reason}) `
+                + `for command id=${correlation.commandId}; no pending state was mutated`,
+          });
+        }
+      }
+
       const snapshotResult = book.applySnapshot(parsed.data);
 
       if (snapshotResult === "stale-rejected") {
         this.diagnostics.staleSnapshotsRejected += 1;
+        // Valid correlation may have acknowledged the command; recovery is
+        // not successful and remains bounded by the snapshot-arrival deadline.
         return { messageType, marketTicker: ticker, expectedMarketMessage: true };
       }
 
       if (snapshotResult === "closed-ignored") {
+        // Closed markets must not produce false recovery success. Clear any
+        // outstanding recovery consistently with markMarketClosed.
+        if (wasRecovering || correlatedCommandId !== null) {
+          this.outstandingRecovery.delete(ticker);
+          this.recoveryAttempts.delete(ticker);
+          this.recoveryExhausted.delete(ticker);
+        }
         return { messageType, marketTicker: ticker, expectedMarketMessage: true };
       }
 
@@ -776,6 +842,11 @@ export class ForwardCaptureMessageProcessor {
       if (wasRecovering) {
         this.diagnostics.snapshotRecoverySuccessCount += 1;
         this.recordResyncSuccess(ticker);
+        const outstanding = this.outstandingRecovery.get(ticker);
+        const successCommandId =
+          correlatedCommandId
+          ?? outstanding?.commandId
+          ?? null;
         this.outstandingRecovery.delete(ticker);
         this.lastRecoveryFailureAtMs.delete(ticker);
         this.recoveryAttempts.delete(ticker);
@@ -783,7 +854,7 @@ export class ForwardCaptureMessageProcessor {
         this.emitLifecycle({
           type: "snapshotRecoverySucceeded",
           marketTickers: [ticker],
-          commandId: null,
+          commandId: successCommandId,
           sid: parsed.data.sid,
         });
       }

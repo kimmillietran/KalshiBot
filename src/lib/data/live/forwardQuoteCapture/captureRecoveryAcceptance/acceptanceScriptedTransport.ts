@@ -10,7 +10,9 @@ import type { RecoveryAcceptanceScenario } from "./captureRecoveryAcceptanceType
  * subscribe            -> subscribed ack (server sid) + snapshot(seq 1)
  *                          + deltas(seq 2, 3) + intentional gap delta(seq 10)
  * get_snapshot (sid)   -> deltas(seq 11, 12) arriving while recovery is
- *                          pending + ok ack + fresh snapshot(seq 100)
+ *                          pending + either:
+ *                            Form 1 (happy): ok ack + fresh snapshot(seq 100)
+ *                            Form 2 (snapshot-as-response): id-bearing snapshot
  *                          + post-recovery deltas(seq 101, 102)
  * unsubscribe (sid)    -> unsubscribed ack
  *
@@ -150,6 +152,28 @@ export class AcceptanceScriptedTransport implements KalshiWsProbeTransport {
         this.delta(sid, 12, ticker),
         `orderbook_delta seq=12 [${ticker}] (recovery pending; must be quarantined)`,
       );
+
+      if (this.options.scenario === "snapshot-as-response") {
+        // Live-observed Form 2: the recovery snapshot itself carries the
+        // matching get_snapshot command id; there is no standalone type:"ok".
+        this.emit(
+          {
+            ...this.snapshot(sid, 100, ticker),
+            id: command.id,
+          },
+          `orderbook_snapshot seq=100 id=${command.id} [${ticker}] (direct snapshot response; no standalone ok)`,
+        );
+        this.emit(
+          this.delta(sid, 101, ticker),
+          `orderbook_delta seq=101 [${ticker}] (post-recovery)`,
+        );
+        this.emit(
+          this.delta(sid, 102, ticker),
+          `orderbook_delta seq=102 [${ticker}] (post-recovery)`,
+        );
+        return;
+      }
+
       this.emit(
         {
           id: command.id,

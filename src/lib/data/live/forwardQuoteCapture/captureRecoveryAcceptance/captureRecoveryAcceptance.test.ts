@@ -26,9 +26,12 @@ function passingObserved(
     unsubscribeRequested: true,
     unsubscribeAcknowledged: true,
     recoveryLifecycleOrdered: true,
+    recoverySuccessCommandId: null,
     pendingCommandCountAtCaptureEnd: 0,
     marketsWithOutstandingRecoveryAtEnd: 0,
     commandErrorsReceived: 0,
+    pendingCommandTimeoutCount: 0,
+    snapshotAckTimeoutCount: 0,
     bufferedStreamsUsed: true,
     writerBackpressureCount: 1,
     allStreamsDrained: true,
@@ -97,6 +100,8 @@ describe("runCaptureRecoveryAcceptance (deterministic end-to-end lifecycle)", ()
     expect(report.observed.healthCompletedNormally).toBe(true);
     expect(report.observed.healthLiveConnectionSucceeded).toBe(true);
     expect(report.observed.healthErrors).toEqual([]);
+    expect(report.observed.pendingCommandTimeoutCount).toBe(0);
+    expect(report.observed.snapshotAckTimeoutCount).toBe(0);
 
     // The transcript narrates the full scripted scenario in order.
     const transcript = report.transcript.join("\n");
@@ -107,6 +112,30 @@ describe("runCaptureRecoveryAcceptance (deterministic end-to-end lifecycle)", ()
     expect(transcript).toContain("fresh recovery snapshot");
     expect(transcript).toContain("unsubscribed ack");
     expect(transcript).toContain("writer backpressure");
+  }, 20_000);
+
+  it("proves the live-observed id-bearing snapshot response form (Form 2)", async () => {
+    const report = await runCaptureRecoveryAcceptance({
+      scenario: "snapshot-as-response",
+    });
+
+    expect(report.failures).toEqual([]);
+    expect(report.passed).toBe(true);
+    expect(report.observed.recoveryLifecycleOrdered).toBe(true);
+    expect(report.observed.recoverySuccessCount).toBe(1);
+    expect(report.observed.recoverySuccessCommandId).not.toBeNull();
+    expect(report.observed.pendingCommandCountAtCaptureEnd).toBe(0);
+    expect(report.observed.pendingCommandTimeoutCount).toBe(0);
+    expect(report.observed.snapshotAckTimeoutCount).toBe(0);
+    expect(report.observed.healthErrors).toEqual([]);
+    expect(report.observed.healthVerdict).toBe("capture-mvp-success");
+
+    const transcript = report.transcript.join("\n");
+    expect(transcript).toContain("direct snapshot response; no standalone ok");
+    expect(transcript).toContain(
+      "advanced monotonic clock past 10s command-ack timeout for pending-command sweep",
+    );
+    expect(transcript).not.toContain("ok ack for get_snapshot");
   }, 20_000);
 
   it("fails acceptance when the server never assigns a sid", async () => {

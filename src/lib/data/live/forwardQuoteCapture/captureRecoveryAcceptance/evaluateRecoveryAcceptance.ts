@@ -111,6 +111,14 @@ export function evaluateRecoveryAcceptance(
       + `recoveryFailureCount=${observed.recoveryFailureCount}`,
   );
   check(
+    "no-false-command-timeouts",
+    "No pending-command or get_snapshot acknowledgement timeouts were recorded",
+    observed.pendingCommandTimeoutCount === 0
+      && observed.snapshotAckTimeoutCount === 0,
+    `pendingCommandTimeoutCount=${observed.pendingCommandTimeoutCount} `
+      + `snapshotAckTimeoutCount=${observed.snapshotAckTimeoutCount}`,
+  );
+  check(
     "no-command-errors",
     "No command-level WebSocket error responses were received",
     observed.commandErrorsReceived === 0,

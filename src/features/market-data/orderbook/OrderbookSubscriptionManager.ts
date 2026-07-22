@@ -116,6 +116,39 @@ export type UnsubscribeRequestResult = {
   unmappedTickers: string[];
 };
 
+/** Input for correlating an inbound orderbook_snapshot to a pending get_snapshot. */
+export type SnapshotResponseCorrelationInput = {
+  commandId: number;
+  sid: number;
+  marketTicker: string;
+};
+
+/**
+ * Result of correlating an orderbook_snapshot that carries a client command id.
+ * Fail-closed: mismatches never clear pending state or mutate subscriptions.
+ */
+export type SnapshotResponseCorrelationResult =
+  | {
+      status: "acknowledged";
+      commandId: number;
+      commandKind: "get_snapshot";
+      sid: number;
+      marketTickers: string[];
+    }
+  | {
+      status: "rejected";
+      reason:
+        | "unknown-command-id"
+        | "wrong-command-kind"
+        | "sid-mismatch"
+        | "ticker-mismatch"
+        | "duplicate-or-stale";
+      commandId: number;
+      pendingKind: OrderbookCommandKind | null;
+      pendingSid: number | null;
+      pendingTickers: string[];
+    };
+
 /**
  * Builds Kalshi orderbook_delta commands and tracks the WebSocket command
  * lifecycle: local command id -> server subscription id (sid) -> markets.
@@ -131,6 +164,12 @@ export class OrderbookSubscriptionManager {
   private readonly sidByTicker = new Map<string, number>();
   /** Increments on every reconnect; pending commands belong to a generation. */
   private socketGeneration = 1;
+  /**
+   * Command ids already consumed as get_snapshot acknowledgements via an
+   * id-bearing orderbook_snapshot. Used to distinguish duplicates from
+   * truly unknown ids after the pending entry is deleted.
+   */
+  private readonly consumedSnapshotCommandIds = new Set<number>();
 
   constructor(
     private readonly monotonicNowMs: () => number = () =>
@@ -385,6 +424,11 @@ export class OrderbookSubscriptionManager {
       }
       if (commandId !== null) {
         this.pendingCommands.delete(commandId);
+        // An explicit ok for get_snapshot also consumes the command id so a
+        // later id-bearing snapshot cannot double-acknowledge it.
+        if (pending?.kind === "get_snapshot") {
+          this.consumedSnapshotCommandIds.add(commandId);
+        }
       }
 
       const acknowledgedKind = pending?.kind ?? null;
@@ -444,6 +488,93 @@ export class OrderbookSubscriptionManager {
   }
 
   /**
+   * Correlates an inbound orderbook_snapshot that carries a client command id
+   * to a pending get_snapshot command. On a valid match the pending command is
+   * deleted exactly once and treated as acknowledged.
+   *
+   * Validation (all required):
+   * - commandId present and pending
+   * - pending kind is get_snapshot
+   * - pending sid matches
+   * - pending market tickers include the snapshot ticker
+   * - pending belongs to the current socket generation (pending is cleared on
+   *   reconnect, so any remaining pending entry is current-generation)
+   *
+   * Fail-closed on any mismatch: no pending mutation, no subscription mutation.
+   */
+  correlateSnapshotResponse(
+    input: SnapshotResponseCorrelationInput,
+  ): SnapshotResponseCorrelationResult {
+    if (this.consumedSnapshotCommandIds.has(input.commandId)) {
+      return {
+        status: "rejected",
+        reason: "duplicate-or-stale",
+        commandId: input.commandId,
+        pendingKind: null,
+        pendingSid: null,
+        pendingTickers: [],
+      };
+    }
+
+    const pending = this.pendingCommands.get(input.commandId);
+    if (!pending) {
+      return {
+        status: "rejected",
+        reason: "unknown-command-id",
+        commandId: input.commandId,
+        pendingKind: null,
+        pendingSid: null,
+        pendingTickers: [],
+      };
+    }
+
+    if (pending.kind !== "get_snapshot") {
+      return {
+        status: "rejected",
+        reason: "wrong-command-kind",
+        commandId: input.commandId,
+        pendingKind: pending.kind,
+        pendingSid: pending.sids[0] ?? null,
+        pendingTickers: [...pending.marketTickers],
+      };
+    }
+
+    const pendingSid = pending.sids[0] ?? null;
+    if (pendingSid === null || pendingSid !== input.sid) {
+      return {
+        status: "rejected",
+        reason: "sid-mismatch",
+        commandId: input.commandId,
+        pendingKind: pending.kind,
+        pendingSid,
+        pendingTickers: [...pending.marketTickers],
+      };
+    }
+
+    if (!pending.marketTickers.includes(input.marketTicker)) {
+      return {
+        status: "rejected",
+        reason: "ticker-mismatch",
+        commandId: input.commandId,
+        pendingKind: pending.kind,
+        pendingSid,
+        pendingTickers: [...pending.marketTickers],
+      };
+    }
+
+    this.pendingCommands.delete(input.commandId);
+    this.consumedSnapshotCommandIds.add(input.commandId);
+
+    return {
+      status: "acknowledged",
+      commandId: input.commandId,
+      commandKind: "get_snapshot",
+      sid: input.sid,
+      marketTickers: [...pending.marketTickers],
+    };
+  }
+
+  /**
    * Removes and returns pending commands whose acknowledgement deadline has
    * elapsed. Timed-out commands can never be trusted to complete; callers
    * must surface the timeout visibly.
@@ -470,6 +601,7 @@ export class OrderbookSubscriptionManager {
     this.pendingCommands.clear();
     this.subscriptionsBySid.clear();
     this.sidByTicker.clear();
+    this.consumedSnapshotCommandIds.clear();
     this.socketGeneration += 1;
     return invalidated;
   }

@@ -40,6 +40,8 @@ export type OrderbookFeedSnapshot = {
 
 export type KalshiOrderbookSnapshotMessage = {
   type: "orderbook_snapshot";
+  /** Optional client command id when the snapshot acknowledges get_snapshot. */
+  id?: number;
   sid: number;
   seq: number;
   msg: {

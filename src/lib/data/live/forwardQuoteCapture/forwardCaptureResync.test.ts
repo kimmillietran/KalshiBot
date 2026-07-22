@@ -99,6 +99,7 @@ function createHarness() {
     now: io.now,
     monotonicNowMs: io.monotonicNowMs,
     onControlMessage: (payload) => manager.handleControlMessage(payload),
+    correlateSnapshotResponse: (input) => manager.correlateSnapshotResponse(input),
     requestSnapshotRecovery: (marketTicker) => {
       try {
         const result = manager.requestSnapshot(transport, marketTicker);
@@ -711,6 +712,243 @@ describe("send failures", () => {
     harness.advanceMonotonic(6_000);
     harness.processor.processRawPayload(deltaMessage(456, 11));
     expect(harness.processor.hasOutstandingRecovery(TICKER)).toBe(true);
+  });
+});
+
+describe("direct orderbook_snapshot get_snapshot response correlation (M12.1F)", () => {
+  it("acknowledges and succeeds recovery from an id-bearing snapshot without a standalone ok", () => {
+    const harness = createHarness();
+    harness.subscribeAndAck(1);
+    harness.processor.processRawPayload(snapshotMessage(1, 1));
+    harness.processor.processRawPayload(deltaMessage(1, 10));
+
+    const recoveryCommand = sentCommands(harness.transport).find(
+      (command) => command.params?.action === "get_snapshot",
+    );
+    expect(recoveryCommand).toBeDefined();
+    expect(harness.manager.getPendingCommands()).toHaveLength(1);
+
+    harness.processor.processRawPayload({
+      type: "orderbook_snapshot",
+      id: recoveryCommand.id,
+      sid: 1,
+      seq: 126,
+      msg: {
+        market_ticker: TICKER,
+        market_id: "market-id",
+        yes_dollars_fp: [["0.4500", "10.00"]],
+        no_dollars_fp: [["0.5000", "12.00"]],
+      },
+    });
+
+    expect(harness.processor.diagnostics.snapshotRecoverySuccessCount).toBe(1);
+    expect(harness.processor.hasOutstandingRecovery(TICKER)).toBe(false);
+    expect(harness.manager.getPendingCommands()).toHaveLength(0);
+    expect(harness.errors).toEqual([]);
+
+    const lifecycleTypes = harness.lifecycleEvents.map((event) => event.type);
+    expect(lifecycleTypes).toContain("snapshotRecoveryRequested");
+    expect(lifecycleTypes).toContain("snapshotRecoveryAcknowledged");
+    expect(lifecycleTypes).toContain("snapshotRecoverySucceeded");
+
+    const acknowledged = harness.lifecycleEvents.find(
+      (event) => event.type === "snapshotRecoveryAcknowledged",
+    );
+    const succeeded = harness.lifecycleEvents.find(
+      (event) => event.type === "snapshotRecoverySucceeded",
+    );
+    expect(acknowledged?.commandId).toBe(recoveryCommand.id);
+    expect(succeeded?.commandId).toBe(recoveryCommand.id);
+    expect(acknowledged?.sid).toBe(1);
+    expect(succeeded?.sid).toBe(1);
+
+    harness.advanceMonotonic(COMMAND_ACK_TIMEOUT_MS + 1);
+    harness.processor.checkTimeouts();
+
+    expect(harness.processor.diagnostics.pendingCommandTimeoutCount).toBe(0);
+    expect(harness.processor.diagnostics.snapshotAckTimeoutCount).toBe(0);
+    expect(
+      harness.lifecycleEvents.some((event) => event.type === "commandAcknowledgementTimeout"),
+    ).toBe(false);
+    expect(harness.errors).toEqual([]);
+  });
+
+  it("preserves the existing ok-then-snapshot flow without double acknowledgement", () => {
+    const harness = createHarness();
+    harness.subscribeAndAck(1);
+    harness.processor.processRawPayload(snapshotMessage(1, 1));
+    harness.processor.processRawPayload(deltaMessage(1, 10));
+
+    const recoveryCommand = sentCommands(harness.transport).find(
+      (command) => command.params?.action === "get_snapshot",
+    );
+    expect(recoveryCommand).toBeDefined();
+
+    harness.processor.processRawPayload({
+      id: recoveryCommand.id,
+      sid: 1,
+      seq: 99,
+      type: "ok",
+      msg: { market_tickers: [TICKER] },
+    });
+    expect(
+      harness.lifecycleEvents.filter((event) => event.type === "snapshotRecoveryAcknowledged"),
+    ).toHaveLength(1);
+    expect(harness.manager.getPendingCommands()).toHaveLength(0);
+
+    harness.processor.processRawPayload(snapshotMessage(1, 100));
+    expect(harness.processor.diagnostics.snapshotRecoverySuccessCount).toBe(1);
+    expect(
+      harness.lifecycleEvents.filter((event) => event.type === "snapshotRecoveryAcknowledged"),
+    ).toHaveLength(1);
+    expect(
+      harness.lifecycleEvents.filter((event) => event.type === "snapshotRecoverySucceeded"),
+    ).toHaveLength(1);
+
+    harness.advanceMonotonic(COMMAND_ACK_TIMEOUT_MS + 1);
+    harness.processor.checkTimeouts();
+    expect(harness.processor.diagnostics.pendingCommandTimeoutCount).toBe(0);
+  });
+
+  it("does not acknowledge on unknown, wrong-kind, sid, or ticker mismatches", () => {
+    const harness = createHarness();
+    harness.subscribeAndAck(1);
+    harness.processor.processRawPayload(snapshotMessage(1, 1));
+    harness.processor.processRawPayload(deltaMessage(1, 10));
+    const recoveryCommand = sentCommands(harness.transport).find(
+      (command) => command.params?.action === "get_snapshot",
+    );
+    expect(recoveryCommand).toBeDefined();
+
+    harness.processor.processRawPayload({
+      ...snapshotMessage(1, 50),
+      id: recoveryCommand.id + 50,
+    });
+    expect(harness.manager.getPendingCommands()).toHaveLength(1);
+    expect(
+      harness.lifecycleEvents.filter((event) => event.type === "snapshotRecoveryAcknowledged"),
+    ).toHaveLength(0);
+
+    const subscribePending = harness.manager.subscribe(harness.transport, "KXBTC15M-OTHER");
+    harness.processor.processRawPayload({
+      ...snapshotMessage(1, 51),
+      id: subscribePending,
+    });
+    expect(
+      harness.manager.getPendingCommands().some((command) => command.id === subscribePending),
+    ).toBe(true);
+
+    harness.processor.processRawPayload({
+      ...snapshotMessage(99, 52),
+      id: recoveryCommand.id,
+    });
+    expect(
+      harness.manager.getPendingCommands().some((command) => command.id === recoveryCommand.id),
+    ).toBe(true);
+    expect(
+      harness.lifecycleEvents.filter((event) => event.type === "snapshotRecoveryAcknowledged"),
+    ).toHaveLength(0);
+
+    harness.processor.processRawPayload({
+      type: "orderbook_snapshot",
+      id: recoveryCommand.id,
+      sid: 1,
+      seq: 53,
+      msg: {
+        market_ticker: "KXBTC15M-OTHER",
+        market_id: "market-id",
+        yes_dollars_fp: [["0.4500", "10.00"]],
+        no_dollars_fp: [["0.5000", "12.00"]],
+      },
+    });
+    expect(
+      harness.manager.getPendingCommands().some((command) => command.id === recoveryCommand.id),
+    ).toBe(true);
+  });
+
+  it("does not complete recovery on a stale correlated snapshot after acknowledging the command", () => {
+    const harness = createHarness();
+    harness.subscribeAndAck(1);
+    harness.processor.processRawPayload(snapshotMessage(1, 1));
+    harness.processor.processRawPayload(deltaMessage(1, 50));
+
+    const recoveryCommand = sentCommands(harness.transport).find(
+      (command) => command.params?.action === "get_snapshot",
+    );
+    expect(recoveryCommand).toBeDefined();
+
+    harness.processor.processRawPayload({
+      ...snapshotMessage(1, 5),
+      id: recoveryCommand.id,
+    });
+
+    expect(harness.processor.diagnostics.staleSnapshotsRejected).toBe(1);
+    expect(harness.processor.diagnostics.snapshotRecoverySuccessCount).toBe(0);
+    expect(harness.processor.hasOutstandingRecovery(TICKER)).toBe(true);
+    expect(harness.manager.getPendingCommands()).toHaveLength(0);
+    expect(
+      harness.lifecycleEvents.some((event) => event.type === "snapshotRecoveryAcknowledged"),
+    ).toBe(true);
+    expect(
+      harness.lifecycleEvents.some((event) => event.type === "snapshotRecoverySucceeded"),
+    ).toBe(false);
+  });
+
+  it("ignores duplicate id-bearing snapshots after success without double counting", () => {
+    const harness = createHarness();
+    harness.subscribeAndAck(1);
+    harness.processor.processRawPayload(snapshotMessage(1, 1));
+    harness.processor.processRawPayload(deltaMessage(1, 10));
+    const recoveryCommand = sentCommands(harness.transport).find(
+      (command) => command.params?.action === "get_snapshot",
+    );
+    expect(recoveryCommand).toBeDefined();
+
+    harness.processor.processRawPayload({
+      ...snapshotMessage(1, 100),
+      id: recoveryCommand.id,
+    });
+    expect(harness.processor.diagnostics.snapshotRecoverySuccessCount).toBe(1);
+
+    harness.processor.processRawPayload({
+      ...snapshotMessage(1, 101),
+      id: recoveryCommand.id,
+    });
+    expect(harness.processor.diagnostics.snapshotRecoverySuccessCount).toBe(1);
+    expect(
+      harness.lifecycleEvents.filter((event) => event.type === "snapshotRecoveryAcknowledged"),
+    ).toHaveLength(1);
+    expect(
+      harness.lifecycleEvents.filter((event) => event.type === "snapshotRecoverySucceeded"),
+    ).toHaveLength(1);
+  });
+
+  it("does not consume pending state for a malformed snapshot payload", () => {
+    const harness = createHarness();
+    harness.subscribeAndAck(1);
+    harness.processor.processRawPayload(snapshotMessage(1, 1));
+    harness.processor.processRawPayload(deltaMessage(1, 10));
+    const recoveryCommand = sentCommands(harness.transport).find(
+      (command) => command.params?.action === "get_snapshot",
+    );
+    expect(recoveryCommand).toBeDefined();
+
+    harness.processor.processRawPayload({
+      type: "orderbook_snapshot",
+      id: recoveryCommand.id,
+      sid: 1,
+      seq: 100,
+      msg: {
+        market_ticker: "",
+        market_id: "market-id",
+      },
+    });
+
+    expect(harness.manager.getPendingCommands()).toHaveLength(1);
+    expect(harness.processor.diagnostics.snapshotRecoverySuccessCount).toBe(0);
+    expect(
+      harness.lifecycleEvents.some((event) => event.type === "snapshotRecoveryAcknowledged"),
+    ).toBe(false);
   });
 });
 

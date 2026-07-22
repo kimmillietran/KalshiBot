@@ -349,3 +349,201 @@ describe("OrderbookSubscriptionManager command lifecycle", () => {
     expect(JSON.parse(transport.sent.at(-1)!).params.sids).toEqual([901]);
   });
 });
+
+describe("OrderbookSubscriptionManager.correlateSnapshotResponse", () => {
+  function pendingGetSnapshot(
+    manager: OrderbookSubscriptionManager,
+    transport: MockKalshiWsTransport,
+    sid: number,
+    ticker = TICKER,
+  ): number {
+    subscribeAndAcknowledge(manager, transport, ticker, sid);
+    const result = manager.requestSnapshot(transport, ticker);
+    if (result.status !== "requested") {
+      throw new Error("expected get_snapshot");
+    }
+    return result.commandId;
+  }
+
+  it("consumes a matching get_snapshot pending command exactly once", () => {
+    const manager = new OrderbookSubscriptionManager();
+    const transport = new MockKalshiWsTransport();
+    const commandId = pendingGetSnapshot(manager, transport, 1);
+    const otherPendingBefore = manager.getPendingCommands().length;
+
+    const result = manager.correlateSnapshotResponse({
+      commandId,
+      sid: 1,
+      marketTicker: TICKER,
+    });
+
+    expect(result).toEqual({
+      status: "acknowledged",
+      commandId,
+      commandKind: "get_snapshot",
+      sid: 1,
+      marketTickers: [TICKER],
+    });
+    expect(manager.getPendingCommands()).toHaveLength(otherPendingBefore - 1);
+    expect(manager.getPendingCommands().some((command) => command.id === commandId)).toBe(
+      false,
+    );
+  });
+
+  it("rejects unknown command ids without mutating pending state", () => {
+    const manager = new OrderbookSubscriptionManager();
+    const transport = new MockKalshiWsTransport();
+    const commandId = pendingGetSnapshot(manager, transport, 1);
+    const before = manager.getPendingCommands();
+
+    const result = manager.correlateSnapshotResponse({
+      commandId: commandId + 99,
+      sid: 1,
+      marketTicker: TICKER,
+    });
+
+    expect(result.status).toBe("rejected");
+    if (result.status === "rejected") {
+      expect(result.reason).toBe("unknown-command-id");
+    }
+    expect(manager.getPendingCommands()).toEqual(before);
+  });
+
+  it("rejects wrong command kinds without consuming the pending command", () => {
+    const manager = new OrderbookSubscriptionManager();
+    const transport = new MockKalshiWsTransport();
+    const subscribeId = manager.subscribe(transport, TICKER);
+
+    const result = manager.correlateSnapshotResponse({
+      commandId: subscribeId,
+      sid: 1,
+      marketTicker: TICKER,
+    });
+
+    expect(result).toMatchObject({
+      status: "rejected",
+      reason: "wrong-command-kind",
+      pendingKind: "subscribe",
+    });
+    expect(manager.getPendingCommands()).toHaveLength(1);
+    expect(manager.getPendingCommands()[0]?.id).toBe(subscribeId);
+  });
+
+  it("rejects sid mismatches without consuming the pending command", () => {
+    const manager = new OrderbookSubscriptionManager();
+    const transport = new MockKalshiWsTransport();
+    const commandId = pendingGetSnapshot(manager, transport, 1);
+
+    const result = manager.correlateSnapshotResponse({
+      commandId,
+      sid: 99,
+      marketTicker: TICKER,
+    });
+
+    expect(result).toMatchObject({
+      status: "rejected",
+      reason: "sid-mismatch",
+    });
+    expect(manager.getPendingCommands().some((command) => command.id === commandId)).toBe(
+      true,
+    );
+  });
+
+  it("rejects ticker mismatches without consuming the pending command", () => {
+    const manager = new OrderbookSubscriptionManager();
+    const transport = new MockKalshiWsTransport();
+    const commandId = pendingGetSnapshot(manager, transport, 1);
+
+    const result = manager.correlateSnapshotResponse({
+      commandId,
+      sid: 1,
+      marketTicker: "KXBTC15M-OTHER",
+    });
+
+    expect(result).toMatchObject({
+      status: "rejected",
+      reason: "ticker-mismatch",
+    });
+    expect(manager.getPendingCommands().some((command) => command.id === commandId)).toBe(
+      true,
+    );
+  });
+
+  it("treats duplicate correlations as fail-closed and idempotent", () => {
+    const manager = new OrderbookSubscriptionManager();
+    const transport = new MockKalshiWsTransport();
+    const commandId = pendingGetSnapshot(manager, transport, 1);
+
+    expect(
+      manager.correlateSnapshotResponse({
+        commandId,
+        sid: 1,
+        marketTicker: TICKER,
+      }).status,
+    ).toBe("acknowledged");
+
+    const duplicate = manager.correlateSnapshotResponse({
+      commandId,
+      sid: 1,
+      marketTicker: TICKER,
+    });
+    expect(duplicate).toMatchObject({
+      status: "rejected",
+      reason: "duplicate-or-stale",
+    });
+    expect(manager.getPendingCommands()).toHaveLength(0);
+  });
+
+  it("leaves other pending commands untouched on a successful correlation", () => {
+    const manager = new OrderbookSubscriptionManager();
+    const transport = new MockKalshiWsTransport();
+    const otherTicker = "KXBTC15M-OTHER";
+    subscribeAndAcknowledge(manager, transport, TICKER, 1);
+    subscribeAndAcknowledge(manager, transport, otherTicker, 2);
+    const snapshot = manager.requestSnapshot(transport, TICKER);
+    if (snapshot.status !== "requested") {
+      throw new Error("expected get_snapshot");
+    }
+    const unsubscribe = manager.unsubscribe(transport, [otherTicker]);
+    expect(unsubscribe.commandIds).toHaveLength(1);
+
+    manager.correlateSnapshotResponse({
+      commandId: snapshot.commandId,
+      sid: 1,
+      marketTicker: TICKER,
+    });
+
+    const pending = manager.getPendingCommands();
+    expect(pending).toHaveLength(1);
+    expect(pending[0]?.kind).toBe("unsubscribe");
+    expect(pending[0]?.id).toBe(unsubscribe.commandIds[0]);
+  });
+
+  it("clears consumed snapshot ids on reconnect so generations stay isolated", () => {
+    const manager = new OrderbookSubscriptionManager();
+    const transport = new MockKalshiWsTransport();
+    const commandId = pendingGetSnapshot(manager, transport, 1);
+    manager.correlateSnapshotResponse({
+      commandId,
+      sid: 1,
+      marketTicker: TICKER,
+    });
+
+    manager.resetForReconnect();
+    subscribeAndAcknowledge(manager, transport, TICKER, 7);
+    const next = manager.requestSnapshot(transport, TICKER);
+    if (next.status !== "requested") {
+      throw new Error("expected get_snapshot");
+    }
+
+    // Reused numeric ids after reconnect are not treated as duplicates of the
+    // previous generation once resetForReconnect clears consumed ids.
+    expect(
+      manager.correlateSnapshotResponse({
+        commandId: next.commandId,
+        sid: 7,
+        marketTicker: TICKER,
+      }).status,
+    ).toBe("acknowledged");
+  });
+});
