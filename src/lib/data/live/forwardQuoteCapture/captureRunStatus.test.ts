@@ -174,6 +174,45 @@ describe("publishCaptureRunStatus / parseCaptureRunStatus", () => {
       ).not.toBeNull();
     }
   });
+
+  it("tolerates exactly one leading UTF-8 BOM from Windows PowerShell Set-Content", () => {
+    const active = serializeCaptureRunStatus(STATUS);
+    const failed = serializeCaptureRunStatus({
+      ...STATUS,
+      state: "failed",
+      endedAt: "2026-07-21T01:00:00.000Z",
+      captureEndReason: "authentication-failure",
+      failureReason: "Unexpected server response: 401",
+    });
+
+    expect(parseCaptureRunStatus(`\uFEFF${active}`)).toEqual(STATUS);
+    expect(parseCaptureRunStatus(`\uFEFF${failed}`)).toMatchObject({
+      state: "failed",
+      captureEndReason: "authentication-failure",
+    });
+    // Non-BOM status is unchanged.
+    expect(parseCaptureRunStatus(active)).toEqual(STATUS);
+    // Malformed BOM-prefixed JSON still fails closed.
+    expect(parseCaptureRunStatus("\uFEFF{ not json")).toBeNull();
+    // Terminal without endedAt still fails even with a BOM.
+    expect(
+      parseCaptureRunStatus(
+        `\uFEFF${serializeCaptureRunStatus({ ...STATUS, state: "failed", endedAt: null })}`,
+      ),
+    ).toBeNull();
+    // Nonterminal with endedAt still fails even with a BOM.
+    expect(
+      parseCaptureRunStatus(
+        `\uFEFF${serializeCaptureRunStatus({
+          ...STATUS,
+          state: "active",
+          endedAt: "2026-07-21T01:00:00.000Z",
+        })}`,
+      ),
+    ).toBeNull();
+    // Serialization never introduces a BOM.
+    expect(serializeCaptureRunStatus(STATUS).startsWith("\uFEFF")).toBe(false);
+  });
 });
 
 describe("resolveTerminalCaptureRunState", () => {

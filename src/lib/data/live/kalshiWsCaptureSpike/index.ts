@@ -12,6 +12,7 @@ export {
 } from "./kalshiAuthHeaders";
 export { redactCaptureArtifactText } from "./credentialRedaction";
 export { NodeKalshiAuthenticatedWsClient } from "./nodeKalshiAuthenticatedWsClient";
+export { KalshiWsHandshakeError } from "./kalshiWsHandshakeError";
 export { OrderbookCaptureBook } from "./orderbookCaptureBook";
 export { KalshiWsCaptureMessageProcessor } from "./kalshiWsCaptureMessageProcessor";
 export {

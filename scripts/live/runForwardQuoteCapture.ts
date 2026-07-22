@@ -82,17 +82,25 @@ export async function runForwardQuoteCaptureCommand(
       ),
     );
 
-    if (
-      result.healthReport.connection.captureEndReason === "terminal-websocket-failure"
-      || result.healthReport.connection.terminalFailureReason !== null
-    ) {
-      return 1;
-    }
-
-    if (result.healthReport.connection.captureEndReason === "user-cancelled") {
+    const endReason = result.healthReport.connection.captureEndReason;
+    if (endReason === "user-cancelled") {
       // Conventional SIGINT exit code; the run drained gracefully and
       // published a user-cancelled status before we reach this point.
       return 130;
+    }
+
+    // Failed runs still emit structured stdout (runId/outputDir) above so the
+    // smoke wrapper can identify the exact run. Exit nonzero for every
+    // terminal failure reason, including an initial WebSocket handshake
+    // rejection (authentication-failure).
+    if (
+      endReason === "terminal-websocket-failure"
+      || endReason === "authentication-failure"
+      || endReason === "writer-failure"
+      || endReason === "unexpected-error"
+      || result.healthReport.connection.terminalFailureReason !== null
+    ) {
+      return 1;
     }
 
     return 0;

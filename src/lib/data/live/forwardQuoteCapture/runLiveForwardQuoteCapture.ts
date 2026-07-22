@@ -460,9 +460,35 @@ export async function runLiveForwardQuoteCapture(input: {
     await connectTransport(initialGeneration);
     watchdog?.markCaptureStarted();
   } catch (error) {
+    // Initial handshake rejection (e.g. HTTP 401): return a structured
+    // authentication-failure result WITHOUT starting BTC/rollover/watchdog
+    // intervals. Close the failed transport so no socket keeps the process
+    // alive, then finalize the processor. The orchestrator still drains the
+    // writer, publishes health + terminal status, and releases the lock.
+    shuttingDown = true;
+    acceptingMessages = false;
     connection.connected = false;
-    errors.push(error instanceof Error ? error.message : "Live WS capture failed");
+    const failureMessage =
+      error instanceof Error ? error.message : "Live WS capture failed";
+    if (!errors.includes(failureMessage)) {
+      errors.push(failureMessage);
+    }
+    plannedShutdown = true;
+    try {
+      transport.close();
+    } catch {
+      // ignore close errors on a rejected handshake socket
+    }
+    watchdog?.disable();
     processor.finalize();
+    Object.assign(connection, {
+      everConnected: false,
+      completedNormally: false,
+      liveConnectionSucceeded: false,
+      completedWithWarnings: false,
+      terminalFailureReason: null,
+      captureEndReason: "authentication-failure" as const,
+    });
     return {
       runId: input.runId,
       startedAt: input.startedAt,
@@ -470,12 +496,11 @@ export async function runLiveForwardQuoteCapture(input: {
       paths,
       discovery: input.discovery,
       processor,
-      connection: {
-        ...connection,
-        captureEndReason: "authentication-failure",
-      },
+      connection,
       rollover,
-      btcSpotStatus,
+      // BTC polling never started after a rejected handshake — do not report
+      // a healthy BTC path for work that did not run.
+      btcSpotStatus: input.config.captureBtcSpot ? "enabled" : "disabled",
       connected: false,
       wsUrl,
       authHeadersGenerated,
