@@ -31,6 +31,8 @@ export type DryRunForwardCaptureResult = {
   btcSpotStatus: BtcSpotHealthStatus;
   wsUrl: string;
   authHeadersGenerated: boolean;
+  connectionAttemptCount?: number;
+  authHeaderGenerationCount?: number;
   errors: string[];
   recordCounts: {
     raw: number;
@@ -113,6 +115,8 @@ export function runDryRunForwardQuoteCapture(input: {
     btcSpotStatus,
     wsUrl: KALSHI_WS_URL,
     authHeadersGenerated: false,
+    connectionAttemptCount: 0,
+    authHeaderGenerationCount: 0,
     errors: [],
     recordCounts: writer.counts,
   };

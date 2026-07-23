@@ -4,6 +4,7 @@ import type { KalshiWsProbeTransport } from "@/features/market-data/orderbook/ty
 
 import {
   createKalshiWebSocketAuthHeaders,
+  KalshiWsHandshakeError,
   NodeKalshiAuthenticatedWsClient,
   type KalshiCaptureCredentials,
 } from "@/lib/data/live/kalshiWsCaptureSpike";
@@ -47,6 +48,10 @@ export type LiveForwardCaptureResult = {
   connected: boolean;
   wsUrl: string;
   authHeadersGenerated: boolean;
+  /** Successful + failed connect attempts (initial and reconnect). */
+  connectionAttemptCount: number;
+  /** Fresh signed-header generations (must equal connection attempts when signing succeeds). */
+  authHeaderGenerationCount: number;
   errors: string[];
   recordCounts: {
     raw: number;
@@ -75,6 +80,19 @@ function isProbeTransport(
   return typeof transport.ping === "function";
 }
 
+/** Sanitized reconnect failure text — never headers, signatures, or key material. */
+export function sanitizeReconnectFailureMessage(error: unknown): string {
+  if (error instanceof KalshiWsHandshakeError) {
+    const status = error.statusCode ?? "unknown";
+    const statusMessage = error.statusMessage?.trim() || "Unauthorized";
+    return `WebSocket recovery connection failed: HTTP ${status} ${statusMessage}`;
+  }
+  if (error instanceof Error && error.message.trim().length > 0) {
+    return `WebSocket recovery connection failed: ${error.message}`;
+  }
+  return "WebSocket recovery connection failed";
+}
+
 export async function runLiveForwardQuoteCapture(input: {
   runId: string;
   startedAt: string;
@@ -88,6 +106,12 @@ export async function runLiveForwardQuoteCapture(input: {
   fetchBtcSpot?: () => Promise<{ price: number; updatedAt: string }>;
   shouldStop?: () => boolean;
   onLog?: (message: string) => void;
+  /**
+   * Validation-only: after the first economically valid top-of-book record,
+   * request exactly one controlled socket recovery. Not exposed on the
+   * ordinary capture CLI.
+   */
+  forceReconnectAfterFirstValidTopOfBook?: boolean;
 }): Promise<LiveForwardCaptureResult> {
   const paths = input.writer?.paths ?? createRunOutputPaths(input.config.outputDir, input.runId);
   const writer = input.writer ?? createJsonlForwardCaptureWriter(input.io, paths);
@@ -121,6 +145,7 @@ export async function runLiveForwardQuoteCapture(input: {
   let activeBtcPoll: Promise<void> | null = null;
   let activeRolloverCheck: Promise<void> | null = null;
   let activeWatchdogTick: Promise<void> | null = null;
+  let controlledReconnectRequested = false;
 
   const eventTickers = { ...input.discovery.eventTickers };
   const marketStatuses = { ...input.discovery.marketStatuses };
@@ -148,6 +173,21 @@ export async function runLiveForwardQuoteCapture(input: {
     getLatestBtcSpot: () => latestBtcSpot,
     onTopOfBookEmitted: () => {
       watchdog?.recordTopOfBookEmission();
+      if (
+        input.forceReconnectAfterFirstValidTopOfBook
+        && !controlledReconnectRequested
+        && connection.wsConnectCount > 0
+        && !shuttingDown
+      ) {
+        controlledReconnectRequested = true;
+        writer.appendLifecycleEvent({
+          runId: input.runId,
+          type: "controlledReconnectRequested",
+          detectedAt: input.io.now().toISOString(),
+          socketGeneration: watchdog?.currentSocketGeneration ?? handlerSocketGeneration,
+        });
+        watchdog?.requestEscalatedRecovery("controlled-reconnect-validation");
+      }
     },
     onControlMessage: (payload) => subscriptionManager.handleControlMessage(payload),
     correlateSnapshotResponse: (input) =>
@@ -189,21 +229,39 @@ export async function runLiveForwardQuoteCapture(input: {
   let watchdog: KalshiWsLivenessWatchdog | null = null;
 
   let authHeadersGenerated = false;
-  let connectHeaders: Record<string, string> | undefined;
-
-  if (
+  let connectionAttemptCount = 0;
+  let authHeaderGenerationCount = 0;
+  const credentialsReady =
     input.credentials.status === "available"
-    && input.credentials.apiKeyId
-    && input.credentials.privateKeyMaterial.privateKeyPem
-  ) {
-    connectHeaders = createKalshiWebSocketAuthHeaders({
+    && Boolean(input.credentials.apiKeyId)
+    && Boolean(input.credentials.privateKeyMaterial.privateKeyPem);
+
+  if (!credentialsReady) {
+    errors.push("Authenticated WebSocket headers could not be generated from credentials.");
+  }
+
+  /**
+   * Produce freshly signed WebSocket auth headers for this connection attempt.
+   * Never cache timestamped headers across reconnects — each handshake is a
+   * new authenticated request.
+   */
+  function createConnectHeaders(): Record<string, string> {
+    if (
+      !credentialsReady
+      || !input.credentials.apiKeyId
+      || !input.credentials.privateKeyMaterial.privateKeyPem
+    ) {
+      throw new Error("Missing authenticated WebSocket credentials.");
+    }
+
+    const headers = createKalshiWebSocketAuthHeaders({
       apiKeyId: input.credentials.apiKeyId,
       privateKeyPem: input.credentials.privateKeyMaterial.privateKeyPem,
       timestampMs: String(input.io.now().getTime()),
     });
     authHeadersGenerated = true;
-  } else {
-    errors.push("Authenticated WebSocket headers could not be generated from credentials.");
+    authHeaderGenerationCount += 1;
+    return headers;
   }
 
   watchdog = watchdogConfig.enabled
@@ -228,7 +286,7 @@ export async function runLiveForwardQuoteCapture(input: {
           }
         }
         : undefined,
-      executeRecovery: async ({ socketGeneration, activeMarketTickers }) => {
+      executeRecovery: async ({ socketGeneration, activeMarketTickers, attemptNumber }) => {
         writer.appendLifecycleEvent({
           runId: input.runId,
           type: "wsBooksMarkedUnsynchronized",
@@ -252,7 +310,19 @@ export async function runLiveForwardQuoteCapture(input: {
 
         const confirmationDeadline =
           input.io.monotonicNowMs() + watchdogConfig.wsPostSubscribeConfirmationMs;
-        await connectTransport(socketGeneration);
+
+        try {
+          await connectTransport(socketGeneration, "reconnect", attemptNumber);
+        } catch (error) {
+          const message = sanitizeReconnectFailureMessage(error);
+          if (!errors.includes(message)) {
+            errors.push(message);
+          }
+          return {
+            status: "failed" as const,
+            reason: message,
+          };
+        }
 
         while (input.io.monotonicNowMs() < confirmationDeadline) {
           if (processor.diagnostics.snapshotsReceived > snapshotsBeforeRecovery) {
@@ -382,10 +452,22 @@ export async function runLiveForwardQuoteCapture(input: {
     }
   }
 
-  async function connectTransport(socketGeneration: number): Promise<void> {
-    if (!authHeadersGenerated || !connectHeaders) {
-      throw new Error("Missing authenticated WebSocket headers.");
-    }
+  async function connectTransport(
+    socketGeneration: number,
+    connectionPurpose: "initial" | "reconnect",
+    attemptNumber = 1,
+  ): Promise<void> {
+    connectionAttemptCount += 1;
+    const headers = createConnectHeaders();
+    writer.appendLifecycleEvent({
+      runId: input.runId,
+      type: "wsAuthHeadersGenerated",
+      detectedAt: input.io.now().toISOString(),
+      socketGeneration,
+      connectionAttempt: connectionAttemptCount,
+      connectionPurpose,
+      attemptNumber,
+    });
 
     handlerSocketGeneration = socketGeneration;
     // Server subscription ids do not survive a socket; drop all sid mappings
@@ -393,7 +475,7 @@ export async function runLiveForwardQuoteCapture(input: {
     // pending commands are surfaced visibly (they can never be acknowledged).
     const invalidatedCommands = subscriptionManager.resetForReconnect();
     processor.recordPendingCommandsInvalidated(invalidatedCommands);
-    await transport.connect(wsUrl, { headers: connectHeaders });
+    await transport.connect(wsUrl, { headers });
     connection.wsConnectCount += 1;
     connection.connected = true;
     watchdog?.recordWebSocketOpen();
@@ -459,7 +541,7 @@ export async function runLiveForwardQuoteCapture(input: {
 
   try {
     const initialGeneration = watchdog?.incrementSocketGeneration() ?? 1;
-    await connectTransport(initialGeneration);
+    await connectTransport(initialGeneration, "initial", 1);
     watchdog?.markCaptureStarted();
   } catch (error) {
     // Initial handshake rejection (e.g. HTTP 401): return a structured
@@ -490,6 +572,8 @@ export async function runLiveForwardQuoteCapture(input: {
       completedWithWarnings: false,
       terminalFailureReason: null,
       captureEndReason: "authentication-failure" as const,
+      connectionAttemptCount,
+      authHeaderGenerationCount,
     });
     return {
       runId: input.runId,
@@ -506,6 +590,8 @@ export async function runLiveForwardQuoteCapture(input: {
       connected: false,
       wsUrl,
       authHeadersGenerated,
+      connectionAttemptCount,
+      authHeaderGenerationCount,
       errors,
       recordCounts: writer.counts,
       watchdog: watchdog?.toDiagnostics() ?? null,
@@ -734,6 +820,8 @@ export async function runLiveForwardQuoteCapture(input: {
     completedWithWarnings,
     terminalFailureReason,
     captureEndReason,
+    connectionAttemptCount,
+    authHeaderGenerationCount,
   });
 
   return {
@@ -749,6 +837,8 @@ export async function runLiveForwardQuoteCapture(input: {
     connected: connection.wsConnectCount > 0,
     wsUrl,
     authHeadersGenerated,
+    connectionAttemptCount,
+    authHeaderGenerationCount,
     errors,
     recordCounts: writer.counts,
     watchdog: watchdogDiagnostics,

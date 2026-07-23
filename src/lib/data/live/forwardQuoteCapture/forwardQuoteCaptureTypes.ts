@@ -283,6 +283,10 @@ export type ForwardCaptureConnectionDiagnostics = {
   wsConnectCount: number;
   wsDisconnectCount: number;
   reconnectCount: number;
+  /** Successful + failed WebSocket connect attempts (initial and reconnect). */
+  connectionAttemptCount: number;
+  /** Fresh signed auth-header generations across all connection attempts. */
+  authHeaderGenerationCount: number;
   /** Current socket state when the health report is generated (false after graceful shutdown). */
   connected: boolean;
   /** Whether at least one WebSocket connection succeeded during the run. */
@@ -314,6 +318,8 @@ export type ForwardCaptureHealthReport = {
   credentialStatus: KalshiCredentialStatus;
   connection: ForwardCaptureConnectionDiagnostics & {
     authHeadersGenerated: boolean;
+    connectionAttemptCount: number;
+    authHeaderGenerationCount: number;
     wsUrl: string | null;
     privateKeySource: string;
     privateKeyFingerprint: string | null;

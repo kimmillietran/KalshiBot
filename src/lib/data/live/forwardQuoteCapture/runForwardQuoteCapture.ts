@@ -68,6 +68,12 @@ export async function runForwardQuoteCapture(input: {
    * be exercised quickly. Production callers omit this.
    */
   writerLimits?: Partial<ForwardCaptureWriterLimits>;
+  /**
+   * Validation-only (M12.1G): after the first valid top-of-book record,
+   * request exactly one controlled socket recovery. Not exposed on the
+   * ordinary capture CLI.
+   */
+  forceReconnectAfterFirstValidTopOfBook?: boolean;
 }): Promise<ForwardQuoteCaptureRunResult> {
   const startedAt = input.io.now().toISOString();
   const runId = createRunId(input.io.now());
@@ -98,6 +104,7 @@ async function runLockedForwardQuoteCapture(input: {
   credentialEnv?: NodeJS.ProcessEnv;
   transport?: KalshiWsProbeTransport;
   writerLimits?: Partial<ForwardCaptureWriterLimits>;
+  forceReconnectAfterFirstValidTopOfBook?: boolean;
   startedAt: string;
   runId: string;
 }): Promise<ForwardQuoteCaptureRunResult> {
@@ -205,6 +212,8 @@ async function runLockedForwardQuoteCapture(input: {
         connected: false,
         wsUrl: credentials.wsUrl,
         authHeadersGenerated: false,
+        connectionAttemptCount: 0,
+        authHeaderGenerationCount: 0,
         errors: ["Missing or invalid Kalshi credentials."],
         recordCounts: { raw: 0, topOfBook: 0, btcSpot: 0, marketMetadata: 0 },
       };
@@ -232,6 +241,8 @@ async function runLockedForwardQuoteCapture(input: {
         connected: false,
         wsUrl: credentials.wsUrl,
         authHeadersGenerated: false,
+        connectionAttemptCount: 0,
+        authHeaderGenerationCount: 0,
         errors: [discovery.error ?? "Market discovery failed"],
         recordCounts: { raw: 0, topOfBook: 0, btcSpot: 0, marketMetadata: 0 },
       };
@@ -246,6 +257,8 @@ async function runLockedForwardQuoteCapture(input: {
         writer,
         transport: input.transport,
         shouldStop: input.shouldStop,
+        forceReconnectAfterFirstValidTopOfBook:
+          input.forceReconnectAfterFirstValidTopOfBook,
         fetchBtcSpot: input.config.captureBtcSpot
           ? async () => {
             const response = await fetchBtcSpotPrice();

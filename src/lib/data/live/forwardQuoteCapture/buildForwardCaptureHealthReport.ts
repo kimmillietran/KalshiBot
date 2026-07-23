@@ -373,6 +373,14 @@ export function buildForwardCaptureHealthReport(input: {
       ...input.captureResult.connection,
       ...connectionSemantics,
       authHeadersGenerated,
+      connectionAttemptCount:
+        "connectionAttemptCount" in input.captureResult
+          ? Number(input.captureResult.connectionAttemptCount ?? 0)
+          : input.captureResult.connection.connectionAttemptCount,
+      authHeaderGenerationCount:
+        "authHeaderGenerationCount" in input.captureResult
+          ? Number(input.captureResult.authHeaderGenerationCount ?? 0)
+          : input.captureResult.connection.authHeaderGenerationCount,
       wsUrl: input.captureResult.wsUrl,
       privateKeySource: input.credentials.privateKeySource,
       privateKeyFingerprint: input.credentials.privateKeyFingerprint,

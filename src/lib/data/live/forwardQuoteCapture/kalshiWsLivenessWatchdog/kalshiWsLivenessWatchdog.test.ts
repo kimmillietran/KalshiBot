@@ -168,6 +168,52 @@ describe("KalshiWsLivenessWatchdog", () => {
     expect(watchdog.toDiagnostics().wsRecoveryFailureCount).toBe(1);
   }, 15_000);
 
+  it("contains executeRecovery throws without rejecting waitForRecovery and reaches terminal", async () => {
+    let nowMs = 0;
+    const config = createKalshiWsWatchdogConfig({
+      watchdogTickMs: 5_000,
+      wsSoftSilenceThresholdMs: 30_000,
+      wsHardStallThresholdMs: 60_000,
+      wsProbeGraceMs: 10_000,
+      wsInitialGraceMs: 0,
+      wsRecoveryInitialBackoffMs: 0,
+      wsRecoveryMaxAttempts: 2,
+      wsPostSubscribeConfirmationMs: 1_000,
+      systemSleepJumpThresholdMs: 60_000,
+    });
+    const executeRecovery = vi.fn(async () => {
+      throw new Error("Unexpected server response: 401");
+    });
+    const watchdog = new KalshiWsLivenessWatchdog(config, {
+      now: () => new Date(nowMs),
+      monotonicNowMs: () => nowMs,
+      shouldStop: () => false,
+      getActiveMarketTickers: () => ["KXBTC15M-TEST"],
+      executeRecovery,
+    });
+    watchdog.markCaptureStarted();
+    watchdog.incrementSocketGeneration();
+    watchdog.recordWebSocketOpen();
+    watchdog.recordSubscriptionSuccess(1);
+    watchdog.recordRawMessage();
+    watchdog.recordExpectedMarketMessage();
+    nowMs += 65_000;
+
+    const pending = watchdog.tick();
+    await vi.runOnlyPendingTimersAsync();
+    await expect(pending).resolves.toBeUndefined();
+    const recovery = watchdog.waitForRecovery();
+    await vi.runOnlyPendingTimersAsync();
+    await expect(recovery).resolves.toBeUndefined();
+    await vi.runOnlyPendingTimersAsync();
+
+    expect(executeRecovery).toHaveBeenCalled();
+    expect(watchdog.isTerminal).toBe(true);
+    expect(watchdog.toDiagnostics().terminalWebSocketFailure).toBe(true);
+    expect(watchdog.toDiagnostics().wsRecoveryFailureCount).toBe(1);
+    expect(watchdog.toDiagnostics().wsRecoveryAttemptCount).toBe(2);
+  }, 15_000);
+
   it("tracks kalshi silence while BTC remains active", async () => {
     const { watchdog, advance, runTick } = createWatchdog();
     advance(35_000);

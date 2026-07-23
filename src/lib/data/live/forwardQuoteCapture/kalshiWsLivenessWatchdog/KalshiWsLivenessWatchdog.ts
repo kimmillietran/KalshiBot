@@ -1,6 +1,7 @@
 import type {
   KalshiWsLifecycleEvent,
   KalshiWsRecoveryExecutor,
+  KalshiWsRecoveryResult,
   KalshiWsWatchdogConfig,
   KalshiWsWatchdogDiagnostics,
   KalshiWsWatchdogState,
@@ -286,6 +287,8 @@ export class KalshiWsLivenessWatchdog {
 
   async waitForRecovery(): Promise<void> {
     if (this.recoveryPromise) {
+      // Recovery promises are contained so they settle fulfilled; await for
+      // quiescence without rethrowing expected reconnect failures.
       await this.recoveryPromise;
     }
   }
@@ -380,12 +383,29 @@ export class KalshiWsLivenessWatchdog {
 
     this.state = "recovering";
     this.stallDetectedAtMonotonicMs = this.deps.monotonicNowMs();
-    this.recoveryPromise = this.runRecovery(reason).finally(() => {
-      this.recoveryPromise = null;
-      if (this.state === "recovering") {
-        this.state = "healthy";
-      }
-    });
+    // Contain every recovery outcome: fire-and-forget beginRecovery must never
+    // leave an unhandled rejection that can terminate the Node process.
+    this.recoveryPromise = this.runRecovery(reason)
+      .catch((error) => {
+        this.wsRecoveryFailureCount += 1;
+        this.terminalWebSocketFailure = true;
+        this.kalshiStreamEndedAt = this.deps.now().toISOString();
+        this.state = "terminal-failure";
+        this.emitEvent("wsRecoveryFailed", {
+          attemptNumber: this.wsRecoveryAttemptCount,
+          reason:
+            error instanceof Error ? error.message : "recovery-threw-unexpectedly",
+        });
+        this.deps.onLog?.(
+          `[ws-watchdog] Recovery threw unexpectedly; marking terminal WebSocket failure`,
+        );
+      })
+      .finally(() => {
+        this.recoveryPromise = null;
+        if (this.state === "recovering") {
+          this.state = "healthy";
+        }
+      });
   }
 
   private async runRecovery(reason: string): Promise<void> {
@@ -412,13 +432,28 @@ export class KalshiWsLivenessWatchdog {
         await new Promise((resolve) => setTimeout(resolve, backoffMs));
       }
 
-      const result = await this.deps.executeRecovery({
-        attemptNumber: attempt,
-        reason,
-        socketGeneration: generation,
-        activeMarketTickers: this.deps.getActiveMarketTickers(),
-        backoffMs,
-      });
+      if (this.disabled || this.deps.shouldStop()) {
+        return;
+      }
+
+      let result: KalshiWsRecoveryResult;
+      try {
+        result = await this.deps.executeRecovery({
+          attemptNumber: attempt,
+          reason,
+          socketGeneration: generation,
+          activeMarketTickers: this.deps.getActiveMarketTickers(),
+          backoffMs,
+        });
+      } catch (error) {
+        // Expected transport/auth failures must become structured failed
+        // results so the retry loop can continue or exhaust cleanly.
+        result = {
+          status: "failed",
+          reason:
+            error instanceof Error ? error.message : "execute-recovery-threw",
+        };
+      }
 
       if (result.status === "succeeded") {
         const recoveryDurationMs =

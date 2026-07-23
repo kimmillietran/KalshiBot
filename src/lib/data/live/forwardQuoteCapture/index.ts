@@ -60,6 +60,22 @@ export type {
   RecoveryAcceptanceScenario,
 } from "./captureRecoveryAcceptance";
 export {
+  RECONNECT_ACCEPTANCE_PRIMARY_MARKET_TICKER,
+  RECONNECT_ACCEPTANCE_ROLLOVER_MARKET_TICKER,
+  evaluateWsReconnectAcceptance,
+  WS_RECONNECT_ACCEPTANCE_SCENARIOS,
+  runWsReconnectAcceptance,
+} from "./wsReconnectAcceptance";
+export type {
+  ReconnectAuthAttemptIdentity,
+  WsReconnectAcceptanceCheck,
+  WsReconnectAcceptanceEvaluation,
+  WsReconnectAcceptanceObserved,
+  WsReconnectAcceptanceReport,
+  WsReconnectAcceptanceScenario,
+  WsReconnectProcessSafety,
+} from "./wsReconnectAcceptance";
+export {
   CANONICAL_EIGHT_HOUR_CAPTURE_PROFILE,
   DEFAULT_CAPTURE_RESTART_GATE_THRESHOLDS,
   evaluateCaptureRestartGate,
