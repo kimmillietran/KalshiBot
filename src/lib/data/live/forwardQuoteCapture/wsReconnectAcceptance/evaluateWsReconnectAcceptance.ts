@@ -191,7 +191,11 @@ function evaluateReconnect401Terminal(
     "Health errors include a sanitized reconnect 401 message (no credential material)",
     observed.healthErrors.some(
       (error) => error.includes("401") && !error.includes("KALSHI-ACCESS"),
-    ),
+    )
+      && !observed.healthErrors.some((error) =>
+        error.includes("Unexpected server response"),
+      )
+      && observed.healthErrors.filter((error) => error.includes("401")).length === 1,
     `healthErrors=${JSON.stringify(observed.healthErrors)}`,
   );
 

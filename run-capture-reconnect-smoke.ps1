@@ -3,9 +3,8 @@
 # Runs a bounded (15-20 minute) authenticated Kalshi WebSocket capture with
 # forceReconnectAfterFirstValidTopOfBook through the dedicated validation
 # path, audits the EXACT run directory it created (never an ambiguous
-# "latest"), and requires reconnectCount >= 1, recovery success >= 1, and
-# terminalWebSocketFailure = false. Exits nonzero unless every reconnect
-# gate passes.
+# "latest"), and fail-closes unless every reconnect / status / health /
+# writer / restart-gate / post-run lock invariant passes.
 #
 # This wrapper never starts an eight-hour capture.
 #
@@ -34,19 +33,20 @@ if ($DurationMinutes -ge 480) {
 $captureRoot = "data/live-capture/forward-quotes"
 
 # ---------------------------------------------------------------------------
-# Step 1: refuse to run while starting a capture would be unsafe.
+# Step 1/6: refuse to run while starting a capture would be unsafe.
 # ---------------------------------------------------------------------------
-Write-Host "Step 1/4: verifying it is safe to start a capture..."
+Write-Host "Step 1/6: verifying it is safe to start a capture..."
 npx tsx scripts/research/evaluateCaptureRestartGate.ts --assert-no-active-capture --capture-root $captureRoot
-if ($LASTEXITCODE -ne 0) {
+$preCapturePreflightExitCode = $LASTEXITCODE
+if ($preCapturePreflightExitCode -ne 0) {
     throw "Capture-start preflight failed; refusing to start the reconnect smoke capture."
 }
 
 # ---------------------------------------------------------------------------
-# Step 2: run the bounded reconnect validation capture (forceReconnect).
+# Step 2/6: run the bounded reconnect validation capture (forceReconnect).
 # Process exit IS terminal writer completion.
 # ---------------------------------------------------------------------------
-Write-Host "Step 2/4: running $DurationMinutes-minute reconnect validation capture (forceReconnectAfterFirstValidTopOfBook)..."
+Write-Host "Step 2/6: running $DurationMinutes-minute reconnect validation capture (forceReconnectAfterFirstValidTopOfBook)..."
 $captureStdout = npx tsx scripts/live/runReconnectValidationCapture.ts `
     --series KXBTC15M `
     --duration-minutes $DurationMinutes `
@@ -75,77 +75,84 @@ Write-Host "  runId:   $runId"
 Write-Host "  runDir:  $runDir"
 Write-Host "  capture exit code: $captureExitCode"
 if ($captureExitCode -ne 0) {
-    Write-Host "  capture failed; continuing exact-run reconnect gate (reconnect will be denied)."
+    Write-Host "  capture failed; continuing exact-run diagnostics (reconnect gate will be denied)."
 }
 Write-Host ""
 
 # ---------------------------------------------------------------------------
-# Step 3: capture health audit of that exact run directory.
+# Step 3/6: capture health audit of that exact run directory.
 # ---------------------------------------------------------------------------
-Write-Host "Step 3/4: running capture health audit on the exact run..."
+Write-Host "Step 3/6: running capture health audit on the exact run..."
 npx tsx scripts/research/buildCaptureHealthAudit.ts --capture-run-dir "$runDir"
 $auditExitCode = $LASTEXITCODE
 Write-Host "  capture-health-audit exit code: $auditExitCode"
 
-# ---------------------------------------------------------------------------
-# Step 4: evaluate reconnect acceptance criteria against the exact run.
-# ---------------------------------------------------------------------------
-Write-Host "Step 4/4: evaluating reconnect validation gate..."
+$auditPath = Join-Path $runDir "capture-health-audit.json"
+if (-not (Test-Path $auditPath -PathType Leaf)) {
+    throw "capture-health-audit.json missing for exact run $runDir"
+}
 
+# ---------------------------------------------------------------------------
+# Step 4/6: exact-run status / health paths must exist before restart gate.
+# Full fail-closed invariant evaluation runs in Step 6 after all exit codes.
+# ---------------------------------------------------------------------------
+Write-Host "Step 4/6: verifying exact-run status and health artifacts..."
+$statusPath = Join-Path $runDir "capture-run-status.json"
 $healthPath = Join-Path $runDir "capture-health.json"
+if (-not (Test-Path $statusPath -PathType Leaf)) {
+    throw "capture-run-status.json missing for exact run $runDir"
+}
 if (-not (Test-Path $healthPath -PathType Leaf)) {
     throw "capture-health.json missing for exact run $runDir"
 }
-
+# PowerShell 5.1-safe UTF-8 read; fail closed on malformed JSON.
+$status = Get-Content -Raw -Encoding UTF8 $statusPath | ConvertFrom-Json
 $health = Get-Content -Raw -Encoding UTF8 $healthPath | ConvertFrom-Json
+$audit = Get-Content -Raw -Encoding UTF8 $auditPath | ConvertFrom-Json
+Write-Host "  status.state=$($status.state) health.verdict=$($health.verdict) audit.verdict=$($audit.summary.verdict)"
 
-$reconnectCount = [int]$health.connection.reconnectCount
-$wsRecoverySuccessCount = 0
-$terminalWebSocketFailure = $false
-if ($null -ne $health.watchdog) {
-    $wsRecoverySuccessCount = [int]$health.watchdog.wsRecoverySuccessCount
-    $terminalWebSocketFailure = [bool]$health.watchdog.terminalWebSocketFailure
+# ---------------------------------------------------------------------------
+# Step 5/6: exact-run production restart gate (no special-case reconnect).
+# ---------------------------------------------------------------------------
+Write-Host "Step 5/6: evaluating exact-run restart gate..."
+npm run research:capture-restart-gate -- `
+    --capture-run-dir "$runDir" `
+    --expected-duration-minutes $DurationMinutes
+$restartGateExitCode = $LASTEXITCODE
+Write-Host "  restart-gate exit code: $restartGateExitCode"
+
+# ---------------------------------------------------------------------------
+# Step 6/6: post-run lock / preflight + fail-closed reconnect acceptance.
+# ---------------------------------------------------------------------------
+Write-Host "Step 6/6: verifying post-run lock absence and evaluating reconnect gate..."
+npx tsx scripts/research/evaluateCaptureRestartGate.ts --assert-no-active-capture --capture-root $captureRoot
+$postRunPreflightExitCode = $LASTEXITCODE
+Write-Host "  post-run preflight exit code: $postRunPreflightExitCode"
+
+$lockPath = Join-Path $captureRoot "capture.lock"
+$lockPresent = Test-Path $lockPath -PathType Leaf
+if ($lockPresent) {
+    Write-Host "  capture.lock is still present at $lockPath (fail closed; lock not deleted)."
 }
 
-$authHeaderGenerationCount = 0
-if ($null -ne $health.connection.authHeaderGenerationCount) {
-    $authHeaderGenerationCount = [int]$health.connection.authHeaderGenerationCount
-}
+$lockPresentArg = if ($lockPresent) { "true" } else { "false" }
+npx tsx scripts/research/evaluateReconnectSmokeGate.ts `
+    --run-id $runId `
+    --run-dir "$runDir" `
+    --duration-minutes $DurationMinutes `
+    --capture-exit-code $captureExitCode `
+    --audit-exit-code $auditExitCode `
+    --restart-gate-exit-code $restartGateExitCode `
+    --post-run-preflight-exit-code $postRunPreflightExitCode `
+    --lock-present $lockPresentArg
+$gateExitCode = $LASTEXITCODE
 
-$failedChecks = @()
-if ($captureExitCode -ne 0) { $failedChecks += "capture-exit ($captureExitCode)" }
-if ($auditExitCode -ne 0) { $failedChecks += "capture-health-audit ($auditExitCode)" }
-if ($reconnectCount -lt 1) { $failedChecks += "reconnectCount<$reconnectCount>" }
-if ($wsRecoverySuccessCount -lt 1) { $failedChecks += "wsRecoverySuccessCount<$wsRecoverySuccessCount>" }
-if ($terminalWebSocketFailure -eq $true) { $failedChecks += "terminalWebSocketFailure=true" }
-if ($authHeaderGenerationCount -lt 2) { $failedChecks += "authHeaderGenerationCount<$authHeaderGenerationCount>" }
-if ($health.connection.captureEndReason -ne "duration-complete") {
-    $failedChecks += "captureEndReason=$($health.connection.captureEndReason)"
-}
-
-$summary = [ordered]@{
-    schemaVersion = 1
-    mode = "reconnect-smoke"
-    runId = $runId
-    runDir = $runDir
-    durationMinutes = $DurationMinutes
-    reconnectCount = $reconnectCount
-    wsRecoverySuccessCount = $wsRecoverySuccessCount
-    terminalWebSocketFailure = $terminalWebSocketFailure
-    authHeaderGenerationCount = $authHeaderGenerationCount
-    captureEndReason = $health.connection.captureEndReason
-    passed = ($failedChecks.Count -eq 0)
-    failedChecks = $failedChecks
-}
-Write-Host ($summary | ConvertTo-Json -Compress)
-
-if ($failedChecks.Count -eq 0) {
+if ($gateExitCode -eq 0) {
     Write-Host ""
     Write-Host "RECONNECT GATE PASSED: reconnect auth finalization validated (run $runId)."
     exit 0
 } else {
     Write-Host ""
     Write-Host "RECONNECT GATE FAILED: do NOT treat reconnect as proven (run $runId)."
-    Write-Host "  failed checks: $($failedChecks -join ', ')"
     exit 1
 }

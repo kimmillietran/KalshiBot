@@ -379,6 +379,21 @@ describe("wsReconnectAuthFinalization", () => {
     expect(status?.state).toBe("failed");
     expect(status?.captureEndReason).toBe("terminal-websocket-failure");
     expect(transcript.join("\n")).toContain("HTTP 401");
+
+    const sanitized =
+      "WebSocket recovery connection failed: HTTP 401 Unauthorized";
+    expect(result.healthReport.errors).toContain(sanitized);
+    expect(
+      result.healthReport.errors.filter((error) => error === sanitized),
+    ).toHaveLength(1);
+    expect(
+      result.healthReport.errors.some((error) =>
+        error.includes("Unexpected server response"),
+      ),
+    ).toBe(false);
+    expect(
+      result.healthReport.errors.join("\n"),
+    ).not.toMatch(/KALSHI-ACCESS|signature|private.?key|BEGIN |fingerprint/i);
     // Keep HandshakeError import exercised for type/compat with transport throws.
     expect(KalshiWsHandshakeError.name).toBe("KalshiWsHandshakeError");
   }, 45_000);
@@ -568,5 +583,47 @@ describe("wsReconnectAuthFinalization", () => {
     expect(files.has(lockPath)).toBe(false);
     expect(transcript.join("\n")).toContain("second reconnect attempt");
     expect(transcript.join("\n")).toContain("HTTP 401");
+  }, 45_000);
+
+  it("fails closed when forceReconnect is requested with watchdog disabled", async () => {
+    const { io, files, lockPath } = createMemoryIo();
+    let connectCalled = 0;
+
+    class NoConnectTransport implements KalshiWsProbeTransport {
+      async connect(): Promise<void> {
+        connectCalled += 1;
+      }
+      send(): void {}
+      close(): void {}
+      onOpen(): void {}
+      onMessage(): void {}
+      onClose(): void {}
+      onError(): void {}
+      ping(): void {}
+      onPong(): void {}
+    }
+
+    const { result, unhandledRejectionCount } = await runWithProcessSafety(() =>
+      runForwardQuoteCapture({
+        config: { ...LIVE_CONFIG, wsWatchdogEnabled: false },
+        io,
+        htmlOutputPath: "in-memory/reconnect-auth-finalization/report.html",
+        transport: new NoConnectTransport(),
+        forceReconnectAfterFirstValidTopOfBook: true,
+        credentialEnv: {
+          KALSHI_API_KEY_ID: "key-id",
+          KALSHI_PRIVATE_KEY: "mock-private-key",
+        },
+      }),
+    );
+
+    expect(unhandledRejectionCount).toBe(0);
+    expect(connectCalled).toBe(0);
+    expect(result.healthReport.errors).toContain(
+      "Controlled reconnect validation requires an enabled WebSocket watchdog.",
+    );
+    expect(result.healthReport.connection.captureEndReason).toBe("unexpected-error");
+    expect(result.healthReport.watchdog == null).toBe(true);
+    expect(files.has(lockPath)).toBe(false);
   }, 45_000);
 });

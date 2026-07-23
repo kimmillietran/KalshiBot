@@ -49,6 +49,16 @@ export async function runReconnectValidationCaptureCommand(
   io: ForwardQuoteCaptureCommandIo,
 ): Promise<number> {
   try {
+    // Fail closed before any capture startup: validation must exercise the
+    // production watchdog recovery path. Do not create a run directory,
+    // acquire a lock, or contact transport when the watchdog is disabled.
+    if (argv.includes("--disable-ws-watchdog")) {
+      throw new ForwardQuoteCaptureCommandError(
+        "Reconnect validation requires the WebSocket watchdog; "
+          + "--disable-ws-watchdog is not allowed.",
+      );
+    }
+
     const config = parseForwardQuoteCaptureConfigFromArgv(argv);
     if (
       config.durationMinutes < SMOKE_DURATION_MIN
@@ -57,6 +67,12 @@ export async function runReconnectValidationCaptureCommand(
       throw new ForwardQuoteCaptureCommandError(
         `Reconnect validation duration must be between ${SMOKE_DURATION_MIN} and ${SMOKE_DURATION_MAX} minutes `
           + `(got ${config.durationMinutes}). This command never starts an eight-hour capture.`,
+      );
+    }
+
+    if (config.wsWatchdogEnabled !== true) {
+      throw new ForwardQuoteCaptureCommandError(
+        "Reconnect validation requires wsWatchdogEnabled=true.",
       );
     }
 

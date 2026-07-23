@@ -80,7 +80,11 @@ function isProbeTransport(
   return typeof transport.ping === "function";
 }
 
-/** Sanitized reconnect failure text — never headers, signatures, or key material. */
+/**
+ * Sanitized handshake / reconnect failure text — never headers, signatures,
+ * key material, response bodies, paths, or raw `Unexpected server response`
+ * duplication in capture health.
+ */
 export function sanitizeReconnectFailureMessage(error: unknown): string {
   if (error instanceof KalshiWsHandshakeError) {
     const status = error.statusCode ?? "unknown";
@@ -91,6 +95,19 @@ export function sanitizeReconnectFailureMessage(error: unknown): string {
     return `WebSocket recovery connection failed: ${error.message}`;
   }
   return "WebSocket recovery connection failed";
+}
+
+/**
+ * Centralized transport onError → health representation.
+ * Handshake rejections reuse the reconnect sanitizer (one canonical form).
+ * Generic post-open failures stay visible via a safe generic string — never
+ * raw message text that may echo secrets or duplicate handshake noise.
+ */
+export function sanitizeTransportHealthError(error: unknown): string {
+  if (error instanceof KalshiWsHandshakeError) {
+    return sanitizeReconnectFailureMessage(error);
+  }
+  return "WebSocket transport error";
 }
 
 export async function runLiveForwardQuoteCapture(input: {
@@ -262,6 +279,45 @@ export async function runLiveForwardQuoteCapture(input: {
     authHeadersGenerated = true;
     authHeaderGenerationCount += 1;
     return headers;
+  }
+
+  if (input.forceReconnectAfterFirstValidTopOfBook && !watchdogConfig.enabled) {
+    // Defense in depth: controlled reconnect validation cannot silently
+    // continue as a normal capture when the watchdog is unavailable.
+    const failureMessage =
+      "Controlled reconnect validation requires an enabled WebSocket watchdog.";
+    errors.push(failureMessage);
+    processor.finalize();
+    Object.assign(connection, {
+      everConnected: false,
+      completedNormally: false,
+      liveConnectionSucceeded: false,
+      completedWithWarnings: false,
+      terminalFailureReason: failureMessage,
+      captureEndReason: "unexpected-error" as const,
+      connectionAttemptCount: 0,
+      authHeaderGenerationCount: 0,
+    });
+    return {
+      runId: input.runId,
+      startedAt: input.startedAt,
+      endedAt: input.io.now().toISOString(),
+      paths,
+      discovery: input.discovery,
+      processor,
+      connection,
+      rollover,
+      btcSpotStatus: input.config.captureBtcSpot ? "enabled" : "disabled",
+      connected: false,
+      wsUrl,
+      authHeadersGenerated: false,
+      connectionAttemptCount: 0,
+      authHeaderGenerationCount: 0,
+      errors,
+      recordCounts: writer.counts,
+      watchdog: null,
+      captureEndReason: "unexpected-error",
+    };
   }
 
   watchdog = watchdogConfig.enabled
@@ -532,7 +588,10 @@ export async function runLiveForwardQuoteCapture(input: {
   });
 
   transport.onError((error) => {
-    errors.push(error.message);
+    const message = sanitizeTransportHealthError(error);
+    if (!errors.includes(message)) {
+      errors.push(message);
+    }
   });
 
   for (const ticker of input.discovery.selectedMarketTickers) {
