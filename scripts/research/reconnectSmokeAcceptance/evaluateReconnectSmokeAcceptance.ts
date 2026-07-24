@@ -1,3 +1,7 @@
+import {
+  evaluateControlledReconnectLifecycle,
+  parseCaptureLifecycleJsonl,
+} from "./evaluateControlledReconnectLifecycle";
 import type {
   ReconnectSmokeAcceptanceInput,
   ReconnectSmokeAcceptanceSummary,
@@ -19,8 +23,31 @@ function asNullableBoolean(value: unknown): boolean | null {
   return typeof value === "boolean" ? value : null;
 }
 
-function asNullableNumber(value: unknown): number | null {
-  return typeof value === "number" && Number.isFinite(value) ? value : null;
+function asNonNegativeInteger(value: unknown): number | null {
+  if (typeof value !== "number" || !Number.isFinite(value) || !Number.isInteger(value)) {
+    return null;
+  }
+  if (value < 0) {
+    return null;
+  }
+  return value;
+}
+
+function isParseableTimestamp(value: unknown): value is string {
+  if (typeof value !== "string" || value.trim().length === 0) {
+    return false;
+  }
+  return Number.isFinite(Date.parse(value));
+}
+
+function normalizePath(path: string): string {
+  return path.replace(/\\/g, "/").replace(/\/+$/, "");
+}
+
+function basename(path: string): string {
+  const normalized = normalizePath(path);
+  const parts = normalized.split("/");
+  return parts[parts.length - 1] ?? "";
 }
 
 function readAuditVerdict(audit: ReconnectSmokeAuditObserved | null): string | null {
@@ -33,6 +60,16 @@ function readAuditVerdict(audit: ReconnectSmokeAuditObserved | null): string | n
   }
   if (typeof audit.verdict === "string") {
     return audit.verdict;
+  }
+  return null;
+}
+
+function readAuditSelectedRunId(audit: ReconnectSmokeAuditObserved | null): string | null {
+  if (audit === null) {
+    return null;
+  }
+  if (typeof audit.selectedRunId === "string") {
+    return audit.selectedRunId;
   }
   return null;
 }
@@ -75,6 +112,10 @@ export function evaluateReconnectSmokeAcceptance(
   }
   if (typeof input.runDir !== "string" || input.runDir.length === 0) {
     failedChecks.push("runDir-missing");
+  } else if (basename(input.runDir) !== input.runId) {
+    failedChecks.push(
+      `runDir-basename-mismatch (${basename(input.runDir)} != ${input.runId})`,
+    );
   }
 
   if (input.captureExitCode !== 0) {
@@ -96,26 +137,54 @@ export function evaluateReconnectSmokeAcceptance(
   const status = input.status;
   const health = input.health;
   const auditVerdict = readAuditVerdict(input.audit);
+  const auditSelectedRunId = readAuditSelectedRunId(input.audit);
 
   if (auditVerdict !== "capture-research-ready") {
     failedChecks.push(`auditVerdict=${auditVerdict ?? "missing"}`);
   }
+  if (auditSelectedRunId === null) {
+    failedChecks.push("audit.selectedRunId-missing");
+  } else if (auditSelectedRunId !== input.runId) {
+    failedChecks.push(
+      `audit.selectedRunId-mismatch (${auditSelectedRunId} != ${input.runId})`,
+    );
+  }
 
   evaluateStatus(input.runId, status, failedChecks);
   evaluateHealth(input.runId, health, failedChecks);
+
+  if (
+    status
+    && health?.connection
+    && status.captureEndReason !== health.connection.captureEndReason
+  ) {
+    failedChecks.push(
+      `status/health-captureEndReason-mismatch (${String(status.captureEndReason)} != ${String(health.connection.captureEndReason)})`,
+    );
+  }
+
+  const lifecycleRaw = input.lifecycleJsonl;
+  let controlledProof = evaluateControlledReconnectLifecycle([]);
+  if (typeof lifecycleRaw !== "string") {
+    failedChecks.push("lifecycle-missing");
+  } else {
+    const parsed = parseCaptureLifecycleJsonl(lifecycleRaw, input.runId);
+    failedChecks.push(...parsed.failedChecks);
+    controlledProof = evaluateControlledReconnectLifecycle(parsed.events);
+    failedChecks.push(...controlledProof.failedChecks);
+  }
+  if (!controlledProof.controlledReconnectProven) {
+    if (!failedChecks.includes("controlledReconnectProven=false")) {
+      // already covered by lifecycle failedChecks; keep explicit invariant
+      failedChecks.push("controlledReconnectProven=false");
+    }
+  }
 
   const connection = health?.connection ?? null;
   const watchdog = health?.watchdog ?? null;
   const writer = health?.writer ?? null;
   const nativeErrorCount = readNativeErrorCount(health);
   const restartEightHourCaptures = input.restartGateExitCode === 0;
-
-  if (!restartEightHourCaptures) {
-    // Already recorded via restart-gate exit; keep the named invariant explicit.
-    if (!failedChecks.includes(`restart-gate (${input.restartGateExitCode})`)) {
-      failedChecks.push("restartEightHourCaptures=false");
-    }
-  }
 
   return {
     schemaVersion: RECONNECT_SMOKE_ACCEPTANCE_SCHEMA_VERSION,
@@ -126,6 +195,7 @@ export function evaluateReconnectSmokeAcceptance(
     captureExitCode: input.captureExitCode,
     auditExitCode: input.auditExitCode,
     auditVerdict,
+    auditSelectedRunId,
     nativeVerdict: asNullableString(health?.verdict),
     nativeErrorCount,
     runStatusState: asNullableString(status?.state),
@@ -134,11 +204,13 @@ export function evaluateReconnectSmokeAcceptance(
       ?? asNullableString(connection?.captureEndReason),
     completedNormally: asNullableBoolean(connection?.completedNormally),
     liveConnectionSucceeded: asNullableBoolean(connection?.liveConnectionSucceeded),
-    reconnectCount: asNullableNumber(connection?.reconnectCount),
-    connectionAttemptCount: asNullableNumber(connection?.connectionAttemptCount),
-    authHeaderGenerationCount: asNullableNumber(connection?.authHeaderGenerationCount),
-    wsRecoverySuccessCount: asNullableNumber(watchdog?.wsRecoverySuccessCount),
-    wsRecoveryFailureCount: asNullableNumber(watchdog?.wsRecoveryFailureCount),
+    reconnectCount: asNonNegativeInteger(connection?.reconnectCount),
+    connectionAttemptCount: asNonNegativeInteger(connection?.connectionAttemptCount),
+    authHeaderGenerationCount: asNonNegativeInteger(
+      connection?.authHeaderGenerationCount,
+    ),
+    wsRecoverySuccessCount: asNonNegativeInteger(watchdog?.wsRecoverySuccessCount),
+    wsRecoveryFailureCount: asNonNegativeInteger(watchdog?.wsRecoveryFailureCount),
     terminalWebSocketFailure: asNullableBoolean(watchdog?.terminalWebSocketFailure),
     allStreamsDrained: asNullableBoolean(writer?.allStreamsDrained),
     writerFailurePresent: writerFailurePresent(writer),
@@ -146,6 +218,13 @@ export function evaluateReconnectSmokeAcceptance(
     restartEightHourCaptures,
     postRunPreflightExitCode: input.postRunPreflightExitCode,
     lockPresent: input.lockPresent,
+    controlledReconnectRequestCount: controlledProof.controlledReconnectRequestCount,
+    controlledReconnectRecoveryCycleId: controlledProof.controlledReconnectRecoveryCycleId,
+    controlledReconnectRecoveryReason: controlledProof.controlledReconnectRecoveryReason,
+    controlledReconnectAttemptCount: controlledProof.controlledReconnectAttemptCount,
+    controlledReconnectSuccessCount: controlledProof.controlledReconnectSuccessCount,
+    controlledReconnectFailureCount: controlledProof.controlledReconnectFailureCount,
+    controlledReconnectProven: controlledProof.controlledReconnectProven,
     passed: failedChecks.length === 0,
     failedChecks,
   };
@@ -171,10 +250,16 @@ function evaluateStatus(
   if (status.state !== "completed") {
     failedChecks.push(`status.state=${String(status.state)}`);
   }
-  if (status.endedAt === null || status.endedAt === undefined) {
-    failedChecks.push("status.endedAt-null");
-  } else if (typeof status.endedAt !== "string" || status.endedAt.length === 0) {
+  if (!isParseableTimestamp(status.startedAt)) {
+    failedChecks.push("status.startedAt-invalid");
+  }
+  if (!isParseableTimestamp(status.endedAt)) {
     failedChecks.push("status.endedAt-invalid");
+  } else if (
+    isParseableTimestamp(status.startedAt)
+    && Date.parse(status.endedAt) < Date.parse(status.startedAt)
+  ) {
+    failedChecks.push("status.endedAt-before-startedAt");
   }
   if (status.captureEndReason !== "duration-complete") {
     failedChecks.push(`status.captureEndReason=${String(status.captureEndReason)}`);
@@ -194,7 +279,9 @@ function evaluateHealth(
     return;
   }
 
-  if (health.runId !== undefined && health.runId !== expectedRunId) {
+  if (health.runId === undefined || health.runId === null) {
+    failedChecks.push("health.runId-missing");
+  } else if (health.runId !== expectedRunId) {
     failedChecks.push(
       `health.runId-mismatch (${String(health.runId)} != ${expectedRunId})`,
     );
@@ -230,17 +317,19 @@ function evaluateHealth(
         `terminalFailureReason=${String(connection.terminalFailureReason)}`,
       );
     }
-    const reconnectCount = asNullableNumber(connection.reconnectCount);
+    const reconnectCount = asNonNegativeInteger(connection.reconnectCount);
     if (reconnectCount === null || reconnectCount < 1) {
       failedChecks.push(`reconnectCount=${String(connection.reconnectCount)}`);
     }
-    const connectionAttemptCount = asNullableNumber(connection.connectionAttemptCount);
+    const connectionAttemptCount = asNonNegativeInteger(
+      connection.connectionAttemptCount,
+    );
     if (connectionAttemptCount === null || connectionAttemptCount < 2) {
       failedChecks.push(
         `connectionAttemptCount=${String(connection.connectionAttemptCount)}`,
       );
     }
-    const authHeaderGenerationCount = asNullableNumber(
+    const authHeaderGenerationCount = asNonNegativeInteger(
       connection.authHeaderGenerationCount,
     );
     if (authHeaderGenerationCount === null || authHeaderGenerationCount < 2) {
@@ -254,7 +343,7 @@ function evaluateHealth(
   if (watchdog === null || !isRecord(watchdog)) {
     failedChecks.push("health.watchdog-missing");
   } else {
-    const success = asNullableNumber(watchdog.wsRecoverySuccessCount);
+    const success = asNonNegativeInteger(watchdog.wsRecoverySuccessCount);
     if (success === null || success < 1) {
       failedChecks.push(
         `wsRecoverySuccessCount=${String(watchdog.wsRecoverySuccessCount)}`,
@@ -291,9 +380,10 @@ export function parseReconnectSmokeJsonRecord(
   raw: string,
   label: string,
 ): Record<string, unknown> {
+  const trimmed = raw.replace(/^\uFEFF/, "");
   let parsed: unknown;
   try {
-    parsed = JSON.parse(raw) as unknown;
+    parsed = JSON.parse(trimmed) as unknown;
   } catch {
     throw new Error(`${label} is malformed JSON`);
   }

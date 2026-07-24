@@ -102,6 +102,17 @@ export async function runReconnectValidationCaptureCommand(
       },
     });
 
+    const endReason = result.healthReport.connection.captureEndReason;
+    const controlled = result.controlledReconnectValidation;
+    const controlledSucceeded =
+      controlled?.succeeded === true
+      && controlled.acceptedRequestCount === 1
+      && controlled.attemptCount >= 1
+      && controlled.failed === false
+      && controlled.recoveryReason === "controlled-reconnect-validation"
+      && typeof controlled.recoveryCycleId === "number"
+      && controlled.recoveryCycleId >= 1;
+
     io.writeStdout(
       formatStdoutOutput(
         stableStringify({
@@ -128,11 +139,12 @@ export async function runReconnectValidationCaptureCommand(
           htmlOutputPath: result.htmlOutputPath,
           outputDir: config.outputDir,
           forceReconnectAfterFirstValidTopOfBook: true,
+          controlledReconnectValidation: controlled,
+          controlledReconnectSucceeded: controlledSucceeded,
         }),
       ),
     );
 
-    const endReason = result.healthReport.connection.captureEndReason;
     if (endReason === "user-cancelled") {
       return 130;
     }
@@ -143,6 +155,7 @@ export async function runReconnectValidationCaptureCommand(
       || endReason === "writer-failure"
       || endReason === "unexpected-error"
       || result.healthReport.connection.terminalFailureReason !== null
+      || !controlledSucceeded
     ) {
       return 1;
     }

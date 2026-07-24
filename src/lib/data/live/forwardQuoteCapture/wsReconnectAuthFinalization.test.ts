@@ -447,6 +447,39 @@ describe("wsReconnectAuthFinalization", () => {
       2,
     );
     expect(files.has(lockPath)).toBe(false);
+
+    const lifecycle = files.get(
+      `${OUTPUT_DIR}/${result.runId}/capture-lifecycle.jsonl`,
+    )!;
+    expect(lifecycle).toContain("controlledReconnectRequested");
+    expect(lifecycle).toContain("controlled-reconnect-validation");
+    expect(result.controlledReconnectValidation?.succeeded).toBe(true);
+    expect(result.controlledReconnectValidation?.recoveryCycleId).toEqual(
+      expect.any(Number),
+    );
+    const request = lifecycle
+      .split("\n")
+      .filter(Boolean)
+      .map((line) => JSON.parse(line) as Record<string, unknown>)
+      .find((event) => event.type === "controlledReconnectRequested");
+    const attempt = lifecycle
+      .split("\n")
+      .filter(Boolean)
+      .map((line) => JSON.parse(line) as Record<string, unknown>)
+      .find((event) =>
+        event.type === "wsRecoveryAttempted"
+        && event.recoveryReason === "controlled-reconnect-validation"
+      );
+    const success = lifecycle
+      .split("\n")
+      .filter(Boolean)
+      .map((line) => JSON.parse(line) as Record<string, unknown>)
+      .find((event) =>
+        event.type === "wsRecoverySucceeded"
+        && event.recoveryReason === "controlled-reconnect-validation"
+      );
+    expect(request?.recoveryCycleId).toBe(attempt?.recoveryCycleId);
+    expect(attempt?.recoveryCycleId).toBe(success?.recoveryCycleId);
   }, 45_000);
 
   it("contains auth generation throw on reconnect without unhandledRejection", async () => {
@@ -624,6 +657,7 @@ describe("wsReconnectAuthFinalization", () => {
     );
     expect(result.healthReport.connection.captureEndReason).toBe("unexpected-error");
     expect(result.healthReport.watchdog == null).toBe(true);
+    expect(result.controlledReconnectValidation?.failed).toBe(true);
     expect(files.has(lockPath)).toBe(false);
   }, 45_000);
 });

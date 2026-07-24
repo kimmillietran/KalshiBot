@@ -68,6 +68,15 @@ describe("run-capture-reconnect-smoke.ps1 reconnect validation wrapper", () => {
     expect(wrapper).toContain("exit 1");
   });
 
+  it("runs post-run preflight and lock check in finally after capture attempt", () => {
+    expect(wrapper).toContain("finally {");
+    expect(wrapper).toContain("if ($captureAttempted)");
+    expect(wrapper).toContain("$primaryFailure");
+    expect(wrapper).toContain("capture-lifecycle.jsonl");
+    expect(wrapper).not.toMatch(/Remove-Item.*capture\.lock/);
+    expect(wrapper).not.toMatch(/Get-ChildItem.*Sort-Object.*LastWriteTime/);
+  });
+
   it("audits the exact run directory and never starts an eight-hour capture", () => {
     expect(wrapper).toContain("buildCaptureHealthAudit.ts --capture-run-dir");
     expect(wrapper).toContain('--capture-run-dir "$runDir"');

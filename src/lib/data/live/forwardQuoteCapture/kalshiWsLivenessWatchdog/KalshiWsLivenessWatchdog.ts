@@ -1,4 +1,5 @@
 import type {
+  KalshiWsEscalatedRecoveryRequestResult,
   KalshiWsLifecycleEvent,
   KalshiWsRecoveryExecutor,
   KalshiWsRecoveryResult,
@@ -22,6 +23,9 @@ export class KalshiWsLivenessWatchdog {
   private state: KalshiWsWatchdogState = "healthy";
   private lifecycleEvents: KalshiWsLifecycleEvent[] = [];
   private socketGeneration = 0;
+  private nextRecoveryCycleId = 0;
+  private activeRecoveryCycleId: number | null = null;
+  private activeRecoveryReason: string | null = null;
   private disabled = false;
   private captureStartedAtMonotonicMs: number | null = null;
   private lastWatchdogTickMonotonicMs: number | null = null;
@@ -74,6 +78,14 @@ export class KalshiWsLivenessWatchdog {
 
   get isTerminal(): boolean {
     return this.state === "terminal-failure";
+  }
+
+  get currentRecoveryCycleId(): number | null {
+    return this.activeRecoveryCycleId;
+  }
+
+  get currentRecoveryReason(): string | null {
+    return this.activeRecoveryReason;
   }
 
   disable(): void {
@@ -165,14 +177,34 @@ export class KalshiWsLivenessWatchdog {
 
   /**
    * External escalation: application-level recovery (e.g. bounded snapshot
-   * recovery) exhausted its retries; force a socket-level recovery cycle.
+   * recovery or controlled reconnect validation) requests a socket-level cycle.
+   * Always returns an explicit outcome — never silently ignores the request.
    */
-  requestEscalatedRecovery(reason: string): void {
-    if (this.disabled || this.deps.shouldStop() || this.state === "recovering") {
-      return;
+  requestEscalatedRecovery(reason: string): KalshiWsEscalatedRecoveryRequestResult {
+    if (this.disabled) {
+      return { status: "rejected", reason: "disabled" };
+    }
+    if (this.deps.shouldStop()) {
+      return { status: "rejected", reason: "stopping" };
+    }
+    if (this.state === "terminal-failure") {
+      return { status: "rejected", reason: "terminal-failure" };
+    }
+    if (this.state === "recovering" || this.recoveryPromise !== null) {
+      return {
+        status: "busy",
+        activeRecoveryCycleId: this.activeRecoveryCycleId,
+        activeRecoveryReason: this.activeRecoveryReason,
+      };
     }
 
-    void this.beginRecovery(reason);
+    const recoveryCycleId = this.allocateRecoveryCycleId();
+    this.startRecoveryCycle(recoveryCycleId, reason);
+    return {
+      status: "started",
+      recoveryCycleId,
+      recoveryReason: reason,
+    };
   }
 
   async tick(): Promise<void> {
@@ -286,10 +318,14 @@ export class KalshiWsLivenessWatchdog {
   }
 
   async waitForRecovery(): Promise<void> {
-    if (this.recoveryPromise) {
-      // Recovery promises are contained so they settle fulfilled; await for
-      // quiescence without rethrowing expected reconnect failures.
-      await this.recoveryPromise;
+    // Loop because a follow-up recovery may start after the current promise
+    // settles (e.g. live-layer deferred controlled reconnect).
+    for (;;) {
+      const pending = this.recoveryPromise;
+      if (!pending) {
+        return;
+      }
+      await pending;
     }
   }
 
@@ -321,6 +357,11 @@ export class KalshiWsLivenessWatchdog {
         currentSocketGeneration: this.socketGeneration,
       },
     };
+  }
+
+  private allocateRecoveryCycleId(): number {
+    this.nextRecoveryCycleId += 1;
+    return this.nextRecoveryCycleId;
   }
 
   private messagesExpected(nowMono: number): boolean {
@@ -381,20 +422,28 @@ export class KalshiWsLivenessWatchdog {
       return;
     }
 
+    const recoveryCycleId = this.allocateRecoveryCycleId();
+    this.startRecoveryCycle(recoveryCycleId, reason);
+  }
+
+  private startRecoveryCycle(recoveryCycleId: number, reason: string): void {
     this.state = "recovering";
+    this.activeRecoveryCycleId = recoveryCycleId;
+    this.activeRecoveryReason = reason;
     this.stallDetectedAtMonotonicMs = this.deps.monotonicNowMs();
     // Contain every recovery outcome: fire-and-forget beginRecovery must never
     // leave an unhandled rejection that can terminate the Node process.
-    this.recoveryPromise = this.runRecovery(reason)
-      .catch((error) => {
+    this.recoveryPromise = this.runRecovery(recoveryCycleId, reason)
+      .catch(() => {
         this.wsRecoveryFailureCount += 1;
         this.terminalWebSocketFailure = true;
         this.kalshiStreamEndedAt = this.deps.now().toISOString();
         this.state = "terminal-failure";
         this.emitEvent("wsRecoveryFailed", {
           attemptNumber: this.wsRecoveryAttemptCount,
-          reason:
-            error instanceof Error ? error.message : "recovery-threw-unexpectedly",
+          reason: "recovery-executor-threw",
+          recoveryCycleId,
+          recoveryReason: reason,
         });
         this.deps.onLog?.(
           `[ws-watchdog] Recovery threw unexpectedly; marking terminal WebSocket failure`,
@@ -402,13 +451,15 @@ export class KalshiWsLivenessWatchdog {
       })
       .finally(() => {
         this.recoveryPromise = null;
+        this.activeRecoveryCycleId = null;
+        this.activeRecoveryReason = null;
         if (this.state === "recovering") {
           this.state = "healthy";
         }
       });
   }
 
-  private async runRecovery(reason: string): Promise<void> {
+  private async runRecovery(recoveryCycleId: number, reason: string): Promise<void> {
     for (let attempt = 1; attempt <= this.config.wsRecoveryMaxAttempts; attempt += 1) {
       if (this.disabled || this.deps.shouldStop()) {
         return;
@@ -422,6 +473,8 @@ export class KalshiWsLivenessWatchdog {
         attemptNumber: attempt,
         backoffMs,
         reason,
+        recoveryCycleId,
+        recoveryReason: reason,
         socketGeneration: generation,
       });
       this.deps.onLog?.(
@@ -441,17 +494,18 @@ export class KalshiWsLivenessWatchdog {
         result = await this.deps.executeRecovery({
           attemptNumber: attempt,
           reason,
+          recoveryCycleId,
           socketGeneration: generation,
           activeMarketTickers: this.deps.getActiveMarketTickers(),
           backoffMs,
         });
-      } catch (error) {
+      } catch {
         // Expected transport/auth failures must become structured failed
         // results so the retry loop can continue or exhaust cleanly.
+        // Never serialize raw Error.message (may contain secrets).
         result = {
           status: "failed",
-          reason:
-            error instanceof Error ? error.message : "execute-recovery-threw",
+          reason: "recovery-executor-threw",
         };
       }
 
@@ -472,6 +526,8 @@ export class KalshiWsLivenessWatchdog {
           socketGeneration: generation,
           subscriptionsRestored: result.subscriptionsRestored,
           firstRawMessageAt: result.firstRawMessageAt,
+          recoveryCycleId,
+          recoveryReason: reason,
         });
         this.deps.onLog?.(
           `[ws-watchdog] Recovery attempt ${attempt} succeeded after ${(recoveryDurationMs / 1000).toFixed(1)}s`,
@@ -490,6 +546,8 @@ export class KalshiWsLivenessWatchdog {
     this.emitEvent("wsRecoveryFailed", {
       attemptNumber: this.config.wsRecoveryMaxAttempts,
       reason: "recovery-exhausted",
+      recoveryCycleId,
+      recoveryReason: reason,
     });
     this.deps.onLog?.(
       `[ws-watchdog] Recovery failed after ${this.config.wsRecoveryMaxAttempts} attempts; ending capture`,

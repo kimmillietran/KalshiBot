@@ -1,8 +1,8 @@
 /**
  * M12.1G corrective: evaluate controlled reconnect smoke artifacts fail-closed.
  *
- * Reads exact-run status/health/audit JSON from disk (UTF-8) and combines
- * orchestration exit codes supplied by run-capture-reconnect-smoke.ps1.
+ * Reads exact-run status/health/audit/lifecycle JSON from disk (UTF-8) and
+ * combines orchestration exit codes supplied by run-capture-reconnect-smoke.ps1.
  * Never selects "latest". Does not contact Kalshi.
  */
 import { existsSync, readFileSync } from "node:fs";
@@ -20,24 +20,54 @@ import type {
 } from "./reconnectSmokeAcceptance/reconnectSmokeAcceptanceTypes";
 import { RECONNECT_SMOKE_ACCEPTANCE_SCHEMA_VERSION } from "./reconnectSmokeAcceptance/reconnectSmokeAcceptanceTypes";
 
-function readFlag(argv: readonly string[], name: string): string | null {
-  const index = argv.indexOf(name);
-  if (index < 0) {
-    return null;
+const ALLOWED_FLAGS = new Set([
+  "--run-id",
+  "--run-dir",
+  "--duration-minutes",
+  "--capture-exit-code",
+  "--audit-exit-code",
+  "--restart-gate-exit-code",
+  "--post-run-preflight-exit-code",
+  "--lock-present",
+]);
+
+function validateArgv(argv: readonly string[]): void {
+  if (argv.length === 0) {
+    throw new Error("Missing required flags");
   }
-  return argv[index + 1] ?? null;
+  const seen = new Set<string>();
+  for (let index = 0; index < argv.length; index += 1) {
+    const token = argv[index]!;
+    if (!token.startsWith("--")) {
+      throw new Error(`Unexpected positional argument: ${token}`);
+    }
+    if (!ALLOWED_FLAGS.has(token)) {
+      throw new Error(`Unknown flag: ${token}`);
+    }
+    if (seen.has(token)) {
+      throw new Error(`Duplicate flag: ${token}`);
+    }
+    seen.add(token);
+    const value = argv[index + 1];
+    if (value === undefined || value.startsWith("--")) {
+      throw new Error(`Missing value for flag ${token}`);
+    }
+    index += 1;
+  }
+  for (const required of ALLOWED_FLAGS) {
+    if (!seen.has(required)) {
+      throw new Error(`Missing required flag ${required}`);
+    }
+  }
 }
 
-function requireFlag(argv: readonly string[], name: string): string {
-  const value = readFlag(argv, name);
-  if (value === null || value.length === 0) {
-    throw new Error(`Missing required flag ${name}`);
-  }
-  return value;
+function readFlag(argv: readonly string[], name: string): string {
+  const index = argv.indexOf(name);
+  return argv[index + 1]!;
 }
 
 function requireIntFlag(argv: readonly string[], name: string): number {
-  const raw = requireFlag(argv, name);
+  const raw = readFlag(argv, name);
   const value = Number(raw);
   if (!Number.isInteger(value)) {
     throw new Error(`${name} must be an integer (got ${raw})`);
@@ -46,7 +76,7 @@ function requireIntFlag(argv: readonly string[], name: string): number {
 }
 
 function requireBoolFlag(argv: readonly string[], name: string): boolean {
-  const raw = requireFlag(argv, name).toLowerCase();
+  const raw = readFlag(argv, name).toLowerCase();
   if (raw === "true") {
     return true;
   }
@@ -61,6 +91,13 @@ function readUtf8Json(path: string, label: string): Record<string, unknown> {
     throw new Error(`${label} missing at ${path}`);
   }
   return parseReconnectSmokeJsonRecord(readFileSync(path, "utf8"), label);
+}
+
+function readUtf8Text(path: string, label: string): string {
+  if (!existsSync(path)) {
+    throw new Error(`${label} missing at ${path}`);
+  }
+  return readFileSync(path, "utf8").replace(/^\uFEFF/, "");
 }
 
 export function runEvaluateReconnectSmokeGateCommand(
@@ -78,9 +115,10 @@ export function runEvaluateReconnectSmokeGateCommand(
   },
 ): number {
   try {
-    const runId = requireFlag(argv, "--run-id");
-    const runDir = requireFlag(argv, "--run-dir");
-    const durationMinutes = Number(requireFlag(argv, "--duration-minutes"));
+    validateArgv(argv);
+    const runId = readFlag(argv, "--run-id");
+    const runDir = readFlag(argv, "--run-dir");
+    const durationMinutes = Number(readFlag(argv, "--duration-minutes"));
     if (!Number.isFinite(durationMinutes)) {
       throw new Error("--duration-minutes must be a number");
     }
@@ -88,10 +126,12 @@ export function runEvaluateReconnectSmokeGateCommand(
     const statusPath = join(runDir, "capture-run-status.json");
     const healthPath = join(runDir, "capture-health.json");
     const auditPath = join(runDir, "capture-health-audit.json");
+    const lifecyclePath = join(runDir, "capture-lifecycle.jsonl");
 
     const statusRecord = readUtf8Json(statusPath, "capture-run-status.json");
     const healthRecord = readUtf8Json(healthPath, "capture-health.json");
     const auditRecord = readUtf8Json(auditPath, "capture-health-audit.json");
+    const lifecycleJsonl = readUtf8Text(lifecyclePath, "capture-lifecycle.jsonl");
 
     const input: ReconnectSmokeAcceptanceInput = {
       schemaVersion: RECONNECT_SMOKE_ACCEPTANCE_SCHEMA_VERSION,
@@ -119,6 +159,7 @@ export function runEvaluateReconnectSmokeGateCommand(
         writer: (healthRecord.writer as ReconnectSmokeHealthObserved["writer"]) ?? null,
       },
       audit: auditRecord as ReconnectSmokeAuditObserved,
+      lifecycleJsonl,
     };
 
     const summary = evaluateReconnectSmokeAcceptance(input);

@@ -69,6 +69,17 @@ describe("runReconnectValidationCaptureCommand", () => {
     resetReconnectValidationShutdown();
     mockedRun.mockResolvedValueOnce({
       runId: "run-1",
+      controlledReconnectValidation: {
+        enabled: true,
+        requestCount: 1,
+        acceptedRequestCount: 1,
+        recoveryCycleId: 2,
+        recoveryReason: "controlled-reconnect-validation",
+        attemptCount: 1,
+        succeeded: true,
+        failed: false,
+        failureReason: null,
+      },
       healthReport: {
         verdict: "capture-mvp-success",
         recommendedNextAction: "none",

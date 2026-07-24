@@ -9,6 +9,7 @@ export type ReconnectSmokeStatusObserved = {
   schemaVersion: unknown;
   runId: unknown;
   state: unknown;
+  startedAt?: unknown;
   endedAt: unknown;
   captureEndReason: unknown;
   failureReason: unknown;
@@ -39,6 +40,7 @@ export type ReconnectSmokeHealthObserved = {
 };
 
 export type ReconnectSmokeAuditObserved = {
+  selectedRunId?: unknown;
   summary?: {
     verdict?: unknown;
   } | null;
@@ -59,6 +61,8 @@ export type ReconnectSmokeAcceptanceInput = {
   status: ReconnectSmokeStatusObserved | null;
   health: ReconnectSmokeHealthObserved | null;
   audit: ReconnectSmokeAuditObserved | null;
+  /** Exact-run capture-lifecycle.jsonl contents (UTF-8 text). */
+  lifecycleJsonl: string | null;
 };
 
 export type ReconnectSmokeAcceptanceSummary = {
@@ -70,6 +74,7 @@ export type ReconnectSmokeAcceptanceSummary = {
   captureExitCode: number;
   auditExitCode: number;
   auditVerdict: string | null;
+  auditSelectedRunId: string | null;
   nativeVerdict: string | null;
   nativeErrorCount: number | null;
   runStatusState: string | null;
@@ -88,6 +93,13 @@ export type ReconnectSmokeAcceptanceSummary = {
   restartEightHourCaptures: boolean;
   postRunPreflightExitCode: number;
   lockPresent: boolean;
+  controlledReconnectRequestCount: number;
+  controlledReconnectRecoveryCycleId: number | null;
+  controlledReconnectRecoveryReason: string | null;
+  controlledReconnectAttemptCount: number;
+  controlledReconnectSuccessCount: number;
+  controlledReconnectFailureCount: number;
+  controlledReconnectProven: boolean;
   passed: boolean;
   failedChecks: string[];
 };

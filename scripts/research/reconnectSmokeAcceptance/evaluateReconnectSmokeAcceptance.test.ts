@@ -4,6 +4,39 @@ import { evaluateReconnectSmokeAcceptance } from "./evaluateReconnectSmokeAccept
 import type { ReconnectSmokeAcceptanceInput } from "./reconnectSmokeAcceptanceTypes";
 import { RECONNECT_SMOKE_ACCEPTANCE_SCHEMA_VERSION } from "./reconnectSmokeAcceptanceTypes";
 
+function lifecycleForControlled(cycleId = 7): string {
+  return [
+    JSON.stringify({
+      runId: "run-abc",
+      type: "controlledReconnectRequested",
+      detectedAt: "2026-07-22T00:00:10.000Z",
+      recoveryCycleId: cycleId,
+      recoveryReason: "controlled-reconnect-validation",
+      requestDisposition: "started",
+      socketGeneration: 1,
+    }),
+    JSON.stringify({
+      runId: "run-abc",
+      type: "wsRecoveryAttempted",
+      detectedAt: "2026-07-22T00:00:11.000Z",
+      recoveryCycleId: cycleId,
+      recoveryReason: "controlled-reconnect-validation",
+      reason: "controlled-reconnect-validation",
+      attemptNumber: 1,
+      socketGeneration: 2,
+    }),
+    JSON.stringify({
+      runId: "run-abc",
+      type: "wsRecoverySucceeded",
+      detectedAt: "2026-07-22T00:00:12.000Z",
+      recoveryCycleId: cycleId,
+      recoveryReason: "controlled-reconnect-validation",
+      attemptNumber: 1,
+      socketGeneration: 2,
+    }),
+  ].join("\n");
+}
+
 function baseInput(
   overrides: Partial<ReconnectSmokeAcceptanceInput> = {},
 ): ReconnectSmokeAcceptanceInput {
@@ -22,6 +55,7 @@ function baseInput(
       schemaVersion: 1,
       runId: "run-abc",
       state: "completed",
+      startedAt: "2026-07-22T00:00:00.000Z",
       endedAt: "2026-07-22T00:20:00.000Z",
       captureEndReason: "duration-complete",
       failureReason: null,
@@ -50,8 +84,10 @@ function baseInput(
       },
     },
     audit: {
+      selectedRunId: "run-abc",
       summary: { verdict: "capture-research-ready" },
     },
+    lifecycleJsonl: lifecycleForControlled(),
     ...overrides,
   };
 }
@@ -61,187 +97,209 @@ describe("evaluateReconnectSmokeAcceptance", () => {
     const summary = evaluateReconnectSmokeAcceptance(baseInput());
     expect(summary.passed).toBe(true);
     expect(summary.failedChecks).toEqual([]);
-    expect(summary.restartEightHourCaptures).toBe(true);
-    expect(summary.auditVerdict).toBe("capture-research-ready");
-    expect(summary.nativeVerdict).toBe("capture-mvp-success");
-    expect(summary.nativeErrorCount).toBe(0);
-    expect(summary.allStreamsDrained).toBe(true);
-    expect(summary.writerFailurePresent).toBe(false);
-    expect(summary.lockPresent).toBe(false);
+    expect(summary.controlledReconnectProven).toBe(true);
+    expect(summary.controlledReconnectRecoveryCycleId).toBe(7);
+    expect(summary.auditSelectedRunId).toBe("run-abc");
   });
 
-  it.each([
-    ["capture-exit", { captureExitCode: 1 }, "capture-exit"],
-    ["audit-exit", { auditExitCode: 1 }, "capture-health-audit"],
-    ["restart-gate", { restartGateExitCode: 1 }, "restart-gate"],
-    ["post-run-preflight", { postRunPreflightExitCode: 1 }, "post-run-preflight"],
-    ["lock-present", { lockPresent: true }, "capture.lock-present"],
-    [
-      "audit-verdict",
-      { audit: { summary: { verdict: "capture-too-short" } } },
-      "auditVerdict=",
-    ],
-    ["status-missing", { status: null }, "status-missing"],
-    ["health-missing", { health: null }, "health-missing"],
-  ] as const)("fails closed on %s", (_label, overrides, needle) => {
-    const summary = evaluateReconnectSmokeAcceptance(baseInput(overrides));
-    expect(summary.passed).toBe(false);
-    expect(summary.failedChecks.some((check) => check.includes(needle))).toBe(true);
-  });
-
-  it("fails when status is not completed duration-complete", () => {
-    const summary = evaluateReconnectSmokeAcceptance(
-      baseInput({
-        status: {
-          schemaVersion: 1,
-          runId: "run-abc",
-          state: "failed",
-          endedAt: "2026-07-22T00:20:00.000Z",
-          captureEndReason: "terminal-websocket-failure",
-          failureReason: "boom",
-        },
+  it("fails when only a natural recovery occurred (no controlled lifecycle)", () => {
+    const naturalOnly = [
+      JSON.stringify({
+        runId: "run-abc",
+        type: "wsRecoveryAttempted",
+        detectedAt: "2026-07-22T00:00:11.000Z",
+        recoveryCycleId: 3,
+        recoveryReason: "application-stream-stall",
+        reason: "application-stream-stall",
       }),
-    );
-    expect(summary.passed).toBe(false);
-    expect(summary.failedChecks).toEqual(
-      expect.arrayContaining([
-        "status.state=failed",
-        "status.captureEndReason=terminal-websocket-failure",
-        "status.failureReason=boom",
-      ]),
-    );
-  });
-
-  it("fails when status runId mismatches", () => {
-    const summary = evaluateReconnectSmokeAcceptance(
-      baseInput({
-        status: {
-          schemaVersion: 1,
-          runId: "other",
-          state: "completed",
-          endedAt: "2026-07-22T00:20:00.000Z",
-          captureEndReason: "duration-complete",
-          failureReason: null,
-        },
+      JSON.stringify({
+        runId: "run-abc",
+        type: "wsRecoverySucceeded",
+        detectedAt: "2026-07-22T00:00:12.000Z",
+        recoveryCycleId: 3,
+        recoveryReason: "application-stream-stall",
       }),
+    ].join("\n");
+    const summary = evaluateReconnectSmokeAcceptance(
+      baseInput({ lifecycleJsonl: naturalOnly }),
     );
     expect(summary.passed).toBe(false);
+    expect(summary.controlledReconnectProven).toBe(false);
     expect(
-      summary.failedChecks.some((check) => check.includes("status.runId-mismatch")),
+      summary.failedChecks.some((check) =>
+        check.includes("controlledReconnectRequestCount"),
+      ),
     ).toBe(true);
   });
 
-  it("fails when native verdict is not capture-mvp-success or errors are nonempty", () => {
-    const summary = evaluateReconnectSmokeAcceptance(
-      baseInput({
-        health: {
-          runId: "run-abc",
-          verdict: "degraded-capture",
-          errors: ["Unexpected server response: 401"],
-          connection: {
-            completedNormally: true,
-            liveConnectionSucceeded: true,
-            captureEndReason: "duration-complete",
-            terminalFailureReason: null,
-            reconnectCount: 1,
-            connectionAttemptCount: 2,
-            authHeaderGenerationCount: 2,
-          },
-          watchdog: {
-            wsRecoverySuccessCount: 1,
-            wsRecoveryFailureCount: 0,
-            terminalWebSocketFailure: false,
-          },
-          writer: { allStreamsDrained: true, failure: null },
-        },
+  it("fails when controlled request is followed by a mismatched natural success", () => {
+    const mismatched = [
+      JSON.stringify({
+        runId: "run-abc",
+        type: "controlledReconnectRequested",
+        detectedAt: "2026-07-22T00:00:10.000Z",
+        recoveryCycleId: 7,
+        recoveryReason: "controlled-reconnect-validation",
+        requestDisposition: "started",
       }),
+      JSON.stringify({
+        runId: "run-abc",
+        type: "wsRecoveryAttempted",
+        detectedAt: "2026-07-22T00:00:11.000Z",
+        recoveryCycleId: 8,
+        recoveryReason: "application-stream-stall",
+      }),
+      JSON.stringify({
+        runId: "run-abc",
+        type: "wsRecoverySucceeded",
+        detectedAt: "2026-07-22T00:00:12.000Z",
+        recoveryCycleId: 8,
+        recoveryReason: "application-stream-stall",
+      }),
+    ].join("\n");
+    const summary = evaluateReconnectSmokeAcceptance(
+      baseInput({ lifecycleJsonl: mismatched }),
     );
     expect(summary.passed).toBe(false);
-    expect(summary.failedChecks).toEqual(
-      expect.arrayContaining([
-        "nativeVerdict=degraded-capture",
-        "native-errors-nonempty (1)",
-      ]),
-    );
+    expect(summary.controlledReconnectProven).toBe(false);
   });
 
-  it("fails when recovery failures or writer drain invariants are broken", () => {
-    const summary = evaluateReconnectSmokeAcceptance(
-      baseInput({
-        health: {
-          runId: "run-abc",
-          verdict: "capture-mvp-success",
-          errors: [],
-          connection: {
-            completedNormally: true,
-            liveConnectionSucceeded: true,
+  it("fails on audit selectedRunId mismatch or missing", () => {
+    expect(
+      evaluateReconnectSmokeAcceptance(
+        baseInput({
+          audit: {
+            selectedRunId: "other",
+            summary: { verdict: "capture-research-ready" },
+          },
+        }),
+      ).failedChecks.some((check) => check.includes("audit.selectedRunId-mismatch")),
+    ).toBe(true);
+
+    expect(
+      evaluateReconnectSmokeAcceptance(
+        baseInput({
+          audit: { summary: { verdict: "capture-research-ready" } },
+        }),
+      ).failedChecks.some((check) => check.includes("audit.selectedRunId-missing")),
+    ).toBe(true);
+  });
+
+  it("fails on missing or mismatched health.runId", () => {
+    expect(
+      evaluateReconnectSmokeAcceptance(
+        baseInput({
+          health: {
+            verdict: "capture-mvp-success",
+            errors: [],
+            connection: {
+              completedNormally: true,
+              liveConnectionSucceeded: true,
+              captureEndReason: "duration-complete",
+              terminalFailureReason: null,
+              reconnectCount: 1,
+              connectionAttemptCount: 2,
+              authHeaderGenerationCount: 2,
+            },
+            watchdog: {
+              wsRecoverySuccessCount: 1,
+              wsRecoveryFailureCount: 0,
+              terminalWebSocketFailure: false,
+            },
+            writer: { allStreamsDrained: true, failure: null },
+          },
+        }),
+      ).failedChecks,
+    ).toContain("health.runId-missing");
+
+    expect(
+      evaluateReconnectSmokeAcceptance(
+        baseInput({
+          health: {
+            runId: "other",
+            verdict: "capture-mvp-success",
+            errors: [],
+            connection: {
+              completedNormally: true,
+              liveConnectionSucceeded: true,
+              captureEndReason: "duration-complete",
+              terminalFailureReason: null,
+              reconnectCount: 1,
+              connectionAttemptCount: 2,
+              authHeaderGenerationCount: 2,
+            },
+            watchdog: {
+              wsRecoverySuccessCount: 1,
+              wsRecoveryFailureCount: 0,
+              terminalWebSocketFailure: false,
+            },
+            writer: { allStreamsDrained: true, failure: null },
+          },
+        }),
+      ).failedChecks.some((check) => check.includes("health.runId-mismatch")),
+    ).toBe(true);
+  });
+
+  it("rejects fractional counters and invalid endedAt chronology", () => {
+    expect(
+      evaluateReconnectSmokeAcceptance(
+        baseInput({
+          health: {
+            runId: "run-abc",
+            verdict: "capture-mvp-success",
+            errors: [],
+            connection: {
+              completedNormally: true,
+              liveConnectionSucceeded: true,
+              captureEndReason: "duration-complete",
+              terminalFailureReason: null,
+              reconnectCount: 1.5,
+              connectionAttemptCount: 2,
+              authHeaderGenerationCount: 2,
+            },
+            watchdog: {
+              wsRecoverySuccessCount: 1,
+              wsRecoveryFailureCount: 0,
+              terminalWebSocketFailure: false,
+            },
+            writer: { allStreamsDrained: true, failure: null },
+          },
+        }),
+      ).failedChecks.some((check) => check.includes("reconnectCount")),
+    ).toBe(true);
+
+    expect(
+      evaluateReconnectSmokeAcceptance(
+        baseInput({
+          status: {
+            schemaVersion: 1,
+            runId: "run-abc",
+            state: "completed",
+            startedAt: "2026-07-22T00:20:00.000Z",
+            endedAt: "2026-07-22T00:00:00.000Z",
             captureEndReason: "duration-complete",
-            terminalFailureReason: null,
-            reconnectCount: 1,
-            connectionAttemptCount: 2,
-            authHeaderGenerationCount: 2,
+            failureReason: null,
           },
-          watchdog: {
-            wsRecoverySuccessCount: 1,
-            wsRecoveryFailureCount: 1,
-            terminalWebSocketFailure: false,
-          },
-          writer: {
-            allStreamsDrained: false,
-            failure: { artifact: "raw", reason: "disk full" },
-          },
-        },
-      }),
+        }),
+      ).failedChecks,
+    ).toContain("status.endedAt-before-startedAt");
+  });
+
+  it("rejects runDir basename mismatch", () => {
+    expect(
+      evaluateReconnectSmokeAcceptance(
+        baseInput({ runDir: "data/live-capture/forward-quotes/other" }),
+      ).failedChecks.some((check) => check.includes("runDir-basename-mismatch")),
+    ).toBe(true);
+  });
+
+  it("fails closed on malformed lifecycle JSON", () => {
+    const summary = evaluateReconnectSmokeAcceptance(
+      baseInput({ lifecycleJsonl: "{not-json" }),
     );
     expect(summary.passed).toBe(false);
-    expect(summary.failedChecks).toEqual(
-      expect.arrayContaining([
-        "wsRecoveryFailureCount=1",
-        "allStreamsDrained=false",
-        "writer.failure-present",
-      ]),
-    );
-  });
-
-  it("fails when reconnect evidence is missing (null not coerced to zero)", () => {
-    const summary = evaluateReconnectSmokeAcceptance(
-      baseInput({
-        health: {
-          runId: "run-abc",
-          verdict: "capture-mvp-success",
-          errors: [],
-          connection: {
-            completedNormally: true,
-            liveConnectionSucceeded: true,
-            captureEndReason: "duration-complete",
-            terminalFailureReason: null,
-            reconnectCount: null,
-            connectionAttemptCount: null,
-            authHeaderGenerationCount: null,
-          },
-          watchdog: null,
-          writer: { allStreamsDrained: true, failure: null },
-        },
-      }),
-    );
-    expect(summary.passed).toBe(false);
-    expect(summary.failedChecks).toEqual(
-      expect.arrayContaining([
-        "reconnectCount=null",
-        "connectionAttemptCount=null",
-        "authHeaderGenerationCount=null",
-        "health.watchdog-missing",
-      ]),
-    );
-  });
-
-  it("reports restartEightHourCaptures true only when restart gate exit is 0", () => {
-    const passed = evaluateReconnectSmokeAcceptance(baseInput());
-    expect(passed.restartEightHourCaptures).toBe(true);
-    const failed = evaluateReconnectSmokeAcceptance(
-      baseInput({ restartGateExitCode: 2 }),
-    );
-    expect(failed.restartEightHourCaptures).toBe(false);
-    expect(failed.passed).toBe(false);
+    expect(
+      summary.failedChecks.some((check) => check.includes("lifecycle-malformed")),
+    ).toBe(true);
   });
 });

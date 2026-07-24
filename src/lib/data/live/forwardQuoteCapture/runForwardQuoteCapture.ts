@@ -24,7 +24,10 @@ import {
 } from "./jsonlForwardCaptureWriter";
 import { resolveKalshiCaptureCredentials } from "@/lib/data/live/kalshiWsCaptureSpike";
 import { runDryRunForwardQuoteCapture } from "./runDryRunForwardQuoteCapture";
-import { runLiveForwardQuoteCapture } from "./runLiveForwardQuoteCapture";
+import {
+  runLiveForwardQuoteCapture,
+  type ControlledReconnectValidationDiagnostics,
+} from "./runLiveForwardQuoteCapture";
 import { serializeForwardQuoteCaptureHtml } from "./serializeForwardQuoteCaptureHtml";
 import {
   DEFAULT_FORWARD_QUOTE_CAPTURE_HTML_PATH,
@@ -39,6 +42,7 @@ export type ForwardQuoteCaptureRunResult = {
   runId: string;
   healthReport: ForwardCaptureHealthReport;
   htmlOutputPath: string;
+  controlledReconnectValidation?: ControlledReconnectValidationDiagnostics | null;
 };
 
 function createRunId(now: Date): string {
@@ -363,7 +367,17 @@ async function runLockedForwardQuoteCapture(input: {
           : null,
     });
 
-    return { runId, healthReport, htmlOutputPath };
+    return {
+      runId,
+      healthReport,
+      htmlOutputPath,
+      controlledReconnectValidation:
+        "controlledReconnectValidation" in captureResult
+          ? (captureResult.controlledReconnectValidation as
+            | ControlledReconnectValidationDiagnostics
+            | null)
+          : null,
+    };
   } catch (error) {
     // Best-effort failure path: drain what we can and leave a truthful
     // terminal "failed" marker so tools never mistake this directory for an

@@ -75,7 +75,32 @@ export type KalshiWsRecoveryResult =
 export type KalshiWsRecoveryExecutor = (input: {
   attemptNumber: number;
   reason: string;
+  recoveryCycleId: number;
   socketGeneration: number;
   activeMarketTickers: readonly string[];
   backoffMs: number;
 }) => Promise<KalshiWsRecoveryResult>;
+
+/** Reason string used by M12.1G controlled reconnect validation. */
+export const CONTROLLED_RECONNECT_VALIDATION_REASON =
+  "controlled-reconnect-validation" as const;
+
+/**
+ * Outcome of requestEscalatedRecovery — never a silent void no-op.
+ * Callers must know whether the recovery was accepted, deferred, or rejected.
+ */
+export type KalshiWsEscalatedRecoveryRequestResult =
+  | {
+    status: "started";
+    recoveryCycleId: number;
+    recoveryReason: string;
+  }
+  | {
+    status: "busy";
+    activeRecoveryCycleId: number | null;
+    activeRecoveryReason: string | null;
+  }
+  | {
+    status: "rejected";
+    reason: "disabled" | "stopping" | "terminal-failure";
+  };

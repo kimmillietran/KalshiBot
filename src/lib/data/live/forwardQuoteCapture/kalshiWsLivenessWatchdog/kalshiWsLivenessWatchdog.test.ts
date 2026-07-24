@@ -224,4 +224,84 @@ describe("KalshiWsLivenessWatchdog", () => {
     await runTick();
     expect(watchdog.toDiagnostics().kalshiSilentWhileBtcActiveSeconds).toBeGreaterThan(0);
   });
+
+  it("returns started with a recoveryCycleId and tags lifecycle events", async () => {
+    const { watchdog, executeRecovery } = createWatchdog();
+    const result = watchdog.requestEscalatedRecovery("controlled-reconnect-validation");
+    expect(result).toEqual({
+      status: "started",
+      recoveryCycleId: 1,
+      recoveryReason: "controlled-reconnect-validation",
+    });
+    const pending = watchdog.waitForRecovery();
+    await vi.runOnlyPendingTimersAsync();
+    await pending;
+    expect(executeRecovery).toHaveBeenCalledWith(
+      expect.objectContaining({
+        recoveryCycleId: 1,
+        reason: "controlled-reconnect-validation",
+      }),
+    );
+    const events = watchdog.toDiagnostics().lifecycleEvents;
+    expect(events.some((event) =>
+      event.type === "wsRecoveryAttempted"
+      && event.recoveryCycleId === 1
+      && event.recoveryReason === "controlled-reconnect-validation"
+    )).toBe(true);
+    expect(events.some((event) =>
+      event.type === "wsRecoverySucceeded"
+      && event.recoveryCycleId === 1
+      && event.recoveryReason === "controlled-reconnect-validation"
+    )).toBe(true);
+  });
+
+  it("returns busy while recovering instead of silently ignoring escalation", async () => {
+    let releaseFirstRecovery: (() => void) | null = null;
+    const executeRecovery = vi.fn(async (input: {
+      reason: string;
+      recoveryCycleId: number;
+    }) => {
+      if (input.reason === "application-stream-stall") {
+        await new Promise<void>((resolve) => {
+          releaseFirstRecovery = resolve;
+        });
+      }
+      return {
+        status: "succeeded" as const,
+        firstRawMessageAt: new Date().toISOString(),
+        subscriptionsRestored: 1,
+      };
+    });
+    const { watchdog } = createWatchdog({ executeRecovery });
+    const first = watchdog.requestEscalatedRecovery("application-stream-stall");
+    expect(first.status).toBe("started");
+    await vi.advanceTimersByTimeAsync(300);
+    expect(executeRecovery).toHaveBeenCalledTimes(1);
+    const busy = watchdog.requestEscalatedRecovery("controlled-reconnect-validation");
+    expect(busy.status).toBe("busy");
+    if (busy.status === "busy") {
+      expect(busy.activeRecoveryCycleId).toBe(1);
+      expect(busy.activeRecoveryReason).toBe("application-stream-stall");
+    }
+    expect(releaseFirstRecovery).not.toBeNull();
+    releaseFirstRecovery!();
+    await watchdog.waitForRecovery();
+    const second = watchdog.requestEscalatedRecovery("controlled-reconnect-validation");
+    expect(second).toEqual({
+      status: "started",
+      recoveryCycleId: 2,
+      recoveryReason: "controlled-reconnect-validation",
+    });
+    const secondWait = watchdog.waitForRecovery();
+    await vi.advanceTimersByTimeAsync(300);
+    await secondWait;
+    expect(executeRecovery).toHaveBeenCalledTimes(2);
+    expect(executeRecovery).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        recoveryCycleId: 2,
+        reason: "controlled-reconnect-validation",
+      }),
+    );
+  });
 });
