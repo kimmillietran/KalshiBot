@@ -5,6 +5,7 @@ export {
   resolveWatchdogConfigFromCaptureConfig,
 } from "./kalshiWsWatchdogConfig";
 export type {
+  KalshiWsEscalatedRecoveryRequestResult,
   KalshiWsLifecycleEvent,
   KalshiWsLifecycleEventType,
   KalshiWsLivenessSignals,
@@ -14,3 +15,4 @@ export type {
   KalshiWsWatchdogDiagnostics,
   KalshiWsWatchdogState,
 } from "./kalshiWsWatchdogTypes";
+export { CONTROLLED_RECONNECT_VALIDATION_REASON } from "./kalshiWsWatchdogTypes";

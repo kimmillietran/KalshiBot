@@ -4,6 +4,7 @@ import type { KalshiWsProbeTransport } from "@/features/market-data/orderbook/ty
 
 import {
   createKalshiWebSocketAuthHeaders,
+  KalshiWsHandshakeError,
   NodeKalshiAuthenticatedWsClient,
   type KalshiCaptureCredentials,
 } from "@/lib/data/live/kalshiWsCaptureSpike";
@@ -22,6 +23,7 @@ import {
 import {
   KalshiWsLivenessWatchdog,
   resolveWatchdogConfigFromCaptureConfig,
+  CONTROLLED_RECONNECT_VALIDATION_REASON,
   type KalshiWsWatchdogDiagnostics,
 } from "./kalshiWsLivenessWatchdog";
 import type {
@@ -47,6 +49,10 @@ export type LiveForwardCaptureResult = {
   connected: boolean;
   wsUrl: string;
   authHeadersGenerated: boolean;
+  /** Successful + failed connect attempts (initial and reconnect). */
+  connectionAttemptCount: number;
+  /** Fresh signed-header generations (must equal connection attempts when signing succeeds). */
+  authHeaderGenerationCount: number;
   errors: string[];
   recordCounts: {
     raw: number;
@@ -57,6 +63,7 @@ export type LiveForwardCaptureResult = {
   };
   watchdog: KalshiWsWatchdogDiagnostics | null;
   captureEndReason: CaptureEndReason;
+  controlledReconnectValidation: ControlledReconnectValidationDiagnostics | null;
 };
 
 function sleep(ms: number): Promise<void> {
@@ -75,6 +82,81 @@ function isProbeTransport(
   return typeof transport.ping === "function";
 }
 
+/**
+ * Sanitized handshake / reconnect failure text — never headers, signatures,
+ * key material, response bodies, paths, or arbitrary Error.message text.
+ */
+export type ReconnectFailureStage =
+  | "handshake"
+  | "auth-generation"
+  | "connection"
+  | "unexpected";
+
+export function sanitizeReconnectFailureMessage(
+  error: unknown,
+  stage: ReconnectFailureStage = "connection",
+): string {
+  if (error instanceof KalshiWsHandshakeError) {
+    const status = error.statusCode ?? "unknown";
+    const statusMessage = error.statusMessage?.trim() || "Unauthorized";
+    return `WebSocket recovery connection failed: HTTP ${status} ${statusMessage}`;
+  }
+  if (stage === "auth-generation") {
+    return "WebSocket recovery authentication generation failed";
+  }
+  if (stage === "unexpected") {
+    return "WebSocket recovery failed unexpectedly";
+  }
+  return "WebSocket recovery connection failed";
+}
+
+/**
+ * Centralized transport onError → health representation.
+ * Handshake rejections reuse the reconnect sanitizer (one canonical form).
+ * Generic post-open failures stay visible via a safe generic string — never
+ * raw message text that may echo secrets or duplicate handshake noise.
+ */
+export function sanitizeTransportHealthError(error: unknown): string {
+  if (error instanceof KalshiWsHandshakeError) {
+    return sanitizeReconnectFailureMessage(error, "handshake");
+  }
+  return "WebSocket transport error";
+}
+
+/** M12.1G controlled reconnect validation diagnostics (validation captures only). */
+export type ControlledReconnectValidationDiagnostics = {
+  enabled: boolean;
+  requestCount: number;
+  acceptedRequestCount: number;
+  recoveryCycleId: number | null;
+  recoveryReason: string | null;
+  attemptCount: number;
+  succeeded: boolean;
+  failed: boolean;
+  failureReason: string | null;
+};
+
+type ControlledReconnectPhase =
+  | { phase: "not-requested" }
+  | { phase: "deferred" }
+  | {
+    phase: "accepted";
+    recoveryCycleId: number;
+    disposition: "started";
+  }
+  | {
+    phase: "succeeded";
+    recoveryCycleId: number;
+  }
+  | {
+    phase: "failed";
+    failureReason: string;
+  }
+  | {
+    phase: "cancelled";
+    failureReason: string;
+  };
+
 export async function runLiveForwardQuoteCapture(input: {
   runId: string;
   startedAt: string;
@@ -88,6 +170,12 @@ export async function runLiveForwardQuoteCapture(input: {
   fetchBtcSpot?: () => Promise<{ price: number; updatedAt: string }>;
   shouldStop?: () => boolean;
   onLog?: (message: string) => void;
+  /**
+   * Validation-only: after the first economically valid top-of-book record,
+   * request exactly one controlled socket recovery. Not exposed on the
+   * ordinary capture CLI.
+   */
+  forceReconnectAfterFirstValidTopOfBook?: boolean;
 }): Promise<LiveForwardCaptureResult> {
   const paths = input.writer?.paths ?? createRunOutputPaths(input.config.outputDir, input.runId);
   const writer = input.writer ?? createJsonlForwardCaptureWriter(input.io, paths);
@@ -121,6 +209,12 @@ export async function runLiveForwardQuoteCapture(input: {
   let activeBtcPoll: Promise<void> | null = null;
   let activeRolloverCheck: Promise<void> | null = null;
   let activeWatchdogTick: Promise<void> | null = null;
+  const controlledReconnectState: { current: ControlledReconnectPhase } = {
+    current: { phase: "not-requested" },
+  };
+  let controlledReconnectScheduler: Promise<void> | null = null;
+  let controlledReconnectAttemptCount = 0;
+  const controlledReconnectEnabled = Boolean(input.forceReconnectAfterFirstValidTopOfBook);
 
   const eventTickers = { ...input.discovery.eventTickers };
   const marketStatuses = { ...input.discovery.marketStatuses };
@@ -148,6 +242,7 @@ export async function runLiveForwardQuoteCapture(input: {
     getLatestBtcSpot: () => latestBtcSpot,
     onTopOfBookEmitted: () => {
       watchdog?.recordTopOfBookEmission();
+      maybeRequestControlledReconnect();
     },
     onControlMessage: (payload) => subscriptionManager.handleControlMessage(payload),
     correlateSnapshotResponse: (input) =>
@@ -188,22 +283,264 @@ export async function runLiveForwardQuoteCapture(input: {
 
   let watchdog: KalshiWsLivenessWatchdog | null = null;
 
-  let authHeadersGenerated = false;
-  let connectHeaders: Record<string, string> | undefined;
+  function acceptControlledReconnect(recoveryCycleId: number): void {
+    controlledReconnectState.current = {
+      phase: "accepted",
+      recoveryCycleId,
+      disposition: "started",
+    };
+    writer.appendLifecycleEvent({
+      runId: input.runId,
+      type: "controlledReconnectRequested",
+      detectedAt: input.io.now().toISOString(),
+      recoveryCycleId,
+      recoveryReason: CONTROLLED_RECONNECT_VALIDATION_REASON,
+      socketGeneration: watchdog?.currentSocketGeneration ?? handlerSocketGeneration,
+      requestDisposition: "started",
+    });
+  }
 
-  if (
+  function failControlledReconnect(failureReason: string): void {
+    if (
+      controlledReconnectState.current.phase === "succeeded"
+      || controlledReconnectState.current.phase === "failed"
+      || controlledReconnectState.current.phase === "cancelled"
+    ) {
+      return;
+    }
+    controlledReconnectState.current = { phase: "failed", failureReason };
+  }
+
+  function cancelControlledReconnect(failureReason: string): void {
+    if (
+      controlledReconnectState.current.phase === "succeeded"
+      || controlledReconnectState.current.phase === "failed"
+      || controlledReconnectState.current.phase === "cancelled"
+    ) {
+      return;
+    }
+    controlledReconnectState.current = { phase: "cancelled", failureReason };
+  }
+
+  /**
+   * Attempt to start the controlled validation recovery once.
+   * On busy, mark deferred (exactly once) and ensure the single-flight
+   * scheduler owns all subsequent retries — never recursively reschedule
+   * from inside an already-running scheduler.
+   */
+  function tryStartControlledReconnect(): void {
+    if (!controlledReconnectEnabled || !watchdog) {
+      return;
+    }
+    if (
+      controlledReconnectState.current.phase !== "not-requested"
+      && controlledReconnectState.current.phase !== "deferred"
+    ) {
+      return;
+    }
+    if (connection.wsConnectCount <= 0 || shuttingDown || input.shouldStop?.()) {
+      return;
+    }
+    if (watchdog.isTerminal) {
+      cancelControlledReconnect("controlled-reconnect-terminal");
+      return;
+    }
+
+    const result = watchdog.requestEscalatedRecovery(
+      CONTROLLED_RECONNECT_VALIDATION_REASON,
+    );
+    if (result.status === "started") {
+      acceptControlledReconnect(result.recoveryCycleId);
+      return;
+    }
+    if (result.status === "busy") {
+      if (controlledReconnectState.current.phase === "not-requested") {
+        controlledReconnectState.current = { phase: "deferred" };
+        writer.appendLifecycleEvent({
+          runId: input.runId,
+          type: "controlledReconnectDeferred",
+          detectedAt: input.io.now().toISOString(),
+          socketGeneration: watchdog.currentSocketGeneration,
+          recoveryReason: CONTROLLED_RECONNECT_VALIDATION_REASON,
+          activeRecoveryCycleId: result.activeRecoveryCycleId,
+          activeRecoveryReason: result.activeRecoveryReason,
+        });
+      }
+      ensureControlledReconnectScheduler();
+      return;
+    }
+    failControlledReconnect("controlled-reconnect-request-rejected");
+  }
+
+  /**
+   * Persistent single-flight deferral loop.
+   *
+   * Nested busy must not strand phase=deferred: the previous pattern called
+   * scheduleControlledReconnectRetry() from tryStart while the scheduler was
+   * still non-null, which no-op'd, then the original scheduler cleared itself
+   * and left deferred with no wake path. This loop owns every busy retry until
+   * started, rejected, cancelled, or terminal.
+   */
+  function ensureControlledReconnectScheduler(): void {
+    if (!watchdog || controlledReconnectScheduler !== null) {
+      return;
+    }
+    const activeWatchdog = watchdog;
+    controlledReconnectScheduler = (async () => {
+      try {
+        while (
+          controlledReconnectState.current.phase === "deferred"
+          && !shuttingDown
+          && !input.shouldStop?.()
+          && !activeWatchdog.isTerminal
+        ) {
+          await activeWatchdog.waitForRecovery();
+
+          if (shuttingDown || input.shouldStop?.()) {
+            cancelControlledReconnect("controlled-reconnect-cancelled");
+            return;
+          }
+          if (activeWatchdog.isTerminal) {
+            cancelControlledReconnect("controlled-reconnect-terminal");
+            return;
+          }
+          if (controlledReconnectState.current.phase !== "deferred") {
+            return;
+          }
+
+          const result = activeWatchdog.requestEscalatedRecovery(
+            CONTROLLED_RECONNECT_VALIDATION_REASON,
+          );
+          if (result.status === "started") {
+            acceptControlledReconnect(result.recoveryCycleId);
+            return;
+          }
+          if (result.status === "busy") {
+            // Remain deferred and wait again. Yield one microtask so a recovery
+            // that starts in the same turn can attach its promise before the
+            // next waitForRecovery — never recursively call ensure*.
+            await Promise.resolve();
+            continue;
+          }
+          failControlledReconnect("controlled-reconnect-request-rejected");
+          return;
+        }
+
+        if (controlledReconnectState.current.phase !== "deferred") {
+          return;
+        }
+        if (shuttingDown || input.shouldStop?.()) {
+          cancelControlledReconnect("controlled-reconnect-cancelled");
+          return;
+        }
+        if (activeWatchdog.isTerminal) {
+          cancelControlledReconnect("controlled-reconnect-terminal");
+        }
+      } catch {
+        failControlledReconnect("controlled-reconnect-scheduler-failed");
+      }
+    })().finally(() => {
+      controlledReconnectScheduler = null;
+    });
+  }
+
+  function maybeRequestControlledReconnect(): void {
+    if (!controlledReconnectEnabled) {
+      return;
+    }
+    if (controlledReconnectState.current.phase !== "not-requested") {
+      return;
+    }
+    if (connection.wsConnectCount <= 0 || shuttingDown || input.shouldStop?.()) {
+      return;
+    }
+    tryStartControlledReconnect();
+  }
+
+  let authHeadersGenerated = false;
+  let connectionAttemptCount = 0;
+  let authHeaderGenerationCount = 0;
+  const credentialsReady =
     input.credentials.status === "available"
-    && input.credentials.apiKeyId
-    && input.credentials.privateKeyMaterial.privateKeyPem
-  ) {
-    connectHeaders = createKalshiWebSocketAuthHeaders({
+    && Boolean(input.credentials.apiKeyId)
+    && Boolean(input.credentials.privateKeyMaterial.privateKeyPem);
+
+  if (!credentialsReady) {
+    errors.push("Authenticated WebSocket headers could not be generated from credentials.");
+  }
+
+  /**
+   * Produce freshly signed WebSocket auth headers for this connection attempt.
+   * Never cache timestamped headers across reconnects — each handshake is a
+   * new authenticated request.
+   */
+  function createConnectHeaders(): Record<string, string> {
+    if (
+      !credentialsReady
+      || !input.credentials.apiKeyId
+      || !input.credentials.privateKeyMaterial.privateKeyPem
+    ) {
+      throw new Error("Missing authenticated WebSocket credentials.");
+    }
+
+    const headers = createKalshiWebSocketAuthHeaders({
       apiKeyId: input.credentials.apiKeyId,
       privateKeyPem: input.credentials.privateKeyMaterial.privateKeyPem,
       timestampMs: String(input.io.now().getTime()),
     });
     authHeadersGenerated = true;
-  } else {
-    errors.push("Authenticated WebSocket headers could not be generated from credentials.");
+    authHeaderGenerationCount += 1;
+    return headers;
+  }
+
+  if (input.forceReconnectAfterFirstValidTopOfBook && !watchdogConfig.enabled) {
+    // Defense in depth: controlled reconnect validation cannot silently
+    // continue as a normal capture when the watchdog is unavailable.
+    const failureMessage =
+      "Controlled reconnect validation requires an enabled WebSocket watchdog.";
+    errors.push(failureMessage);
+    processor.finalize();
+    Object.assign(connection, {
+      everConnected: false,
+      completedNormally: false,
+      liveConnectionSucceeded: false,
+      completedWithWarnings: false,
+      terminalFailureReason: failureMessage,
+      captureEndReason: "unexpected-error" as const,
+      connectionAttemptCount: 0,
+      authHeaderGenerationCount: 0,
+    });
+    return {
+      runId: input.runId,
+      startedAt: input.startedAt,
+      endedAt: input.io.now().toISOString(),
+      paths,
+      discovery: input.discovery,
+      processor,
+      connection,
+      rollover,
+      btcSpotStatus: input.config.captureBtcSpot ? "enabled" : "disabled",
+      connected: false,
+      wsUrl,
+      authHeadersGenerated: false,
+      connectionAttemptCount: 0,
+      authHeaderGenerationCount: 0,
+      errors,
+      recordCounts: writer.counts,
+      watchdog: null,
+      captureEndReason: "unexpected-error",
+      controlledReconnectValidation: {
+        enabled: true,
+        requestCount: 0,
+        acceptedRequestCount: 0,
+        recoveryCycleId: null,
+        recoveryReason: null,
+        attemptCount: 0,
+        succeeded: false,
+        failed: true,
+        failureReason: "watchdog-disabled",
+      },
+    };
   }
 
   watchdog = watchdogConfig.enabled
@@ -218,22 +555,60 @@ export async function runLiveForwardQuoteCapture(input: {
         if (event.type === "wsRecoverySucceeded") {
           processor.recordBooksResynchronized();
         }
+        if (
+          event.type === "wsRecoveryAttempted"
+          && event.recoveryReason === CONTROLLED_RECONNECT_VALIDATION_REASON
+          && controlledReconnectState.current.phase === "accepted"
+          && event.recoveryCycleId === controlledReconnectState.current.recoveryCycleId
+        ) {
+          controlledReconnectAttemptCount += 1;
+        }
+        if (
+          event.type === "wsRecoverySucceeded"
+          && event.recoveryReason === CONTROLLED_RECONNECT_VALIDATION_REASON
+          && controlledReconnectState.current.phase === "accepted"
+          && event.recoveryCycleId === controlledReconnectState.current.recoveryCycleId
+        ) {
+          controlledReconnectState.current = {
+            phase: "succeeded",
+            recoveryCycleId: controlledReconnectState.current.recoveryCycleId,
+          };
+        }
+        if (
+          event.type === "wsRecoveryFailed"
+          && event.recoveryReason === CONTROLLED_RECONNECT_VALIDATION_REASON
+          && (controlledReconnectState.current.phase === "accepted"
+            || controlledReconnectState.current.phase === "deferred")
+          && (event.recoveryCycleId === undefined
+            || (controlledReconnectState.current.phase === "accepted"
+              && event.recoveryCycleId === controlledReconnectState.current.recoveryCycleId))
+        ) {
+          failControlledReconnect("controlled-recovery-failed");
+        }
       },
       sendProbe: isProbeTransport(transport)
         ? () => {
           try {
             transport.ping?.();
-          } catch (error) {
-            errors.push(error instanceof Error ? error.message : "Watchdog probe failed");
+          } catch {
+            errors.push("Watchdog probe failed");
           }
         }
         : undefined,
-      executeRecovery: async ({ socketGeneration, activeMarketTickers }) => {
+      executeRecovery: async ({
+        socketGeneration,
+        activeMarketTickers,
+        attemptNumber,
+        recoveryCycleId,
+        reason,
+      }) => {
         writer.appendLifecycleEvent({
           runId: input.runId,
           type: "wsBooksMarkedUnsynchronized",
           detectedAt: input.io.now().toISOString(),
           socketGeneration,
+          recoveryCycleId,
+          recoveryReason: reason,
           marketTickers: activeMarketTickers,
         });
         processor.invalidateAllBooksForRecovery();
@@ -252,7 +627,24 @@ export async function runLiveForwardQuoteCapture(input: {
 
         const confirmationDeadline =
           input.io.monotonicNowMs() + watchdogConfig.wsPostSubscribeConfirmationMs;
-        await connectTransport(socketGeneration);
+
+        try {
+          await connectTransport(socketGeneration, "reconnect", attemptNumber);
+        } catch (error) {
+          const stage =
+            error instanceof Error
+            && /auth|header|credential|Missing authenticated/i.test(error.message)
+              ? "auth-generation" as const
+              : "connection" as const;
+          const message = sanitizeReconnectFailureMessage(error, stage);
+          if (!errors.includes(message)) {
+            errors.push(message);
+          }
+          return {
+            status: "failed" as const,
+            reason: message,
+          };
+        }
 
         while (input.io.monotonicNowMs() < confirmationDeadline) {
           if (processor.diagnostics.snapshotsReceived > snapshotsBeforeRecovery) {
@@ -382,10 +774,22 @@ export async function runLiveForwardQuoteCapture(input: {
     }
   }
 
-  async function connectTransport(socketGeneration: number): Promise<void> {
-    if (!authHeadersGenerated || !connectHeaders) {
-      throw new Error("Missing authenticated WebSocket headers.");
-    }
+  async function connectTransport(
+    socketGeneration: number,
+    connectionPurpose: "initial" | "reconnect",
+    attemptNumber = 1,
+  ): Promise<void> {
+    connectionAttemptCount += 1;
+    const headers = createConnectHeaders();
+    writer.appendLifecycleEvent({
+      runId: input.runId,
+      type: "wsAuthHeadersGenerated",
+      detectedAt: input.io.now().toISOString(),
+      socketGeneration,
+      connectionAttempt: connectionAttemptCount,
+      connectionPurpose,
+      attemptNumber,
+    });
 
     handlerSocketGeneration = socketGeneration;
     // Server subscription ids do not survive a socket; drop all sid mappings
@@ -393,7 +797,7 @@ export async function runLiveForwardQuoteCapture(input: {
     // pending commands are surfaced visibly (they can never be acknowledged).
     const invalidatedCommands = subscriptionManager.resetForReconnect();
     processor.recordPendingCommandsInvalidated(invalidatedCommands);
-    await transport.connect(wsUrl, { headers: connectHeaders });
+    await transport.connect(wsUrl, { headers });
     connection.wsConnectCount += 1;
     connection.connected = true;
     watchdog?.recordWebSocketOpen();
@@ -450,7 +854,10 @@ export async function runLiveForwardQuoteCapture(input: {
   });
 
   transport.onError((error) => {
-    errors.push(error.message);
+    const message = sanitizeTransportHealthError(error);
+    if (!errors.includes(message)) {
+      errors.push(message);
+    }
   });
 
   for (const ticker of input.discovery.selectedMarketTickers) {
@@ -459,7 +866,7 @@ export async function runLiveForwardQuoteCapture(input: {
 
   try {
     const initialGeneration = watchdog?.incrementSocketGeneration() ?? 1;
-    await connectTransport(initialGeneration);
+    await connectTransport(initialGeneration, "initial", 1);
     watchdog?.markCaptureStarted();
   } catch (error) {
     // Initial handshake rejection (e.g. HTTP 401): return a structured
@@ -490,6 +897,8 @@ export async function runLiveForwardQuoteCapture(input: {
       completedWithWarnings: false,
       terminalFailureReason: null,
       captureEndReason: "authentication-failure" as const,
+      connectionAttemptCount,
+      authHeaderGenerationCount,
     });
     return {
       runId: input.runId,
@@ -506,10 +915,13 @@ export async function runLiveForwardQuoteCapture(input: {
       connected: false,
       wsUrl,
       authHeadersGenerated,
+      connectionAttemptCount,
+      authHeaderGenerationCount,
       errors,
       recordCounts: writer.counts,
       watchdog: watchdog?.toDiagnostics() ?? null,
       captureEndReason: "authentication-failure",
+      controlledReconnectValidation: null,
     };
   }
 
@@ -614,10 +1026,8 @@ export async function runLiveForwardQuoteCapture(input: {
       }
       activeWatchdogTick = watchdog
         .tick()
-        .catch((error) => {
-          errors.push(
-            error instanceof Error ? error.message : "Watchdog tick failed",
-          );
+        .catch(() => {
+          errors.push("Watchdog tick failed");
         })
         .finally(() => {
           activeWatchdogTick = null;
@@ -646,10 +1056,24 @@ export async function runLiveForwardQuoteCapture(input: {
       activeBtcPoll ?? Promise.resolve(),
       activeRolloverCheck ?? Promise.resolve(),
       activeWatchdogTick ?? Promise.resolve(),
+      controlledReconnectScheduler ?? Promise.resolve(),
     ]);
 
     await watchdog?.waitForRecovery();
+    if (controlledReconnectScheduler) {
+      await controlledReconnectScheduler;
+    }
+    await watchdog?.waitForRecovery();
     watchdog?.disable();
+
+    if (
+      controlledReconnectEnabled
+      && controlledReconnectState.current.phase !== "succeeded"
+      && controlledReconnectState.current.phase !== "failed"
+      && controlledReconnectState.current.phase !== "cancelled"
+    ) {
+      cancelControlledReconnect("controlled-reconnect-cancelled");
+    }
 
     acceptingMessages = false;
     plannedShutdown = true;
@@ -713,12 +1137,37 @@ export async function runLiveForwardQuoteCapture(input: {
   const completedWithWarnings =
     (watchdogDiagnostics?.wsRecoverySuccessCount ?? 0) > 0
     || (watchdogDiagnostics?.wsStallDetectedCount ?? 0) > 0;
+
+  if (
+    controlledReconnectEnabled
+    && captureEndReason === "duration-complete"
+    && controlledReconnectState.current.phase !== "succeeded"
+  ) {
+    const failureReason =
+      controlledReconnectState.current.phase === "failed"
+      || controlledReconnectState.current.phase === "cancelled"
+        ? controlledReconnectState.current.failureReason
+        : "controlled-reconnect-not-completed";
+    if (!errors.includes(`Controlled reconnect validation failed: ${failureReason}`)) {
+      errors.push(`Controlled reconnect validation failed: ${failureReason}`);
+    }
+    captureEndReason = "unexpected-error";
+    if (controlledReconnectState.current.phase !== "failed"
+      && controlledReconnectState.current.phase !== "cancelled") {
+      failControlledReconnect(failureReason);
+    }
+  }
+
   const terminalFailureReason =
     captureEndReason === "terminal-websocket-failure"
       ? "kalshi-websocket-recovery-exhausted"
       : captureEndReason === "writer-failure"
         ? "capture-writer-failure"
-        : null;
+        : captureEndReason === "unexpected-error"
+          && controlledReconnectEnabled
+          && controlledReconnectState.current.phase !== "succeeded"
+          ? "controlled-reconnect-validation-failed"
+          : null;
 
   Object.assign(connection, {
     everConnected: connection.wsConnectCount > 0,
@@ -734,7 +1183,45 @@ export async function runLiveForwardQuoteCapture(input: {
     completedWithWarnings,
     terminalFailureReason,
     captureEndReason,
+    connectionAttemptCount,
+    authHeaderGenerationCount,
   });
+
+  const controlledReconnectValidation: ControlledReconnectValidationDiagnostics | null =
+    controlledReconnectEnabled
+      ? {
+        enabled: true,
+        requestCount:
+          controlledReconnectState.current.phase === "not-requested" ? 0 : 1,
+        acceptedRequestCount:
+          controlledReconnectState.current.phase === "accepted"
+          || controlledReconnectState.current.phase === "succeeded"
+            ? 1
+            : 0,
+        recoveryCycleId:
+          controlledReconnectState.current.phase === "accepted"
+          || controlledReconnectState.current.phase === "succeeded"
+            ? controlledReconnectState.current.recoveryCycleId
+            : null,
+        recoveryReason:
+          controlledReconnectState.current.phase === "accepted"
+          || controlledReconnectState.current.phase === "succeeded"
+            ? CONTROLLED_RECONNECT_VALIDATION_REASON
+            : null,
+        attemptCount: controlledReconnectAttemptCount,
+        succeeded: controlledReconnectState.current.phase === "succeeded",
+        failed:
+          controlledReconnectState.current.phase === "failed"
+          || controlledReconnectState.current.phase === "cancelled",
+        failureReason:
+          controlledReconnectState.current.phase === "failed"
+          || controlledReconnectState.current.phase === "cancelled"
+            ? controlledReconnectState.current.failureReason
+            : controlledReconnectState.current.phase === "succeeded"
+              ? null
+              : "controlled-reconnect-not-completed",
+      }
+      : null;
 
   return {
     runId: input.runId,
@@ -749,9 +1236,12 @@ export async function runLiveForwardQuoteCapture(input: {
     connected: connection.wsConnectCount > 0,
     wsUrl,
     authHeadersGenerated,
+    connectionAttemptCount,
+    authHeaderGenerationCount,
     errors,
     recordCounts: writer.counts,
     watchdog: watchdogDiagnostics,
     captureEndReason,
+    controlledReconnectValidation,
   };
 }

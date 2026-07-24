@@ -7,6 +7,8 @@ export function createEmptyConnectionDiagnostics(
     wsConnectCount: 0,
     wsDisconnectCount: 0,
     reconnectCount: 0,
+    connectionAttemptCount: 0,
+    authHeaderGenerationCount: 0,
     connected: false,
     everConnected: false,
     completedNormally: false,
