@@ -215,6 +215,12 @@ export async function runLiveForwardQuoteCapture(input: {
   let controlledReconnectScheduler: Promise<void> | null = null;
   let controlledReconnectAttemptCount = 0;
   const controlledReconnectEnabled = Boolean(input.forceReconnectAfterFirstValidTopOfBook);
+  /**
+   * Tickers closed locally while a reconnect subscribe acknowledgement (SID)
+   * was still pending. Bound to socket generation so a later reconnect cannot
+   * send against a stale intent.
+   */
+  const deferredUnsubscribes = new Map<string, { socketGeneration: number }>();
 
   const eventTickers = { ...input.discovery.eventTickers };
   const marketStatuses = { ...input.discovery.marketStatuses };
@@ -244,7 +250,15 @@ export async function runLiveForwardQuoteCapture(input: {
       watchdog?.recordTopOfBookEmission();
       maybeRequestControlledReconnect();
     },
-    onControlMessage: (payload) => subscriptionManager.handleControlMessage(payload),
+    onControlMessage: (payload) => {
+      const control = subscriptionManager.handleControlMessage(payload);
+      if (control?.kind === "subscriptionAcknowledged") {
+        for (const ticker of control.marketTickers) {
+          flushDeferredUnsubscribe(ticker);
+        }
+      }
+      return control;
+    },
     correlateSnapshotResponse: (input) =>
       subscriptionManager.correlateSnapshotResponse(input),
     requestSnapshotRecovery: (marketTicker) => {
@@ -686,9 +700,16 @@ export async function runLiveForwardQuoteCapture(input: {
       | "subscriptionRequested"
       | "subscriptionFailed"
       | "marketUnsubscribeRequested"
-      | "marketUnsubscribeFailed",
+      | "marketUnsubscribeFailed"
+      | "marketUnsubscribeDeferred"
+      | "marketUnsubscribeDeferredUnresolved",
     marketTickers: string[],
-    detail?: { commandId?: number | null; sid?: number | null; errorMessage?: string },
+    detail?: {
+      commandId?: number | null;
+      sid?: number | null;
+      errorMessage?: string;
+      socketGeneration?: number;
+    },
   ): void {
     writer.appendLifecycleEvent({
       runId: input.runId,
@@ -698,7 +719,97 @@ export async function runLiveForwardQuoteCapture(input: {
       commandId: detail?.commandId ?? null,
       sid: detail?.sid ?? null,
       ...(detail?.errorMessage ? { errorMessage: detail.errorMessage } : {}),
+      ...(detail?.socketGeneration !== undefined
+        ? { socketGeneration: detail.socketGeneration }
+        : {}),
     });
+  }
+
+  function clearDeferredUnsubscribes(
+    mode: "reconnect" | "shutdown",
+  ): void {
+    if (deferredUnsubscribes.size === 0) {
+      return;
+    }
+    if (mode === "shutdown") {
+      for (const [ticker, intent] of deferredUnsubscribes) {
+        appendSubscriptionLifecycle(
+          "marketUnsubscribeDeferredUnresolved",
+          [ticker],
+          {
+            socketGeneration: intent.socketGeneration,
+            errorMessage:
+              "Capture ended before deferred unsubscribe could be sent",
+          },
+        );
+      }
+    }
+    deferredUnsubscribes.clear();
+  }
+
+  /**
+   * Send a server-side unsubscribe when a SID is available. When a subscribe
+   * acknowledgement is still pending after reconnect, record a deferred
+   * intent instead of a fatal health error.
+   */
+  function trySendServerUnsubscribe(ticker: string): void {
+    if (!connection.connected || shuttingDown) {
+      return;
+    }
+
+    try {
+      const result = subscriptionManager.unsubscribe(transport, [ticker]);
+      if (result.commandIds.length > 0) {
+        appendSubscriptionLifecycle("marketUnsubscribeRequested", [ticker], {
+          commandId: result.commandIds[0],
+          sid: subscriptionManager.getSidForTicker(ticker),
+        });
+      }
+      if (result.unmappedTickers.includes(ticker)) {
+        if (subscriptionManager.hasPendingSubscribeForTicker(ticker)) {
+          if (!deferredUnsubscribes.has(ticker)) {
+            const socketGeneration = subscriptionManager.currentSocketGeneration;
+            deferredUnsubscribes.set(ticker, { socketGeneration });
+            appendSubscriptionLifecycle("marketUnsubscribeDeferred", [ticker], {
+              socketGeneration,
+              errorMessage:
+                "Subscribe acknowledgement still pending; unsubscribe deferred",
+            });
+          }
+          return;
+        }
+        appendSubscriptionLifecycle("marketUnsubscribeFailed", [ticker], {
+          errorMessage: "No acknowledged server subscription id (sid) for market",
+        });
+        errors.push(
+          `Kalshi WS unsubscribe unavailable for ${ticker}: no acknowledged sid`,
+        );
+      }
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Unsubscribe command failed";
+      errors.push(`Kalshi WS unsubscribe send failed for ${ticker}: ${message}`);
+      appendSubscriptionLifecycle("marketUnsubscribeFailed", [ticker], {
+        errorMessage: message,
+      });
+    }
+  }
+
+  function flushDeferredUnsubscribe(ticker: string): void {
+    const intent = deferredUnsubscribes.get(ticker);
+    if (!intent) {
+      return;
+    }
+    if (intent.socketGeneration !== subscriptionManager.currentSocketGeneration) {
+      deferredUnsubscribes.delete(ticker);
+      return;
+    }
+    if (subscribedTickers.has(ticker)) {
+      deferredUnsubscribes.delete(ticker);
+      return;
+    }
+    deferredUnsubscribes.delete(ticker);
+    trySendServerUnsubscribe(ticker);
   }
 
   function sendSubscribe(ticker: string): void {
@@ -736,9 +847,10 @@ export async function runLiveForwardQuoteCapture(input: {
   /**
    * Rollover unsubscribe lifecycle: the book is marked closed (late messages
    * are ignored, never reactivate the book), a server-side unsubscribe /
-   * delete_markets command is sent with the acknowledged sid, and the ticker
-   * leaves local active state at request time. Acknowledgement or failure is
-   * recorded via marketUnsubscribeAcknowledged / marketUnsubscribeFailed.
+   * delete_markets command is sent with the acknowledged sid when available,
+   * and the ticker leaves local active state at request time. When the SID is
+   * not yet acknowledged after reconnect, unsubscribe is deferred until the
+   * subscribe acknowledgement arrives (or reconnect/shutdown clears it).
    */
   function unsubscribeMarket(ticker: string): void {
     processor.markMarketClosed(ticker);
@@ -746,32 +858,11 @@ export async function runLiveForwardQuoteCapture(input: {
     subscribedTickers.delete(ticker);
 
     if (!connection.connected) {
+      deferredUnsubscribes.delete(ticker);
       return;
     }
 
-    try {
-      const result = subscriptionManager.unsubscribe(transport, [ticker]);
-      if (result.commandIds.length > 0) {
-        appendSubscriptionLifecycle("marketUnsubscribeRequested", [ticker], {
-          commandId: result.commandIds[0],
-        });
-      }
-      if (result.unmappedTickers.length > 0) {
-        appendSubscriptionLifecycle("marketUnsubscribeFailed", result.unmappedTickers, {
-          errorMessage: "No acknowledged server subscription id (sid) for market",
-        });
-        errors.push(
-          `Kalshi WS unsubscribe unavailable for ${result.unmappedTickers.join(", ")}: no acknowledged sid`,
-        );
-      }
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Unsubscribe command failed";
-      errors.push(`Kalshi WS unsubscribe send failed for ${ticker}: ${message}`);
-      appendSubscriptionLifecycle("marketUnsubscribeFailed", [ticker], {
-        errorMessage: message,
-      });
-    }
+    trySendServerUnsubscribe(ticker);
   }
 
   async function connectTransport(
@@ -795,6 +886,8 @@ export async function runLiveForwardQuoteCapture(input: {
     // Server subscription ids do not survive a socket; drop all sid mappings
     // before rebuilding subscriptions on the new connection. Invalidated
     // pending commands are surfaced visibly (they can never be acknowledged).
+    // Stale deferred-unsubscribe intents must not fire against the new socket.
+    clearDeferredUnsubscribes("reconnect");
     const invalidatedCommands = subscriptionManager.resetForReconnect();
     processor.recordPendingCommandsInvalidated(invalidatedCommands);
     await transport.connect(wsUrl, { headers });
@@ -1077,6 +1170,7 @@ export async function runLiveForwardQuoteCapture(input: {
 
     acceptingMessages = false;
     plannedShutdown = true;
+    clearDeferredUnsubscribes("shutdown");
     try {
       transport.close();
     } catch {
