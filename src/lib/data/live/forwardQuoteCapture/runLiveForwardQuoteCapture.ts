@@ -322,6 +322,12 @@ export async function runLiveForwardQuoteCapture(input: {
     controlledReconnectState.current = { phase: "cancelled", failureReason };
   }
 
+  /**
+   * Attempt to start the controlled validation recovery once.
+   * On busy, mark deferred (exactly once) and ensure the single-flight
+   * scheduler owns all subsequent retries — never recursively reschedule
+   * from inside an already-running scheduler.
+   */
   function tryStartControlledReconnect(): void {
     if (!controlledReconnectEnabled || !watchdog) {
       return;
@@ -332,7 +338,11 @@ export async function runLiveForwardQuoteCapture(input: {
     ) {
       return;
     }
-    if (connection.wsConnectCount <= 0 || shuttingDown) {
+    if (connection.wsConnectCount <= 0 || shuttingDown || input.shouldStop?.()) {
+      return;
+    }
+    if (watchdog.isTerminal) {
+      cancelControlledReconnect("controlled-reconnect-terminal");
       return;
     }
 
@@ -356,34 +366,78 @@ export async function runLiveForwardQuoteCapture(input: {
           activeRecoveryReason: result.activeRecoveryReason,
         });
       }
-      scheduleControlledReconnectRetry();
+      ensureControlledReconnectScheduler();
       return;
     }
-    failControlledReconnect(`escalation-rejected:${result.reason}`);
+    failControlledReconnect("controlled-reconnect-request-rejected");
   }
 
-  function scheduleControlledReconnectRetry(): void {
+  /**
+   * Persistent single-flight deferral loop.
+   *
+   * Nested busy must not strand phase=deferred: the previous pattern called
+   * scheduleControlledReconnectRetry() from tryStart while the scheduler was
+   * still non-null, which no-op'd, then the original scheduler cleared itself
+   * and left deferred with no wake path. This loop owns every busy retry until
+   * started, rejected, cancelled, or terminal.
+   */
+  function ensureControlledReconnectScheduler(): void {
     if (!watchdog || controlledReconnectScheduler !== null) {
       return;
     }
     const activeWatchdog = watchdog;
     controlledReconnectScheduler = (async () => {
       try {
-        await activeWatchdog.waitForRecovery();
-        if (shuttingDown || input.shouldStop?.()) {
-          cancelControlledReconnect("shutdown-before-controlled-recovery");
+        while (
+          controlledReconnectState.current.phase === "deferred"
+          && !shuttingDown
+          && !input.shouldStop?.()
+          && !activeWatchdog.isTerminal
+        ) {
+          await activeWatchdog.waitForRecovery();
+
+          if (shuttingDown || input.shouldStop?.()) {
+            cancelControlledReconnect("controlled-reconnect-cancelled");
+            return;
+          }
+          if (activeWatchdog.isTerminal) {
+            cancelControlledReconnect("controlled-reconnect-terminal");
+            return;
+          }
+          if (controlledReconnectState.current.phase !== "deferred") {
+            return;
+          }
+
+          const result = activeWatchdog.requestEscalatedRecovery(
+            CONTROLLED_RECONNECT_VALIDATION_REASON,
+          );
+          if (result.status === "started") {
+            acceptControlledReconnect(result.recoveryCycleId);
+            return;
+          }
+          if (result.status === "busy") {
+            // Remain deferred and wait again. Yield one microtask so a recovery
+            // that starts in the same turn can attach its promise before the
+            // next waitForRecovery — never recursively call ensure*.
+            await Promise.resolve();
+            continue;
+          }
+          failControlledReconnect("controlled-reconnect-request-rejected");
           return;
         }
-        if (activeWatchdog.isTerminal) {
-          cancelControlledReconnect("terminal-natural-recovery");
-          return;
-        }
+
         if (controlledReconnectState.current.phase !== "deferred") {
           return;
         }
-        tryStartControlledReconnect();
+        if (shuttingDown || input.shouldStop?.()) {
+          cancelControlledReconnect("controlled-reconnect-cancelled");
+          return;
+        }
+        if (activeWatchdog.isTerminal) {
+          cancelControlledReconnect("controlled-reconnect-terminal");
+        }
       } catch {
-        failControlledReconnect("controlled-retry-scheduler-failed");
+        failControlledReconnect("controlled-reconnect-scheduler-failed");
       }
     })().finally(() => {
       controlledReconnectScheduler = null;
@@ -397,7 +451,7 @@ export async function runLiveForwardQuoteCapture(input: {
     if (controlledReconnectState.current.phase !== "not-requested") {
       return;
     }
-    if (connection.wsConnectCount <= 0 || shuttingDown) {
+    if (connection.wsConnectCount <= 0 || shuttingDown || input.shouldStop?.()) {
       return;
     }
     tryStartControlledReconnect();
@@ -1018,7 +1072,7 @@ export async function runLiveForwardQuoteCapture(input: {
       && controlledReconnectState.current.phase !== "failed"
       && controlledReconnectState.current.phase !== "cancelled"
     ) {
-      cancelControlledReconnect("shutdown-without-controlled-success");
+      cancelControlledReconnect("controlled-reconnect-cancelled");
     }
 
     acceptingMessages = false;

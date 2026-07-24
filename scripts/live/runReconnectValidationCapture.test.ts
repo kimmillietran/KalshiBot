@@ -64,12 +64,16 @@ function createIo() {
   };
 }
 
-describe("runReconnectValidationCaptureCommand", () => {
-  it("accepts normal validation arguments in the 15-20 minute window", async () => {
-    resetReconnectValidationShutdown();
-    mockedRun.mockResolvedValueOnce({
-      runId: "run-1",
-      controlledReconnectValidation: {
+function mockCaptureResult(input: {
+  captureEndReason: string | null;
+  controlledSucceeded?: boolean;
+  terminalFailureReason?: string | null;
+}) {
+  const controlledSucceeded = input.controlledSucceeded ?? true;
+  return {
+    runId: "run-1",
+    controlledReconnectValidation: controlledSucceeded
+      ? {
         enabled: true,
         requestCount: 1,
         acceptedRequestCount: 1,
@@ -79,42 +83,63 @@ describe("runReconnectValidationCaptureCommand", () => {
         succeeded: true,
         failed: false,
         failureReason: null,
+      }
+      : {
+        enabled: true,
+        requestCount: 1,
+        acceptedRequestCount: 0,
+        recoveryCycleId: null,
+        recoveryReason: null,
+        attemptCount: 0,
+        succeeded: false,
+        failed: true,
+        failureReason: "controlled-reconnect-not-completed",
       },
-      healthReport: {
-        verdict: "capture-mvp-success",
-        recommendedNextAction: "none",
-        credentialStatus: "available",
-        marketDiscovery: { marketsSubscribed: 1 },
-        capture: { rawMessageCount: 1, topOfBookRecordCount: 1 },
-        connection: {
-          reconnectCount: 1,
-          connectionAttemptCount: 2,
-          authHeaderGenerationCount: 2,
-          captureEndReason: "duration-complete",
-          terminalFailureReason: null,
-        },
-        watchdog: {
-          wsRecoverySuccessCount: 1,
-          wsRecoveryFailureCount: 0,
-          terminalWebSocketFailure: false,
-        },
+    healthReport: {
+      verdict: "capture-mvp-success",
+      recommendedNextAction: "none",
+      credentialStatus: "available",
+      marketDiscovery: { marketsSubscribed: 1 },
+      capture: { rawMessageCount: 1, topOfBookRecordCount: 1 },
+      connection: {
+        reconnectCount: 1,
+        connectionAttemptCount: 2,
+        authHeaderGenerationCount: 2,
+        captureEndReason: input.captureEndReason,
+        terminalFailureReason: input.terminalFailureReason ?? null,
       },
-      htmlOutputPath: null,
-    } as never);
+      watchdog: {
+        wsRecoverySuccessCount: 1,
+        wsRecoveryFailureCount: 0,
+        terminalWebSocketFailure: false,
+      },
+    },
+    htmlOutputPath: null,
+  } as never;
+}
+
+const VALID_ARGV = [
+  "--series",
+  "KXBTC15M",
+  "--duration-minutes",
+  "15",
+  "--max-markets",
+  "3",
+  "--capture-btc-spot",
+  "--top-of-book-throttle-ms",
+  "1000",
+] as const;
+
+describe("runReconnectValidationCaptureCommand", () => {
+  it("accepts duration-complete + controlled success with exit 0", async () => {
+    resetReconnectValidationShutdown();
+    mockedRun.mockResolvedValueOnce(
+      mockCaptureResult({ captureEndReason: "duration-complete" }),
+    );
 
     const { io, stderr } = createIo();
     const exitCode = await runReconnectValidationCaptureCommand(
-      [
-        "--series",
-        "KXBTC15M",
-        "--duration-minutes",
-        "15",
-        "--max-markets",
-        "3",
-        "--capture-btc-spot",
-        "--top-of-book-throttle-ms",
-        "1000",
-      ],
+      [...VALID_ARGV],
       io,
     );
 
@@ -129,6 +154,66 @@ describe("runReconnectValidationCaptureCommand", () => {
         }),
       }),
     );
+  });
+
+  it.each([
+    ["writer-failure", 1],
+    ["unexpected-error", 1],
+    ["authentication-failure", 1],
+    ["terminal-websocket-failure", 1],
+    [null, 1],
+  ] as const)(
+    "returns 1 when end reason is %s even if controlled succeeded",
+    async (endReason, expected) => {
+      resetReconnectValidationShutdown();
+      mockedRun.mockClear();
+      mockedRun.mockResolvedValueOnce(
+        mockCaptureResult({
+          captureEndReason: endReason,
+          controlledSucceeded: true,
+        }),
+      );
+      const { io } = createIo();
+      const exitCode = await runReconnectValidationCaptureCommand(
+        [...VALID_ARGV],
+        io,
+      );
+      expect(exitCode).toBe(expected);
+    },
+  );
+
+  it("returns 130 for user-cancelled", async () => {
+    resetReconnectValidationShutdown();
+    mockedRun.mockClear();
+    mockedRun.mockResolvedValueOnce(
+      mockCaptureResult({
+        captureEndReason: "user-cancelled",
+        controlledSucceeded: true,
+      }),
+    );
+    const { io } = createIo();
+    const exitCode = await runReconnectValidationCaptureCommand(
+      [...VALID_ARGV],
+      io,
+    );
+    expect(exitCode).toBe(130);
+  });
+
+  it("returns 1 for duration-complete when controlled incomplete", async () => {
+    resetReconnectValidationShutdown();
+    mockedRun.mockClear();
+    mockedRun.mockResolvedValueOnce(
+      mockCaptureResult({
+        captureEndReason: "duration-complete",
+        controlledSucceeded: false,
+      }),
+    );
+    const { io } = createIo();
+    const exitCode = await runReconnectValidationCaptureCommand(
+      [...VALID_ARGV],
+      io,
+    );
+    expect(exitCode).toBe(1);
   });
 
   it.each([

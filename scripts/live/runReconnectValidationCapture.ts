@@ -105,10 +105,12 @@ export async function runReconnectValidationCaptureCommand(
     const endReason = result.healthReport.connection.captureEndReason;
     const controlled = result.controlledReconnectValidation;
     const controlledSucceeded =
-      controlled?.succeeded === true
+      controlled?.enabled === true
+      && controlled.succeeded === true
       && controlled.acceptedRequestCount === 1
       && controlled.attemptCount >= 1
       && controlled.failed === false
+      && controlled.failureReason === null
       && controlled.recoveryReason === "controlled-reconnect-validation"
       && typeof controlled.recoveryCycleId === "number"
       && controlled.recoveryCycleId >= 1;
@@ -145,16 +147,14 @@ export async function runReconnectValidationCaptureCommand(
       ),
     );
 
-    if (endReason === "user-cancelled") {
-      return 130;
+    // Explicit positive end-reason requirement — do not infer success by
+    // excluding a list of known failure reasons.
+    if (endReason !== "duration-complete") {
+      return endReason === "user-cancelled" ? 130 : 1;
     }
 
     if (
-      endReason === "terminal-websocket-failure"
-      || endReason === "authentication-failure"
-      || endReason === "writer-failure"
-      || endReason === "unexpected-error"
-      || result.healthReport.connection.terminalFailureReason !== null
+      result.healthReport.connection.terminalFailureReason !== null
       || !controlledSucceeded
     ) {
       return 1;
