@@ -498,6 +498,22 @@ export class OrderbookSubscriptionManager {
   }
 
   /**
+   * True when a subscribe command for this ticker is still awaiting the
+   * server `subscribed` acknowledgement (and therefore has no sid yet).
+   */
+  hasPendingSubscribeForTicker(ticker: string): boolean {
+    for (const pending of this.pendingCommands.values()) {
+      if (
+        pending.kind === "subscribe"
+        && pending.marketTickers.includes(ticker)
+      ) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
    * Correlates an inbound orderbook_snapshot that carries a client command id
    * to a pending get_snapshot command. On a valid match the pending command is
    * deleted exactly once and treated as acknowledged.

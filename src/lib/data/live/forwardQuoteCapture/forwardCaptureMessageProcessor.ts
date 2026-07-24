@@ -266,10 +266,10 @@ export class ForwardCaptureMessageProcessor {
   }
 
   markMarketClosed(marketTicker: string): void {
-    const book = this.books.get(marketTicker);
-    if (book) {
-      book.markClosed();
-    }
+    // Always materialize a closed book so a later delayed subscribe snapshot
+    // (e.g. SID acknowledgement after rollover) cannot reopen the market.
+    const book = this.getOrCreateBook(marketTicker);
+    book.markClosed();
     this.outstandingRecovery.delete(marketTicker);
     this.recoveryAttempts.delete(marketTicker);
     this.recoveryExhausted.delete(marketTicker);

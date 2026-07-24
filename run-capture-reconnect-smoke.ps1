@@ -1,4 +1,4 @@
-# M12.1G: short live capture smoke gate for reconnect auth finalization.
+# M12.1H: short live capture smoke gate for reconnect auth finalization.
 #
 # Runs a bounded (15-20 minute) authenticated Kalshi WebSocket capture with
 # forceReconnectAfterFirstValidTopOfBook through the dedicated validation
@@ -6,6 +6,12 @@
 # "latest"), and fail-closes unless every reconnect / status / health /
 # writer / restart-gate / post-run lock / controlled-lifecycle invariant
 # passes.
+#
+# Capture workload (series, throttle, market count, BTC spot, watchdog)
+# comes from the canonical eight-hour profile — the same source used by
+# run-capture-restart-smoke.ps1. The only permitted differences are:
+#   - duration between 15 and 20 minutes (reconnect smoke window)
+#   - forceReconnectAfterFirstValidTopOfBook (validation CLI)
 #
 # This wrapper never starts an eight-hour capture.
 #
@@ -19,6 +25,8 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+# Reconnect smoke keeps a tighter duration window than the restart smoke
+# (15-20 vs 15-30). The validation CLI enforces the same bound.
 $smokeDurationMin = 15
 $smokeDurationMax = 20
 
@@ -29,6 +37,80 @@ if ($DurationMinutes -lt $smokeDurationMin -or $DurationMinutes -gt $smokeDurati
 # Hard guard: never allow an eight-hour duration through this wrapper.
 if ($DurationMinutes -ge 480) {
     throw "Refusing to start an eight-hour capture from run-capture-reconnect-smoke.ps1 (DurationMinutes=$DurationMinutes)."
+}
+
+# ---------------------------------------------------------------------------
+# Canonical capture profile: single source of truth in TypeScript
+# (CANONICAL_EIGHT_HOUR_CAPTURE_PROFILE). Never duplicate workload values
+# here. Profile travels through a unique temporary UTF-8 JSON file — the
+# same PowerShell 5.1-safe transport as run-capture-restart-smoke.ps1.
+# ---------------------------------------------------------------------------
+$profilePath = Join-Path `
+    ([System.IO.Path]::GetTempPath()) `
+    ("kalshibot-reconnect-capture-profile-" + [guid]::NewGuid().ToString("N") + ".json")
+
+try {
+    npx tsx scripts/research/evaluateCaptureRestartGate.ts `
+        --write-canonical-profile "$profilePath"
+
+    if ($LASTEXITCODE -ne 0) {
+        throw "Could not write the canonical capture profile (exit code $LASTEXITCODE)."
+    }
+
+    if (-not (Test-Path $profilePath -PathType Leaf)) {
+        throw "Canonical capture profile file was not created."
+    }
+
+    $captureProfile = Get-Content -Raw -Encoding UTF8 $profilePath |
+        ConvertFrom-Json
+}
+finally {
+    Remove-Item $profilePath -Force -ErrorAction SilentlyContinue
+}
+
+function Test-CaptureProfileField {
+    param($Value, [string]$Name, [string]$Kind)
+
+    switch ($Kind) {
+        "string" {
+            if ($Value -isnot [string] -or [string]::IsNullOrWhiteSpace($Value)) {
+                return "$Name must be a non-empty string (got: '$Value')"
+            }
+        }
+        "number" {
+            $isNumber = $Value -is [int] -or $Value -is [long] -or
+                $Value -is [double] -or $Value -is [decimal]
+            if (-not $isNumber) {
+                return "$Name must be a number (got: '$Value')"
+            }
+        }
+        "bool" {
+            if ($Value -isnot [bool]) {
+                return "$Name must be a boolean (got: '$Value')"
+            }
+        }
+    }
+    return $null
+}
+
+$profileProblems = @(
+    (Test-CaptureProfileField $captureProfile.series "series" "string"),
+    (Test-CaptureProfileField $captureProfile.maxMarkets "maxMarkets" "number"),
+    (Test-CaptureProfileField $captureProfile.topOfBookThrottleMs "topOfBookThrottleMs" "number"),
+    (Test-CaptureProfileField $captureProfile.captureBtcSpot "captureBtcSpot" "bool"),
+    (Test-CaptureProfileField $captureProfile.wsWatchdogEnabled "wsWatchdogEnabled" "bool"),
+    (Test-CaptureProfileField $captureProfile.priceRepresentation "priceRepresentation" "string"),
+    (Test-CaptureProfileField $captureProfile.smokeDurationMinutesMin "smokeDurationMinutesMin" "number"),
+    (Test-CaptureProfileField $captureProfile.smokeDurationMinutesMax "smokeDurationMinutesMax" "number"),
+    (Test-CaptureProfileField $captureProfile.eightHourDurationMinutes "eightHourDurationMinutes" "number")
+) | Where-Object { $_ -ne $null }
+
+if ($profileProblems.Count -gt 0) {
+    throw "Canonical capture profile is invalid; refusing to start a capture. Problems: $($profileProblems -join '; ')"
+}
+
+if ($captureProfile.wsWatchdogEnabled -ne $true) {
+    throw "Canonical capture profile must have wsWatchdogEnabled=true for reconnect validation."
 }
 
 $captureRoot = "data/live-capture/forward-quotes"
@@ -57,16 +139,25 @@ if ($preCapturePreflightExitCode -ne 0) {
 
 try {
     # -----------------------------------------------------------------------
-    # Step 2/6: run the bounded reconnect validation capture (forceReconnect).
+    # Step 2/6: run the bounded reconnect validation capture (forceReconnect)
+    # with the canonical eight-hour workload (except duration + forceReconnect).
     # -----------------------------------------------------------------------
-    Write-Host "Step 2/6: running $DurationMinutes-minute reconnect validation capture (forceReconnectAfterFirstValidTopOfBook)..."
+    Write-Host "Step 2/6: running $DurationMinutes-minute reconnect validation capture (series $($captureProfile.series), $($captureProfile.maxMarkets) markets, throttle $($captureProfile.topOfBookThrottleMs)ms, forceReconnectAfterFirstValidTopOfBook)..."
     $captureAttempted = $true
+
+    // Named flags via npx tsx (same PowerShell-safe shape as restart smoke).
+    # Workload values come only from $captureProfile — never duplicated literals.
+    # --capture-btc-spot is passed when the canonical profile enables BTC spot
+    # (always true today); the bool is still validated above.
+    if (-not $captureProfile.captureBtcSpot) {
+        throw "Canonical reconnect smoke requires captureBtcSpot=true."
+    }
     $captureStdout = npx tsx scripts/live/runReconnectValidationCapture.ts `
-        --series KXBTC15M `
+        --series $captureProfile.series `
         --duration-minutes $DurationMinutes `
-        --max-markets 3 `
+        --max-markets $captureProfile.maxMarkets `
         --capture-btc-spot `
-        --top-of-book-throttle-ms 1000
+        --top-of-book-throttle-ms $captureProfile.topOfBookThrottleMs
     $captureExitCode = $LASTEXITCODE
     Write-Host $captureStdout
 
@@ -130,10 +221,12 @@ try {
     Write-Host "  status.state=$($status.state) health.verdict=$($health.verdict) audit.verdict=$($audit.summary.verdict) audit.selectedRunId=$($audit.selectedRunId)"
 
     # -----------------------------------------------------------------------
-    # Step 5/6: exact-run production restart gate (no special-case reconnect).
+    # Step 5/6: exact-run production restart gate.
+    # Invoke tsx directly with named flags — do NOT use `npm run ... --`
+    # which can strip option names under Windows PowerShell 5.1.
     # -----------------------------------------------------------------------
     Write-Host "Step 5/6: evaluating exact-run restart gate..."
-    npm run research:capture-restart-gate -- `
+    npx tsx scripts/research/evaluateCaptureRestartGate.ts `
         --capture-run-dir "$runDir" `
         --expected-duration-minutes $DurationMinutes
     $restartGateExitCode = $LASTEXITCODE
