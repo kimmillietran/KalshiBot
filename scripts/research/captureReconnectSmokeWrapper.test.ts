@@ -11,6 +11,13 @@ const wrapperPath = join(process.cwd(), "run-capture-reconnect-smoke.ps1");
 const wrapper = readFileSync(wrapperPath, "utf8");
 
 describe("run-capture-reconnect-smoke.ps1 reconnect validation wrapper", () => {
+  it("rejects JavaScript-style // line comments (PowerShell 5.1 runtime blocker)", () => {
+    // Windows PowerShell 5.1 tokenizes lines starting with // as executable
+    // input (e.g. The term 'same' is not recognized), and ParseFile does not
+    // always catch that failure mode.
+    expect(wrapper).not.toMatch(/^\s*\/\//m);
+  });
+
   it("calls the dedicated reconnect validation capture script", () => {
     expect(wrapper).toContain("scripts/live/runReconnectValidationCapture.ts");
     expect(wrapper).not.toContain("scripts/live/runForwardQuoteCapture.ts");

@@ -145,7 +145,7 @@ try {
     Write-Host "Step 2/6: running $DurationMinutes-minute reconnect validation capture (series $($captureProfile.series), $($captureProfile.maxMarkets) markets, throttle $($captureProfile.topOfBookThrottleMs)ms, forceReconnectAfterFirstValidTopOfBook)..."
     $captureAttempted = $true
 
-    // Named flags via npx tsx (same PowerShell-safe shape as restart smoke).
+    # Named flags via npx tsx (same PowerShell-safe shape as restart smoke).
     # Workload values come only from $captureProfile — never duplicated literals.
     # --capture-btc-spot is passed when the canonical profile enables BTC spot
     # (always true today); the bool is still validated above.

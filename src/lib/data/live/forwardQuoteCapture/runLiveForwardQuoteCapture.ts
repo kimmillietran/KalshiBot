@@ -123,6 +123,14 @@ export function sanitizeTransportHealthError(error: unknown): string {
   return "WebSocket transport error";
 }
 
+/**
+ * Unsubscribe transport send failures must remain visible without serializing
+ * arbitrary Error.message (credentials, signatures, synthetic secret markers).
+ */
+export function sanitizeUnsubscribeSendFailureMessage(ticker: string): string {
+  return `Kalshi WS unsubscribe command failed for ${ticker}`;
+}
+
 /** M12.1G controlled reconnect validation diagnostics (validation captures only). */
 export type ControlledReconnectValidationDiagnostics = {
   enabled: boolean;
@@ -766,7 +774,11 @@ export async function runLiveForwardQuoteCapture(input: {
         });
       }
       if (result.unmappedTickers.includes(ticker)) {
-        if (subscriptionManager.hasPendingSubscribeForTicker(ticker)) {
+        if (
+          subscriptionManager.hasPendingSubscribeForTicker(ticker, {
+            socketGeneration: subscriptionManager.currentSocketGeneration,
+          })
+        ) {
           if (!deferredUnsubscribes.has(ticker)) {
             const socketGeneration = subscriptionManager.currentSocketGeneration;
             deferredUnsubscribes.set(ticker, { socketGeneration });
@@ -785,10 +797,12 @@ export async function runLiveForwardQuoteCapture(input: {
           `Kalshi WS unsubscribe unavailable for ${ticker}: no acknowledged sid`,
         );
       }
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Unsubscribe command failed";
-      errors.push(`Kalshi WS unsubscribe send failed for ${ticker}: ${message}`);
+    } catch {
+      // Never append raw Error.message — it may echo secrets or auth material.
+      const message = sanitizeUnsubscribeSendFailureMessage(ticker);
+      if (!errors.includes(message)) {
+        errors.push(message);
+      }
       appendSubscriptionLifecycle("marketUnsubscribeFailed", [ticker], {
         errorMessage: message,
       });
@@ -806,6 +820,13 @@ export async function runLiveForwardQuoteCapture(input: {
     }
     if (subscribedTickers.has(ticker)) {
       deferredUnsubscribes.delete(ticker);
+      return;
+    }
+    // Preferred shutdown/flush race policy: do not clear the intent until a
+    // send may proceed. If shutdown already began, leave the intent for
+    // clearDeferredUnsubscribes("shutdown") so exactly one unresolved
+    // lifecycle event is emitted and the intent is never silently dropped.
+    if (shuttingDown || !connection.connected) {
       return;
     }
     deferredUnsubscribes.delete(ticker);
