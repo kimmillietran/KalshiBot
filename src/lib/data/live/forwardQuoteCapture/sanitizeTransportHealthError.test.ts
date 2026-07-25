@@ -5,6 +5,7 @@ import { KalshiWsHandshakeError } from "@/lib/data/live/kalshiWsCaptureSpike";
 import {
   sanitizeReconnectFailureMessage,
   sanitizeTransportHealthError,
+  sanitizeUnsubscribeSendFailureMessage,
 } from "./runLiveForwardQuoteCapture";
 
 describe("sanitizeTransportHealthError / sanitizeReconnectFailureMessage", () => {
@@ -49,5 +50,14 @@ describe("sanitizeTransportHealthError / sanitizeReconnectFailureMessage", () =>
     expect(sanitizeReconnectFailureMessage(error, "unexpected")).toBe(
       "WebSocket recovery failed unexpectedly",
     );
+  });
+
+  it("sanitizes unsubscribe send failures to a canonical ticker form", () => {
+    const message = sanitizeUnsubscribeSendFailureMessage("KXBTC15M-OLD");
+    expect(message).toBe(
+      "Kalshi WS unsubscribe command failed for KXBTC15M-OLD",
+    );
+    expect(message).not.toContain("SUPER_SECRET");
+    expect(message).not.toContain("apiKey");
   });
 });

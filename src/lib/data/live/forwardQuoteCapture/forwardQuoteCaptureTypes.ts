@@ -264,6 +264,8 @@ export type ForwardCaptureSubscriptionLifecycleEventType =
   | "marketUnsubscribeRequested"
   | "marketUnsubscribeAcknowledged"
   | "marketUnsubscribeFailed"
+  | "marketUnsubscribeDeferred"
+  | "marketUnsubscribeDeferredUnresolved"
   | "commandAcknowledgementTimeout"
   | "pendingCommandsInvalidatedOnReconnect"
   | "unknownControlResponseReceived"

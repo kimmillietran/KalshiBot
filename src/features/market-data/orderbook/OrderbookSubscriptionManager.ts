@@ -498,6 +498,34 @@ export class OrderbookSubscriptionManager {
   }
 
   /**
+   * True when a subscribe command for this ticker is still awaiting the
+   * server `subscribed` acknowledgement (and therefore has no sid yet).
+   *
+   * When `socketGeneration` is provided, only pending commands from that
+   * generation count. Callers on the live capture path must pass the current
+   * generation so a stale-generation subscribe cannot justify deferring an
+   * unsubscribe on the active socket. Production reconnects also call
+   * `resetForReconnect()` which clears all prior-generation pending commands
+   * before the next subscribe/defer decision.
+   */
+  hasPendingSubscribeForTicker(
+    ticker: string,
+    options?: { socketGeneration?: number },
+  ): boolean {
+    for (const pending of this.pendingCommands.values()) {
+      if (
+        pending.kind === "subscribe"
+        && pending.marketTickers.includes(ticker)
+        && (options?.socketGeneration === undefined
+          || pending.socketGeneration === options.socketGeneration)
+      ) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
    * Correlates an inbound orderbook_snapshot that carries a client command id
    * to a pending get_snapshot command. On a valid match the pending command is
    * deleted exactly once and treated as acknowledged.
