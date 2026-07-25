@@ -4,112 +4,85 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 /**
- * M12.1F hotfix regression tests for run-capture-restart-smoke.ps1.
- *
- * Windows PowerShell 5.1 mangled the canonical profile when it traveled
- * through captured native stdout into ConvertFrom-Json (the opening "{" was
- * lost). The wrapper must read the profile from a temporary UTF-8 JSON file
- * written by --write-canonical-profile instead. These are content-level
- * assertions so they run on any CI host without requiring PowerShell 7.
+ * M12.1I: PowerShell launchers are thin wrappers over TypeScript SSoT.
+ * Content-level assertions remain host-agnostic (no PowerShell runtime).
  */
-const wrapperPath = join(process.cwd(), "run-capture-restart-smoke.ps1");
-const wrapper = readFileSync(wrapperPath, "utf8");
+const restartWrapper = readFileSync(
+  join(process.cwd(), "run-capture-restart-smoke.ps1"),
+  "utf8",
+);
+const reconnectWrapper = readFileSync(
+  join(process.cwd(), "run-capture-reconnect-smoke.ps1"),
+  "utf8",
+);
+const restartTs = readFileSync(
+  join(process.cwd(), "scripts/operator/runCaptureRestartSmoke.ts"),
+  "utf8",
+);
+const reconnectTs = readFileSync(
+  join(process.cwd(), "scripts/operator/runCaptureReconnectSmoke.ts"),
+  "utf8",
+);
 
-describe("run-capture-restart-smoke.ps1 canonical profile transport", () => {
-  it("no longer parses --print-canonical-profile stdout with ConvertFrom-Json", () => {
-    expect(wrapper).not.toContain("--print-canonical-profile");
-    expect(wrapper).not.toMatch(/\$profileJson/);
-  });
-
-  it("writes the profile to a generated temporary file via --write-canonical-profile", () => {
-    expect(wrapper).toContain("--write-canonical-profile");
-    expect(wrapper).toContain("[System.IO.Path]::GetTempPath()");
-    expect(wrapper).toContain('[guid]::NewGuid().ToString("N")');
-  });
-
-  it("reads the profile file with Get-Content -Raw as UTF-8", () => {
-    expect(wrapper).toMatch(/Get-Content -Raw -Encoding UTF8 \$profilePath/);
-  });
-
-  it("removes the temporary profile file in a finally block", () => {
-    expect(wrapper).toMatch(
-      /finally\s*\{\s*Remove-Item \$profilePath -Force -ErrorAction SilentlyContinue\s*\}/,
+describe("run-capture-restart-smoke.ps1 thin launcher", () => {
+  it("delegates to TypeScript operator CLI", () => {
+    expect(restartWrapper).toContain(
+      "scripts/operator/runCaptureRestartSmoke.ts",
     );
+    expect(restartWrapper).toContain("npx tsx");
+    expect(restartWrapper).toContain("exit $LASTEXITCODE");
+    expect(restartWrapper).not.toContain("Start-Job");
+    expect(restartWrapper).not.toContain("Get-ChildItem");
+  });
+});
+
+describe("runCaptureRestartSmoke.ts preserves M12.1F gate contracts", () => {
+  it("uses canonical profile fields and five smoke steps", () => {
+    expect(restartTs).toContain("loadCanonicalCaptureProfile");
+    expect(restartTs).toContain("Step 1/5");
+    expect(restartTs).toContain("Step 5/5");
+    expect(restartTs).toContain("runForwardQuoteCapture.ts");
+    expect(restartTs).toContain("buildCaptureHealthAudit.ts");
+    expect(restartTs).toContain("buildBidSizeCoverageAudit.ts");
+    expect(restartTs).toContain("buildCaptureHealthReconciliation.ts");
+    expect(restartTs).toContain("evaluateCaptureRestartGate.ts");
+    expect(restartTs).toContain("parseExactRunIdentityFromOutput");
+    expect(restartTs).toContain("Never fall back");
+    expect(restartTs).not.toMatch(/newest directory|LastWriteTime/i);
+    expect(restartTs).toContain("RESTART GATE FAILED");
+    expect(restartTs).toContain("FORBIDDEN_SKIP_GATE_FLAGS");
   });
 
-  it("uses $captureProfile and never shadows $profile / $PROFILE", () => {
-    expect(wrapper).toContain("$captureProfile");
-    expect(wrapper).not.toMatch(/\$profile\b/i);
+  it("does not duplicate canonical workload literals in capture argv builder usage", () => {
+    expect(restartTs).toContain("buildCanonicalCaptureArgv(profile, durationMinutes)");
+    expect(restartTs).not.toMatch(/--series",\s*"KXBTC15M"/);
   });
+});
 
-  it("fails on a nonzero write exit code and a missing profile file", () => {
-    expect(wrapper).toContain(
-      'throw "Could not write the canonical capture profile (exit code $LASTEXITCODE)."',
+describe("run-capture-reconnect-smoke.ps1 thin launcher", () => {
+  it("delegates to TypeScript operator CLI", () => {
+    expect(reconnectWrapper).toContain(
+      "scripts/operator/runCaptureReconnectSmoke.ts",
     );
-    expect(wrapper).toContain(
-      'throw "Canonical capture profile file was not created."',
-    );
+    expect(reconnectWrapper).toContain("npx tsx");
+    expect(reconnectWrapper).toContain("exit $LASTEXITCODE");
   });
+});
 
-  it("validates required profile fields before the capture-start preflight", () => {
-    const requiredFields = [
-      "series",
-      "maxMarkets",
-      "topOfBookThrottleMs",
-      "captureBtcSpot",
-      "wsWatchdogEnabled",
-      "priceRepresentation",
-      "smokeDurationMinutesMin",
-      "smokeDurationMinutesMax",
-      "eightHourDurationMinutes",
-    ];
-    for (const field of requiredFields) {
-      expect(wrapper).toContain(`$captureProfile.${field}`);
-    }
-
-    const validationIndex = wrapper.indexOf("Canonical capture profile is invalid");
-    const preflightIndex = wrapper.indexOf("--assert-no-active-capture");
-    const captureIndex = wrapper.indexOf("runForwardQuoteCapture.ts");
-    expect(validationIndex).toBeGreaterThan(-1);
-    expect(preflightIndex).toBeGreaterThan(-1);
-    expect(captureIndex).toBeGreaterThan(-1);
-    expect(validationIndex).toBeLessThan(preflightIndex);
-    expect(validationIndex).toBeLessThan(captureIndex);
-  });
-
-  it("does not duplicate canonical profile values in PowerShell", () => {
-    // The workload values must come from the TypeScript profile object, not
-    // from literals in the wrapper (duration bounds included).
-    expect(wrapper).not.toMatch(/KXBTC15M/);
-    expect(wrapper).toContain("--series $captureProfile.series");
-    expect(wrapper).toContain("--max-markets $captureProfile.maxMarkets");
-    expect(wrapper).toContain(
-      "--top-of-book-throttle-ms $captureProfile.topOfBookThrottleMs",
-    );
-    expect(wrapper).toContain("$captureProfile.smokeDurationMinutesMin");
-    expect(wrapper).toContain("$captureProfile.smokeDurationMinutesMax");
-  });
-
-  it("preserves all five smoke steps, exact-run auditing, and combined failure exit", () => {
-    for (const step of ["Step 1/5", "Step 2/5", "Step 3/5", "Step 4/5", "Step 5/5"]) {
-      expect(wrapper).toContain(step);
-    }
-    expect(wrapper).toContain('--capture-run-dir "$runDir"');
-    expect(wrapper).toContain("$failedSteps");
-    expect(wrapper).toContain("RESTART GATE FAILED");
-    expect(wrapper).toContain("exit 1");
-  });
-
-  it("identifies the exact run from stdout even when captureExitCode is nonzero", () => {
-    // A finalized authentication-failure still emits runId JSON; the wrapper
-    // must not throw "Could not identify the capture run" and must not fall
-    // back to newest-directory selection.
-    expect(wrapper).toContain('Where-Object { $_ -match \'"runId"\' }');
-    expect(wrapper).toContain("capture exit code: $captureExitCode");
-    expect(wrapper).toContain("if ($captureExitCode -ne 0)");
-    expect(wrapper).toContain("restart will be denied");
-    expect(wrapper).not.toMatch(/Get-ChildItem.*Sort-Object.*LastWriteTime/);
-    expect(wrapper).toContain("Never fall back to");
-    expect(wrapper).toContain('if ($captureExitCode -ne 0) { $failedSteps += "capture ($captureExitCode)" }');
+describe("runCaptureReconnectSmoke.ts preserves M12.1H / PR #41 contracts", () => {
+  it("keeps reconnect validation path and fail-closed finally preflight", () => {
+    expect(reconnectTs).toContain("runReconnectValidationCapture.ts");
+    expect(reconnectTs).not.toContain("runForwardQuoteCapture.ts");
+    expect(reconnectTs).toContain("RECONNECT_SMOKE_DURATION_MIN");
+    expect(reconnectTs).toContain("RECONNECT_SMOKE_DURATION_MAX");
+    expect(reconnectTs).toContain("Refusing to start an eight-hour capture");
+    expect(reconnectTs).toContain("Step 1/6");
+    expect(reconnectTs).toContain("Step 6/6");
+    expect(reconnectTs).toContain("evaluateReconnectSmokeGate.ts");
+    expect(reconnectTs).toContain("--lock-present");
+    expect(reconnectTs).toContain("finally");
+    expect(reconnectTs).toContain("captureAttempted");
+    expect(reconnectTs).not.toMatch(/Remove-Item.*capture\.lock|unlinkSync\(.*capture\.lock/);
+    expect(reconnectTs).not.toMatch(/newest directory|LastWriteTime/i);
   });
 });

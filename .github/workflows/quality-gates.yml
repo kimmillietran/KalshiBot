@@ -63,3 +63,116 @@ jobs:
 
       - name: Test
         run: npm run test
+
+  operator-macos:
+    name: Operator matrix (macOS)
+    runs-on: macos-latest
+    timeout-minutes: 30
+    env:
+      CI: "true"
+      NODE_OPTIONS: "--max-old-space-size=4096"
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Bash syntax check (tracked .sh)
+        shell: bash
+        run: |
+          git ls-files '*.sh' | while IFS= read -r script; do
+            echo "bash -n ${script}"
+            bash -n "${script}"
+          done
+
+      - name: Operator dry-run plans
+        run: |
+          npm run operator:capture-6h -- --dry-run-plan
+          npm run operator:capture-8h -- --dry-run-plan
+          npm run operator:capture-restart-smoke -- --dry-run-plan --duration-minutes 20
+          npm run operator:capture-reconnect-smoke -- --dry-run-plan --duration-minutes 20
+          npm run operator:audit-capture -- --latest --full --dry-run-plan
+
+      - name: Operator Vitest suites
+        run: npx vitest run scripts/operator
+
+  operator-ubuntu:
+    name: Operator matrix (Ubuntu)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CI: "true"
+      NODE_OPTIONS: "--max-old-space-size=4096"
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Bash syntax check (tracked .sh)
+        shell: bash
+        run: |
+          while IFS= read -r script; do
+            echo "bash -n ${script}"
+            bash -n "${script}"
+          done < <(git ls-files '*.sh')
+
+      - name: Operator dry-run plans
+        run: |
+          npm run operator:capture-6h -- --dry-run-plan
+          npm run operator:capture-8h -- --dry-run-plan
+          npm run operator:capture-restart-smoke -- --dry-run-plan --duration-minutes 20
+          npm run operator:capture-reconnect-smoke -- --dry-run-plan --duration-minutes 20
+          npm run operator:audit-capture -- --latest --full --dry-run-plan
+
+      - name: Operator Vitest suites
+        run: npx vitest run scripts/operator
+
+  operator-windows:
+    name: Operator matrix (Windows)
+    runs-on: windows-latest
+    timeout-minutes: 30
+    env:
+      CI: "true"
+      NODE_OPTIONS: "--max-old-space-size=4096"
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: PowerShell wrapper content tests
+        run: npx vitest run scripts/research/captureRestartSmokeWrapper.test.ts scripts/research/captureReconnectSmokeWrapper.test.ts scripts/operator/windowsLaunchers.test.ts
+
+      - name: Operator dry-run plans
+        shell: bash
+        run: |
+          npm run operator:capture-6h -- --dry-run-plan
+          npm run operator:capture-8h -- --dry-run-plan
+          npm run operator:capture-restart-smoke -- --dry-run-plan --duration-minutes 20
+          npm run operator:capture-reconnect-smoke -- --dry-run-plan --duration-minutes 20
+          npm run operator:audit-capture -- --latest --full --dry-run-plan
+
+      - name: Operator Vitest suites
+        run: npx vitest run scripts/operator
