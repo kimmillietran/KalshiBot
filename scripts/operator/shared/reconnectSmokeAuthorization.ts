@@ -112,9 +112,21 @@ export function writeReconnectSmokeAuthorizationSummary(
 
   try {
     writeFileSync(tempPath, payload, "utf8");
-    const fd = openSync(tempPath, "r");
+    // Prefer an fsync when practical. Opening read-only and calling fsync can
+    // raise EPERM on Windows; use r+ and treat EPERM as best-effort skip.
+    const fd = openSync(tempPath, "r+");
     try {
-      fsyncSync(fd);
+      try {
+        fsyncSync(fd);
+      } catch (error) {
+        const code =
+          error && typeof error === "object" && "code" in error
+            ? String((error as { code?: unknown }).code)
+            : "";
+        if (code !== "EPERM" && code !== "EACCES") {
+          throw error;
+        }
+      }
     } finally {
       closeSync(fd);
     }

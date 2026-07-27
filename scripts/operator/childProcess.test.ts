@@ -1,7 +1,7 @@
 import {
   mkdtempSync,
-  mkdirSync,
   readFileSync,
+  writeFileSync,
   existsSync,
 } from "node:fs";
 import { rm } from "node:fs/promises";
@@ -75,9 +75,10 @@ describe("spawnWithTee", () => {
   it("rejects log-open failure without spawning a child", async () => {
     const dir = mkdtempSync(join(tmpdir(), "spawn-log-fail-"));
     dirs.push(dir);
-    // Point the log path at a directory so createWriteStream cannot open a file.
-    mkdirSync(join(dir, "not-a-file"));
-    const logPath = join(dir, "not-a-file");
+    // Make an intermediate path component a file so the log path cannot open.
+    const blocker = join(dir, "blocker");
+    writeFileSync(blocker, "not-a-directory", "utf8");
+    const logPath = join(blocker, "capture.log");
 
     let spawned = false;
     await expect(
@@ -114,6 +115,10 @@ describe("spawnWithTee", () => {
   });
 
   it("registers SIGINT/SIGTERM forwarders that kill the child", async () => {
+    if (process.platform === "win32") {
+      // Windows advisory runners do not require POSIX signal semantics.
+      return;
+    }
     const dir = mkdtempSync(join(tmpdir(), "spawn-signal-"));
     dirs.push(dir);
     const logPath = join(dir, "out.log");
