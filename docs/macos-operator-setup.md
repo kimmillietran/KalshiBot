@@ -178,7 +178,7 @@ is missing or malformed, the wrapper fails closed and preserves the log.
 2. If a `runId` was printed, audit that exact run (`--run-id` / `--run-dir`).
 3. If `capture.lock` remains, reconcile manually — do not delete blindly from
    automation.
-4. Re-run preflight:  
+4. Re-run preflight:
    `npm run research:capture-restart-gate -- --assert-no-active-capture`
 5. Re-run the appropriate smoke before another eight-hour attempt.
 

@@ -2,12 +2,19 @@
  * M12.1G corrective: evaluate controlled reconnect smoke artifacts fail-closed.
  *
  * Reads exact-run status/health/audit/lifecycle JSON from disk (UTF-8) and
- * combines orchestration exit codes supplied by run-capture-reconnect-smoke.ps1.
+ * combines orchestration exit codes supplied by the reconnect smoke wrapper.
  * Never selects "latest". Does not contact Kalshi.
+ *
+ * M12.1I: also writes run-scoped reconnect-smoke-authorization.json from the
+ * actual evaluation result (passed or failed) for later eight-hour gating.
  */
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
+import {
+  buildReconnectSmokeAuthorizationSummary,
+  writeReconnectSmokeAuthorizationSummary,
+} from "../operator/shared/reconnectSmokeAuthorization";
 import {
   evaluateReconnectSmokeAcceptance,
   parseReconnectSmokeJsonRecord,
@@ -113,6 +120,10 @@ export function runEvaluateReconnectSmokeGateCommand(
       process.stderr.write(text);
     },
   },
+  options?: {
+    writeAuthorizationArtifact?: boolean;
+    generatedAt?: string;
+  },
 ): number {
   try {
     validateArgv(argv);
@@ -163,8 +174,26 @@ export function runEvaluateReconnectSmokeGateCommand(
     };
 
     const summary = evaluateReconnectSmokeAcceptance(input);
+    const gateExitCode = summary.passed ? 0 : 1;
     io.writeStdout(`${JSON.stringify(summary)}\n`);
-    return summary.passed ? 0 : 1;
+
+    if (options?.writeAuthorizationArtifact !== false) {
+      const authorization = buildReconnectSmokeAuthorizationSummary({
+        acceptance: summary,
+        gateExitCode,
+        generatedAt: options?.generatedAt,
+      });
+      const writtenPath = writeReconnectSmokeAuthorizationSummary(
+        runDir,
+        authorization,
+      );
+      io.writeStderr(
+        `Wrote reconnect-smoke authorization summary: ${writtenPath} `
+          + `(passed=${authorization.passed})\n`,
+      );
+    }
+
+    return gateExitCode;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     io.writeStderr(`${message}\n`);

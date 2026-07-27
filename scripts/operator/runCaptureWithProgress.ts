@@ -136,45 +136,42 @@ async function assertRestartAuthorization(
     );
   }
 
-  // Reconnect proof: require prior reconnect smoke artifacts and gate evaluator.
-  // Duration is read from status when present; the evaluator still fail-closes.
-  const statusPath = join(reconnectSmokeRunDir, "capture-run-status.json");
-  if (!exists(statusPath)) {
-    throw new OperatorCliError(
-      `Reconnect-smoke authorization missing capture-run-status.json at ${reconnectSmokeRunDir}`,
-    );
-  }
-
-  // Use evaluateReconnectSmokeGate with explicit orchestration codes that
-  // encode "prior smoke already passed" — but still require artifact proof.
-  // We pass capture/audit/restart/post-run codes of 0 and lockPresent=false;
-  // the evaluator still verifies controlledReconnectProven from lifecycle.
-  const runId = reconnectSmokeRunDir.replaceAll("\\", "/").replace(/\/+$/, "").split("/").at(-1)!;
-  const reconnectGate = await deps.runner.runTsx(
-    "scripts/research/evaluateReconnectSmokeGate.ts",
-    [
-      "--run-id",
-      runId,
-      "--run-dir",
-      reconnectSmokeRunDir,
-      "--duration-minutes",
-      "20",
-      "--capture-exit-code",
-      "0",
-      "--audit-exit-code",
-      "0",
-      "--restart-gate-exit-code",
-      "0",
-      "--post-run-preflight-exit-code",
-      "0",
-      "--lock-present",
-      "false",
-    ],
+  // Authoritative reconnect proof comes from the persisted exact-run
+  // reconnect-smoke-authorization.json written by the real reconnect smoke.
+  // Never fabricate orchestration exit codes here.
+  const reconnectAuth = await deps.runner.runTsx(
+    "scripts/operator/verifyReconnectSmokeAuthorization.ts",
+    ["--run-dir", reconnectSmokeRunDir],
   );
-  if (reconnectGate.exitCode !== 0) {
+  if (reconnectAuth.exitCode !== 0) {
     throw new OperatorCliError(
       "Eight-hour capture denied: controlled reconnect authorization failed "
-        + `(controlledReconnectProven must be true for ${reconnectSmokeRunDir}).`,
+        + `for ${reconnectSmokeRunDir}.`,
+    );
+  }
+}
+
+async function assertCurrentPreflight(
+  deps: CaptureWithProgressDeps,
+  captureRoot: string,
+  label: string,
+): Promise<void> {
+  deps.io.writeStdout(`${label}\n`);
+  const preflight = await deps.runner.runTsx(
+    "scripts/research/evaluateCaptureRestartGate.ts",
+    ["--assert-no-active-capture", "--capture-root", captureRoot],
+  );
+  const preflightPayload = parsePreflightPayload(preflight.stdout);
+  if (
+    preflight.exitCode !== 0
+    || preflightPayload.lockPresent
+    || preflightPayload.blockers.length > 0
+  ) {
+    throw new OperatorCliError(
+      "Capture-start preflight failed; refusing to start capture "
+        + `(exit=${preflight.exitCode}, lockPresent=${preflightPayload.lockPresent}, `
+        + `blockers=${preflightPayload.blockers.length}). `
+        + "Stale locks are never deleted by this launcher.",
     );
   }
 }
@@ -268,10 +265,14 @@ export async function runCaptureWithProgressCommand(
           "    2) restart authorization via --authorized-by-restart-smoke-run-dir\n",
         );
         deps.io.writeStdout(
-          "    3) reconnect authorization via --authorized-by-reconnect-smoke-run-dir\n",
+          "    3) reconnect authorization via persisted reconnect-smoke-authorization.json "
+            + "(no fabricated orchestration codes)\n",
         );
         deps.io.writeStdout(
-          "    4) spawn runForwardQuoteCapture (canonical 480m workload)\n",
+          "    4) second current preflight immediately before spawn\n",
+        );
+        deps.io.writeStdout(
+          "    5) spawn runForwardQuoteCapture (canonical 480m workload)\n",
         );
       } else {
         deps.io.writeStdout(
@@ -319,30 +320,22 @@ export async function runCaptureWithProgressCommand(
     mkdirp(captureRoot);
     mkdirp(logRoot);
 
-    deps.io.writeStdout("Preflight: verifying it is safe to start a capture...\n");
-    const preflight = await deps.runner.runTsx(
-      "scripts/research/evaluateCaptureRestartGate.ts",
-      ["--assert-no-active-capture", "--capture-root", captureRoot],
+    await assertCurrentPreflight(
+      deps,
+      captureRoot,
+      "Preflight: verifying it is safe to start a capture...",
     );
-    const preflightPayload = parsePreflightPayload(preflight.stdout);
-    if (
-      preflight.exitCode !== 0
-      || preflightPayload.lockPresent
-      || preflightPayload.blockers.length > 0
-    ) {
-      throw new OperatorCliError(
-        "Capture-start preflight failed; refusing to start capture "
-          + `(exit=${preflight.exitCode}, lockPresent=${preflightPayload.lockPresent}, `
-          + `blockers=${preflightPayload.blockers.length}). `
-          + "Stale locks are never deleted by this launcher.",
-      );
-    }
 
     if (isEightHour) {
       await assertRestartAuthorization(
         deps,
         restartAuthDir!,
         reconnectAuthDir!,
+      );
+      await assertCurrentPreflight(
+        deps,
+        captureRoot,
+        "Second preflight: re-checking lock/blockers immediately before eight-hour spawn...",
       );
     } else if (durationMinutes === SIX_HOUR_DURATION_MINUTES) {
       deps.io.writeStdout(

@@ -20,6 +20,13 @@ export type SpawnTeeOptions = {
   signalHandlers?: boolean;
 };
 
+export class SpawnTeeLogOpenError extends Error {
+  constructor(message: string, options?: { cause?: unknown }) {
+    super(message, options);
+    this.name = "SpawnTeeLogOpenError";
+  }
+}
+
 function waitForStreamEnd(stream: Readable): Promise<void> {
   if (stream.readableEnded || stream.destroyed) {
     return Promise.resolve();
@@ -34,43 +41,77 @@ function waitForStreamEnd(stream: Readable): Promise<void> {
   });
 }
 
+function openLogStream(logPath: string): Promise<WriteStream> {
+  return new Promise<WriteStream>((resolve, reject) => {
+    const logStream = createWriteStream(logPath, {
+      flags: "a",
+      encoding: "utf8",
+    });
+
+    let settled = false;
+    const settle = (action: () => void): void => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      action();
+    };
+
+    logStream.once("open", () => {
+      settle(() => resolve(logStream));
+    });
+    logStream.once("error", (error) => {
+      settle(() => {
+        if (!logStream.destroyed) {
+          logStream.destroy();
+        }
+        reject(
+          new SpawnTeeLogOpenError(
+            `Failed to open capture log at ${logPath}: `
+              + (error instanceof Error ? error.message : String(error)),
+            { cause: error },
+          ),
+        );
+      });
+    });
+  });
+}
+
 /**
  * Spawn a child process, stream stdout/stderr live, tee both to one UTF-8 log,
  * forward SIGINT/SIGTERM, wait for writers to drain, and preserve exit/signal.
+ *
+ * The log file must open successfully before the child is spawned. A log-open
+ * failure rejects without starting a capture child.
  */
 export async function spawnWithTee(
   options: SpawnTeeOptions,
 ): Promise<SpawnTeeResult> {
-  const logStream: WriteStream = createWriteStream(options.logPath, {
-    flags: "a",
-    encoding: "utf8",
-  });
-
-  await new Promise<void>((resolve, reject) => {
-    logStream.once("open", () => resolve());
-    logStream.once("error", reject);
-    // If the stream opened synchronously before listeners attached.
-    if (typeof logStream.fd === "number" && logStream.fd >= 0) {
-      resolve();
-    }
-  }).catch(() => undefined);
+  const logStream = await openLogStream(options.logPath);
 
   let stdout = "";
   let stderr = "";
   let settled = false;
 
-  const child: ChildProcess = spawn(
-    options.command,
-    [...options.args],
-    {
+  let child: ChildProcess;
+  try {
+    child = spawn(options.command, [...options.args], {
       cwd: options.cwd,
       env: options.env ?? process.env,
       stdio: ["ignore", "pipe", "pipe"],
       windowsHide: true,
-    },
-  );
+    });
+  } catch (error) {
+    if (!logStream.destroyed) {
+      logStream.destroy();
+    }
+    throw error;
+  }
 
   if (!child.stdout || !child.stderr) {
+    if (!logStream.destroyed) {
+      logStream.destroy();
+    }
     throw new Error("spawnWithTee requires piped stdout and stderr");
   }
 
@@ -136,7 +177,10 @@ export async function spawnWithTee(
       }
     });
     child.on("close", (code, signal) => {
-      resolve({ code, signal });
+      if (!settled) {
+        settled = true;
+        resolve({ code, signal });
+      }
     });
   });
 
@@ -152,8 +196,16 @@ export async function spawnWithTee(
         resolve();
         return;
       }
-      logStream.end(() => resolve());
-      logStream.once("error", reject);
+      let ended = false;
+      const finish = (action: () => void): void => {
+        if (ended) {
+          return;
+        }
+        ended = true;
+        action();
+      };
+      logStream.end(() => finish(() => resolve()));
+      logStream.once("error", (error) => finish(() => reject(error)));
     });
 
     return {

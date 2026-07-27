@@ -56,3 +56,4 @@ yarn-error.log*
 /kalshi-api-key-id.txt
 /kalshi-api.key.txt
 /load-kalshi-env.sh
+/load-kalshi-env.ps1

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { join } from "node:path";
 
 import { runAuditCaptureCommand } from "./auditCapture";
 import type { CommandIo, OperatorCommandRunner, RunTsxResult } from "./shared/commandRunner";
@@ -71,6 +72,42 @@ describe("runAuditCaptureCommand", () => {
     expect(exitCode).toBe(0);
     expect(stdout.join("")).toContain("--run-id abc");
     expect(stdout.join("")).toContain("does not audit a live capture run");
+  });
+
+  it("joins --run-id against capture-root with path.join", async () => {
+    const { io } = createIo();
+    const selected = {
+      outcome: "selected",
+      runId: "win-run",
+      runDir: "C:\\captures\\win-run",
+      runState: "completed",
+      warnings: [],
+    };
+    let selectorArgv: readonly string[] = [];
+    const exitCode = await runAuditCaptureCommand(
+      ["--run-id", "win-run", "--capture-root", "C:\\captures"],
+      {
+        io,
+        runner: mockRunner((script, argv) => {
+          if (script.includes("selectAuditableCaptureRun")) {
+            selectorArgv = argv;
+            return {
+              exitCode: 0,
+              stdout: JSON.stringify(selected) + "\n",
+              stderr: "",
+            };
+          }
+          return { exitCode: 0, stdout: "", stderr: "" };
+        }),
+      },
+    );
+    expect(exitCode).toBe(0);
+    expect(selectorArgv).toEqual([
+      "--capture-root",
+      "C:\\captures",
+      "--run-dir",
+      join("C:\\captures", "win-run"),
+    ]);
   });
 
   it("rejects missing selectors", async () => {

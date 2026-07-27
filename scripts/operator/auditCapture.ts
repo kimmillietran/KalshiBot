@@ -3,7 +3,7 @@
  *
  * Prefer explicit selectors: --run-id, --run-dir, --latest.
  */
-import { resolve } from "node:path";
+import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
 import {
@@ -124,7 +124,7 @@ export async function runAuditCaptureCommand(
     if (runDirFlag) {
       selectorArgs.push("--run-dir", runDirFlag);
     } else if (runIdFlag) {
-      selectorArgs.push("--run-dir", `${captureRoot}/${runIdFlag}`);
+      selectorArgs.push("--run-dir", join(captureRoot, runIdFlag));
     }
     // --latest uses default lifecycle-aware selection (completed runs only).
 
