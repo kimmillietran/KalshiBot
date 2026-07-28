@@ -73,9 +73,10 @@ describe("reconnect smoke TypeScript SSoT", () => {
     ]) {
       expect(ts).toContain(step);
     }
-    expect(ts).toContain("evaluateReconnectSmokeGate.ts");
-    expect(ts).toContain("--run-id");
-    expect(ts).toContain("--lock-present");
+    expect(ts).toContain("evaluateExactRunReconnectSmokeAcceptance");
+    expect(ts).toContain("issueReconnectSmokeAuthorization");
+    expect(ts).not.toContain("evaluateReconnectSmokeGate.ts");
+    expect(ts).not.toContain("--write-authorization");
     expect(ts).toContain("RECONNECT GATE PASSED");
     expect(ts).toContain("RECONNECT GATE FAILED");
   });

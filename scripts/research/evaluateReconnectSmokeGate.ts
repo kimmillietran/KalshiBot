@@ -2,31 +2,17 @@
  * M12.1G corrective: evaluate controlled reconnect smoke artifacts fail-closed.
  *
  * Reads exact-run status/health/audit/lifecycle JSON from disk (UTF-8) and
- * combines orchestration exit codes supplied by the reconnect smoke wrapper.
- * Never selects "latest". Does not contact Kalshi.
+ * combines orchestration exit codes supplied by the caller. Never selects
+ * "latest". Does not contact Kalshi.
  *
- * M12.1I: optionally writes run-scoped reconnect-smoke-authorization.json when
- * `--write-authorization` is present (reconnect wrapper only). Default is off
- * so a manual diagnostic invocation cannot mint a trusted auth artifact.
+ * M12.1I trust boundary: this public CLI is evaluation-only. It never writes
+ * reconnect-smoke-authorization.json. Authorization is issued only by the
+ * reconnect-smoke operator wrapper via issueReconnectSmokeAuthorization.
  */
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { join } from "node:path";
 
-import {
-  buildReconnectSmokeAuthorizationSummary,
-  writeReconnectSmokeAuthorizationSummary,
-} from "../operator/shared/reconnectSmokeAuthorization";
-import {
-  evaluateReconnectSmokeAcceptance,
-  parseReconnectSmokeJsonRecord,
-} from "./reconnectSmokeAcceptance/evaluateReconnectSmokeAcceptance";
-import type {
-  ReconnectSmokeAcceptanceInput,
-  ReconnectSmokeAuditObserved,
-  ReconnectSmokeHealthObserved,
-  ReconnectSmokeStatusObserved,
-} from "./reconnectSmokeAcceptance/reconnectSmokeAcceptanceTypes";
-import { RECONNECT_SMOKE_ACCEPTANCE_SCHEMA_VERSION } from "./reconnectSmokeAcceptance/reconnectSmokeAcceptanceTypes";
+import { evaluateExactRunReconnectSmokeAcceptance } from "./reconnectSmokeAcceptance/evaluateExactRunReconnectSmokeAcceptance";
 
 const ALLOWED_FLAGS = new Set([
   "--run-id",
@@ -37,11 +23,7 @@ const ALLOWED_FLAGS = new Set([
   "--restart-gate-exit-code",
   "--post-run-preflight-exit-code",
   "--lock-present",
-  "--write-authorization",
 ]);
-
-/** Flags that take no value. */
-const BOOLEAN_FLAGS = new Set(["--write-authorization"]);
 
 function validateArgv(argv: readonly string[]): void {
   if (argv.length === 0) {
@@ -60,9 +42,6 @@ function validateArgv(argv: readonly string[]): void {
       throw new Error(`Duplicate flag: ${token}`);
     }
     seen.add(token);
-    if (BOOLEAN_FLAGS.has(token)) {
-      continue;
-    }
     const value = argv[index + 1];
     if (value === undefined || value.startsWith("--")) {
       throw new Error(`Missing value for flag ${token}`);
@@ -70,9 +49,6 @@ function validateArgv(argv: readonly string[]): void {
     index += 1;
   }
   for (const required of ALLOWED_FLAGS) {
-    if (BOOLEAN_FLAGS.has(required)) {
-      continue;
-    }
     if (!seen.has(required)) {
       throw new Error(`Missing required flag ${required}`);
     }
@@ -104,20 +80,6 @@ function requireBoolFlag(argv: readonly string[], name: string): boolean {
   throw new Error(`${name} must be true or false (got ${raw})`);
 }
 
-function readUtf8Json(path: string, label: string): Record<string, unknown> {
-  if (!existsSync(path)) {
-    throw new Error(`${label} missing at ${path}`);
-  }
-  return parseReconnectSmokeJsonRecord(readFileSync(path, "utf8"), label);
-}
-
-function readUtf8Text(path: string, label: string): string {
-  if (!existsSync(path)) {
-    throw new Error(`${label} missing at ${path}`);
-  }
-  return readFileSync(path, "utf8").replace(/^\uFEFF/, "");
-}
-
 export function runEvaluateReconnectSmokeGateCommand(
   argv: readonly string[],
   io: {
@@ -131,10 +93,6 @@ export function runEvaluateReconnectSmokeGateCommand(
       process.stderr.write(text);
     },
   },
-  options?: {
-    writeAuthorizationArtifact?: boolean;
-    generatedAt?: string;
-  },
 ): number {
   try {
     validateArgv(argv);
@@ -145,19 +103,19 @@ export function runEvaluateReconnectSmokeGateCommand(
       throw new Error("--duration-minutes must be a number");
     }
 
-    const statusPath = join(runDir, "capture-run-status.json");
-    const healthPath = join(runDir, "capture-health.json");
-    const auditPath = join(runDir, "capture-health-audit.json");
-    const lifecyclePath = join(runDir, "capture-lifecycle.jsonl");
+    for (const [name, label] of [
+      ["capture-run-status.json", "capture-run-status.json"],
+      ["capture-health.json", "capture-health.json"],
+      ["capture-health-audit.json", "capture-health-audit.json"],
+      ["capture-lifecycle.jsonl", "capture-lifecycle.jsonl"],
+    ] as const) {
+      const path = join(runDir, name);
+      if (!existsSync(path)) {
+        throw new Error(`${label} missing at ${path}`);
+      }
+    }
 
-    const statusRecord = readUtf8Json(statusPath, "capture-run-status.json");
-    const healthRecord = readUtf8Json(healthPath, "capture-health.json");
-    const auditRecord = readUtf8Json(auditPath, "capture-health-audit.json");
-    const lifecycleJsonl = readUtf8Text(lifecyclePath, "capture-lifecycle.jsonl");
-
-    const input: ReconnectSmokeAcceptanceInput = {
-      schemaVersion: RECONNECT_SMOKE_ACCEPTANCE_SCHEMA_VERSION,
-      mode: "reconnect-smoke",
+    const summary = evaluateExactRunReconnectSmokeAcceptance({
       runId,
       runDir,
       durationMinutes,
@@ -169,46 +127,10 @@ export function runEvaluateReconnectSmokeGateCommand(
         "--post-run-preflight-exit-code",
       ),
       lockPresent: requireBoolFlag(argv, "--lock-present"),
-      status: statusRecord as ReconnectSmokeStatusObserved,
-      health: {
-        runId: healthRecord.runId,
-        verdict: healthRecord.verdict,
-        errors: healthRecord.errors,
-        connection: (healthRecord.connection as ReconnectSmokeHealthObserved["connection"])
-          ?? null,
-        watchdog: (healthRecord.watchdog as ReconnectSmokeHealthObserved["watchdog"])
-          ?? null,
-        writer: (healthRecord.writer as ReconnectSmokeHealthObserved["writer"]) ?? null,
-      },
-      audit: auditRecord as ReconnectSmokeAuditObserved,
-      lifecycleJsonl,
-    };
-
-    const summary = evaluateReconnectSmokeAcceptance(input);
+    });
     const gateExitCode = summary.passed ? 0 : 1;
     io.writeStdout(`${JSON.stringify(summary)}\n`);
-
-    // Authorization minting is opt-in. A manual diagnostic invocation with
-    // caller-supplied zeros must not write a trusted authorization artifact.
-    const writeAuthorization =
-      options?.writeAuthorizationArtifact === true
-      || argv.includes("--write-authorization");
-    if (writeAuthorization) {
-      const authorization = buildReconnectSmokeAuthorizationSummary({
-        acceptance: summary,
-        gateExitCode,
-        generatedAt: options?.generatedAt,
-      });
-      const writtenPath = writeReconnectSmokeAuthorizationSummary(
-        runDir,
-        authorization,
-      );
-      io.writeStderr(
-        `Wrote reconnect-smoke authorization summary: ${writtenPath} `
-          + `(passed=${authorization.passed})\n`,
-      );
-    }
-
+    // Evaluation-only: never write reconnect-smoke-authorization.json.
     return gateExitCode;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -216,6 +138,8 @@ export function runEvaluateReconnectSmokeGateCommand(
     return 1;
   }
 }
+
+export { evaluateExactRunReconnectSmokeAcceptance };
 
 if (process.env.VITEST !== "true") {
   process.exitCode = runEvaluateReconnectSmokeGateCommand(process.argv.slice(2));

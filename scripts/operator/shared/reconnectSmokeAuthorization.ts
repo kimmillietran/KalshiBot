@@ -1,8 +1,10 @@
 /**
  * Authoritative reconnect-smoke authorization evidence for gated eight-hour starts.
  *
- * Written only by the reconnect-smoke evaluator from actual orchestration values.
- * Eight-hour startup verifies this artifact fail-closed and never fabricates codes.
+ * Issued only by the reconnect-smoke operator wrapper via
+ * issueReconnectSmokeAuthorization from real orchestration values.
+ * The public evaluateReconnectSmokeGate CLI is evaluation-only and cannot mint
+ * this artifact. Eight-hour startup verifies fail-closed and never fabricates codes.
  */
 import {
   closeSync,
@@ -101,6 +103,8 @@ export function buildReconnectSmokeAuthorizationSummary(options: {
 
 /**
  * Atomically write the authorization summary via temp-file + fsync + rename.
+ * Prefer issueReconnectSmokeAuthorization — this low-level writer does not
+ * enforce the trust boundary (existence check / passed-only).
  */
 export function writeReconnectSmokeAuthorizationSummary(
   runDir: string,
@@ -142,6 +146,98 @@ export function writeReconnectSmokeAuthorizationSummary(
     }
     throw error;
   }
+}
+
+/**
+ * Wrapper-internal authorization issuance. Not exposed via any public CLI.
+ *
+ * Fail-closed:
+ * - only when acceptance.passed === true and orchestration is clean;
+ * - refuses to overwrite an existing reconnect-smoke-authorization.json;
+ * - writes atomically (temp + fsync + rename).
+ */
+export function issueReconnectSmokeAuthorization(options: {
+  runDir: string;
+  acceptance: ReconnectSmokeAcceptanceSummary;
+  generatedAt?: string;
+  exists?: (path: string) => boolean;
+  writeSummary?: (
+    runDir: string,
+    summary: ReconnectSmokeAuthorizationSummary,
+  ) => string;
+}): string {
+  const acceptance = options.acceptance;
+  const runDir = options.runDir;
+  const exists = options.exists ?? existsSync;
+  const writeSummary =
+    options.writeSummary ?? writeReconnectSmokeAuthorizationSummary;
+  const targetPath = reconnectSmokeAuthorizationPath(runDir);
+
+  if (acceptance.passed !== true) {
+    throw new Error(
+      "Refusing to issue reconnect-smoke authorization: acceptance.passed=false",
+    );
+  }
+  if (acceptance.captureExitCode !== 0) {
+    throw new Error(
+      `Refusing to issue reconnect-smoke authorization: captureExitCode=${acceptance.captureExitCode}`,
+    );
+  }
+  if (acceptance.auditExitCode !== 0) {
+    throw new Error(
+      `Refusing to issue reconnect-smoke authorization: auditExitCode=${acceptance.auditExitCode}`,
+    );
+  }
+  if (acceptance.restartGateExitCode !== 0) {
+    throw new Error(
+      `Refusing to issue reconnect-smoke authorization: restartGateExitCode=${acceptance.restartGateExitCode}`,
+    );
+  }
+  if (acceptance.postRunPreflightExitCode !== 0) {
+    throw new Error(
+      `Refusing to issue reconnect-smoke authorization: postRunPreflightExitCode=${acceptance.postRunPreflightExitCode}`,
+    );
+  }
+  if (acceptance.lockPresent !== false) {
+    throw new Error(
+      "Refusing to issue reconnect-smoke authorization: lockPresent=true",
+    );
+  }
+  if (acceptance.controlledReconnectProven !== true) {
+    throw new Error(
+      "Refusing to issue reconnect-smoke authorization: controlledReconnectProven=false",
+    );
+  }
+
+  if (exists(targetPath)) {
+    throw new Error(
+      `reconnect-smoke-authorization.json already exists at ${targetPath}; refusing to overwrite`,
+    );
+  }
+
+  const summary = buildReconnectSmokeAuthorizationSummary({
+    acceptance,
+    gateExitCode: 0,
+    generatedAt: options.generatedAt,
+  });
+  if (summary.passed !== true) {
+    throw new Error(
+      "Refusing to issue reconnect-smoke authorization: built summary passed=false",
+    );
+  }
+
+  const verified = verifyPersistedReconnectSmokeAuthorization({
+    expectedRunDir: runDir,
+    summary,
+  });
+  if (!verified.ok) {
+    throw new Error(
+      "Refusing to issue reconnect-smoke authorization: "
+        + verified.reasons.join("; "),
+    );
+  }
+
+  return writeSummary(runDir, summary);
 }
 
 function requireBoolean(record: Record<string, unknown>, key: string): boolean {
@@ -422,6 +518,18 @@ export function verifyPersistedReconnectSmokeAuthorization(options: {
       `authHeaderGenerationCount=${String(summary.authHeaderGenerationCount)}`,
     );
   }
+  // Every WebSocket connection attempt must generate fresh authentication
+  // headers exactly once (PR #40).
+  if (
+    summary.connectionAttemptCount !== null
+    && summary.authHeaderGenerationCount !== null
+    && summary.authHeaderGenerationCount !== summary.connectionAttemptCount
+  ) {
+    reasons.push(
+      `authHeaderGenerationCount=${summary.authHeaderGenerationCount} `
+        + `!= connectionAttemptCount=${summary.connectionAttemptCount}`,
+    );
+  }
   if (summary.writerFailurePresent !== false) {
     reasons.push("writerFailurePresent must be false");
   }
@@ -443,9 +551,191 @@ export function verifyPersistedReconnectSmokeAuthorization(options: {
   return { ok: true, summary };
 }
 
+function pushMismatch(
+  reasons: string[],
+  field: string,
+  authorizationValue: unknown,
+  currentValue: unknown,
+): void {
+  if (authorizationValue !== currentValue) {
+    reasons.push(
+      `${field} mismatch (authorization=${String(authorizationValue)}, `
+        + `current=${String(currentValue)})`,
+    );
+  }
+}
+
+/**
+ * Require complete agreement between persisted authorization and a fresh
+ * reconnect acceptance evaluation of current exact-run artifacts.
+ */
+export function comparePersistedAuthorizationToCurrentAcceptance(options: {
+  summary: ReconnectSmokeAuthorizationSummary;
+  current: ReconnectSmokeAcceptanceSummary;
+  expectedRunDir: string;
+}): string[] {
+  const reasons: string[] = [];
+  const summary = options.summary;
+  const current = options.current;
+  const expectedRunDir = normalizeRunDir(options.expectedRunDir);
+
+  pushMismatch(reasons, "runId", summary.runId, current.runId);
+  pushMismatch(
+    reasons,
+    "runDir",
+    normalizeRunDir(summary.runDir),
+    normalizeRunDir(current.runDir),
+  );
+  if (normalizeRunDir(current.runDir) !== expectedRunDir) {
+    reasons.push(
+      `runDir mismatch (authorization=${normalizeRunDir(summary.runDir)}, `
+        + `current=${normalizeRunDir(current.runDir)})`,
+    );
+  }
+  pushMismatch(
+    reasons,
+    "durationMinutes",
+    summary.durationMinutes,
+    current.durationMinutes,
+  );
+  pushMismatch(
+    reasons,
+    "auditSelectedRunId",
+    summary.auditSelectedRunId,
+    current.auditSelectedRunId,
+  );
+  pushMismatch(
+    reasons,
+    "runStatusState",
+    summary.runStatusState,
+    current.runStatusState,
+  );
+  pushMismatch(
+    reasons,
+    "captureEndReason",
+    summary.captureEndReason,
+    current.captureEndReason,
+  );
+  pushMismatch(
+    reasons,
+    "completedNormally",
+    summary.completedNormally,
+    current.completedNormally,
+  );
+  pushMismatch(
+    reasons,
+    "liveConnectionSucceeded",
+    summary.liveConnectionSucceeded,
+    current.liveConnectionSucceeded,
+  );
+  pushMismatch(
+    reasons,
+    "nativeVerdict",
+    summary.nativeVerdict,
+    current.nativeVerdict,
+  );
+  pushMismatch(
+    reasons,
+    "nativeErrorCount",
+    summary.nativeErrorCount,
+    current.nativeErrorCount,
+  );
+  pushMismatch(
+    reasons,
+    "allStreamsDrained",
+    summary.allStreamsDrained,
+    current.allStreamsDrained,
+  );
+  pushMismatch(
+    reasons,
+    "writerFailurePresent",
+    summary.writerFailurePresent,
+    current.writerFailurePresent,
+  );
+  pushMismatch(
+    reasons,
+    "wsRecoveryFailureCount",
+    summary.wsRecoveryFailureCount,
+    current.wsRecoveryFailureCount,
+  );
+  pushMismatch(
+    reasons,
+    "terminalWebSocketFailure",
+    summary.terminalWebSocketFailure,
+    current.terminalWebSocketFailure,
+  );
+  pushMismatch(
+    reasons,
+    "controlledReconnectProven",
+    summary.controlledReconnectProven,
+    current.controlledReconnectProven,
+  );
+  pushMismatch(
+    reasons,
+    "reconnectCount",
+    summary.reconnectCount,
+    current.reconnectCount,
+  );
+  pushMismatch(
+    reasons,
+    "connectionAttemptCount",
+    summary.connectionAttemptCount,
+    current.connectionAttemptCount,
+  );
+  pushMismatch(
+    reasons,
+    "authHeaderGenerationCount",
+    summary.authHeaderGenerationCount,
+    current.authHeaderGenerationCount,
+  );
+  pushMismatch(
+    reasons,
+    "captureExitCode",
+    summary.captureExitCode,
+    current.captureExitCode,
+  );
+  pushMismatch(
+    reasons,
+    "auditExitCode",
+    summary.auditExitCode,
+    current.auditExitCode,
+  );
+  pushMismatch(
+    reasons,
+    "restartGateExitCode",
+    summary.restartGateExitCode,
+    current.restartGateExitCode,
+  );
+  pushMismatch(
+    reasons,
+    "postRunPreflightExitCode",
+    summary.postRunPreflightExitCode,
+    current.postRunPreflightExitCode,
+  );
+  pushMismatch(reasons, "lockPresent", summary.lockPresent, current.lockPresent);
+  pushMismatch(reasons, "passed", summary.passed, current.passed);
+
+  // Every WebSocket connection attempt must generate fresh authentication
+  // headers exactly once (PR #40) — enforce on the current evaluation too.
+  if (
+    current.connectionAttemptCount !== null
+    && current.authHeaderGenerationCount !== null
+    && current.authHeaderGenerationCount !== current.connectionAttemptCount
+  ) {
+    reasons.push(
+      `authHeaderGenerationCount=${current.authHeaderGenerationCount} `
+        + `!= connectionAttemptCount=${current.connectionAttemptCount}`,
+    );
+  }
+
+  // Deduplicate if runDir mismatch was pushed twice.
+  return [...new Set(reasons)];
+}
+
 /**
  * Re-evaluate current exact-run artifacts against the persisted orchestration
  * evidence. Never fabricates exit codes — uses the summary's recorded values.
+ * Requires complete persisted/current field agreement.
  */
 export function revalidateReconnectAuthorizationAgainstCurrentArtifacts(options: {
   expectedRunDir: string;
@@ -476,15 +766,7 @@ export function revalidateReconnectAuthorizationAgainstCurrentArtifacts(options:
     };
     audit: Record<string, unknown>;
     lifecycleJsonl: string;
-  }) => {
-    passed: boolean;
-    controlledReconnectProven: boolean;
-    failedChecks: string[];
-    nativeVerdict: string | null;
-    auditSelectedRunId: string | null;
-    runStatusState: string | null;
-    captureEndReason: string | null;
-  };
+  }) => ReconnectSmokeAcceptanceSummary;
 }): ReconnectAuthorizationAcceptance | ReconnectAuthorizationDenial {
   const summary = options.summary;
   const fieldCheck = verifyPersistedReconnectSmokeAuthorization({
@@ -547,27 +829,17 @@ export function revalidateReconnectAuthorizationAgainstCurrentArtifacts(options:
   if (reevaluated.controlledReconnectProven !== true) {
     reasons.push("current lifecycle controlledReconnectProven=false");
   }
-  if (reevaluated.nativeVerdict !== "capture-mvp-success") {
-    reasons.push(
-      `current nativeVerdict=${String(reevaluated.nativeVerdict)}`,
-    );
-  }
-  if (reevaluated.auditSelectedRunId !== summary.runId) {
-    reasons.push(
-      `current auditSelectedRunId=${String(reevaluated.auditSelectedRunId)}`,
-    );
-  }
-  if (reevaluated.runStatusState !== "completed") {
-    reasons.push(`current runStatusState=${String(reevaluated.runStatusState)}`);
-  }
-  if (reevaluated.captureEndReason !== "duration-complete") {
-    reasons.push(
-      `current captureEndReason=${String(reevaluated.captureEndReason)}`,
-    );
-  }
+
+  reasons.push(
+    ...comparePersistedAuthorizationToCurrentAcceptance({
+      summary,
+      current: reevaluated,
+      expectedRunDir: options.expectedRunDir,
+    }),
+  );
 
   if (reasons.length > 0) {
-    return { ok: false, reasons };
+    return { ok: false, reasons: [...new Set(reasons)] };
   }
   return { ok: true, summary };
 }

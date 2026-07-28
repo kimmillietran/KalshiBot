@@ -78,8 +78,10 @@ describe("runCaptureReconnectSmoke.ts preserves M12.1H / PR #41 contracts", () =
     expect(reconnectTs).toContain("Refusing to start an eight-hour capture");
     expect(reconnectTs).toContain("Step 1/6");
     expect(reconnectTs).toContain("Step 6/6");
-    expect(reconnectTs).toContain("evaluateReconnectSmokeGate.ts");
-    expect(reconnectTs).toContain("--lock-present");
+    expect(reconnectTs).toContain("evaluateExactRunReconnectSmokeAcceptance");
+    expect(reconnectTs).toContain("issueReconnectSmokeAuthorization");
+    expect(reconnectTs).not.toContain("evaluateReconnectSmokeGate.ts");
+    expect(reconnectTs).not.toContain("--write-authorization");
     expect(reconnectTs).toContain("finally");
     expect(reconnectTs).toContain("captureAttempted");
     expect(reconnectTs).not.toMatch(/Remove-Item.*capture\.lock|unlinkSync\(.*capture\.lock/);

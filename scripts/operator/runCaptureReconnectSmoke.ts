@@ -1,10 +1,16 @@
 /**
  * M12.1I: cross-platform controlled reconnect smoke (ports PR #41 / M12.1H).
+ *
+ * Authorization trust boundary: evaluates reconnect acceptance in-process from
+ * wrapper-owned orchestration results, then issues reconnect-smoke-authorization.json
+ * only via issueReconnectSmokeAuthorization. Never invokes a public minting CLI.
  */
 import { existsSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
+import { evaluateExactRunReconnectSmokeAcceptance } from "../research/reconnectSmokeAcceptance/evaluateExactRunReconnectSmokeAcceptance";
+import type { ReconnectSmokeAcceptanceSummary } from "../research/reconnectSmokeAcceptance/reconnectSmokeAcceptanceTypes";
 import {
   assertNoForbiddenFlags,
   collectUnknownFlags,
@@ -29,6 +35,7 @@ import {
   RECONNECT_SMOKE_DURATION_MIN,
 } from "./shared/constants";
 import { requireKalshiEnv } from "./shared/kalshiEnv";
+import { issueReconnectSmokeAuthorization } from "./shared/reconnectSmokeAuthorization";
 import { parseExactRunIdentityFromOutput } from "./shared/runIdentity";
 
 const KNOWN_FLAGS = new Set([
@@ -43,6 +50,8 @@ export type ReconnectSmokeDeps = {
   requireCredentials?: boolean;
   lockExists?: (lockPath: string) => boolean;
   readUtf8?: (path: string) => string;
+  evaluateAcceptance?: typeof evaluateExactRunReconnectSmokeAcceptance;
+  issueAuthorization?: typeof issueReconnectSmokeAuthorization;
 };
 
 export async function runCaptureReconnectSmokeCommand(
@@ -51,6 +60,10 @@ export async function runCaptureReconnectSmokeCommand(
 ): Promise<number> {
   const lockExists = deps.lockExists ?? existsSync;
   const readUtf8 = deps.readUtf8 ?? ((path: string) => readFileSync(path, "utf8"));
+  const evaluateAcceptance =
+    deps.evaluateAcceptance ?? evaluateExactRunReconnectSmokeAcceptance;
+  const issueAuthorization =
+    deps.issueAuthorization ?? issueReconnectSmokeAuthorization;
 
   let captureAttempted = false;
   let runIdentified = false;
@@ -63,6 +76,7 @@ export async function runCaptureReconnectSmokeCommand(
   let lockPresent = true;
   let primaryFailure: Error | null = null;
   let gateExitCode = 1;
+  let authorizationIssueFailed = false;
   let captureRoot = DEFAULT_CAPTURE_ROOT;
   let durationMinutes = 20;
 
@@ -127,10 +141,12 @@ export async function runCaptureReconnectSmokeCommand(
       deps.io.writeStdout("    4) status/health/lifecycle identity checks\n");
       deps.io.writeStdout("    5) evaluateCaptureRestartGate (named flags)\n");
       deps.io.writeStdout(
-        "    6) post-run preflight + evaluateReconnectSmokeGate (always)\n",
+        "    6) post-run preflight + in-process reconnect acceptance "
+          + "+ wrapper-internal authorization issuance (only if passed)\n",
       );
       deps.io.writeStdout(
-        "  note: dry-run-plan does not prove controlledReconnectProven.\n",
+        "  note: dry-run-plan does not prove controlledReconnectProven "
+          + "and writes no authorization artifact.\n",
       );
       await deps.runner.runTsx(
         "scripts/research/evaluateCaptureRestartGate.ts",
@@ -281,31 +297,100 @@ export async function runCaptureReconnectSmokeCommand(
         }
 
         if (runIdentified && runId && runDir) {
-          const reconnectGate = await deps.runner.runTsx(
-            "scripts/research/evaluateReconnectSmokeGate.ts",
-            [
-              "--run-id",
+          let acceptance: ReconnectSmokeAcceptanceSummary;
+          try {
+            acceptance = evaluateAcceptance({
               runId,
-              "--run-dir",
               runDir,
-              "--duration-minutes",
-              String(durationMinutes),
-              "--capture-exit-code",
-              String(captureExitCode),
-              "--audit-exit-code",
-              String(auditExitCode),
-              "--restart-gate-exit-code",
-              String(restartGateExitCode),
-              "--post-run-preflight-exit-code",
-              String(postRunPreflightExitCode),
-              "--lock-present",
-              lockPresent ? "true" : "false",
-              // Opt-in minting: only the real reconnect wrapper may write the
-              // trusted eight-hour authorization artifact.
-              "--write-authorization",
-            ],
-          );
-          gateExitCode = reconnectGate.exitCode;
+              durationMinutes,
+              captureExitCode,
+              auditExitCode,
+              restartGateExitCode,
+              postRunPreflightExitCode,
+              lockPresent,
+              readUtf8,
+            });
+          } catch (error) {
+            deps.io.writeStdout(
+              `  reconnect acceptance evaluation failed: `
+                + `${error instanceof Error ? error.message : String(error)}\n`,
+            );
+            gateExitCode = 1;
+            acceptance = {
+              schemaVersion: 1,
+              mode: "reconnect-smoke",
+              runId,
+              runDir,
+              durationMinutes,
+              captureExitCode,
+              auditExitCode,
+              auditVerdict: null,
+              auditSelectedRunId: null,
+              nativeVerdict: null,
+              nativeErrorCount: null,
+              runStatusState: null,
+              captureEndReason: null,
+              completedNormally: null,
+              liveConnectionSucceeded: null,
+              reconnectCount: null,
+              connectionAttemptCount: null,
+              authHeaderGenerationCount: null,
+              wsRecoverySuccessCount: null,
+              wsRecoveryFailureCount: null,
+              terminalWebSocketFailure: null,
+              allStreamsDrained: null,
+              writerFailurePresent: null,
+              restartGateExitCode,
+              restartEightHourCaptures: restartGateExitCode === 0,
+              postRunPreflightExitCode,
+              lockPresent,
+              controlledReconnectRequestCount: 0,
+              controlledReconnectRecoveryCycleId: null,
+              controlledReconnectRecoveryReason: null,
+              controlledReconnectAttemptCount: 0,
+              controlledReconnectSuccessCount: 0,
+              controlledReconnectFailureCount: 0,
+              controlledReconnectProven: false,
+              passed: false,
+              failedChecks: ["evaluation-threw"],
+            };
+          }
+
+          gateExitCode = acceptance.passed ? 0 : 1;
+          deps.io.writeStdout(`${JSON.stringify(acceptance)}\n`);
+
+          // Authorization is wrapper-internal only. Never call a public mint CLI.
+          // Issue only after post-run preflight succeeds, lock is absent, and
+          // reconnect acceptance passes.
+          if (
+            acceptance.passed
+            && postRunPreflightExitCode === 0
+            && !lockPresent
+          ) {
+            try {
+              const written = issueAuthorization({
+                runDir,
+                acceptance,
+              });
+              deps.io.writeStdout(
+                `  issued reconnect-smoke authorization: ${written}\n`,
+              );
+            } catch (error) {
+              authorizationIssueFailed = true;
+              gateExitCode = 1;
+              deps.io.writeStdout(
+                `  authorization issuance failed: `
+                  + `${error instanceof Error ? error.message : String(error)}\n`,
+              );
+            }
+          } else {
+            deps.io.writeStdout(
+              "  skipping authorization issuance "
+                + `(passed=${acceptance.passed}, `
+                + `postRunPreflightExitCode=${postRunPreflightExitCode}, `
+                + `lockPresent=${lockPresent}).\n`,
+            );
+          }
         } else {
           deps.io.writeStdout(
             "  exact run was not identified; skipping lifecycle evaluator (still fail closed).\n",
@@ -321,6 +406,14 @@ export async function runCaptureReconnectSmokeCommand(
         `RECONNECT GATE FAILED: primary step error (run ${runId}).\n`,
       );
       deps.io.writeStdout(`  ${primaryFailure.message}\n`);
+      return 1;
+    }
+
+    if (authorizationIssueFailed) {
+      deps.io.writeStdout("\n");
+      deps.io.writeStdout(
+        `RECONNECT GATE FAILED: authorization issuance failed (run ${runId}).\n`,
+      );
       return 1;
     }
 
