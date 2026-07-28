@@ -337,6 +337,18 @@ function evaluateHealth(
         `authHeaderGenerationCount=${String(connection.authHeaderGenerationCount)}`,
       );
     }
+    // Every WebSocket connection attempt must generate fresh authentication
+    // headers exactly once (PR #40).
+    if (
+      connectionAttemptCount !== null
+      && authHeaderGenerationCount !== null
+      && authHeaderGenerationCount !== connectionAttemptCount
+    ) {
+      failedChecks.push(
+        `authHeaderGenerationCount=${authHeaderGenerationCount} `
+          + `!= connectionAttemptCount=${connectionAttemptCount}`,
+      );
+    }
   }
 
   const watchdog = health.watchdog;

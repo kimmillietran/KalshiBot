@@ -15,6 +15,12 @@ concurrency:
   group: quality-gates-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# Platform policy (M12.1I):
+# - macOS is the primary supported operator platform.
+# - Ubuntu/Linux is the required portability platform.
+# - Windows validates retained thin PowerShell launchers on a best-effort
+#   advisory basis and must not run Bash/POSIX-only assertions.
+
 jobs:
   quality-gates:
     name: Lint, build, and test
@@ -63,3 +69,125 @@ jobs:
 
       - name: Test
         run: npm run test
+
+  operator-macos:
+    name: Operator matrix (macOS)
+    runs-on: macos-latest
+    timeout-minutes: 30
+    env:
+      CI: "true"
+      NODE_OPTIONS: "--max-old-space-size=4096"
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Bash syntax check (tracked .sh)
+        shell: bash
+        run: |
+          git ls-files '*.sh' | while IFS= read -r script; do
+            echo "bash -n ${script}"
+            bash -n "${script}"
+          done
+
+      - name: Operator dry-run plans
+        run: |
+          npm run operator:capture-6h -- --dry-run-plan
+          npm run operator:capture-8h -- --dry-run-plan
+          npm run operator:capture-restart-smoke -- --dry-run-plan --duration-minutes 20
+          npm run operator:capture-reconnect-smoke -- --dry-run-plan --duration-minutes 20
+          npm run operator:audit-capture -- --latest --full --dry-run-plan
+
+      - name: Operator Vitest suites
+        run: npx vitest run scripts/operator
+
+  operator-ubuntu:
+    name: Operator matrix (Ubuntu)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CI: "true"
+      NODE_OPTIONS: "--max-old-space-size=4096"
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Bash syntax check (tracked .sh)
+        shell: bash
+        run: |
+          while IFS= read -r script; do
+            echo "bash -n ${script}"
+            bash -n "${script}"
+          done < <(git ls-files '*.sh')
+
+      - name: Operator dry-run plans
+        run: |
+          npm run operator:capture-6h -- --dry-run-plan
+          npm run operator:capture-8h -- --dry-run-plan
+          npm run operator:capture-restart-smoke -- --dry-run-plan --duration-minutes 20
+          npm run operator:capture-reconnect-smoke -- --dry-run-plan --duration-minutes 20
+          npm run operator:audit-capture -- --latest --full --dry-run-plan
+
+      - name: Operator Vitest suites
+        run: npx vitest run scripts/operator
+
+  operator-windows-advisory:
+    name: Operator compatibility (Windows, advisory)
+    runs-on: windows-latest
+    timeout-minutes: 30
+    continue-on-error: true
+    env:
+      CI: "true"
+      NODE_OPTIONS: "--max-old-space-size=4096"
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Windows-relevant launcher and platform-neutral operator tests
+        run: >
+          npx vitest run
+          scripts/research/captureRestartSmokeWrapper.test.ts
+          scripts/research/captureReconnectSmokeWrapper.test.ts
+          scripts/operator/windowsLaunchers.test.ts
+          scripts/operator/kalshiEnv.test.ts
+          scripts/operator/auditCapture.test.ts
+          scripts/operator/runCaptureRestartSmoke.test.ts
+          scripts/operator/runCaptureReconnectSmoke.test.ts
+          scripts/operator/runCaptureWithProgress.test.ts
+          scripts/operator/reconnectSmokeAuthorization.test.ts
+          scripts/operator/childProcess.test.ts
+
+      - name: Operator dry-run plans (native)
+        shell: pwsh
+        run: |
+          npm run operator:capture-6h -- --dry-run-plan
+          npm run operator:capture-8h -- --dry-run-plan
+          npm run operator:capture-restart-smoke -- --dry-run-plan --duration-minutes 20
+          npm run operator:capture-reconnect-smoke -- --dry-run-plan --duration-minutes 20
+          npm run operator:audit-capture -- --latest --full --dry-run-plan

@@ -302,4 +302,63 @@ describe("evaluateReconnectSmokeAcceptance", () => {
       summary.failedChecks.some((check) => check.includes("lifecycle-malformed")),
     ).toBe(true);
   });
+
+  it("requires authHeaderGenerationCount to equal connectionAttemptCount", () => {
+    const mismatched = evaluateReconnectSmokeAcceptance(
+      baseInput({
+        health: {
+          runId: "run-abc",
+          verdict: "capture-mvp-success",
+          errors: [],
+          connection: {
+            completedNormally: true,
+            liveConnectionSucceeded: true,
+            captureEndReason: "duration-complete",
+            terminalFailureReason: null,
+            reconnectCount: 1,
+            connectionAttemptCount: 2,
+            authHeaderGenerationCount: 3,
+          },
+          watchdog: {
+            wsRecoverySuccessCount: 1,
+            wsRecoveryFailureCount: 0,
+            terminalWebSocketFailure: false,
+          },
+          writer: { allStreamsDrained: true, failure: null },
+        },
+      }),
+    );
+    expect(mismatched.passed).toBe(false);
+    expect(
+      mismatched.failedChecks.some((check) =>
+        check.includes("authHeaderGenerationCount=3 != connectionAttemptCount=2"),
+      ),
+    ).toBe(true);
+
+    const equal = evaluateReconnectSmokeAcceptance(
+      baseInput({
+        health: {
+          runId: "run-abc",
+          verdict: "capture-mvp-success",
+          errors: [],
+          connection: {
+            completedNormally: true,
+            liveConnectionSucceeded: true,
+            captureEndReason: "duration-complete",
+            terminalFailureReason: null,
+            reconnectCount: 1,
+            connectionAttemptCount: 3,
+            authHeaderGenerationCount: 3,
+          },
+          watchdog: {
+            wsRecoverySuccessCount: 1,
+            wsRecoveryFailureCount: 0,
+            terminalWebSocketFailure: false,
+          },
+          writer: { allStreamsDrained: true, failure: null },
+        },
+      }),
+    );
+    expect(equal.passed).toBe(true);
+  });
 });

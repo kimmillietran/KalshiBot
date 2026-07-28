@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# Example Kalshi environment loader for macOS (Bash / zsh).
+#
+# SAFETY:
+# - Never put real API key IDs or private key material in this file.
+# - Export only the key ID string and the private-key *path*.
+# - This file must be SOURCED, not executed:
+#     source scripts/shell/load-kalshi-env.sh.example
+#   or copy to a local (gitignored) loader:
+#     cp scripts/shell/load-kalshi-env.sh.example ./load-kalshi-env.sh
+#     # edit paths, then:
+#     source ./load-kalshi-env.sh
+#
+# Configure credential file locations via KALSHI_KEY_DIR (recommended)
+# or absolute paths.
+
+# Resolve key directory (override as needed).
+KALSHI_KEY_DIR="${KALSHI_KEY_DIR:-${HOME}/.kalshi}"
+
+# Export key ID from a one-line text file (no trailing secrets printed).
+# shellcheck disable=SC2155
+export KALSHI_API_KEY_ID="$(tr -d '[:space:]' < "${KALSHI_KEY_DIR}/kalshi-api-key-id.txt")"
+export KALSHI_API_PRIVATE_KEY_PATH="${KALSHI_KEY_DIR}/kalshi-api.key.txt"
+
+printf 'Kalshi env loaded:\n'
+printf '  KALSHI_API_KEY_ID loaded from %s/kalshi-api-key-id.txt\n' "${KALSHI_KEY_DIR}"
+printf '  KALSHI_API_PRIVATE_KEY_PATH = %s\n' "${KALSHI_API_PRIVATE_KEY_PATH}"

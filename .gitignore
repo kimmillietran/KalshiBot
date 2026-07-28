@@ -52,3 +52,8 @@ yarn-error.log*
 
 # local worktree branch assignment (one per worktree checkout)
 .worktree-branch
+.tools/
+/kalshi-api-key-id.txt
+/kalshi-api.key.txt
+/load-kalshi-env.sh
+/load-kalshi-env.ps1
