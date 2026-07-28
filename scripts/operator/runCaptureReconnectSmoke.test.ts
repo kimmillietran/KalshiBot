@@ -132,6 +132,7 @@ describe("runCaptureReconnectSmokeCommand", () => {
         "false",
         "--post-run-preflight-exit-code",
         "0",
+        "--write-authorization",
       ]),
     );
 

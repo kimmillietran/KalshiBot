@@ -93,6 +93,39 @@ function passingAcceptance(
   };
 }
 
+function lifecycleForControlled(runId: string, cycleId = 1): string {
+  return [
+    JSON.stringify({
+      runId,
+      type: "controlledReconnectRequested",
+      detectedAt: "2026-07-22T00:00:10.000Z",
+      recoveryCycleId: cycleId,
+      recoveryReason: "controlled-reconnect-validation",
+      requestDisposition: "started",
+      socketGeneration: 1,
+    }),
+    JSON.stringify({
+      runId,
+      type: "wsRecoveryAttempted",
+      detectedAt: "2026-07-22T00:00:11.000Z",
+      recoveryCycleId: cycleId,
+      recoveryReason: "controlled-reconnect-validation",
+      reason: "controlled-reconnect-validation",
+      attemptNumber: 1,
+      socketGeneration: 2,
+    }),
+    JSON.stringify({
+      runId,
+      type: "wsRecoverySucceeded",
+      detectedAt: "2026-07-22T00:00:12.000Z",
+      recoveryCycleId: cycleId,
+      recoveryReason: "controlled-reconnect-validation",
+      attemptNumber: 1,
+      socketGeneration: 2,
+    }),
+  ].join("\n");
+}
+
 function writeExactRunArtifacts(runDir: string, runId: string): void {
   mkdirSync(runDir, { recursive: true });
   writeFileSync(
@@ -101,6 +134,7 @@ function writeExactRunArtifacts(runDir: string, runId: string): void {
       schemaVersion: 1,
       runId,
       state: "completed",
+      startedAt: "2026-07-22T00:00:00.000Z",
       endedAt: "2026-07-22T00:20:00.000Z",
       captureEndReason: "duration-complete",
       failureReason: null,
@@ -144,14 +178,7 @@ function writeExactRunArtifacts(runDir: string, runId: string): void {
   );
   writeFileSync(
     join(runDir, "capture-lifecycle.jsonl"),
-    `${JSON.stringify({
-      type: "controlled-reconnect",
-      recoveryCycleId: 1,
-      recoveryReason: "force-reconnect-after-first-valid-top-of-book",
-      attemptCount: 1,
-      successCount: 1,
-      failureCount: 0,
-    })}\n`,
+    `${lifecycleForControlled(runId)}\n`,
     "utf8",
   );
 }
@@ -166,8 +193,7 @@ describe("reconnect smoke authorization artifact", () => {
 
     // Minimal lifecycle proof content is enough for write path; acceptance may
     // still fail closed depending on lifecycle parser strictness. Force write
-    // through the builder/writer directly for the happy artifact contract,
-    // then through the gate with writeAuthorizationArtifact for integration.
+    // through the builder/writer directly for the happy artifact contract.
     const summary = buildReconnectSmokeAuthorizationSummary({
       acceptance: passingAcceptance({
         runId,
@@ -203,6 +229,15 @@ describe("reconnect smoke authorization artifact", () => {
       ["writer failure", { writerFailurePresent: true, passed: false }],
       ["terminal websocket failure", { terminalWebSocketFailure: true, passed: false }],
       ["passed false diagnostic", { passed: false }],
+      ["duration too short", { durationMinutes: 10 }],
+      ["duration too long", { durationMinutes: 25 }],
+      ["bad nativeVerdict", { nativeVerdict: "capture-mvp-fail" }],
+      ["auditSelectedRunId mismatch", { auditSelectedRunId: "other-run" }],
+      ["runStatusState not completed", { runStatusState: "failed" }],
+      ["captureEndReason wrong", { captureEndReason: "operator-stop" }],
+      ["reconnectCount zero", { reconnectCount: 0 }],
+      ["connectionAttemptCount one", { connectionAttemptCount: 1 }],
+      ["authHeaderGenerationCount one", { authHeaderGenerationCount: 1 }],
     ];
 
     for (const [label, overrides] of cases) {
@@ -388,7 +423,45 @@ describe("eight-hour authorization integration", () => {
 });
 
 describe("evaluateReconnectSmokeGate authorization write", () => {
-  it("writes passed=false diagnostic summary without authorizing", () => {
+  const gateArgv = (runId: string, runDir: string, extra: string[] = []) => [
+    "--run-id",
+    runId,
+    "--run-dir",
+    runDir,
+    "--duration-minutes",
+    "20",
+    "--capture-exit-code",
+    "1",
+    "--audit-exit-code",
+    "0",
+    "--restart-gate-exit-code",
+    "0",
+    "--post-run-preflight-exit-code",
+    "0",
+    "--lock-present",
+    "false",
+    ...extra,
+  ];
+
+  it("does not write authorization by default (opt-in required)", () => {
+    const root = mkdtempSync(join(tmpdir(), "gate-nowrite-"));
+    dirs.push(root);
+    const runId = "reconnect-run";
+    const runDir = join(root, runId);
+    writeExactRunArtifacts(runDir, runId);
+
+    const exitCode = runEvaluateReconnectSmokeGateCommand(
+      gateArgv(runId, runDir),
+      {
+        writeStdout: () => {},
+        writeStderr: () => {},
+      },
+    );
+    expect(exitCode).toBe(1);
+    expect(() => readReconnectSmokeAuthorizationSummary(runDir)).toThrow(/missing/);
+  });
+
+  it("writes passed=false diagnostic summary only with --write-authorization", () => {
     const root = mkdtempSync(join(tmpdir(), "gate-write-"));
     dirs.push(root);
     const runId = "reconnect-run";
@@ -397,24 +470,7 @@ describe("evaluateReconnectSmokeGate authorization write", () => {
 
     const stderr: string[] = [];
     const exitCode = runEvaluateReconnectSmokeGateCommand(
-      [
-        "--run-id",
-        runId,
-        "--run-dir",
-        runDir,
-        "--duration-minutes",
-        "20",
-        "--capture-exit-code",
-        "1",
-        "--audit-exit-code",
-        "0",
-        "--restart-gate-exit-code",
-        "0",
-        "--post-run-preflight-exit-code",
-        "0",
-        "--lock-present",
-        "false",
-      ],
+      gateArgv(runId, runDir, ["--write-authorization"]),
       {
         writeStdout: () => {},
         writeStderr: (text) => stderr.push(text),
@@ -425,5 +481,68 @@ describe("evaluateReconnectSmokeGate authorization write", () => {
     expect(summary.passed).toBe(false);
     expect(summary.captureExitCode).toBe(1);
     expect(stderr.join("")).toContain("passed=false");
+  });
+});
+
+describe("verifyReconnectSmokeAuthorization artifact revalidation", () => {
+  it("accepts a conforming authorization after current-artifact re-evaluation", async () => {
+    const root = mkdtempSync(join(tmpdir(), "verify-ok-"));
+    dirs.push(root);
+    const runId = "reconnect-run";
+    const runDir = join(root, runId);
+    writeExactRunArtifacts(runDir, runId);
+    writeReconnectSmokeAuthorizationSummary(
+      runDir,
+      buildReconnectSmokeAuthorizationSummary({
+        acceptance: passingAcceptance({ runId, runDir }),
+        gateExitCode: 0,
+      }),
+    );
+
+    const { io } = createIo();
+    const exitCode = await runVerifyReconnectSmokeAuthorizationCommand(
+      ["--run-dir", runDir],
+      {
+        io,
+        runner: mockRunner(() => ({ exitCode: 0, stdout: "", stderr: "" })),
+      },
+    );
+    expect(exitCode).toBe(0);
+  });
+
+  it("denies when current lifecycle no longer proves controlled reconnect", async () => {
+    const root = mkdtempSync(join(tmpdir(), "verify-lifecycle-"));
+    dirs.push(root);
+    const runId = "reconnect-run";
+    const runDir = join(root, runId);
+    writeExactRunArtifacts(runDir, runId);
+    writeReconnectSmokeAuthorizationSummary(
+      runDir,
+      buildReconnectSmokeAuthorizationSummary({
+        acceptance: passingAcceptance({ runId, runDir }),
+        gateExitCode: 0,
+      }),
+    );
+    // Tamper current lifecycle so touch-read would still succeed but proof fails.
+    writeFileSync(
+      join(runDir, "capture-lifecycle.jsonl"),
+      `${JSON.stringify({
+        runId,
+        type: "naturalRecoverySucceeded",
+        detectedAt: "2026-07-22T00:00:12.000Z",
+      })}\n`,
+      "utf8",
+    );
+
+    const { io, stderr } = createIo();
+    const exitCode = await runVerifyReconnectSmokeAuthorizationCommand(
+      ["--run-dir", runDir],
+      {
+        io,
+        runner: mockRunner(() => ({ exitCode: 0, stdout: "", stderr: "" })),
+      },
+    );
+    expect(exitCode).toBe(1);
+    expect(stderr.join("")).toMatch(/revalidation failed|controlledReconnectProven/i);
   });
 });

@@ -300,6 +300,9 @@ export async function runCaptureReconnectSmokeCommand(
               String(postRunPreflightExitCode),
               "--lock-present",
               lockPresent ? "true" : "false",
+              // Opt-in minting: only the real reconnect wrapper may write the
+              // trusted eight-hour authorization artifact.
+              "--write-authorization",
             ],
           );
           gateExitCode = reconnectGate.exitCode;

@@ -5,8 +5,9 @@
  * combines orchestration exit codes supplied by the reconnect smoke wrapper.
  * Never selects "latest". Does not contact Kalshi.
  *
- * M12.1I: also writes run-scoped reconnect-smoke-authorization.json from the
- * actual evaluation result (passed or failed) for later eight-hour gating.
+ * M12.1I: optionally writes run-scoped reconnect-smoke-authorization.json when
+ * `--write-authorization` is present (reconnect wrapper only). Default is off
+ * so a manual diagnostic invocation cannot mint a trusted auth artifact.
  */
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -36,7 +37,11 @@ const ALLOWED_FLAGS = new Set([
   "--restart-gate-exit-code",
   "--post-run-preflight-exit-code",
   "--lock-present",
+  "--write-authorization",
 ]);
+
+/** Flags that take no value. */
+const BOOLEAN_FLAGS = new Set(["--write-authorization"]);
 
 function validateArgv(argv: readonly string[]): void {
   if (argv.length === 0) {
@@ -55,6 +60,9 @@ function validateArgv(argv: readonly string[]): void {
       throw new Error(`Duplicate flag: ${token}`);
     }
     seen.add(token);
+    if (BOOLEAN_FLAGS.has(token)) {
+      continue;
+    }
     const value = argv[index + 1];
     if (value === undefined || value.startsWith("--")) {
       throw new Error(`Missing value for flag ${token}`);
@@ -62,6 +70,9 @@ function validateArgv(argv: readonly string[]): void {
     index += 1;
   }
   for (const required of ALLOWED_FLAGS) {
+    if (BOOLEAN_FLAGS.has(required)) {
+      continue;
+    }
     if (!seen.has(required)) {
       throw new Error(`Missing required flag ${required}`);
     }
@@ -177,7 +188,12 @@ export function runEvaluateReconnectSmokeGateCommand(
     const gateExitCode = summary.passed ? 0 : 1;
     io.writeStdout(`${JSON.stringify(summary)}\n`);
 
-    if (options?.writeAuthorizationArtifact !== false) {
+    // Authorization minting is opt-in. A manual diagnostic invocation with
+    // caller-supplied zeros must not write a trusted authorization artifact.
+    const writeAuthorization =
+      options?.writeAuthorizationArtifact === true
+      || argv.includes("--write-authorization");
+    if (writeAuthorization) {
       const authorization = buildReconnectSmokeAuthorizationSummary({
         acceptance: summary,
         gateExitCode,

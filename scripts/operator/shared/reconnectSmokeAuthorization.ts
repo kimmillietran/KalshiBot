@@ -319,11 +319,15 @@ export type ReconnectAuthorizationAcceptance = {
 export function verifyPersistedReconnectSmokeAuthorization(options: {
   expectedRunDir: string;
   summary: ReconnectSmokeAuthorizationSummary;
+  smokeDurationMinutesMin?: number;
+  smokeDurationMinutesMax?: number;
 }): ReconnectAuthorizationAcceptance | ReconnectAuthorizationDenial {
   const reasons: string[] = [];
   const expectedRunDir = normalizeRunDir(options.expectedRunDir);
   const expectedRunId = expectedRunDir.split("/").at(-1) ?? "";
   const summary = options.summary;
+  const durationMin = options.smokeDurationMinutesMin ?? 15;
+  const durationMax = options.smokeDurationMinutesMax ?? 20;
 
   if (summary.runId !== expectedRunId) {
     reasons.push(
@@ -361,8 +365,62 @@ export function verifyPersistedReconnectSmokeAuthorization(options: {
   if (summary.controlledReconnectProven !== true) {
     reasons.push("controlledReconnectProven must be true");
   }
+  if (
+    summary.durationMinutes < durationMin
+    || summary.durationMinutes > durationMax
+  ) {
+    reasons.push(
+      `durationMinutes=${summary.durationMinutes} outside reconnect smoke window `
+        + `${durationMin}-${durationMax}`,
+    );
+  }
+  if (summary.nativeVerdict !== "capture-mvp-success") {
+    reasons.push(`nativeVerdict=${String(summary.nativeVerdict)}`);
+  }
   if (summary.nativeErrorCount !== 0) {
     reasons.push(`nativeErrorCount=${String(summary.nativeErrorCount)}`);
+  }
+  if (summary.auditSelectedRunId !== summary.runId) {
+    reasons.push(
+      `auditSelectedRunId mismatch (summary=${String(summary.auditSelectedRunId)}, `
+        + `runId=${summary.runId})`,
+    );
+  }
+  if (summary.runStatusState !== "completed") {
+    reasons.push(`runStatusState=${String(summary.runStatusState)}`);
+  }
+  if (summary.captureEndReason !== "duration-complete") {
+    reasons.push(`captureEndReason=${String(summary.captureEndReason)}`);
+  }
+  if (summary.completedNormally !== true) {
+    reasons.push(`completedNormally=${String(summary.completedNormally)}`);
+  }
+  if (summary.liveConnectionSucceeded !== true) {
+    reasons.push(
+      `liveConnectionSucceeded=${String(summary.liveConnectionSucceeded)}`,
+    );
+  }
+  if (
+    summary.reconnectCount === null
+    || summary.reconnectCount < 1
+  ) {
+    reasons.push(`reconnectCount=${String(summary.reconnectCount)}`);
+  }
+  if (
+    summary.connectionAttemptCount === null
+    || summary.connectionAttemptCount < 2
+  ) {
+    reasons.push(
+      `connectionAttemptCount=${String(summary.connectionAttemptCount)}`,
+    );
+  }
+  if (
+    summary.authHeaderGenerationCount === null
+    || summary.authHeaderGenerationCount < 2
+  ) {
+    reasons.push(
+      `authHeaderGenerationCount=${String(summary.authHeaderGenerationCount)}`,
+    );
   }
   if (summary.writerFailurePresent !== false) {
     reasons.push("writerFailurePresent must be false");
@@ -376,6 +434,135 @@ export function verifyPersistedReconnectSmokeAuthorization(options: {
   if (summary.wsRecoveryFailureCount !== 0) {
     reasons.push(
       `wsRecoveryFailureCount=${String(summary.wsRecoveryFailureCount)}`,
+    );
+  }
+
+  if (reasons.length > 0) {
+    return { ok: false, reasons };
+  }
+  return { ok: true, summary };
+}
+
+/**
+ * Re-evaluate current exact-run artifacts against the persisted orchestration
+ * evidence. Never fabricates exit codes — uses the summary's recorded values.
+ */
+export function revalidateReconnectAuthorizationAgainstCurrentArtifacts(options: {
+  expectedRunDir: string;
+  summary: ReconnectSmokeAuthorizationSummary;
+  statusRecord: Record<string, unknown>;
+  healthRecord: Record<string, unknown>;
+  auditRecord: Record<string, unknown>;
+  lifecycleJsonl: string;
+  evaluateAcceptance: (input: {
+    schemaVersion: 1;
+    mode: "reconnect-smoke";
+    runId: string;
+    runDir: string;
+    durationMinutes: number;
+    captureExitCode: number;
+    auditExitCode: number;
+    restartGateExitCode: number;
+    postRunPreflightExitCode: number;
+    lockPresent: boolean;
+    status: Record<string, unknown>;
+    health: {
+      runId: unknown;
+      verdict: unknown;
+      errors: unknown;
+      connection: Record<string, unknown> | null;
+      watchdog: Record<string, unknown> | null;
+      writer: Record<string, unknown> | null;
+    };
+    audit: Record<string, unknown>;
+    lifecycleJsonl: string;
+  }) => {
+    passed: boolean;
+    controlledReconnectProven: boolean;
+    failedChecks: string[];
+    nativeVerdict: string | null;
+    auditSelectedRunId: string | null;
+    runStatusState: string | null;
+    captureEndReason: string | null;
+  };
+}): ReconnectAuthorizationAcceptance | ReconnectAuthorizationDenial {
+  const summary = options.summary;
+  const fieldCheck = verifyPersistedReconnectSmokeAuthorization({
+    expectedRunDir: options.expectedRunDir,
+    summary,
+  });
+  if (!fieldCheck.ok) {
+    return fieldCheck;
+  }
+
+  const healthConnection =
+    options.healthRecord.connection !== null
+    && typeof options.healthRecord.connection === "object"
+    && !Array.isArray(options.healthRecord.connection)
+      ? (options.healthRecord.connection as Record<string, unknown>)
+      : null;
+  const healthWatchdog =
+    options.healthRecord.watchdog !== null
+    && typeof options.healthRecord.watchdog === "object"
+    && !Array.isArray(options.healthRecord.watchdog)
+      ? (options.healthRecord.watchdog as Record<string, unknown>)
+      : null;
+  const healthWriter =
+    options.healthRecord.writer !== null
+    && typeof options.healthRecord.writer === "object"
+    && !Array.isArray(options.healthRecord.writer)
+      ? (options.healthRecord.writer as Record<string, unknown>)
+      : null;
+
+  const reevaluated = options.evaluateAcceptance({
+    schemaVersion: 1,
+    mode: "reconnect-smoke",
+    runId: summary.runId,
+    runDir: normalizeRunDir(options.expectedRunDir),
+    durationMinutes: summary.durationMinutes,
+    captureExitCode: summary.captureExitCode,
+    auditExitCode: summary.auditExitCode,
+    restartGateExitCode: summary.restartGateExitCode,
+    postRunPreflightExitCode: summary.postRunPreflightExitCode,
+    lockPresent: summary.lockPresent,
+    status: options.statusRecord,
+    health: {
+      runId: options.healthRecord.runId,
+      verdict: options.healthRecord.verdict,
+      errors: options.healthRecord.errors,
+      connection: healthConnection,
+      watchdog: healthWatchdog,
+      writer: healthWriter,
+    },
+    audit: options.auditRecord,
+    lifecycleJsonl: options.lifecycleJsonl,
+  });
+
+  const reasons: string[] = [];
+  if (!reevaluated.passed) {
+    reasons.push(
+      `current-artifact reconnect acceptance failed: ${reevaluated.failedChecks.join(", ")}`,
+    );
+  }
+  if (reevaluated.controlledReconnectProven !== true) {
+    reasons.push("current lifecycle controlledReconnectProven=false");
+  }
+  if (reevaluated.nativeVerdict !== "capture-mvp-success") {
+    reasons.push(
+      `current nativeVerdict=${String(reevaluated.nativeVerdict)}`,
+    );
+  }
+  if (reevaluated.auditSelectedRunId !== summary.runId) {
+    reasons.push(
+      `current auditSelectedRunId=${String(reevaluated.auditSelectedRunId)}`,
+    );
+  }
+  if (reevaluated.runStatusState !== "completed") {
+    reasons.push(`current runStatusState=${String(reevaluated.runStatusState)}`);
+  }
+  if (reevaluated.captureEndReason !== "duration-complete") {
+    reasons.push(
+      `current captureEndReason=${String(reevaluated.captureEndReason)}`,
     );
   }
 
