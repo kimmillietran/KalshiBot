@@ -165,6 +165,63 @@ type ControlledReconnectPhase =
     failureReason: string;
   };
 
+/**
+ * Shared reason matcher with reconnect lifecycle acceptance:
+ * recoveryReason ?? reason must equal controlled-reconnect-validation.
+ */
+export function isControlledReconnectValidationReason(
+  event: Record<string, unknown>,
+): boolean {
+  const reason = event.recoveryReason ?? event.reason;
+  return reason === CONTROLLED_RECONNECT_VALIDATION_REASON;
+}
+
+/**
+ * Authoritative controlled-attempt count from finalized lifecycle events for
+ * an accepted recovery cycle. Matches evaluateControlledReconnectLifecycle.
+ */
+export function countControlledReconnectAttemptsFromLifecycle(
+  events: readonly Record<string, unknown>[],
+  recoveryCycleId: number,
+): number {
+  return events.filter(
+    (event) =>
+      event.type === "wsRecoveryAttempted"
+      && event.recoveryCycleId === recoveryCycleId
+      && isControlledReconnectValidationReason(event),
+  ).length;
+}
+
+/**
+ * Authoritative controlled-success count from finalized lifecycle events.
+ */
+export function countControlledReconnectSuccessesFromLifecycle(
+  events: readonly Record<string, unknown>[],
+  recoveryCycleId: number,
+): number {
+  return events.filter(
+    (event) =>
+      event.type === "wsRecoverySucceeded"
+      && event.recoveryCycleId === recoveryCycleId
+      && isControlledReconnectValidationReason(event),
+  ).length;
+}
+
+/**
+ * Authoritative controlled-failure count from finalized lifecycle events.
+ */
+export function countControlledReconnectFailuresFromLifecycle(
+  events: readonly Record<string, unknown>[],
+  recoveryCycleId: number,
+): number {
+  return events.filter(
+    (event) =>
+      event.type === "wsRecoveryFailed"
+      && event.recoveryCycleId === recoveryCycleId
+      && isControlledReconnectValidationReason(event),
+  ).length;
+}
+
 export async function runLiveForwardQuoteCapture(input: {
   runId: string;
   startedAt: string;
@@ -222,6 +279,8 @@ export async function runLiveForwardQuoteCapture(input: {
   };
   let controlledReconnectScheduler: Promise<void> | null = null;
   let controlledReconnectAttemptCount = 0;
+  /** Attempts observed before acceptControlledReconnect (sync race safety net). */
+  const pendingControlledAttemptCycleIds = new Set<number>();
   const controlledReconnectEnabled = Boolean(input.forceReconnectAfterFirstValidTopOfBook);
   /**
    * Tickers closed locally while a reconnect subscribe acknowledgement (SID)
@@ -311,6 +370,12 @@ export async function runLiveForwardQuoteCapture(input: {
       recoveryCycleId,
       disposition: "started",
     };
+    // Reconcile attempts that fired before acceptance (historical race where
+    // runRecovery emitted wsRecoveryAttempted synchronously before this ran).
+    if (pendingControlledAttemptCycleIds.has(recoveryCycleId)) {
+      controlledReconnectAttemptCount += 1;
+      pendingControlledAttemptCycleIds.delete(recoveryCycleId);
+    }
     writer.appendLifecycleEvent({
       runId: input.runId,
       type: "controlledReconnectRequested",
@@ -577,19 +642,34 @@ export async function runLiveForwardQuoteCapture(input: {
         if (event.type === "wsRecoverySucceeded") {
           processor.recordBooksResynchronized();
         }
+        const eventRecoveryCycleId =
+          typeof event.recoveryCycleId === "number" ? event.recoveryCycleId : null;
+        const isControlled = isControlledReconnectValidationReason(
+          event as Record<string, unknown>,
+        );
         if (
           event.type === "wsRecoveryAttempted"
-          && event.recoveryReason === CONTROLLED_RECONNECT_VALIDATION_REASON
-          && controlledReconnectState.current.phase === "accepted"
-          && event.recoveryCycleId === controlledReconnectState.current.recoveryCycleId
+          && isControlled
+          && eventRecoveryCycleId !== null
         ) {
-          controlledReconnectAttemptCount += 1;
+          if (
+            controlledReconnectState.current.phase === "accepted"
+            && eventRecoveryCycleId === controlledReconnectState.current.recoveryCycleId
+          ) {
+            controlledReconnectAttemptCount += 1;
+          } else if (
+            controlledReconnectState.current.phase === "not-requested"
+            || controlledReconnectState.current.phase === "deferred"
+          ) {
+            // Attempt arrived before acceptControlledReconnect — queue for reconcile.
+            pendingControlledAttemptCycleIds.add(eventRecoveryCycleId);
+          }
         }
         if (
           event.type === "wsRecoverySucceeded"
-          && event.recoveryReason === CONTROLLED_RECONNECT_VALIDATION_REASON
+          && isControlled
           && controlledReconnectState.current.phase === "accepted"
-          && event.recoveryCycleId === controlledReconnectState.current.recoveryCycleId
+          && eventRecoveryCycleId === controlledReconnectState.current.recoveryCycleId
         ) {
           controlledReconnectState.current = {
             phase: "succeeded",
@@ -598,12 +678,12 @@ export async function runLiveForwardQuoteCapture(input: {
         }
         if (
           event.type === "wsRecoveryFailed"
-          && event.recoveryReason === CONTROLLED_RECONNECT_VALIDATION_REASON
+          && isControlled
           && (controlledReconnectState.current.phase === "accepted"
             || controlledReconnectState.current.phase === "deferred")
-          && (event.recoveryCycleId === undefined
+          && (eventRecoveryCycleId === null
             || (controlledReconnectState.current.phase === "accepted"
-              && event.recoveryCycleId === controlledReconnectState.current.recoveryCycleId))
+              && eventRecoveryCycleId === controlledReconnectState.current.recoveryCycleId))
         ) {
           failControlledReconnect("controlled-recovery-failed");
         }
@@ -1253,10 +1333,79 @@ export async function runLiveForwardQuoteCapture(input: {
     (watchdogDiagnostics?.wsRecoverySuccessCount ?? 0) > 0
     || (watchdogDiagnostics?.wsStallDetectedCount ?? 0) > 0;
 
+  const lifecycleEvents = (watchdogDiagnostics?.lifecycleEvents ?? []) as unknown as Record<
+    string,
+    unknown
+  >[];
+  const controlledPhase = controlledReconnectState.current;
+  const controlledAcceptedOrSucceeded =
+    controlledPhase.phase === "accepted" || controlledPhase.phase === "succeeded";
+  const controlledRecoveryCycleId = controlledAcceptedOrSucceeded
+    ? controlledPhase.recoveryCycleId
+    : null;
+  const lifecycleAttemptCount =
+    controlledRecoveryCycleId !== null
+      ? countControlledReconnectAttemptsFromLifecycle(
+        lifecycleEvents,
+        controlledRecoveryCycleId,
+      )
+      : 0;
+  const lifecycleSuccessCount =
+    controlledRecoveryCycleId !== null
+      ? countControlledReconnectSuccessesFromLifecycle(
+        lifecycleEvents,
+        controlledRecoveryCycleId,
+      )
+      : 0;
+  const lifecycleFailureCount =
+    controlledRecoveryCycleId !== null
+      ? countControlledReconnectFailuresFromLifecycle(
+        lifecycleEvents,
+        controlledRecoveryCycleId,
+      )
+      : 0;
+  const controlledLifecycleConflict =
+    controlledReconnectEnabled
+    && controlledRecoveryCycleId !== null
+    && (
+      lifecycleSuccessCount > 1
+      || (lifecycleSuccessCount >= 1 && lifecycleFailureCount >= 1)
+      || (lifecycleSuccessCount === 1 && lifecycleAttemptCount < 1)
+    );
+  const controlledLifecycleProven =
+    controlledReconnectEnabled
+    && controlledRecoveryCycleId !== null
+    && lifecycleSuccessCount === 1
+    && lifecycleAttemptCount >= 1
+    && lifecycleFailureCount === 0;
+
+  if (controlledLifecycleConflict) {
+    if (
+      !errors.includes(
+        "Controlled reconnect validation failed: controlled-reconnect-lifecycle-conflict",
+      )
+    ) {
+      errors.push(
+        "Controlled reconnect validation failed: controlled-reconnect-lifecycle-conflict",
+      );
+    }
+    if (captureEndReason === "duration-complete") {
+      captureEndReason = "unexpected-error";
+    }
+    failControlledReconnect("controlled-reconnect-lifecycle-conflict");
+  } else if (controlledLifecycleProven && controlledPhase.phase === "accepted") {
+    // Lifecycle proof can finalize success if the in-memory phase lagged.
+    controlledReconnectState.current = {
+      phase: "succeeded",
+      recoveryCycleId: controlledRecoveryCycleId!,
+    };
+  }
+
   if (
     controlledReconnectEnabled
     && captureEndReason === "duration-complete"
     && controlledReconnectState.current.phase !== "succeeded"
+    && !controlledLifecycleProven
   ) {
     const failureReason =
       controlledReconnectState.current.phase === "failed"
@@ -1281,6 +1430,7 @@ export async function runLiveForwardQuoteCapture(input: {
         : captureEndReason === "unexpected-error"
           && controlledReconnectEnabled
           && controlledReconnectState.current.phase !== "succeeded"
+          && !controlledLifecycleProven
           ? "controlled-reconnect-validation-failed"
           : null;
 
@@ -1302,37 +1452,41 @@ export async function runLiveForwardQuoteCapture(input: {
     authHeaderGenerationCount,
   });
 
+  const finalControlledPhase = controlledReconnectState.current;
+  const finalAcceptedOrSucceeded =
+    finalControlledPhase.phase === "accepted"
+    || finalControlledPhase.phase === "succeeded";
+  const authoritativeAttemptCount = Math.max(
+    controlledReconnectAttemptCount,
+    lifecycleAttemptCount,
+  );
   const controlledReconnectValidation: ControlledReconnectValidationDiagnostics | null =
     controlledReconnectEnabled
       ? {
         enabled: true,
-        requestCount:
-          controlledReconnectState.current.phase === "not-requested" ? 0 : 1,
-        acceptedRequestCount:
-          controlledReconnectState.current.phase === "accepted"
-          || controlledReconnectState.current.phase === "succeeded"
-            ? 1
-            : 0,
-        recoveryCycleId:
-          controlledReconnectState.current.phase === "accepted"
-          || controlledReconnectState.current.phase === "succeeded"
-            ? controlledReconnectState.current.recoveryCycleId
-            : null,
-        recoveryReason:
-          controlledReconnectState.current.phase === "accepted"
-          || controlledReconnectState.current.phase === "succeeded"
-            ? CONTROLLED_RECONNECT_VALIDATION_REASON
-            : null,
-        attemptCount: controlledReconnectAttemptCount,
-        succeeded: controlledReconnectState.current.phase === "succeeded",
+        requestCount: finalControlledPhase.phase === "not-requested" ? 0 : 1,
+        acceptedRequestCount: finalAcceptedOrSucceeded ? 1 : 0,
+        recoveryCycleId: finalAcceptedOrSucceeded
+          ? finalControlledPhase.recoveryCycleId
+          : null,
+        recoveryReason: finalAcceptedOrSucceeded
+          ? CONTROLLED_RECONNECT_VALIDATION_REASON
+          : null,
+        // Finalized lifecycle is authoritative (same definition as acceptance).
+        attemptCount: authoritativeAttemptCount,
+        succeeded:
+          !controlledLifecycleConflict
+          && (finalControlledPhase.phase === "succeeded" || controlledLifecycleProven),
         failed:
-          controlledReconnectState.current.phase === "failed"
-          || controlledReconnectState.current.phase === "cancelled",
-        failureReason:
-          controlledReconnectState.current.phase === "failed"
-          || controlledReconnectState.current.phase === "cancelled"
-            ? controlledReconnectState.current.failureReason
-            : controlledReconnectState.current.phase === "succeeded"
+          controlledLifecycleConflict
+          || finalControlledPhase.phase === "failed"
+          || finalControlledPhase.phase === "cancelled",
+        failureReason: controlledLifecycleConflict
+          ? "controlled-reconnect-lifecycle-conflict"
+          : finalControlledPhase.phase === "failed"
+            || finalControlledPhase.phase === "cancelled"
+            ? finalControlledPhase.failureReason
+            : finalControlledPhase.phase === "succeeded" || controlledLifecycleProven
               ? null
               : "controlled-reconnect-not-completed",
       }

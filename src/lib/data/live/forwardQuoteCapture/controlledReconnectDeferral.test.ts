@@ -497,6 +497,7 @@ describe("controlled reconnect deferral (live layer)", () => {
     expect(busySpy.naturalCyclesStarted).toBeGreaterThanOrEqual(1);
     expect(result.controlledReconnectValidation?.succeeded).toBe(true);
     expect(result.controlledReconnectValidation?.acceptedRequestCount).toBe(1);
+    expect(result.controlledReconnectValidation?.attemptCount).toBeGreaterThanOrEqual(1);
     expect(result.controlledReconnectValidation?.recoveryReason).toBe(
       CONTROLLED_RECONNECT_VALIDATION_REASON,
     );
