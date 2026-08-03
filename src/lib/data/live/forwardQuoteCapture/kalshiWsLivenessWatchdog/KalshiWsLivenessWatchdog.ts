@@ -431,9 +431,25 @@ export class KalshiWsLivenessWatchdog {
     this.activeRecoveryCycleId = recoveryCycleId;
     this.activeRecoveryReason = reason;
     this.stallDetectedAtMonotonicMs = this.deps.monotonicNowMs();
-    // Contain every recovery outcome: fire-and-forget beginRecovery must never
-    // leave an unhandled rejection that can terminate the Node process.
-    this.recoveryPromise = this.runRecovery(recoveryCycleId, reason)
+    // Defer runRecovery to the next microtask so requestEscalatedRecovery
+    // callers can update controlled-reconnect acceptance state before the
+    // first wsRecoveryAttempted event is emitted. runRecovery emits that
+    // event synchronously before its first await; without deferral the
+    // attempt is observed while phase is still not-requested/deferred and
+    // attemptCount stays 0 even though recovery later succeeds.
+    // recoveryPromise is assigned immediately so concurrent escalation
+    // requests still observe busy.
+    this.recoveryPromise = Promise.resolve()
+      .then(() => {
+        if (
+          this.disabled
+          || this.deps.shouldStop()
+          || this.state === "terminal-failure"
+        ) {
+          return;
+        }
+        return this.runRecovery(recoveryCycleId, reason);
+      })
       .catch(() => {
         this.wsRecoveryFailureCount += 1;
         this.terminalWebSocketFailure = true;

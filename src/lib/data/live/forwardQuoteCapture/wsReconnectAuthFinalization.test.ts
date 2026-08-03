@@ -454,6 +454,8 @@ describe("wsReconnectAuthFinalization", () => {
     expect(lifecycle).toContain("controlledReconnectRequested");
     expect(lifecycle).toContain("controlled-reconnect-validation");
     expect(result.controlledReconnectValidation?.succeeded).toBe(true);
+    expect(result.controlledReconnectValidation?.attemptCount).toBeGreaterThanOrEqual(1);
+    expect(result.controlledReconnectValidation?.acceptedRequestCount).toBe(1);
     expect(result.controlledReconnectValidation?.recoveryCycleId).toEqual(
       expect.any(Number),
     );

@@ -68,33 +68,46 @@ function mockCaptureResult(input: {
   captureEndReason: string | null;
   controlledSucceeded?: boolean;
   terminalFailureReason?: string | null;
+  controlledOverrides?: Partial<{
+    acceptedRequestCount: number;
+    attemptCount: number;
+    succeeded: boolean;
+    failed: boolean;
+    failureReason: string | null;
+    recoveryCycleId: number | null;
+    recoveryReason: string | null;
+  }>;
 }) {
   const controlledSucceeded = input.controlledSucceeded ?? true;
+  const baseControlled = controlledSucceeded
+    ? {
+      enabled: true,
+      requestCount: 1,
+      acceptedRequestCount: 1,
+      recoveryCycleId: 2,
+      recoveryReason: "controlled-reconnect-validation",
+      attemptCount: 1,
+      succeeded: true,
+      failed: false,
+      failureReason: null,
+    }
+    : {
+      enabled: true,
+      requestCount: 1,
+      acceptedRequestCount: 0,
+      recoveryCycleId: null,
+      recoveryReason: null,
+      attemptCount: 0,
+      succeeded: false,
+      failed: true,
+      failureReason: "controlled-reconnect-not-completed",
+    };
   return {
     runId: "run-1",
-    controlledReconnectValidation: controlledSucceeded
-      ? {
-        enabled: true,
-        requestCount: 1,
-        acceptedRequestCount: 1,
-        recoveryCycleId: 2,
-        recoveryReason: "controlled-reconnect-validation",
-        attemptCount: 1,
-        succeeded: true,
-        failed: false,
-        failureReason: null,
-      }
-      : {
-        enabled: true,
-        requestCount: 1,
-        acceptedRequestCount: 0,
-        recoveryCycleId: null,
-        recoveryReason: null,
-        attemptCount: 0,
-        succeeded: false,
-        failed: true,
-        failureReason: "controlled-reconnect-not-completed",
-      },
+    controlledReconnectValidation: {
+      ...baseControlled,
+      ...input.controlledOverrides,
+    },
     healthReport: {
       verdict: "capture-mvp-success",
       recommendedNextAction: "none",
@@ -199,13 +212,86 @@ describe("runReconnectValidationCaptureCommand", () => {
     expect(exitCode).toBe(130);
   });
 
-  it("returns 1 for duration-complete when controlled incomplete", async () => {
+  it("returns 1 for the observed production false-negative shape (attemptCount 0)", async () => {
+    // Pre-fix shape: succeeded=true but attemptCount=0. Gate must still deny
+    // until underlying accounting is truthful (attemptCount >= 1).
+    resetReconnectValidationShutdown();
+    mockedRun.mockClear();
+    mockedRun.mockResolvedValueOnce(
+      mockCaptureResult({
+        captureEndReason: "duration-complete",
+        controlledOverrides: {
+          acceptedRequestCount: 1,
+          attemptCount: 0,
+          succeeded: true,
+          failed: false,
+          failureReason: null,
+          recoveryCycleId: 1,
+          recoveryReason: "controlled-reconnect-validation",
+        },
+      }),
+    );
+    const { io, stdout } = createIo();
+    const exitCode = await runReconnectValidationCaptureCommand(
+      [...VALID_ARGV],
+      io,
+    );
+    expect(exitCode).toBe(1);
+    const payload = JSON.parse(stdout.join("")) as {
+      controlledReconnectSucceeded: boolean;
+      controlledReconnectValidation: { attemptCount: number };
+    };
+    expect(payload.controlledReconnectSucceeded).toBe(false);
+    expect(payload.controlledReconnectValidation.attemptCount).toBe(0);
+  });
+
+  it("returns 0 when attempt and success are exactly once with duration-complete", async () => {
+    resetReconnectValidationShutdown();
+    mockedRun.mockClear();
+    mockedRun.mockResolvedValueOnce(
+      mockCaptureResult({
+        captureEndReason: "duration-complete",
+        controlledOverrides: {
+          acceptedRequestCount: 1,
+          attemptCount: 1,
+          succeeded: true,
+          failed: false,
+          failureReason: null,
+        },
+      }),
+    );
+    const { io, stdout } = createIo();
+    const exitCode = await runReconnectValidationCaptureCommand(
+      [...VALID_ARGV],
+      io,
+    );
+    expect(exitCode).toBe(0);
+    const payload = JSON.parse(stdout.join("")) as {
+      controlledReconnectSucceeded: boolean;
+      connectionAttemptCount: number;
+      authHeaderGenerationCount: number;
+    };
+    expect(payload.controlledReconnectSucceeded).toBe(true);
+    expect(payload.connectionAttemptCount).toBe(2);
+    expect(payload.authHeaderGenerationCount).toBe(2);
+  });
+
+  it("returns 1 when request accepted but controlled recovery failed", async () => {
     resetReconnectValidationShutdown();
     mockedRun.mockClear();
     mockedRun.mockResolvedValueOnce(
       mockCaptureResult({
         captureEndReason: "duration-complete",
         controlledSucceeded: false,
+        controlledOverrides: {
+          acceptedRequestCount: 1,
+          attemptCount: 1,
+          succeeded: false,
+          failed: true,
+          failureReason: "controlled-recovery-failed",
+          recoveryCycleId: 1,
+          recoveryReason: "controlled-reconnect-validation",
+        },
       }),
     );
     const { io } = createIo();
