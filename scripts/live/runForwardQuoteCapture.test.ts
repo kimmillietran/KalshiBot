@@ -78,6 +78,141 @@ describe("runForwardQuoteCaptureCommand", () => {
     expect(written["out/report.html"]).toContain("Capture infrastructure only");
   });
 
+  it("emits capture-started JSON before the capture promise resolves", async () => {
+    resetForwardCaptureShutdown();
+    const stdout: string[] = [];
+    let resolveCapture!: (value: never) => void;
+    const captureGate = new Promise<never>((resolve) => {
+      resolveCapture = resolve;
+    });
+
+    vi.mocked(runForwardQuoteCapture).mockImplementationOnce(async (input) => {
+      input.onRunStarted?.({
+        runId: "startup-run",
+        outputDir: "out/capture",
+        runDir: "out/capture/startup-run",
+        startedAt: "2026-08-03T12:00:00.000Z",
+      });
+      await captureGate;
+      return {
+        runId: "startup-run",
+        htmlOutputPath: "out/report.html",
+        healthReport: {
+          verdict: "dry-run-ok",
+          recommendedNextAction: "none",
+          credentialStatus: "dry-run",
+          marketDiscovery: { marketsSubscribed: 1 },
+          capture: {
+            rawMessageCount: 1,
+            topOfBookRecordCount: 1,
+            btcSpotRecordCount: 0,
+          },
+          orderbook: { sequenceGapCount: 0 },
+          connection: {
+            reconnectCount: 0,
+            captureEndReason: "duration-complete",
+            terminalFailureReason: null,
+            completedNormally: true,
+            liveConnectionSucceeded: false,
+          },
+          errors: [],
+        },
+      } as never;
+    });
+
+    const commandPromise = runForwardQuoteCaptureCommand(
+      [
+        "--dry-run",
+        "--series",
+        "KXBTC15M",
+        "--duration-minutes",
+        "1",
+        "--max-markets",
+        "1",
+        "--output-dir",
+        "out/capture",
+        "--html-output",
+        "out/report.html",
+      ],
+      {
+        writeStdout: (text) => stdout.push(text),
+        writeStderr: () => {},
+        writeFile: () => {},
+        appendFile: () => {},
+        mkdirSync: () => {},
+      },
+    );
+
+    await vi.waitFor(() => {
+      expect(stdout.join("")).toContain('"event":"capture-started"');
+    });
+
+    const startupText = stdout.join("");
+    expect(startupText.endsWith("\n")).toBe(true);
+    const startupLine = startupText.trim().split(/\r?\n/).at(-1)!;
+    const startup = JSON.parse(startupLine) as Record<string, unknown>;
+    expect(startup).toMatchObject({
+      event: "capture-started",
+      runId: "startup-run",
+      outputDir: "out/capture",
+      runDir: "out/capture/startup-run",
+    });
+    expect(startupText).not.toContain("dry-run-ok");
+
+    resolveCapture(undefined as never);
+    const exitCode = await commandPromise;
+    expect(exitCode).toBe(0);
+
+    const lines = stdout.join("").trim().split(/\r?\n/);
+    expect(lines.length).toBeGreaterThanOrEqual(2);
+    const final = JSON.parse(lines.at(-1)!) as Record<string, unknown>;
+    expect(final.runId).toBe("startup-run");
+    expect(final.outputDir).toBe("out/capture");
+    expect(final.verdict).toBe("dry-run-ok");
+    expect(final).not.toHaveProperty("event");
+  });
+
+  it("dry-run startup and final identities match", async () => {
+    resetForwardCaptureShutdown();
+    const stdout: string[] = [];
+    const exitCode = await runForwardQuoteCaptureCommand(
+      [
+        "--dry-run",
+        "--series",
+        "KXBTC15M",
+        "--duration-minutes",
+        "1",
+        "--max-markets",
+        "1",
+        "--output-dir",
+        "out/capture",
+        "--html-output",
+        "out/report.html",
+      ],
+      {
+        writeStdout: (text) => stdout.push(text),
+        writeStderr: () => {},
+        writeFile: () => {},
+        appendFile: () => {},
+        mkdirSync: () => {},
+      },
+    );
+
+    expect(exitCode).toBe(0);
+    const lines = stdout
+      .join("")
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter((line) => line.startsWith("{"));
+    expect(lines.length).toBeGreaterThanOrEqual(2);
+    const startup = JSON.parse(lines[0]!) as Record<string, unknown>;
+    const final = JSON.parse(lines.at(-1)!) as Record<string, unknown>;
+    expect(startup.event).toBe("capture-started");
+    expect(startup.runId).toBe(final.runId);
+    expect(startup.outputDir).toBe(final.outputDir);
+    expect(String(startup.runDir)).toContain(String(startup.runId));
+  });
+
   it("returns exit code 1 when a stream fails only during finalization end()", async () => {
     resetForwardCaptureShutdown();
     const written: Record<string, string> = {};

@@ -1,5 +1,8 @@
 export { runForwardQuoteCapture } from "./runForwardQuoteCapture";
-export type { ForwardQuoteCaptureRunResult } from "./runForwardQuoteCapture";
+export type {
+  ForwardQuoteCaptureRunResult,
+  ForwardQuoteCaptureRunStartedIdentity,
+} from "./runForwardQuoteCapture";
 export { runDryRunForwardQuoteCapture } from "./runDryRunForwardQuoteCapture";
 export { runLiveForwardQuoteCapture } from "./runLiveForwardQuoteCapture";
 export { discoverCaptureMarkets, discoverRolloverMarkets } from "./discoverCaptureMarkets";

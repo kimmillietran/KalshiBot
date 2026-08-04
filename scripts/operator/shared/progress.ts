@@ -149,6 +149,10 @@ export function startCaptureProgressMonitor(options: {
       topState = await countNewLines(topState);
       btcState = await countNewLines(btcState);
 
+      if (stopped) {
+        return;
+      }
+
       const snapshot: CaptureProgressSnapshot = {
         localTime: new Date(nowMs).toLocaleTimeString("en-US", { hour12: false }),
         runId: options.runId,

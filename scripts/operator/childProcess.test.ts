@@ -142,4 +142,51 @@ describe("spawnWithTee", () => {
     const result = await childPromise;
     expect(result.exitCode === 0).toBe(false);
   }, 10_000);
+
+  it("aborts the exact child once via AbortSignal and cleans up listeners", async () => {
+    if (process.platform === "win32") {
+      return;
+    }
+    const dir = mkdtempSync(join(tmpdir(), "spawn-abort-"));
+    dirs.push(dir);
+    const logPath = join(dir, "out.log");
+    const controller = new AbortController();
+
+    const childPromise = spawnWithTee({
+      command: process.execPath,
+      args: [
+        "-e",
+        "process.on('SIGINT', () => process.exit(130)); setInterval(() => {}, 1000);",
+      ],
+      logPath,
+      signalHandlers: false,
+      abortSignal: controller.signal,
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    controller.abort();
+    controller.abort();
+
+    const result = await childPromise;
+    expect(result.exitCode === 0).toBe(false);
+  }, 10_000);
+
+  it("swallows onStdoutChunk exceptions so EventEmitter data callbacks never throw", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "spawn-callback-"));
+    dirs.push(dir);
+    const logPath = join(dir, "out.log");
+
+    const result = await spawnWithTee({
+      command: process.execPath,
+      args: ["-e", "process.stdout.write('chunk\\n');"],
+      logPath,
+      signalHandlers: false,
+      onStdoutChunk: () => {
+        throw new Error("parser boom");
+      },
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("chunk");
+  });
 });

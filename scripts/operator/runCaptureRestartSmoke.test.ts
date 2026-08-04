@@ -82,7 +82,12 @@ describe("runCaptureRestartSmokeCommand", () => {
             return {
               exitCode: 0,
               stdout:
-                JSON.stringify({ runId: "exact-run", outputDir: root }) + "\n",
+                JSON.stringify({
+                  runId: "exact-run",
+                  outputDir: root,
+                  verdict: "ok",
+                  captureEndReason: "duration-complete",
+                }) + "\n",
               stderr: "",
             };
           }
