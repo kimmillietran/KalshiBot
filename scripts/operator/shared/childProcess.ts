@@ -18,6 +18,11 @@ export type SpawnTeeOptions = {
   onStdoutChunk?: (chunk: string) => void;
   onStderrChunk?: (chunk: string) => void;
   signalHandlers?: boolean;
+  /**
+   * Optional single-use controller for graceful shutdown of the exact child
+   * (protocol failure). Abort sends SIGINT once; listeners are removed on exit.
+   */
+  abortSignal?: AbortSignal;
 };
 
 export class SpawnTeeLogOpenError extends Error {
@@ -118,6 +123,7 @@ export async function spawnWithTee(
   const childStdout = child.stdout;
   const childStderr = child.stderr;
 
+  let shutdownRequested = false;
   const forwardSignal = (signal: NodeJS.Signals): void => {
     if (!child.killed) {
       try {
@@ -126,6 +132,14 @@ export async function spawnWithTee(
         // Child may have already exited.
       }
     }
+  };
+
+  const requestGracefulChildShutdown = (): void => {
+    if (shutdownRequested) {
+      return;
+    }
+    shutdownRequested = true;
+    forwardSignal("SIGINT");
   };
 
   const onSigInt = (): void => {
@@ -138,6 +152,18 @@ export async function spawnWithTee(
   if (options.signalHandlers !== false) {
     process.on("SIGINT", onSigInt);
     process.on("SIGTERM", onSigTerm);
+  }
+
+  const abortSignal = options.abortSignal;
+  const onAbort = (): void => {
+    requestGracefulChildShutdown();
+  };
+  if (abortSignal) {
+    if (abortSignal.aborted) {
+      requestGracefulChildShutdown();
+    } else {
+      abortSignal.addEventListener("abort", onAbort, { once: true });
+    }
   }
 
   const writeLog = (chunk: string): void => {
@@ -156,14 +182,23 @@ export async function spawnWithTee(
     stdout += chunk;
     process.stdout.write(chunk);
     writeLog(chunk);
-    options.onStdoutChunk?.(chunk);
+    try {
+      options.onStdoutChunk?.(chunk);
+    } catch {
+      // Never throw from an EventEmitter data callback. Protocol failures are
+      // recorded by the operator callback and converted to abort/nonzero exit.
+    }
   });
 
   childStderr.on("data", (chunk: string) => {
     stderr += chunk;
     process.stderr.write(chunk);
     writeLog(chunk);
-    options.onStderrChunk?.(chunk);
+    try {
+      options.onStderrChunk?.(chunk);
+    } catch {
+      // Never throw from an EventEmitter data callback.
+    }
   });
 
   const childExit = new Promise<{
@@ -215,6 +250,9 @@ export async function spawnWithTee(
       stderr,
     };
   } finally {
+    if (abortSignal) {
+      abortSignal.removeEventListener("abort", onAbort);
+    }
     if (options.signalHandlers !== false) {
       process.off("SIGINT", onSigInt);
       process.off("SIGTERM", onSigTerm);

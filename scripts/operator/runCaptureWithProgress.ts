@@ -48,11 +48,12 @@ import {
 import { requireKalshiEnv } from "./shared/kalshiEnv";
 import { startCaptureProgressMonitor, type ProgressMonitorHandle } from "./shared/progress";
 import {
+  createCaptureIdentityStreamParser,
   exactCaptureIdentitiesMatch,
   parseExactRunIdentityFromOutput,
-  tryParseExactRunIdentityFromChunk,
   type ExactCaptureRunIdentity,
 } from "./shared/runIdentity";
+import type { SpawnTeeOptions, SpawnTeeResult } from "./shared/childProcess";
 
 const KNOWN_FLAGS = new Set([
   "--preset",
@@ -69,7 +70,7 @@ export type CaptureWithProgressDeps = {
   runner: OperatorCommandRunner;
   io: CommandIo;
   requireCredentials?: boolean;
-  spawnCapture?: typeof spawnWithTee;
+  spawnCapture?: (options: SpawnTeeOptions) => Promise<SpawnTeeResult>;
   exists?: (path: string) => boolean;
   mkdirp?: (path: string) => void;
   now?: () => Date;
@@ -364,22 +365,62 @@ export async function runCaptureWithProgressCommand(
       identity: ExactCaptureRunIdentity | null;
       identityConflict: string | null;
       progressHandle: ProgressMonitorHandle | null;
+      childShutdownRequests: number;
+      monitorsStarted: number;
     } = {
       identity: null,
       identityConflict: null,
       progressHandle: null,
+      childShutdownRequests: 0,
+      monitorsStarted: 0,
     };
-    let stdoutBuffer = "";
 
-    const attachProgressMonitor = (parsed: ExactCaptureRunIdentity): void => {
-      if (runState.progressHandle !== null) {
+    const identityParser = createCaptureIdentityStreamParser({
+      nowMs: () => (deps.now?.() ?? new Date()).getTime(),
+    });
+    const childAbort = new AbortController();
+
+    const requestProtocolFailure = (message: string): void => {
+      if (runState.identityConflict !== null) {
         return;
       }
+      runState.identityConflict = message;
+      deps.io.writeStderr(`${message}\n`);
+      runState.progressHandle?.stop();
+      runState.progressHandle = null;
+      if (!childAbort.signal.aborted) {
+        runState.childShutdownRequests += 1;
+        childAbort.abort();
+      }
+    };
+
+    const attachProgressMonitor = (parsed: ExactCaptureRunIdentity): void => {
+      if (runState.progressHandle !== null || runState.monitorsStarted > 0) {
+        return;
+      }
+      if (parsed.kind !== "startup" || !parsed.fromStartupEvent) {
+        return;
+      }
+      if (typeof parsed.startedAtMs !== "number") {
+        requestProtocolFailure(
+          "Malformed capture-started JSON: startedAt must be a valid ISO timestamp.",
+        );
+        return;
+      }
+      if (!exists(parsed.runDir)) {
+        requestProtocolFailure(
+          `Capture run directory not found for runId '${parsed.runId}' `
+            + `(expected ${parsed.runDir}).`,
+        );
+        return;
+      }
+      runState.monitorsStarted += 1;
+      runState.identity = parsed;
       runState.progressHandle = startCaptureProgressMonitor({
         runId: parsed.runId,
         runDir: parsed.runDir,
         durationMinutes,
-        startedAtMs: startedAt.getTime(),
+        startedAtMs: parsed.startedAtMs,
         intervalMs: progressIntervalMs,
         writeLine: (line) => {
           deps.io.writeStdout(`${line}\n`);
@@ -390,65 +431,61 @@ export async function runCaptureWithProgressCommand(
       deps.io.writeStdout(`  runDir: ${parsed.runDir}\n`);
     };
 
+    const applyIdentityParserState = (): void => {
+      const state = identityParser.getState();
+      if (state.protocolFailure) {
+        requestProtocolFailure(state.protocolFailure);
+        return;
+      }
+      if (
+        state.startupIdentity
+        && runState.progressHandle === null
+        && runState.monitorsStarted === 0
+        && state.phase === "startup-attached"
+      ) {
+        attachProgressMonitor(state.startupIdentity);
+      }
+    };
+
     const spawnCapture = deps.spawnCapture ?? spawnWithTee;
-    const child = await spawnCapture({
-      command: resolveNpxCommand(),
-      args: buildTsxArgs(
-        "scripts/live/runForwardQuoteCapture.ts",
-        captureArgv,
-      ),
-      logPath,
-      env: process.env,
-      onStdoutChunk: (chunk) => {
-        stdoutBuffer += chunk;
-        if (runState.identityConflict !== null) {
-          return;
-        }
-        try {
-          const parsed = tryParseExactRunIdentityFromChunk(stdoutBuffer);
-          if (!parsed) {
-            return;
+    let child: SpawnTeeResult;
+    try {
+      child = await spawnCapture({
+        command: resolveNpxCommand(),
+        args: buildTsxArgs(
+          "scripts/live/runForwardQuoteCapture.ts",
+          captureArgv,
+        ),
+        logPath,
+        env: process.env,
+        abortSignal: childAbort.signal,
+        onStdoutChunk: (chunk) => {
+          try {
+            identityParser.push(chunk);
+            applyIdentityParserState();
+          } catch (error) {
+            requestProtocolFailure(
+              error instanceof Error ? error.message : String(error),
+            );
           }
-          if (runState.identity === null) {
-            if (!exists(parsed.runDir)) {
-              return;
-            }
-            runState.identity = parsed;
-            attachProgressMonitor(parsed);
-            return;
-          }
-          if (!exactCaptureIdentitiesMatch(runState.identity, parsed)) {
-            runState.identityConflict =
-              "Startup/final capture identity mismatch: "
-              + `startup runId=${runState.identity.runId} runDir=${runState.identity.runDir}; `
-              + `observed runId=${parsed.runId} runDir=${parsed.runDir}. `
-              + "Failing closed; not switching the progress monitor to a second identity.";
-            runState.progressHandle?.stop();
-          }
-        } catch (error) {
-          if (
-            error instanceof OperatorCliError
-            && error.message.includes("Startup/final capture identity mismatch")
-          ) {
-            runState.identityConflict = error.message;
-            runState.progressHandle?.stop();
-            return;
-          }
-          // Incomplete/malformed identity JSON fails closed after the child
-          // exits (below). Incomplete trailing chunks are ignored by the
-          // parser; complete malformed lines rethrow as Malformed.
-          if (
-            error instanceof OperatorCliError
-            && error.message.includes("Malformed")
-          ) {
-            runState.identityConflict = error.message;
-            runState.progressHandle?.stop();
-          }
-        }
-      },
-    });
+        },
+      });
+    } catch (error) {
+      runState.progressHandle?.stop();
+      throw error;
+    }
 
     runState.progressHandle?.stop();
+    runState.progressHandle = null;
+
+    try {
+      identityParser.finish();
+      applyIdentityParserState();
+    } catch (error) {
+      requestProtocolFailure(
+        error instanceof Error ? error.message : String(error),
+      );
+    }
 
     if (runState.identityConflict !== null) {
       deps.io.writeStdout("\n");
@@ -461,10 +498,14 @@ export async function runCaptureWithProgressCommand(
       throw new OperatorCliError(runState.identityConflict);
     }
 
-    let finalIdentity: ExactCaptureRunIdentity | null = runState.identity;
+    const parserState = identityParser.getState();
+    let finalIdentity: ExactCaptureRunIdentity | null =
+      parserState.startupIdentity ?? runState.identity;
     if (finalIdentity === null) {
       try {
-        finalIdentity = parseExactRunIdentityFromOutput(child.stdout);
+        finalIdentity =
+          parserState.finalIdentity
+          ?? parseExactRunIdentityFromOutput(child.stdout);
       } catch (error) {
         deps.io.writeStdout("\n");
         deps.io.writeStdout(`Capture log preserved at:\n  ${logPath}\n`);
@@ -477,34 +518,20 @@ export async function runCaptureWithProgressCommand(
         }
         throw error;
       }
-    } else {
-      // Startup identity won; still require any later identity in stdout to match.
-      try {
-        const fromOutput = parseExactRunIdentityFromOutput(child.stdout);
-        if (!exactCaptureIdentitiesMatch(finalIdentity, fromOutput)) {
-          throw new OperatorCliError(
-            "Startup/final capture identity mismatch: "
-              + `startup runId=${finalIdentity.runId} runDir=${finalIdentity.runDir}; `
-              + `final runId=${fromOutput.runId} runDir=${fromOutput.runDir}. `
-              + "Failing closed; not switching the progress monitor to a second identity.",
-          );
-        }
-      } catch (error) {
-        if (
-          error instanceof OperatorCliError
-          && (
-            error.message.includes("Startup/final capture identity mismatch")
-            || error.message.includes("Malformed run identity JSON")
-          )
-        ) {
-          deps.io.writeStdout("\n");
-          deps.io.writeStdout(`Capture log preserved at:\n  ${logPath}\n`);
-          deps.io.writeStdout("Exact startup identity retained for diagnostics:\n");
-          deps.io.writeStdout(`  runId:   ${finalIdentity.runId}\n`);
-          deps.io.writeStdout(`  runDir:  ${finalIdentity.runDir}\n`);
-          throw error;
-        }
-        // No additional identity in stdout (abnormal exit after startup only).
+    } else if (parserState.finalIdentity) {
+      if (!exactCaptureIdentitiesMatch(finalIdentity, parserState.finalIdentity)) {
+        deps.io.writeStdout("\n");
+        deps.io.writeStdout(`Capture log preserved at:\n  ${logPath}\n`);
+        deps.io.writeStdout("Exact startup identity retained for diagnostics:\n");
+        deps.io.writeStdout(`  runId:   ${finalIdentity.runId}\n`);
+        deps.io.writeStdout(`  runDir:  ${finalIdentity.runDir}\n`);
+        throw new OperatorCliError(
+          "Startup/final capture identity mismatch: "
+            + `startup runId=${finalIdentity.runId} runDir=${finalIdentity.runDir}; `
+            + `final runId=${parserState.finalIdentity.runId} `
+            + `runDir=${parserState.finalIdentity.runDir}. `
+            + "Failing closed; not switching the progress monitor to a second identity.",
+        );
       }
     }
 

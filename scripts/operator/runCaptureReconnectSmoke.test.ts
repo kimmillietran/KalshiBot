@@ -241,7 +241,12 @@ async function runWrapper(options: {
           return {
             exitCode: options.captureExitCode ?? 0,
             stdout:
-              JSON.stringify({ runId, outputDir: options.root }) + "\n",
+              JSON.stringify({
+                runId,
+                outputDir: options.root,
+                verdict: "ok",
+                captureEndReason: "duration-complete",
+              }) + "\n",
             stderr: "",
           };
         }
@@ -477,7 +482,12 @@ describe("runCaptureReconnectSmokeCommand", () => {
         if (script.includes("runReconnectValidationCapture")) {
           return {
             exitCode: 0,
-            stdout: JSON.stringify({ runId, outputDir: root }) + "\n",
+            stdout: JSON.stringify({
+              runId,
+              outputDir: root,
+              verdict: "ok",
+              captureEndReason: "duration-complete",
+            }) + "\n",
             stderr: "",
           };
         }
