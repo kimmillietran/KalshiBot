@@ -48,6 +48,7 @@ import {
 import { requireKalshiEnv } from "./shared/kalshiEnv";
 import { startCaptureProgressMonitor, type ProgressMonitorHandle } from "./shared/progress";
 import {
+  exactCaptureIdentitiesMatch,
   parseExactRunIdentityFromOutput,
   tryParseExactRunIdentityFromChunk,
   type ExactCaptureRunIdentity,
@@ -359,9 +360,35 @@ export async function runCaptureWithProgressCommand(
     deps.io.writeStdout(`  log:         ${logPath}\n`);
     deps.io.writeStdout("\n");
 
-    let identity: ExactCaptureRunIdentity | null = null;
-    const progressState: { handle: ProgressMonitorHandle | null } = { handle: null };
+    const runState: {
+      identity: ExactCaptureRunIdentity | null;
+      identityConflict: string | null;
+      progressHandle: ProgressMonitorHandle | null;
+    } = {
+      identity: null,
+      identityConflict: null,
+      progressHandle: null,
+    };
     let stdoutBuffer = "";
+
+    const attachProgressMonitor = (parsed: ExactCaptureRunIdentity): void => {
+      if (runState.progressHandle !== null) {
+        return;
+      }
+      runState.progressHandle = startCaptureProgressMonitor({
+        runId: parsed.runId,
+        runDir: parsed.runDir,
+        durationMinutes,
+        startedAtMs: startedAt.getTime(),
+        intervalMs: progressIntervalMs,
+        writeLine: (line) => {
+          deps.io.writeStdout(`${line}\n`);
+        },
+      });
+      deps.io.writeStdout("Capture progress attached:\n");
+      deps.io.writeStdout(`  runId:  ${parsed.runId}\n`);
+      deps.io.writeStdout(`  runDir: ${parsed.runDir}\n`);
+    };
 
     const spawnCapture = deps.spawnCapture ?? spawnWithTee;
     const child = await spawnCapture({
@@ -374,38 +401,67 @@ export async function runCaptureWithProgressCommand(
       env: process.env,
       onStdoutChunk: (chunk) => {
         stdoutBuffer += chunk;
-        if (identity === null) {
-          try {
-            const parsed = tryParseExactRunIdentityFromChunk(stdoutBuffer);
-            if (parsed && exists(parsed.runDir)) {
-              identity = parsed;
-              progressState.handle = startCaptureProgressMonitor({
-                runId: parsed.runId,
-                runDir: parsed.runDir,
-                durationMinutes,
-                startedAtMs: startedAt.getTime(),
-                intervalMs: progressIntervalMs,
-                writeLine: (line) => {
-                  deps.io.writeStdout(`${line}\n`);
-                },
-              });
+        if (runState.identityConflict !== null) {
+          return;
+        }
+        try {
+          const parsed = tryParseExactRunIdentityFromChunk(stdoutBuffer);
+          if (!parsed) {
+            return;
+          }
+          if (runState.identity === null) {
+            if (!exists(parsed.runDir)) {
+              return;
             }
-          } catch (error) {
-            // Malformed JSON fails closed after the child exits (below).
-            if (
-              error instanceof OperatorCliError
-              && error.message.includes("Malformed")
-            ) {
-              // Keep going; final parse will throw.
-            }
+            runState.identity = parsed;
+            attachProgressMonitor(parsed);
+            return;
+          }
+          if (!exactCaptureIdentitiesMatch(runState.identity, parsed)) {
+            runState.identityConflict =
+              "Startup/final capture identity mismatch: "
+              + `startup runId=${runState.identity.runId} runDir=${runState.identity.runDir}; `
+              + `observed runId=${parsed.runId} runDir=${parsed.runDir}. `
+              + "Failing closed; not switching the progress monitor to a second identity.";
+            runState.progressHandle?.stop();
+          }
+        } catch (error) {
+          if (
+            error instanceof OperatorCliError
+            && error.message.includes("Startup/final capture identity mismatch")
+          ) {
+            runState.identityConflict = error.message;
+            runState.progressHandle?.stop();
+            return;
+          }
+          // Incomplete/malformed identity JSON fails closed after the child
+          // exits (below). Incomplete trailing chunks are ignored by the
+          // parser; complete malformed lines rethrow as Malformed.
+          if (
+            error instanceof OperatorCliError
+            && error.message.includes("Malformed")
+          ) {
+            runState.identityConflict = error.message;
+            runState.progressHandle?.stop();
           }
         }
       },
     });
 
-    progressState.handle?.stop();
+    runState.progressHandle?.stop();
 
-    let finalIdentity: ExactCaptureRunIdentity | null = identity;
+    if (runState.identityConflict !== null) {
+      deps.io.writeStdout("\n");
+      deps.io.writeStdout(`Capture log preserved at:\n  ${logPath}\n`);
+      if (runState.identity !== null) {
+        deps.io.writeStdout("Exact startup identity retained for diagnostics:\n");
+        deps.io.writeStdout(`  runId:   ${runState.identity.runId}\n`);
+        deps.io.writeStdout(`  runDir:  ${runState.identity.runDir}\n`);
+      }
+      throw new OperatorCliError(runState.identityConflict);
+    }
+
+    let finalIdentity: ExactCaptureRunIdentity | null = runState.identity;
     if (finalIdentity === null) {
       try {
         finalIdentity = parseExactRunIdentityFromOutput(child.stdout);
@@ -420,6 +476,35 @@ export async function runCaptureWithProgressCommand(
           );
         }
         throw error;
+      }
+    } else {
+      // Startup identity won; still require any later identity in stdout to match.
+      try {
+        const fromOutput = parseExactRunIdentityFromOutput(child.stdout);
+        if (!exactCaptureIdentitiesMatch(finalIdentity, fromOutput)) {
+          throw new OperatorCliError(
+            "Startup/final capture identity mismatch: "
+              + `startup runId=${finalIdentity.runId} runDir=${finalIdentity.runDir}; `
+              + `final runId=${fromOutput.runId} runDir=${fromOutput.runDir}. `
+              + "Failing closed; not switching the progress monitor to a second identity.",
+          );
+        }
+      } catch (error) {
+        if (
+          error instanceof OperatorCliError
+          && (
+            error.message.includes("Startup/final capture identity mismatch")
+            || error.message.includes("Malformed run identity JSON")
+          )
+        ) {
+          deps.io.writeStdout("\n");
+          deps.io.writeStdout(`Capture log preserved at:\n  ${logPath}\n`);
+          deps.io.writeStdout("Exact startup identity retained for diagnostics:\n");
+          deps.io.writeStdout(`  runId:   ${finalIdentity.runId}\n`);
+          deps.io.writeStdout(`  runDir:  ${finalIdentity.runDir}\n`);
+          throw error;
+        }
+        // No additional identity in stdout (abnormal exit after startup only).
       }
     }
 

@@ -10,6 +10,7 @@ import {
 import {
   countNewLines,
   formatProgressLine,
+  startCaptureProgressMonitor,
   type LineCounterState,
 } from "./shared/progress";
 import { runCaptureWithProgressCommand } from "./runCaptureWithProgress";
@@ -34,6 +35,19 @@ function mockRunner(handler: (script: string, argv: readonly string[]) => RunTsx
     async runTsx(script, argv) {
       return handler(script, argv);
     },
+  };
+}
+
+function passingPreflight(captureRoot: string): RunTsxResult {
+  return {
+    exitCode: 0,
+    stdout: JSON.stringify({
+      captureRoot,
+      blockers: [],
+      lockPresent: false,
+      lockPath: join(captureRoot, "capture.lock"),
+    }) + "\n",
+    stderr: "",
   };
 }
 
@@ -63,8 +77,9 @@ describe("exact run identity parsing", () => {
 
   it("never implies newest-directory fallback APIs", () => {
     const source = readOperatorSource("runCaptureWithProgress.ts");
-    expect(source).not.toMatch(/newest|LastWriteTime|mtime.*fallback/i);
+    expect(source).not.toMatch(/newest|LastWriteTime|mtime.*fallback|--latest/i);
     expect(source).toContain("parseExactRunIdentityFromOutput");
+    expect(source).toContain("startCaptureProgressMonitor");
   });
 });
 
@@ -79,6 +94,20 @@ describe("progress line counting", () => {
     writeFileSync(path, "a\nb\nc\n", "utf8");
     state = await countNewLines(state);
     expect(state.count).toBe(3);
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it("recounts from start after truncation/rotation", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "kalshi-progress-trunc-"));
+    const path = join(dir, "top-of-book.jsonl");
+    writeFileSync(path, "a\nb\nc\n", "utf8");
+    let state: LineCounterState = { path, offset: 0, count: 0 };
+    state = await countNewLines(state);
+    expect(state.count).toBe(3);
+    writeFileSync(path, "x\n", "utf8");
+    state = await countNewLines(state);
+    expect(state.count).toBe(1);
+    expect(state.offset).toBe(2);
     rmSync(dir, { recursive: true, force: true });
   });
 
@@ -98,6 +127,40 @@ describe("progress line counting", () => {
     });
     expect(line).toContain("run exact-run");
     expect(line).toContain("topOfBook 10");
+  });
+
+  it("stops the monitor and does not leave a live interval", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "kalshi-progress-stop-"));
+    const lines: string[] = [];
+    const handle = startCaptureProgressMonitor({
+      runId: "stop-run",
+      runDir: dir,
+      durationMinutes: 10,
+      startedAtMs: Date.now(),
+      intervalMs: 10,
+      writeLine: (line) => lines.push(line),
+    });
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    handle.stop();
+    const countAfterStop = lines.length;
+    await new Promise((resolve) => setTimeout(resolve, 40));
+    expect(lines.length).toBe(countAfterStop);
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it("treats progress read errors as nonfatal", async () => {
+    const lines: string[] = [];
+    const handle = startCaptureProgressMonitor({
+      runId: "err-run",
+      runDir: join(tmpdir(), "kalshi-missing-progress-dir-does-not-exist"),
+      durationMinutes: 10,
+      startedAtMs: Date.now(),
+      intervalMs: 60_000,
+      writeLine: (line) => lines.push(line),
+    });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    handle.stop();
+    expect(lines.length).toBeGreaterThanOrEqual(1);
   });
 });
 
@@ -122,16 +185,7 @@ describe("runCaptureWithProgress child lifecycle", () => {
         runner: mockRunner((script) => {
           calls.push(script);
           if (script.includes("evaluateCaptureRestartGate")) {
-            return {
-              exitCode: 0,
-              stdout: JSON.stringify({
-                captureRoot,
-                blockers: [],
-                lockPresent: false,
-                lockPath: join(captureRoot, "capture.lock"),
-              }) + "\n",
-              stderr: "",
-            };
+            return passingPreflight(captureRoot);
           }
           return { exitCode: 0, stdout: "", stderr: "" };
         }),
@@ -160,6 +214,205 @@ describe("runCaptureWithProgress child lifecycle", () => {
     expect(stdout.join("")).toContain("runId:   spawn-run");
     expect(stdout.join("")).toContain("NONCANONICAL-DURATION");
     rmSync(runDir, { recursive: true, force: true });
+    rmSync(captureRoot, { recursive: true, force: true });
+  });
+
+  it("attaches progress on capture-started while the child is still running", async () => {
+    const { io, stdout } = createIo();
+    const captureRoot = mkdtempSync(join(tmpdir(), "kalshi-early-"));
+    const runId = "early-run";
+    const exactRunDir = join(captureRoot, runId);
+    mkdirSync(exactRunDir, { recursive: true });
+    writeFileSync(join(exactRunDir, "top-of-book.jsonl"), "a\n", "utf8");
+
+    let childStillRunning = false;
+    let progressSeenWhileRunning = false;
+
+    const exitCode = await runCaptureWithProgressCommand(
+      ["--preset", "6h", "--progress-interval-ms", "600000"],
+      {
+        io,
+        requireCredentials: false,
+        runner: mockRunner(() => passingPreflight(captureRoot)),
+        spawnCapture: async (options) => {
+          childStillRunning = true;
+          const startup =
+            JSON.stringify({
+              event: "capture-started",
+              runId,
+              outputDir: captureRoot,
+              runDir: exactRunDir,
+              startedAt: "2026-08-03T12:00:00.000Z",
+            }) + "\n";
+          options.onStdoutChunk?.(startup);
+
+          await new Promise((resolve) => setTimeout(resolve, 40));
+          const text = stdout.join("");
+          progressSeenWhileRunning =
+            childStillRunning
+            && text.includes("Capture progress attached:")
+            && text.includes(`run ${runId}`);
+
+          const final =
+            JSON.stringify({
+              runId,
+              outputDir: captureRoot,
+              verdict: "ok",
+            }) + "\n";
+          options.onStdoutChunk?.(final);
+          childStillRunning = false;
+          return {
+            exitCode: 0,
+            signal: null,
+            stdout: startup + final,
+            stderr: "",
+          };
+        },
+        exists: (path) => path === exactRunDir || path.startsWith(captureRoot),
+        mkdirp: () => undefined,
+      },
+    );
+
+    expect(exitCode).toBe(0);
+    expect(progressSeenWhileRunning).toBe(true);
+    expect(stdout.join("")).toContain("Capture progress attached:");
+    expect(stdout.join("")).toContain(`runId:  ${runId}`);
+    rmSync(captureRoot, { recursive: true, force: true });
+  });
+
+  it("starts only one monitor for repeated identical identity output", async () => {
+    const { io, stdout } = createIo();
+    const captureRoot = mkdtempSync(join(tmpdir(), "kalshi-dup-"));
+    const runId = "dup-run";
+    const exactRunDir = join(captureRoot, runId);
+    mkdirSync(exactRunDir, { recursive: true });
+
+    const exitCode = await runCaptureWithProgressCommand(
+      ["--preset", "6h", "--progress-interval-ms", "600000"],
+      {
+        io,
+        requireCredentials: false,
+        runner: mockRunner(() => passingPreflight(captureRoot)),
+        spawnCapture: async (options) => {
+          const startup =
+            JSON.stringify({
+              event: "capture-started",
+              runId,
+              outputDir: captureRoot,
+              runDir: exactRunDir,
+              startedAt: "2026-08-03T12:00:00.000Z",
+            }) + "\n";
+          options.onStdoutChunk?.(startup);
+          options.onStdoutChunk?.(startup);
+          options.onStdoutChunk?.(
+            JSON.stringify({ runId, outputDir: captureRoot }) + "\n",
+          );
+          return {
+            exitCode: 0,
+            signal: null,
+            stdout: startup + startup + JSON.stringify({ runId, outputDir: captureRoot }) + "\n",
+            stderr: "",
+          };
+        },
+        exists: (path) => path === exactRunDir || path.startsWith(captureRoot),
+        mkdirp: () => undefined,
+      },
+    );
+
+    expect(exitCode).toBe(0);
+    expect(stdout.join("").split("Capture progress attached:").length - 1).toBe(1);
+    rmSync(captureRoot, { recursive: true, force: true });
+  });
+
+  it("fails closed on startup/final identity mismatch", async () => {
+    const { io, stderr, stdout } = createIo();
+    const captureRoot = mkdtempSync(join(tmpdir(), "kalshi-mismatch-"));
+    const runA = join(captureRoot, "run-a");
+    const runB = join(captureRoot, "run-b");
+    mkdirSync(runA, { recursive: true });
+    mkdirSync(runB, { recursive: true });
+
+    const exitCode = await runCaptureWithProgressCommand(
+      ["--preset", "6h", "--progress-interval-ms", "600000"],
+      {
+        io,
+        requireCredentials: false,
+        runner: mockRunner(() => passingPreflight(captureRoot)),
+        spawnCapture: async (options) => {
+          const startup =
+            JSON.stringify({
+              event: "capture-started",
+              runId: "run-a",
+              outputDir: captureRoot,
+              runDir: runA,
+              startedAt: "2026-08-03T12:00:00.000Z",
+            }) + "\n";
+          const final =
+            JSON.stringify({
+              runId: "run-b",
+              outputDir: captureRoot,
+            }) + "\n";
+          options.onStdoutChunk?.(startup);
+          options.onStdoutChunk?.(final);
+          return {
+            exitCode: 0,
+            signal: null,
+            stdout: startup + final,
+            stderr: "",
+          };
+        },
+        exists: (path) =>
+          path === runA || path === runB || path.startsWith(captureRoot),
+        mkdirp: () => undefined,
+      },
+    );
+
+    expect(exitCode).toBe(1);
+    expect(stderr.join("") + stdout.join("")).toMatch(
+      /Startup\/final capture identity mismatch/,
+    );
+    rmSync(captureRoot, { recursive: true, force: true });
+  });
+
+  it("retains exact startup identity after abnormal child exit", async () => {
+    const { io, stdout } = createIo();
+    const captureRoot = mkdtempSync(join(tmpdir(), "kalshi-abnormal-"));
+    const runId = "abnormal-run";
+    const exactRunDir = join(captureRoot, runId);
+    mkdirSync(exactRunDir, { recursive: true });
+
+    const exitCode = await runCaptureWithProgressCommand(
+      ["--preset", "6h", "--progress-interval-ms", "600000"],
+      {
+        io,
+        requireCredentials: false,
+        runner: mockRunner(() => passingPreflight(captureRoot)),
+        spawnCapture: async (options) => {
+          const startup =
+            JSON.stringify({
+              event: "capture-started",
+              runId,
+              outputDir: captureRoot,
+              runDir: exactRunDir,
+              startedAt: "2026-08-03T12:00:00.000Z",
+            }) + "\n";
+          options.onStdoutChunk?.(startup);
+          return {
+            exitCode: 1,
+            signal: null,
+            stdout: startup,
+            stderr: "boom\n",
+          };
+        },
+        exists: (path) => path === exactRunDir || path.startsWith(captureRoot),
+        mkdirp: () => undefined,
+      },
+    );
+
+    expect(exitCode).toBe(1);
+    expect(stdout.join("")).toContain(`runId:   ${runId}`);
+    expect(stdout.join("")).toContain(exactRunDir);
+    expect(stdout.join("")).not.toMatch(/unrelated run|newest/i);
     rmSync(captureRoot, { recursive: true, force: true });
   });
 
@@ -215,6 +468,33 @@ describe("runCaptureWithProgress child lifecycle", () => {
     });
     expect(exitCode).toBe(1);
     expect(stderr.join("")).toMatch(/no runId JSON|Failing closed/i);
+  });
+
+  it("fails closed on malformed identity JSON", async () => {
+    const { io, stderr } = createIo();
+    const exitCode = await runCaptureWithProgressCommand(["--preset", "6h"], {
+      io,
+      requireCredentials: false,
+      runner: mockRunner(() => ({
+        exitCode: 0,
+        stdout: JSON.stringify({ blockers: [], lockPresent: false }) + "\n",
+        stderr: "",
+      })),
+      spawnCapture: async (options) => {
+        const bad = '{"runId":"x","outputDir":\n';
+        options.onStdoutChunk?.(bad);
+        return {
+          exitCode: 1,
+          signal: null,
+          stdout: bad,
+          stderr: "",
+        };
+      },
+      exists: () => true,
+      mkdirp: () => undefined,
+    });
+    expect(exitCode).toBe(1);
+    expect(stderr.join("")).toMatch(/Malformed run identity JSON/i);
   });
 
   it("six-hour dry-run plans duration 360 and does not claim eight-hour readiness", async () => {

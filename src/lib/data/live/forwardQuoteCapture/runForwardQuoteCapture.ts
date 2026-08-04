@@ -45,6 +45,18 @@ export type ForwardQuoteCaptureRunResult = {
   controlledReconnectValidation?: ControlledReconnectValidationDiagnostics | null;
 };
 
+/**
+ * Exact-run startup identity published once the lock is held, the run
+ * directory exists, and capture-run-status.json has been written as active.
+ * Used by the ordinary capture CLI for an operator progress handshake.
+ */
+export type ForwardQuoteCaptureRunStartedIdentity = {
+  runId: string;
+  outputDir: string;
+  runDir: string;
+  startedAt: string;
+};
+
 function createRunId(now: Date): string {
   return now.toISOString().replaceAll(":", "-").replaceAll(".", "-");
 }
@@ -78,6 +90,14 @@ export async function runForwardQuoteCapture(input: {
    * ordinary capture CLI.
    */
   forceReconnectAfterFirstValidTopOfBook?: boolean;
+  /**
+   * Optional exact-run startup handshake. Invoked exactly once after the
+   * capture lock is held, the run directory exists, and capture-run-status
+   * has been published with state=active. A throw here fails the run closed
+   * (terminal failed status + lock release) so the operator never loses
+   * ownership of an active capture.
+   */
+  onRunStarted?: (identity: ForwardQuoteCaptureRunStartedIdentity) => void;
 }): Promise<ForwardQuoteCaptureRunResult> {
   const startedAt = input.io.now().toISOString();
   const runId = createRunId(input.io.now());
@@ -109,6 +129,7 @@ async function runLockedForwardQuoteCapture(input: {
   transport?: KalshiWsProbeTransport;
   writerLimits?: Partial<ForwardCaptureWriterLimits>;
   forceReconnectAfterFirstValidTopOfBook?: boolean;
+  onRunStarted?: (identity: ForwardQuoteCaptureRunStartedIdentity) => void;
   startedAt: string;
   runId: string;
 }): Promise<ForwardQuoteCaptureRunResult> {
@@ -147,6 +168,15 @@ async function runLockedForwardQuoteCapture(input: {
   // leave a truthful terminal "failed" marker instead of stranding the run at
   // active/finalizing forever.
   try {
+    if (input.onRunStarted) {
+      input.onRunStarted({
+        runId,
+        outputDir: input.config.outputDir.replaceAll("\\", "/"),
+        runDir: paths.runDir,
+        startedAt,
+      });
+    }
+
     const credentials = resolveKalshiCaptureCredentials({
       ...(input.credentialEnv ? { env: input.credentialEnv } : {}),
       readFile: input.io.readFile,

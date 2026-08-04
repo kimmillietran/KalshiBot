@@ -42,6 +42,21 @@ export async function runForwardQuoteCaptureCommand(
       config,
       htmlOutputPath,
       shouldStop: () => shutdownRequested,
+      onRunStarted: (identity) => {
+        // Exact-run startup handshake for operator progress attachment.
+        // Emitted immediately after lock + run directory + active status.
+        io.writeStdout(
+          formatStdoutOutput(
+            stableStringify({
+              event: "capture-started",
+              runId: identity.runId,
+              outputDir: identity.outputDir,
+              runDir: identity.runDir,
+              startedAt: identity.startedAt,
+            }),
+          ),
+        );
+      },
       io: {
         readFile: io.readFile,
         writeFile: io.writeFile,
