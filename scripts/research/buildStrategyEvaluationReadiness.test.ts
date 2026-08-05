@@ -73,7 +73,7 @@ function createCommandIo(files: Record<string, string>) {
   };
 }
 
-function createFsIo(_root: string) {
+function createFsIo() {
   return {
     readFile: (path: string) => readFileSync(path, "utf8"),
     fileExists: (path: string) => existsSync(path),
@@ -91,8 +91,8 @@ function createFsIo(_root: string) {
         return false;
       }
     },
-    writeStdout: (_text: string) => undefined,
-    writeStderr: (_text: string) => undefined,
+    writeStdout: () => undefined,
+    writeStderr: () => undefined,
     writeFile: (path: string, data: string) => {
       writeFileSync(path, data, "utf8");
     },
@@ -326,8 +326,19 @@ describe("runStrategyEvaluationReadinessCommand", () => {
   });
 });
 
-describe("readBtcSpotCoverage legacy alias fail-closed", () => {
-  it("uses explicit join coverage when present", () => {
+describe("readBtcSpotCoverage explicit-join-only fail-closed", () => {
+  const fallbackJoin = {
+    runCount: 1,
+    totalDurationMinutes: 60,
+    daysCovered: 1,
+    marketCount: 1,
+    topOfBookRecordCount: 100,
+    btcSpotCoverageShare: 0.77,
+    bidPairWithSizeShare: null,
+    bidSizeCoverageShare: null,
+  } as const;
+
+  it("uses explicit join when join=1 even if alias/cadence are 0.094", () => {
     const coverage = readBtcSpotCoverage(
       buildLoadedInputsFromArtifact({
         schemaVersion: FORWARD_CAPTURE_READINESS_SCHEMA_VERSION,
@@ -341,7 +352,7 @@ describe("readBtcSpotCoverage legacy alias fail-closed", () => {
     expect(coverage).toBe(1);
   });
 
-  it("does not treat legacy alias-only cadence as join coverage", () => {
+  it("returns null for unversioned alias-only artifacts", () => {
     const coverage = readBtcSpotCoverage(
       buildLoadedInputsFromArtifact({
         generatedAt: "2026-06-01T00:00:00.000Z",
@@ -353,7 +364,124 @@ describe("readBtcSpotCoverage legacy alias fail-closed", () => {
     expect(coverage).toBeNull();
   });
 
-  it("recomputes join coverage from capture fallback when legacy alias is ambiguous", () => {
+  it("returns null for versioned alias-only without fallback (never trusts schemaVersion alone)", () => {
+    const coverage = readBtcSpotCoverage(
+      buildLoadedInputsFromArtifact({
+        schemaVersion: FORWARD_CAPTURE_READINESS_SCHEMA_VERSION,
+        aggregates: {
+          btcSpotCoverageShare: 0.95,
+        },
+      }),
+    );
+    expect(coverage).toBeNull();
+  });
+
+  it("uses capture fallback for versioned alias-only, not the alias", () => {
+    const coverage = readBtcSpotCoverage(
+      buildLoadedInputsFromArtifact(
+        {
+          schemaVersion: FORWARD_CAPTURE_READINESS_SCHEMA_VERSION,
+          aggregates: { btcSpotCoverageShare: 0.095 },
+        },
+        fallbackJoin,
+      ),
+    );
+    expect(coverage).toBe(0.77);
+  });
+
+  it("treats explicit join=0 as known zero", () => {
+    const coverage = readBtcSpotCoverage(
+      buildLoadedInputsFromArtifact({
+        schemaVersion: FORWARD_CAPTURE_READINESS_SCHEMA_VERSION,
+        aggregates: {
+          btcSpotJoinCoverageShare: 0,
+          btcSpotCoverageShare: 0.94,
+        },
+      }),
+    );
+    expect(coverage).toBe(0);
+  });
+
+  it("rejects out-of-range join values and does not fall through to alias", () => {
+    expect(
+      readBtcSpotCoverage(
+        buildLoadedInputsFromArtifact({
+          schemaVersion: FORWARD_CAPTURE_READINESS_SCHEMA_VERSION,
+          aggregates: {
+            btcSpotJoinCoverageShare: -0.01,
+            btcSpotCoverageShare: 0.88,
+          },
+        }),
+      ),
+    ).toBeNull();
+    expect(
+      readBtcSpotCoverage(
+        buildLoadedInputsFromArtifact({
+          schemaVersion: FORWARD_CAPTURE_READINESS_SCHEMA_VERSION,
+          aggregates: {
+            btcSpotJoinCoverageShare: 1.01,
+            btcSpotCoverageShare: 0.88,
+          },
+        }),
+      ),
+    ).toBeNull();
+  });
+
+  it("rejects malformed join without alias fallthrough; may use capture fallback", () => {
+    expect(
+      readBtcSpotCoverage(
+        buildLoadedInputsFromArtifact({
+          schemaVersion: FORWARD_CAPTURE_READINESS_SCHEMA_VERSION,
+          aggregates: {
+            btcSpotJoinCoverageShare: Number.NaN,
+            btcSpotCoverageShare: 0.91,
+          },
+        }),
+      ),
+    ).toBeNull();
+    expect(
+      readBtcSpotCoverage(
+        buildLoadedInputsFromArtifact(
+          {
+            schemaVersion: FORWARD_CAPTURE_READINESS_SCHEMA_VERSION,
+            aggregates: {
+              btcSpotJoinCoverageShare: Number.POSITIVE_INFINITY,
+              btcSpotCoverageShare: 0.91,
+            },
+          },
+          fallbackJoin,
+        ),
+      ),
+    ).toBe(0.77);
+  });
+
+  it("lets explicit join win when it conflicts with alias", () => {
+    const coverage = readBtcSpotCoverage(
+      buildLoadedInputsFromArtifact({
+        schemaVersion: FORWARD_CAPTURE_READINESS_SCHEMA_VERSION,
+        aggregates: {
+          btcSpotJoinCoverageShare: 0.42,
+          btcSpotCoverageShare: 0.99,
+        },
+      }),
+    );
+    expect(coverage).toBe(0.42);
+  });
+
+  it("still reads explicit valid join under future/unknown schema versions", () => {
+    const coverage = readBtcSpotCoverage(
+      buildLoadedInputsFromArtifact({
+        schemaVersion: "forward-capture-readiness/m99.future",
+        aggregates: {
+          btcSpotJoinCoverageShare: 0.81,
+          btcSpotCoverageShare: 0.11,
+        },
+      }),
+    );
+    expect(coverage).toBe(0.81);
+  });
+
+  it("recomputes join coverage from capture fallback when join is absent", () => {
     const coverage = readBtcSpotCoverage(
       buildLoadedInputsFromArtifact(
         {
@@ -374,7 +502,7 @@ describe("readBtcSpotCoverage legacy alias fail-closed", () => {
     expect(coverage).toBe(1);
   });
 
-  it("fails closed when legacy alias has no capture fallback", () => {
+  it("fails closed when alias-only has no capture fallback", () => {
     const coverage = readBtcSpotCoverage(
       buildLoadedInputsFromArtifact({
         aggregates: { btcSpotCoverageShare: 0.95 },
@@ -399,7 +527,7 @@ describe("same-pass shared filesystem producer/consumer", () => {
       const strategyPath = join(researchDir, "strategy-evaluation-readiness.json");
       const strategyHtmlPath = join(reportsDir, "strategy-evaluation-readiness.html");
       const forwardHtmlPath = join(reportsDir, "forward-capture-readiness.html");
-      const io = createFsIo(root);
+      const io = createFsIo();
 
       writeFileSync(
         fcrPath,

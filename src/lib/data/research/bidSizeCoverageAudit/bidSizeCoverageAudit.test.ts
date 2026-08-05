@@ -423,4 +423,25 @@ describe("resolveBidSizeSelectedRunIdentity", () => {
       }),
     ).toThrow(BidSizeCoverageAuditError);
   });
+
+  it("fails closed on '.' '..' and root-only capture paths", () => {
+    expect(() =>
+      resolveBidSizeSelectedRunIdentity({
+        captureRunDir: ".",
+        summaryRunId: null,
+      }),
+    ).toThrow(BidSizeCoverageAuditError);
+    expect(() =>
+      resolveBidSizeSelectedRunIdentity({
+        captureRunDir: "..",
+        summaryRunId: null,
+      }),
+    ).toThrow(BidSizeCoverageAuditError);
+    expect(() =>
+      resolveBidSizeSelectedRunIdentity({
+        captureRunDir: "data/live-capture/forward-quotes/..",
+        summaryRunId: null,
+      }),
+    ).toThrow(BidSizeCoverageAuditError);
+  });
 });

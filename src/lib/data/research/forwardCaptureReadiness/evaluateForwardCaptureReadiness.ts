@@ -32,10 +32,21 @@ import {
   type ForwardCaptureResearchFamilyId,
 } from "./forwardCaptureReadinessTypes";
 
-/** Returns known sequenceGapCount or null when capture-health omits the field. */
+/**
+ * Returns known sequenceGapCount only for finite, non-negative safe integers.
+ * Invalid/negative/NaN/Infinity/fractional values are unknown evidence (null).
+ */
 function readKnownSequenceGapCount(run: LoadedForwardCaptureRun): number | null {
   const value = run.health.orderbook?.sequenceGapCount;
-  return typeof value === "number" && Number.isFinite(value) ? value : null;
+  if (
+    typeof value !== "number"
+    || !Number.isFinite(value)
+    || !Number.isSafeInteger(value)
+    || value < 0
+  ) {
+    return null;
+  }
+  return value;
 }
 
 function buildAggregateMetrics(

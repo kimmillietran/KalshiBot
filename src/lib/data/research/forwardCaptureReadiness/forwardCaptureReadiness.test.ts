@@ -855,6 +855,150 @@ describe("forwardCaptureReadiness", () => {
     expect(evaluation.aggregates.sequenceGapCount).toBe(0);
   });
 
+  it("aggregates known per-run gaps of 1 into max=1 with growing cumulative sum", () => {
+    const files = Array.from({ length: 3 }, (_, index) =>
+      createRunFiles({
+        runId: `gap-one-${index}`,
+        durationSeconds: 130 * 60,
+        generatedAt: `2026-07-0${index + 1}T08:00:00.000Z`,
+        sequenceGapCount: 1,
+        topOfBookLines: [
+          createTopOfBookLine({
+            runId: `gap-one-${index}`,
+            receivedAtLocal: `2026-07-0${index + 1}T08:00:00.000Z`,
+          }),
+        ],
+      }),
+    ).reduce((acc, next) => ({ ...acc, ...next }), {});
+
+    const evaluation = evaluateForwardCaptureReadiness(
+      loadForwardCaptureRuns(buildMemoryIo(files), DEFAULT_FORWARD_CAPTURE_READINESS_INPUT_PATHS),
+    );
+
+    expect(evaluation.aggregates.runsMissingSequenceGapEvidence).toBe(0);
+    expect(evaluation.aggregates.maxSequenceGapCountPerRun).toBe(1);
+    expect(evaluation.aggregates.sequenceGapCount).toBe(3);
+  });
+
+  it("rejects negative sequenceGapCount as missing evidence (not max/cumulative)", () => {
+    const files = createRunFiles({
+      runId: "negative-gap",
+      durationSeconds: 13 * 60 * 60,
+      generatedAt: "2026-07-09T08:00:00.000Z",
+      sequenceGapCount: -1,
+      topOfBookLines: [
+        createTopOfBookLine({
+          runId: "negative-gap",
+          receivedAtLocal: "2026-07-09T08:00:00.000Z",
+        }),
+      ],
+    });
+
+    const evaluation = evaluateForwardCaptureReadiness(
+      loadForwardCaptureRuns(buildMemoryIo(files), DEFAULT_FORWARD_CAPTURE_READINESS_INPUT_PATHS),
+    );
+    const quoteStaleness = evaluation.summary.familyReadiness.find(
+      (entry) => entry.familyId === "quoteStalenessReadiness",
+    );
+
+    expect(evaluation.aggregates.runsMissingSequenceGapEvidence).toBe(1);
+    expect(evaluation.aggregates.maxSequenceGapCountPerRun).toBeNull();
+    expect(evaluation.aggregates.sequenceGapCount).toBeNull();
+    expect(quoteStaleness?.verdict).toBe("not-ready-gappy");
+  });
+
+  it("rejects fractional sequenceGapCount under integer semantics", () => {
+    const files = createRunFiles({
+      runId: "fractional-gap",
+      durationSeconds: 13 * 60 * 60,
+      generatedAt: "2026-07-09T08:00:00.000Z",
+      sequenceGapCount: 1.5,
+      topOfBookLines: [
+        createTopOfBookLine({
+          runId: "fractional-gap",
+          receivedAtLocal: "2026-07-09T08:00:00.000Z",
+        }),
+      ],
+    });
+
+    const evaluation = evaluateForwardCaptureReadiness(
+      loadForwardCaptureRuns(buildMemoryIo(files), DEFAULT_FORWARD_CAPTURE_READINESS_INPUT_PATHS),
+    );
+
+    expect(evaluation.aggregates.runsMissingSequenceGapEvidence).toBe(1);
+    expect(evaluation.aggregates.maxSequenceGapCountPerRun).toBeNull();
+    expect(evaluation.aggregates.sequenceGapCount).toBeNull();
+  });
+
+  it("rejects non-finite sequenceGapCount injected on the health object path", () => {
+    const files = createRunFiles({
+      runId: "nonfinite-gap",
+      durationSeconds: 13 * 60 * 60,
+      generatedAt: "2026-07-09T08:00:00.000Z",
+      sequenceGapCount: 0,
+      topOfBookLines: [
+        createTopOfBookLine({
+          runId: "nonfinite-gap",
+          receivedAtLocal: "2026-07-09T08:00:00.000Z",
+        }),
+      ],
+    });
+    const runs = loadForwardCaptureRuns(
+      buildMemoryIo(files),
+      DEFAULT_FORWARD_CAPTURE_READINESS_INPUT_PATHS,
+    );
+    expect(runs).toHaveLength(1);
+    const orderbook = runs[0]!.health.orderbook as { sequenceGapCount?: number };
+    orderbook.sequenceGapCount = Number.POSITIVE_INFINITY;
+
+    const evaluation = evaluateForwardCaptureReadiness(runs);
+
+    expect(evaluation.aggregates.runsMissingSequenceGapEvidence).toBe(1);
+    expect(evaluation.aggregates.maxSequenceGapCountPerRun).toBeNull();
+    expect(evaluation.aggregates.sequenceGapCount).toBeNull();
+  });
+
+  it("does not fabricate zero aggregates when every run has invalid gap evidence", () => {
+    const files = {
+      ...createRunFiles({
+        runId: "invalid-a",
+        durationSeconds: 13 * 60 * 60,
+        generatedAt: "2026-07-09T08:00:00.000Z",
+        sequenceGapCount: -1,
+        topOfBookLines: [
+          createTopOfBookLine({
+            runId: "invalid-a",
+            receivedAtLocal: "2026-07-09T08:00:00.000Z",
+          }),
+        ],
+      }),
+      ...createRunFiles({
+        runId: "invalid-b",
+        durationSeconds: 13 * 60 * 60,
+        generatedAt: "2026-07-10T08:00:00.000Z",
+        sequenceGapCount: 2.5,
+        topOfBookLines: [
+          createTopOfBookLine({
+            runId: "invalid-b",
+            receivedAtLocal: "2026-07-10T08:00:00.000Z",
+          }),
+        ],
+      }),
+    };
+
+    const evaluation = evaluateForwardCaptureReadiness(
+      loadForwardCaptureRuns(buildMemoryIo(files), DEFAULT_FORWARD_CAPTURE_READINESS_INPUT_PATHS),
+    );
+    const quoteStaleness = evaluation.summary.familyReadiness.find(
+      (entry) => entry.familyId === "quoteStalenessReadiness",
+    );
+
+    expect(evaluation.aggregates.runsMissingSequenceGapEvidence).toBe(2);
+    expect(evaluation.aggregates.maxSequenceGapCountPerRun).toBeNull();
+    expect(evaluation.aggregates.sequenceGapCount).toBeNull();
+    expect(quoteStaleness?.verdict).toBe("not-ready-gappy");
+  });
+
   it("documents schema-versioned validBookShare alias as economic-only for new artifacts", () => {
     const files = createRunFiles({
       runId: "valid-book-alias",

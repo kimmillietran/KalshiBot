@@ -539,6 +539,31 @@ export function readTopOfBookRecordCount(
   return inputs.captureFallback?.topOfBookRecordCount ?? 0;
 }
 
+function readValidBtcSpotJoinShare(value: unknown): "absent" | "invalid" | number {
+  if (value === undefined || value === null) {
+    return "absent";
+  }
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0 || value > 1) {
+    return "invalid";
+  }
+  return value;
+}
+
+function readCaptureFallbackJoinShare(
+  inputs: StrategyEvaluationLoadedInputs,
+): number | null {
+  const fallback = inputs.captureFallback?.btcSpotCoverageShare;
+  if (fallback === null || fallback === undefined) {
+    return null;
+  }
+  return fallback;
+}
+
+/**
+ * Join coverage from artifacts is proven ONLY by `btcSpotJoinCoverageShare`.
+ * Never accept `btcSpotCoverageShare` solely due to schemaVersion (alias is cadence-ambiguous).
+ * Malformed explicit join rejects artifact evidence and may use capture fallback, never the alias.
+ */
 export function readBtcSpotCoverage(
   inputs: StrategyEvaluationLoadedInputs,
 ): number | null {
@@ -547,32 +572,17 @@ export function readBtcSpotCoverage(
     ? readiness.aggregates
     : null;
 
-  // Prefer the explicit join-coverage field only.
-  const joinShare = readNumber(aggregates?.btcSpotJoinCoverageShare);
-  if (joinShare !== null) {
-    return joinShare;
+  const joinStatus = readValidBtcSpotJoinShare(aggregates?.btcSpotJoinCoverageShare);
+  if (typeof joinStatus === "number") {
+    return joinStatus;
+  }
+  if (joinStatus === "invalid") {
+    // Malformed explicit join: do not fall through to alias.
+    return readCaptureFallbackJoinShare(inputs);
   }
 
-  // Legacy alias btcSpotCoverageShare meant stream cadence before m12.2.
-  // Accept it as join coverage only when schemaVersion proves the new meaning.
-  const schemaVersion = readString(readiness?.schemaVersion);
-  const aliasShare = readNumber(aggregates?.btcSpotCoverageShare);
-  if (
-    aliasShare !== null
-    && typeof schemaVersion === "string"
-    && schemaVersion.startsWith("forward-capture-readiness/m12.2")
-  ) {
-    return aliasShare;
-  }
-
-  // Recompute from capture-directory fallback (already join-aligned) when available.
-  if (inputs.captureFallback?.btcSpotCoverageShare !== null
-    && inputs.captureFallback?.btcSpotCoverageShare !== undefined) {
-    return inputs.captureFallback.btcSpotCoverageShare;
-  }
-
-  // Ambiguous legacy cadence-only artifact with no fallback → fail closed.
-  return null;
+  // Explicit join absent → capture fallback or null. Never use alias.
+  return readCaptureFallbackJoinShare(inputs);
 }
 
 export function readBidOnlyCandidateCount(

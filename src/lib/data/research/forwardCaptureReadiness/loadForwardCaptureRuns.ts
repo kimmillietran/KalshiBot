@@ -21,12 +21,23 @@ import type {
   ForwardCaptureRunTableEntry,
 } from "./forwardCaptureReadinessTypes";
 
-/** Known sequenceGapCount from capture-health, or null when the field is absent. */
+/**
+ * Known sequenceGapCount only for finite, non-negative safe integers.
+ * Invalid/negative/NaN/Infinity/fractional values are unknown evidence (null).
+ */
 function readKnownSequenceGapCount(run: {
   health: { orderbook?: { sequenceGapCount?: number } | null };
 }): number | null {
   const value = run.health.orderbook?.sequenceGapCount;
-  return typeof value === "number" && Number.isFinite(value) ? value : null;
+  if (
+    typeof value !== "number"
+    || !Number.isFinite(value)
+    || !Number.isSafeInteger(value)
+    || value < 0
+  ) {
+    return null;
+  }
+  return value;
 }
 
 const captureHealthSchema = z
