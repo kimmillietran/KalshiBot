@@ -42,15 +42,23 @@ export function serializeCalibrationFadeForwardValidationHtml(
   <p>Configuration hash: ${report.hypothesisConfigurationHash}</p>
   <h2>Provenance</h2>
   <p>Status: <strong>${report.provenance.provenanceStatus}</strong> (available=${report.provenance.provenanceAvailable})</p>
+  <p>Verification model: <strong>${report.provenance.verificationModel ?? "none"}</strong> — reviewed manifest validated; repository history is <em>not</em> checked at runtime.</p>
+  <p>Hash semantics: ${report.provenance.hashSemantics ?? report.provenance.configurationHashSemantics ?? "semantic normalized-spec hashes"}</p>
   <p>Manifest: ${report.provenance.provenanceManifestPath ?? "none"}</p>
   <p>Manifest hash: ${report.provenance.provenanceManifestHash ?? "none"}</p>
   <p>Conclusion: ${report.provenance.provenanceConclusion ?? "none"}</p>
   <p>Historical benchmark availability: ${report.provenance.historicalBenchmarkAvailability ?? "none"}</p>
+  <p>First-forward boundary: ${report.provenance.firstForwardEvaluationBoundary
+    ? `${report.provenance.firstForwardEvaluationBoundary.claim} (${report.provenance.firstForwardEvaluationBoundary.verificationBasis}; runtimeVerified=${report.provenance.firstForwardEvaluationBoundary.runtimeVerified})`
+    : "none"} — project-context evidence, not independently verified at runtime.</p>
   <p>Original freeze: ${report.provenance.originalFreezeCommitSha ?? "none"} @ ${report.provenance.originalFreezeCommitTimestamp ?? "none"}</p>
   <p>Config hashes: original=${report.provenance.originalConfigHash ?? "none"} resolved=${report.provenance.resolvedConfigHash ?? "none"}</p>
   <pre>${stableStringify({
     ruleFreezeEvidence: report.provenance.ruleFreezeEvidence,
     missingArtifacts: report.provenance.missingArtifacts,
+    declaredMissingArtifacts: report.provenance.declaredMissingArtifacts,
+    runtimeMissingArtifacts: report.provenance.runtimeMissingArtifacts,
+    runtimeLoadedArtifacts: report.provenance.runtimeLoadedArtifacts,
     limitations: report.provenance.limitations,
     integrityCorrections: report.provenance.integrityCorrections,
   })}</pre>

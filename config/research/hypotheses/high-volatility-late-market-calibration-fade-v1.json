@@ -81,14 +81,14 @@
     "precedence": [
       "hypothesis-provenance-unavailable",
       "forward-feature-incompatible",
+      "observation-quality-inconclusive",
       "insufficient-forward-events",
       "settlement-coverage-incomplete",
-      "observation-quality-inconclusive",
       "forward-rejects-hypothesis",
-      "forward-inconclusive",
+      "forward-supports-executable-fade",
       "forward-contradicts-executability",
       "forward-supports-calibration-effect",
-      "forward-supports-executable-fade"
+      "forward-inconclusive"
     ]
   }
 }

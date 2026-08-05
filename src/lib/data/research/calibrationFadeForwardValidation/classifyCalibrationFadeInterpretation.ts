@@ -16,6 +16,24 @@ import type {
 } from "./calibrationFadeForwardValidationTypes";
 import { roundMetric } from "./calibrationFadeForwardValidationUtils";
 
+/**
+ * Order in which `classifyCalibrationFadeInterpretation` can emit classifications.
+ * The frozen hypothesis spec must declare exactly this precedence, so a config edit
+ * can never silently disagree with the classifier that consumes it.
+ */
+export const CANONICAL_CALIBRATION_FADE_CLASSIFICATION_PRECEDENCE = [
+  "hypothesis-provenance-unavailable",
+  "forward-feature-incompatible",
+  "observation-quality-inconclusive",
+  "insufficient-forward-events",
+  "settlement-coverage-incomplete",
+  "forward-rejects-hypothesis",
+  "forward-supports-executable-fade",
+  "forward-contradicts-executability",
+  "forward-supports-calibration-effect",
+  "forward-inconclusive",
+] as const satisfies readonly CalibrationFadeInterpretationClassification[];
+
 export type ExecutableEvidenceState =
   | "supportive"
   | "contradictory"

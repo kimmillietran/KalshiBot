@@ -4,13 +4,19 @@ import { estimateRealizedVolatility } from "@/lib/data/strategies/fairValueDiffu
 import type { BtcSpotPoint } from "../btcKalshiLeadLagAnalysis/causalBtcJoin";
 
 export const VOLATILITY_WINDOW_REJECTION_REASONS = [
+  "invalid-quote-timestamp",
+  "invalid-bar-interval",
+  "invalid-lookback",
+  "invalid-maximum-source-gap",
+  "non-ascending-timestamps",
+  "conflicting-duplicate-timestamp",
+  "future-only-source",
   "insufficient-source-points",
   "insufficient-bars",
   "missing-minute-bucket",
-  "source-gap-exceeded",
-  "invalid-source-price",
   "nonconsecutive-bars",
-  "future-point-detected",
+  "invalid-source-price",
+  "source-gap-exceeded",
   "volatility-estimate-unavailable",
 ] as const;
 
@@ -22,8 +28,18 @@ export type ValidatedCausalVolatilityWindow = {
   annualizedVolatility: number | null;
   windowStartMs: number | null;
   windowEndMs: number | null;
+  /**
+   * Causal source points that back the evaluated trailing window (window start
+   * through the quote timestamp) once the window is known; before the window is
+   * resolved this is the causal point count considered so far.
+   */
   sourcePointCount: number;
   barCount: number;
+  /**
+   * Largest observed source spacing across the evaluated window, including the
+   * leading boundary gap (predecessor or window start to the first selected
+   * point) and the trailing gap from the last selected point to the quote.
+   */
   maximumObservedSourceGapMs: number | null;
   rejectionReason: VolatilityWindowRejectionReason | null;
   /**
@@ -34,23 +50,37 @@ export type ValidatedCausalVolatilityWindow = {
    * sample at or before the quote.
    */
   includesInProgressMinuteBar: boolean;
+  /** Points after the quote timestamp; never used for candles or volatility. */
+  futurePointCount: number;
+  /** Exact duplicate timestamp+price points collapsed from the input series. */
+  duplicatePointCount: number;
+  firstSelectedSourceTimestampMs: number | null;
+  lastSelectedSourceTimestampMs: number | null;
 };
+
+type ValidatedCausalVolatilityWindowDetail = Partial<
+  Omit<ValidatedCausalVolatilityWindow, "available" | "annualizedVolatility" | "rejectionReason">
+>;
 
 function rejected(
   reason: VolatilityWindowRejectionReason,
-  partial: Partial<ValidatedCausalVolatilityWindow> = {},
+  detail: ValidatedCausalVolatilityWindowDetail = {},
 ): ValidatedCausalVolatilityWindow {
   return {
     available: false,
-    candles: partial.candles ?? [],
+    candles: detail.candles ?? [],
     annualizedVolatility: null,
-    windowStartMs: partial.windowStartMs ?? null,
-    windowEndMs: partial.windowEndMs ?? null,
-    sourcePointCount: partial.sourcePointCount ?? 0,
-    barCount: partial.barCount ?? 0,
-    maximumObservedSourceGapMs: partial.maximumObservedSourceGapMs ?? null,
+    windowStartMs: detail.windowStartMs ?? null,
+    windowEndMs: detail.windowEndMs ?? null,
+    sourcePointCount: detail.sourcePointCount ?? 0,
+    barCount: detail.barCount ?? 0,
+    maximumObservedSourceGapMs: detail.maximumObservedSourceGapMs ?? null,
     rejectionReason: reason,
-    includesInProgressMinuteBar: partial.includesInProgressMinuteBar ?? false,
+    includesInProgressMinuteBar: detail.includesInProgressMinuteBar ?? false,
+    futurePointCount: detail.futurePointCount ?? 0,
+    duplicatePointCount: detail.duplicatePointCount ?? 0,
+    firstSelectedSourceTimestampMs: detail.firstSelectedSourceTimestampMs ?? null,
+    lastSelectedSourceTimestampMs: detail.lastSelectedSourceTimestampMs ?? null,
   };
 }
 
@@ -58,69 +88,77 @@ function isValidPrice(priceUsd: number): boolean {
   return Number.isFinite(priceUsd) && priceUsd > 0;
 }
 
-/**
- * Builds a calibration-fade-specific validated causal volatility window.
- * Prefer this over changing global estimateRealizedVolatility.
- *
- * Requires lookbackBars+1 consecutive one-minute candles, source gaps
- * <= maximumSourceGapMs, no fill/interpolation, causal samples only.
- *
- * Input point order: assumes ascending timestamp order (same contract as
- * buildBtcCandlesUpToTimestamp / preloadBtcSpotSeries). Out-of-order inputs
- * are not re-sorted here.
- */
-export function buildValidatedCausalVolatilityWindow(input: {
+function isPositiveSafeInteger(value: number): boolean {
+  return Number.isSafeInteger(value) && value > 0;
+}
+
+function isNonNegativeSafeInteger(value: number): boolean {
+  return Number.isSafeInteger(value) && value >= 0;
+}
+
+function bucketStartFor(timestampMs: number, barIntervalMs: number): number {
+  return Math.floor(timestampMs / barIntervalMs) * barIntervalMs;
+}
+
+type OrderedSeries = {
   points: readonly BtcSpotPoint[];
-  timestampMs: number;
-  barIntervalMs: number;
-  lookbackBars: number;
-  maximumSourceGapMs: number;
-}): ValidatedCausalVolatilityWindow {
-  const { timestampMs, barIntervalMs, lookbackBars, maximumSourceGapMs } = input;
-  const requiredBars = lookbackBars + 1;
+  duplicatePointCount: number;
+};
 
-  let sawFuturePoint = false;
-  const causalPoints: BtcSpotPoint[] = [];
-  for (const point of input.points) {
-    if (point.timestampMs > timestampMs) {
-      sawFuturePoint = true;
-      continue;
+/**
+ * Enforces ascending finite timestamps and applies duplicate policy B: exact
+ * duplicate timestamp+price pairs collapse into a single point, while two
+ * different prices at the same timestamp are unresolvable and rejected.
+ *
+ * Non-finite point timestamps cannot be ordered at all, so they are reported as
+ * an ordering violation.
+ */
+function orderSeries(
+  points: readonly BtcSpotPoint[],
+): OrderedSeries | VolatilityWindowRejectionReason {
+  const ordered: BtcSpotPoint[] = [];
+  let duplicatePointCount = 0;
+
+  for (const point of points) {
+    if (!Number.isFinite(point.timestampMs)) {
+      return "non-ascending-timestamps";
     }
-    if (!isValidPrice(point.priceUsd)) {
-      return rejected("invalid-source-price", {
-        sourcePointCount: causalPoints.length,
-      });
+    const previous = ordered[ordered.length - 1];
+    if (previous) {
+      if (point.timestampMs < previous.timestampMs) {
+        return "non-ascending-timestamps";
+      }
+      if (point.timestampMs === previous.timestampMs) {
+        if (!Object.is(point.priceUsd, previous.priceUsd)) {
+          return "conflicting-duplicate-timestamp";
+        }
+        duplicatePointCount += 1;
+        continue;
+      }
     }
-    causalPoints.push(point);
+    ordered.push(point);
   }
 
-  if (sawFuturePoint && causalPoints.length === 0) {
-    return rejected("future-point-detected");
-  }
+  return { points: ordered, duplicatePointCount };
+}
 
-  if (causalPoints.length < requiredBars) {
-    return rejected("insufficient-source-points", {
-      sourcePointCount: causalPoints.length,
-    });
-  }
-
-  // Build minute candles including the in-progress quote minute (preserved policy).
+function buildMinuteCandles(
+  points: readonly BtcSpotPoint[],
+  barIntervalMs: number,
+): EvaluationCandleSnapshot[] {
   const candles: EvaluationCandleSnapshot[] = [];
-  let bucketStart = Math.floor(causalPoints[0]!.timestampMs / barIntervalMs) * barIntervalMs;
-  let open = causalPoints[0]!.priceUsd;
+  let bucketStart = bucketStartFor(points[0]!.timestampMs, barIntervalMs);
+  let open = points[0]!.priceUsd;
   let high = open;
   let low = open;
   let close = open;
 
-  for (const point of causalPoints) {
-    const bucket = Math.floor(point.timestampMs / barIntervalMs) * barIntervalMs;
+  for (const point of points) {
+    const bucket = bucketStartFor(point.timestampMs, barIntervalMs);
     if (bucket !== bucketStart) {
       candles.push({ timestamp: bucketStart, open, high, low, close });
-      // Detect skipped minute buckets between samples (no forward-fill).
-      const expectedNext = bucketStart + barIntervalMs;
-      if (bucket > expectedNext) {
-        // Continue building; consecutiveness is validated on the trailing window.
-      }
+      // No fill: skipped buckets stay absent and are caught by the window
+      // consecutiveness check below.
       bucketStart = bucket;
       open = point.priceUsd;
       high = point.priceUsd;
@@ -134,12 +172,96 @@ export function buildValidatedCausalVolatilityWindow(input: {
   }
   candles.push({ timestamp: bucketStart, open, high, low, close });
 
-  const quoteMinuteStart = Math.floor(timestampMs / barIntervalMs) * barIntervalMs;
-  const includesInProgressMinuteBar =
-    candles.length > 0 && candles[candles.length - 1]!.timestamp === quoteMinuteStart;
+  return candles;
+}
+
+/**
+ * Builds a calibration-fade-specific validated causal volatility window.
+ * Prefer this over changing global estimateRealizedVolatility.
+ *
+ * Requires lookbackBars+1 consecutive one-minute candles, source gaps
+ * <= maximumSourceGapMs (including window boundary gaps), no fill or
+ * interpolation, and causal samples only.
+ *
+ * Input point order must be ascending (same contract as
+ * buildBtcCandlesUpToTimestamp / preloadBtcSpotSeries); out-of-order inputs are
+ * rejected rather than re-sorted. Price validity is scoped to the evaluated
+ * trailing window plus the predecessor point needed for the leading boundary
+ * gap, so bad samples far behind the window do not invalidate a usable window.
+ */
+export function buildValidatedCausalVolatilityWindow(input: {
+  points: readonly BtcSpotPoint[];
+  timestampMs: number;
+  barIntervalMs: number;
+  lookbackBars: number;
+  maximumSourceGapMs: number;
+}): ValidatedCausalVolatilityWindow {
+  const { timestampMs, barIntervalMs, lookbackBars, maximumSourceGapMs } = input;
+
+  if (!Number.isFinite(timestampMs)) {
+    return rejected("invalid-quote-timestamp");
+  }
+  if (!isPositiveSafeInteger(barIntervalMs)) {
+    return rejected("invalid-bar-interval");
+  }
+  if (!Number.isSafeInteger(lookbackBars) || lookbackBars < 2) {
+    return rejected("invalid-lookback");
+  }
+  if (!isNonNegativeSafeInteger(maximumSourceGapMs)) {
+    return rejected("invalid-maximum-source-gap");
+  }
+
+  const requiredBars = lookbackBars + 1;
+
+  const orderedSeries = orderSeries(input.points);
+  if (typeof orderedSeries === "string") {
+    return rejected(orderedSeries);
+  }
+  const { duplicatePointCount } = orderedSeries;
+
+  const causalPoints: BtcSpotPoint[] = [];
+  let futurePointCount = 0;
+  for (const point of orderedSeries.points) {
+    if (point.timestampMs > timestampMs) {
+      futurePointCount += 1;
+      continue;
+    }
+    causalPoints.push(point);
+  }
+
+  const seriesDetail: ValidatedCausalVolatilityWindowDetail = {
+    futurePointCount,
+    duplicatePointCount,
+  };
+
+  if (causalPoints.length === 0 && futurePointCount > 0) {
+    return rejected("future-only-source", seriesDetail);
+  }
+
+  if (causalPoints.length < requiredBars) {
+    return rejected("insufficient-source-points", {
+      ...seriesDetail,
+      sourcePointCount: causalPoints.length,
+    });
+  }
+
+  // Candles are built from causal points with usable prices; invalid prices are
+  // rejected later, but only when they fall inside the evaluated window scope.
+  const pricedPoints = causalPoints.filter((point) => isValidPrice(point.priceUsd));
+  if (pricedPoints.length === 0) {
+    return rejected("invalid-source-price", {
+      ...seriesDetail,
+      sourcePointCount: causalPoints.length,
+    });
+  }
+
+  const candles = buildMinuteCandles(pricedPoints, barIntervalMs);
+  const quoteMinuteStart = bucketStartFor(timestampMs, barIntervalMs);
+  const includesInProgressMinuteBar = candles[candles.length - 1]!.timestamp === quoteMinuteStart;
 
   if (candles.length < requiredBars) {
     return rejected("insufficient-bars", {
+      ...seriesDetail,
       candles,
       sourcePointCount: causalPoints.length,
       barCount: candles.length,
@@ -151,53 +273,58 @@ export function buildValidatedCausalVolatilityWindow(input: {
   const windowStartMs = window[0]!.timestamp;
   const windowEndMs = window[window.length - 1]!.timestamp;
 
+  const firstSelectedIndex = causalPoints.findIndex(
+    (point) => point.timestampMs >= windowStartMs,
+  );
+  const selectedPoints = causalPoints.slice(firstSelectedIndex);
+  const predecessorPoint = firstSelectedIndex > 0 ? causalPoints[firstSelectedIndex - 1]! : null;
+
+  const windowDetail: ValidatedCausalVolatilityWindowDetail = {
+    ...seriesDetail,
+    candles: window,
+    sourcePointCount: selectedPoints.length,
+    barCount: window.length,
+    windowStartMs,
+    windowEndMs,
+    includesInProgressMinuteBar,
+    firstSelectedSourceTimestampMs: selectedPoints[0]?.timestampMs ?? null,
+    lastSelectedSourceTimestampMs:
+      selectedPoints[selectedPoints.length - 1]?.timestampMs ?? null,
+  };
+
+  const scopedPoints = predecessorPoint ? [predecessorPoint, ...selectedPoints] : selectedPoints;
+  if (scopedPoints.some((point) => !isValidPrice(point.priceUsd))) {
+    return rejected("invalid-source-price", windowDetail);
+  }
+
   for (let index = 1; index < window.length; index += 1) {
     const expected = window[index - 1]!.timestamp + barIntervalMs;
     const actual = window[index]!.timestamp;
     if (actual !== expected) {
-      const reason: VolatilityWindowRejectionReason =
-        actual > expected ? "missing-minute-bucket" : "nonconsecutive-bars";
-      return rejected(reason, {
-        candles: window,
-        sourcePointCount: causalPoints.length,
-        barCount: window.length,
-        windowStartMs,
-        windowEndMs,
-        includesInProgressMinuteBar,
-      });
+      return rejected(actual > expected ? "missing-minute-bucket" : "nonconsecutive-bars", windowDetail);
     }
   }
 
-  const windowPoints = causalPoints.filter(
-    (point) => point.timestampMs >= windowStartMs && point.timestampMs <= timestampMs,
-  );
-  let maximumObservedSourceGapMs = 0;
-  for (let index = 1; index < windowPoints.length; index += 1) {
-    const gap = windowPoints[index]!.timestampMs - windowPoints[index - 1]!.timestampMs;
+  const gapBoundaryStartMs = predecessorPoint ? predecessorPoint.timestampMs : windowStartMs;
+  let maximumObservedSourceGapMs = selectedPoints[0]!.timestampMs - gapBoundaryStartMs;
+  for (let index = 1; index < selectedPoints.length; index += 1) {
+    const gap = selectedPoints[index]!.timestampMs - selectedPoints[index - 1]!.timestampMs;
     maximumObservedSourceGapMs = Math.max(maximumObservedSourceGapMs, gap);
-    if (gap > maximumSourceGapMs) {
-      return rejected("source-gap-exceeded", {
-        candles: window,
-        sourcePointCount: windowPoints.length,
-        barCount: window.length,
-        windowStartMs,
-        windowEndMs,
-        maximumObservedSourceGapMs,
-        includesInProgressMinuteBar,
-      });
-    }
+  }
+  maximumObservedSourceGapMs = Math.max(
+    maximumObservedSourceGapMs,
+    timestampMs - selectedPoints[selectedPoints.length - 1]!.timestampMs,
+  );
+
+  if (maximumObservedSourceGapMs > maximumSourceGapMs) {
+    return rejected("source-gap-exceeded", { ...windowDetail, maximumObservedSourceGapMs });
   }
 
   const estimate = estimateRealizedVolatility(window, lookbackBars);
   if (!estimate || !Number.isFinite(estimate.annualizedVol)) {
     return rejected("volatility-estimate-unavailable", {
-      candles: window,
-      sourcePointCount: windowPoints.length,
-      barCount: window.length,
-      windowStartMs,
-      windowEndMs,
+      ...windowDetail,
       maximumObservedSourceGapMs,
-      includesInProgressMinuteBar,
     });
   }
 
@@ -207,10 +334,14 @@ export function buildValidatedCausalVolatilityWindow(input: {
     annualizedVolatility: estimate.annualizedVol,
     windowStartMs,
     windowEndMs,
-    sourcePointCount: windowPoints.length,
+    sourcePointCount: selectedPoints.length,
     barCount: window.length,
     maximumObservedSourceGapMs,
     rejectionReason: null,
     includesInProgressMinuteBar,
+    futurePointCount,
+    duplicatePointCount,
+    firstSelectedSourceTimestampMs: selectedPoints[0]!.timestampMs,
+    lastSelectedSourceTimestampMs: selectedPoints[selectedPoints.length - 1]!.timestampMs,
   };
 }

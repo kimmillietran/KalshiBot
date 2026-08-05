@@ -7,8 +7,14 @@ import type {
 } from "@/lib/data/research/calibrationFadeForwardValidation/calibrationFadeForwardValidationTypes";
 import {
   CalibrationFadeForwardValidationError,
+  CALIBRATION_FADE_CONFIGURATION_HASH_SEMANTICS,
+  CALIBRATION_FADE_FIRST_FORWARD_BOUNDARY_CLAIM,
+  CALIBRATION_FADE_FIRST_FORWARD_BOUNDARY_VERIFICATION_BASIS,
+  CALIBRATION_FADE_PROVENANCE_HASH_SEMANTICS,
   CALIBRATION_FADE_PROVENANCE_MANIFEST_SCHEMA,
   CALIBRATION_FADE_PROVENANCE_MANIFEST_VERSION,
+  CALIBRATION_FADE_PROVENANCE_VERIFICATION_MODEL,
+  CANONICAL_CALIBRATION_FADE_CLASSIFICATION_PRECEDENCE,
   DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH,
   deriveProvenanceManifestPath,
   loadFrozenHypothesisSpec,
@@ -32,6 +38,8 @@ const RUN3 = "data/live-capture/forward-quotes/2026-07-13T00-00-00-000Z";
 const HYPOTHESIS_ID =
   "atlas-volatilityProbabilityTime-vol-high-coarse-prob-1-coarse-time-early-over";
 const PROVENANCE_PATH = deriveProvenanceManifestPath(DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH);
+const ORIGINAL_FREEZE_COMMIT_SHA = "f2598cf960472f368cd6ad25f67d4c97a3b3956e";
+const ORIGINAL_FREEZE_COMMIT_TIMESTAMP = "2026-07-12T01:54:04-07:00";
 
 function freezeSpecContent(): string {
   return JSON.stringify({
@@ -86,54 +94,63 @@ function freezeSpecContent(): string {
       materialSupportCalibrationGap: 0.03,
       materialExecutableNetReturnCents: 1,
     },
-    classificationRules: { precedence: ["insufficient-forward-events"] },
+    classificationRules: { precedence: [...CANONICAL_CALIBRATION_FADE_CLASSIFICATION_PRECEDENCE] },
+  });
+}
+
+const FIRST_FORWARD_EVALUATION_BOUNDARY = {
+  claim: CALIBRATION_FADE_FIRST_FORWARD_BOUNDARY_CLAIM,
+  verificationBasis: CALIBRATION_FADE_FIRST_FORWARD_BOUNDARY_VERIFICATION_BASIS,
+  runtimeVerified: false,
+} as const;
+
+/** Complete reviewed manifest for a fixture freeze with no integrity divergence. */
+function provenanceManifestContent(configurationHash: string): string {
+  return JSON.stringify({
+    schema: CALIBRATION_FADE_PROVENANCE_MANIFEST_SCHEMA,
+    version: CALIBRATION_FADE_PROVENANCE_MANIFEST_VERSION,
+    verificationModel: CALIBRATION_FADE_PROVENANCE_VERIFICATION_MODEL,
+    hypothesisId: HYPOTHESIS_ID,
+    sourceCandidateId: HYPOTHESIS_ID,
+    configPath: DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH,
+    originalFreezeCommitSha: ORIGINAL_FREEZE_COMMIT_SHA,
+    originalFreezeCommitTimestamp: ORIGINAL_FREEZE_COMMIT_TIMESTAMP,
+    originalConfigHash: configurationHash,
+    resolvedConfigHash: configurationHash,
+    firstForwardEvaluationBoundary: FIRST_FORWARD_EVALUATION_BOUNDARY,
+    conclusion: "defensible-with-manifest",
+    ruleFreezeEvidence: {
+      kind: "repository-history",
+      description:
+        `Frozen config was introduced in commit ${ORIGINAL_FREEZE_COMMIT_SHA} before the first forward capture `
+        + "epoch. Git is not executed at evaluation time; this reviewed manifest records freeze identity.",
+      runtimeGitExecuted: false,
+      originalProbabilityBounds: { minInclusive: 0.3, maxExclusive: 0.7 },
+      resolvedProbabilityBounds: {
+        minInclusive: 1 / 3,
+        maxExclusive: 2 / 3,
+        bucketId: "coarse-prob-1",
+      },
+    },
+    historicalBenchmarkAvailability: "unavailable",
+    missingArtifacts: [],
+    limitations: [],
+    integrityCorrections: [],
   });
 }
 
 function hypothesisProvenanceFiles(): Record<string, string> {
   const freeze = freezeSpecContent();
-  const tempIo = createMemoryCalibrationFadeForwardValidationIo({
-    [DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH]: freeze,
-    [PROVENANCE_PATH]: JSON.stringify({
-      schema: CALIBRATION_FADE_PROVENANCE_MANIFEST_SCHEMA,
-      version: CALIBRATION_FADE_PROVENANCE_MANIFEST_VERSION,
-      hypothesisId: HYPOTHESIS_ID,
-      sourceCandidateId: HYPOTHESIS_ID,
-      configPath: DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH,
-      originalFreezeCommitSha: "f2598cf960472f368cd6ad25f67d4c97a3b3956e",
-      originalFreezeCommitTimestamp: "2026-07-12T01:54:04-07:00",
-      originalConfigHash: "76336405",
-      resolvedConfigHash: "00000000",
-      firstForwardEvaluationBoundary: "before first forward capture",
-      conclusion: "defensible-with-manifest",
-      ruleFreezeEvidence: { kind: "repository-history" },
-      historicalBenchmarkAvailability: "unavailable",
-      missingArtifacts: [],
-      limitations: [],
-      integrityCorrections: [],
+  // The freeze document alone determines the configuration hash the manifest
+  // must certify, so it is read back before the manifest is built.
+  const hash = loadFrozenHypothesisSpec({
+    io: createMemoryCalibrationFadeForwardValidationIo({
+      [DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH]: freeze,
     }),
-  });
-  const hash = loadFrozenHypothesisSpec({ io: tempIo }).spec.configurationHash;
+  }).spec.configurationHash;
   return {
     [DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH]: freeze,
-    [PROVENANCE_PATH]: JSON.stringify({
-      schema: CALIBRATION_FADE_PROVENANCE_MANIFEST_SCHEMA,
-      version: CALIBRATION_FADE_PROVENANCE_MANIFEST_VERSION,
-      hypothesisId: HYPOTHESIS_ID,
-      sourceCandidateId: HYPOTHESIS_ID,
-      configPath: DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH,
-      originalFreezeCommitSha: "f2598cf960472f368cd6ad25f67d4c97a3b3956e",
-      originalFreezeCommitTimestamp: "2026-07-12T01:54:04-07:00",
-      originalConfigHash: "76336405",
-      resolvedConfigHash: hash,
-      firstForwardEvaluationBoundary: "before first forward capture",
-      conclusion: "defensible-with-manifest",
-      ruleFreezeEvidence: { kind: "repository-history" },
-      historicalBenchmarkAvailability: "unavailable",
-      missingArtifacts: [],
-      limitations: [],
-      integrityCorrections: [],
-    }),
+    [PROVENANCE_PATH]: provenanceManifestContent(hash),
     "data/research-results/hypothesis-candidates.json": hypothesisCandidatesFixture(),
   };
 }
@@ -305,19 +322,23 @@ function stubReport(input: {
     provenance: {
       provenanceAvailable: true,
       provenanceStatus: "valid-manifest",
-      provenanceManifestPath: "config/research/hypotheses/provenance/high-volatility-late-market-calibration-fade-v1.json",
+      provenanceManifestPath: PROVENANCE_PATH,
       provenanceManifestHash: "stub",
       provenanceConclusion: "defensible-with-manifest",
+      verificationModel: CALIBRATION_FADE_PROVENANCE_VERIFICATION_MODEL,
       ruleFreezeEvidence: {},
       historicalBenchmarkAvailability: "unavailable",
       missingArtifacts: [],
+      declaredMissingArtifacts: [],
       limitations: [],
       integrityCorrections: [],
-      originalFreezeCommitSha: "f2598cf960472f368cd6ad25f67d4c97a3b3956e",
-      originalFreezeCommitTimestamp: "2026-07-12T01:54:04-07:00",
-      originalConfigHash: "76336405",
-      resolvedConfigHash: "a632ef85",
-      firstForwardEvaluationBoundary: "before first forward capture",
+      originalFreezeCommitSha: ORIGINAL_FREEZE_COMMIT_SHA,
+      originalFreezeCommitTimestamp: ORIGINAL_FREEZE_COMMIT_TIMESTAMP,
+      originalConfigHash: input.hypothesisConfigurationHash ?? HYPOTHESIS_HASH,
+      resolvedConfigHash: input.hypothesisConfigurationHash ?? HYPOTHESIS_HASH,
+      firstForwardEvaluationBoundary: FIRST_FORWARD_EVALUATION_BOUNDARY,
+      hashSemantics: CALIBRATION_FADE_PROVENANCE_HASH_SEMANTICS,
+      configurationHashSemantics: CALIBRATION_FADE_CONFIGURATION_HASH_SEMANTICS,
     },
     featureCompatibility: {
       probabilityMeasureAvailable: true,

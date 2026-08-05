@@ -658,7 +658,13 @@ export async function analyzeCalibrationFadeForwardForRun(input: {
     { stageId: "records-loaded", label: "Records loaded", count: sequentialFunnel.recordsLoaded },
     { stageId: "valid-book", label: "Valid book (sequential)", count: sequentialFunnel.validBook },
     { stageId: "synchronized-book", label: "Synchronized book (sequential)", count: sequentialFunnel.synchronizedBook },
-    { stageId: "open-market", label: "Open market (sequential)", count: sequentialFunnel.openMarket },
+    {
+      stageId: "open-market",
+      label: spec.marketEligibilityRules.requireOpenMarket
+        ? "Open market (sequential)"
+        : "Open-market requirement disabled (sequential pass-through; not intrinsic open count)",
+      count: sequentialFunnel.openMarket,
+    },
     { stageId: "btc-join-available", label: "BTC join available (sequential)", count: sequentialFunnel.btcJoinAvailable },
     { stageId: "volatility-available", label: "Volatility available (sequential)", count: sequentialFunnel.volatilityAvailable },
     { stageId: "high-volatility", label: "High volatility (sequential)", count: sequentialFunnel.highVolatility },

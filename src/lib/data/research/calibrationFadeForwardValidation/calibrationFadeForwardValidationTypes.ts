@@ -14,6 +14,35 @@ export const CALIBRATION_FADE_PROVENANCE_ACCEPTED_CONCLUSIONS = [
 export type CalibrationFadeProvenanceConclusion =
   (typeof CALIBRATION_FADE_PROVENANCE_ACCEPTED_CONCLUSIONS)[number];
 
+/**
+ * The only supported provenance verification model. Rule-freeze provenance is
+ * established by a reviewed, committed manifest; no Git process is executed at
+ * evaluation time, so the manifest must state its own verification model.
+ */
+export const CALIBRATION_FADE_PROVENANCE_VERIFICATION_MODEL = "reviewed-manifest";
+
+export type CalibrationFadeProvenanceVerificationModel =
+  typeof CALIBRATION_FADE_PROVENANCE_VERIFICATION_MODEL;
+
+export const CALIBRATION_FADE_FIRST_FORWARD_BOUNDARY_CLAIM = "before-first-forward-capture";
+export const CALIBRATION_FADE_FIRST_FORWARD_BOUNDARY_VERIFICATION_BASIS = "project-context-reviewed";
+
+/**
+ * Structured freeze-boundary claim. `runtimeVerified` is always false: the claim
+ * is reviewed out of band and is never re-derived from repository history here.
+ */
+export type CalibrationFadeFirstForwardEvaluationBoundary = {
+  claim: typeof CALIBRATION_FADE_FIRST_FORWARD_BOUNDARY_CLAIM;
+  verificationBasis: typeof CALIBRATION_FADE_FIRST_FORWARD_BOUNDARY_VERIFICATION_BASIS;
+  runtimeVerified: false;
+};
+
+export const CALIBRATION_FADE_CONFIGURATION_HASH_SEMANTICS =
+  "configurationHash is fnv1a32(stableStringify(validated freeze spec without configurationHash): a semantic hash of the normalized specification, not of raw file bytes. Formatting, key order, and comment-only edits do not change it; any governed value change does.";
+
+export const CALIBRATION_FADE_PROVENANCE_HASH_SEMANTICS =
+  "originalConfigHash and resolvedConfigHash are semantic normalized-spec hashes produced by the same function as configurationHash, so they are comparable across reformattings. provenanceManifestHash is fnv1a32 over the raw manifest text with any BOM stripped.";
+
 export const DEFAULT_CALIBRATION_FADE_FORWARD_VALIDATION_OUTPUT_PATH =
   "data/research-results/calibration-fade-forward-validation.json";
 export const DEFAULT_CALIBRATION_FADE_FORWARD_VALIDATION_HTML_PATH =
@@ -205,6 +234,8 @@ export type CalibrationFadeProvenanceStatus =
   | "malformed-manifest"
   | "mismatched-manifest"
   | "unsupported-manifest-version"
+  | "unsupported-verification-model"
+  | "incomplete-manifest"
   | "unacceptable-conclusion";
 
 export type CalibrationFadeProvenanceReport = {
@@ -213,16 +244,27 @@ export type CalibrationFadeProvenanceReport = {
   provenanceManifestPath: string | null;
   provenanceManifestHash: string | null;
   provenanceConclusion: CalibrationFadeProvenanceConclusion | null;
+  /** Non-null only when the manifest declared and matched the supported verification model. */
+  verificationModel: CalibrationFadeProvenanceVerificationModel | null;
   ruleFreezeEvidence: Record<string, unknown> | null;
   historicalBenchmarkAvailability: "available" | "unavailable" | null;
+  /** Authoritative missing set, reconciled against the filesystem at load time. */
   missingArtifacts: readonly string[];
+  /** Missing set as declared by the manifest, retained so stale declarations stay auditable. */
+  declaredMissingArtifacts: readonly string[];
+  /** Canonical artifacts observed absent at load time, independent of the manifest. */
+  runtimeMissingArtifacts?: readonly string[];
+  /** Canonical artifacts observed present and hashed at load time. */
+  runtimeLoadedArtifacts?: readonly string[];
   limitations: readonly string[];
   integrityCorrections: readonly Record<string, unknown>[];
   originalFreezeCommitSha: string | null;
   originalFreezeCommitTimestamp: string | null;
   originalConfigHash: string | null;
   resolvedConfigHash: string | null;
-  firstForwardEvaluationBoundary: string | null;
+  firstForwardEvaluationBoundary: CalibrationFadeFirstForwardEvaluationBoundary | null;
+  hashSemantics: string;
+  configurationHashSemantics: string;
 };
 
 export type CalibrationFadeEventRecord = {

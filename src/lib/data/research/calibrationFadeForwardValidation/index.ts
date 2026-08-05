@@ -10,6 +10,7 @@ export type {
   VolatilityWindowRejectionReason,
 } from "./buildValidatedCausalVolatilityWindow";
 export {
+  CANONICAL_CALIBRATION_FADE_CLASSIFICATION_PRECEDENCE,
   classifyCalibrationFadeInterpretation,
   classifyExecutableEvidence,
   buildHistoricalVersusForwardComparison,
@@ -43,16 +44,24 @@ export {
   serializeCalibrationFadeForwardValidationReport,
 } from "./serializeCalibrationFadeForwardValidation";
 export {
+  CALIBRATION_FADE_CONFIGURATION_HASH_SEMANTICS,
+  CALIBRATION_FADE_FIRST_FORWARD_BOUNDARY_CLAIM,
+  CALIBRATION_FADE_FIRST_FORWARD_BOUNDARY_VERIFICATION_BASIS,
   CALIBRATION_FADE_FORWARD_VALIDATION_VERSION,
   CALIBRATION_FADE_FORWARD_VALIDATION_DISCLAIMER,
+  CALIBRATION_FADE_PROVENANCE_HASH_SEMANTICS,
   CALIBRATION_FADE_PROVENANCE_MANIFEST_SCHEMA,
   CALIBRATION_FADE_PROVENANCE_MANIFEST_VERSION,
+  CALIBRATION_FADE_PROVENANCE_VERIFICATION_MODEL,
   CalibrationFadeForwardValidationError,
 } from "./calibrationFadeForwardValidationTypes";
 export type {
+  CalibrationFadeFirstForwardEvaluationBoundary,
   CalibrationFadeForwardValidationConfig,
   CalibrationFadeForwardValidationReport,
   CalibrationFadeInterpretationClassification,
   CalibrationFadeProvenanceReport,
+  CalibrationFadeProvenanceStatus,
+  CalibrationFadeProvenanceVerificationModel,
   FrozenHypothesisSpec,
 } from "./calibrationFadeForwardValidationTypes";
