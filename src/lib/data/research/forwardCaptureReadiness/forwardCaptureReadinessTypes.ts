@@ -35,6 +35,8 @@ export type ForwardCaptureFamilyReadinessVerdict =
   | "not-ready-gappy"
   | "not-ready-no-btc-spot"
   | "not-ready-invalid-books"
+  /** Book-state capture is fine; markets are locked/one-sided or otherwise economically ineligible. */
+  | "not-ready-insufficient-economic-eligibility"
   | "ready";
 
 export type ForwardCaptureOverallReadinessVerdict =
@@ -51,6 +53,8 @@ export const FORWARD_CAPTURE_RECOMMENDED_NEXT_ACTIONS = [
   "build-lead-lag-diagnostic",
   "build-quote-staleness-diagnostic",
   "build-static-parity-scan",
+  /** Locked/one-sided/economic eligibility limits, not a capture quality defect. */
+  "investigate-market-structure",
 ] as const;
 
 export type ForwardCaptureRecommendedNextAction =
@@ -59,19 +63,27 @@ export type ForwardCaptureRecommendedNextAction =
 export const DEFAULT_FORWARD_CAPTURE_READINESS_THRESHOLDS = {
   leadLag: {
     minTotalDurationMinutes: 24 * 60,
+    /** Applies to BTC spot JOIN coverage (share of top-of-book records with a joined spot price), not stream cadence. */
     minBtcSpotCoverageShare: 0.95,
     maxP90TopOfBookGapMs: 5_000,
+    /** Native bookState === "valid" share — capture integrity, independent of economic eligibility. */
+    minBookStateValidShare: 0.95,
+    /** @deprecated Alias of minBookStateValidShare, kept for backward-compatible consumers. */
     minValidBookShare: 0.95,
     minCalendarDays: 3,
   },
   quoteStaleness: {
     minTotalDurationMinutes: 12 * 60,
     maxP90TopOfBookGapMs: 10_000,
+    /** Gates on the max per-run sequenceGapCount, not the cross-run sum — one bad run should not be diluted by many clean runs. */
+    maxSequenceGapCountPerRun: 5,
+    /** @deprecated Alias of maxSequenceGapCountPerRun, kept for backward-compatible consumers. */
     maxSequenceGapCount: 5,
     minNonZeroSpreadShare: 0.05,
   },
   sameMarketParity: {
-    minValidBookShare: 0.95,
+    /** Economic eligibility (locked/one-sided markets excluded), not raw native book-state validity. */
+    minEconomicallyValidShare: 0.95,
     requireDepthFields: true,
   },
   bidOnlyParity: {
@@ -114,12 +126,31 @@ export type ForwardCaptureAggregateMetrics = {
   topOfBookRecordCount: number;
   btcSpotRecordCount: number;
   rawMessageCount: number;
+  /**
+   * @deprecated Alias of economicallyValidShare, kept for backward-compatible JSON consumers.
+   * Prefer bookStateValidShare (native capture integrity) or economicallyValidShare (economic eligibility).
+   */
   validBookShare: number | null;
+  /** Native bookState === "valid" share of records. Capture integrity, independent of market economics. */
+  bookStateValidShare: number | null;
+  /** Economically-eligible share of records (excludes locked/one-sided books). */
+  economicallyValidShare: number | null;
+  /** Cumulative sum of per-run sequenceGapCount across all runs. Informational only — see maxSequenceGapCountPerRun for gating. */
   sequenceGapCount: number;
+  /** Max of per-run sequenceGapCount. Used for gating so one bad run isn't diluted by many clean runs. */
+  maxSequenceGapCountPerRun: number;
   reconnectCount: number;
   medianTopOfBookGapMs: number | null;
   p90TopOfBookGapMs: number | null;
+  /**
+   * @deprecated Alias of btcSpotJoinCoverageShare, kept for backward-compatible consumers that expect "coverage".
+   * Prefer btcSpotJoinCoverageShare (join coverage) or btcSpotStreamCadenceRatio (stream cadence).
+   */
   btcSpotCoverageShare: number | null;
+  /** Fraction of top-of-book records with a joined BTC spot value (btcSpotPriceUsd != null). */
+  btcSpotJoinCoverageShare: number | null;
+  /** btcSpotRecordCount / topOfBookRecordCount — relative stream cadence, NOT join coverage. */
+  btcSpotStreamCadenceRatio: number | null;
   nonZeroSpreadShare: number | null;
   zeroSpreadShare: number | null;
   daysCovered: number;
@@ -135,7 +166,13 @@ export type ForwardCaptureRunTableEntry = {
   topOfBookRecordCount: number;
   btcSpotRecordCount: number;
   rawMessageCount: number;
+  /** @deprecated Alias of economicallyValidShare. */
   validBookShare: number | null;
+  bookStateValidShare: number | null;
+  economicallyValidShare: number | null;
+  btcSpotJoinCoverageShare: number | null;
+  btcSpotStreamCadenceRatio: number | null;
+  /** Per-run sequence gap count (unchanged semantics). */
   sequenceGapCount: number;
   reconnectCount: number;
   verdict: string | null;

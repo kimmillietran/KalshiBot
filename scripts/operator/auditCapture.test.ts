@@ -119,4 +119,101 @@ describe("runAuditCaptureCommand", () => {
     expect(exitCode).toBe(1);
     expect(stderr.join("")).toMatch(/Select a run/);
   });
+
+  it("runs forward-capture-readiness before strategy-evaluation-readiness in --full", async () => {
+    const { io, stdout } = createIo();
+    const selected = {
+      outcome: "selected",
+      runId: "selected-run",
+      runDir: "data/live-capture/forward-quotes/selected-run",
+      runState: "completed",
+      warnings: [],
+    };
+    const researchScripts: string[] = [];
+
+    const exitCode = await runAuditCaptureCommand(["--run-id", "selected-run", "--full"], {
+      io,
+      runner: mockRunner((script) => {
+        if (script.includes("selectAuditableCaptureRun")) {
+          return {
+            exitCode: 0,
+            stdout: JSON.stringify(selected) + "\n",
+            stderr: "",
+          };
+        }
+        if (script.includes("scripts/research/")) {
+          researchScripts.push(script);
+        }
+        return { exitCode: 0, stdout: "", stderr: "" };
+      }),
+    });
+
+    expect(exitCode).toBe(0);
+    const forwardIdx = researchScripts.findIndex((s) =>
+      s.includes("buildForwardCaptureReadiness.ts"),
+    );
+    const strategyIdx = researchScripts.findIndex((s) =>
+      s.includes("buildStrategyEvaluationReadiness.ts"),
+    );
+    const executableIdx = researchScripts.findIndex((s) =>
+      s.includes("buildExecutableConfirmationDesign.ts"),
+    );
+    expect(forwardIdx).toBeGreaterThanOrEqual(0);
+    expect(strategyIdx).toBeGreaterThanOrEqual(0);
+    expect(forwardIdx).toBeLessThan(strategyIdx);
+    expect(strategyIdx).toBeLessThan(executableIdx);
+    expect(stdout.join("")).toContain("AGGREGATE-scoped");
+  });
+
+  it("same-pass full audit regenerates forward readiness before strategy consumes it", async () => {
+    const { io } = createIo();
+    const selected = {
+      outcome: "selected",
+      runId: "selected-run",
+      runDir: "data/live-capture/forward-quotes/selected-run",
+      runState: "completed",
+      warnings: [],
+    };
+
+    // Stale prior-pass artifact: one calendar day.
+    let forwardArtifact = JSON.stringify({
+      generatedAt: "2026-07-01T00:00:00.000Z",
+      aggregates: { daysCovered: 1, runCount: 1, totalDurationMinutes: 60 },
+      summary: { overallVerdict: "not-ready-too-short" },
+    });
+    let strategyConsumedDays: number | null = null;
+
+    const exitCode = await runAuditCaptureCommand(["--run-id", "selected-run", "--full"], {
+      io,
+      runner: mockRunner((script) => {
+        if (script.includes("selectAuditableCaptureRun")) {
+          return {
+            exitCode: 0,
+            stdout: JSON.stringify(selected) + "\n",
+            stderr: "",
+          };
+        }
+        if (script.includes("buildForwardCaptureReadiness.ts")) {
+          // Same-pass regeneration: two calendar days (newly available runs).
+          forwardArtifact = JSON.stringify({
+            generatedAt: "2026-07-10T12:00:00.000Z",
+            aggregates: { daysCovered: 2, runCount: 2, totalDurationMinutes: 480 },
+            summary: { overallVerdict: "partially-ready" },
+          });
+          return { exitCode: 0, stdout: "", stderr: "" };
+        }
+        if (script.includes("buildStrategyEvaluationReadiness.ts")) {
+          const parsed = JSON.parse(forwardArtifact) as {
+            aggregates: { daysCovered: number };
+          };
+          strategyConsumedDays = parsed.aggregates.daysCovered;
+          return { exitCode: 0, stdout: "", stderr: "" };
+        }
+        return { exitCode: 0, stdout: "", stderr: "" };
+      }),
+    });
+
+    expect(exitCode).toBe(0);
+    expect(strategyConsumedDays).toBe(2);
+  });
 });

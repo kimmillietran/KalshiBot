@@ -327,4 +327,26 @@ describe("buildBidSizeCoverageAuditReport", () => {
     expect(html).toContain("Bid Size Coverage");
     expect(report.summary.captureRunDir).toBe(RUN_DIR);
   });
+
+  it("emits selected-run scope metadata matching downstream identity contract", async () => {
+    const report = await buildBidSizeCoverageAuditReport({
+      generatedAt: "2026-07-10T12:00:00.000Z",
+      outputPath: "data/research-results/bid-size-coverage-audit.json",
+      htmlOutputPath: "data/reports/bid-size-coverage-audit.html",
+      config: {
+        captureRunDir: RUN_DIR,
+        marketTicker: null,
+        maxRawMessages: Number.POSITIVE_INFINITY,
+        sampleLimit: 10,
+      },
+      io: createBidSizeCoverageIo(buildFixture()),
+    });
+
+    expect(report.analysisScope).toBe("selected-run");
+    expect(report.selectedRunId).toBe("run-size-audit");
+    expect(report.sourceRunIds).toEqual(["run-size-audit"]);
+    expect(report.captureRunDir).toBe(RUN_DIR);
+    expect(report.scope.analysisScope).toBe("selected-run");
+    expect(report.scope.selectedRunId).toBe("run-size-audit");
+  });
 });

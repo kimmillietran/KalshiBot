@@ -11,7 +11,13 @@ import {
   safeShare,
 } from "./forwardCaptureReadinessMath";
 import { isSuccessfulRun } from "./loadForwardCaptureRuns";
-import { bidPairShare, validBookShare } from "./runTopOfBookStats";
+import {
+  bidPairShare,
+  bookStateValidShare,
+  btcSpotJoinCoverageShare,
+  economicallyValidShare,
+  validBookShare,
+} from "./runTopOfBookStats";
 import {
   DEFAULT_FORWARD_CAPTURE_READINESS_THRESHOLDS,
   FORWARD_CAPTURE_READINESS_CAVEATS,
@@ -43,6 +49,11 @@ function buildAggregateMetrics(
     .reduce((sum, run) => sum + runDurationMinutes(run), 0);
 
   const hoursCovered = totalDurationMinutes / 60;
+  const joinCoverageShare = btcSpotJoinCoverageShare(topOfBookStats);
+  const maxSequenceGapCountPerRun = runs.reduce(
+    (max, run) => Math.max(max, run.health.orderbook?.sequenceGapCount ?? 0),
+    0,
+  );
 
   return {
     runCount: runs.length,
@@ -54,11 +65,16 @@ function buildAggregateMetrics(
     topOfBookRecordCount: topOfBookStats.recordCount,
     btcSpotRecordCount: metrics.btcSpotRecordCount,
     rawMessageCount: runs.reduce((sum, run) => sum + run.rawMessageCount, 0),
+    // Deprecated alias — equals economicallyValidShare. Prefer bookStateValidShare/economicallyValidShare.
     validBookShare: validBookShare(topOfBookStats),
+    bookStateValidShare: bookStateValidShare(topOfBookStats),
+    economicallyValidShare: economicallyValidShare(topOfBookStats),
+    // Cumulative sum across runs — informational only. Gating uses maxSequenceGapCountPerRun below.
     sequenceGapCount: runs.reduce(
       (sum, run) => sum + (run.health.orderbook?.sequenceGapCount ?? 0),
       0,
     ),
+    maxSequenceGapCountPerRun,
     reconnectCount: runs.reduce(
       (sum, run) =>
         sum
@@ -69,9 +85,12 @@ function buildAggregateMetrics(
     ),
     medianTopOfBookGapMs: median(metrics.allGapsMs),
     p90TopOfBookGapMs: percentile(metrics.allGapsMs, 90),
-    btcSpotCoverageShare: safeShare(
+    // Deprecated alias — equals btcSpotJoinCoverageShare. Prefer the explicit join/cadence fields below.
+    btcSpotCoverageShare: joinCoverageShare,
+    btcSpotJoinCoverageShare: joinCoverageShare,
+    btcSpotStreamCadenceRatio: safeShare(
       metrics.btcSpotRecordCount,
-      Math.max(topOfBookStats.recordCount, 1),
+      topOfBookStats.recordCount,
     ),
     nonZeroSpreadShare: safeShare(
       topOfBookStats.nonZeroSpreadRecordCount,
@@ -105,11 +124,11 @@ function evaluateLeadLagReadiness(
     };
   }
 
-  if ((aggregates.btcSpotCoverageShare ?? 0) < thresholds.minBtcSpotCoverageShare) {
+  if ((aggregates.btcSpotJoinCoverageShare ?? 0) < thresholds.minBtcSpotCoverageShare) {
     return {
       familyId,
       verdict: "not-ready-no-btc-spot",
-      rationale: `BTC spot coverage ${Math.round((aggregates.btcSpotCoverageShare ?? 0) * 100)}% below ${Math.round(thresholds.minBtcSpotCoverageShare * 100)}%.`,
+      rationale: `BTC spot join coverage ${Math.round((aggregates.btcSpotJoinCoverageShare ?? 0) * 100)}% below ${Math.round(thresholds.minBtcSpotCoverageShare * 100)}%.`,
     };
   }
 
@@ -124,11 +143,11 @@ function evaluateLeadLagReadiness(
     };
   }
 
-  if ((aggregates.validBookShare ?? 0) < thresholds.minValidBookShare) {
+  if ((aggregates.bookStateValidShare ?? 0) < thresholds.minBookStateValidShare) {
     return {
       familyId,
       verdict: "not-ready-invalid-books",
-      rationale: `Valid book share ${Math.round((aggregates.validBookShare ?? 0) * 100)}% below ${Math.round(thresholds.minValidBookShare * 100)}%.`,
+      rationale: `Book-state valid share ${Math.round((aggregates.bookStateValidShare ?? 0) * 100)}% below ${Math.round(thresholds.minBookStateValidShare * 100)}%.`,
     };
   }
 
@@ -180,19 +199,19 @@ function evaluateQuoteStalenessReadiness(
     };
   }
 
-  if (aggregates.sequenceGapCount > thresholds.maxSequenceGapCount) {
+  if (aggregates.maxSequenceGapCountPerRun > thresholds.maxSequenceGapCountPerRun) {
     return {
       familyId,
       verdict: "not-ready-gappy",
-      rationale: `${aggregates.sequenceGapCount} sequence gaps exceed threshold ${thresholds.maxSequenceGapCount}.`,
+      rationale: `Worst single-run sequence gap count ${aggregates.maxSequenceGapCountPerRun} exceeds threshold ${thresholds.maxSequenceGapCountPerRun} (cumulative across all runs: ${aggregates.sequenceGapCount}).`,
     };
   }
 
   if ((aggregates.nonZeroSpreadShare ?? 0) < thresholds.minNonZeroSpreadShare) {
     return {
       familyId,
-      verdict: "not-ready-invalid-books",
-      rationale: `Non-zero spread share ${Math.round((aggregates.nonZeroSpreadShare ?? 0) * 100)}% below ${Math.round(thresholds.minNonZeroSpreadShare * 100)}%.`,
+      verdict: "not-ready-insufficient-economic-eligibility",
+      rationale: `Non-zero spread share ${Math.round((aggregates.nonZeroSpreadShare ?? 0) * 100)}% below ${Math.round(thresholds.minNonZeroSpreadShare * 100)}% — likely locked/one-sided markets, not a capture defect.`,
     };
   }
 
@@ -231,11 +250,11 @@ function evaluateSameMarketParityReadiness(
     };
   }
 
-  if ((aggregates.validBookShare ?? 0) < thresholds.minValidBookShare) {
+  if ((aggregates.economicallyValidShare ?? 0) < thresholds.minEconomicallyValidShare) {
     return {
       familyId,
-      verdict: "not-ready-invalid-books",
-      rationale: `Valid book share ${Math.round((aggregates.validBookShare ?? 0) * 100)}% below ${Math.round(thresholds.minValidBookShare * 100)}%.`,
+      verdict: "not-ready-insufficient-economic-eligibility",
+      rationale: `Economically valid share ${Math.round((aggregates.economicallyValidShare ?? 0) * 100)}% below ${Math.round(thresholds.minEconomicallyValidShare * 100)}% — locked/one-sided markets limit eligible parity records, not a capture defect.`,
     };
   }
 
@@ -319,8 +338,8 @@ function evaluateCalibrationFadeSpreadRealismReadiness(
   if ((aggregates.nonZeroSpreadShare ?? 0) < thresholds.minNonZeroSpreadShare) {
     return {
       familyId,
-      verdict: "not-ready-invalid-books",
-      rationale: "Captured windows lack sufficient non-zero spread observations.",
+      verdict: "not-ready-insufficient-economic-eligibility",
+      rationale: "Captured windows lack sufficient non-zero spread observations — likely locked/one-sided markets, not a capture defect.",
     };
   }
 
@@ -415,8 +434,18 @@ function resolveRecommendedNextAction(input: {
     (entry) => entry.verdict === "not-ready-invalid-books",
   );
 
+  // True capture-quality defects (gaps, missing depth, native book-state failures) warrant fixing capture.
   if (gappy || invalidBooks) {
     return "fix-capture-quality";
+  }
+
+  // Locked/one-sided/economic eligibility shortfalls are a market-structure limitation, not a capture defect —
+  // do NOT recommend fix-capture-quality for these.
+  const insufficientEconomicEligibility = input.familyReadiness.some(
+    (entry) => entry.verdict === "not-ready-insufficient-economic-eligibility",
+  );
+  if (insufficientEconomicEligibility) {
+    return "investigate-market-structure";
   }
 
   const quoteStalenessReady = input.familyReadiness.find(

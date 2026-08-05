@@ -2,7 +2,7 @@ import {
   loadForwardCaptureRunsWithWarnings,
   loadRun,
 } from "@/lib/data/research/forwardCaptureReadiness/loadForwardCaptureRuns";
-import { bidPairShare } from "@/lib/data/research/forwardCaptureReadiness/runTopOfBookStats";
+import { bidPairShare, btcSpotJoinCoverageShare } from "@/lib/data/research/forwardCaptureReadiness/runTopOfBookStats";
 import {
   summarizeForwardCaptureRuns,
 } from "@/lib/data/research/forwardCaptureReadiness/loadForwardCaptureRuns";
@@ -251,10 +251,8 @@ function buildCaptureFallback(
     daysCovered: metrics.calendarDays.size,
     marketCount: stats.marketTickers.size,
     topOfBookRecordCount: stats.recordCount,
-    btcSpotCoverageShare: safeShare(
-      metrics.btcSpotRecordCount,
-      Math.max(stats.recordCount, 1),
-    ),
+    // Prefer per-observation BTC join coverage (not stream cadence vs TOB count).
+    btcSpotCoverageShare: btcSpotJoinCoverageShare(stats),
     bidPairWithSizeShare: sizeShares.bidPairWithSizeShare,
     bidSizeCoverageShare: sizeShares.bidSizeCoverageShare,
   };
@@ -548,7 +546,10 @@ export function readBtcSpotCoverage(
   const aggregates = readiness && isRecord(readiness.aggregates)
     ? readiness.aggregates
     : null;
-  const share = readNumber(aggregates?.btcSpotCoverageShare);
+  // Prefer explicit join coverage; fall back to deprecated alias (now also join-aligned).
+  const share =
+    readNumber(aggregates?.btcSpotJoinCoverageShare)
+    ?? readNumber(aggregates?.btcSpotCoverageShare);
   if (share !== null) {
     return share;
   }

@@ -62,7 +62,10 @@ function createTopOfBookLine(input: {
   receivedAtLocal: string;
   bookState?: string;
   yesSpreadCents?: number | null;
+  noSpreadCents?: number | null;
   withDepth?: boolean;
+  btcSpotPriceUsd?: number | null;
+  isEconomicallyValid?: boolean;
 }) {
   return JSON.stringify({
     runId: input.runId,
@@ -80,7 +83,11 @@ function createTopOfBookLine(input: {
     noBestBidSize: input.withDepth ? 8 : null,
     noBestAskSize: input.withDepth ? 9 : null,
     yesSpreadCents: input.yesSpreadCents ?? 2,
-    noSpreadCents: 2,
+    noSpreadCents: input.noSpreadCents ?? 2,
+    ...(input.btcSpotPriceUsd !== undefined ? { btcSpotPriceUsd: input.btcSpotPriceUsd } : {}),
+    ...(input.isEconomicallyValid !== undefined
+      ? { isEconomicallyValid: input.isEconomicallyValid }
+      : {}),
     rawMessageType: "orderbook_snapshot",
   });
 }
@@ -249,11 +256,13 @@ describe("forwardCaptureReadiness", () => {
             runId: "day-1",
             receivedAtLocal: "2026-07-07T08:00:00.000Z",
             withDepth: true,
+            btcSpotPriceUsd: 100000,
           }),
           createTopOfBookLine({
             runId: "day-1",
             receivedAtLocal: "2026-07-07T08:00:02.000Z",
             withDepth: true,
+            btcSpotPriceUsd: 100001,
           }),
         ],
         btcSpotLines: [
@@ -278,6 +287,7 @@ describe("forwardCaptureReadiness", () => {
             runId: "day-2",
             receivedAtLocal: "2026-07-08T08:00:00.000Z",
             withDepth: true,
+            btcSpotPriceUsd: 100000,
           }),
         ],
         btcSpotLines: [
@@ -297,6 +307,7 @@ describe("forwardCaptureReadiness", () => {
             runId: "day-3",
             receivedAtLocal: "2026-07-09T08:00:00.000Z",
             withDepth: true,
+            btcSpotPriceUsd: 100000,
           }),
         ],
         btcSpotLines: [
@@ -318,6 +329,7 @@ describe("forwardCaptureReadiness", () => {
 
     expect(leadLag?.verdict).toBe("ready");
     expect(evaluation.summary.overallVerdict).toBe("ready-for-first-lead-lag-diagnostic");
+    expect(evaluation.aggregates.btcSpotJoinCoverageShare).toBe(1);
   });
 
   it("marks valid real-book synthetic capture as parity ready", () => {
@@ -568,5 +580,221 @@ describe("forwardCaptureReadiness", () => {
     expect(report.analysisScope).toBe("aggregate");
     expect(report.excludedRuns?.some((entry) => entry.runId === "mock-run")).toBe(true);
     expect(report.aggregates.runCount).toBe(1);
+  });
+
+  it("distinguishes BTC spot join coverage from stream cadence ratio", () => {
+    const files = createRunFiles({
+      runId: "join-vs-cadence",
+      durationSeconds: 60,
+      generatedAt: "2026-07-09T08:00:00.000Z",
+      topOfBookLines: Array.from({ length: 5 }, (_, index) =>
+        createTopOfBookLine({
+          runId: "join-vs-cadence",
+          receivedAtLocal: `2026-07-09T08:00:0${index}.000Z`,
+          btcSpotPriceUsd: 100000 + index,
+        }),
+      ),
+      btcSpotLines: [
+        JSON.stringify({
+          runId: "join-vs-cadence",
+          receivedAtLocal: "2026-07-09T08:00:00.500Z",
+          priceUsd: 100000,
+        }),
+      ],
+    });
+
+    const evaluation = evaluateForwardCaptureReadiness(
+      loadForwardCaptureRuns(buildMemoryIo(files), DEFAULT_FORWARD_CAPTURE_READINESS_INPUT_PATHS),
+    );
+
+    // All 5 top-of-book records carry a joined spot price: join coverage is ~1.0.
+    expect(evaluation.aggregates.btcSpotJoinCoverageShare).toBe(1);
+    // Only 1 spot-stream record was captured against 5 top-of-book records: cadence is low.
+    expect(evaluation.aggregates.btcSpotStreamCadenceRatio).toBeCloseTo(0.2, 5);
+    // Deprecated alias tracks join coverage, not cadence, for backward-compatible consumers.
+    expect(evaluation.aggregates.btcSpotCoverageShare).toBe(
+      evaluation.aggregates.btcSpotJoinCoverageShare,
+    );
+  });
+
+  it("splits book validity into native bookState and economic eligibility", () => {
+    const files = createRunFiles({
+      runId: "book-split",
+      durationSeconds: 60,
+      generatedAt: "2026-07-09T08:00:00.000Z",
+      topOfBookLines: [
+        createTopOfBookLine({
+          runId: "book-split",
+          receivedAtLocal: "2026-07-09T08:00:00.000Z",
+          bookState: "valid",
+          isEconomicallyValid: true,
+        }),
+        // Locked market: native book state is valid, but not economically eligible.
+        createTopOfBookLine({
+          runId: "book-split",
+          receivedAtLocal: "2026-07-09T08:00:01.000Z",
+          bookState: "valid",
+          isEconomicallyValid: false,
+        }),
+        createTopOfBookLine({
+          runId: "book-split",
+          receivedAtLocal: "2026-07-09T08:00:02.000Z",
+          bookState: "gap-detected",
+        }),
+        createTopOfBookLine({
+          runId: "book-split",
+          receivedAtLocal: "2026-07-09T08:00:03.000Z",
+          bookState: "valid",
+          isEconomicallyValid: true,
+        }),
+      ],
+    });
+
+    const evaluation = evaluateForwardCaptureReadiness(
+      loadForwardCaptureRuns(buildMemoryIo(files), DEFAULT_FORWARD_CAPTURE_READINESS_INPUT_PATHS),
+    );
+
+    expect(evaluation.aggregates.bookStateValidShare).toBeCloseTo(0.75, 5);
+    expect(evaluation.aggregates.economicallyValidShare).toBeCloseTo(0.5, 5);
+    // Deprecated alias tracks economic eligibility, not native book state, for JSON backward compat.
+    expect(evaluation.aggregates.validBookShare).toBe(evaluation.aggregates.economicallyValidShare);
+  });
+
+  it("gates quote staleness on the max per-run sequence gap, not the cross-run sum", () => {
+    const cleanRuns = Array.from({ length: 6 }, (_, index) =>
+      createRunFiles({
+        runId: `clean-run-${index}`,
+        durationSeconds: 130 * 60,
+        generatedAt: `2026-07-0${index + 1}T08:00:00.000Z`,
+        sequenceGapCount: 1,
+        topOfBookLines: [
+          createTopOfBookLine({
+            runId: `clean-run-${index}`,
+            receivedAtLocal: `2026-07-0${index + 1}T08:00:00.000Z`,
+          }),
+        ],
+      }),
+    ).reduce((acc, files) => ({ ...acc, ...files }), {});
+
+    const evaluation = evaluateForwardCaptureReadiness(
+      loadForwardCaptureRuns(
+        buildMemoryIo(cleanRuns),
+        DEFAULT_FORWARD_CAPTURE_READINESS_INPUT_PATHS,
+      ),
+    );
+    const quoteStaleness = evaluation.summary.familyReadiness.find(
+      (entry) => entry.familyId === "quoteStalenessReadiness",
+    );
+
+    // Sum of per-run gaps (6) exceeds the old sum-based threshold (5), but the max per-run gap (1) does not.
+    expect(evaluation.aggregates.sequenceGapCount).toBe(6);
+    expect(evaluation.aggregates.maxSequenceGapCountPerRun).toBe(1);
+    expect(quoteStaleness?.verdict).toBe("ready");
+  });
+
+  it("flags a single run with 6 sequence gaps as gappy even amid many clean runs", () => {
+    const cleanRuns = Array.from({ length: 6 }, (_, index) =>
+      createRunFiles({
+        runId: `clean-run-${index}`,
+        durationSeconds: 130 * 60,
+        generatedAt: `2026-07-0${index + 1}T08:00:00.000Z`,
+        sequenceGapCount: 1,
+        topOfBookLines: [
+          createTopOfBookLine({
+            runId: `clean-run-${index}`,
+            receivedAtLocal: `2026-07-0${index + 1}T08:00:00.000Z`,
+          }),
+        ],
+      }),
+    ).reduce((acc, files) => ({ ...acc, ...files }), {});
+    const badRun = createRunFiles({
+      runId: "bad-run",
+      durationSeconds: 60 * 60,
+      generatedAt: "2026-07-08T08:00:00.000Z",
+      sequenceGapCount: 6,
+      topOfBookLines: [
+        createTopOfBookLine({
+          runId: "bad-run",
+          receivedAtLocal: "2026-07-08T08:00:00.000Z",
+        }),
+      ],
+    });
+
+    const evaluation = evaluateForwardCaptureReadiness(
+      loadForwardCaptureRuns(
+        buildMemoryIo({ ...cleanRuns, ...badRun }),
+        DEFAULT_FORWARD_CAPTURE_READINESS_INPUT_PATHS,
+      ),
+    );
+    const quoteStaleness = evaluation.summary.familyReadiness.find(
+      (entry) => entry.familyId === "quoteStalenessReadiness",
+    );
+
+    expect(evaluation.aggregates.maxSequenceGapCountPerRun).toBe(6);
+    expect(quoteStaleness?.verdict).toBe("not-ready-gappy");
+  });
+
+  it("recommends investigate-market-structure for locked-market economic shortfalls, not fix-capture-quality", () => {
+    const files = createRunFiles({
+      runId: "locked-market-run",
+      durationSeconds: 780 * 60,
+      generatedAt: "2026-07-09T08:00:00.000Z",
+      topOfBookLines: [
+        createTopOfBookLine({
+          runId: "locked-market-run",
+          receivedAtLocal: "2026-07-09T08:00:00.000Z",
+          bookState: "valid",
+          isEconomicallyValid: false,
+          withDepth: true,
+          yesSpreadCents: 0,
+          noSpreadCents: 0,
+        }),
+      ],
+    });
+
+    const evaluation = evaluateForwardCaptureReadiness(
+      loadForwardCaptureRuns(buildMemoryIo(files), DEFAULT_FORWARD_CAPTURE_READINESS_INPUT_PATHS),
+    );
+    const invalidBooksVerdicts = evaluation.summary.familyReadiness.filter(
+      (entry) => entry.verdict === "not-ready-invalid-books",
+    );
+    const economicShortfallVerdicts = evaluation.summary.familyReadiness.filter(
+      (entry) => entry.verdict === "not-ready-insufficient-economic-eligibility",
+    );
+
+    expect(invalidBooksVerdicts).toHaveLength(0);
+    expect(economicShortfallVerdicts.length).toBeGreaterThan(0);
+    expect(evaluation.summary.recommendedNextAction).toBe("investigate-market-structure");
+  });
+
+  it("recommends fix-capture-quality for true gappy/invalid-book captures, not investigate-market-structure", () => {
+    const files = createRunFiles({
+      runId: "gappy-invalid-run",
+      durationSeconds: 13 * 60 * 60,
+      generatedAt: "2026-07-09T08:00:00.000Z",
+      topOfBookLines: [
+        createTopOfBookLine({
+          runId: "gappy-invalid-run",
+          receivedAtLocal: "2026-07-09T08:00:00.000Z",
+        }),
+        createTopOfBookLine({
+          runId: "gappy-invalid-run",
+          receivedAtLocal: "2026-07-09T08:05:00.000Z",
+        }),
+      ],
+      btcSpotLines: [
+        JSON.stringify({
+          runId: "gappy-invalid-run",
+          receivedAtLocal: "2026-07-09T08:00:01.000Z",
+          priceUsd: 100000,
+        }),
+      ],
+    });
+
+    const evaluation = evaluateForwardCaptureReadiness(
+      loadForwardCaptureRuns(buildMemoryIo(files), DEFAULT_FORWARD_CAPTURE_READINESS_INPUT_PATHS),
+    );
+
+    expect(evaluation.summary.recommendedNextAction).toBe("fix-capture-quality");
   });
 });
