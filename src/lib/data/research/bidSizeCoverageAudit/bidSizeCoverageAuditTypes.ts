@@ -1,3 +1,8 @@
+import type {
+  AnalysisScope,
+  DownstreamScopeMetadata,
+} from "../downstreamAnalysisScope/downstreamAnalysisScopeTypes";
+
 export const BID_SIZE_COVERAGE_AUDIT_FILENAME = "bid-size-coverage-audit.json";
 export const DEFAULT_BID_SIZE_COVERAGE_AUDIT_OUTPUT_PATH =
   "data/research-results/bid-size-coverage-audit.json";
@@ -173,6 +178,12 @@ export type BidSizeCoverageAuditReport = BidSizeCoverageAuditResult & {
   disclaimer: string;
   caveats: readonly string[];
   config: BidSizeCoverageAuditConfig;
+  scope: DownstreamScopeMetadata;
+  analysisScope: AnalysisScope;
+  selectedRunId: string | null;
+  sourceRunIds: readonly string[];
+  /** Top-level capture identity for selected-run consumers. */
+  captureRunDir: string;
 };
 
 export class BidSizeCoverageAuditError extends Error {

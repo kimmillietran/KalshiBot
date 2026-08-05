@@ -204,12 +204,21 @@ export async function runAuditCaptureCommand(
 
     if (full) {
       deps.io.writeStdout("\nRunning downstream research pipeline...\n");
+      deps.io.writeStdout(
+        "Note: the following steps are AGGREGATE-scoped (they regenerate shared\n"
+          + "research artifacts from available capture runs). They are not claims that\n"
+          + "every downstream metric belongs solely to the selected run audited above.\n"
+          + "forward-capture-readiness MUST run before strategy-evaluation-readiness so\n"
+          + "strategy readiness never consumes a stale prior-pass readiness artifact.\n",
+      );
+      // Order is load-bearing: forward-capture-readiness writes
+      // data/research-results/forward-capture-readiness.json before any consumer.
       const pipeline = [
         ["static-parity-scan", "scripts/research/buildStaticParityScan.ts"],
         ["bid-only-candidate-lifecycle", "scripts/research/buildBidOnlyCandidateLifecycle.ts"],
+        ["forward-capture-readiness", "scripts/research/buildForwardCaptureReadiness.ts"],
         ["strategy-evaluation-readiness", "scripts/research/buildStrategyEvaluationReadiness.ts"],
         ["executable-confirmation-design", "scripts/research/buildExecutableConfirmationDesign.ts"],
-        ["forward-capture-readiness", "scripts/research/buildForwardCaptureReadiness.ts"],
       ] as const;
       for (const [step, script] of pipeline) {
         await assertOk(step, script, []);

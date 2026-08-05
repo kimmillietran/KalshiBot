@@ -2,12 +2,16 @@ import { z } from "zod";
 
 import {
   parseIsoTimestampMs,
+  safeShare,
   utcDateKey,
 } from "./forwardCaptureReadinessMath";
 import {
   accumulateTopOfBookRecord,
+  bookStateValidShare,
+  btcSpotJoinCoverageShare,
   createEmptyRunBtcSpotStats,
   createEmptyRunTopOfBookStats,
+  economicallyValidShare,
   validBookShare,
   type RunBtcSpotStats,
   type RunTopOfBookStats,
@@ -16,6 +20,25 @@ import type {
   ForwardCaptureReadinessIo,
   ForwardCaptureRunTableEntry,
 } from "./forwardCaptureReadinessTypes";
+
+/**
+ * Known sequenceGapCount only for finite, non-negative safe integers.
+ * Invalid/negative/NaN/Infinity/fractional values are unknown evidence (null).
+ */
+function readKnownSequenceGapCount(run: {
+  health: { orderbook?: { sequenceGapCount?: number } | null };
+}): number | null {
+  const value = run.health.orderbook?.sequenceGapCount;
+  if (
+    typeof value !== "number"
+    || !Number.isFinite(value)
+    || !Number.isSafeInteger(value)
+    || value < 0
+  ) {
+    return null;
+  }
+  return value;
+}
 
 const captureHealthSchema = z
   .object({
@@ -98,6 +121,8 @@ const topOfBookRecordSchema = z
     isEconomicallyValid: z.boolean().optional(),
     isParityUsable: z.boolean().optional(),
     economicBookState: z.string().optional(),
+    /** Joined BTC spot price for this top-of-book record, when a spot-join step has run. */
+    btcSpotPriceUsd: z.number().nullable().optional(),
   })
   .passthrough();
 
@@ -437,7 +462,14 @@ function summarizeRun(run: LoadedForwardCaptureRun): ForwardCaptureRunTableEntry
     btcSpotRecordCount: run.btcSpotStats.recordCount,
     rawMessageCount: run.rawMessageCount,
     validBookShare: validBookShare(run.topOfBookStats),
-    sequenceGapCount: run.health.orderbook?.sequenceGapCount ?? 0,
+    bookStateValidShare: bookStateValidShare(run.topOfBookStats),
+    economicallyValidShare: economicallyValidShare(run.topOfBookStats),
+    btcSpotJoinCoverageShare: btcSpotJoinCoverageShare(run.topOfBookStats),
+    btcSpotStreamCadenceRatio: safeShare(
+      run.btcSpotStats.recordCount,
+      run.topOfBookStats.recordCount,
+    ),
+    sequenceGapCount: readKnownSequenceGapCount(run),
     reconnectCount:
       run.health.orderbook?.reconnectCount
       ?? run.health.connection?.reconnectCount
@@ -482,6 +514,9 @@ export function summarizeForwardCaptureRuns(
       nonZeroSpreadRecordCount:
         topOfBookStats.nonZeroSpreadRecordCount
         + run.topOfBookStats.nonZeroSpreadRecordCount,
+      btcSpotJoinedRecordCount:
+        topOfBookStats.btcSpotJoinedRecordCount
+        + run.topOfBookStats.btcSpotJoinedRecordCount,
       hasDepthFields:
         topOfBookStats.hasDepthFields || run.topOfBookStats.hasDepthFields,
       marketTickers: new Set([
@@ -549,6 +584,8 @@ export function buildRunBreakdownMetrics(
     const zeroSpreadRecords =
       metrics.topOfBookStats.recordCount
       - metrics.topOfBookStats.nonZeroSpreadRecordCount;
+    const joinCoverageShare = btcSpotJoinCoverageShare(metrics.topOfBookStats);
+    const sequenceGapCountForRun = readKnownSequenceGapCount(run);
 
     return {
       key: run.runId,
@@ -564,17 +601,23 @@ export function buildRunBreakdownMetrics(
       btcSpotRecordCount: run.btcSpotStats.recordCount,
       rawMessageCount: run.rawMessageCount,
       validBookShare: validBookShare(metrics.topOfBookStats),
-      sequenceGapCount: run.health.orderbook?.sequenceGapCount ?? 0,
+      bookStateValidShare: bookStateValidShare(metrics.topOfBookStats),
+      economicallyValidShare: economicallyValidShare(metrics.topOfBookStats),
+      sequenceGapCount: sequenceGapCountForRun,
+      maxSequenceGapCountPerRun: sequenceGapCountForRun,
+      runsMissingSequenceGapEvidence: sequenceGapCountForRun === null ? 1 : 0,
       reconnectCount:
         run.health.orderbook?.reconnectCount
         ?? run.health.connection?.reconnectCount
         ?? 0,
       medianTopOfBookGapMs: null,
       p90TopOfBookGapMs: null,
-      btcSpotCoverageShare:
-        metrics.topOfBookStats.recordCount > 0
-          ? run.btcSpotStats.recordCount / metrics.topOfBookStats.recordCount
-          : null,
+      btcSpotCoverageShare: joinCoverageShare,
+      btcSpotJoinCoverageShare: joinCoverageShare,
+      btcSpotStreamCadenceRatio: safeShare(
+        run.btcSpotStats.recordCount,
+        metrics.topOfBookStats.recordCount,
+      ),
       nonZeroSpreadShare:
         metrics.topOfBookStats.recordCount > 0
           ? metrics.topOfBookStats.nonZeroSpreadRecordCount

@@ -49,7 +49,10 @@ function resolveRunIdFromArtifact(
   return (
     readString(artifact?.selectedRunId)
     ?? readString(summary?.selectedRunId)
-    ?? readString(artifact?.captureRunDir)?.split("/").pop()
+    // Bid-size audits historically stored identity as summary.runId.
+    ?? readString(summary?.runId)
+    ?? readString(artifact?.captureRunDir)?.split(/[/\\]/).pop()
+    ?? readString(summary?.captureRunDir)?.split(/[/\\]/).pop()
     ?? null
   );
 }

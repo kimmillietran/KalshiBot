@@ -11,7 +11,13 @@ import {
   safeShare,
 } from "./forwardCaptureReadinessMath";
 import { isSuccessfulRun } from "./loadForwardCaptureRuns";
-import { bidPairShare, validBookShare } from "./runTopOfBookStats";
+import {
+  bidPairShare,
+  bookStateValidShare,
+  btcSpotJoinCoverageShare,
+  economicallyValidShare,
+  validBookShare,
+} from "./runTopOfBookStats";
 import {
   DEFAULT_FORWARD_CAPTURE_READINESS_THRESHOLDS,
   FORWARD_CAPTURE_READINESS_CAVEATS,
@@ -25,6 +31,23 @@ import {
   type ForwardCaptureRecommendedNextAction,
   type ForwardCaptureResearchFamilyId,
 } from "./forwardCaptureReadinessTypes";
+
+/**
+ * Returns known sequenceGapCount only for finite, non-negative safe integers.
+ * Invalid/negative/NaN/Infinity/fractional values are unknown evidence (null).
+ */
+function readKnownSequenceGapCount(run: LoadedForwardCaptureRun): number | null {
+  const value = run.health.orderbook?.sequenceGapCount;
+  if (
+    typeof value !== "number"
+    || !Number.isFinite(value)
+    || !Number.isSafeInteger(value)
+    || value < 0
+  ) {
+    return null;
+  }
+  return value;
+}
 
 function buildAggregateMetrics(
   runs: LoadedForwardCaptureRun[],
@@ -43,6 +66,27 @@ function buildAggregateMetrics(
     .reduce((sum, run) => sum + runDurationMinutes(run), 0);
 
   const hoursCovered = totalDurationMinutes / 60;
+  const joinCoverageShare = btcSpotJoinCoverageShare(topOfBookStats);
+  const knownSequenceGaps = runs.map((run) => readKnownSequenceGapCount(run));
+  const runsMissingSequenceGapEvidence = knownSequenceGaps.filter(
+    (value) => value === null,
+  ).length;
+  const knownGapValues = knownSequenceGaps.filter(
+    (value): value is number => value !== null,
+  );
+  // No runs → known-clean zeros for inventory; missing evidence only applies when runs exist.
+  const maxSequenceGapCountPerRun =
+    runs.length === 0
+      ? 0
+      : runsMissingSequenceGapEvidence > 0 || knownGapValues.length === 0
+        ? null
+        : knownGapValues.reduce((max, value) => Math.max(max, value), 0);
+  const sequenceGapCount =
+    runs.length === 0
+      ? 0
+      : knownGapValues.length === 0
+        ? null
+        : knownGapValues.reduce((sum, value) => sum + value, 0);
 
   return {
     runCount: runs.length,
@@ -54,11 +98,14 @@ function buildAggregateMetrics(
     topOfBookRecordCount: topOfBookStats.recordCount,
     btcSpotRecordCount: metrics.btcSpotRecordCount,
     rawMessageCount: runs.reduce((sum, run) => sum + run.rawMessageCount, 0),
+    // Schema m12.2+ compatibility alias — equals economicallyValidShare (not book-state validity).
     validBookShare: validBookShare(topOfBookStats),
-    sequenceGapCount: runs.reduce(
-      (sum, run) => sum + (run.health.orderbook?.sequenceGapCount ?? 0),
-      0,
-    ),
+    bookStateValidShare: bookStateValidShare(topOfBookStats),
+    economicallyValidShare: economicallyValidShare(topOfBookStats),
+    // Cumulative sum of known gaps only — informational. Null when no known evidence.
+    sequenceGapCount,
+    maxSequenceGapCountPerRun,
+    runsMissingSequenceGapEvidence,
     reconnectCount: runs.reduce(
       (sum, run) =>
         sum
@@ -69,9 +116,12 @@ function buildAggregateMetrics(
     ),
     medianTopOfBookGapMs: median(metrics.allGapsMs),
     p90TopOfBookGapMs: percentile(metrics.allGapsMs, 90),
-    btcSpotCoverageShare: safeShare(
+    // Schema m12.2+ compatibility alias — equals join coverage (not stream cadence).
+    btcSpotCoverageShare: joinCoverageShare,
+    btcSpotJoinCoverageShare: joinCoverageShare,
+    btcSpotStreamCadenceRatio: safeShare(
       metrics.btcSpotRecordCount,
-      Math.max(topOfBookStats.recordCount, 1),
+      topOfBookStats.recordCount,
     ),
     nonZeroSpreadShare: safeShare(
       topOfBookStats.nonZeroSpreadRecordCount,
@@ -105,11 +155,11 @@ function evaluateLeadLagReadiness(
     };
   }
 
-  if ((aggregates.btcSpotCoverageShare ?? 0) < thresholds.minBtcSpotCoverageShare) {
+  if ((aggregates.btcSpotJoinCoverageShare ?? 0) < thresholds.minBtcSpotCoverageShare) {
     return {
       familyId,
       verdict: "not-ready-no-btc-spot",
-      rationale: `BTC spot coverage ${Math.round((aggregates.btcSpotCoverageShare ?? 0) * 100)}% below ${Math.round(thresholds.minBtcSpotCoverageShare * 100)}%.`,
+      rationale: `BTC spot join coverage ${Math.round((aggregates.btcSpotJoinCoverageShare ?? 0) * 100)}% below ${Math.round(thresholds.minBtcSpotCoverageShare * 100)}%.`,
     };
   }
 
@@ -124,11 +174,11 @@ function evaluateLeadLagReadiness(
     };
   }
 
-  if ((aggregates.validBookShare ?? 0) < thresholds.minValidBookShare) {
+  if ((aggregates.bookStateValidShare ?? 0) < thresholds.minBookStateValidShare) {
     return {
       familyId,
       verdict: "not-ready-invalid-books",
-      rationale: `Valid book share ${Math.round((aggregates.validBookShare ?? 0) * 100)}% below ${Math.round(thresholds.minValidBookShare * 100)}%.`,
+      rationale: `Book-state valid share ${Math.round((aggregates.bookStateValidShare ?? 0) * 100)}% below ${Math.round(thresholds.minBookStateValidShare * 100)}%.`,
     };
   }
 
@@ -180,19 +230,30 @@ function evaluateQuoteStalenessReadiness(
     };
   }
 
-  if (aggregates.sequenceGapCount > thresholds.maxSequenceGapCount) {
+  if (aggregates.runsMissingSequenceGapEvidence > 0) {
     return {
       familyId,
       verdict: "not-ready-gappy",
-      rationale: `${aggregates.sequenceGapCount} sequence gaps exceed threshold ${thresholds.maxSequenceGapCount}.`,
+      rationale: `${aggregates.runsMissingSequenceGapEvidence} run(s) missing orderbook.sequenceGapCount evidence — cannot treat gaps as zero; fail closed.`,
+    };
+  }
+
+  if (
+    aggregates.maxSequenceGapCountPerRun !== null
+    && aggregates.maxSequenceGapCountPerRun > thresholds.maxSequenceGapCountPerRun
+  ) {
+    return {
+      familyId,
+      verdict: "not-ready-gappy",
+      rationale: `Worst single-run sequence gap count ${aggregates.maxSequenceGapCountPerRun} exceeds threshold ${thresholds.maxSequenceGapCountPerRun} (cumulative across runs with known evidence: ${aggregates.sequenceGapCount}).`,
     };
   }
 
   if ((aggregates.nonZeroSpreadShare ?? 0) < thresholds.minNonZeroSpreadShare) {
     return {
       familyId,
-      verdict: "not-ready-invalid-books",
-      rationale: `Non-zero spread share ${Math.round((aggregates.nonZeroSpreadShare ?? 0) * 100)}% below ${Math.round(thresholds.minNonZeroSpreadShare * 100)}%.`,
+      verdict: "not-ready-insufficient-economic-eligibility",
+      rationale: `Non-zero spread share ${Math.round((aggregates.nonZeroSpreadShare ?? 0) * 100)}% below ${Math.round(thresholds.minNonZeroSpreadShare * 100)}% — likely locked/one-sided markets, not a capture defect.`,
     };
   }
 
@@ -231,11 +292,11 @@ function evaluateSameMarketParityReadiness(
     };
   }
 
-  if ((aggregates.validBookShare ?? 0) < thresholds.minValidBookShare) {
+  if ((aggregates.economicallyValidShare ?? 0) < thresholds.minEconomicallyValidShare) {
     return {
       familyId,
-      verdict: "not-ready-invalid-books",
-      rationale: `Valid book share ${Math.round((aggregates.validBookShare ?? 0) * 100)}% below ${Math.round(thresholds.minValidBookShare * 100)}%.`,
+      verdict: "not-ready-insufficient-economic-eligibility",
+      rationale: `Economically valid share ${Math.round((aggregates.economicallyValidShare ?? 0) * 100)}% below ${Math.round(thresholds.minEconomicallyValidShare * 100)}% — locked/one-sided markets limit eligible parity records, not a capture defect.`,
     };
   }
 
@@ -319,8 +380,8 @@ function evaluateCalibrationFadeSpreadRealismReadiness(
   if ((aggregates.nonZeroSpreadShare ?? 0) < thresholds.minNonZeroSpreadShare) {
     return {
       familyId,
-      verdict: "not-ready-invalid-books",
-      rationale: "Captured windows lack sufficient non-zero spread observations.",
+      verdict: "not-ready-insufficient-economic-eligibility",
+      rationale: "Captured windows lack sufficient non-zero spread observations — likely locked/one-sided markets, not a capture defect.",
     };
   }
 
@@ -415,8 +476,18 @@ function resolveRecommendedNextAction(input: {
     (entry) => entry.verdict === "not-ready-invalid-books",
   );
 
+  // True capture-quality defects (gaps, missing depth, native book-state failures) warrant fixing capture.
   if (gappy || invalidBooks) {
     return "fix-capture-quality";
+  }
+
+  // Locked/one-sided/economic eligibility shortfalls are a market-structure limitation, not a capture defect —
+  // do NOT recommend fix-capture-quality for these.
+  const insufficientEconomicEligibility = input.familyReadiness.some(
+    (entry) => entry.verdict === "not-ready-insufficient-economic-eligibility",
+  );
+  if (insufficientEconomicEligibility) {
+    return "investigate-market-structure";
   }
 
   const quoteStalenessReady = input.familyReadiness.find(

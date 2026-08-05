@@ -2,7 +2,7 @@ import {
   loadForwardCaptureRunsWithWarnings,
   loadRun,
 } from "@/lib/data/research/forwardCaptureReadiness/loadForwardCaptureRuns";
-import { bidPairShare } from "@/lib/data/research/forwardCaptureReadiness/runTopOfBookStats";
+import { bidPairShare, btcSpotJoinCoverageShare } from "@/lib/data/research/forwardCaptureReadiness/runTopOfBookStats";
 import {
   summarizeForwardCaptureRuns,
 } from "@/lib/data/research/forwardCaptureReadiness/loadForwardCaptureRuns";
@@ -251,10 +251,8 @@ function buildCaptureFallback(
     daysCovered: metrics.calendarDays.size,
     marketCount: stats.marketTickers.size,
     topOfBookRecordCount: stats.recordCount,
-    btcSpotCoverageShare: safeShare(
-      metrics.btcSpotRecordCount,
-      Math.max(stats.recordCount, 1),
-    ),
+    // Prefer per-observation BTC join coverage (not stream cadence vs TOB count).
+    btcSpotCoverageShare: btcSpotJoinCoverageShare(stats),
     bidPairWithSizeShare: sizeShares.bidPairWithSizeShare,
     bidSizeCoverageShare: sizeShares.bidSizeCoverageShare,
   };
@@ -541,6 +539,31 @@ export function readTopOfBookRecordCount(
   return inputs.captureFallback?.topOfBookRecordCount ?? 0;
 }
 
+function readValidBtcSpotJoinShare(value: unknown): "absent" | "invalid" | number {
+  if (value === undefined || value === null) {
+    return "absent";
+  }
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0 || value > 1) {
+    return "invalid";
+  }
+  return value;
+}
+
+function readCaptureFallbackJoinShare(
+  inputs: StrategyEvaluationLoadedInputs,
+): number | null {
+  const fallback = inputs.captureFallback?.btcSpotCoverageShare;
+  if (fallback === null || fallback === undefined) {
+    return null;
+  }
+  return fallback;
+}
+
+/**
+ * Join coverage from artifacts is proven ONLY by `btcSpotJoinCoverageShare`.
+ * Never accept `btcSpotCoverageShare` solely due to schemaVersion (alias is cadence-ambiguous).
+ * Malformed explicit join rejects artifact evidence and may use capture fallback, never the alias.
+ */
 export function readBtcSpotCoverage(
   inputs: StrategyEvaluationLoadedInputs,
 ): number | null {
@@ -548,12 +571,18 @@ export function readBtcSpotCoverage(
   const aggregates = readiness && isRecord(readiness.aggregates)
     ? readiness.aggregates
     : null;
-  const share = readNumber(aggregates?.btcSpotCoverageShare);
-  if (share !== null) {
-    return share;
+
+  const joinStatus = readValidBtcSpotJoinShare(aggregates?.btcSpotJoinCoverageShare);
+  if (typeof joinStatus === "number") {
+    return joinStatus;
+  }
+  if (joinStatus === "invalid") {
+    // Malformed explicit join: do not fall through to alias.
+    return readCaptureFallbackJoinShare(inputs);
   }
 
-  return inputs.captureFallback?.btcSpotCoverageShare ?? null;
+  // Explicit join absent → capture fallback or null. Never use alias.
+  return readCaptureFallbackJoinShare(inputs);
 }
 
 export function readBidOnlyCandidateCount(

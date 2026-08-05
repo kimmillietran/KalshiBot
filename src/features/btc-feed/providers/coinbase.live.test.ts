@@ -6,8 +6,13 @@ import { parseCoinbaseCandlesJson } from "./coinbaseCandles";
 /**
  * Smoke test against live Coinbase Exchange API.
  * Confirms production JSON shape uses numeric OHLCV (not strings).
+ *
+ * Opt-in only: default `npm run test` must stay offline (see AGENTS.md).
+ * Run with RUN_LIVE_NETWORK_TESTS=1 when intentionally probing Coinbase.
  */
-describe("Coinbase live API smoke", () => {
+const runLiveNetworkTests = process.env.RUN_LIVE_NETWORK_TESTS === "1";
+
+describe.skipIf(!runLiveNetworkTests)("Coinbase live API smoke", () => {
   it("parses live candle rows with numeric OHLCV", async () => {
     const provider = createCoinbaseBtcProvider();
     const candles = await provider.getCandles("1m", 5);

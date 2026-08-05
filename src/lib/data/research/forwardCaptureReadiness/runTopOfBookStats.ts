@@ -12,6 +12,8 @@ export type RunTopOfBookStats = {
   parityUsableRecordCount: number;
   bidPairPresentRecordCount: number;
   nonZeroSpreadRecordCount: number;
+  /** Records with a joined BTC spot value (btcSpotPriceUsd is a finite number). */
+  btcSpotJoinedRecordCount: number;
   hasDepthFields: boolean;
   marketTickers: Set<string>;
   eventTickers: Set<string>;
@@ -37,6 +39,7 @@ export function createEmptyRunTopOfBookStats(): RunTopOfBookStats {
     parityUsableRecordCount: 0,
     bidPairPresentRecordCount: 0,
     nonZeroSpreadRecordCount: 0,
+    btcSpotJoinedRecordCount: 0,
     hasDepthFields: false,
     marketTickers: new Set(),
     eventTickers: new Set(),
@@ -139,6 +142,13 @@ function isParityUsableRecord(record: ParsedTopOfBookRecord): boolean {
   return isEconomicallyValidRecord(record);
 }
 
+function hasJoinedBtcSpot(record: ParsedTopOfBookRecord): boolean {
+  return (
+    typeof record.btcSpotPriceUsd === "number"
+    && Number.isFinite(record.btcSpotPriceUsd)
+  );
+}
+
 export function accumulateTopOfBookRecord(
   stats: RunTopOfBookStats,
   record: ParsedTopOfBookRecord,
@@ -164,6 +174,10 @@ export function accumulateTopOfBookRecord(
 
   if (isNonZeroSpread(record)) {
     stats.nonZeroSpreadRecordCount += 1;
+  }
+
+  if (hasJoinedBtcSpot(record)) {
+    stats.btcSpotJoinedRecordCount += 1;
   }
 
   if (hasDepthFields(record)) {
@@ -206,6 +220,8 @@ export function mergeRunTopOfBookStats(
       left.bidPairPresentRecordCount + right.bidPairPresentRecordCount,
     nonZeroSpreadRecordCount:
       left.nonZeroSpreadRecordCount + right.nonZeroSpreadRecordCount,
+    btcSpotJoinedRecordCount:
+      left.btcSpotJoinedRecordCount + right.btcSpotJoinedRecordCount,
     hasDepthFields: left.hasDepthFields || right.hasDepthFields,
     marketTickers: new Set([...left.marketTickers, ...right.marketTickers]),
     eventTickers: new Set([...left.eventTickers, ...right.eventTickers]),
@@ -239,12 +255,28 @@ export function mergeRunBtcSpotStats(
   };
 }
 
-export function validBookShare(stats: RunTopOfBookStats): number | null {
-  if (stats.economicallyValidRecordCount > 0 || stats.recordCount === 0) {
-    return safeShare(stats.economicallyValidRecordCount, stats.recordCount);
-  }
-
+/** Native bookState === "valid" share. Capture integrity, independent of market economics. */
+export function bookStateValidShare(stats: RunTopOfBookStats): number | null {
   return safeShare(stats.validRecordCount, stats.recordCount);
+}
+
+/** Economically-eligible share (excludes locked/one-sided books), regardless of native bookState. */
+export function economicallyValidShare(stats: RunTopOfBookStats): number | null {
+  return safeShare(stats.economicallyValidRecordCount, stats.recordCount);
+}
+
+/**
+ * @deprecated Schema m12.2+ alias of economicallyValidShare for JSON compatibility.
+ * Prefer bookStateValidShare or economicallyValidShare. Pre-m12.2 artifacts used
+ * ambiguous fallback semantics — do not assume this alias across versions.
+ */
+export function validBookShare(stats: RunTopOfBookStats): number | null {
+  return economicallyValidShare(stats);
+}
+
+/** Fraction of records with a joined BTC spot value — the correct denominator for lead-lag "coverage". */
+export function btcSpotJoinCoverageShare(stats: RunTopOfBookStats): number | null {
+  return safeShare(stats.btcSpotJoinedRecordCount, stats.recordCount);
 }
 
 export function bidPairShare(stats: RunTopOfBookStats): number | null {

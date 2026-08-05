@@ -992,6 +992,61 @@ describe("loadSelectedRunContext", () => {
     expect(context.warnings.some((warning) => warning.includes("reconciliation"))).toBe(true);
     expect(context.selectedRunQuality.suspectedSystemSleepSeconds).toBeNull();
   });
+
+  it("accepts bid-size audit with selected-run scope metadata without false mismatch warning", () => {
+    const files = buildFixtureFiles();
+    files["data/research-results/bid-size-coverage-audit.json"] = JSON.stringify({
+      analysisScope: "selected-run",
+      selectedRunId: "run-near-miss",
+      sourceRunIds: ["run-near-miss"],
+      captureRunDir: RUN_DIR,
+      summary: {
+        runId: "run-near-miss",
+        captureRunDir: RUN_DIR,
+      },
+      comparison: {
+        bidSizeCoverageShare: 0.92,
+        topOfBookBidSizeCoverageShare: 0.92,
+      },
+    });
+
+    const context = loadSelectedRunContext({
+      io: createMemoryParityNearMissIo(files),
+      captureRunDir: RUN_DIR,
+    });
+
+    expect(context.selectedRunQuality.bidSizeCoverageShare).toBe(0.92);
+    expect(
+      context.warnings.some((warning) => warning.includes("bid-size-coverage-audit")),
+    ).toBe(false);
+  });
+
+  it("fails closed when bid-size audit identity belongs to a different run", () => {
+    const files = buildFixtureFiles();
+    files["data/research-results/bid-size-coverage-audit.json"] = JSON.stringify({
+      analysisScope: "selected-run",
+      selectedRunId: "other-run",
+      sourceRunIds: ["other-run"],
+      captureRunDir: "data/live-capture/forward-quotes/other-run",
+      summary: {
+        runId: "other-run",
+        captureRunDir: "data/live-capture/forward-quotes/other-run",
+      },
+      comparison: {
+        bidSizeCoverageShare: 0.99,
+      },
+    });
+
+    const context = loadSelectedRunContext({
+      io: createMemoryParityNearMissIo(files),
+      captureRunDir: RUN_DIR,
+    });
+
+    expect(
+      context.warnings.some((warning) => warning.includes("bid-size-coverage-audit")),
+    ).toBe(true);
+    expect(context.selectedRunQuality.bidSizeCoverageShare).toBeNull();
+  });
 });
 
 describe("analyzeParityNearMissForRun", () => {
