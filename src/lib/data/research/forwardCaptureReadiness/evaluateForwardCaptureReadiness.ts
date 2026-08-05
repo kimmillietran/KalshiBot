@@ -32,6 +32,12 @@ import {
   type ForwardCaptureResearchFamilyId,
 } from "./forwardCaptureReadinessTypes";
 
+/** Returns known sequenceGapCount or null when capture-health omits the field. */
+function readKnownSequenceGapCount(run: LoadedForwardCaptureRun): number | null {
+  const value = run.health.orderbook?.sequenceGapCount;
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
 function buildAggregateMetrics(
   runs: LoadedForwardCaptureRun[],
 ): ForwardCaptureAggregateMetrics {
@@ -50,10 +56,26 @@ function buildAggregateMetrics(
 
   const hoursCovered = totalDurationMinutes / 60;
   const joinCoverageShare = btcSpotJoinCoverageShare(topOfBookStats);
-  const maxSequenceGapCountPerRun = runs.reduce(
-    (max, run) => Math.max(max, run.health.orderbook?.sequenceGapCount ?? 0),
-    0,
+  const knownSequenceGaps = runs.map((run) => readKnownSequenceGapCount(run));
+  const runsMissingSequenceGapEvidence = knownSequenceGaps.filter(
+    (value) => value === null,
+  ).length;
+  const knownGapValues = knownSequenceGaps.filter(
+    (value): value is number => value !== null,
   );
+  // No runs → known-clean zeros for inventory; missing evidence only applies when runs exist.
+  const maxSequenceGapCountPerRun =
+    runs.length === 0
+      ? 0
+      : runsMissingSequenceGapEvidence > 0 || knownGapValues.length === 0
+        ? null
+        : knownGapValues.reduce((max, value) => Math.max(max, value), 0);
+  const sequenceGapCount =
+    runs.length === 0
+      ? 0
+      : knownGapValues.length === 0
+        ? null
+        : knownGapValues.reduce((sum, value) => sum + value, 0);
 
   return {
     runCount: runs.length,
@@ -65,16 +87,14 @@ function buildAggregateMetrics(
     topOfBookRecordCount: topOfBookStats.recordCount,
     btcSpotRecordCount: metrics.btcSpotRecordCount,
     rawMessageCount: runs.reduce((sum, run) => sum + run.rawMessageCount, 0),
-    // Deprecated alias — equals economicallyValidShare. Prefer bookStateValidShare/economicallyValidShare.
+    // Schema m12.2+ compatibility alias — equals economicallyValidShare (not book-state validity).
     validBookShare: validBookShare(topOfBookStats),
     bookStateValidShare: bookStateValidShare(topOfBookStats),
     economicallyValidShare: economicallyValidShare(topOfBookStats),
-    // Cumulative sum across runs — informational only. Gating uses maxSequenceGapCountPerRun below.
-    sequenceGapCount: runs.reduce(
-      (sum, run) => sum + (run.health.orderbook?.sequenceGapCount ?? 0),
-      0,
-    ),
+    // Cumulative sum of known gaps only — informational. Null when no known evidence.
+    sequenceGapCount,
     maxSequenceGapCountPerRun,
+    runsMissingSequenceGapEvidence,
     reconnectCount: runs.reduce(
       (sum, run) =>
         sum
@@ -85,7 +105,7 @@ function buildAggregateMetrics(
     ),
     medianTopOfBookGapMs: median(metrics.allGapsMs),
     p90TopOfBookGapMs: percentile(metrics.allGapsMs, 90),
-    // Deprecated alias — equals btcSpotJoinCoverageShare. Prefer the explicit join/cadence fields below.
+    // Schema m12.2+ compatibility alias — equals join coverage (not stream cadence).
     btcSpotCoverageShare: joinCoverageShare,
     btcSpotJoinCoverageShare: joinCoverageShare,
     btcSpotStreamCadenceRatio: safeShare(
@@ -199,11 +219,22 @@ function evaluateQuoteStalenessReadiness(
     };
   }
 
-  if (aggregates.maxSequenceGapCountPerRun > thresholds.maxSequenceGapCountPerRun) {
+  if (aggregates.runsMissingSequenceGapEvidence > 0) {
     return {
       familyId,
       verdict: "not-ready-gappy",
-      rationale: `Worst single-run sequence gap count ${aggregates.maxSequenceGapCountPerRun} exceeds threshold ${thresholds.maxSequenceGapCountPerRun} (cumulative across all runs: ${aggregates.sequenceGapCount}).`,
+      rationale: `${aggregates.runsMissingSequenceGapEvidence} run(s) missing orderbook.sequenceGapCount evidence — cannot treat gaps as zero; fail closed.`,
+    };
+  }
+
+  if (
+    aggregates.maxSequenceGapCountPerRun !== null
+    && aggregates.maxSequenceGapCountPerRun > thresholds.maxSequenceGapCountPerRun
+  ) {
+    return {
+      familyId,
+      verdict: "not-ready-gappy",
+      rationale: `Worst single-run sequence gap count ${aggregates.maxSequenceGapCountPerRun} exceeds threshold ${thresholds.maxSequenceGapCountPerRun} (cumulative across runs with known evidence: ${aggregates.sequenceGapCount}).`,
     };
   }
 

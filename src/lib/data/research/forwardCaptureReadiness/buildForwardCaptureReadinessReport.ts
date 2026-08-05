@@ -13,6 +13,7 @@ import {
 } from "../downstreamAnalysisScope";
 import {
   DEFAULT_FORWARD_CAPTURE_READINESS_THRESHOLDS,
+  FORWARD_CAPTURE_READINESS_SCHEMA_VERSION,
   type ExcludedCaptureRun,
   type ForwardCaptureReadinessInputPaths,
   type ForwardCaptureReadinessIo,
@@ -127,6 +128,7 @@ export function buildForwardCaptureReadinessReport(input: {
   const scopeFields = spreadDownstreamScopeFields(scope, { sourceRunIds });
 
   return {
+    schemaVersion: FORWARD_CAPTURE_READINESS_SCHEMA_VERSION,
     generatedAt: input.generatedAt,
     outputPath: input.outputPath,
     htmlOutputPath: input.htmlOutputPath,

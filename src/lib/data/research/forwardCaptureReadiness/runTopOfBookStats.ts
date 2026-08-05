@@ -266,8 +266,9 @@ export function economicallyValidShare(stats: RunTopOfBookStats): number | null 
 }
 
 /**
- * @deprecated Alias of economicallyValidShare, kept for JSON backward compatibility.
- * Prefer bookStateValidShare or economicallyValidShare directly.
+ * @deprecated Schema m12.2+ alias of economicallyValidShare for JSON compatibility.
+ * Prefer bookStateValidShare or economicallyValidShare. Pre-m12.2 artifacts used
+ * ambiguous fallback semantics — do not assume this alias across versions.
  */
 export function validBookShare(stats: RunTopOfBookStats): number | null {
   return economicallyValidShare(stats);

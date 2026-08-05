@@ -546,15 +546,33 @@ export function readBtcSpotCoverage(
   const aggregates = readiness && isRecord(readiness.aggregates)
     ? readiness.aggregates
     : null;
-  // Prefer explicit join coverage; fall back to deprecated alias (now also join-aligned).
-  const share =
-    readNumber(aggregates?.btcSpotJoinCoverageShare)
-    ?? readNumber(aggregates?.btcSpotCoverageShare);
-  if (share !== null) {
-    return share;
+
+  // Prefer the explicit join-coverage field only.
+  const joinShare = readNumber(aggregates?.btcSpotJoinCoverageShare);
+  if (joinShare !== null) {
+    return joinShare;
   }
 
-  return inputs.captureFallback?.btcSpotCoverageShare ?? null;
+  // Legacy alias btcSpotCoverageShare meant stream cadence before m12.2.
+  // Accept it as join coverage only when schemaVersion proves the new meaning.
+  const schemaVersion = readString(readiness?.schemaVersion);
+  const aliasShare = readNumber(aggregates?.btcSpotCoverageShare);
+  if (
+    aliasShare !== null
+    && typeof schemaVersion === "string"
+    && schemaVersion.startsWith("forward-capture-readiness/m12.2")
+  ) {
+    return aliasShare;
+  }
+
+  // Recompute from capture-directory fallback (already join-aligned) when available.
+  if (inputs.captureFallback?.btcSpotCoverageShare !== null
+    && inputs.captureFallback?.btcSpotCoverageShare !== undefined) {
+    return inputs.captureFallback.btcSpotCoverageShare;
+  }
+
+  // Ambiguous legacy cadence-only artifact with no fallback → fail closed.
+  return null;
 }
 
 export function readBidOnlyCandidateCount(

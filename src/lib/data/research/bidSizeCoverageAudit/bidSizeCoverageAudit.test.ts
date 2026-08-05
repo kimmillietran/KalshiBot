@@ -8,13 +8,16 @@ import {
 import { createMemoryJsonlIo } from "@/lib/data/research/jsonl";
 
 import { auditBidSizeCoverage } from "./auditBidSizeCoverage";
-import { buildBidSizeCoverageAuditReport } from "./buildBidSizeCoverageAuditReport";
+import { buildBidSizeCoverageAuditReport, resolveBidSizeSelectedRunIdentity } from "./buildBidSizeCoverageAuditReport";
 import { compareRawDepthToTopOfBook, parseCapturedTopOfBookLine } from "./compareRawDepthToTopOfBook";
 import { inspectRawLadderSizes } from "./inspectRawLadderSizes";
 import { parseBidSizeCoverageAuditArgv } from "./parseBidSizeCoverageAuditArgv";
 import { replayBidSizeState } from "./replayBidSizeState";
 import { serializeBidSizeCoverageAuditHtml } from "./serializeBidSizeCoverageAuditHtml";
-import type { BidSizeCoverageAuditIo } from "./bidSizeCoverageAuditTypes";
+import {
+  BidSizeCoverageAuditError,
+  type BidSizeCoverageAuditIo,
+} from "./bidSizeCoverageAuditTypes";
 
 const MARKET = "KXBTC15M-TEST";
 const RUN_DIR = "data/live-capture/forward-quotes/run-size-audit";
@@ -348,5 +351,76 @@ describe("buildBidSizeCoverageAuditReport", () => {
     expect(report.captureRunDir).toBe(RUN_DIR);
     expect(report.scope.analysisScope).toBe("selected-run");
     expect(report.scope.selectedRunId).toBe("run-size-audit");
+  });
+});
+
+describe("resolveBidSizeSelectedRunIdentity", () => {
+  it("accepts matching summary.runId and path basename", () => {
+    const identity = resolveBidSizeSelectedRunIdentity({
+      captureRunDir: "data/live-capture/forward-quotes/run-size-audit",
+      summaryRunId: "run-size-audit",
+    });
+    expect(identity.selectedRunId).toBe("run-size-audit");
+    expect(identity.captureRunDir).toBe("data/live-capture/forward-quotes/run-size-audit");
+  });
+
+  it("derives identity from basename when summary.runId is missing", () => {
+    const identity = resolveBidSizeSelectedRunIdentity({
+      captureRunDir: "data/live-capture/forward-quotes/run-size-audit",
+      summaryRunId: null,
+    });
+    expect(identity.selectedRunId).toBe("run-size-audit");
+  });
+
+  it("fails closed on conflicting summary.runId and path basename", () => {
+    expect(() =>
+      resolveBidSizeSelectedRunIdentity({
+        captureRunDir: "data/live-capture/forward-quotes/run-size-audit",
+        summaryRunId: "other-run",
+      }),
+    ).toThrow(BidSizeCoverageAuditError);
+    expect(() =>
+      resolveBidSizeSelectedRunIdentity({
+        captureRunDir: "data/live-capture/forward-quotes/run-size-audit",
+        summaryRunId: "other-run",
+      }),
+    ).toThrow(/identity conflict/i);
+  });
+
+  it("normalizes Windows and POSIX path forms equivalently", () => {
+    const posix = resolveBidSizeSelectedRunIdentity({
+      captureRunDir: "data/live-capture/forward-quotes/run-size-audit",
+      summaryRunId: "run-size-audit",
+    });
+    const windows = resolveBidSizeSelectedRunIdentity({
+      captureRunDir: "data\\live-capture\\forward-quotes\\run-size-audit",
+      summaryRunId: "run-size-audit",
+    });
+    expect(posix.selectedRunId).toBe(windows.selectedRunId);
+    expect(posix.captureRunDir).toBe(windows.captureRunDir);
+  });
+
+  it("strips trailing separators consistently", () => {
+    const identity = resolveBidSizeSelectedRunIdentity({
+      captureRunDir: "data/live-capture/forward-quotes/run-size-audit/",
+      summaryRunId: "run-size-audit",
+    });
+    expect(identity.captureRunDir).toBe("data/live-capture/forward-quotes/run-size-audit");
+    expect(identity.selectedRunId).toBe("run-size-audit");
+  });
+
+  it("fails closed on empty or malformed basename paths", () => {
+    expect(() =>
+      resolveBidSizeSelectedRunIdentity({
+        captureRunDir: "",
+        summaryRunId: null,
+      }),
+    ).toThrow(BidSizeCoverageAuditError);
+    expect(() =>
+      resolveBidSizeSelectedRunIdentity({
+        captureRunDir: "/",
+        summaryRunId: null,
+      }),
+    ).toThrow(BidSizeCoverageAuditError);
   });
 });

@@ -142,16 +142,19 @@ export function serializeForwardCaptureReadinessHtml(
       <div class="stat-grid">
         <div class="stat-card"><div class="stat-label">Book-state valid share</div><div class="stat-value">${formatPercent(aggregates.bookStateValidShare)}</div></div>
         <div class="stat-card"><div class="stat-label">Economically valid share</div><div class="stat-value">${formatPercent(aggregates.economicallyValidShare)}</div></div>
+        <div class="stat-card"><div class="stat-label">Deprecated validBookShare alias (m12.2+ = economic)</div><div class="stat-value">${formatPercent(aggregates.validBookShare)}</div></div>
         <div class="stat-card"><div class="stat-label">BTC join coverage</div><div class="stat-value">${formatPercent(aggregates.btcSpotJoinCoverageShare)}</div></div>
         <div class="stat-card"><div class="stat-label">BTC stream cadence ratio</div><div class="stat-value">${formatPercent(aggregates.btcSpotStreamCadenceRatio)}</div></div>
         <div class="stat-card"><div class="stat-label">Non-zero spread</div><div class="stat-value">${formatPercent(aggregates.nonZeroSpreadShare)}</div></div>
         <div class="stat-card"><div class="stat-label">Zero spread</div><div class="stat-value">${formatPercent(aggregates.zeroSpreadShare)}</div></div>
         <div class="stat-card"><div class="stat-label">Median TOB gap</div><div class="stat-value">${formatNumber(aggregates.medianTopOfBookGapMs)}ms</div></div>
         <div class="stat-card"><div class="stat-label">p90 TOB gap</div><div class="stat-value">${formatNumber(aggregates.p90TopOfBookGapMs)}ms</div></div>
-        <div class="stat-card"><div class="stat-label">Max sequence gaps (per run)</div><div class="stat-value">${aggregates.maxSequenceGapCountPerRun}</div></div>
-        <div class="stat-card"><div class="stat-label">Sequence gaps (total)</div><div class="stat-value">${aggregates.sequenceGapCount}</div></div>
+        <div class="stat-card"><div class="stat-label">Max sequence gaps (per run)</div><div class="stat-value">${aggregates.maxSequenceGapCountPerRun === null ? "unknown" : aggregates.maxSequenceGapCountPerRun}</div></div>
+        <div class="stat-card"><div class="stat-label">Sequence gaps (total known)</div><div class="stat-value">${aggregates.sequenceGapCount === null ? "unknown" : aggregates.sequenceGapCount}</div></div>
+        <div class="stat-card"><div class="stat-label">Runs missing gap evidence</div><div class="stat-value">${aggregates.runsMissingSequenceGapEvidence}</div></div>
         <div class="stat-card"><div class="stat-label">Days covered</div><div class="stat-value">${aggregates.daysCovered}</div></div>
       </div>
+      <p class="muted">Schema ${escapeHtml(report.schemaVersion)}. Deprecated aliases are versioned: validBookShare means economicallyValidShare and btcSpotCoverageShare means btcSpotJoinCoverageShare only under this schema. Pre-m12.2 artifacts must not be reinterpreted by those keys.</p>
     </section>
 
     <section class="panel">
@@ -172,7 +175,7 @@ export function serializeForwardCaptureReadinessHtml(
 
     <section class="panel">
       <h2>Top-of-book continuity</h2>
-      <p class="muted">Median gap ${formatNumber(aggregates.medianTopOfBookGapMs)}ms · p90 gap ${formatNumber(aggregates.p90TopOfBookGapMs)}ms · reconnects ${aggregates.reconnectCount} · max sequence gaps in a single run ${aggregates.maxSequenceGapCountPerRun} (total across runs ${aggregates.sequenceGapCount})</p>
+      <p class="muted">Median gap ${formatNumber(aggregates.medianTopOfBookGapMs)}ms · p90 gap ${formatNumber(aggregates.p90TopOfBookGapMs)}ms · reconnects ${aggregates.reconnectCount} · max sequence gaps in a single run ${aggregates.maxSequenceGapCountPerRun === null ? "unknown" : aggregates.maxSequenceGapCountPerRun} (total known ${aggregates.sequenceGapCount === null ? "unknown" : aggregates.sequenceGapCount}; missing evidence runs ${aggregates.runsMissingSequenceGapEvidence})</p>
     </section>
 
     <section class="panel">

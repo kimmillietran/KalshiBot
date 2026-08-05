@@ -100,8 +100,19 @@ function createRunFiles(input: {
   btcSpotLines?: string[];
   verdict?: string;
   sequenceGapCount?: number;
+  /** When true, omit orderbook.sequenceGapCount entirely (missing evidence). */
+  omitSequenceGapCount?: boolean;
 }) {
   const runDir = `${SPIKE_ROOT}/${input.runId}`;
+  const orderbook: Record<string, unknown> = {
+    validTopOfBookRecords: input.topOfBookLines?.length ?? 1,
+    reconnectCount: 0,
+    marketsWithValidBook: 1,
+  };
+  if (!input.omitSequenceGapCount) {
+    orderbook.sequenceGapCount = input.sequenceGapCount ?? 0;
+  }
+
   const files: Record<string, string> = {
     [`${runDir}/capture-health.json`]: JSON.stringify({
       runId: input.runId,
@@ -117,12 +128,7 @@ function createRunFiles(input: {
         selectedMarketTickers: ["KXBTC15M-26JUL091915-15"],
       },
       capture: { messagesReceived: 3 },
-      orderbook: {
-        validTopOfBookRecords: input.topOfBookLines?.length ?? 1,
-        sequenceGapCount: input.sequenceGapCount ?? 0,
-        reconnectCount: 0,
-        marketsWithValidBook: 1,
-      },
+      orderbook,
       btcSpot: {
         status: input.btcSpotLines ? "enabled" : "disabled",
         recordsCaptured: input.btcSpotLines?.length ?? 0,
@@ -796,5 +802,104 @@ describe("forwardCaptureReadiness", () => {
     );
 
     expect(evaluation.summary.recommendedNextAction).toBe("fix-capture-quality");
+  });
+
+  it("fails closed when sequenceGapCount evidence is missing", () => {
+    const files = createRunFiles({
+      runId: "missing-gap-evidence",
+      durationSeconds: 13 * 60 * 60,
+      generatedAt: "2026-07-09T08:00:00.000Z",
+      omitSequenceGapCount: true,
+      topOfBookLines: [
+        createTopOfBookLine({
+          runId: "missing-gap-evidence",
+          receivedAtLocal: "2026-07-09T08:00:00.000Z",
+        }),
+      ],
+    });
+
+    const evaluation = evaluateForwardCaptureReadiness(
+      loadForwardCaptureRuns(buildMemoryIo(files), DEFAULT_FORWARD_CAPTURE_READINESS_INPUT_PATHS),
+    );
+    const quoteStaleness = evaluation.summary.familyReadiness.find(
+      (entry) => entry.familyId === "quoteStalenessReadiness",
+    );
+
+    expect(evaluation.aggregates.runsMissingSequenceGapEvidence).toBe(1);
+    expect(evaluation.aggregates.maxSequenceGapCountPerRun).toBeNull();
+    expect(evaluation.aggregates.sequenceGapCount).toBeNull();
+    expect(quoteStaleness?.verdict).toBe("not-ready-gappy");
+    expect(quoteStaleness?.rationale).toMatch(/missing orderbook\.sequenceGapCount/i);
+  });
+
+  it("treats known sequenceGapCount zero as clean, not missing", () => {
+    const files = createRunFiles({
+      runId: "known-zero-gaps",
+      durationSeconds: 13 * 60 * 60,
+      generatedAt: "2026-07-09T08:00:00.000Z",
+      sequenceGapCount: 0,
+      topOfBookLines: [
+        createTopOfBookLine({
+          runId: "known-zero-gaps",
+          receivedAtLocal: "2026-07-09T08:00:00.000Z",
+        }),
+      ],
+    });
+
+    const evaluation = evaluateForwardCaptureReadiness(
+      loadForwardCaptureRuns(buildMemoryIo(files), DEFAULT_FORWARD_CAPTURE_READINESS_INPUT_PATHS),
+    );
+
+    expect(evaluation.aggregates.runsMissingSequenceGapEvidence).toBe(0);
+    expect(evaluation.aggregates.maxSequenceGapCountPerRun).toBe(0);
+    expect(evaluation.aggregates.sequenceGapCount).toBe(0);
+  });
+
+  it("documents schema-versioned validBookShare alias as economic-only for new artifacts", () => {
+    const files = createRunFiles({
+      runId: "valid-book-alias",
+      durationSeconds: 60,
+      generatedAt: "2026-07-09T08:00:00.000Z",
+      topOfBookLines: [
+        createTopOfBookLine({
+          runId: "valid-book-alias",
+          receivedAtLocal: "2026-07-09T08:00:00.000Z",
+          bookState: "valid",
+          isEconomicallyValid: false,
+          withDepth: true,
+          yesSpreadCents: 0,
+          noSpreadCents: 0,
+        }),
+        createTopOfBookLine({
+          runId: "valid-book-alias",
+          receivedAtLocal: "2026-07-09T08:00:01.000Z",
+          bookState: "valid",
+          isEconomicallyValid: false,
+          withDepth: true,
+          yesSpreadCents: 0,
+          noSpreadCents: 0,
+        }),
+      ],
+    });
+
+    const report = buildForwardCaptureReadinessReport({
+      generatedAt: GENERATED_AT,
+      outputPath: OUTPUT_PATH,
+      htmlOutputPath: HTML_PATH,
+      inputPaths: DEFAULT_FORWARD_CAPTURE_READINESS_INPUT_PATHS,
+      io: buildMemoryIo(files),
+    });
+    const html = serializeForwardCaptureReadinessHtml(report);
+    const sameMarket = report.summary.familyReadiness.find(
+      (entry) => entry.familyId === "sameMarketParityReadiness",
+    );
+
+    expect(report.schemaVersion).toBe("forward-capture-readiness/m12.2");
+    expect(report.aggregates.bookStateValidShare).toBe(1);
+    expect(report.aggregates.economicallyValidShare).toBe(0);
+    expect(report.aggregates.validBookShare).toBe(0);
+    expect(sameMarket?.verdict).toBe("not-ready-insufficient-economic-eligibility");
+    expect(html).toContain("Deprecated validBookShare alias");
+    expect(html).toContain(report.schemaVersion);
   });
 });

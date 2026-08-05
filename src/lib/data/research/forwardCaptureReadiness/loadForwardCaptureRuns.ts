@@ -21,6 +21,14 @@ import type {
   ForwardCaptureRunTableEntry,
 } from "./forwardCaptureReadinessTypes";
 
+/** Known sequenceGapCount from capture-health, or null when the field is absent. */
+function readKnownSequenceGapCount(run: {
+  health: { orderbook?: { sequenceGapCount?: number } | null };
+}): number | null {
+  const value = run.health.orderbook?.sequenceGapCount;
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
 const captureHealthSchema = z
   .object({
     runId: z.string(),
@@ -450,7 +458,7 @@ function summarizeRun(run: LoadedForwardCaptureRun): ForwardCaptureRunTableEntry
       run.btcSpotStats.recordCount,
       run.topOfBookStats.recordCount,
     ),
-    sequenceGapCount: run.health.orderbook?.sequenceGapCount ?? 0,
+    sequenceGapCount: readKnownSequenceGapCount(run),
     reconnectCount:
       run.health.orderbook?.reconnectCount
       ?? run.health.connection?.reconnectCount
@@ -566,7 +574,7 @@ export function buildRunBreakdownMetrics(
       metrics.topOfBookStats.recordCount
       - metrics.topOfBookStats.nonZeroSpreadRecordCount;
     const joinCoverageShare = btcSpotJoinCoverageShare(metrics.topOfBookStats);
-    const sequenceGapCountForRun = run.health.orderbook?.sequenceGapCount ?? 0;
+    const sequenceGapCountForRun = readKnownSequenceGapCount(run);
 
     return {
       key: run.runId,
@@ -586,6 +594,7 @@ export function buildRunBreakdownMetrics(
       economicallyValidShare: economicallyValidShare(metrics.topOfBookStats),
       sequenceGapCount: sequenceGapCountForRun,
       maxSequenceGapCountPerRun: sequenceGapCountForRun,
+      runsMissingSequenceGapEvidence: sequenceGapCountForRun === null ? 1 : 0,
       reconnectCount:
         run.health.orderbook?.reconnectCount
         ?? run.health.connection?.reconnectCount
