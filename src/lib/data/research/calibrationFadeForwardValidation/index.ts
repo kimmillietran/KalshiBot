@@ -1,6 +1,14 @@
-export { analyzeCalibrationFadeForwardForRun } from "./analyzeCalibrationFadeForwardForRun";
+export { analyzeCalibrationFadeForwardForRun, evaluateOpenMarket } from "./analyzeCalibrationFadeForwardForRun";
 export { buildCalibrationFadeForwardValidationReport } from "./buildCalibrationFadeForwardValidationReport";
 export { buildBtcCandlesUpToTimestamp, resolveCausalBtcPrice } from "./buildBtcCandlesCausal";
+export {
+  buildValidatedCausalVolatilityWindow,
+  VOLATILITY_WINDOW_REJECTION_REASONS,
+} from "./buildValidatedCausalVolatilityWindow";
+export type {
+  ValidatedCausalVolatilityWindow,
+  VolatilityWindowRejectionReason,
+} from "./buildValidatedCausalVolatilityWindow";
 export {
   classifyCalibrationFadeInterpretation,
   classifyExecutableEvidence,
@@ -10,7 +18,17 @@ export type { ExecutableEvidenceState } from "./classifyCalibrationFadeInterpret
 export { createCalibrationFadeForwardValidationIo, createMemoryCalibrationFadeForwardValidationIo } from "./createCalibrationFadeForwardValidationIo";
 export { publishResearchArtifactsAtomically } from "./publishResearchArtifactsAtomically";
 export { validateCalibrationFadeMarketRecord } from "./parseCalibrationFadeMarketRecord";
-export { loadFrozenHypothesisSpec } from "./loadFrozenHypothesisSpec";
+export {
+  deriveProvenanceManifestPath,
+  loadFrozenHypothesisSpec,
+} from "./loadFrozenHypothesisSpec";
+export {
+  observationMeetsFrozenEligibility,
+  probabilityInAuthoritativeBand,
+  resolveFrozenEligibilityBands,
+  timeRemainingInAuthoritativeBand,
+  volatilityInAuthoritativeBand,
+} from "./resolveFrozenEligibilityBands";
 export { loadSelectedRunCalibrationFadeContext, validateSelectedRunDirectory } from "./loadSelectedRunCalibrationFadeContext";
 export {
   parseCalibrationFadeForwardValidationArgv,
@@ -27,11 +45,14 @@ export {
 export {
   CALIBRATION_FADE_FORWARD_VALIDATION_VERSION,
   CALIBRATION_FADE_FORWARD_VALIDATION_DISCLAIMER,
+  CALIBRATION_FADE_PROVENANCE_MANIFEST_SCHEMA,
+  CALIBRATION_FADE_PROVENANCE_MANIFEST_VERSION,
   CalibrationFadeForwardValidationError,
 } from "./calibrationFadeForwardValidationTypes";
 export type {
   CalibrationFadeForwardValidationConfig,
   CalibrationFadeForwardValidationReport,
   CalibrationFadeInterpretationClassification,
+  CalibrationFadeProvenanceReport,
   FrozenHypothesisSpec,
 } from "./calibrationFadeForwardValidationTypes";

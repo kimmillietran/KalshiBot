@@ -2,10 +2,16 @@ import { fnv1a32, stableStringify } from "@/lib/trading/config/hashConfig";
 import type { HypothesisCandidate } from "@/lib/data/research/hypothesisCandidates/hypothesisCandidateTypes";
 
 import {
+  CALIBRATION_FADE_PROVENANCE_ACCEPTED_CONCLUSIONS,
+  CALIBRATION_FADE_PROVENANCE_MANIFEST_SCHEMA,
+  CALIBRATION_FADE_PROVENANCE_MANIFEST_VERSION,
   CalibrationFadeForwardValidationError,
   DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH,
   type CalibrationFadeForwardValidationIo,
   type CalibrationFadeInterpretationClassification,
+  type CalibrationFadeProvenanceConclusion,
+  type CalibrationFadeProvenanceReport,
+  type CalibrationFadeProvenanceStatus,
   type FrozenHypothesisSpec,
   type HistoricalHypothesisBenchmark,
 } from "./calibrationFadeForwardValidationTypes";
@@ -13,6 +19,17 @@ import { isRecord, readNumber, readString } from "./calibrationFadeForwardValida
 
 function hashFileContent(content: string): string {
   return fnv1a32(content.replace(/^\uFEFF/, ""));
+}
+
+/** Derives adjacent provenance path: hypotheses/X.json → hypotheses/provenance/X.json */
+export function deriveProvenanceManifestPath(configPath: string): string {
+  const normalized = configPath.replace(/\\/g, "/");
+  const segments = normalized.split("/");
+  const fileName = segments.pop();
+  if (!fileName) {
+    throw new CalibrationFadeForwardValidationError(`Invalid hypothesis config path: ${configPath}`);
+  }
+  return [...segments, "provenance", fileName].join("/");
 }
 
 function parseFreezeDocument(parsed: Record<string, unknown>): Omit<FrozenHypothesisSpec, "configurationHash"> {
@@ -60,8 +77,8 @@ function parseFreezeDocument(parsed: Record<string, unknown>): Omit<FrozenHypoth
       },
       probability: {
         bucketId: readString((eligibilityRules.probability as Record<string, unknown>)?.bucketId) ?? "coarse-prob-1",
-        minInclusive: readNumber((eligibilityRules.probability as Record<string, unknown>)?.minInclusive) ?? 0.3,
-        maxExclusive: readNumber((eligibilityRules.probability as Record<string, unknown>)?.maxExclusive) ?? 0.7,
+        minInclusive: readNumber((eligibilityRules.probability as Record<string, unknown>)?.minInclusive) ?? 1 / 3,
+        maxExclusive: readNumber((eligibilityRules.probability as Record<string, unknown>)?.maxExclusive) ?? 2 / 3,
       },
       timeRemainingMs: {
         bucketId: readString((eligibilityRules.timeRemainingMs as Record<string, unknown>)?.bucketId) ?? "coarse-time-early",
@@ -157,7 +174,143 @@ function findCandidate(
   return null;
 }
 
-/** Loads and hashes the frozen hypothesis specification with historical provenance. */
+function emptyProvenance(status: CalibrationFadeProvenanceStatus, path: string | null): CalibrationFadeProvenanceReport {
+  return {
+    provenanceAvailable: false,
+    provenanceStatus: status,
+    provenanceManifestPath: path,
+    provenanceManifestHash: null,
+    provenanceConclusion: null,
+    ruleFreezeEvidence: null,
+    historicalBenchmarkAvailability: null,
+    missingArtifacts: [],
+    limitations: [],
+    integrityCorrections: [],
+    originalFreezeCommitSha: null,
+    originalFreezeCommitTimestamp: null,
+    originalConfigHash: null,
+    resolvedConfigHash: null,
+    firstForwardEvaluationBoundary: null,
+  };
+}
+
+function validateProvenanceManifest(input: {
+  io: CalibrationFadeForwardValidationIo;
+  configPath: string;
+  spec: FrozenHypothesisSpec;
+}): { provenance: CalibrationFadeProvenanceReport; warnings: string[] } {
+  const manifestPath = deriveProvenanceManifestPath(input.configPath);
+  const warnings: string[] = [];
+
+  if (!input.io.fileExists(manifestPath)) {
+    warnings.push(`Missing provenance manifest: ${manifestPath}`);
+    return { provenance: emptyProvenance("missing-manifest", manifestPath), warnings };
+  }
+
+  let rawContent: string;
+  let parsed: unknown;
+  try {
+    rawContent = input.io.readFile(manifestPath).replace(/^\uFEFF/, "");
+    parsed = JSON.parse(rawContent);
+  } catch {
+    warnings.push(`Malformed provenance manifest: ${manifestPath}`);
+    return { provenance: emptyProvenance("malformed-manifest", manifestPath), warnings };
+  }
+
+  if (!isRecord(parsed)) {
+    warnings.push(`Provenance manifest root must be an object: ${manifestPath}`);
+    return { provenance: emptyProvenance("malformed-manifest", manifestPath), warnings };
+  }
+
+  const schema = readString(parsed.schema);
+  const version = readNumber(parsed.version);
+  if (schema !== CALIBRATION_FADE_PROVENANCE_MANIFEST_SCHEMA || version !== CALIBRATION_FADE_PROVENANCE_MANIFEST_VERSION) {
+    warnings.push(
+      `Unsupported provenance manifest version/schema at ${manifestPath} `
+        + `(schema=${schema ?? "missing"}, version=${version ?? "missing"}).`,
+    );
+    return { provenance: emptyProvenance("unsupported-manifest-version", manifestPath), warnings };
+  }
+
+  const hypothesisId = readString(parsed.hypothesisId);
+  const sourceCandidateId = readString(parsed.sourceCandidateId);
+  const configPath = readString(parsed.configPath);
+  const resolvedConfigHash = readString(parsed.resolvedConfigHash);
+  const originalFreezeCommitSha = readString(parsed.originalFreezeCommitSha);
+  const originalFreezeCommitTimestamp = readString(parsed.originalFreezeCommitTimestamp);
+  const originalConfigHash = readString(parsed.originalConfigHash);
+  const conclusion = readString(parsed.conclusion);
+  const firstForwardEvaluationBoundary = readString(parsed.firstForwardEvaluationBoundary);
+
+  if (
+    hypothesisId !== input.spec.hypothesisId
+    || sourceCandidateId !== input.spec.sourceCandidateId
+    || configPath !== input.configPath.replace(/\\/g, "/")
+  ) {
+    warnings.push(
+      `Provenance manifest identity mismatch at ${manifestPath} `
+        + `(hypothesisId/sourceCandidateId/configPath must match the loaded freeze spec).`,
+    );
+    return { provenance: emptyProvenance("mismatched-manifest", manifestPath), warnings };
+  }
+
+  if (!originalFreezeCommitSha || !originalFreezeCommitTimestamp || !originalConfigHash || !resolvedConfigHash) {
+    warnings.push(`Provenance manifest missing freeze identity fields: ${manifestPath}`);
+    return { provenance: emptyProvenance("mismatched-manifest", manifestPath), warnings };
+  }
+
+  if (resolvedConfigHash !== input.spec.configurationHash) {
+    warnings.push(
+      `Provenance manifest resolvedConfigHash ${resolvedConfigHash} does not match `
+        + `current configuration hash ${input.spec.configurationHash}.`,
+    );
+    return { provenance: emptyProvenance("mismatched-manifest", manifestPath), warnings };
+  }
+
+  if (
+    !conclusion
+    || !(CALIBRATION_FADE_PROVENANCE_ACCEPTED_CONCLUSIONS as readonly string[]).includes(conclusion)
+  ) {
+    warnings.push(`Unacceptable provenance conclusion at ${manifestPath}: ${conclusion ?? "missing"}`);
+    return { provenance: emptyProvenance("unacceptable-conclusion", manifestPath), warnings };
+  }
+
+  const missingArtifacts = Array.isArray(parsed.missingArtifacts)
+    ? parsed.missingArtifacts.filter((entry): entry is string => typeof entry === "string")
+    : [];
+  const limitations = Array.isArray(parsed.limitations)
+    ? parsed.limitations.filter((entry): entry is string => typeof entry === "string")
+    : [];
+  const integrityCorrections = Array.isArray(parsed.integrityCorrections)
+    ? parsed.integrityCorrections.filter((entry): entry is Record<string, unknown> => isRecord(entry))
+    : [];
+  const historicalBenchmarkAvailability =
+    parsed.historicalBenchmarkAvailability === "available" ? "available" as const : "unavailable" as const;
+  const ruleFreezeEvidence = isRecord(parsed.ruleFreezeEvidence) ? parsed.ruleFreezeEvidence : null;
+
+  return {
+    provenance: {
+      provenanceAvailable: true,
+      provenanceStatus: "valid-manifest",
+      provenanceManifestPath: manifestPath,
+      provenanceManifestHash: hashFileContent(rawContent),
+      provenanceConclusion: conclusion as CalibrationFadeProvenanceConclusion,
+      ruleFreezeEvidence,
+      historicalBenchmarkAvailability,
+      missingArtifacts,
+      limitations,
+      integrityCorrections,
+      originalFreezeCommitSha,
+      originalFreezeCommitTimestamp,
+      originalConfigHash,
+      resolvedConfigHash,
+      firstForwardEvaluationBoundary,
+    },
+    warnings,
+  };
+}
+
+/** Loads and hashes the frozen hypothesis specification with rule-freeze provenance. */
 export function loadFrozenHypothesisSpec(input: {
   io: CalibrationFadeForwardValidationIo;
   hypothesisConfigPath?: string;
@@ -166,9 +319,13 @@ export function loadFrozenHypothesisSpec(input: {
   spec: FrozenHypothesisSpec;
   historicalBenchmark: HistoricalHypothesisBenchmark;
   provenanceAvailable: boolean;
+  provenance: CalibrationFadeProvenanceReport;
   warnings: string[];
 } {
-  const configPath = input.hypothesisConfigPath ?? DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH;
+  const configPath = (input.hypothesisConfigPath ?? DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH).replace(
+    /\\/g,
+    "/",
+  );
   if (!input.io.fileExists(configPath)) {
     throw new CalibrationFadeForwardValidationError(`Hypothesis freeze spec not found: ${configPath}`);
   }
@@ -194,8 +351,14 @@ export function loadFrozenHypothesisSpec(input: {
   const configurationHash = fnv1a32(stableStringify(withoutHash));
   const spec: FrozenHypothesisSpec = { ...withoutHash, configurationHash };
 
+  const { provenance, warnings: provenanceWarnings } = validateProvenanceManifest({
+    io: input.io,
+    configPath,
+    spec,
+  });
+
   const sourceArtifactHashes: Record<string, string> = {};
-  const warnings: string[] = [];
+  const warnings: string[] = [...provenanceWarnings];
   let candidate: HypothesisCandidate | null = null;
   let validationRecord: Record<string, unknown> | null = null;
 
@@ -221,7 +384,9 @@ export function loadFrozenHypothesisSpec(input: {
     }
   }
 
-  const provenanceAvailable = candidate !== null;
+  // Rule-freeze provenance comes from the validated manifest (even when candidate JSON is absent).
+  // Historical benchmark statistics remain null when discovery artifacts are missing.
+  const provenanceAvailable = provenance.provenanceAvailable;
   const bucketMetadata = candidate?.bucketMetadata;
   const historicalBenchmark: HistoricalHypothesisBenchmark = {
     discoveryObservationCount: readNumber(bucketMetadata?.observations) ?? null,
@@ -249,5 +414,5 @@ export function loadFrozenHypothesisSpec(input: {
     }
   }
 
-  return { spec, historicalBenchmark, provenanceAvailable, warnings };
+  return { spec, historicalBenchmark, provenanceAvailable, provenance, warnings };
 }

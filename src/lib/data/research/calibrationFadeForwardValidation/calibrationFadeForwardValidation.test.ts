@@ -2,38 +2,48 @@ import { readFileSync } from "node:fs";
 
 import { describe, expect, it } from "vitest";
 
-import { fnv1a32, stableStringify } from "@/lib/trading/config/hashConfig";
+import { buildCoarseProbabilityAxisDefinitions } from "@/lib/data/research/dimensions";
 import { publishResearchArtifactsAtomically } from "./publishResearchArtifactsAtomically";
 
-import { analyzeCalibrationFadeForwardForRun } from "./analyzeCalibrationFadeForwardForRun";
+import { analyzeCalibrationFadeForwardForRun, evaluateOpenMarket } from "./analyzeCalibrationFadeForwardForRun";
 import { buildBtcCandlesUpToTimestamp, resolveCausalBtcPrice } from "./buildBtcCandlesCausal";
+import { buildValidatedCausalVolatilityWindow } from "./buildValidatedCausalVolatilityWindow";
 import { classifyCalibrationFadeInterpretation } from "./classifyCalibrationFadeInterpretation";
 import { createMemoryCalibrationFadeForwardValidationIo } from "./createCalibrationFadeForwardValidationIo";
-import { loadFrozenHypothesisSpec } from "./loadFrozenHypothesisSpec";
+import { deriveProvenanceManifestPath, loadFrozenHypothesisSpec } from "./loadFrozenHypothesisSpec";
 import { loadSelectedRunCalibrationFadeContext } from "./loadSelectedRunCalibrationFadeContext";
 import {
   CalibrationFadeForwardValidationError,
+  CALIBRATION_FADE_PROVENANCE_MANIFEST_SCHEMA,
+  CALIBRATION_FADE_PROVENANCE_MANIFEST_VERSION,
   DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH,
 } from "./calibrationFadeForwardValidationTypes";
 import { parseCalibrationFadeForwardValidationArgv } from "./parseCalibrationFadeForwardValidationArgv";
+import {
+  probabilityInAuthoritativeBand,
+  resolveFrozenEligibilityBands,
+} from "./resolveFrozenEligibilityBands";
 import type { FrozenHypothesisSpec } from "./calibrationFadeForwardValidationTypes";
 
 const RUN_DIR = "data/live-capture/forward-quotes/run-calibration-fade";
 const MARKET_A = "KXBTC15M-26JUL111200-00";
 const MARKET_B = "KXBTC15M-26JUL111215-15";
+const HYPOTHESIS_ID =
+  "atlas-volatilityProbabilityTime-vol-high-coarse-prob-1-coarse-time-early-over";
 const BASE_MS = Date.parse("2026-07-11T12:00:00.000Z");
+const PROVENANCE_PATH = deriveProvenanceManifestPath(DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH);
 
 function isoAt(offsetMs: number): string {
   return new Date(BASE_MS + offsetMs).toISOString();
 }
 
-function freezeSpecContent(): string {
+function freezeSpecContent(overrides: Record<string, unknown> = {}): string {
   return JSON.stringify({
-    hypothesisId: "atlas-volatilityProbabilityTime-vol-high-coarse-prob-1-coarse-time-early-over",
+    hypothesisId: HYPOTHESIS_ID,
     hypothesisVersion: "v1",
     description: "test freeze",
     canonicalSourceArtifacts: ["data/research-results/hypothesis-candidates.json"],
-    sourceCandidateId: "atlas-volatilityProbabilityTime-vol-high-coarse-prob-1-coarse-time-early-over",
+    sourceCandidateId: HYPOTHESIS_ID,
     axisGroupId: "volatilityProbabilityTime",
     bucketId: "vol-high-coarse-prob-1-coarse-time-early",
     calibrationDirection: "over",
@@ -41,7 +51,7 @@ function freezeSpecContent(): string {
     suggestedStrategyFamily: "calibration-no-fade",
     eligibilityRules: {
       volatility: { bucketId: "vol-high", minInclusive: 0.6, maxExclusive: null },
-      probability: { bucketId: "coarse-prob-1", minInclusive: 0.3, maxExclusive: 0.7 },
+      probability: { bucketId: "coarse-prob-1", minInclusive: 1 / 3, maxExclusive: 2 / 3 },
       timeRemainingMs: { bucketId: "coarse-time-early", minInclusive: 0, maxExclusive: 900000 },
     },
     probabilityMeasure: { id: "yes-bid-ask-midpoint", definition: "mid", formula: "mid" },
@@ -81,14 +91,64 @@ function freezeSpecContent(): string {
       materialExecutableNetReturnCents: 1,
     },
     classificationRules: { precedence: ["insufficient-forward-events"] },
+    ...overrides,
   });
+}
+
+function provenanceManifestContent(resolvedConfigHash: string, overrides: Record<string, unknown> = {}): string {
+  return JSON.stringify({
+    schema: CALIBRATION_FADE_PROVENANCE_MANIFEST_SCHEMA,
+    version: CALIBRATION_FADE_PROVENANCE_MANIFEST_VERSION,
+    hypothesisId: HYPOTHESIS_ID,
+    sourceCandidateId: HYPOTHESIS_ID,
+    configPath: DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH,
+    originalFreezeCommitSha: "f2598cf960472f368cd6ad25f67d4c97a3b3956e",
+    originalFreezeCommitTimestamp: "2026-07-12T01:54:04-07:00",
+    originalConfigHash: "76336405",
+    resolvedConfigHash,
+    firstForwardEvaluationBoundary: "before first forward capture",
+    conclusion: "defensible-with-manifest",
+    ruleFreezeEvidence: {
+      kind: "repository-history",
+      description: "test rule freeze evidence",
+    },
+    historicalBenchmarkAvailability: "unavailable",
+    missingArtifacts: ["data/research-results/hypothesis-candidates.json"],
+    limitations: ["Historical discovery artifacts absent in fixture."],
+    integrityCorrections: [
+      {
+        id: "probability-band-reconciliation-to-coarse-prob-1",
+        kind: "integrity-correction",
+      },
+    ],
+    ...overrides,
+  });
+}
+
+function configurationHashForFreeze(content: string): string {
+  const io = createMemoryCalibrationFadeForwardValidationIo({
+    [DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH]: content,
+    [PROVENANCE_PATH]: provenanceManifestContent("00000000"),
+  });
+  return loadFrozenHypothesisSpec({ io }).spec.configurationHash;
+}
+
+function freezeFixtureFiles(extra: Record<string, string> = {}, freezeOverrides: Record<string, unknown> = {}): Record<string, string> {
+  const freeze = freezeSpecContent(freezeOverrides);
+  const hash = configurationHashForFreeze(freeze);
+  return {
+    [DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH]: freeze,
+    [PROVENANCE_PATH]: provenanceManifestContent(hash),
+    "data/research-results/hypothesis-candidates.json": hypothesisCandidatesFixture(),
+    ...extra,
+  };
 }
 
 function hypothesisCandidatesFixture() {
   return JSON.stringify({
     candidates: [
       {
-        candidateId: "atlas-volatilityProbabilityTime-vol-high-coarse-prob-1-coarse-time-early-over",
+        candidateId: HYPOTHESIS_ID,
         bucketMetadata: {
           observations: 273,
           uniqueTradingDays: 37,
@@ -130,9 +190,21 @@ function btcLine(offsetMs: number, priceUsd: number) {
   });
 }
 
+/** Dense causal BTC samples (<= maximumSourceGapMs) with high realized volatility. */
+function denseHighVolBtcSpots(options?: { endOffsetMs?: number; stepMs?: number }): string {
+  const endOffsetMs = options?.endOffsetMs ?? 15 * 60_000;
+  const stepMs = options?.stepMs ?? 1_000;
+  const lines: string[] = [];
+  for (let offsetMs = 0; offsetMs <= endOffsetMs; offsetMs += stepMs) {
+    const minute = Math.floor(offsetMs / 60_000);
+    const priceUsd = 100_000 + (minute % 2 === 0 ? 1 : -1) * (2_000 + minute * 150);
+    lines.push(btcLine(offsetMs, priceUsd));
+  }
+  return lines.join("\n");
+}
+
 function buildRegressionFixture() {
-  const btcPrices = [100_000, 102_000, 99_000, 104_000, 98_000, 106_000, 97_000, 108_000, 96_000, 110_000, 95_000, 112_000, 94_000, 115_000, 93_000, 118_000];
-  const btcSpots = btcPrices.map((priceUsd, index) => btcLine(index * 60_000, priceUsd));
+  const btcSpots = denseHighVolBtcSpots();
   const topOfBook = [
     topOfBookLine({ marketTicker: MARKET_A, offsetMs: 0, yesBid: 20, yesAsk: 22 }),
     topOfBookLine({ marketTicker: MARKET_A, offsetMs: 720_000, yesBid: 48, yesAsk: 52, noAsk: 50 }),
@@ -143,9 +215,7 @@ function buildRegressionFixture() {
 
   return {
     dirs: [RUN_DIR, "data/imports", `data/imports/KXBTC15M/${MARKET_A}`, `data/imports/KXBTC15M/${MARKET_B}`],
-    files: {
-      [DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH]: freezeSpecContent(),
-      "data/research-results/hypothesis-candidates.json": hypothesisCandidatesFixture(),
+    files: freezeFixtureFiles({
       [`${RUN_DIR}/capture-health.json`]: JSON.stringify({
         runId: "run-calibration-fade",
         config: { durationSeconds: 3600 },
@@ -156,7 +226,7 @@ function buildRegressionFixture() {
         JSON.stringify({ marketTicker: MARKET_B, closeTime: isoAt(1_200_000) }),
       ].join("\n"),
       [`${RUN_DIR}/top-of-book.jsonl`]: topOfBook.join("\n"),
-      [`${RUN_DIR}/btc-spot.jsonl`]: btcSpots.join("\n"),
+      [`${RUN_DIR}/btc-spot.jsonl`]: btcSpots,
       [`${RUN_DIR}/capture-health-audit.json`]: JSON.stringify({
         selectedRunId: "run-calibration-fade",
         captureRunDir: RUN_DIR,
@@ -192,42 +262,140 @@ function buildRegressionFixture() {
           },
         ],
       }),
-    },
+    }),
   };
 }
 
 describe("loadFrozenHypothesisSpec", () => {
-  it("loads canonical candidate and stable freeze hash", () => {
-    const withoutHash = JSON.parse(freezeSpecContent());
-    const expectedHash = fnv1a32(stableStringify(withoutHash));
-    const io = createMemoryCalibrationFadeForwardValidationIo({
-      [DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH]: freezeSpecContent(),
-      "data/research-results/hypothesis-candidates.json": hypothesisCandidatesFixture(),
-    });
+  it("loads canonical candidate and stable freeze hash with valid provenance", () => {
+    const files = freezeFixtureFiles();
+    const io = createMemoryCalibrationFadeForwardValidationIo(files);
     const loaded = loadFrozenHypothesisSpec({ io });
-    expect(loaded.spec.configurationHash).toBe(expectedHash);
+    expect(loaded.spec.configurationHash).toBe(configurationHashForFreeze(freezeSpecContent()));
     expect(loaded.historicalBenchmark.discoveryObservationCount).toBe(273);
     expect(loaded.provenanceAvailable).toBe(true);
+    expect(loaded.provenance.provenanceStatus).toBe("valid-manifest");
   });
 
-  it("fails on missing source artifact provenance", () => {
+  it("accepts rule-freeze provenance when discovery artifacts are absent", () => {
+    const freeze = freezeSpecContent();
+    const hash = configurationHashForFreeze(freeze);
+    const io = createMemoryCalibrationFadeForwardValidationIo({
+      [DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH]: freeze,
+      [PROVENANCE_PATH]: provenanceManifestContent(hash),
+    });
+    const loaded = loadFrozenHypothesisSpec({ io });
+    expect(loaded.provenanceAvailable).toBe(true);
+    expect(loaded.historicalBenchmark.discoveryObservationCount).toBeNull();
+    expect(loaded.warnings.some((warning) => warning.includes("Missing canonical source artifact"))).toBe(true);
+  });
+
+  it("fails closed when provenance manifest is missing", () => {
     const io = createMemoryCalibrationFadeForwardValidationIo({
       [DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH]: freezeSpecContent(),
     });
     const loaded = loadFrozenHypothesisSpec({ io });
     expect(loaded.provenanceAvailable).toBe(false);
+    expect(loaded.provenance.provenanceStatus).toBe("missing-manifest");
+  });
+
+  it("fails closed on malformed provenance manifest", () => {
+    const io = createMemoryCalibrationFadeForwardValidationIo({
+      [DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH]: freezeSpecContent(),
+      [PROVENANCE_PATH]: "{not-json",
+    });
+    const loaded = loadFrozenHypothesisSpec({ io });
+    expect(loaded.provenanceAvailable).toBe(false);
+    expect(loaded.provenance.provenanceStatus).toBe("malformed-manifest");
+  });
+
+  it("fails closed on wrong hypothesis id in manifest", () => {
+    const freeze = freezeSpecContent();
+    const hash = configurationHashForFreeze(freeze);
+    const io = createMemoryCalibrationFadeForwardValidationIo({
+      [DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH]: freeze,
+      [PROVENANCE_PATH]: provenanceManifestContent(hash, { hypothesisId: "other-hypothesis" }),
+    });
+    const loaded = loadFrozenHypothesisSpec({ io });
+    expect(loaded.provenanceAvailable).toBe(false);
+    expect(loaded.provenance.provenanceStatus).toBe("mismatched-manifest");
+  });
+
+  it("fails closed on wrong source candidate id in manifest", () => {
+    const freeze = freezeSpecContent();
+    const hash = configurationHashForFreeze(freeze);
+    const io = createMemoryCalibrationFadeForwardValidationIo({
+      [DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH]: freeze,
+      [PROVENANCE_PATH]: provenanceManifestContent(hash, { sourceCandidateId: "other-candidate" }),
+    });
+    const loaded = loadFrozenHypothesisSpec({ io });
+    expect(loaded.provenanceAvailable).toBe(false);
+    expect(loaded.provenance.provenanceStatus).toBe("mismatched-manifest");
+  });
+
+  it("fails closed on wrong resolved config hash", () => {
+    const freeze = freezeSpecContent();
+    const io = createMemoryCalibrationFadeForwardValidationIo({
+      [DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH]: freeze,
+      [PROVENANCE_PATH]: provenanceManifestContent("deadbeef"),
+    });
+    const loaded = loadFrozenHypothesisSpec({ io });
+    expect(loaded.provenanceAvailable).toBe(false);
+    expect(loaded.provenance.provenanceStatus).toBe("mismatched-manifest");
+  });
+
+  it("fails closed when manifest configPath certifies another path", () => {
+    const freeze = freezeSpecContent();
+    const hash = configurationHashForFreeze(freeze);
+    const io = createMemoryCalibrationFadeForwardValidationIo({
+      [DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH]: freeze,
+      [PROVENANCE_PATH]: provenanceManifestContent(hash, {
+        configPath: "config/research/hypotheses/other.json",
+      }),
+    });
+    const loaded = loadFrozenHypothesisSpec({ io });
+    expect(loaded.provenanceAvailable).toBe(false);
+    expect(loaded.provenance.provenanceStatus).toBe("mismatched-manifest");
+  });
+
+  it("never fabricates historical benchmark statistics when artifacts are missing", () => {
+    const freeze = freezeSpecContent();
+    const hash = configurationHashForFreeze(freeze);
+    const io = createMemoryCalibrationFadeForwardValidationIo({
+      [DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH]: freeze,
+      [PROVENANCE_PATH]: provenanceManifestContent(hash),
+    });
+    const loaded = loadFrozenHypothesisSpec({ io });
+    expect(loaded.historicalBenchmark.discoveryObservationCount).toBeNull();
+    expect(loaded.historicalBenchmark.discoveryCalibrationError).toBeNull();
+    expect(loaded.historicalBenchmark.discoveryRobustnessScore).toBeNull();
+  });
+
+  it("loads available benchmark values when historical artifacts are present", () => {
+    const files = freezeFixtureFiles();
+    const io = createMemoryCalibrationFadeForwardValidationIo(files);
+    const loaded = loadFrozenHypothesisSpec({ io });
+    expect(loaded.provenanceAvailable).toBe(true);
+    expect(loaded.historicalBenchmark.discoveryObservationCount).toBe(273);
+    expect(loaded.historicalBenchmark.discoveryAverageImpliedProbability).toBeCloseTo(0.505);
   });
 
   it("rejects ambiguous candidate when source candidate id does not match", () => {
-    const spec = JSON.parse(freezeSpecContent()) as Record<string, unknown>;
-    spec.sourceCandidateId = "\u0007tlas-volatilityProbabilityTime-vol-high-coarse-prob-1-coarse-time-early-over";
+    const freeze = freezeSpecContent({
+      sourceCandidateId: "\u0007tlas-volatilityProbabilityTime-vol-high-coarse-prob-1-coarse-time-early-over",
+    });
+    const hash = configurationHashForFreeze(freeze);
     const io = createMemoryCalibrationFadeForwardValidationIo({
-      [DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH]: JSON.stringify(spec),
+      [DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH]: freeze,
+      [PROVENANCE_PATH]: provenanceManifestContent(hash, {
+        sourceCandidateId: "\u0007tlas-volatilityProbabilityTime-vol-high-coarse-prob-1-coarse-time-early-over",
+      }),
       "data/research-results/hypothesis-candidates.json": hypothesisCandidatesFixture(),
     });
     const loaded = loadFrozenHypothesisSpec({ io });
-    expect(loaded.provenanceAvailable).toBe(false);
+    expect(loaded.provenanceAvailable).toBe(true);
     expect(loaded.warnings.some((warning) => warning.includes("not found"))).toBe(true);
+    expect(loaded.historicalBenchmark.discoveryObservationCount).toBeNull();
   });
 });
 
@@ -457,12 +625,9 @@ describe("analyzeCalibrationFadeForwardForRun", () => {
   });
 
   it("counts executable entry available before settlement joins (real-run shape)", async () => {
-    const btcPrices = [100_000, 102_000, 99_000, 104_000, 98_000, 106_000, 97_000, 108_000, 96_000, 110_000, 95_000, 112_000, 94_000, 115_000, 93_000, 118_000];
-    const btcSpots = btcPrices.map((priceUsd, index) => btcLine(index * 60_000, priceUsd));
+    const btcSpots = denseHighVolBtcSpots();
     const io = createMemoryCalibrationFadeForwardValidationIo(
-      {
-        [DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH]: freezeSpecContent(),
-        "data/research-results/hypothesis-candidates.json": hypothesisCandidatesFixture(),
+      freezeFixtureFiles({
         [`${RUN_DIR}/capture-health.json`]: JSON.stringify({
           runId: "run-calibration-fade",
           config: { durationSeconds: 3600 },
@@ -479,7 +644,7 @@ describe("analyzeCalibrationFadeForwardForRun", () => {
           yesAsk: 57,
           noAsk: 43,
         }),
-        [`${RUN_DIR}/btc-spot.jsonl`]: btcSpots.join("\n"),
+        [`${RUN_DIR}/btc-spot.jsonl`]: btcSpots,
         [`${RUN_DIR}/capture-health-audit.json`]: JSON.stringify({
           selectedRunId: "run-calibration-fade",
           captureRunDir: RUN_DIR,
@@ -497,7 +662,7 @@ describe("analyzeCalibrationFadeForwardForRun", () => {
             continuity: { p90TopOfBookGapMs: 1000 },
           },
         }),
-      },
+      }),
       [RUN_DIR],
     );
 
@@ -535,12 +700,9 @@ describe("analyzeCalibrationFadeForwardForRun", () => {
   });
 
   it("computes NO-entry settlement returns at 43 cents after settlement joins", async () => {
-    const btcPrices = [100_000, 102_000, 99_000, 104_000, 98_000, 106_000, 97_000, 108_000, 96_000, 110_000, 95_000, 112_000, 94_000, 115_000, 93_000, 118_000];
-    const btcSpots = btcPrices.map((priceUsd, index) => btcLine(index * 60_000, priceUsd));
+    const btcSpots = denseHighVolBtcSpots();
     const io = createMemoryCalibrationFadeForwardValidationIo(
-      {
-        [DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH]: freezeSpecContent(),
-        "data/research-results/hypothesis-candidates.json": hypothesisCandidatesFixture(),
+      freezeFixtureFiles({
         [`${RUN_DIR}/capture-health.json`]: JSON.stringify({
           runId: "run-calibration-fade",
           config: { durationSeconds: 3600 },
@@ -557,7 +719,7 @@ describe("analyzeCalibrationFadeForwardForRun", () => {
           yesAsk: 57,
           noAsk: 43,
         }),
-        [`${RUN_DIR}/btc-spot.jsonl`]: btcSpots.join("\n"),
+        [`${RUN_DIR}/btc-spot.jsonl`]: btcSpots,
         [`${RUN_DIR}/capture-health-audit.json`]: JSON.stringify({
           selectedRunId: "run-calibration-fade",
           captureRunDir: RUN_DIR,
@@ -585,7 +747,7 @@ describe("analyzeCalibrationFadeForwardForRun", () => {
             },
           ],
         }),
-      },
+      }),
       [RUN_DIR, "data/imports", `data/imports/KXBTC15M/${MARKET_A}`],
     );
 
@@ -878,12 +1040,10 @@ describe("classifyCalibrationFadeInterpretation", () => {
 });
 
 describe("frozen hypothesis integrity", () => {
-  it("keeps the frozen Hypothesis #3 config unchanged", () => {
+  it("keeps frozen Hypothesis #3 identity and reconciles probability to exact thirds", () => {
     const raw = readFileSync(DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH, "utf8");
     const frozen = JSON.parse(raw) as Record<string, unknown>;
-    expect(frozen.hypothesisId).toBe(
-      "atlas-volatilityProbabilityTime-vol-high-coarse-prob-1-coarse-time-early-over",
-    );
+    expect(frozen.hypothesisId).toBe(HYPOTHESIS_ID);
     expect(frozen.hypothesisVersion).toBe("v1");
     expect(frozen.calibrationDirection).toBe("over");
     expect(frozen.targetOutcomeSide).toBe("no");
@@ -896,6 +1056,458 @@ describe("frozen hypothesis integrity", () => {
       materialSupportCalibrationGap: 0.03,
       materialExecutableNetReturnCents: 1,
     });
+    const probability = (frozen.eligibilityRules as Record<string, Record<string, number>>).probability;
+    expect(probability.minInclusive).toBe(1 / 3);
+    expect(probability.maxExclusive).toBe(2 / 3);
+    expect(probability.minInclusive).not.toBe(0.3);
+    expect(probability.maxExclusive).not.toBe(0.7);
+    const registered = buildCoarseProbabilityAxisDefinitions().find((entry) => entry.bucketId === "coarse-prob-1")!;
+    expect(probability.minInclusive).toBe(registered.minInclusive);
+    expect(probability.maxExclusive).toBe(registered.maxExclusive);
+  });
+});
+
+describe("authoritative probability band", () => {
+  it("accepts exact middle-third boundaries and rejects outside", () => {
+    const files = freezeFixtureFiles();
+    const io = createMemoryCalibrationFadeForwardValidationIo(files);
+    const { spec } = loadFrozenHypothesisSpec({ io });
+    const bands = resolveFrozenEligibilityBands(spec);
+    expect(probabilityInAuthoritativeBand(1 / 3 - 1e-12, bands.probability)).toBe(false);
+    expect(probabilityInAuthoritativeBand(1 / 3, bands.probability)).toBe(true);
+    expect(probabilityInAuthoritativeBand(0.5, bands.probability)).toBe(true);
+    expect(probabilityInAuthoritativeBand(2 / 3 - 1e-12, bands.probability)).toBe(true);
+    expect(probabilityInAuthoritativeBand(2 / 3, bands.probability)).toBe(false);
+    expect(probabilityInAuthoritativeBand(0.7, bands.probability)).toBe(false);
+  });
+
+  it("fails closed when config bounds disagree with registered bucket", () => {
+    const freeze = freezeSpecContent({
+      eligibilityRules: {
+        volatility: { bucketId: "vol-high", minInclusive: 0.6, maxExclusive: null },
+        probability: { bucketId: "coarse-prob-1", minInclusive: 0.3, maxExclusive: 0.7 },
+        timeRemainingMs: { bucketId: "coarse-time-early", minInclusive: 0, maxExclusive: 900000 },
+      },
+    });
+    const hash = configurationHashForFreeze(freeze);
+    const io = createMemoryCalibrationFadeForwardValidationIo({
+      [DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH]: freeze,
+      [PROVENANCE_PATH]: provenanceManifestContent(hash),
+    });
+    const { spec } = loadFrozenHypothesisSpec({ io });
+    expect(() => resolveFrozenEligibilityBands(spec)).toThrow(/Probability bounds disagree/);
+  });
+});
+
+describe("requireOpenMarket semantics", () => {
+  it("passes 14 minutes before close and fails at/after close or missing close", () => {
+    const closeTimeMs = BASE_MS + 900_000;
+    expect(
+      evaluateOpenMarket({
+        timestampMs: closeTimeMs - 14 * 60_000,
+        closeTimeMs,
+        requireOpenMarket: true,
+      }),
+    ).toMatchObject({ openMarket: true, timeRemainingMs: 14 * 60_000 });
+
+    expect(
+      evaluateOpenMarket({
+        timestampMs: closeTimeMs,
+        closeTimeMs,
+        requireOpenMarket: true,
+      }).openMarket,
+    ).toBe(false);
+
+    expect(
+      evaluateOpenMarket({
+        timestampMs: closeTimeMs + 1,
+        closeTimeMs,
+        requireOpenMarket: true,
+      }),
+    ).toMatchObject({ openMarket: false, timeRemainingMs: -1 });
+
+    expect(
+      evaluateOpenMarket({
+        timestampMs: BASE_MS,
+        closeTimeMs: null,
+        requireOpenMarket: true,
+      }).openMarket,
+    ).toBe(false);
+
+    expect(
+      evaluateOpenMarket({
+        timestampMs: BASE_MS,
+        closeTimeMs: Number.NaN,
+        requireOpenMarket: true,
+      }).openMarket,
+    ).toBe(false);
+
+    expect(
+      evaluateOpenMarket({
+        timestampMs: closeTimeMs + 1,
+        closeTimeMs,
+        requireOpenMarket: false,
+      }).openMarket,
+    ).toBe(true);
+  });
+
+  it("does not clamp post-close quotes into the time band", async () => {
+    const btcSpots = denseHighVolBtcSpots();
+    const io = createMemoryCalibrationFadeForwardValidationIo(
+      freezeFixtureFiles({
+        [`${RUN_DIR}/capture-health.json`]: JSON.stringify({
+          runId: "run-calibration-fade",
+          config: { durationSeconds: 3600 },
+          orderbook: { validTopOfBookRecords: 1, reconnectCount: 0, sequenceGapCount: 0 },
+        }),
+        [`${RUN_DIR}/market-metadata.jsonl`]: JSON.stringify({
+          marketTicker: MARKET_A,
+          closeTime: isoAt(600_000),
+        }),
+        [`${RUN_DIR}/top-of-book.jsonl`]: topOfBookLine({
+          marketTicker: MARKET_A,
+          offsetMs: 720_000,
+          yesBid: 48,
+          yesAsk: 52,
+          noAsk: 50,
+        }),
+        [`${RUN_DIR}/btc-spot.jsonl`]: btcSpots,
+        [`${RUN_DIR}/capture-health-audit.json`]: JSON.stringify({
+          selectedRunId: "run-calibration-fade",
+          captureRunDir: RUN_DIR,
+          sourceRunIds: ["run-calibration-fade"],
+          analysisVersion: "capture-health-audit-v1",
+          inputArtifactIdentities: [],
+          summary: {
+            verdict: "capture-research-ready",
+            recommendedNextAction: "proceed-offline-microstructure-research",
+            runDurationSeconds: 3600,
+            topOfBookCount: 1,
+            btcSpotCount: 16,
+            bookState: { validBookShare: 0.99, reconnectCount: 0, sequenceGapCount: 0 },
+            btcJoin: { joinCoverageShare: 1 },
+            continuity: { p90TopOfBookGapMs: 1000 },
+          },
+        }),
+      }),
+      [RUN_DIR],
+    );
+
+    const { report } = await analyzeCalibrationFadeForwardForRun({
+      generatedAt: "2026-07-12T08:00:00.000Z",
+      outputPath: "data/research-results/calibration-fade-forward-validation.json",
+      htmlOutputPath: "data/reports/calibration-fade-forward-validation.html",
+      config: {
+        captureRunDir: RUN_DIR,
+        hypothesisConfigPath: DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH,
+        importsDir: "data/imports",
+        maximumBtcJoinAgeMs: 5000,
+        eventsOutputPath: "data/research-results/calibration-fade-forward-events.jsonl",
+        marketsOutputPath: "data/research-results/calibration-fade-forward-markets.jsonl",
+      },
+      io,
+    });
+
+    expect(report.candidateMarketCount).toBe(0);
+    expect(report.gatePassCounts.openMarket).toBe(0);
+    expect(report.qualifyingObservationCount).toBe(0);
+  });
+});
+
+describe("validated causal volatility window", () => {
+  function denseOscillatingPoints(endMs: number, stepMs = 1_000) {
+    const points = [];
+    for (let timestampMs = 0; timestampMs <= endMs; timestampMs += stepMs) {
+      const minute = Math.floor(timestampMs / 60_000);
+      points.push({
+        timestampMs,
+        receivedAtLocal: new Date(timestampMs).toISOString(),
+        priceUsd: 100_000 + (minute % 2 === 0 ? 1 : -1) * (2_000 + minute * 150),
+      });
+    }
+    return points;
+  }
+
+  it("requires 11 consecutive bars and rejects gaps / invalid prices", () => {
+    const ok = buildValidatedCausalVolatilityWindow({
+      points: denseOscillatingPoints(11 * 60_000),
+      timestampMs: 11 * 60_000,
+      barIntervalMs: 60_000,
+      lookbackBars: 10,
+      maximumSourceGapMs: 5_000,
+    });
+    expect(ok.available).toBe(true);
+    expect(ok.barCount).toBe(11);
+    expect(ok.annualizedVolatility).not.toBeNull();
+
+    const tenBars = buildValidatedCausalVolatilityWindow({
+      points: denseOscillatingPoints(9 * 60_000),
+      timestampMs: 9 * 60_000,
+      barIntervalMs: 60_000,
+      lookbackBars: 10,
+      maximumSourceGapMs: 5_000,
+    });
+    expect(tenBars.available).toBe(false);
+    expect(tenBars.rejectionReason).toMatch(/insufficient/);
+
+    const withMissingMinute = denseOscillatingPoints(11 * 60_000).filter(
+      (point) => point.timestampMs < 5 * 60_000 || point.timestampMs >= 6 * 60_000,
+    );
+    const missingMinute = buildValidatedCausalVolatilityWindow({
+      points: withMissingMinute,
+      timestampMs: 11 * 60_000,
+      barIntervalMs: 60_000,
+      lookbackBars: 10,
+      maximumSourceGapMs: 5_000,
+    });
+    expect(missingMinute.available).toBe(false);
+    expect(missingMinute.rejectionReason).toMatch(/missing-minute-bucket|source-gap-exceeded/);
+
+    const sourceGapPass = denseOscillatingPoints(11 * 60_000, 5_000);
+    const passGap = buildValidatedCausalVolatilityWindow({
+      points: sourceGapPass,
+      timestampMs: 11 * 60_000,
+      barIntervalMs: 60_000,
+      lookbackBars: 10,
+      maximumSourceGapMs: 5_000,
+    });
+    expect(passGap.available).toBe(true);
+
+    const sourceGapFail = denseOscillatingPoints(11 * 60_000, 5_001);
+    const failGap = buildValidatedCausalVolatilityWindow({
+      points: sourceGapFail,
+      timestampMs: 11 * 60_000,
+      barIntervalMs: 60_000,
+      lookbackBars: 10,
+      maximumSourceGapMs: 5_000,
+    });
+    expect(failGap.available).toBe(false);
+    expect(failGap.rejectionReason).toBe("source-gap-exceeded");
+
+    const invalidPrice = denseOscillatingPoints(11 * 60_000);
+    invalidPrice[30] = { ...invalidPrice[30]!, priceUsd: 0 };
+    expect(
+      buildValidatedCausalVolatilityWindow({
+        points: invalidPrice,
+        timestampMs: 11 * 60_000,
+        barIntervalMs: 60_000,
+        lookbackBars: 10,
+        maximumSourceGapMs: 5_000,
+      }).rejectionReason,
+    ).toBe("invalid-source-price");
+
+    // Regression: previously a 60s-only sparse series could still yield an estimate.
+    const sparseLegacy = Array.from({ length: 12 }, (_, index) => ({
+      timestampMs: index * 60_000,
+      receivedAtLocal: new Date(index * 60_000).toISOString(),
+      priceUsd: 100_000 + (index % 2 === 0 ? 2_000 : -2_000) * (index + 1),
+    }));
+    const sparse = buildValidatedCausalVolatilityWindow({
+      points: sparseLegacy,
+      timestampMs: 11 * 60_000,
+      barIntervalMs: 60_000,
+      lookbackBars: 10,
+      maximumSourceGapMs: 5_000,
+    });
+    expect(sparse.available).toBe(false);
+    expect(sparse.rejectionReason).toBe("source-gap-exceeded");
+  });
+
+  it("keeps in-progress minute bar policy and ignores future points", () => {
+    const points = denseOscillatingPoints(12 * 60_000);
+    const insideMinute = buildValidatedCausalVolatilityWindow({
+      points,
+      timestampMs: 11 * 60_000 + 30_000,
+      barIntervalMs: 60_000,
+      lookbackBars: 10,
+      maximumSourceGapMs: 5_000,
+    });
+    expect(insideMinute.available).toBe(true);
+    expect(insideMinute.includesInProgressMinuteBar).toBe(true);
+    expect(insideMinute.windowEndMs).toBe(11 * 60_000);
+
+    const onBoundary = buildValidatedCausalVolatilityWindow({
+      points: denseOscillatingPoints(11 * 60_000),
+      timestampMs: 11 * 60_000,
+      barIntervalMs: 60_000,
+      lookbackBars: 10,
+      maximumSourceGapMs: 5_000,
+    });
+    expect(onBoundary.available).toBe(true);
+    expect(onBoundary.includesInProgressMinuteBar).toBe(true);
+  });
+});
+
+describe("classification with provenance and market counts", () => {
+  function buildQualifyingMarketsFixture(marketCount: number, includeSettlements: boolean) {
+    const btcSpots = denseHighVolBtcSpots();
+    const markets = Array.from({ length: marketCount }, (_, index) => `MKT-${index}`);
+    const topOfBook = markets.map((marketTicker) =>
+      topOfBookLine({
+        marketTicker,
+        offsetMs: 720_000,
+        yesBid: 48,
+        yesAsk: 52,
+        noAsk: 50,
+      }),
+    ).join("\n");
+    const metadata = markets
+      .map((marketTicker) => JSON.stringify({ marketTicker, closeTime: isoAt(1_200_000) }))
+      .join("\n");
+    const topPath = `${RUN_DIR}/top-of-book.jsonl`;
+    const btcPath = `${RUN_DIR}/btc-spot.jsonl`;
+    const topSize = Buffer.byteLength(topOfBook, "utf8");
+    const btcSize = Buffer.byteLength(btcSpots, "utf8");
+
+    const files = freezeFixtureFiles(
+      {
+        [`${RUN_DIR}/capture-health.json`]: JSON.stringify({
+          runId: "run-calibration-fade",
+          config: { durationSeconds: 3600 },
+          connection: {
+            captureEndReason: "duration-complete",
+            terminalFailureReason: null,
+            completedNormally: true,
+          },
+          orderbook: { validTopOfBookRecords: marketCount, reconnectCount: 0, sequenceGapCount: 0 },
+        }),
+        [`${RUN_DIR}/market-metadata.jsonl`]: metadata,
+        [topPath]: topOfBook,
+        [btcPath]: btcSpots,
+        [`${RUN_DIR}/capture-health-audit.json`]: JSON.stringify({
+          selectedRunId: "run-calibration-fade",
+          captureRunDir: RUN_DIR,
+          sourceRunIds: ["run-calibration-fade"],
+          analysisVersion: "capture-health-audit-v1",
+          inputArtifactIdentities: [
+            {
+              path: topPath,
+              role: "top-of-book",
+              sizeBytes: topSize,
+              mtimeMs: topSize,
+              recordCount: marketCount,
+            },
+            {
+              path: btcPath,
+              role: "btc-spot",
+              sizeBytes: btcSize,
+              mtimeMs: btcSize,
+              recordCount: btcSpots.split("\n").length,
+            },
+          ],
+          summary: {
+            verdict: "capture-research-ready",
+            recommendedNextAction: "proceed-offline-microstructure-research",
+            runDurationSeconds: 3600,
+            topOfBookCount: marketCount,
+            btcSpotCount: btcSpots.split("\n").length,
+            bookState: { validBookShare: 0.99, reconnectCount: 0, sequenceGapCount: 0 },
+            btcJoin: { joinCoverageShare: 1 },
+            continuity: { p90TopOfBookGapMs: 1000 },
+          },
+        }),
+      },
+      {
+        minimumEvidenceRequirements: {
+          minimumIndependentCandidateMarkets: 5,
+          minimumSettlementCoverageShare: 0.8,
+          minimumValidBookShare: 0.9,
+          minimumBtcJoinCoverageShare: 0.9,
+          materialRejectionCalibrationGap: 0.05,
+          materialSupportCalibrationGap: 0.03,
+          materialExecutableNetReturnCents: 1,
+        },
+      },
+    );
+
+    // Absent discovery artifacts for the provenance path under test.
+    delete files["data/research-results/hypothesis-candidates.json"];
+
+    const dirs = [RUN_DIR, "data/imports"];
+    if (includeSettlements) {
+      for (const marketTicker of markets) {
+        dirs.push(`data/imports/KXBTC15M/${marketTicker}`);
+        files[`data/imports/KXBTC15M/${marketTicker}/import-result.json`] = JSON.stringify({
+          bronzeRecords: [
+            {
+              ticker: marketTicker,
+              contentType: "settlement",
+              payload: { market: { result: "no", settlement_ts: isoAt(700_000) } },
+            },
+          ],
+        });
+      }
+    }
+
+    return { files, dirs };
+  }
+
+  it("classifies insufficient-forward-events for 4 markets with valid manifest and no settlements", async () => {
+    const fixture = buildQualifyingMarketsFixture(4, false);
+    const io = createMemoryCalibrationFadeForwardValidationIo(fixture.files, fixture.dirs);
+    const { report } = await analyzeCalibrationFadeForwardForRun({
+      generatedAt: "2026-07-12T08:00:00.000Z",
+      outputPath: "data/research-results/calibration-fade-forward-validation.json",
+      htmlOutputPath: "data/reports/calibration-fade-forward-validation.html",
+      config: {
+        captureRunDir: RUN_DIR,
+        hypothesisConfigPath: DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH,
+        importsDir: "data/imports",
+        maximumBtcJoinAgeMs: 5000,
+        eventsOutputPath: "data/research-results/calibration-fade-forward-events.jsonl",
+        marketsOutputPath: "data/research-results/calibration-fade-forward-markets.jsonl",
+      },
+      io,
+    });
+
+    expect(report.provenance.provenanceAvailable).toBe(true);
+    expect(report.historicalBenchmark.discoveryObservationCount).toBeNull();
+    expect(report.candidateMarketCount).toBe(4);
+    expect(report.summary.interpretationClassification).toBe("insufficient-forward-events");
+  });
+
+  it("classifies settlement-coverage-incomplete for 5 markets without settlements", async () => {
+    const fixture = buildQualifyingMarketsFixture(5, false);
+    const io = createMemoryCalibrationFadeForwardValidationIo(fixture.files, fixture.dirs);
+    const { report } = await analyzeCalibrationFadeForwardForRun({
+      generatedAt: "2026-07-12T08:00:00.000Z",
+      outputPath: "data/research-results/calibration-fade-forward-validation.json",
+      htmlOutputPath: "data/reports/calibration-fade-forward-validation.html",
+      config: {
+        captureRunDir: RUN_DIR,
+        hypothesisConfigPath: DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH,
+        importsDir: "data/imports",
+        maximumBtcJoinAgeMs: 5000,
+        eventsOutputPath: "data/research-results/calibration-fade-forward-events.jsonl",
+        marketsOutputPath: "data/research-results/calibration-fade-forward-markets.jsonl",
+      },
+      io,
+    });
+
+    expect(report.candidateMarketCount).toBe(5);
+    expect(report.summary.interpretationClassification).toBe("settlement-coverage-incomplete");
+  });
+
+  it("classifies hypothesis-provenance-unavailable when manifest is invalid", async () => {
+    const fixture = buildQualifyingMarketsFixture(4, false);
+    fixture.files[PROVENANCE_PATH] = provenanceManifestContent("deadbeef");
+    const io = createMemoryCalibrationFadeForwardValidationIo(fixture.files, fixture.dirs);
+    const { report } = await analyzeCalibrationFadeForwardForRun({
+      generatedAt: "2026-07-12T08:00:00.000Z",
+      outputPath: "data/research-results/calibration-fade-forward-validation.json",
+      htmlOutputPath: "data/reports/calibration-fade-forward-validation.html",
+      config: {
+        captureRunDir: RUN_DIR,
+        hypothesisConfigPath: DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH,
+        importsDir: "data/imports",
+        maximumBtcJoinAgeMs: 5000,
+        eventsOutputPath: "data/research-results/calibration-fade-forward-events.jsonl",
+        marketsOutputPath: "data/research-results/calibration-fade-forward-markets.jsonl",
+      },
+      io,
+    });
+
+    expect(report.summary.interpretationClassification).toBe("hypothesis-provenance-unavailable");
   });
 });
 

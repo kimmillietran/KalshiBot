@@ -1,7 +1,7 @@
 {
   "hypothesisId": "atlas-volatilityProbabilityTime-vol-high-coarse-prob-1-coarse-time-early-over",
   "hypothesisVersion": "v1",
-  "description": "High (>=60% annualized BTC realized volatility) × YES implied probability [0.3, 0.7) × < 15 minutes remaining; overconfident NO fade (buy NO at executable ask, hold to settlement).",
+  "description": "High (>=60% annualized BTC realized volatility) × YES implied probability [1/3, 2/3) (exact middle thirds / coarse-prob-1) × < 15 minutes remaining; overconfident NO fade (buy NO at executable ask, hold to settlement).",
   "canonicalSourceArtifacts": [
     "data/research-results/hypothesis-candidates.json",
     "data/research-results/hypothesis-validation.json",
@@ -22,8 +22,8 @@
     },
     "probability": {
       "bucketId": "coarse-prob-1",
-      "minInclusive": 0.3,
-      "maxExclusive": 0.7,
+      "minInclusive": 0.3333333333333333,
+      "maxExclusive": 0.6666666666666666,
       "intervalInclusivity": "[minInclusive, maxExclusive)"
     },
     "timeRemainingMs": {

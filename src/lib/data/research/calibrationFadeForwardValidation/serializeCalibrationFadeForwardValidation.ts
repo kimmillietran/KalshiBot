@@ -40,6 +40,20 @@ export function serializeCalibrationFadeForwardValidationHtml(
   <h2>Frozen hypothesis</h2>
   <p>${report.hypothesisId} (${report.hypothesisVersion})</p>
   <p>Configuration hash: ${report.hypothesisConfigurationHash}</p>
+  <h2>Provenance</h2>
+  <p>Status: <strong>${report.provenance.provenanceStatus}</strong> (available=${report.provenance.provenanceAvailable})</p>
+  <p>Manifest: ${report.provenance.provenanceManifestPath ?? "none"}</p>
+  <p>Manifest hash: ${report.provenance.provenanceManifestHash ?? "none"}</p>
+  <p>Conclusion: ${report.provenance.provenanceConclusion ?? "none"}</p>
+  <p>Historical benchmark availability: ${report.provenance.historicalBenchmarkAvailability ?? "none"}</p>
+  <p>Original freeze: ${report.provenance.originalFreezeCommitSha ?? "none"} @ ${report.provenance.originalFreezeCommitTimestamp ?? "none"}</p>
+  <p>Config hashes: original=${report.provenance.originalConfigHash ?? "none"} resolved=${report.provenance.resolvedConfigHash ?? "none"}</p>
+  <pre>${stableStringify({
+    ruleFreezeEvidence: report.provenance.ruleFreezeEvidence,
+    missingArtifacts: report.provenance.missingArtifacts,
+    limitations: report.provenance.limitations,
+    integrityCorrections: report.provenance.integrityCorrections,
+  })}</pre>
   <h2>Selected run</h2>
   <p>${report.selectedRunId} — ${report.recordsScanned} records across ${report.marketsScanned} markets, ${report.candidateMarketCount} candidate markets</p>
   <h2>Sequential candidate funnel</h2>
@@ -48,6 +62,8 @@ export function serializeCalibrationFadeForwardValidationHtml(
   <h2>Independent gate pass counts</h2>
   <p class="muted">Each gate is counted independently across all scanned records.</p>
   <table><thead><tr><th>Gate</th><th>Count</th></tr></thead><tbody>${gateRows}</tbody></table>
+  <h2>Volatility window rejections</h2>
+  <pre>${stableStringify(report.volatilityWindowRejections)}</pre>
   <h2>Historical benchmark</h2>
   <pre>${stableStringify(report.historicalBenchmark)}</pre>
   <h2>Forward benchmark</h2>

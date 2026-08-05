@@ -2,7 +2,17 @@ import type { JsonlIo } from "@/lib/data/research/jsonl";
 import type { SelectedRunCaptureHealthSource } from "@/lib/data/research/selectedRunCaptureHealth";
 
 export const CALIBRATION_FADE_FORWARD_VALIDATION_VERSION =
-  "calibration-fade-forward-validation-v1";
+  "calibration-fade-forward-validation-v2";
+
+export const CALIBRATION_FADE_PROVENANCE_MANIFEST_SCHEMA =
+  "calibration-fade-hypothesis-provenance";
+export const CALIBRATION_FADE_PROVENANCE_MANIFEST_VERSION = 1;
+export const CALIBRATION_FADE_PROVENANCE_ACCEPTED_CONCLUSIONS = [
+  "defensible-with-manifest",
+] as const;
+
+export type CalibrationFadeProvenanceConclusion =
+  (typeof CALIBRATION_FADE_PROVENANCE_ACCEPTED_CONCLUSIONS)[number];
 
 export const DEFAULT_CALIBRATION_FADE_FORWARD_VALIDATION_OUTPUT_PATH =
   "data/research-results/calibration-fade-forward-validation.json";
@@ -180,12 +190,39 @@ export type CalibrationFadeFunnelStage = {
 export type CalibrationFadeGatePassCounts = {
   validBook: number;
   synchronizedBook: number;
+  openMarket: number;
   btcJoinAvailable: number;
   volatilityAvailable: number;
   highVolatility: number;
   probabilityBand: number;
   timeRemainingBand: number;
   qualifyingObservation: number;
+};
+
+export type CalibrationFadeProvenanceStatus =
+  | "valid-manifest"
+  | "missing-manifest"
+  | "malformed-manifest"
+  | "mismatched-manifest"
+  | "unsupported-manifest-version"
+  | "unacceptable-conclusion";
+
+export type CalibrationFadeProvenanceReport = {
+  provenanceAvailable: boolean;
+  provenanceStatus: CalibrationFadeProvenanceStatus;
+  provenanceManifestPath: string | null;
+  provenanceManifestHash: string | null;
+  provenanceConclusion: CalibrationFadeProvenanceConclusion | null;
+  ruleFreezeEvidence: Record<string, unknown> | null;
+  historicalBenchmarkAvailability: "available" | "unavailable" | null;
+  missingArtifacts: readonly string[];
+  limitations: readonly string[];
+  integrityCorrections: readonly Record<string, unknown>[];
+  originalFreezeCommitSha: string | null;
+  originalFreezeCommitTimestamp: string | null;
+  originalConfigHash: string | null;
+  resolvedConfigHash: string | null;
+  firstForwardEvaluationBoundary: string | null;
 };
 
 export type CalibrationFadeEventRecord = {
@@ -283,12 +320,14 @@ export type CalibrationFadeForwardValidationReport = {
   inputArtifactIdentities: readonly Record<string, unknown>[];
   selectedRunQuality: CalibrationFadeSelectedRunQuality;
   historicalBenchmark: HistoricalHypothesisBenchmark;
+  provenance: CalibrationFadeProvenanceReport;
   forwardBenchmark: CalibrationFadeCalibrationMetrics & {
     executable: CalibrationFadeExecutableMetrics;
     settlementCoverage: CalibrationFadeSettlementCoverage;
   };
   funnel: readonly CalibrationFadeFunnelStage[];
   gatePassCounts: CalibrationFadeGatePassCounts;
+  volatilityWindowRejections: Record<string, number>;
   featureCompatibility: {
     probabilityMeasureAvailable: boolean;
     volatilityMeasureAvailable: boolean;

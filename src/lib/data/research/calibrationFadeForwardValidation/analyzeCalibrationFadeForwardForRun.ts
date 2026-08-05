@@ -1,7 +1,4 @@
 import { midProbabilityFromCents } from "@/lib/features/contractPricing";
-import { estimateRealizedVolatility } from "@/lib/data/strategies/fairValueDiffusion/fairValueDiffusionModel";
-import { observationMatchesResearchAxisGroupBucket } from "@/lib/data/research/dimensions";
-import type { HypothesisAtlasGroupId } from "@/lib/data/research/hypothesisCandidates/hypothesisCandidateTypes";
 import type { MispricingObservation } from "@/lib/data/research/mispricingAtlas/mispricingAtlasTypes";
 import { computeFillCostBreakdown } from "@/lib/data/backtesting/costModel/computeFillCostBreakdown";
 import { resolveExecutionCostModel } from "@/lib/data/backtesting/costModel/resolveExecutionCostModel";
@@ -10,13 +7,21 @@ import { loadKnownSettlementsFromImports } from "@/lib/data/research/forwardSett
 
 import { preloadBtcSpotSeries } from "../btcKalshiLeadLagAnalysis/causalBtcJoin";
 import { joinPath, parseIsoTimestampMs } from "./calibrationFadeForwardValidationUtils";
+import { resolveCausalBtcPrice } from "./buildBtcCandlesCausal";
 import {
-  buildBtcCandlesUpToTimestamp,
-  resolveCausalBtcPrice,
-} from "./buildBtcCandlesCausal";
+  buildValidatedCausalVolatilityWindow,
+  type VolatilityWindowRejectionReason,
+} from "./buildValidatedCausalVolatilityWindow";
 import { classifyCalibrationFadeInterpretation } from "./classifyCalibrationFadeInterpretation";
 import { loadFrozenHypothesisSpec } from "./loadFrozenHypothesisSpec";
 import { loadSelectedRunCalibrationFadeContext } from "./loadSelectedRunCalibrationFadeContext";
+import {
+  observationMeetsFrozenEligibility,
+  probabilityInAuthoritativeBand,
+  resolveFrozenEligibilityBands,
+  timeRemainingInAuthoritativeBand,
+  volatilityInAuthoritativeBand,
+} from "./resolveFrozenEligibilityBands";
 import {
   CALIBRATION_FADE_FORWARD_VALIDATION_DISCLAIMER,
   CALIBRATION_FADE_FORWARD_VALIDATION_VERSION,
@@ -27,7 +32,6 @@ import {
   type CalibrationFadeFunnelStage,
   type CalibrationFadeGatePassCounts,
   type CalibrationFadeMarketRecord,
-  type FrozenHypothesisSpec,
 } from "./calibrationFadeForwardValidationTypes";
 import {
   isValidQuoteCents,
@@ -106,18 +110,41 @@ function parseTopOfBookLine(line: string): ParsedTopOfBook | null {
   };
 }
 
+/**
+ * Open-market gate: close known, quote strictly before close, signed timeRemainingMs > 0.
+ * Does not clamp negative remaining into eligibility.
+ */
+export function evaluateOpenMarket(input: {
+  timestampMs: number;
+  closeTimeMs: number | null | undefined;
+  requireOpenMarket: boolean;
+}): { openMarket: boolean; timeRemainingMs: number | null; closeKnown: boolean } {
+  const closeTimeMs = input.closeTimeMs;
+  if (closeTimeMs === null || closeTimeMs === undefined || !Number.isFinite(closeTimeMs)) {
+    return {
+      openMarket: !input.requireOpenMarket,
+      timeRemainingMs: null,
+      closeKnown: false,
+    };
+  }
+
+  const timeRemainingMs = closeTimeMs - input.timestampMs;
+  const openMarket = input.timestampMs < closeTimeMs && timeRemainingMs > 0;
+  return {
+    openMarket: input.requireOpenMarket ? openMarket : true,
+    timeRemainingMs,
+    closeKnown: true,
+  };
+}
+
 function buildObservation(
   quote: ParsedTopOfBook,
-  metadata: MarketMetadata | undefined,
+  timeRemainingMs: number | null,
   annualizedVolatility: number | null,
 ): MispricingObservation | null {
   if (!isValidQuoteCents(quote.yesBidCents) || !isValidQuoteCents(quote.yesAskCents)) {
     return null;
   }
-  const timeRemainingMs =
-    metadata?.closeTimeMs !== null && metadata?.closeTimeMs !== undefined
-      ? Math.max(metadata.closeTimeMs - quote.timestampMs, 0)
-      : null;
 
   return {
     strategyId: "forward-capture",
@@ -133,17 +160,6 @@ function buildObservation(
     momentumPercent: null,
     timestampMs: quote.timestampMs,
   };
-}
-
-function qualifies(
-  spec: FrozenHypothesisSpec,
-  observation: MispricingObservation,
-): boolean {
-  return observationMatchesResearchAxisGroupBucket({
-    groupId: spec.axisGroupId as HypothesisAtlasGroupId,
-    bucketId: spec.bucketId,
-    observation,
-  });
 }
 
 function computeGrossReturnCents(side: "no" | "yes", entryPriceCents: number, outcome: "yes" | "no"): number {
@@ -255,12 +271,18 @@ export async function analyzeCalibrationFadeForwardForRun(input: {
 }> {
   const captureRunDir = input.config.captureRunDir;
   const runId = resolveSelectedRunId(captureRunDir);
-  const { spec, historicalBenchmark, provenanceAvailable, warnings: provenanceWarnings } =
-    loadFrozenHypothesisSpec({
-      io: input.io,
-      hypothesisConfigPath: input.config.hypothesisConfigPath,
-      hypothesisId: input.hypothesisId,
-    });
+  const {
+    spec,
+    historicalBenchmark,
+    provenanceAvailable,
+    provenance,
+    warnings: provenanceWarnings,
+  } = loadFrozenHypothesisSpec({
+    io: input.io,
+    hypothesisConfigPath: input.config.hypothesisConfigPath,
+    hypothesisId: input.hypothesisId,
+  });
+  const bands = resolveFrozenEligibilityBands(spec);
   const context = loadSelectedRunCalibrationFadeContext({ io: input.io, captureRunDir });
   const { points: btcPoints, recordsScanned: btcRecordsScanned } = await preloadBtcSpotSeries(
     input.io,
@@ -279,8 +301,9 @@ export async function analyzeCalibrationFadeForwardForRun(input: {
           if (!marketTicker) {
             return "skip";
           }
+          const closeTimeMs = closeTime ? Date.parse(closeTime) : null;
           metadataByMarket.set(marketTicker, {
-            closeTimeMs: closeTime ? Date.parse(closeTime) : null,
+            closeTimeMs: closeTimeMs !== null && Number.isFinite(closeTimeMs) ? closeTimeMs : null,
           });
         } catch {
           return "skip";
@@ -293,6 +316,7 @@ export async function analyzeCalibrationFadeForwardForRun(input: {
   const gateCounts: CalibrationFadeGatePassCounts = {
     validBook: 0,
     synchronizedBook: 0,
+    openMarket: 0,
     btcJoinAvailable: 0,
     volatilityAvailable: 0,
     highVolatility: 0,
@@ -304,6 +328,7 @@ export async function analyzeCalibrationFadeForwardForRun(input: {
     recordsLoaded: 0,
     validBook: 0,
     synchronizedBook: 0,
+    openMarket: 0,
     btcJoinAvailable: 0,
     volatilityAvailable: 0,
     highVolatility: 0,
@@ -311,6 +336,7 @@ export async function analyzeCalibrationFadeForwardForRun(input: {
     timeRemainingBand: 0,
     qualifyingObservation: 0,
   };
+  const volatilityWindowRejections: Record<string, number> = {};
 
   let recordsScanned = 0;
   const marketsSeen = new Set<string>();
@@ -344,6 +370,24 @@ export async function analyzeCalibrationFadeForwardForRun(input: {
         gateCounts.synchronizedBook += 1;
       }
 
+      const metadata = metadataByMarket.get(quote.marketTicker);
+      const openEval = evaluateOpenMarket({
+        timestampMs: quote.timestampMs,
+        closeTimeMs: metadata?.closeTimeMs,
+        requireOpenMarket: spec.marketEligibilityRules.requireOpenMarket,
+      });
+      // Independent open-market truth: known close, strictly pre-close, positive remaining.
+      const marketIsOpen =
+        openEval.closeKnown
+        && openEval.timeRemainingMs !== null
+        && openEval.timeRemainingMs > 0
+        && metadata?.closeTimeMs !== null
+        && metadata?.closeTimeMs !== undefined
+        && quote.timestampMs < metadata.closeTimeMs;
+      if (marketIsOpen) {
+        gateCounts.openMarket += 1;
+      }
+
       const btcJoin = resolveCausalBtcPrice(
         btcPoints,
         quote.timestampMs,
@@ -353,21 +397,29 @@ export async function analyzeCalibrationFadeForwardForRun(input: {
         gateCounts.btcJoinAvailable += 1;
       }
 
-      const candles = buildBtcCandlesUpToTimestamp({
+      const volWindow = buildValidatedCausalVolatilityWindow({
         points: btcPoints,
         timestampMs: quote.timestampMs,
         barIntervalMs: spec.volatilityDefinition.returnIntervalMs,
+        lookbackBars: spec.volatilityDefinition.lookbackBars,
+        maximumSourceGapMs: spec.volatilityDefinition.maximumSourceGapMs,
       });
-      const volEstimate = estimateRealizedVolatility(candles, spec.volatilityDefinition.lookbackBars);
-      const annualizedVolatility = volEstimate?.annualizedVol ?? null;
+      const annualizedVolatility = volWindow.available ? volWindow.annualizedVolatility : null;
+      if (!volWindow.available && volWindow.rejectionReason) {
+        const reason: VolatilityWindowRejectionReason = volWindow.rejectionReason;
+        volatilityWindowRejections[reason] = (volatilityWindowRejections[reason] ?? 0) + 1;
+      }
       if (annualizedVolatility !== null) {
         gateCounts.volatilityAvailable += 1;
       }
-      if (annualizedVolatility !== null && annualizedVolatility >= spec.eligibilityRules.volatility.minInclusive) {
+      if (
+        annualizedVolatility !== null
+        && volatilityInAuthoritativeBand(annualizedVolatility, bands.volatility)
+      ) {
         gateCounts.highVolatility += 1;
       }
 
-      const observation = buildObservation(quote, metadataByMarket.get(quote.marketTicker), annualizedVolatility);
+      const observation = buildObservation(quote, openEval.timeRemainingMs, annualizedVolatility);
 
       if (sequentialPassed) {
         if (spec.marketEligibilityRules.requireValidBook && !quote.bookValid) {
@@ -381,6 +433,13 @@ export async function analyzeCalibrationFadeForwardForRun(input: {
           sequentialPassed = false;
         } else {
           sequentialFunnel.synchronizedBook += 1;
+        }
+      }
+      if (sequentialPassed) {
+        if (spec.marketEligibilityRules.requireOpenMarket && !openEval.openMarket) {
+          sequentialPassed = false;
+        } else {
+          sequentialFunnel.openMarket += 1;
         }
       }
       if (sequentialPassed) {
@@ -398,7 +457,7 @@ export async function analyzeCalibrationFadeForwardForRun(input: {
         }
       }
       if (sequentialPassed) {
-        if (annualizedVolatility! < spec.eligibilityRules.volatility.minInclusive) {
+        if (!volatilityInAuthoritativeBand(annualizedVolatility!, bands.volatility)) {
           sequentialPassed = false;
         } else {
           sequentialFunnel.highVolatility += 1;
@@ -409,25 +468,18 @@ export async function analyzeCalibrationFadeForwardForRun(input: {
         return "skip";
       }
 
-      if (
-        observation.predictedProbability >= spec.eligibilityRules.probability.minInclusive
-        && observation.predictedProbability < spec.eligibilityRules.probability.maxExclusive
-      ) {
+      if (probabilityInAuthoritativeBand(observation.predictedProbability, bands.probability)) {
         gateCounts.probabilityBand += 1;
       }
       if (
         observation.timeRemainingMs !== null
-        && observation.timeRemainingMs >= spec.eligibilityRules.timeRemainingMs.minInclusive
-        && observation.timeRemainingMs < spec.eligibilityRules.timeRemainingMs.maxExclusive
+        && timeRemainingInAuthoritativeBand(observation.timeRemainingMs, bands.timeRemainingMs)
       ) {
         gateCounts.timeRemainingBand += 1;
       }
 
       if (sequentialPassed) {
-        if (
-          observation.predictedProbability < spec.eligibilityRules.probability.minInclusive
-          || observation.predictedProbability >= spec.eligibilityRules.probability.maxExclusive
-        ) {
+        if (!probabilityInAuthoritativeBand(observation.predictedProbability, bands.probability)) {
           sequentialPassed = false;
         } else {
           sequentialFunnel.probabilityBand += 1;
@@ -436,8 +488,7 @@ export async function analyzeCalibrationFadeForwardForRun(input: {
       if (sequentialPassed) {
         if (
           observation.timeRemainingMs === null
-          || observation.timeRemainingMs < spec.eligibilityRules.timeRemainingMs.minInclusive
-          || observation.timeRemainingMs >= spec.eligibilityRules.timeRemainingMs.maxExclusive
+          || !timeRemainingInAuthoritativeBand(observation.timeRemainingMs, bands.timeRemainingMs)
         ) {
           sequentialPassed = false;
         } else {
@@ -448,9 +499,11 @@ export async function analyzeCalibrationFadeForwardForRun(input: {
       const bookEligible =
         (!spec.marketEligibilityRules.requireValidBook || quote.bookValid)
         && (!spec.marketEligibilityRules.requireSynchronizedBook || quote.bookSynchronized)
-        && (!spec.marketEligibilityRules.requireBtcJoin || btcJoin.joined);
+        && (!spec.marketEligibilityRules.requireBtcJoin || btcJoin.joined)
+        && (!spec.marketEligibilityRules.requireOpenMarket || openEval.openMarket);
 
-      const eligible = bookEligible && qualifies(spec, observation);
+      const axisEligible = observationMeetsFrozenEligibility({ observation, bands });
+      const eligible = bookEligible && axisEligible;
       if (sequentialPassed && eligible) {
         sequentialFunnel.qualifyingObservation += 1;
       }
@@ -605,6 +658,7 @@ export async function analyzeCalibrationFadeForwardForRun(input: {
     { stageId: "records-loaded", label: "Records loaded", count: sequentialFunnel.recordsLoaded },
     { stageId: "valid-book", label: "Valid book (sequential)", count: sequentialFunnel.validBook },
     { stageId: "synchronized-book", label: "Synchronized book (sequential)", count: sequentialFunnel.synchronizedBook },
+    { stageId: "open-market", label: "Open market (sequential)", count: sequentialFunnel.openMarket },
     { stageId: "btc-join-available", label: "BTC join available (sequential)", count: sequentialFunnel.btcJoinAvailable },
     { stageId: "volatility-available", label: "Volatility available (sequential)", count: sequentialFunnel.volatilityAvailable },
     { stageId: "high-volatility", label: "High volatility (sequential)", count: sequentialFunnel.highVolatility },
@@ -628,6 +682,7 @@ export async function analyzeCalibrationFadeForwardForRun(input: {
 
   const warnings = [
     ...provenanceWarnings,
+    ...provenance.limitations,
     ...context.warnings,
     ...settlementSource.warnings,
     suppressedDuplicateCount > 0
@@ -663,6 +718,7 @@ export async function analyzeCalibrationFadeForwardForRun(input: {
     inputArtifactIdentities: context.inputArtifactIdentities,
     selectedRunQuality: context.selectedRunQuality,
     historicalBenchmark,
+    provenance,
     forwardBenchmark: {
       ...metrics.calibration,
       executable: metrics.executable,
@@ -670,6 +726,7 @@ export async function analyzeCalibrationFadeForwardForRun(input: {
     },
     funnel,
     gatePassCounts: gateCounts,
+    volatilityWindowRejections,
     featureCompatibility: {
       probabilityMeasureAvailable: true,
       volatilityMeasureAvailable: gateCounts.volatilityAvailable > 0,

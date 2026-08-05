@@ -7,7 +7,12 @@ import type {
 } from "@/lib/data/research/calibrationFadeForwardValidation/calibrationFadeForwardValidationTypes";
 import {
   CalibrationFadeForwardValidationError,
+  CALIBRATION_FADE_PROVENANCE_MANIFEST_SCHEMA,
+  CALIBRATION_FADE_PROVENANCE_MANIFEST_VERSION,
   DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH,
+  deriveProvenanceManifestPath,
+  loadFrozenHypothesisSpec,
+  createMemoryCalibrationFadeForwardValidationIo,
 } from "@/lib/data/research/calibrationFadeForwardValidation";
 
 import { analyzeCalibrationFadeCrossRun } from "./analyzeCalibrationFadeCrossRun";
@@ -26,9 +31,9 @@ const RUN2 = "data/live-capture/forward-quotes/2026-07-12T10-18-27-409Z";
 const RUN3 = "data/live-capture/forward-quotes/2026-07-13T00-00-00-000Z";
 const HYPOTHESIS_ID =
   "atlas-volatilityProbabilityTime-vol-high-coarse-prob-1-coarse-time-early-over";
-const HYPOTHESIS_HASH = "76336405";
+const PROVENANCE_PATH = deriveProvenanceManifestPath(DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH);
 
-function freezeSpecContent(hashNote = HYPOTHESIS_HASH): string {
+function freezeSpecContent(): string {
   return JSON.stringify({
     hypothesisId: HYPOTHESIS_ID,
     hypothesisVersion: "v1",
@@ -42,7 +47,7 @@ function freezeSpecContent(hashNote = HYPOTHESIS_HASH): string {
     suggestedStrategyFamily: "calibration-no-fade",
     eligibilityRules: {
       volatility: { bucketId: "vol-high", minInclusive: 0.6, maxExclusive: null },
-      probability: { bucketId: "coarse-prob-1", minInclusive: 0.3, maxExclusive: 0.7 },
+      probability: { bucketId: "coarse-prob-1", minInclusive: 1 / 3, maxExclusive: 2 / 3 },
       timeRemainingMs: { bucketId: "coarse-time-early", minInclusive: 0, maxExclusive: 900000 },
     },
     probabilityMeasure: { id: "yes-bid-ask-midpoint", definition: "mid", formula: "mid" },
@@ -82,11 +87,63 @@ function freezeSpecContent(hashNote = HYPOTHESIS_HASH): string {
       materialExecutableNetReturnCents: 1,
     },
     classificationRules: { precedence: ["insufficient-forward-events"] },
-    _fixtureNote: hashNote,
   });
 }
 
+function hypothesisProvenanceFiles(): Record<string, string> {
+  const freeze = freezeSpecContent();
+  const tempIo = createMemoryCalibrationFadeForwardValidationIo({
+    [DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH]: freeze,
+    [PROVENANCE_PATH]: JSON.stringify({
+      schema: CALIBRATION_FADE_PROVENANCE_MANIFEST_SCHEMA,
+      version: CALIBRATION_FADE_PROVENANCE_MANIFEST_VERSION,
+      hypothesisId: HYPOTHESIS_ID,
+      sourceCandidateId: HYPOTHESIS_ID,
+      configPath: DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH,
+      originalFreezeCommitSha: "f2598cf960472f368cd6ad25f67d4c97a3b3956e",
+      originalFreezeCommitTimestamp: "2026-07-12T01:54:04-07:00",
+      originalConfigHash: "76336405",
+      resolvedConfigHash: "00000000",
+      firstForwardEvaluationBoundary: "before first forward capture",
+      conclusion: "defensible-with-manifest",
+      ruleFreezeEvidence: { kind: "repository-history" },
+      historicalBenchmarkAvailability: "unavailable",
+      missingArtifacts: [],
+      limitations: [],
+      integrityCorrections: [],
+    }),
+  });
+  const hash = loadFrozenHypothesisSpec({ io: tempIo }).spec.configurationHash;
+  return {
+    [DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH]: freeze,
+    [PROVENANCE_PATH]: JSON.stringify({
+      schema: CALIBRATION_FADE_PROVENANCE_MANIFEST_SCHEMA,
+      version: CALIBRATION_FADE_PROVENANCE_MANIFEST_VERSION,
+      hypothesisId: HYPOTHESIS_ID,
+      sourceCandidateId: HYPOTHESIS_ID,
+      configPath: DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH,
+      originalFreezeCommitSha: "f2598cf960472f368cd6ad25f67d4c97a3b3956e",
+      originalFreezeCommitTimestamp: "2026-07-12T01:54:04-07:00",
+      originalConfigHash: "76336405",
+      resolvedConfigHash: hash,
+      firstForwardEvaluationBoundary: "before first forward capture",
+      conclusion: "defensible-with-manifest",
+      ruleFreezeEvidence: { kind: "repository-history" },
+      historicalBenchmarkAvailability: "unavailable",
+      missingArtifacts: [],
+      limitations: [],
+      integrityCorrections: [],
+    }),
+    "data/research-results/hypothesis-candidates.json": hypothesisCandidatesFixture(),
+  };
+}
+
+const HYPOTHESIS_HASH = loadFrozenHypothesisSpec({
+  io: createMemoryCalibrationFadeForwardValidationIo(hypothesisProvenanceFiles()),
+}).spec.configurationHash;
+
 function hypothesisCandidatesFixture() {
+
   return JSON.stringify({
     candidates: [
       {
@@ -135,7 +192,7 @@ function stubReport(input: {
   researchReadyVerified?: boolean;
 }): CalibrationFadeForwardValidationReport {
   return {
-    analysisVersion: "calibration-fade-forward-validation-v1",
+    analysisVersion: "calibration-fade-forward-validation-v2",
     analysisScope: "selected-run",
     selectedRunId: input.runId,
     selectedRunDirectory: input.runDir,
@@ -236,12 +293,31 @@ function stubReport(input: {
     gatePassCounts: {
       validBook: 0,
       synchronizedBook: 0,
+      openMarket: 0,
       btcJoinAvailable: 0,
       volatilityAvailable: 0,
       highVolatility: 0,
       probabilityBand: 0,
       timeRemainingBand: 0,
       qualifyingObservation: input.qualifyingObservationCount,
+    },
+    volatilityWindowRejections: {},
+    provenance: {
+      provenanceAvailable: true,
+      provenanceStatus: "valid-manifest",
+      provenanceManifestPath: "config/research/hypotheses/provenance/high-volatility-late-market-calibration-fade-v1.json",
+      provenanceManifestHash: "stub",
+      provenanceConclusion: "defensible-with-manifest",
+      ruleFreezeEvidence: {},
+      historicalBenchmarkAvailability: "unavailable",
+      missingArtifacts: [],
+      limitations: [],
+      integrityCorrections: [],
+      originalFreezeCommitSha: "f2598cf960472f368cd6ad25f67d4c97a3b3956e",
+      originalFreezeCommitTimestamp: "2026-07-12T01:54:04-07:00",
+      originalConfigHash: "76336405",
+      resolvedConfigHash: "a632ef85",
+      firstForwardEvaluationBoundary: "before first forward capture",
     },
     featureCompatibility: {
       probabilityMeasureAvailable: true,
@@ -551,8 +627,7 @@ describe("analyzeCalibrationFadeCrossRun real-run-shaped fixture", () => {
     const mutableSingleRunPath = "data/research-results/calibration-fade-forward-validation.json";
     const io = createMemoryCalibrationFadeCrossRunValidationIo(
       {
-        [DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH]: freezeSpecContent(),
-        "data/research-results/hypothesis-candidates.json": hypothesisCandidatesFixture(),
+        ...hypothesisProvenanceFiles(),
         [mutableSingleRunPath]: JSON.stringify({ shouldNeverBeRead: true }),
         [RUN1]: "",
         [RUN2]: "",
@@ -689,8 +764,7 @@ describe("analyzeCalibrationFadeCrossRun real-run-shaped fixture", () => {
   it("counts overlapping markets once and attributes return to earliest run", async () => {
     const io = createMemoryCalibrationFadeCrossRunValidationIo(
       {
-        [DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH]: freezeSpecContent(),
-        "data/research-results/hypothesis-candidates.json": hypothesisCandidatesFixture(),
+        ...hypothesisProvenanceFiles(),
         [`${RUN1}/top-of-book.jsonl`]: "{}",
         [`${RUN2}/top-of-book.jsonl`]: "{}",
       },
@@ -759,8 +833,7 @@ describe("analyzeCalibrationFadeCrossRun real-run-shaped fixture", () => {
   it("fails closed on hypothesis hash mismatch", async () => {
     const io = createMemoryCalibrationFadeCrossRunValidationIo(
       {
-        [DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH]: freezeSpecContent(),
-        "data/research-results/hypothesis-candidates.json": hypothesisCandidatesFixture(),
+        ...hypothesisProvenanceFiles(),
       },
       [RUN1, RUN2],
     );
@@ -803,8 +876,7 @@ describe("analyzeCalibrationFadeCrossRun real-run-shaped fixture", () => {
   it("rejects the July 20 gappy run set instead of asking for more data", async () => {
     const io = createMemoryCalibrationFadeCrossRunValidationIo(
       {
-        [DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH]: freezeSpecContent(),
-        "data/research-results/hypothesis-candidates.json": hypothesisCandidatesFixture(),
+        ...hypothesisProvenanceFiles(),
       },
       [RUN1, RUN2],
     );
@@ -883,8 +955,7 @@ describe("analyzeCalibrationFadeCrossRun real-run-shaped fixture", () => {
   it("fails closed on malformed candidate market rows with run and line attribution", async () => {
     const io = createMemoryCalibrationFadeCrossRunValidationIo(
       {
-        [DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH]: freezeSpecContent(),
-        "data/research-results/hypothesis-candidates.json": hypothesisCandidatesFixture(),
+        ...hypothesisProvenanceFiles(),
       },
       [RUN1, RUN2],
     );
@@ -947,8 +1018,7 @@ describe("analyzeCalibrationFadeCrossRun real-run-shaped fixture", () => {
   it("ignores blank candidate JSONL rows without failing closed", async () => {
     const io = createMemoryCalibrationFadeCrossRunValidationIo(
       {
-        [DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH]: freezeSpecContent(),
-        "data/research-results/hypothesis-candidates.json": hypothesisCandidatesFixture(),
+        ...hypothesisProvenanceFiles(),
       },
       [RUN1, RUN2],
     );
@@ -998,8 +1068,7 @@ describe("analyzeCalibrationFadeCrossRun real-run-shaped fixture", () => {
   it("preserves invalid selected runs in the ledger instead of silently subsetting", async () => {
     const io = createMemoryCalibrationFadeCrossRunValidationIo(
       {
-        [DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH]: freezeSpecContent(),
-        "data/research-results/hypothesis-candidates.json": hypothesisCandidatesFixture(),
+        ...hypothesisProvenanceFiles(),
       },
       [RUN1, RUN2],
     );
@@ -1070,8 +1139,7 @@ describe("analyzeCalibrationFadeCrossRun real-run-shaped fixture", () => {
   it("keeps failed selected runs in their original operator position", async () => {
     const io = createMemoryCalibrationFadeCrossRunValidationIo(
       {
-        [DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH]: freezeSpecContent(),
-        "data/research-results/hypothesis-candidates.json": hypothesisCandidatesFixture(),
+        ...hypothesisProvenanceFiles(),
       },
       [RUN1, RUN2, RUN3],
     );
@@ -1131,8 +1199,7 @@ describe("analyzeCalibrationFadeCrossRun real-run-shaped fixture", () => {
   it("fails closed on a syntactically valid candidate row with an invalid shape", async () => {
     const io = createMemoryCalibrationFadeCrossRunValidationIo(
       {
-        [DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH]: freezeSpecContent(),
-        "data/research-results/hypothesis-candidates.json": hypothesisCandidatesFixture(),
+        ...hypothesisProvenanceFiles(),
       },
       [RUN1, RUN2],
     );
@@ -1202,8 +1269,7 @@ describe("analyzeCalibrationFadeCrossRun real-run-shaped fixture", () => {
   it("blocks formal use when a ready verdict lacks verified provenance", async () => {
     const io = createMemoryCalibrationFadeCrossRunValidationIo(
       {
-        [DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH]: freezeSpecContent(),
-        "data/research-results/hypothesis-candidates.json": hypothesisCandidatesFixture(),
+        ...hypothesisProvenanceFiles(),
       },
       [RUN1, RUN2],
     );
