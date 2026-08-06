@@ -72,7 +72,10 @@ export function serializeCausalFeatureEquivalenceAuditHtml(
 
   <h2>2. Historical evidence</h2>
   <p>Evidence path: ${escapeHtml(report.auditEvidencePath)}</p>
-  <p>Evidence hash (sha256): ${escapeHtml(report.auditEvidenceHash)}</p>
+  <p>Evidence document hash (sha256): ${escapeHtml(report.auditEvidenceHash)}</p>
+  <p>Historical contract semantic hash: ${escapeHtml(report.historicalContractSemanticHash)}</p>
+  <p>Current forward contract semantic hash: ${escapeHtml(report.currentForwardContractSemanticHash)}</p>
+  <p>Hypothesis configuration hash: ${escapeHtml(report.hypothesisConfigurationHash)}</p>
   <p>Git history is not executed at runtime; claims were reviewed and committed as audit evidence.</p>
 
   <h2>3. Historical contract</h2>
@@ -90,6 +93,7 @@ export function serializeCausalFeatureEquivalenceAuditHtml(
   <h2>6. BTC cadence</h2>
   <p>Source records: ${report.btcSourceDiagnostics.sourceRecordCount}; intervals: ${report.btcSourceDiagnostics.observedIntervalCount}</p>
   <p>p50/p90/p95/p99 interval ms: ${report.btcSourceDiagnostics.p50IntervalMs} / ${report.btcSourceDiagnostics.p90IntervalMs} / ${report.btcSourceDiagnostics.p95IntervalMs} / ${report.btcSourceDiagnostics.p99IntervalMs}</p>
+  <p>Cumulative interval threshold counts (${escapeHtml(report.btcSourceDiagnostics.thresholdCountSemantics)}): each adjacent gap increments every applicable exceedance row (a 6001&nbsp;ms gap counts toward &gt;5000, &gt;5001, &gt;5100, &gt;5500, and &gt;6000).</p>
   <table>
     <thead><tr><th>Threshold</th><th>Count</th><th>Share</th></tr></thead>
     <tbody>${bins}</tbody>

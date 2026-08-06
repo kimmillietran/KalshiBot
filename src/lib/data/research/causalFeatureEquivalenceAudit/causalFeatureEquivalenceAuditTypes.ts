@@ -219,6 +219,9 @@ export type ThresholdBinStats = {
   share: number | null;
 };
 
+/** Interval threshold bins count each gap toward every applicable exceedance row. */
+export type ThresholdCountSemantics = "cumulative-overlapping";
+
 export type GapExample = {
   fromTimestampMs: number;
   toTimestampMs: number;
@@ -245,6 +248,11 @@ export type BtcSourceDiagnostics = {
   p90IntervalMs: number | null;
   p95IntervalMs: number | null;
   p99IntervalMs: number | null;
+  /**
+   * Cumulative overlapping threshold counts: a single gap contributes to every
+   * applicable exceedance row (e.g. 6001ms increments >5000, >5001, >5100, >5500, >6000).
+   */
+  thresholdCountSemantics: ThresholdCountSemantics;
   thresholdBins: readonly ThresholdBinStats[];
   longestGapExamples: readonly GapExample[];
   runStartBoundaryCoverageMs: number | null;
@@ -361,6 +369,10 @@ export type CausalFeatureEquivalenceAuditReport = {
   hypothesisConfigurationHash: string;
   auditEvidencePath: string;
   auditEvidenceHash: string;
+  /** Stable semantic hash of normalized historicalContract (excludes generatedAt/paths/warnings). */
+  historicalContractSemanticHash: string;
+  /** Stable semantic hash of normalized currentForwardContract. */
+  currentForwardContractSemanticHash: string;
   historicalEvidenceStatus: HistoricalEvidenceStatus;
   historicalContract: VolatilityFeatureContract;
   currentForwardContract: VolatilityFeatureContract;

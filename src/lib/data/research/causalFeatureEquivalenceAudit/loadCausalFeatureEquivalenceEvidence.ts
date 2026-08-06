@@ -15,6 +15,34 @@ import {
 
 const FULL_SHA_RE = /^[0-9a-f]{40}$/i;
 
+const EVIDENCE_TOP_LEVEL_KEYS = [
+  "schema",
+  "version",
+  "auditId",
+  "hypothesisId",
+  "hypothesisConfigurationHash",
+  "freezeCommitSha",
+  "freezeCommitTimestamp",
+  "runtimeGitPolicy",
+  "claims",
+  "unresolvedAmbiguities",
+  "limitations",
+] as const;
+
+const EVIDENCE_CLAIM_KEYS = [
+  "claimId",
+  "claim",
+  "status",
+  "commitSha",
+  "path",
+  "blobSha",
+  "symbol",
+  "contractField",
+  "value",
+  "summary",
+  "limitations",
+] as const;
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -25,6 +53,20 @@ function isEvidenceStatus(value: unknown): value is EvidenceStatus {
 
 function isContractField(value: unknown): value is VolatilityContractField {
   return typeof value === "string" && (VOLATILITY_CONTRACT_FIELDS as readonly string[]).includes(value);
+}
+
+function rejectUnknownKeys(
+  record: Record<string, unknown>,
+  allowlist: readonly string[],
+  path: string,
+): void {
+  const allowed = new Set(allowlist);
+  for (const key of Object.keys(record)) {
+    if (!allowed.has(key)) {
+      const fieldPath = path.length === 0 ? key : `${path}.${key}`;
+      throw new CausalFeatureEquivalenceAuditError(`Unknown evidence field: ${fieldPath}`);
+    }
+  }
 }
 
 function requireString(record: Record<string, unknown>, key: string, path: string): string {
@@ -47,6 +89,9 @@ function parseClaim(raw: unknown, index: number): EvidenceClaim {
   if (!isRecord(raw)) {
     throw new CausalFeatureEquivalenceAuditError(`claims[${index}] must be an object`);
   }
+  // Fail closed on unknown keys before reading allowlisted fields (no strip-via-destructure).
+  rejectUnknownKeys(raw, EVIDENCE_CLAIM_KEYS, `claims[${index}]`);
+
   const claimId = requireString(raw, "claimId", `claims[${index}]`);
   const claim = requireString(raw, "claim", `claims[${index}]`);
   const statusRaw = raw.status;
@@ -58,15 +103,11 @@ function parseClaim(raw: unknown, index: number): EvidenceClaim {
   const summary = requireString(raw, "summary", `claims[${index}]`);
   const limitations = requireStringArray(raw, "limitations", `claims[${index}]`);
 
-  const commitSha =
-    raw.commitSha === null || raw.commitSha === undefined
-      ? null
-      : typeof raw.commitSha === "string"
-        ? raw.commitSha
-        : null;
   if (raw.commitSha !== null && raw.commitSha !== undefined && typeof raw.commitSha !== "string") {
     throw new CausalFeatureEquivalenceAuditError(`claims[${index}].commitSha must be string or null`);
   }
+  const commitSha =
+    raw.commitSha === null || raw.commitSha === undefined ? null : (raw.commitSha as string);
   if (commitSha !== null && !FULL_SHA_RE.test(commitSha)) {
     throw new CausalFeatureEquivalenceAuditError(
       `claims[${index}].commitSha is malformed: ${commitSha}`,
@@ -96,16 +137,16 @@ function parseClaim(raw: unknown, index: number): EvidenceClaim {
       `claims[${index}].blobSha is malformed: ${blobSha}`,
     );
   }
+  if (raw.symbol !== null && raw.symbol !== undefined && typeof raw.symbol !== "string") {
+    throw new CausalFeatureEquivalenceAuditError(`claims[${index}].symbol must be string or null`);
+  }
   const symbol =
-    raw.symbol === null || raw.symbol === undefined
-      ? null
-      : typeof raw.symbol === "string"
-        ? raw.symbol
-        : (() => {
-            throw new CausalFeatureEquivalenceAuditError(
-              `claims[${index}].symbol must be string or null`,
-            );
-          })();
+    raw.symbol === null || raw.symbol === undefined ? null : (raw.symbol as string);
+  if (typeof symbol === "string" && symbol.trim().length === 0) {
+    throw new CausalFeatureEquivalenceAuditError(
+      `claims[${index}].symbol must be null (file-level scope) or a non-empty string`,
+    );
+  }
 
   const contractField =
     raw.contractField === null || raw.contractField === undefined
@@ -130,24 +171,27 @@ function parseClaim(raw: unknown, index: number): EvidenceClaim {
     );
   }
 
+  // Nested objects are not part of the claim schema; value must be scalar/null.
+  if (isRecord(value)) {
+    throw new CausalFeatureEquivalenceAuditError(
+      `Unknown evidence field: claims[${index}].value (nested object)`,
+    );
+  }
+
   if (statusRaw === "proven-by-executable-code") {
     if (!commitSha || !path || !blobSha) {
       throw new CausalFeatureEquivalenceAuditError(
         `claims[${index}] (${claimId}) proven-by-executable-code requires commitSha, path, and blobSha`,
       );
     }
-    if (!symbol && path.length === 0) {
+  }
+
+  if (statusRaw === "inferred-from-call-chain") {
+    if (!commitSha || !path) {
       throw new CausalFeatureEquivalenceAuditError(
-        `claims[${index}] (${claimId}) proven-by-executable-code requires symbol or file-level scope`,
+        `claims[${index}] (${claimId}) inferred-from-call-chain requires commitSha and path`,
       );
     }
-    if (symbol === null || symbol.trim().length === 0) {
-      // File-level scope is allowed when symbol is explicitly null only if path is present;
-      // require an explicit non-empty symbol OR an explicit sentinel in summary is overkill —
-      // milestone: "symbol or explicit file-level scope". Treat non-null empty as fail; null with path OK.
-    }
-    // Require either a non-empty symbol or explicit file-level scope via symbol === null with path.
-    // proven claims without symbol are allowed as file-level when symbol is null.
   }
 
   return {
@@ -193,7 +237,8 @@ export function findConflictingProvenContractFields(
 
 /**
  * Strictly validates and loads the committed historical-evidence document.
- * Fail-closed on schema/version/identity/hash/SHA/proven-field problems.
+ * Fail-closed on schema/version/identity/hash/SHA/proven-field problems and on
+ * any unknown top-level, claim, or nested keys.
  * Does not execute Git.
  */
 export function loadCausalFeatureEquivalenceEvidence(input: {
@@ -211,6 +256,8 @@ export function loadCausalFeatureEquivalenceEvidence(input: {
   if (!isRecord(parsed)) {
     throw new CausalFeatureEquivalenceAuditError("Evidence document must be a JSON object");
   }
+
+  rejectUnknownKeys(parsed, EVIDENCE_TOP_LEVEL_KEYS, "");
 
   const schema = requireString(parsed, "schema", "evidence");
   if (schema !== CAUSAL_FEATURE_EQUIVALENCE_EVIDENCE_SCHEMA) {

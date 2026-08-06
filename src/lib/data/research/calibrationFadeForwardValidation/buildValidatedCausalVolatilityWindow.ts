@@ -22,6 +22,33 @@ export const VOLATILITY_WINDOW_REJECTION_REASONS = [
 
 export type VolatilityWindowRejectionReason = (typeof VOLATILITY_WINDOW_REJECTION_REASONS)[number];
 
+/**
+ * Immutable semantic descriptors shared by the production window builder and the
+ * causal-feature-equivalence current-forward contract descriptor. Changing these
+ * strings without updating production behavior is a contract drift bug.
+ */
+export const CAUSAL_VOLATILITY_WINDOW_CONTRACT_SEMANTICS = {
+  sourceRecordType: "btc-spot-jsonl-points",
+  timestampField: "exchangeTimestampMs??receivedAtMs",
+  timestampMeaning: "exchange-preferred-else-received-at-local",
+  quoteMinuteInclusionPolicy: "include-in-progress-minute-when-sampled",
+  missingMinuteBehavior: "reject-missing-minute-bucket-no-fill",
+  sourceGapDefinition:
+    "adjacent-source-points-including-start-boundary-internal-and-trailing-to-quote",
+  startBoundaryHandling:
+    "predecessor-or-window-start-to-first-selected-point-must-be-within-maximumSourceGapMs",
+  internalGapHandling: "adjacent-selected-source-gaps-must-be-within-maximumSourceGapMs",
+  trailingGapHandling: "last-selected-source-to-quote-must-be-within-maximumSourceGapMs",
+  duplicateHandling: "exact-timestamp-price-collapse-conflicting-price-reject",
+  orderingHandling: "reject-non-ascending-input-no-resort",
+  invalidPriceHandling: "reject-non-finite-or-non-positive-in-window-scope",
+  futureSampleHandling: "exclude-points-after-quote-never-used",
+  quoteJoinAgeRole: "spot-join-staleness-gate-not-vol-source-gap",
+} as const;
+
+export type CausalVolatilityWindowContractSemantics =
+  typeof CAUSAL_VOLATILITY_WINDOW_CONTRACT_SEMANTICS;
+
 export type ValidatedCausalVolatilityWindow = {
   available: boolean;
   candles: readonly EvaluationCandleSnapshot[];
@@ -105,6 +132,26 @@ type OrderedSeries = {
   duplicatePointCount: number;
 };
 
+export type CausalVolatilitySourceIntegrity =
+  | {
+      ok: true;
+      points: readonly BtcSpotPoint[];
+      duplicatePointCount: number;
+      /** Raw points examined while ordering the full series (exactly once). */
+      pointsExamined: number;
+    }
+  | {
+      ok: false;
+      rejectionReason: Extract<
+        VolatilityWindowRejectionReason,
+        "non-ascending-timestamps" | "conflicting-duplicate-timestamp"
+      >;
+      /** Index in the raw input where the first integrity defect was observed. */
+      firstDefectRawIndex: number;
+      pointsExamined: number;
+      duplicatePointCount: number;
+    };
+
 /**
  * Enforces ascending finite timestamps and applies duplicate policy B: exact
  * duplicate timestamp+price pairs collapse into a single point, while two
@@ -112,25 +159,64 @@ type OrderedSeries = {
  *
  * Non-finite point timestamps cannot be ordered at all, so they are reported as
  * an ordering violation.
+ *
+ * Additive export of the same semantics used by buildValidatedCausalVolatilityWindow
+ * so audits can precompute full-series integrity once (O(M)) without changing
+ * production window behavior.
  */
-function orderSeries(
+export function orderCausalVolatilitySourcePoints(
   points: readonly BtcSpotPoint[],
 ): OrderedSeries | VolatilityWindowRejectionReason {
+  const integrity = precomputeCausalVolatilitySourceIntegrity(points);
+  if (!integrity.ok) {
+    return integrity.rejectionReason;
+  }
+  return { points: integrity.points, duplicatePointCount: integrity.duplicatePointCount };
+}
+
+/**
+ * Full-series causal-prefix integrity used by production-faithful attribution.
+ * Scans each raw point exactly once; does not copy per quote.
+ */
+export function precomputeCausalVolatilitySourceIntegrity(
+  points: readonly BtcSpotPoint[],
+): CausalVolatilitySourceIntegrity {
   const ordered: BtcSpotPoint[] = [];
   let duplicatePointCount = 0;
+  let pointsExamined = 0;
 
-  for (const point of points) {
+  for (let rawIndex = 0; rawIndex < points.length; rawIndex += 1) {
+    const point = points[rawIndex]!;
+    pointsExamined += 1;
     if (!Number.isFinite(point.timestampMs)) {
-      return "non-ascending-timestamps";
+      return {
+        ok: false,
+        rejectionReason: "non-ascending-timestamps",
+        firstDefectRawIndex: rawIndex,
+        pointsExamined,
+        duplicatePointCount,
+      };
     }
     const previous = ordered[ordered.length - 1];
     if (previous) {
       if (point.timestampMs < previous.timestampMs) {
-        return "non-ascending-timestamps";
+        return {
+          ok: false,
+          rejectionReason: "non-ascending-timestamps",
+          firstDefectRawIndex: rawIndex,
+          pointsExamined,
+          duplicatePointCount,
+        };
       }
       if (point.timestampMs === previous.timestampMs) {
         if (!Object.is(point.priceUsd, previous.priceUsd)) {
-          return "conflicting-duplicate-timestamp";
+          return {
+            ok: false,
+            rejectionReason: "conflicting-duplicate-timestamp",
+            firstDefectRawIndex: rawIndex,
+            pointsExamined,
+            duplicatePointCount,
+          };
         }
         duplicatePointCount += 1;
         continue;
@@ -139,9 +225,19 @@ function orderSeries(
     ordered.push(point);
   }
 
-  return { points: ordered, duplicatePointCount };
+  return {
+    ok: true,
+    points: ordered,
+    duplicatePointCount,
+    pointsExamined,
+  };
 }
 
+function orderSeries(
+  points: readonly BtcSpotPoint[],
+): OrderedSeries | VolatilityWindowRejectionReason {
+  return orderCausalVolatilitySourcePoints(points);
+}
 function buildMinuteCandles(
   points: readonly BtcSpotPoint[],
   barIntervalMs: number,

@@ -119,8 +119,8 @@
       ]
     },
     {
-      "claimId": "maximum-source-gap-declared-unused",
-      "claim": "maximumSourceGapMs=5000 was declared in frozen config and typed/loaded, but was never read by the executable volatility path at freeze (metadata only).",
+      "claimId": "maximum-source-gap-declared-value",
+      "claim": "maximumSourceGapMs=5000 was declared in frozen hypothesis config.",
       "status": "declared-by-frozen-config",
       "commitSha": "f2598cf960472f368cd6ad25f67d4c97a3b3956e",
       "path": "config/research/hypotheses/high-volatility-late-market-calibration-fade-v1.json",
@@ -128,10 +128,26 @@
       "symbol": "volatilityDefinition.maximumSourceGapMs",
       "contractField": "sourceGapThresholdMs",
       "value": 5000,
-      "summary": "Repo-wide at freeze: four grep hits (config, types, loader, fixture). Zero reads in candle build, vol estimate, or eligibility.",
+      "summary": "Frozen config declares maximumSourceGapMs=5000 as metadata on volatilityDefinition.",
       "limitations": [
-        "Declared value does not establish executable adjacent-source-gap semantics.",
-        "Intended meaning of maximumSourceGapMs (unused metadata vs intended adjacent-gap rule) cannot be uniquely determined."
+        "Declared value alone does not establish executable adjacent-source-gap semantics."
+      ]
+    },
+    {
+      "claimId": "maximum-source-gap-unused-at-freeze",
+      "claim": "At freeze time, the executable volatility path did not read volatilityDefinition.maximumSourceGapMs.",
+      "status": "inferred-from-call-chain",
+      "commitSha": "f2598cf960472f368cd6ad25f67d4c97a3b3956e",
+      "path": "src/lib/data/research/calibrationFadeForwardValidation/buildBtcCandlesCausal.ts",
+      "blobSha": "186d54241c795149928604400efb652534538577",
+      "symbol": "buildBtcCandlesUpToTimestamp",
+      "contractField": "sourceGapThresholdMs",
+      "value": null,
+      "summary": "Freeze-forward candles were rebuilt via buildBtcCandlesUpToTimestamp then estimateRealizedVolatility without reading maximumSourceGapMs. Repo-wide at freeze: config/types/loader/fixture references only; zero executable reads in candle build, vol estimate, or eligibility.",
+      "limitations": [
+        "Inferred from freeze-commit call chain and repo-wide reference scan; not a dynamic runtime Git re-verification.",
+        "Intended meaning of maximumSourceGapMs (unused metadata vs intended adjacent-gap rule) cannot be uniquely determined.",
+        "Does not establish an executable historical adjacent-source-gap contract."
       ]
     },
     {

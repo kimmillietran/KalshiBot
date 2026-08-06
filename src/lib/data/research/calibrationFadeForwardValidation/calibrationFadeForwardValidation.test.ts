@@ -2259,6 +2259,54 @@ describe("validated causal volatility window", () => {
     expect(insideMinute.windowEndMs).toBe(QUOTE_MS);
     expect(insideMinute.lastSelectedSourceTimestampMs).toBe(QUOTE_MS + 30_000);
   });
+
+  it("locksteps governed policies with CAUSAL_VOLATILITY_WINDOW_CONTRACT_SEMANTICS", async () => {
+    const { CAUSAL_VOLATILITY_WINDOW_CONTRACT_SEMANTICS: semantics } = await import(
+      "./buildValidatedCausalVolatilityWindow"
+    );
+    expect(semantics.quoteMinuteInclusionPolicy).toBe("include-in-progress-minute-when-sampled");
+    expect(semantics.missingMinuteBehavior).toBe("reject-missing-minute-bucket-no-fill");
+    expect(semantics.duplicateHandling).toContain("exact-timestamp-price-collapse");
+    expect(semantics.orderingHandling).toContain("reject-non-ascending");
+    expect(semantics.invalidPriceHandling).toContain("in-window-scope");
+    expect(semantics.futureSampleHandling).toContain("exclude-points-after-quote");
+
+    // 5000 passes / 5001 fails for adjacent gaps (start/internal/trailing covered above).
+    expect(buildWindow(densePoints(0, QUOTE_MS, 5_000), QUOTE_MS).available).toBe(true);
+    expect(
+      buildWindow(
+        pointsAt([...timestampRange(0, 299_000), 304_001, ...timestampRange(305_000, QUOTE_MS)]),
+        QUOTE_MS,
+      ).rejectionReason,
+    ).toBe("source-gap-exceeded");
+
+    // Duplicate / ordering / current-minute / future / invalid-price / missing-minute / no-fill.
+    const withExact = densePoints(0, QUOTE_MS);
+    withExact.splice(300, 0, { ...withExact[300]! });
+    expect(buildWindow(withExact, QUOTE_MS).available).toBe(true);
+
+    const reversed = densePoints(0, QUOTE_MS).reverse();
+    expect(buildWindow(reversed, QUOTE_MS).rejectionReason).toBe("non-ascending-timestamps");
+
+    const inside = buildWindow(densePoints(0, 12 * 60_000), QUOTE_MS + 30_000);
+    expect(inside.includesInProgressMinuteBar).toBe(true);
+
+    const withFuture = buildWindow(densePoints(0, 12 * 60_000), QUOTE_MS);
+    expect(withFuture.available).toBe(true);
+    expect(withFuture.futurePointCount).toBeGreaterThan(0);
+
+    const earlyInvalid = densePoints(0, QUOTE_MS);
+    earlyInvalid[0] = { ...earlyInvalid[0]!, priceUsd: 0 };
+    expect(buildWindow(earlyInvalid, QUOTE_MS).available).toBe(true);
+
+    const missingMinute = buildWindow(
+      densePoints(0, QUOTE_MS).filter(
+        (point) => point.timestampMs < 5 * 60_000 || point.timestampMs >= 6 * 60_000,
+      ),
+      QUOTE_MS,
+    );
+    expect(missingMinute.rejectionReason).toBe("missing-minute-bucket");
+  });
 });
 
 describe("production volatility path", () => {

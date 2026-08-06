@@ -30,6 +30,7 @@ import {
   type ReferenceComparisonSummary,
 } from "./causalFeatureEquivalenceAuditTypes";
 import { describeCurrentForwardVolatilityContract } from "./describeCurrentForwardVolatilityContract";
+import { hashVolatilityFeatureContract } from "./hashVolatilityFeatureContract";
 import { loadCausalFeatureEquivalenceEvidence } from "./loadCausalFeatureEquivalenceEvidence";
 import { reconstructHistoricalVolatilityContract } from "./reconstructHistoricalVolatilityContract";
 
@@ -396,6 +397,8 @@ export async function buildCausalFeatureEquivalenceAudit(input: {
     hypothesisConfigurationHash: spec.configurationHash,
     auditEvidencePath: evidencePath,
     auditEvidenceHash,
+    historicalContractSemanticHash: hashVolatilityFeatureContract(historical.contract),
+    currentForwardContractSemanticHash: hashVolatilityFeatureContract(currentForwardContract),
     historicalEvidenceStatus: contractComparison.historicalEvidenceStatus,
     historicalContract: historical.contract,
     currentForwardContract,

@@ -3,13 +3,17 @@ export { buildCalibrationFadeForwardValidationReport } from "./buildCalibrationF
 export { buildBtcCandlesUpToTimestamp, resolveCausalBtcPrice } from "./buildBtcCandlesCausal";
 export {
   buildValidatedCausalVolatilityWindow,
+  CAUSAL_VOLATILITY_WINDOW_CONTRACT_SEMANTICS,
+  orderCausalVolatilitySourcePoints,
+  precomputeCausalVolatilitySourceIntegrity,
   VOLATILITY_WINDOW_REJECTION_REASONS,
 } from "./buildValidatedCausalVolatilityWindow";
 export type {
+  CausalVolatilitySourceIntegrity,
+  CausalVolatilityWindowContractSemantics,
   ValidatedCausalVolatilityWindow,
   VolatilityWindowRejectionReason,
-} from "./buildValidatedCausalVolatilityWindow";
-export {
+} from "./buildValidatedCausalVolatilityWindow";export {
   CANONICAL_CALIBRATION_FADE_CLASSIFICATION_PRECEDENCE,
   classifyCalibrationFadeInterpretation,
   classifyExecutableEvidence,

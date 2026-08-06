@@ -9,6 +9,8 @@ import type { FrozenHypothesisSpec } from "../calibrationFadeForwardValidation/c
 import {
   attributeSourceGapClass,
   attributeVolatilityWindowRejections,
+  createEmptyAttributionOpCounter,
+  mapProductionReasonToAttributionClass,
 } from "./attributeVolatilityWindowRejections";
 import { buildBtcSourceDiagnostics } from "./buildBtcSourceDiagnostics";
 import { buildQuoteJoinDiagnostics } from "./buildQuoteJoinDiagnostics";
@@ -27,12 +29,18 @@ import {
   type ReferenceComparisonSummary,
   type VolatilityFeatureContract,
 } from "./causalFeatureEquivalenceAuditTypes";
-import { describeCurrentForwardVolatilityContract } from "./describeCurrentForwardVolatilityContract";
+import {
+  CAUSAL_VOLATILITY_WINDOW_CONTRACT_SEMANTICS,
+  describeCurrentForwardVolatilityContract,
+} from "./describeCurrentForwardVolatilityContract";
+import { hashVolatilityFeatureContract } from "./hashVolatilityFeatureContract";
 import {
   findConflictingProvenContractFields,
   loadCausalFeatureEquivalenceEvidence,
 } from "./loadCausalFeatureEquivalenceEvidence";
 import { reconstructHistoricalVolatilityContract } from "./reconstructHistoricalVolatilityContract";
+import { buildValidatedCausalVolatilityWindow } from "../calibrationFadeForwardValidation/buildValidatedCausalVolatilityWindow";
+import { VOLATILITY_WINDOW_REJECTION_REASONS } from "../calibrationFadeForwardValidation/buildValidatedCausalVolatilityWindow";
 
 const COMMITTED_EVIDENCE_PATH =
   "config/research/audits/calibration-fade-causal-feature-equivalence-v1.json";
@@ -464,6 +472,7 @@ describe("buildBtcSourceDiagnostics", () => {
       points.push({ timestampMs: t, priceUsd: 100 });
     }
     const diagnostics = buildBtcSourceDiagnostics(points);
+    expect(diagnostics.thresholdCountSemantics).toBe("cumulative-overlapping");
     expect(diagnostics.observedIntervalCount).toBe(6);
     const bin = (threshold: number, comparison: "<=" | ">") =>
       diagnostics.thresholdBins.find(
@@ -477,6 +486,25 @@ describe("buildBtcSourceDiagnostics", () => {
     expect(bin(6000, ">").count).toBe(0);
     expect(diagnostics.maximumIntervalMs).toBe(6000);
     expect(diagnostics.longestGapExamples[0]?.gapMs).toBe(6000);
+  });
+
+  it("counts a 6001ms gap toward every applicable cumulative exceedance row", () => {
+    const points = [
+      { timestampMs: 0, priceUsd: 100 },
+      { timestampMs: 6001, priceUsd: 100 },
+    ];
+    const diagnostics = buildBtcSourceDiagnostics(points);
+    expect(diagnostics.thresholdCountSemantics).toBe("cumulative-overlapping");
+    const bin = (threshold: number, comparison: "<=" | ">") =>
+      diagnostics.thresholdBins.find(
+        (entry) => entry.thresholdMs === threshold && entry.comparison === comparison,
+      )!;
+    expect(bin(5000, "<=").count).toBe(0);
+    expect(bin(5000, ">").count).toBe(1);
+    expect(bin(5001, ">").count).toBe(1);
+    expect(bin(5100, ">").count).toBe(1);
+    expect(bin(5500, ">").count).toBe(1);
+    expect(bin(6000, ">").count).toBe(1);
   });
 
   it("counts duplicates, order issues, invalid prices, and nonfinite timestamps", () => {
@@ -530,6 +558,128 @@ describe("buildQuoteJoinDiagnostics", () => {
   });
 });
 
+describe("loadCausalFeatureEquivalenceEvidence unknown-key rejection", () => {
+  it("rejects unknown top-level fields", () => {
+    expect(() =>
+      loadCausalFeatureEquivalenceEvidence({
+        rawContent: JSON.stringify(baseEvidence({ extraTop: true })),
+      }),
+    ).toThrow(/Unknown evidence field: extraTop/);
+  });
+
+  it("rejects unknown claim fields including misspellings", () => {
+    const evidence = baseEvidence();
+    (evidence.claims as Record<string, unknown>[])[0]!.contractFiled = "lookbackReturns";
+    expect(() =>
+      loadCausalFeatureEquivalenceEvidence({ rawContent: JSON.stringify(evidence) }),
+    ).toThrow(/Unknown evidence field: claims\[0\]\.contractFiled/);
+  });
+
+  it("rejects nested objects in claim value", () => {
+    const evidence = baseEvidence();
+    (evidence.claims as Record<string, unknown>[])[0]!.value = { nested: true };
+    expect(() =>
+      loadCausalFeatureEquivalenceEvidence({ rawContent: JSON.stringify(evidence) }),
+    ).toThrow(/claims\[0\]\.value/);
+  });
+
+  it("rejects empty-string symbol on proven claims", () => {
+    const evidence = baseEvidence();
+    (evidence.claims as Record<string, unknown>[])[0]!.symbol = "";
+    expect(() =>
+      loadCausalFeatureEquivalenceEvidence({ rawContent: JSON.stringify(evidence) }),
+    ).toThrow(/symbol must be null/);
+  });
+
+  it("loads valid committed evidence and blocks publication on invalid", () => {
+    const raw = readFileSync(join(process.cwd(), COMMITTED_EVIDENCE_PATH), "utf8");
+    expect(() => loadCausalFeatureEquivalenceEvidence({ rawContent: raw })).not.toThrow();
+    const invalid = JSON.parse(raw) as Record<string, unknown>;
+    invalid.unexpected = 1;
+    expect(() =>
+      loadCausalFeatureEquivalenceEvidence({ rawContent: JSON.stringify(invalid) }),
+    ).toThrow(/Unknown evidence field: unexpected/);
+  });
+});
+
+describe("split gap evidence claims", () => {
+  it("keeps declared max gap separate from inferred unused call-chain status", () => {
+    const raw = readFileSync(join(process.cwd(), COMMITTED_EVIDENCE_PATH), "utf8");
+    const evidence = loadCausalFeatureEquivalenceEvidence({ rawContent: raw });
+    const declared = evidence.claims.find(
+      (claim) => claim.claimId === "maximum-source-gap-declared-value",
+    );
+    const unused = evidence.claims.find(
+      (claim) => claim.claimId === "maximum-source-gap-unused-at-freeze",
+    );
+    expect(declared?.status).toBe("declared-by-frozen-config");
+    expect(declared?.value).toBe(5000);
+    expect(unused?.status).toBe("inferred-from-call-chain");
+    expect(unused?.status).not.toBe("unavailable");
+    expect(unused?.path).toBeTruthy();
+    expect(unused?.commitSha).toBe(EXPECTED_FREEZE_COMMIT_SHA);
+    const reconstructed = reconstructHistoricalVolatilityContract(evidence);
+    expect(reconstructed.contract.sourceGapThresholdMs).toBeNull();
+    expect(reconstructed.historicalEvidenceStatus).toBe("ambiguous");
+  });
+});
+
+describe("hashVolatilityFeatureContract", () => {
+  it("is stable for same semantics and changes when governed fields change", () => {
+    const a = hashVolatilityFeatureContract(fullContract());
+    const b = hashVolatilityFeatureContract(fullContract());
+    expect(a).toBe(b);
+    expect(hashVolatilityFeatureContract(fullContract({ lookbackReturns: 11 }))).not.toBe(a);
+  });
+
+  it("does not depend on generatedAt-like metadata outside the contract", () => {
+    const contract = fullContract();
+    const first = hashVolatilityFeatureContract(contract);
+    const second = hashVolatilityFeatureContract({ ...contract });
+    expect(first).toBe(second);
+  });
+});
+
+describe("describeCurrentForwardVolatilityContract lockstep", () => {
+  it("consumes immutable production semantic constants", () => {
+    const spec = {
+      volatilityDefinition: {
+        sourceInstrument: "BTC",
+        returnIntervalMs: 60_000,
+        lookbackBars: 10,
+        method: "realized-log-return-annualized",
+        causalOnly: true,
+        maximumSourceGapMs: 5000,
+      },
+      eligibilityRules: {
+        volatility: { minInclusive: 0.6 },
+      },
+    } as unknown as FrozenHypothesisSpec;
+    const contract = describeCurrentForwardVolatilityContract({
+      spec,
+      maximumBtcJoinAgeMs: 5000,
+    });
+    expect(contract.quoteMinuteInclusionPolicy).toBe(
+      CAUSAL_VOLATILITY_WINDOW_CONTRACT_SEMANTICS.quoteMinuteInclusionPolicy,
+    );
+    expect(contract.missingMinuteBehavior).toBe(
+      CAUSAL_VOLATILITY_WINDOW_CONTRACT_SEMANTICS.missingMinuteBehavior,
+    );
+    expect(contract.duplicateHandling).toBe(
+      CAUSAL_VOLATILITY_WINDOW_CONTRACT_SEMANTICS.duplicateHandling,
+    );
+    expect(contract.orderingHandling).toBe(
+      CAUSAL_VOLATILITY_WINDOW_CONTRACT_SEMANTICS.orderingHandling,
+    );
+    expect(contract.invalidPriceHandling).toBe(
+      CAUSAL_VOLATILITY_WINDOW_CONTRACT_SEMANTICS.invalidPriceHandling,
+    );
+    expect(contract.futureSampleHandling).toBe(
+      CAUSAL_VOLATILITY_WINDOW_CONTRACT_SEMANTICS.futureSampleHandling,
+    );
+  });
+});
+
 describe("attributeVolatilityWindowRejections", () => {
   const barIntervalMs = 60_000;
   const lookbackBars = 10;
@@ -549,15 +699,150 @@ describe("attributeVolatilityWindowRejections", () => {
     return points;
   }
 
-  it("attributes available for dense causal series", () => {
+  function production(points: readonly BtcSpotPoint[], timestampMs: number) {
+    return buildValidatedCausalVolatilityWindow({
+      points,
+      timestampMs,
+      barIntervalMs,
+      lookbackBars,
+      maximumSourceGapMs,
+    });
+  }
+
+  function classCount(
+    result: ReturnType<typeof attributeVolatilityWindowRejections>,
+    className: string,
+  ): number {
+    return result.classes.find((entry) => entry.class === className)?.observationCount ?? 0;
+  }
+
+  it("documents pre-fix bug then agrees with production for early conflicting duplicate", () => {
+    // LRM HIGH-1 fixture: early conflicting duplicate outside the trailing window,
+    // dense valid trailing history, and a quote after that window.
     const quoteTs = 1_700_000_000_000;
     const points = densePoints(quoteTs, 1000);
+    const lookbackHorizonMs =
+      (lookbackBars + 2) * barIntervalMs + maximumSourceGapMs * 4;
+    const earlyBase = quoteTs - lookbackHorizonMs - 120_000;
+    // Insert conflicting duplicate far outside the old audit's trimmed horizon.
+    points.unshift(
+      {
+        timestampMs: earlyBase,
+        receivedAtLocal: "t",
+        priceUsd: 90_000,
+      },
+      {
+        timestampMs: earlyBase,
+        receivedAtLocal: "t",
+        priceUsd: 90_001,
+      },
+      {
+        timestampMs: earlyBase + 1000,
+        receivedAtLocal: "t",
+        priceUsd: 90_002,
+      },
+    );
+
+    const prod = production(points, quoteTs);
+    expect(prod.available).toBe(false);
+    expect(prod.rejectionReason).toBe("conflicting-duplicate-timestamp");
+
+    // Pre-fix behavior (trimmed trailing window) incorrectly reported available.
+    const startMs = quoteTs - lookbackHorizonMs;
+    const trimmed = points.filter((point) => point.timestampMs >= startMs - 1);
+    const trimmedProd = production(trimmed, quoteTs);
+    expect(trimmedProd.available).toBe(true);
+
     const result = attributeVolatilityWindowRejections(
       [{ marketTicker: "M", timestampMs: quoteTs }],
       points,
       { barIntervalMs, lookbackBars, maximumSourceGapMs },
     );
-    expect(result.classes.find((entry) => entry.class === "available")?.observationCount).toBe(1);
+    expect(classCount(result, "available")).toBe(0);
+    expect(classCount(result, "conflicting-duplicate-source")).toBe(1);
+    expect(result.productionRejectionReasonCounts["conflicting-duplicate-timestamp"]).toBe(1);
+  });
+
+  it("attributes early non-ascending on the full series like production", () => {
+    const quoteTs = 1_700_000_000_000;
+    const points = densePoints(quoteTs, 1000);
+    const a = points[4]!;
+    const b = points[5]!;
+    points[4] = b;
+    points[5] = a;
+    const prod = production(points, quoteTs);
+    expect(prod.rejectionReason).toBe("non-ascending-timestamps");
+    const result = attributeVolatilityWindowRejections(
+      [{ marketTicker: "M", timestampMs: quoteTs }],
+      points,
+      { barIntervalMs, lookbackBars, maximumSourceGapMs },
+    );
+    expect(classCount(result, "non-ascending-source")).toBe(1);
+    expect(classCount(result, "available")).toBe(0);
+  });
+
+  it("collapses exact duplicate same price and matches production availability", () => {
+    const quoteTs = 1_700_000_000_000;
+    const points = densePoints(quoteTs, 1000);
+    points.splice(20, 0, { ...points[20]! });
+    const prod = production(points, quoteTs);
+    expect(prod.available).toBe(true);
+    const result = attributeVolatilityWindowRejections(
+      [{ marketTicker: "M", timestampMs: quoteTs }],
+      points,
+      { barIntervalMs, lookbackBars, maximumSourceGapMs },
+    );
+    expect(classCount(result, "available")).toBe(1);
+  });
+
+  it("ignores invalid early prices outside window scope like M12.3", () => {
+    const quoteTs = 1_700_000_000_000;
+    const points = densePoints(quoteTs, 1000);
+    points[0] = { ...points[0]!, priceUsd: 0 };
+    points[1] = { ...points[1]!, priceUsd: Number.NaN };
+    expect(production(points, quoteTs).available).toBe(true);
+    const result = attributeVolatilityWindowRejections(
+      [{ marketTicker: "M", timestampMs: quoteTs }],
+      points,
+      { barIntervalMs, lookbackBars, maximumSourceGapMs },
+    );
+    expect(classCount(result, "available")).toBe(1);
+  });
+
+  it("attributes conflicting duplicate inside the trailing window", () => {
+    const quoteTs = 1_700_000_000_000;
+    const points = densePoints(quoteTs, 1000);
+    points.splice(points.length - 10, 0, {
+      timestampMs: points[points.length - 10]!.timestampMs,
+      receivedAtLocal: "t",
+      priceUsd: points[points.length - 10]!.priceUsd + 1,
+    });
+    expect(production(points, quoteTs).rejectionReason).toBe("conflicting-duplicate-timestamp");
+    const result = attributeVolatilityWindowRejections(
+      [{ marketTicker: "M", timestampMs: quoteTs }],
+      points,
+      { barIntervalMs, lookbackBars, maximumSourceGapMs },
+    );
+    expect(classCount(result, "conflicting-duplicate-source")).toBe(1);
+  });
+
+  it("attributes available for dense causal series and ignores future points", () => {
+    const quoteTs = 1_700_000_000_000;
+    const points = [
+      ...densePoints(quoteTs, 1000),
+      {
+        timestampMs: quoteTs + 60_000,
+        receivedAtLocal: "t",
+        priceUsd: 999_999,
+      },
+    ];
+    expect(production(points, quoteTs).available).toBe(true);
+    const result = attributeVolatilityWindowRejections(
+      [{ marketTicker: "M", timestampMs: quoteTs }],
+      points,
+      { barIntervalMs, lookbackBars, maximumSourceGapMs },
+    );
+    expect(classCount(result, "available")).toBe(1);
   });
 
   it("attributes future-only-source", () => {
@@ -570,9 +855,7 @@ describe("attributeVolatilityWindowRejections", () => {
       points,
       { barIntervalMs, lookbackBars, maximumSourceGapMs },
     );
-    expect(
-      result.classes.find((entry) => entry.class === "future-only-source")?.observationCount,
-    ).toBe(1);
+    expect(classCount(result, "future-only-source")).toBe(1);
   });
 
   it("attributes insufficient-source-points", () => {
@@ -585,55 +868,13 @@ describe("attributeVolatilityWindowRejections", () => {
       points,
       { barIntervalMs, lookbackBars, maximumSourceGapMs },
     );
-    expect(
-      result.classes.find((entry) => entry.class === "insufficient-source-points")
-        ?.observationCount,
-    ).toBe(1);
-  });
-
-  it("attributes conflicting-duplicate-source", () => {
-    const quoteTs = 1_700_000_000_000;
-    const points = densePoints(quoteTs, 1000);
-    points.splice(10, 0, {
-      timestampMs: points[10]!.timestampMs,
-      receivedAtLocal: "t",
-      priceUsd: points[10]!.priceUsd + 1,
-    });
-    // Ensure ascending duplicate conflict near the window
-    const result = attributeVolatilityWindowRejections(
-      [{ marketTicker: "M", timestampMs: quoteTs }],
-      points,
-      { barIntervalMs, lookbackBars, maximumSourceGapMs },
-    );
-    expect(
-      result.classes.find((entry) => entry.class === "conflicting-duplicate-source")
-        ?.observationCount,
-    ).toBe(1);
-  });
-
-  it("attributes non-ascending-source", () => {
-    const quoteTs = 1_700_000_000_000;
-    const points = densePoints(quoteTs, 1000);
-    // Deliberately reverse two points in the slice window
-    const a = points[points.length - 5]!;
-    const b = points[points.length - 4]!;
-    points[points.length - 5] = b;
-    points[points.length - 4] = a;
-    const result = attributeVolatilityWindowRejections(
-      [{ marketTicker: "M", timestampMs: quoteTs }],
-      points,
-      { barIntervalMs, lookbackBars, maximumSourceGapMs },
-    );
-    expect(
-      result.classes.find((entry) => entry.class === "non-ascending-source")?.observationCount,
-    ).toBe(1);
+    expect(classCount(result, "insufficient-source-points")).toBe(1);
   });
 
   it("attributes start-boundary-gap-exceeded", () => {
     const quoteTs = 1_700_000_000_000;
     const windowStart = Math.floor(quoteTs / barIntervalMs) * barIntervalMs - 10 * barIntervalMs;
     const points: BtcSpotPoint[] = [];
-    // Predecessor more than 5000ms before the first in-window sample.
     points.push({
       timestampMs: windowStart - 5001,
       receivedAtLocal: "t",
@@ -662,51 +903,81 @@ describe("attributeVolatilityWindowRejections", () => {
       points,
       { barIntervalMs, lookbackBars, maximumSourceGapMs },
     );
-    expect(
-      result.classes.find((entry) => entry.class === "start-boundary-gap-exceeded")
-        ?.observationCount,
-    ).toBe(1);
+    expect(classCount(result, "start-boundary-gap-exceeded")).toBe(1);
   });
 
-  it("attributes internal-source-gap-exceeded for a mid-window 5001ms gap", () => {
+  it("attributes exactly one internal-source-gap-exceeded for a single-cause 5001ms fixture", () => {
     const quoteTs = 2_000_000_000_000;
+    const quoteMinute = Math.floor(quoteTs / barIntervalMs) * barIntervalMs;
+    const windowStart = quoteMinute - 10 * barIntervalMs;
     const points: BtcSpotPoint[] = [];
-    const start = quoteTs - 11 * 60_000;
-    for (let ts = start; ts <= quoteTs; ts += 1000) {
-      // Insert a single 5001 gap in the middle of the selected window.
-      if (ts === start + 5 * 60_000 + 1000) {
-        ts += 4001; // prior step was +1000 → additional +4001 ⇒ gap 5001 from previous
+    // Predecessor within 5000ms of window start (start boundary passes).
+    points.push({
+      timestampMs: windowStart - 1000,
+      receivedAtLocal: "t",
+      priceUsd: 100_000,
+    });
+    let insertedInternalGap = false;
+    for (let minuteIndex = 0; minuteIndex <= 10; minuteIndex += 1) {
+      const minuteStart = windowStart + minuteIndex * barIntervalMs;
+      for (let offset = 0; offset < barIntervalMs; offset += 1000) {
+        let ts = minuteStart + offset;
+        if (ts > quoteTs) {
+          break;
+        }
+        // Single internal adjacent gap of exactly 5001ms inside the selected window.
+        if (!insertedInternalGap && minuteIndex === 5 && offset === 2000) {
+          ts += 4001; // prior sample at +1000 → gap 5001
+          insertedInternalGap = true;
+        }
+        if (insertedInternalGap && minuteIndex === 5 && offset > 2000) {
+          ts += 4001;
+        }
+        if (insertedInternalGap && minuteIndex > 5) {
+          ts += 4001;
+        }
+        points.push({
+          timestampMs: ts,
+          receivedAtLocal: "t",
+          priceUsd: 100_000 + (minuteIndex % 2 === 0 ? 700 : -700),
+        });
       }
-      const minute = Math.floor(ts / 60_000);
+    }
+    // Trailing age must pass: ensure last sample is within 5000ms of quote.
+    const last = points[points.length - 1]!;
+    if (quoteTs - last.timestampMs > 5000) {
       points.push({
-        timestampMs: ts,
+        timestampMs: quoteTs - 1000,
         receivedAtLocal: "t",
-        priceUsd: 100_000 + (minute % 2 === 0 ? 700 : -700),
+        priceUsd: 100_100,
       });
     }
-    // Ensure strictly ascending unique timestamps
-    const deduped = points.filter(
-      (point, index, arr) => index === 0 || point.timestampMs > arr[index - 1]!.timestampMs,
-    );
+
+    const prod = production(points, quoteTs);
+    expect(prod.available).toBe(false);
+    expect(prod.rejectionReason).toBe("source-gap-exceeded");
+
     const result = attributeVolatilityWindowRejections(
       [{ marketTicker: "M", timestampMs: quoteTs }],
-      deduped,
+      points,
       { barIntervalMs, lookbackBars, maximumSourceGapMs },
     );
-    const internal = result.classes.find(
-      (entry) => entry.class === "internal-source-gap-exceeded",
+    expect(classCount(result, "internal-source-gap-exceeded")).toBe(1);
+    expect(classCount(result, "available")).toBe(0);
+    expect(classCount(result, "start-boundary-gap-exceeded")).toBe(0);
+    expect(classCount(result, "trailing-source-age-exceeded")).toBe(0);
+  });
+
+  it("keeps adjacent 5000ms internal gap available", () => {
+    const quoteTs = 2_100_000_000_000;
+    const points = densePoints(quoteTs, 5000);
+    expect(production(points, quoteTs).available).toBe(true);
+    const result = attributeVolatilityWindowRejections(
+      [{ marketTicker: "M", timestampMs: quoteTs }],
+      points,
+      { barIntervalMs, lookbackBars, maximumSourceGapMs },
     );
-    const anyGap = result.classes.filter(
-      (entry) =>
-        entry.observationCount > 0
-        && entry.class !== "available"
-        && entry.class.includes("gap"),
-    );
-    expect(anyGap.length + (internal?.observationCount ? 0 : 0)).toBeGreaterThanOrEqual(0);
-    // Exact class may be internal when the window includes the 5001 gap.
-    const rejected =
-      (result.classes.find((entry) => entry.class === "available")?.observationCount ?? 0) === 0;
-    expect(rejected).toBe(true);
+    expect(classCount(result, "available")).toBe(1);
   });
 
   it("attributes trailing-source-age-exceeded when last sample is 5001ms old", () => {
@@ -718,18 +989,13 @@ describe("attributeVolatilityWindowRejections", () => {
       points,
       { barIntervalMs, lookbackBars, maximumSourceGapMs },
     );
-    expect(
-      result.classes.find((entry) => entry.class === "trailing-source-age-exceeded")
-        ?.observationCount,
-    ).toBe(1);
+    expect(classCount(result, "trailing-source-age-exceeded")).toBe(1);
   });
 
   it("attributes missing-minute-bucket when a minute is absent inside the window", () => {
     const quoteMinute = Math.floor(4_000_000_000_000 / barIntervalMs) * barIntervalMs;
     const quoteTs = quoteMinute + 30_000;
     const points: BtcSpotPoint[] = [];
-    // 12 aligned minute buckets with one interior minute removed → 11 candles
-    // whose trailing window retains the hole (consecutive check before gaps).
     for (let minuteIndex = 0; minuteIndex <= 11; minuteIndex += 1) {
       if (minuteIndex === 5) {
         continue;
@@ -752,17 +1018,13 @@ describe("attributeVolatilityWindowRejections", () => {
       points,
       { barIntervalMs, lookbackBars, maximumSourceGapMs },
     );
-    expect(
-      result.classes.find((entry) => entry.class === "missing-minute-bucket")
-        ?.observationCount,
-    ).toBe(1);
+    expect(classCount(result, "missing-minute-bucket")).toBe(1);
     expect(result.productionRejectionReasonCounts["missing-minute-bucket"]).toBe(1);
   });
 
   it("attributes insufficient-bars when priced samples cannot form 11 consecutive minutes", () => {
     const quoteTs = 5_000_000_000_000;
     const points: BtcSpotPoint[] = [];
-    // Only 5 minutes of samples — enough points, too few bars.
     for (let ts = quoteTs - 5 * 60_000; ts <= quoteTs; ts += 1000) {
       points.push({
         timestampMs: ts,
@@ -775,9 +1037,7 @@ describe("attributeVolatilityWindowRejections", () => {
       points,
       { barIntervalMs, lookbackBars, maximumSourceGapMs },
     );
-    expect(
-      result.classes.find((entry) => entry.class === "insufficient-bars")?.observationCount,
-    ).toBe(1);
+    expect(classCount(result, "insufficient-bars")).toBe(1);
   });
 
   it("attributes invalid-source-price", () => {
@@ -790,9 +1050,7 @@ describe("attributeVolatilityWindowRejections", () => {
       points,
       { barIntervalMs, lookbackBars, maximumSourceGapMs },
     );
-    expect(
-      result.classes.find((entry) => entry.class === "invalid-source-price")?.observationCount,
-    ).toBe(1);
+    expect(classCount(result, "invalid-source-price")).toBe(1);
   });
 
   it("does not accept multiple unrelated reasons for a single fixture", () => {
@@ -805,6 +1063,68 @@ describe("attributeVolatilityWindowRejections", () => {
     );
     const positive = result.classes.filter((entry) => entry.observationCount > 0);
     expect(positive).toHaveLength(1);
+  });
+
+  it("maps production reasons exhaustively without guessing", () => {
+    for (const reason of VOLATILITY_WINDOW_REJECTION_REASONS) {
+      if (
+        reason === "invalid-quote-timestamp"
+        || reason === "invalid-bar-interval"
+        || reason === "invalid-lookback"
+        || reason === "invalid-maximum-source-gap"
+      ) {
+        expect(() => mapProductionReasonToAttributionClass(reason)).toThrow(
+          CausalFeatureEquivalenceAuditError,
+        );
+        continue;
+      }
+      if (reason === "source-gap-exceeded") {
+        expect(mapProductionReasonToAttributionClass(reason)).toBe("source-gap-exceeded");
+        continue;
+      }
+      expect(typeof mapProductionReasonToAttributionClass(reason)).toBe("string");
+    }
+  });
+
+  it("table-driven differential vs production helper on full series", () => {
+    const quoteTs = 1_800_000_000_000;
+    const dense = densePoints(quoteTs, 1000);
+    const earlyConflict = densePoints(quoteTs, 1000);
+    const earlyBase =
+      quoteTs - ((lookbackBars + 2) * barIntervalMs + maximumSourceGapMs * 4) - 60_000;
+    earlyConflict.unshift(
+      { timestampMs: earlyBase, receivedAtLocal: "t", priceUsd: 1 },
+      { timestampMs: earlyBase, receivedAtLocal: "t", priceUsd: 2 },
+    );    const exactDup = densePoints(quoteTs, 1000);
+    exactDup.splice(15, 0, { ...exactDup[15]! });
+    const futureOnly: BtcSpotPoint[] = [
+      { timestampMs: quoteTs + 5000, receivedAtLocal: "t", priceUsd: 1 },
+    ];
+    const trailing = densePoints(quoteTs - 5001, 1000);
+
+    const cases: { name: string; points: BtcSpotPoint[]; quote: number }[] = [
+      { name: "dense", points: dense, quote: quoteTs },
+      { name: "early-conflict", points: earlyConflict, quote: quoteTs },
+      { name: "exact-dup", points: exactDup, quote: quoteTs },
+      { name: "future-only", points: futureOnly, quote: quoteTs },
+      { name: "trailing", points: trailing, quote: quoteTs },
+      { name: "future-ignored", points: [...dense, { timestampMs: quoteTs + 1, receivedAtLocal: "t", priceUsd: 1 }], quote: quoteTs },
+    ];
+
+    for (const testCase of cases) {
+      const prod = production(testCase.points, testCase.quote);
+      const audit = attributeVolatilityWindowRejections(
+        [{ marketTicker: "M", timestampMs: testCase.quote }],
+        testCase.points,
+        { barIntervalMs, lookbackBars, maximumSourceGapMs },
+      );
+      const available = classCount(audit, "available") === 1;
+      expect(available, testCase.name).toBe(prod.available);
+      if (!prod.available && prod.rejectionReason && prod.rejectionReason !== "source-gap-exceeded") {
+        const mapped = mapProductionReasonToAttributionClass(prod.rejectionReason);
+        expect(classCount(audit, mapped as string), testCase.name).toBe(1);
+      }
+    }
   });
 });
 
@@ -875,9 +1195,9 @@ describe("classifyCausalFeatureEquivalence", () => {
 });
 
 describe("performance bounds", () => {
-  it("quote join + attribution avoid quadratic full scans", () => {
+  it("quote join + attribution avoid quadratic full scans and stay within C1*M + C2*N*logM + C3*N*W", () => {
     const m = 5_000;
-    const n = 8_000;
+    const n = 800;
     const btc: BtcSpotPoint[] = Array.from({ length: m }, (_, index) => ({
       timestampMs: index * 1000,
       receivedAtLocal: "t",
@@ -891,14 +1211,41 @@ describe("performance bounds", () => {
     buildQuoteJoinDiagnostics(quotes, btc, { opCounter: joinOps });
     expect(joinOps.comparisons).toBeLessThan(n * m);
 
-    const attrOps = { pointExaminations: 0 };
-    attributeVolatilityWindowRejections(quotes.slice(0, 200), btc, {
+    const attrOps = createEmptyAttributionOpCounter();
+    attributeVolatilityWindowRejections(quotes, btc, {
       barIntervalMs: 60_000,
       lookbackBars: 10,
       maximumSourceGapMs: 5000,
       opCounter: attrOps,
     });
-    // Windowed examinations should be far below 200 * M.
-    expect(attrOps.pointExaminations).toBeLessThan(200 * m);
+
+    // Prefix examined once (~M). No per-quote full-prefix copies after preprocess.
+    expect(attrOps.prefixPointsExamined).toBe(m);
+    expect(attrOps.fullPrefixCopiesOrScans).toBe(0);
+    expect(attrOps.productionHelperInvocations).toBeLessThanOrEqual(n);
+
+    const windowBound = 12 * 60; // ~lookbackBars+1 minutes at 1s cadence
+    const logM = Math.ceil(Math.log2(m + 1));
+    const ops =
+      attrOps.prefixPointsExamined
+      + attrOps.causalEndComparisons
+      + attrOps.windowPointsExamined;
+    const bound = 2 * m + 8 * n * logM + 8 * n * windowBound;
+    expect(ops).toBeLessThanOrEqual(bound);
+
+    // Doubling N roughly doubles quote work, not ×M.
+    const attrOps2 = createEmptyAttributionOpCounter();
+    attributeVolatilityWindowRejections(quotes.slice(0, Math.floor(n / 2)), btc, {
+      barIntervalMs: 60_000,
+      lookbackBars: 10,
+      maximumSourceGapMs: 5000,
+      opCounter: attrOps2,
+    });
+    const halfQuoteWork =
+      attrOps2.causalEndComparisons + attrOps2.windowPointsExamined;
+    const fullQuoteWork =
+      attrOps.causalEndComparisons + attrOps.windowPointsExamined;
+    expect(fullQuoteWork).toBeLessThan(halfQuoteWork * 2.6 + m);
+    expect(fullQuoteWork).toBeGreaterThan(halfQuoteWork * 1.4);
   });
 });

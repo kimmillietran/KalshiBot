@@ -136,6 +136,7 @@ export function buildBtcSourceDiagnostics(
     p90IntervalMs: sortedIntervals.length ? percentile(sortedIntervals, 90) : null,
     p95IntervalMs: sortedIntervals.length ? percentile(sortedIntervals, 95) : null,
     p99IntervalMs: sortedIntervals.length ? percentile(sortedIntervals, 99) : null,
+    thresholdCountSemantics: "cumulative-overlapping",
     thresholdBins,
     longestGapExamples,
     runStartBoundaryCoverageMs: firstTimestampMs,

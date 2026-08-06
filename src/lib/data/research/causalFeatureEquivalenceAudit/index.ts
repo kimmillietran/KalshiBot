@@ -26,6 +26,7 @@ export { loadCausalFeatureEquivalenceEvidence } from "./loadCausalFeatureEquival
 export { reconstructHistoricalVolatilityContract } from "./reconstructHistoricalVolatilityContract";
 export {
   describeCurrentForwardVolatilityContract,
+  CAUSAL_VOLATILITY_WINDOW_CONTRACT_SEMANTICS,
   VOLATILITY_WINDOW_REJECTION_REASONS,
 } from "./describeCurrentForwardVolatilityContract";
 export { compareVolatilityContracts } from "./compareVolatilityContracts";
@@ -35,8 +36,16 @@ export { buildQuoteJoinDiagnostics } from "./buildQuoteJoinDiagnostics";
 export {
   attributeSourceGapClass,
   attributeVolatilityWindowRejections,
+  createEmptyAttributionOpCounter,
+  mapProductionReasonToAttributionClass,
+} from "./attributeVolatilityWindowRejections";
+export type {
+  AttributionOpCounter,
+  AttributionOptions,
+  QuoteForAttribution,
 } from "./attributeVolatilityWindowRejections";
 export { buildCausalFeatureEquivalenceAudit } from "./buildCausalFeatureEquivalenceAudit";
+export { hashVolatilityFeatureContract } from "./hashVolatilityFeatureContract";
 export {
   serializeCausalFeatureEquivalenceAuditHtml,
   serializeCausalFeatureEquivalenceAuditReport,
