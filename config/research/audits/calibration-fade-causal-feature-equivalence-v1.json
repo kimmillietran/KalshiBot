@@ -1,0 +1,245 @@
+{
+  "schema": "calibration-fade-causal-feature-equivalence-evidence",
+  "version": "v1",
+  "auditId": "calibration-fade-causal-feature-equivalence-v1",
+  "hypothesisId": "atlas-volatilityProbabilityTime-vol-high-coarse-prob-1-coarse-time-early-over",
+  "hypothesisConfigurationHash": "0bda8f23",
+  "freezeCommitSha": "f2598cf960472f368cd6ad25f67d4c97a3b3956e",
+  "freezeCommitTimestamp": "2026-07-12T01:54:04-07:00",
+  "runtimeGitPolicy": "Git-history reconstruction was reviewed and committed as audit evidence. Runtime does not execute Git subprocesses to reverify blob identity.",
+  "claims": [
+    {
+      "claimId": "vol-estimator-lookback-10",
+      "claim": "estimateRealizedVolatility uses lookbackBars=10 (ten log returns / lookbackBars+1 closes) for mispricing and frozen calibration-fade volatility.",
+      "status": "proven-by-executable-code",
+      "commitSha": "f2598cf960472f368cd6ad25f67d4c97a3b3956e",
+      "path": "src/lib/data/strategies/fairValueDiffusion/fairValueDiffusionModel.ts",
+      "blobSha": "47ea9ec6cb160f79720c420ba3a794f15a3341c5",
+      "symbol": "estimateRealizedVolatility",
+      "contractField": "lookbackReturns",
+      "value": 10,
+      "summary": "Shared estimator requires lookbackBars closes for returns; atlas DEFAULT_MISPRICING_VOLATILITY_LOOKBACK_BARS and frozen volatilityDefinition.lookbackBars are both 10.",
+      "limitations": []
+    },
+    {
+      "claimId": "vol-method-realized-log-return-annualized",
+      "claim": "Volatility method is realized log-return annualized via estimateRealizedVolatility.",
+      "status": "proven-by-executable-code",
+      "commitSha": "f2598cf960472f368cd6ad25f67d4c97a3b3956e",
+      "path": "src/lib/data/strategies/fairValueDiffusion/fairValueDiffusionModel.ts",
+      "blobSha": "47ea9ec6cb160f79720c420ba3a794f15a3341c5",
+      "symbol": "estimateRealizedVolatility",
+      "contractField": "annualizationMethod",
+      "value": "realized-log-return-annualized",
+      "summary": "Log returns of closes, stableStdDev, annualized by inferred bar interval (else 60s).",
+      "limitations": []
+    },
+    {
+      "claimId": "atlas-annualized-volatility-attachment",
+      "claim": "Mispricing atlas attaches annualizedVolatility via enrichResearchObservationFeatures from research-output candles parsed by parseMispricingObservations.",
+      "status": "proven-by-executable-code",
+      "commitSha": "f2598cf960472f368cd6ad25f67d4c97a3b3956e",
+      "path": "src/lib/data/research/mispricingAtlas/enrichResearchObservationFeatures.ts",
+      "blobSha": "737b239f03b1bf5cd89ed0cf7d8ccc9e683985d5",
+      "symbol": "enrichResearchObservationFeatures",
+      "contractField": "sourceRecordType",
+      "value": "research-output-btc-candles-or-btcBars",
+      "summary": "Discovery path uses pre-built candles already present in research-output, not capture btc-spot ticks.",
+      "limitations": [
+        "Exact upstream candle provider and gap policy for research-output candles are outside the atlas feature path."
+      ]
+    },
+    {
+      "claimId": "atlas-candle-parse-path",
+      "claim": "parseMispricingObservations prefers engineInput.btc.candles then falls back to snapshot.btcBars.",
+      "status": "proven-by-executable-code",
+      "commitSha": "f2598cf960472f368cd6ad25f67d4c97a3b3956e",
+      "path": "src/lib/data/research/mispricingAtlas/parseMispricingObservations.ts",
+      "blobSha": "daaccd1d02c2f9e25f825e72d1ef4c1dfcba28ee",
+      "symbol": "parseMispricingObservations",
+      "contractField": "sourceRecordType",
+      "value": "research-output-btc-candles-or-btcBars",
+      "summary": "Confirms atlas candle ingress; no adjacent-source-gap enforcement in this mapper.",
+      "limitations": [
+        "Does not uniquely identify which historical discovery runs used candles versus btcBars."
+      ]
+    },
+    {
+      "claimId": "vol-high-threshold-0.6",
+      "claim": "vol-high bucket is annualized volatility >= 0.6.",
+      "status": "proven-by-executable-code",
+      "commitSha": "f2598cf960472f368cd6ad25f67d4c97a3b3956e",
+      "path": "src/lib/data/research/dimensions/bucketDefinitions.ts",
+      "blobSha": "47acd3cd1d84df0ec974ea17fccb584de65cff73",
+      "symbol": "VOLATILITY_BUCKET_DEFINITIONS",
+      "contractField": "volHighThreshold",
+      "value": 0.6,
+      "summary": "Bucket definition minInclusive 0.6 with maxExclusive null.",
+      "limitations": []
+    },
+    {
+      "claimId": "frozen-return-interval-60s",
+      "claim": "Frozen hypothesis declares returnIntervalMs=60000.",
+      "status": "declared-by-frozen-config",
+      "commitSha": "f2598cf960472f368cd6ad25f67d4c97a3b3956e",
+      "path": "config/research/hypotheses/high-volatility-late-market-calibration-fade-v1.json",
+      "blobSha": "b055d73f6670abd941f57595618873dade596f9b",
+      "symbol": "volatilityDefinition.returnIntervalMs",
+      "contractField": "returnIntervalMs",
+      "value": 60000,
+      "summary": "Config declares one-minute return interval used by freeze-forward candle bucketing.",
+      "limitations": []
+    },
+    {
+      "claimId": "frozen-source-instrument-btc",
+      "claim": "Frozen hypothesis declares sourceInstrument BTC.",
+      "status": "declared-by-frozen-config",
+      "commitSha": "f2598cf960472f368cd6ad25f67d4c97a3b3956e",
+      "path": "config/research/hypotheses/high-volatility-late-market-calibration-fade-v1.json",
+      "blobSha": "b055d73f6670abd941f57595618873dade596f9b",
+      "symbol": "volatilityDefinition.sourceInstrument",
+      "contractField": "sourceInstrument",
+      "value": "BTC",
+      "summary": "Instrument identity from frozen config.",
+      "limitations": []
+    },
+    {
+      "claimId": "freeze-forward-candles-from-btc-spot",
+      "claim": "At freeze, forward validation rebuilt candles from btc-spot.jsonl via buildBtcCandlesUpToTimestamp without adjacent source-gap enforcement.",
+      "status": "proven-by-executable-code",
+      "commitSha": "f2598cf960472f368cd6ad25f67d4c97a3b3956e",
+      "path": "src/lib/data/research/calibrationFadeForwardValidation/buildBtcCandlesCausal.ts",
+      "blobSha": "186d54241c795149928604400efb652534538577",
+      "symbol": "buildBtcCandlesUpToTimestamp",
+      "contractField": "quoteMinuteInclusionPolicy",
+      "value": "include-in-progress-minute-when-sampled",
+      "summary": "Causal cutoff, minute buckets, in-progress minute included; missing minutes omitted without fill; no maximumSourceGapMs parameter.",
+      "limitations": [
+        "This freeze-forward candle path differs from the atlas discovery candle ingress, so a single historical source contract is not uniquely established."
+      ]
+    },
+    {
+      "claimId": "maximum-source-gap-declared-unused",
+      "claim": "maximumSourceGapMs=5000 was declared in frozen config and typed/loaded, but was never read by the executable volatility path at freeze (metadata only).",
+      "status": "declared-by-frozen-config",
+      "commitSha": "f2598cf960472f368cd6ad25f67d4c97a3b3956e",
+      "path": "config/research/hypotheses/high-volatility-late-market-calibration-fade-v1.json",
+      "blobSha": "b055d73f6670abd941f57595618873dade596f9b",
+      "symbol": "volatilityDefinition.maximumSourceGapMs",
+      "contractField": "sourceGapThresholdMs",
+      "value": 5000,
+      "summary": "Repo-wide at freeze: four grep hits (config, types, loader, fixture). Zero reads in candle build, vol estimate, or eligibility.",
+      "limitations": [
+        "Declared value does not establish executable adjacent-source-gap semantics.",
+        "Intended meaning of maximumSourceGapMs (unused metadata vs intended adjacent-gap rule) cannot be uniquely determined."
+      ]
+    },
+    {
+      "claimId": "adjacent-source-gap-enforcement-unavailable",
+      "claim": "Adjacent source-gap enforcement (start/internal/trailing) was not present in executable historical volatility code at freeze; buildValidatedCausalVolatilityWindow did not exist.",
+      "status": "unavailable",
+      "commitSha": "f2598cf960472f368cd6ad25f67d4c97a3b3956e",
+      "path": null,
+      "blobSha": null,
+      "symbol": "buildValidatedCausalVolatilityWindow",
+      "contractField": "sourceGapDefinition",
+      "value": null,
+      "summary": "Historical executable vol path called buildBtcCandlesUpToTimestamp then estimateRealizedVolatility without gap arguments. Adjacent-gap enforcement was added later in M12.3.",
+      "limitations": [
+        "Cannot reconstruct a unique historical adjacent-source-gap contract.",
+        "Missing historical field must classify as ambiguity, not inferred equality with the current forward validator."
+      ]
+    },
+    {
+      "claimId": "start-boundary-gap-unavailable",
+      "claim": "Historical start-boundary gap enforcement is unavailable.",
+      "status": "unavailable",
+      "commitSha": "f2598cf960472f368cd6ad25f67d4c97a3b3956e",
+      "path": null,
+      "blobSha": null,
+      "symbol": null,
+      "contractField": "startBoundaryHandling",
+      "value": null,
+      "summary": "No executable historical start-boundary adjacent-gap gate for volatility.",
+      "limitations": ["Leads to ambiguous-missing-historical vs current forward start-boundary enforcement."]
+    },
+    {
+      "claimId": "internal-gap-unavailable",
+      "claim": "Historical internal adjacent-source-gap enforcement is unavailable.",
+      "status": "unavailable",
+      "commitSha": "f2598cf960472f368cd6ad25f67d4c97a3b3956e",
+      "path": null,
+      "blobSha": null,
+      "symbol": null,
+      "contractField": "internalGapHandling",
+      "value": null,
+      "summary": "No executable historical internal adjacent-gap gate for volatility.",
+      "limitations": ["Leads to ambiguous-missing-historical vs current forward internal-gap enforcement."]
+    },
+    {
+      "claimId": "trailing-gap-unavailable",
+      "claim": "Historical trailing source-to-quote age enforcement inside the volatility window is unavailable.",
+      "status": "unavailable",
+      "commitSha": "f2598cf960472f368cd6ad25f67d4c97a3b3956e",
+      "path": null,
+      "blobSha": null,
+      "symbol": null,
+      "contractField": "trailingGapHandling",
+      "value": null,
+      "summary": "No executable historical trailing-gap gate on the volatility window path.",
+      "limitations": ["Distinct from BTC join-age gate."]
+    },
+    {
+      "claimId": "btc-join-age-separate-from-vol-gap",
+      "claim": "BTC join age (maximumBtcJoinAgeMs=5000) is a separate gate from volatility source-gap.",
+      "status": "proven-by-executable-code",
+      "commitSha": "f2598cf960472f368cd6ad25f67d4c97a3b3956e",
+      "path": "src/lib/data/research/btcKalshiLeadLagAnalysis/causalBtcJoin.ts",
+      "blobSha": "edb6fac6b4f0effe0280293916cc52203b6c7994",
+      "symbol": "joinBtcCausally",
+      "contractField": "quoteJoinAgeRole",
+      "value": "spot-join-staleness-gate-not-vol-source-gap",
+      "summary": "resolveCausalBtcPrice / joinBtcCausally enforce quote-to-latest-causal-BTC age for requireBtcJoin; not wired into estimateRealizedVolatility.",
+      "limitations": []
+    },
+    {
+      "claimId": "quote-join-age-threshold",
+      "claim": "Default maximum BTC join age is 5000 ms.",
+      "status": "proven-by-executable-code",
+      "commitSha": "f2598cf960472f368cd6ad25f67d4c97a3b3956e",
+      "path": "src/lib/data/research/btcKalshiLeadLagAnalysis/causalBtcJoin.ts",
+      "blobSha": "edb6fac6b4f0effe0280293916cc52203b6c7994",
+      "symbol": "joinBtcCausally",
+      "contractField": "quoteJoinAgeMs",
+      "value": 5000,
+      "summary": "Join gate threshold used by forward requireBtcJoin; independent of maximumSourceGapMs metadata.",
+      "limitations": []
+    },
+    {
+      "claimId": "atlas-provider-gap-policy-unavailable",
+      "claim": "Exact atlas candle provider and upstream gap policy cannot be established from the feature attachment path alone.",
+      "status": "unavailable",
+      "commitSha": "f2598cf960472f368cd6ad25f67d4c97a3b3956e",
+      "path": "src/lib/data/research/mispricingAtlas/parseMispricingObservations.ts",
+      "blobSha": "daaccd1d02c2f9e25f825e72d1ef4c1dfcba28ee",
+      "symbol": "parseMispricingObservations",
+      "contractField": "timestampMeaning",
+      "value": null,
+      "summary": "Provider/clock domain for research-output candles lives upstream; atlas code does not pin Coinbase vs Binance vs other.",
+      "limitations": [
+        "Blocks claiming a unique historical source timestamp domain for discovery-path volatility."
+      ]
+    }
+  ],
+  "unresolvedAmbiguities": [
+    "Intended executable meaning of maximumSourceGapMs at freeze (unused metadata versus intended adjacent-gap rule).",
+    "Exact atlas candle provider and gap policy upstream of research-output.",
+    "Whether historical discovery (research-output candles) and freeze-forward (btc-spot rebuild) share one volatility source contract."
+  ],
+  "limitations": [
+    "Evidence is a reviewed commit-time forensic record; runtime does not re-run Git.",
+    "Declared-by-frozen-config claims are not executable proof.",
+    "Unavailable adjacent-gap fields must not be inferred equal to the current forward validator.",
+    "No settlement, return, or profitability evidence is included."
+  ]
+}
