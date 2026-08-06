@@ -44,7 +44,10 @@ export type {
   AttributionOptions,
   QuoteForAttribution,
 } from "./attributeVolatilityWindowRejections";
-export { buildCausalFeatureEquivalenceAudit } from "./buildCausalFeatureEquivalenceAudit";
+export {
+  assessReconstructability,
+  buildCausalFeatureEquivalenceAudit,
+} from "./buildCausalFeatureEquivalenceAudit";
 export { hashVolatilityFeatureContract } from "./hashVolatilityFeatureContract";
 export {
   serializeCausalFeatureEquivalenceAuditHtml,

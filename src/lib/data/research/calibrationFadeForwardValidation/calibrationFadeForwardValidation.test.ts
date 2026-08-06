@@ -8,7 +8,10 @@ import { publishResearchArtifactsAtomically } from "./publishResearchArtifactsAt
 
 import { analyzeCalibrationFadeForwardForRun, evaluateOpenMarket } from "./analyzeCalibrationFadeForwardForRun";
 import { buildBtcCandlesUpToTimestamp, resolveCausalBtcPrice } from "./buildBtcCandlesCausal";
-import { buildValidatedCausalVolatilityWindow } from "./buildValidatedCausalVolatilityWindow";
+import {
+  buildValidatedCausalVolatilityWindow,
+  CAUSAL_VOLATILITY_WINDOW_CONTRACT_SEMANTICS,
+} from "./buildValidatedCausalVolatilityWindow";
 import {
   CANONICAL_CALIBRATION_FADE_CLASSIFICATION_PRECEDENCE,
   classifyCalibrationFadeInterpretation,
@@ -2269,7 +2272,9 @@ describe("validated causal volatility window", () => {
     expect(semantics.duplicateHandling).toContain("exact-timestamp-price-collapse");
     expect(semantics.orderingHandling).toContain("reject-non-ascending");
     expect(semantics.invalidPriceHandling).toContain("in-window-scope");
-    expect(semantics.futureSampleHandling).toContain("exclude-points-after-quote");
+    expect(semantics.futureSampleHandling).toBe(
+      "full-series-order-and-duplicate-integrity-before-exclude-points-after-quote",
+    );
 
     // 5000 passes / 5001 fails for adjacent gaps (start/internal/trailing covered above).
     expect(buildWindow(densePoints(0, QUOTE_MS, 5_000), QUOTE_MS).available).toBe(true);
@@ -2306,6 +2311,28 @@ describe("validated causal volatility window", () => {
       QUOTE_MS,
     );
     expect(missingMinute.rejectionReason).toBe("missing-minute-bucket");
+  });
+
+  it("rejects future conflicting duplicates before post-quote exclusion (futurePointCount stays 0)", () => {
+    // Production runs full-series order/duplicate integrity before excluding points
+    // after the quote, so a future conflicting duplicate rejects with futurePointCount 0.
+    const points = densePoints(0, QUOTE_MS);
+    const futureTs = QUOTE_MS + 1_000;
+    points.push(
+      { timestampMs: futureTs, receivedAtLocal: new Date(futureTs).toISOString(), priceUsd: priceAt(futureTs) },
+      {
+        timestampMs: futureTs,
+        receivedAtLocal: new Date(futureTs).toISOString(),
+        priceUsd: priceAt(futureTs) + 1,
+      },
+    );
+    const window = buildWindow(points, QUOTE_MS);
+    expect(window.available).toBe(false);
+    expect(window.rejectionReason).toBe("conflicting-duplicate-timestamp");
+    expect(window.futurePointCount).toBe(0);
+    expect(CAUSAL_VOLATILITY_WINDOW_CONTRACT_SEMANTICS.futureSampleHandling).toBe(
+      "full-series-order-and-duplicate-integrity-before-exclude-points-after-quote",
+    );
   });
 });
 

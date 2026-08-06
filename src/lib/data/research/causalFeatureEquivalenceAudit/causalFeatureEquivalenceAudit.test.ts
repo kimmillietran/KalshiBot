@@ -16,6 +16,7 @@ import { buildBtcSourceDiagnostics } from "./buildBtcSourceDiagnostics";
 import { buildQuoteJoinDiagnostics } from "./buildQuoteJoinDiagnostics";
 import { classifyCausalFeatureEquivalence } from "./classifyCausalFeatureEquivalence";
 import { compareVolatilityContracts } from "./compareVolatilityContracts";
+import { assessReconstructability } from "./buildCausalFeatureEquivalenceAudit";
 import {
   CAUSAL_FEATURE_EQUIVALENCE_EVIDENCE_SCHEMA,
   CAUSAL_FEATURE_EQUIVALENCE_EVIDENCE_VERSION,
@@ -23,11 +24,14 @@ import {
   EXPECTED_FREEZE_COMMIT_SHA,
   EXPECTED_HYPOTHESIS_CONFIGURATION_HASH,
   EXPECTED_HYPOTHESIS_ID,
+  VOLATILITY_WINDOW_ATTRIBUTION_CLASSES,
   type CausalFeatureEquivalenceEvidenceDocument,
   type ContractComparisonResult,
   type ReconstructabilityAssessment,
   type ReferenceComparisonSummary,
   type VolatilityFeatureContract,
+  type VolatilityWindowAttributionClass,
+  type VolatilityWindowDiagnostics,
 } from "./causalFeatureEquivalenceAuditTypes";
 import {
   CAUSAL_VOLATILITY_WINDOW_CONTRACT_SEMANTICS,
@@ -129,7 +133,8 @@ function fullContract(overrides: Partial<VolatilityFeatureContract> = {}): Volat
     duplicateHandling: "exact-timestamp-price-collapse-conflicting-price-reject",
     orderingHandling: "reject-non-ascending-input-no-resort",
     invalidPriceHandling: "reject-non-finite-or-non-positive-in-window-scope",
-    futureSampleHandling: "exclude-points-after-quote-never-used",
+    futureSampleHandling:
+      CAUSAL_VOLATILITY_WINDOW_CONTRACT_SEMANTICS.futureSampleHandling,
     volHighThreshold: 0.6,
     ...overrides,
   });
@@ -1125,6 +1130,85 @@ describe("attributeVolatilityWindowRejections", () => {
         expect(classCount(audit, mapped as string), testCase.name).toBe(1);
       }
     }
+  });
+});
+
+describe("assessReconstructability", () => {
+  function diagnosticsFromCounts(
+    counts: Partial<Record<VolatilityWindowAttributionClass, number>>,
+  ): VolatilityWindowDiagnostics {
+    const total = Object.values(counts).reduce((sum, value) => sum + (value ?? 0), 0);
+    return {
+      observationsAttempted: total,
+      classes: VOLATILITY_WINDOW_ATTRIBUTION_CLASSES.map((attributionClass) => ({
+        class: attributionClass,
+        observationCount: counts[attributionClass] ?? 0,
+        observationShare: total > 0 ? (counts[attributionClass] ?? 0) / total : null,
+        affectedMarketCount: (counts[attributionClass] ?? 0) > 0 ? 1 : 0,
+        representativeExamples: [],
+        minimumFailingGapMs: null,
+        maximumFailingGapMs: null,
+        p50FailingGapMs: null,
+        p90FailingGapMs: null,
+      })),
+      productionRejectionReasonCounts: {},
+    };
+  }
+
+  it("requires every evaluated observation available (mixed available + missing-minute-bucket fails)", () => {
+    const assessment = assessReconstructability(
+      diagnosticsFromCounts({
+        available: 3,
+        "missing-minute-bucket": 1,
+      }),
+      true,
+      false,
+    );
+    expect(assessment.reconstructable).toBe(false);
+    expect(assessment.availableShare).toBe(0.75);
+    expect(assessment.continuityFailureShare).toBe(0);
+
+    const classified = classifyCausalFeatureEquivalence({
+      contractComparison: comparisonFrom(fullContract(), fullContract(), "proven"),
+      reconstructability: assessment,
+      referenceComparison: skippedReference(),
+    });
+    expect(classified.verdict).toBe("frozen-feature-not-reconstructable-from-current-capture");
+    expect(classified.verdict).not.toBe("exactly-equivalent-and-reconstructable");
+  });
+
+  it("treats nonconsecutive-bars / insufficient-bars / invalid-source-price as reconstruction failures", () => {
+    for (const failureClass of [
+      "nonconsecutive-bars",
+      "insufficient-bars",
+      "invalid-source-price",
+    ] as const) {
+      const assessment = assessReconstructability(
+        diagnosticsFromCounts({ available: 2, [failureClass]: 1 }),
+        true,
+        false,
+      );
+      expect(assessment.reconstructable, failureClass).toBe(false);
+    }
+  });
+
+  it("is reconstructable only when available === total > 0", () => {
+    const assessment = assessReconstructability(
+      diagnosticsFromCounts({ available: 4 }),
+      true,
+      false,
+    );
+    expect(assessment.reconstructable).toBe(true);
+  });
+
+  it("ambiguity still precedes reconstructability even when all windows are available", () => {
+    const assessment = assessReconstructability(
+      diagnosticsFromCounts({ available: 5 }),
+      true,
+      true,
+    );
+    expect(assessment.reconstructable).toBe(false);
+    expect(assessment.reason).toContain("ambiguous");
   });
 });
 

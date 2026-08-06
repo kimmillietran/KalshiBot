@@ -101,7 +101,18 @@ function emptyReferenceComparison(reason: string): ReferenceComparisonSummary {
   };
 }
 
-function assessReconstructability(
+/**
+ * Reconstructability requires successful reconstruction for every evaluated
+ * observation: available === total (total > 0). Equivalently, every non-available
+ * volatility attribution class counts as a reconstruction failure — including
+ * non-gap classes (missing-minute-bucket, nonconsecutive-bars, insufficient-bars,
+ * invalid-source-price, etc.), not only the three continuity/gap classes.
+ *
+ * continuityFailureShare remains a gap-only diagnostic (start/internal/trailing);
+ * it does not gate reconstructable. Ambiguity / contract inequivalence still
+ * precede the capture-data check.
+ */
+export function assessReconstructability(
   volatilityWindowDiagnostics: CausalFeatureEquivalenceAuditReport["volatilityWindowDiagnostics"],
   contractEquivalent: boolean,
   historicalAmbiguous: boolean,
@@ -117,6 +128,8 @@ function assessReconstructability(
       || entry.class === "trailing-source-age-exceeded"
     )
     .reduce((sum, entry) => sum + entry.observationCount, 0);
+  // All non-available observations are reconstruction failures (gap and non-gap).
+  const reconstructionFailures = Math.max(0, total - available);
 
   if (historicalAmbiguous) {
     return {
@@ -137,12 +150,12 @@ function assessReconstructability(
     };
   }
 
-  const reconstructable = total > 0 && available > 0 && continuityFailures === 0;
+  const reconstructable = total > 0 && available === total && reconstructionFailures === 0;
   return {
     reconstructable,
     reason: reconstructable
-      ? "Contracts are equivalent and the selected capture yields available volatility windows without continuity failures."
-      : "Contracts are equivalent but the selected capture lacks required adjacent-source continuity or warm-up density.",
+      ? "Contracts are equivalent and every evaluated observation reconstructed an available volatility window."
+      : "Contracts are equivalent but at least one evaluated observation failed volatility-window reconstruction (any attribution class, including non-gap).",
     continuityFailureShare: safeShare(continuityFailures, total),
     availableShare: safeShare(available, total),
   };

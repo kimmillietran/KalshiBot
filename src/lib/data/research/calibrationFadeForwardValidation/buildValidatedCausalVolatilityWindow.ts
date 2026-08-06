@@ -42,7 +42,11 @@ export const CAUSAL_VOLATILITY_WINDOW_CONTRACT_SEMANTICS = {
   duplicateHandling: "exact-timestamp-price-collapse-conflicting-price-reject",
   orderingHandling: "reject-non-ascending-input-no-resort",
   invalidPriceHandling: "reject-non-finite-or-non-positive-in-window-scope",
-  futureSampleHandling: "exclude-points-after-quote-never-used",
+  // Full-series order/duplicate integrity runs before post-quote exclusion, so a
+  // future conflicting duplicate can reject with futurePointCount still 0.
+  // Points after the quote are excluded from candle/vol math only after that pass.
+  futureSampleHandling:
+    "full-series-order-and-duplicate-integrity-before-exclude-points-after-quote",
   quoteJoinAgeRole: "spot-join-staleness-gate-not-vol-source-gap",
 } as const;
 
