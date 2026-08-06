@@ -143,11 +143,30 @@ export function buildProbabilityBucketDefinitions(
   for (let binIndex = 0; binIndex < binCount; binIndex += 1) {
     const minInclusive = binIndex / binCount;
     const maxExclusive = binIndex === binCount - 1 ? null : (binIndex + 1) / binCount;
-    const maxLabel = binIndex === binCount - 1 ? "1.0]" : `${maxExclusive?.toFixed(1)})`;
+    // Prefer exact rational labels for thirds-style bins so display cannot revive
+    // the historical [0.3, 0.7) ambiguity for exact [1/3, 2/3) middle thirds.
+    const formatBound = (value: number): string => {
+      if (value === 0) {
+        return "0";
+      }
+      if (value === 1) {
+        return "1";
+      }
+      if (binCount === 3) {
+        if (value === 1 / 3) {
+          return "1/3";
+        }
+        if (value === 2 / 3) {
+          return "2/3";
+        }
+      }
+      return value.toFixed(3).replace(/0+$/, "").replace(/\.$/, "");
+    };
+    const maxLabel = binIndex === binCount - 1 ? "1]" : `${formatBound(maxExclusive!)})`;
 
     buckets.push({
       bucketId: `prob-${binIndex}`,
-      bucketLabel: `[${minInclusive.toFixed(1)}, ${maxLabel}`,
+      bucketLabel: `[${formatBound(minInclusive)}, ${maxLabel}`,
       minInclusive,
       maxExclusive,
     });

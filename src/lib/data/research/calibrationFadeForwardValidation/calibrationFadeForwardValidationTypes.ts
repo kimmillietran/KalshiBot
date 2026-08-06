@@ -2,7 +2,46 @@ import type { JsonlIo } from "@/lib/data/research/jsonl";
 import type { SelectedRunCaptureHealthSource } from "@/lib/data/research/selectedRunCaptureHealth";
 
 export const CALIBRATION_FADE_FORWARD_VALIDATION_VERSION =
-  "calibration-fade-forward-validation-v1";
+  "calibration-fade-forward-validation-v2";
+
+export const CALIBRATION_FADE_PROVENANCE_MANIFEST_SCHEMA =
+  "calibration-fade-hypothesis-provenance";
+export const CALIBRATION_FADE_PROVENANCE_MANIFEST_VERSION = 1;
+export const CALIBRATION_FADE_PROVENANCE_ACCEPTED_CONCLUSIONS = [
+  "defensible-with-manifest",
+] as const;
+
+export type CalibrationFadeProvenanceConclusion =
+  (typeof CALIBRATION_FADE_PROVENANCE_ACCEPTED_CONCLUSIONS)[number];
+
+/**
+ * The only supported provenance verification model. Rule-freeze provenance is
+ * established by a reviewed, committed manifest; no Git process is executed at
+ * evaluation time, so the manifest must state its own verification model.
+ */
+export const CALIBRATION_FADE_PROVENANCE_VERIFICATION_MODEL = "reviewed-manifest";
+
+export type CalibrationFadeProvenanceVerificationModel =
+  typeof CALIBRATION_FADE_PROVENANCE_VERIFICATION_MODEL;
+
+export const CALIBRATION_FADE_FIRST_FORWARD_BOUNDARY_CLAIM = "before-first-forward-capture";
+export const CALIBRATION_FADE_FIRST_FORWARD_BOUNDARY_VERIFICATION_BASIS = "project-context-reviewed";
+
+/**
+ * Structured freeze-boundary claim. `runtimeVerified` is always false: the claim
+ * is reviewed out of band and is never re-derived from repository history here.
+ */
+export type CalibrationFadeFirstForwardEvaluationBoundary = {
+  claim: typeof CALIBRATION_FADE_FIRST_FORWARD_BOUNDARY_CLAIM;
+  verificationBasis: typeof CALIBRATION_FADE_FIRST_FORWARD_BOUNDARY_VERIFICATION_BASIS;
+  runtimeVerified: false;
+};
+
+export const CALIBRATION_FADE_CONFIGURATION_HASH_SEMANTICS =
+  "configurationHash is fnv1a32(stableStringify(validated freeze spec without configurationHash): a semantic hash of the normalized specification, not of raw file bytes. Formatting, key order, and comment-only edits do not change it; any governed value change does.";
+
+export const CALIBRATION_FADE_PROVENANCE_HASH_SEMANTICS =
+  "originalConfigHash and resolvedConfigHash are semantic normalized-spec hashes produced by the same function as configurationHash, so they are comparable across reformattings. provenanceManifestHash is fnv1a32 over the raw manifest text with any BOM stripped.";
 
 export const DEFAULT_CALIBRATION_FADE_FORWARD_VALIDATION_OUTPUT_PATH =
   "data/research-results/calibration-fade-forward-validation.json";
@@ -180,12 +219,52 @@ export type CalibrationFadeFunnelStage = {
 export type CalibrationFadeGatePassCounts = {
   validBook: number;
   synchronizedBook: number;
+  openMarket: number;
   btcJoinAvailable: number;
   volatilityAvailable: number;
   highVolatility: number;
   probabilityBand: number;
   timeRemainingBand: number;
   qualifyingObservation: number;
+};
+
+export type CalibrationFadeProvenanceStatus =
+  | "valid-manifest"
+  | "missing-manifest"
+  | "malformed-manifest"
+  | "mismatched-manifest"
+  | "unsupported-manifest-version"
+  | "unsupported-verification-model"
+  | "incomplete-manifest"
+  | "unacceptable-conclusion";
+
+export type CalibrationFadeProvenanceReport = {
+  provenanceAvailable: boolean;
+  provenanceStatus: CalibrationFadeProvenanceStatus;
+  provenanceManifestPath: string | null;
+  provenanceManifestHash: string | null;
+  provenanceConclusion: CalibrationFadeProvenanceConclusion | null;
+  /** Non-null only when the manifest declared and matched the supported verification model. */
+  verificationModel: CalibrationFadeProvenanceVerificationModel | null;
+  ruleFreezeEvidence: Record<string, unknown> | null;
+  historicalBenchmarkAvailability: "available" | "unavailable" | null;
+  /** Authoritative missing set, reconciled against the filesystem at load time. */
+  missingArtifacts: readonly string[];
+  /** Missing set as declared by the manifest, retained so stale declarations stay auditable. */
+  declaredMissingArtifacts: readonly string[];
+  /** Canonical artifacts observed absent at load time, independent of the manifest. */
+  runtimeMissingArtifacts?: readonly string[];
+  /** Canonical artifacts observed present and hashed at load time. */
+  runtimeLoadedArtifacts?: readonly string[];
+  limitations: readonly string[];
+  integrityCorrections: readonly Record<string, unknown>[];
+  originalFreezeCommitSha: string | null;
+  originalFreezeCommitTimestamp: string | null;
+  originalConfigHash: string | null;
+  resolvedConfigHash: string | null;
+  firstForwardEvaluationBoundary: CalibrationFadeFirstForwardEvaluationBoundary | null;
+  hashSemantics: string;
+  configurationHashSemantics: string;
 };
 
 export type CalibrationFadeEventRecord = {
@@ -283,12 +362,14 @@ export type CalibrationFadeForwardValidationReport = {
   inputArtifactIdentities: readonly Record<string, unknown>[];
   selectedRunQuality: CalibrationFadeSelectedRunQuality;
   historicalBenchmark: HistoricalHypothesisBenchmark;
+  provenance: CalibrationFadeProvenanceReport;
   forwardBenchmark: CalibrationFadeCalibrationMetrics & {
     executable: CalibrationFadeExecutableMetrics;
     settlementCoverage: CalibrationFadeSettlementCoverage;
   };
   funnel: readonly CalibrationFadeFunnelStage[];
   gatePassCounts: CalibrationFadeGatePassCounts;
+  volatilityWindowRejections: Record<string, number>;
   featureCompatibility: {
     probabilityMeasureAvailable: boolean;
     volatilityMeasureAvailable: boolean;

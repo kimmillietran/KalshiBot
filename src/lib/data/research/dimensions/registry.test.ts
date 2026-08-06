@@ -76,6 +76,19 @@ describe("research dimension registry", () => {
     expect(templates[0]?.bucketId).toBe("coarse-prob-0-coarse-time-early");
   });
 
+  it("labels coarse-prob-1 as exact thirds without rounded [0.3, 0.7) ambiguity", () => {
+    const middle = buildCoarseProbabilityAxisDefinitions().find(
+      (entry) => entry.bucketId === "coarse-prob-1",
+    );
+    expect(middle).toBeDefined();
+    expect(middle!.minInclusive).toBe(1 / 3);
+    expect(middle!.maxExclusive).toBe(2 / 3);
+    expect(middle!.bucketId).toBe("coarse-prob-1");
+    expect(middle!.bucketLabel).toBe("[1/3, 2/3)");
+    expect(middle!.bucketLabel).not.toContain("0.3");
+    expect(middle!.bucketLabel).not.toContain("0.7");
+  });
+
   it("matches single-dimension buckets via registry matchers", () => {
     const observation = createObservation();
     const bucketId = TIME_REMAINING_BUCKET_DEFINITIONS[1]!.bucketId;

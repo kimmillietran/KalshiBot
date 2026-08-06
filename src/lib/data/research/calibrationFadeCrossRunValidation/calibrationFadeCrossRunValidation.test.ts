@@ -7,7 +7,18 @@ import type {
 } from "@/lib/data/research/calibrationFadeForwardValidation/calibrationFadeForwardValidationTypes";
 import {
   CalibrationFadeForwardValidationError,
+  CALIBRATION_FADE_CONFIGURATION_HASH_SEMANTICS,
+  CALIBRATION_FADE_FIRST_FORWARD_BOUNDARY_CLAIM,
+  CALIBRATION_FADE_FIRST_FORWARD_BOUNDARY_VERIFICATION_BASIS,
+  CALIBRATION_FADE_PROVENANCE_HASH_SEMANTICS,
+  CALIBRATION_FADE_PROVENANCE_MANIFEST_SCHEMA,
+  CALIBRATION_FADE_PROVENANCE_MANIFEST_VERSION,
+  CALIBRATION_FADE_PROVENANCE_VERIFICATION_MODEL,
+  CANONICAL_CALIBRATION_FADE_CLASSIFICATION_PRECEDENCE,
   DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH,
+  deriveProvenanceManifestPath,
+  loadFrozenHypothesisSpec,
+  createMemoryCalibrationFadeForwardValidationIo,
 } from "@/lib/data/research/calibrationFadeForwardValidation";
 
 import { analyzeCalibrationFadeCrossRun } from "./analyzeCalibrationFadeCrossRun";
@@ -26,9 +37,11 @@ const RUN2 = "data/live-capture/forward-quotes/2026-07-12T10-18-27-409Z";
 const RUN3 = "data/live-capture/forward-quotes/2026-07-13T00-00-00-000Z";
 const HYPOTHESIS_ID =
   "atlas-volatilityProbabilityTime-vol-high-coarse-prob-1-coarse-time-early-over";
-const HYPOTHESIS_HASH = "76336405";
+const PROVENANCE_PATH = deriveProvenanceManifestPath(DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH);
+const ORIGINAL_FREEZE_COMMIT_SHA = "f2598cf960472f368cd6ad25f67d4c97a3b3956e";
+const ORIGINAL_FREEZE_COMMIT_TIMESTAMP = "2026-07-12T01:54:04-07:00";
 
-function freezeSpecContent(hashNote = HYPOTHESIS_HASH): string {
+function freezeSpecContent(): string {
   return JSON.stringify({
     hypothesisId: HYPOTHESIS_ID,
     hypothesisVersion: "v1",
@@ -42,7 +55,7 @@ function freezeSpecContent(hashNote = HYPOTHESIS_HASH): string {
     suggestedStrategyFamily: "calibration-no-fade",
     eligibilityRules: {
       volatility: { bucketId: "vol-high", minInclusive: 0.6, maxExclusive: null },
-      probability: { bucketId: "coarse-prob-1", minInclusive: 0.3, maxExclusive: 0.7 },
+      probability: { bucketId: "coarse-prob-1", minInclusive: 1 / 3, maxExclusive: 2 / 3 },
       timeRemainingMs: { bucketId: "coarse-time-early", minInclusive: 0, maxExclusive: 900000 },
     },
     probabilityMeasure: { id: "yes-bid-ask-midpoint", definition: "mid", formula: "mid" },
@@ -81,12 +94,73 @@ function freezeSpecContent(hashNote = HYPOTHESIS_HASH): string {
       materialSupportCalibrationGap: 0.03,
       materialExecutableNetReturnCents: 1,
     },
-    classificationRules: { precedence: ["insufficient-forward-events"] },
-    _fixtureNote: hashNote,
+    classificationRules: { precedence: [...CANONICAL_CALIBRATION_FADE_CLASSIFICATION_PRECEDENCE] },
   });
 }
 
+const FIRST_FORWARD_EVALUATION_BOUNDARY = {
+  claim: CALIBRATION_FADE_FIRST_FORWARD_BOUNDARY_CLAIM,
+  verificationBasis: CALIBRATION_FADE_FIRST_FORWARD_BOUNDARY_VERIFICATION_BASIS,
+  runtimeVerified: false,
+} as const;
+
+/** Complete reviewed manifest for a fixture freeze with no integrity divergence. */
+function provenanceManifestContent(configurationHash: string): string {
+  return JSON.stringify({
+    schema: CALIBRATION_FADE_PROVENANCE_MANIFEST_SCHEMA,
+    version: CALIBRATION_FADE_PROVENANCE_MANIFEST_VERSION,
+    verificationModel: CALIBRATION_FADE_PROVENANCE_VERIFICATION_MODEL,
+    hypothesisId: HYPOTHESIS_ID,
+    sourceCandidateId: HYPOTHESIS_ID,
+    configPath: DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH,
+    originalFreezeCommitSha: ORIGINAL_FREEZE_COMMIT_SHA,
+    originalFreezeCommitTimestamp: ORIGINAL_FREEZE_COMMIT_TIMESTAMP,
+    originalConfigHash: configurationHash,
+    resolvedConfigHash: configurationHash,
+    firstForwardEvaluationBoundary: FIRST_FORWARD_EVALUATION_BOUNDARY,
+    conclusion: "defensible-with-manifest",
+    ruleFreezeEvidence: {
+      kind: "repository-history",
+      description:
+        `Frozen config was introduced in commit ${ORIGINAL_FREEZE_COMMIT_SHA} before the first forward capture `
+        + "epoch. Git is not executed at evaluation time; this reviewed manifest records freeze identity.",
+      runtimeGitExecuted: false,
+      originalProbabilityBounds: { minInclusive: 0.3, maxExclusive: 0.7 },
+      resolvedProbabilityBounds: {
+        minInclusive: 1 / 3,
+        maxExclusive: 2 / 3,
+        bucketId: "coarse-prob-1",
+      },
+    },
+    historicalBenchmarkAvailability: "unavailable",
+    missingArtifacts: [],
+    limitations: [],
+    integrityCorrections: [],
+  });
+}
+
+function hypothesisProvenanceFiles(): Record<string, string> {
+  const freeze = freezeSpecContent();
+  // The freeze document alone determines the configuration hash the manifest
+  // must certify, so it is read back before the manifest is built.
+  const hash = loadFrozenHypothesisSpec({
+    io: createMemoryCalibrationFadeForwardValidationIo({
+      [DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH]: freeze,
+    }),
+  }).spec.configurationHash;
+  return {
+    [DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH]: freeze,
+    [PROVENANCE_PATH]: provenanceManifestContent(hash),
+    "data/research-results/hypothesis-candidates.json": hypothesisCandidatesFixture(),
+  };
+}
+
+const HYPOTHESIS_HASH = loadFrozenHypothesisSpec({
+  io: createMemoryCalibrationFadeForwardValidationIo(hypothesisProvenanceFiles()),
+}).spec.configurationHash;
+
 function hypothesisCandidatesFixture() {
+
   return JSON.stringify({
     candidates: [
       {
@@ -135,7 +209,7 @@ function stubReport(input: {
   researchReadyVerified?: boolean;
 }): CalibrationFadeForwardValidationReport {
   return {
-    analysisVersion: "calibration-fade-forward-validation-v1",
+    analysisVersion: "calibration-fade-forward-validation-v2",
     analysisScope: "selected-run",
     selectedRunId: input.runId,
     selectedRunDirectory: input.runDir,
@@ -236,12 +310,35 @@ function stubReport(input: {
     gatePassCounts: {
       validBook: 0,
       synchronizedBook: 0,
+      openMarket: 0,
       btcJoinAvailable: 0,
       volatilityAvailable: 0,
       highVolatility: 0,
       probabilityBand: 0,
       timeRemainingBand: 0,
       qualifyingObservation: input.qualifyingObservationCount,
+    },
+    volatilityWindowRejections: {},
+    provenance: {
+      provenanceAvailable: true,
+      provenanceStatus: "valid-manifest",
+      provenanceManifestPath: PROVENANCE_PATH,
+      provenanceManifestHash: "stub",
+      provenanceConclusion: "defensible-with-manifest",
+      verificationModel: CALIBRATION_FADE_PROVENANCE_VERIFICATION_MODEL,
+      ruleFreezeEvidence: {},
+      historicalBenchmarkAvailability: "unavailable",
+      missingArtifacts: [],
+      declaredMissingArtifacts: [],
+      limitations: [],
+      integrityCorrections: [],
+      originalFreezeCommitSha: ORIGINAL_FREEZE_COMMIT_SHA,
+      originalFreezeCommitTimestamp: ORIGINAL_FREEZE_COMMIT_TIMESTAMP,
+      originalConfigHash: input.hypothesisConfigurationHash ?? HYPOTHESIS_HASH,
+      resolvedConfigHash: input.hypothesisConfigurationHash ?? HYPOTHESIS_HASH,
+      firstForwardEvaluationBoundary: FIRST_FORWARD_EVALUATION_BOUNDARY,
+      hashSemantics: CALIBRATION_FADE_PROVENANCE_HASH_SEMANTICS,
+      configurationHashSemantics: CALIBRATION_FADE_CONFIGURATION_HASH_SEMANTICS,
     },
     featureCompatibility: {
       probabilityMeasureAvailable: true,
@@ -551,8 +648,7 @@ describe("analyzeCalibrationFadeCrossRun real-run-shaped fixture", () => {
     const mutableSingleRunPath = "data/research-results/calibration-fade-forward-validation.json";
     const io = createMemoryCalibrationFadeCrossRunValidationIo(
       {
-        [DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH]: freezeSpecContent(),
-        "data/research-results/hypothesis-candidates.json": hypothesisCandidatesFixture(),
+        ...hypothesisProvenanceFiles(),
         [mutableSingleRunPath]: JSON.stringify({ shouldNeverBeRead: true }),
         [RUN1]: "",
         [RUN2]: "",
@@ -689,8 +785,7 @@ describe("analyzeCalibrationFadeCrossRun real-run-shaped fixture", () => {
   it("counts overlapping markets once and attributes return to earliest run", async () => {
     const io = createMemoryCalibrationFadeCrossRunValidationIo(
       {
-        [DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH]: freezeSpecContent(),
-        "data/research-results/hypothesis-candidates.json": hypothesisCandidatesFixture(),
+        ...hypothesisProvenanceFiles(),
         [`${RUN1}/top-of-book.jsonl`]: "{}",
         [`${RUN2}/top-of-book.jsonl`]: "{}",
       },
@@ -759,8 +854,7 @@ describe("analyzeCalibrationFadeCrossRun real-run-shaped fixture", () => {
   it("fails closed on hypothesis hash mismatch", async () => {
     const io = createMemoryCalibrationFadeCrossRunValidationIo(
       {
-        [DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH]: freezeSpecContent(),
-        "data/research-results/hypothesis-candidates.json": hypothesisCandidatesFixture(),
+        ...hypothesisProvenanceFiles(),
       },
       [RUN1, RUN2],
     );
@@ -803,8 +897,7 @@ describe("analyzeCalibrationFadeCrossRun real-run-shaped fixture", () => {
   it("rejects the July 20 gappy run set instead of asking for more data", async () => {
     const io = createMemoryCalibrationFadeCrossRunValidationIo(
       {
-        [DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH]: freezeSpecContent(),
-        "data/research-results/hypothesis-candidates.json": hypothesisCandidatesFixture(),
+        ...hypothesisProvenanceFiles(),
       },
       [RUN1, RUN2],
     );
@@ -883,8 +976,7 @@ describe("analyzeCalibrationFadeCrossRun real-run-shaped fixture", () => {
   it("fails closed on malformed candidate market rows with run and line attribution", async () => {
     const io = createMemoryCalibrationFadeCrossRunValidationIo(
       {
-        [DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH]: freezeSpecContent(),
-        "data/research-results/hypothesis-candidates.json": hypothesisCandidatesFixture(),
+        ...hypothesisProvenanceFiles(),
       },
       [RUN1, RUN2],
     );
@@ -947,8 +1039,7 @@ describe("analyzeCalibrationFadeCrossRun real-run-shaped fixture", () => {
   it("ignores blank candidate JSONL rows without failing closed", async () => {
     const io = createMemoryCalibrationFadeCrossRunValidationIo(
       {
-        [DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH]: freezeSpecContent(),
-        "data/research-results/hypothesis-candidates.json": hypothesisCandidatesFixture(),
+        ...hypothesisProvenanceFiles(),
       },
       [RUN1, RUN2],
     );
@@ -998,8 +1089,7 @@ describe("analyzeCalibrationFadeCrossRun real-run-shaped fixture", () => {
   it("preserves invalid selected runs in the ledger instead of silently subsetting", async () => {
     const io = createMemoryCalibrationFadeCrossRunValidationIo(
       {
-        [DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH]: freezeSpecContent(),
-        "data/research-results/hypothesis-candidates.json": hypothesisCandidatesFixture(),
+        ...hypothesisProvenanceFiles(),
       },
       [RUN1, RUN2],
     );
@@ -1070,8 +1160,7 @@ describe("analyzeCalibrationFadeCrossRun real-run-shaped fixture", () => {
   it("keeps failed selected runs in their original operator position", async () => {
     const io = createMemoryCalibrationFadeCrossRunValidationIo(
       {
-        [DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH]: freezeSpecContent(),
-        "data/research-results/hypothesis-candidates.json": hypothesisCandidatesFixture(),
+        ...hypothesisProvenanceFiles(),
       },
       [RUN1, RUN2, RUN3],
     );
@@ -1131,8 +1220,7 @@ describe("analyzeCalibrationFadeCrossRun real-run-shaped fixture", () => {
   it("fails closed on a syntactically valid candidate row with an invalid shape", async () => {
     const io = createMemoryCalibrationFadeCrossRunValidationIo(
       {
-        [DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH]: freezeSpecContent(),
-        "data/research-results/hypothesis-candidates.json": hypothesisCandidatesFixture(),
+        ...hypothesisProvenanceFiles(),
       },
       [RUN1, RUN2],
     );
@@ -1202,8 +1290,7 @@ describe("analyzeCalibrationFadeCrossRun real-run-shaped fixture", () => {
   it("blocks formal use when a ready verdict lacks verified provenance", async () => {
     const io = createMemoryCalibrationFadeCrossRunValidationIo(
       {
-        [DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH]: freezeSpecContent(),
-        "data/research-results/hypothesis-candidates.json": hypothesisCandidatesFixture(),
+        ...hypothesisProvenanceFiles(),
       },
       [RUN1, RUN2],
     );
