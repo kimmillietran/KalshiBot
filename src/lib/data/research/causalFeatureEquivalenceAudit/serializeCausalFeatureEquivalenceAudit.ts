@@ -118,6 +118,21 @@ export function serializeCausalFeatureEquivalenceAuditHtml(
   <h2>10. Reconstructability</h2>
   <p>Denominator: ${escapeHtml(report.reconstructability.denominatorDefinition)}</p>
   <p>Structural warm-up / pre-first-causal-source exclusions are not treated as failures and do not alone trigger future capture redesign.</p>
+  <p><strong>State:</strong> ${
+    report.reconstructability.featureEvaluableCount === 0
+      ? escapeHtml(
+          "A — structural warm-up / zero-evaluable: No feature-evaluable observations were available after structural run-start exclusions. This is insufficient evaluable forward duration, not evidence of capture-source incompatibility.",
+        )
+      : report.reconstructability.reconstructionFailureCount > 0
+        ? escapeHtml(
+            "B — genuine feature-evaluable reconstruction failure: at least one Domain A feature-evaluable observation failed volatility-window reconstruction after the production-faithful warm-up boundary.",
+          )
+        : report.reconstructability.reconstructable
+          ? escapeHtml(
+              "C — successfully reconstructable: contracts are equivalent and every feature-evaluable observation reconstructed an available volatility window.",
+            )
+          : escapeHtml(report.reconstructability.reason)
+  }</p>
   <p>observedTotal=${report.reconstructability.observedTotal};
      structurallyExcluded=${report.reconstructability.structurallyExcludedCount};
      featureEvaluable=${report.reconstructability.featureEvaluableCount};
@@ -127,6 +142,13 @@ export function serializeCausalFeatureEquivalenceAuditHtml(
   <pre>${renderJson(report.reconstructability)}</pre>
 
   <h2>11. Future capture requirements</h2>
+  <p>${
+    report.futureCaptureRequirements.emitted
+      ? "Capture redesign requirements emitted for genuine feature-evaluable reconstruction failures."
+      : escapeHtml(
+          "Future capture redesign not emitted (ambiguity, mismatch, zero-evaluable / insufficient evaluable forward duration, or successful reconstructability).",
+        )
+  }</p>
   <pre>${renderJson(report.futureCaptureRequirements)}</pre>
 
   <h2>12. Limitations and non-claims</h2>

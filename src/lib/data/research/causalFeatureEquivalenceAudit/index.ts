@@ -48,8 +48,10 @@ export {
   assessReconstructability,
   buildCausalFeatureEquivalenceAudit,
   classifyStructuralExclusion,
+  deriveEarliestFeatureEvaluableBoundary,
   deriveEarliestFeatureEvaluableTimestampMs,
   findFirstUsableCausalBtcTimestampMs,
+  inferHealthySourceCadenceMs,
 } from "./buildCausalFeatureEquivalenceAudit";
 export {
   RECONSTRUCTABILITY_DENOMINATOR_DEFINITION,

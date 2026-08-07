@@ -1160,20 +1160,27 @@ describe("attributeVolatilityWindowRejections", () => {
 describe("earliestFeatureEvaluableTimestampMs derivation", () => {
   const returnIntervalMs = 60_000;
   const requiredCloseCount = 11;
+  const maximumSourceGapMs = 5_000;
+  const healthySourceCadenceMs = 1_000;
 
-  it("aligns to first minute bucket, not naive firstBTC+10min for mid-minute starts", () => {
+  it("advances past B0 when initialOffsetMs > maximumSourceGapMs", () => {
+    // Mid-minute first sample cannot start the window (start-boundary > G).
     expect(
       deriveEarliestFeatureEvaluableTimestampMs({
         firstUsableCausalBtcTimestampMs: 30_000,
         returnIntervalMs,
         requiredCloseCount,
+        maximumSourceGapMs,
+        healthySourceCadenceMs,
       }),
-    ).toBe(600_000);
+    ).toBe(660_000);
     expect(
       deriveEarliestFeatureEvaluableTimestampMs({
         firstUsableCausalBtcTimestampMs: 0,
         returnIntervalMs,
         requiredCloseCount,
+        maximumSourceGapMs,
+        healthySourceCadenceMs,
       }),
     ).toBe(600_000);
     expect(
@@ -1181,17 +1188,92 @@ describe("earliestFeatureEvaluableTimestampMs derivation", () => {
         firstUsableCausalBtcTimestampMs: 60_000,
         returnIntervalMs,
         requiredCloseCount,
+        maximumSourceGapMs,
+        healthySourceCadenceMs,
       }),
     ).toBe(660_000);
   });
 
-  it("matches production availability at ±1ms around the boundary", () => {
+  it("production-oracle matrix: derived boundary matches production availability", () => {
+    const lookbackBars = 10;
+    // Independently known earliest production-available quotes for dense 1s sources
+    // starting at each offset (NOT taken from the derivation helper).
+    const expectedEarliestByOffset: ReadonlyArray<{ offset: number; earliest: number }> = [
+      { offset: 0, earliest: 600_000 },
+      { offset: 1, earliest: 600_001 },
+      { offset: 1_000, earliest: 600_000 },
+      { offset: 4_999, earliest: 600_999 },
+      { offset: 5_000, earliest: 600_000 },
+      { offset: 5_001, earliest: 660_001 },
+      { offset: 30_000, earliest: 660_000 },
+      { offset: 59_999, earliest: 660_999 },
+    ];
+
+    function densePoints(fromMs: number, toMs: number): BtcSpotPoint[] {
+      const points: BtcSpotPoint[] = [];
+      for (let timestampMs = fromMs; timestampMs <= toMs; timestampMs += healthySourceCadenceMs) {
+        points.push({
+          timestampMs,
+          receivedAtLocal: "t",
+          priceUsd: 100_000 + (timestampMs % 2 === 0 ? 10 : -10),
+        });
+      }
+      return points;
+    }
+
+    for (const { offset, earliest: knownEarliest } of expectedEarliestByOffset) {
+      const derived = deriveEarliestFeatureEvaluableTimestampMs({
+        firstUsableCausalBtcTimestampMs: offset,
+        returnIntervalMs,
+        requiredCloseCount,
+        maximumSourceGapMs,
+        healthySourceCadenceMs,
+      });
+      expect(derived, `derived offset=${offset}`).toBe(knownEarliest);
+
+      const at = buildValidatedCausalVolatilityWindow({
+        points: densePoints(offset, knownEarliest),
+        timestampMs: knownEarliest,
+        barIntervalMs: returnIntervalMs,
+        lookbackBars,
+        maximumSourceGapMs,
+      });
+      expect(at.available, `prod available at boundary offset=${offset}`).toBe(true);
+
+      if (knownEarliest - 1 >= offset) {
+        const before = buildValidatedCausalVolatilityWindow({
+          points: densePoints(offset, knownEarliest - 1),
+          timestampMs: knownEarliest - 1,
+          barIntervalMs: returnIntervalMs,
+          lookbackBars,
+          maximumSourceGapMs,
+        });
+        expect(before.available, `prod unavailable before boundary offset=${offset}`).toBe(false);
+      }
+
+      const after = buildValidatedCausalVolatilityWindow({
+        points: densePoints(offset, knownEarliest + 1),
+        timestampMs: knownEarliest + 1,
+        barIntervalMs: returnIntervalMs,
+        lookbackBars,
+        maximumSourceGapMs,
+      });
+      expect(after.available, `prod available after boundary offset=${offset}`).toBe(true);
+    }
+  });
+
+  it("matches production availability at ±1ms around the boundary for aligned first sample", () => {
     const firstBtc = 0;
-    const earliest = deriveEarliestFeatureEvaluableTimestampMs({
-      firstUsableCausalBtcTimestampMs: firstBtc,
-      returnIntervalMs,
-      requiredCloseCount,
-    })!;
+    const earliest = 600_000;
+    expect(
+      deriveEarliestFeatureEvaluableTimestampMs({
+        firstUsableCausalBtcTimestampMs: firstBtc,
+        returnIntervalMs,
+        requiredCloseCount,
+        maximumSourceGapMs,
+        healthySourceCadenceMs,
+      }),
+    ).toBe(earliest);
     const pointsBefore = Array.from({ length: Math.floor(earliest / 1000) }, (_, index) => ({
       timestampMs: index * 1000,
       receivedAtLocal: "t",
@@ -1230,6 +1312,8 @@ describe("earliestFeatureEvaluableTimestampMs derivation", () => {
 describe("assessReconstructability (Domain A feature-evaluable denominator)", () => {
   const returnIntervalMs = 60_000;
   const requiredCloseCount = 11;
+  const maximumSourceGapMs = 5_000;
+  const healthySourceCadenceMs = 1_000;
   const firstUsable = 0;
   const earliest = 600_000;
 
@@ -1258,7 +1342,9 @@ describe("assessReconstructability (Domain A feature-evaluable denominator)", ()
                     ? "invalid-source-price"
                     : attributionClass === "internal-source-gap-exceeded"
                       ? "source-gap-exceeded"
-                      : "insufficient-bars"),
+                      : attributionClass === "start-boundary-gap-exceeded"
+                        ? "source-gap-exceeded"
+                        : "insufficient-bars"),
       failingGapMs: null,
     };
   }
@@ -1303,11 +1389,13 @@ describe("assessReconstructability (Domain A feature-evaluable denominator)", ()
         firstUsableCausalBtcTimestampMs,
         returnIntervalMs,
         requiredCloseCount,
+        maximumSourceGapMs,
+        healthySourceCadenceMs,
       },
     );
   }
 
-  it("1. pure warm-up only → structurally excluded, not reconstructable, no capture defect claim", () => {
+  it("1. pure warm-up only → structurally excluded, not reconstructable, insufficient-evaluable action", () => {
     const assessment = assess([
       observation(100_000, "insufficient-source-points"),
       observation(200_000, "insufficient-bars"),
@@ -1325,8 +1413,13 @@ describe("assessReconstructability (Domain A feature-evaluable denominator)", ()
       reconstructability: assessment,
       referenceComparison: skippedReference(),
     });
-    expect(classified.verdict).toBe("exactly-equivalent-and-reconstructable");
-    expect(classified.verdict).not.toBe("frozen-feature-not-reconstructable-from-current-capture");
+    expect(classified.verdict).toBe("frozen-feature-not-reconstructable-from-current-capture");
+    expect(classified.recommendedNextAction).toBe("collect-sufficient-evaluable-forward-duration");
+    expect(classified.verdict).not.toBe("exactly-equivalent-and-reconstructable");
+    expect(classified.recommendedNextAction).not.toBe(
+      "resume-calibration-fade-forward-event-evaluation",
+    );
+    expect(classified.recommendedNextAction).not.toBe("design-equivalent-forward-capture");
   });
 
   it("2. warm-up + healthy evaluable → reconstructable", () => {
@@ -1561,7 +1654,10 @@ describe("assessReconstructability (Domain A feature-evaluable denominator)", ()
       reconstructability: assessment,
       referenceComparison: skippedReference(),
     });
-    expect(classified.verdict).not.toBe("frozen-feature-not-reconstructable-from-current-capture");
+    expect(classified.verdict).toBe("frozen-feature-not-reconstructable-from-current-capture");
+    expect(classified.recommendedNextAction).toBe("collect-sufficient-evaluable-forward-duration");
+    expect(classified.recommendedNextAction).not.toBe("design-equivalent-forward-capture");
+    expect(classified.verdict).not.toBe("exactly-equivalent-and-reconstructable");
 
     const html = serializeCausalFeatureEquivalenceAuditHtml({
       analysisVersion: "calibration-fade-causal-feature-equivalence-v1",
@@ -1659,10 +1755,52 @@ describe("assessReconstructability (Domain A feature-evaluable denominator)", ()
     });
     expect(html).toContain("Structural warm-up");
     expect(html).toContain("not treated as failures");
+    expect(html).toContain("insufficient evaluable forward duration");
+    expect(html).toContain("not evidence of capture-source incompatibility");
     expect(html).toContain("featureEvaluable=");
     expect(html).toContain("&quot;emitted&quot;: false");
+    expect(html).not.toContain("exactly-equivalent-and-reconstructable");
+    expect(html).toContain("collect-sufficient-evaluable-forward-duration");
     expect(JSON.stringify(assessment)).toContain("featureEvaluableCount");
     expect(JSON.stringify(assessment)).toContain("structurallyExcludedCount");
+  });
+
+  it("start-boundary before evaluable boundary is structural; late start-boundary is failure", () => {
+    const midBucketEarliest = 660_000;
+    const early = classifyStructuralExclusion({
+      observation: observation(600_000, "start-boundary-gap-exceeded"),
+      firstUsableCausalBtcTimestampMs: 30_000,
+      earliestFeatureEvaluableTimestampMs: midBucketEarliest,
+    });
+    expect(early).toBe("other-structural-boundary");
+
+    const late = classifyStructuralExclusion({
+      observation: observation(midBucketEarliest + 3 * 3_600_000, "start-boundary-gap-exceeded"),
+      firstUsableCausalBtcTimestampMs: 30_000,
+      earliestFeatureEvaluableTimestampMs: midBucketEarliest,
+    });
+    expect(late).toBeNull();
+
+    const assessment = assessReconstructability(
+      diagnosticsFromObservations([
+        observation(600_000, "start-boundary-gap-exceeded"),
+        observation(630_000, "start-boundary-gap-exceeded"),
+        observation(midBucketEarliest, "available"),
+      ]),
+      true,
+      false,
+      {
+        firstUsableCausalBtcTimestampMs: 30_000,
+        returnIntervalMs,
+        requiredCloseCount,
+        maximumSourceGapMs,
+        healthySourceCadenceMs,
+      },
+    );
+    expect(assessment.structurallyExcludedCount).toBe(2);
+    expect(assessment.featureEvaluableCount).toBe(1);
+    expect(assessment.reconstructionFailureCount).toBe(0);
+    expect(assessment.reconstructable).toBe(true);
   });
 
   it("findFirstUsableCausalBtcTimestampMs skips invalid prices", () => {
@@ -1673,6 +1811,62 @@ describe("assessReconstructability (Domain A feature-evaluable denominator)", ()
         { timestampMs: 30, priceUsd: 100 },
       ]),
     ).toBe(30);
+  });
+});
+
+describe("healthy +30s mid-bucket capture regression", () => {
+  it("structurally excludes run-start start-boundary; reconstructable after true boundary", () => {
+    const returnIntervalMs = 60_000;
+    const maximumSourceGapMs = 5_000;
+    const lookbackBars = 10;
+    const firstBtc = 30_000;
+    const knownEarliest = 660_000;
+    const cadence = 1_000;
+
+    const endMs = knownEarliest + 5 * 60_000;
+    const btc: BtcSpotPoint[] = [];
+    for (let timestampMs = firstBtc; timestampMs <= endMs; timestampMs += cadence) {
+      btc.push({
+        timestampMs,
+        receivedAtLocal: "t",
+        priceUsd: 100_000 + (timestampMs % 2 === 0 ? 25 : -15),
+      });
+    }
+    const quotes = [];
+    for (let timestampMs = 60_000; timestampMs <= endMs; timestampMs += 30_000) {
+      quotes.push({ marketTicker: "M", timestampMs });
+    }
+
+    const diagnostics = attributeVolatilityWindowRejections(quotes, btc, {
+      barIntervalMs: returnIntervalMs,
+      lookbackBars,
+      maximumSourceGapMs,
+    });
+    const assessment = assessReconstructability(diagnostics, true, false, {
+      firstUsableCausalBtcTimestampMs: firstBtc,
+      returnIntervalMs,
+      requiredCloseCount: lookbackBars + 1,
+      maximumSourceGapMs,
+      healthySourceCadenceMs: cadence,
+    });
+
+    expect(assessment.earliestFeatureEvaluableTimestampMs).toBe(knownEarliest);
+    expect(assessment.structurallyExcludedCount).toBeGreaterThan(0);
+    expect(assessment.featureEvaluableCount).toBeGreaterThan(0);
+    expect(assessment.reconstructionFailureCount).toBe(0);
+    expect(assessment.reconstructable).toBe(true);
+    expect(assessment.availableCount).toBe(assessment.featureEvaluableCount);
+
+    const classified = classifyCausalFeatureEquivalence({
+      contractComparison: comparisonFrom(fullContract(), fullContract(), "proven"),
+      reconstructability: assessment,
+      referenceComparison: skippedReference(),
+    });
+    expect(classified.verdict).toBe("exactly-equivalent-and-reconstructable");
+    expect(classified.recommendedNextAction).toBe(
+      "resume-calibration-fade-forward-event-evaluation",
+    );
+    expect(classified.verdict).not.toBe("frozen-feature-not-reconstructable-from-current-capture");
   });
 });
 
@@ -1714,6 +1908,7 @@ describe("classifyCausalFeatureEquivalence", () => {
       referenceComparison: skippedReference(),
     });
     expect(result.verdict).toBe("frozen-feature-not-reconstructable-from-current-capture");
+    expect(result.recommendedNextAction).toBe("design-equivalent-forward-capture");
   });
 
   it("equivalent + reconstructable → exactly-equivalent-and-reconstructable", () => {
@@ -1723,6 +1918,135 @@ describe("classifyCausalFeatureEquivalence", () => {
       referenceComparison: skippedReference(),
     });
     expect(result.verdict).toBe("exactly-equivalent-and-reconstructable");
+  });
+
+  it("zero evaluable → frozen + collect-sufficient; not exact; not redesign", () => {
+    const result = classifyCausalFeatureEquivalence({
+      contractComparison: comparisonFrom(fullContract(), fullContract(), "proven"),
+      reconstructability: reconstructability(false, {
+        reconstructable: false,
+        observedTotal: 3,
+        structurallyExcludedCount: 3,
+        featureEvaluableCount: 0,
+        availableCount: 0,
+        reconstructionFailureCount: 0,
+        reason: "insufficient-evaluable-forward-duration",
+      }),
+      referenceComparison: skippedReference(),
+    });
+    expect(result.verdict).toBe("frozen-feature-not-reconstructable-from-current-capture");
+    expect(result.recommendedNextAction).toBe("collect-sufficient-evaluable-forward-duration");
+    expect(result.recommendedNextAction).not.toBe("design-equivalent-forward-capture");
+    expect(result.recommendedNextAction).not.toBe(
+      "resume-calibration-fade-forward-event-evaluation",
+    );
+  });
+
+  it("zero observations → collect-sufficient-evaluable-forward-duration", () => {
+    const result = classifyCausalFeatureEquivalence({
+      contractComparison: comparisonFrom(fullContract(), fullContract(), "proven"),
+      reconstructability: reconstructability(false, {
+        reconstructable: false,
+        observedTotal: 0,
+        structurallyExcludedCount: 0,
+        featureEvaluableCount: 0,
+        availableCount: 0,
+        reconstructionFailureCount: 0,
+      }),
+      referenceComparison: skippedReference(),
+    });
+    expect(result.verdict).toBe("frozen-feature-not-reconstructable-from-current-capture");
+    expect(result.recommendedNextAction).toBe("collect-sufficient-evaluable-forward-duration");
+  });
+
+  it("ambiguity wins over zero-evaluable", () => {
+    const result = classifyCausalFeatureEquivalence({
+      contractComparison: comparisonFrom(
+        fullContract({ sourceGapDefinition: null }),
+        fullContract(),
+        "ambiguous",
+      ),
+      reconstructability: reconstructability(false, {
+        featureEvaluableCount: 0,
+        reconstructionFailureCount: 0,
+        reconstructable: false,
+      }),
+      referenceComparison: skippedReference(),
+    });
+    expect(result.verdict).toBe("historical-feature-definition-ambiguous");
+  });
+
+  it("mismatch wins over zero-evaluable", () => {
+    const result = classifyCausalFeatureEquivalence({
+      contractComparison: comparisonFrom(
+        fullContract({ lookbackReturns: 20, requiredCloseCount: 21 }),
+        fullContract(),
+        "proven",
+      ),
+      reconstructability: reconstructability(false, {
+        featureEvaluableCount: 0,
+        reconstructionFailureCount: 0,
+        reconstructable: false,
+      }),
+      referenceComparison: skippedReference(),
+    });
+    expect(result.verdict).toBe("forward-validator-semantics-mismatch");
+  });
+
+  it("classification invariants hold across representative states", () => {
+    const states = [
+      classifyCausalFeatureEquivalence({
+        contractComparison: comparisonFrom(fullContract(), fullContract(), "proven"),
+        reconstructability: reconstructability(true),
+        referenceComparison: skippedReference(),
+      }),
+      classifyCausalFeatureEquivalence({
+        contractComparison: comparisonFrom(fullContract(), fullContract(), "proven"),
+        reconstructability: reconstructability(false),
+        referenceComparison: skippedReference(),
+      }),
+      classifyCausalFeatureEquivalence({
+        contractComparison: comparisonFrom(fullContract(), fullContract(), "proven"),
+        reconstructability: reconstructability(false, {
+          featureEvaluableCount: 0,
+          availableCount: 0,
+          reconstructionFailureCount: 0,
+          reconstructable: false,
+        }),
+        referenceComparison: skippedReference(),
+      }),
+    ];
+    const assessments = [
+      reconstructability(true),
+      reconstructability(false),
+      reconstructability(false, {
+        featureEvaluableCount: 0,
+        availableCount: 0,
+        reconstructionFailureCount: 0,
+        reconstructable: false,
+      }),
+    ];
+    for (let index = 0; index < states.length; index += 1) {
+      const classified = states[index]!;
+      const assessment = assessments[index]!;
+      if (classified.verdict === "exactly-equivalent-and-reconstructable") {
+        expect(assessment.reconstructable).toBe(true);
+        expect(assessment.featureEvaluableCount).toBeGreaterThan(0);
+        expect(assessment.reconstructionFailureCount).toBe(0);
+      }
+      if (classified.recommendedNextAction === "resume-calibration-fade-forward-event-evaluation") {
+        expect(classified.verdict).toBe("exactly-equivalent-and-reconstructable");
+        expect(assessment.reconstructable).toBe(true);
+        expect(assessment.featureEvaluableCount).toBeGreaterThan(0);
+      }
+      if (
+        classified.verdict === "frozen-feature-not-reconstructable-from-current-capture"
+        && classified.recommendedNextAction === "design-equivalent-forward-capture"
+      ) {
+        expect(assessment.featureEvaluableCount).toBeGreaterThan(0);
+        expect(assessment.reconstructionFailureCount).toBeGreaterThan(0);
+      }
+    }
   });
 
   it("zero candidates / missing settlements / high-vol counts do not select verdict", () => {
@@ -1739,6 +2063,21 @@ describe("classifyCausalFeatureEquivalence", () => {
       settlementCoverageShare: null,
     });
     expect(ambiguous.verdict).toBe("historical-feature-definition-ambiguous");
+  });
+});
+
+describe("requiredPreRollDurationMs policy", () => {
+  it("documents conservative operational pre-roll as I * requiredCloseCount", () => {
+    const returnIntervalMs = 60_000;
+    const requiredCloseCount = 11;
+    const mathematicalInterBucketSpanMs = returnIntervalMs * (requiredCloseCount - 1);
+    const conservativeOperationalPreRollMs = returnIntervalMs * requiredCloseCount;
+    // Retain I*requiredCloseCount: reserves an extra bucket for ending-minute
+    // sampling / run-start phase before first feature-evaluable quote. This is
+    // operational pre-roll guidance, not frozen strategy lookback math.
+    expect(mathematicalInterBucketSpanMs).toBe(600_000);
+    expect(conservativeOperationalPreRollMs).toBe(660_000);
+    expect(conservativeOperationalPreRollMs).toBeGreaterThan(mathematicalInterBucketSpanMs);
   });
 });
 

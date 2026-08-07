@@ -99,6 +99,7 @@ export type CausalFeatureEquivalenceRecommendedNextAction =
   | "resolve-historical-feature-definition"
   | "correct-forward-validator-to-frozen-semantics"
   | "design-equivalent-forward-capture"
+  | "collect-sufficient-evaluable-forward-duration"
   | "resume-calibration-fade-forward-event-evaluation";
 
 export type ContractFieldComparisonStatus =
@@ -382,9 +383,10 @@ export type ReconstructabilityAssessment = {
     Partial<Record<VolatilityWindowAttributionClass, number>>
   >;
   /**
-   * Earliest quote timestamp at which requiredCloseCount consecutive minute
-   * buckets could exist under production candle semantics given the first usable
-   * causal BTC sample. Null when no usable causal BTC exists.
+   * Earliest quote timestamp at which production could accept a
+   * requiredCloseCount-bar window under healthy run-start geometry (start-boundary
+   * maximumSourceGapMs eligibility plus ending-minute sample phase). Null when no
+   * usable causal BTC exists.
    */
   earliestFeatureEvaluableTimestampMs: number | null;
   /** First finite positive-price causal BTC timestamp used for the boundary. */

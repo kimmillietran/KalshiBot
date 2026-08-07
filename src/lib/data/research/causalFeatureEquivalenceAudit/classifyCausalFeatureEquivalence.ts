@@ -26,11 +26,17 @@ export type ClassificationResult = {
  * Verdict precedence:
  * 1. historical-feature-definition-ambiguous
  * 2. forward-validator-semantics-mismatch
- * 3. frozen-feature-not-reconstructable-from-current-capture
- *    (only when ≥1 feature-evaluable reconstruction failure)
- * 4. exactly-equivalent-and-reconstructable
- *    (includes equivalent contracts with only structural warm-up exclusions /
- *     insufficient-evaluable-forward-duration — not a capture redesign claim)
+ * 3. equivalent + featureEvaluableCount === 0
+ *    → frozen-feature-not-reconstructable-from-current-capture
+ *      with collect-sufficient-evaluable-forward-duration
+ *      (insufficient evaluable forward duration — not exact reconstructability,
+ *       not capture redesign; futureCaptureRequirements stay unemitted)
+ * 4. equivalent + featureEvaluableCount > 0 + reconstructionFailureCount > 0
+ *    → frozen-feature-not-reconstructable-from-current-capture
+ *      with design-equivalent-forward-capture
+ * 5. equivalent + featureEvaluableCount > 0 + failures === 0 + reconstructable
+ *    → exactly-equivalent-and-reconstructable
+ *      with resume-calibration-fade-forward-event-evaluation
  *
  * Candidate counts / settlements / high-vol counts do not drive verdict.
  */
@@ -61,18 +67,35 @@ export function classifyCausalFeatureEquivalence(
     };
   }
 
-  // Do not claim frozen-feature-not-reconstructable unless the feature was
-  // evaluable and failed. Pure warm-up / zero-evaluable runs keep the equivalent
-  // verdict with a truthful reconstructability.reason.
-  if (input.reconstructability.reconstructionFailureCount > 0) {
+  const { featureEvaluableCount, reconstructionFailureCount, reconstructable } =
+    input.reconstructability;
+
+  // Insufficient evaluable forward duration: non-success without claiming
+  // capture redesign or exact reconstructability.
+  if (featureEvaluableCount === 0) {
+    return {
+      verdict: "frozen-feature-not-reconstructable-from-current-capture",
+      recommendedNextAction: "collect-sufficient-evaluable-forward-duration",
+    };
+  }
+
+  if (reconstructionFailureCount > 0) {
     return {
       verdict: "frozen-feature-not-reconstructable-from-current-capture",
       recommendedNextAction: "design-equivalent-forward-capture",
     };
   }
 
+  if (reconstructable && featureEvaluableCount > 0 && reconstructionFailureCount === 0) {
+    return {
+      verdict: "exactly-equivalent-and-reconstructable",
+      recommendedNextAction: "resume-calibration-fade-forward-event-evaluation",
+    };
+  }
+
+  // Defensive: equivalent with evaluable rows but inconsistent reconstructable flag.
   return {
-    verdict: "exactly-equivalent-and-reconstructable",
-    recommendedNextAction: "resume-calibration-fade-forward-event-evaluation",
+    verdict: "frozen-feature-not-reconstructable-from-current-capture",
+    recommendedNextAction: "design-equivalent-forward-capture",
   };
 }

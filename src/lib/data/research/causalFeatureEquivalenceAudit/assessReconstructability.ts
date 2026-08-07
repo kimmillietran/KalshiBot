@@ -24,31 +24,42 @@ const CONTINUITY_FAILURE_CLASSES = new Set<VolatilityWindowAttributionClass>([
 
 /**
  * Derives the earliest quote timestamp at which production candle semantics could
- * possibly yield `requiredCloseCount` consecutive minute buckets.
+ * yield an available `requiredCloseCount`-bar window under healthy continuity.
  *
- * Derivation (locked to buildValidatedCausalVolatilityWindow):
- * 1. First usable causal BTC sample timestamp F (finite, positive price).
- * 2. First candle bucket B0 = floor(F / returnIntervalMs) * returnIntervalMs
- *    (minute alignment; a mid-minute first sample still opens bucket B0).
- * 3. requiredCloseCount = lookbackBars + 1 consecutive no-fill buckets.
- * 4. With include-in-progress-minute-when-sampled, the earliest complete window
- *    ends at Wend = B0 + (requiredCloseCount - 1) * returnIntervalMs.
- * 5. A quote at exactly Wend can include that ending in-progress minute when a
- *    causal sample exists in [Wend, Wend + returnIntervalMs) under healthy
- *    continuity — matching production acceptance of quote===Wend with dense history.
+ * Locked to buildValidatedCausalVolatilityWindow geometry:
+ * 1. F = first usable causal BTC sample; B0 = floor(F / I) * I.
+ * 2. Start-boundary rule: firstSelected − windowStart (or predecessor gap) must
+ *    be ≤ maximumSourceGapMs. When initialOffsetMs = F − B0 > G, bucket B0 cannot
+ *    be the window start, so the first eligible window start advances to B0 + I.
+ * 3. Window end Wend = firstEligibleWindowStart + (requiredCloseCount − 1) * I.
+ * 4. Ending-minute phase: include-in-progress-minute-when-sampled needs a causal
+ *    sample in [Wend, quote]. Under a regular healthy cadence starting at F, the
+ *    earliest such quote is the first in-phase sample at or after Wend.
  *
- * Therefore:
- *   earliestFeatureEvaluableTimestampMs = B0 + (requiredCloseCount - 1) * returnIntervalMs
- *
- * This equals F + lookbackBars * returnIntervalMs only when F is already aligned to
- * B0; mid-minute first samples must not use a naive F+10min rule.
+ * Never treats later outages as structural: callers compare observation timestamps
+ * to this run-relative boundary; start-boundary-gap-exceeded after the boundary
+ * remains an in-domain failure.
  */
 export function deriveEarliestFeatureEvaluableTimestampMs(input: {
   firstUsableCausalBtcTimestampMs: number | null;
   returnIntervalMs: number;
   requiredCloseCount: number;
+  maximumSourceGapMs: number;
+  /**
+   * Regular healthy source period used to place the first sample in the ending
+   * in-progress minute (Option A phase). When null/omitted, Wend itself is used
+   * (millisecond-dense / quote-aligned sources). Infer once O(M) from run-start
+   * intervals via inferHealthySourceCadenceMs when available.
+   */
+  healthySourceCadenceMs?: number | null;
 }): number | null {
-  const { firstUsableCausalBtcTimestampMs, returnIntervalMs, requiredCloseCount } = input;
+  const {
+    firstUsableCausalBtcTimestampMs,
+    returnIntervalMs,
+    requiredCloseCount,
+    maximumSourceGapMs,
+    healthySourceCadenceMs = null,
+  } = input;
   if (
     firstUsableCausalBtcTimestampMs === null
     || !Number.isFinite(firstUsableCausalBtcTimestampMs)
@@ -56,12 +67,85 @@ export function deriveEarliestFeatureEvaluableTimestampMs(input: {
     || returnIntervalMs <= 0
     || !Number.isSafeInteger(requiredCloseCount)
     || requiredCloseCount < 2
+    || !Number.isSafeInteger(maximumSourceGapMs)
+    || maximumSourceGapMs < 0
   ) {
     return null;
   }
+
   const firstBucketStart =
     Math.floor(firstUsableCausalBtcTimestampMs / returnIntervalMs) * returnIntervalMs;
-  return firstBucketStart + (requiredCloseCount - 1) * returnIntervalMs;
+  const initialOffsetMs = firstUsableCausalBtcTimestampMs - firstBucketStart;
+  const firstEligibleWindowStartMs =
+    initialOffsetMs <= maximumSourceGapMs
+      ? firstBucketStart
+      : firstBucketStart + returnIntervalMs;
+  const windowEndMs =
+    firstEligibleWindowStartMs + (requiredCloseCount - 1) * returnIntervalMs;
+
+  if (
+    healthySourceCadenceMs === null
+    || healthySourceCadenceMs === undefined
+    || !Number.isSafeInteger(healthySourceCadenceMs)
+    || healthySourceCadenceMs <= 0
+  ) {
+    return windowEndMs;
+  }
+
+  if (windowEndMs <= firstUsableCausalBtcTimestampMs) {
+    return firstUsableCausalBtcTimestampMs;
+  }
+  const steps = Math.ceil(
+    (windowEndMs - firstUsableCausalBtcTimestampMs) / healthySourceCadenceMs,
+  );
+  return firstUsableCausalBtcTimestampMs + steps * healthySourceCadenceMs;
+}
+
+/** @see deriveEarliestFeatureEvaluableTimestampMs */
+export const deriveEarliestFeatureEvaluableBoundary =
+  deriveEarliestFeatureEvaluableTimestampMs;
+
+/**
+ * Infers a regular healthy source cadence from early adjacent intervals after the
+ * first usable causal sample (O(M), single pass; stops after a small sample).
+ */
+export function inferHealthySourceCadenceMs(
+  points: readonly { timestampMs: number; priceUsd: number }[],
+  firstUsableCausalBtcTimestampMs: number | null,
+): number | null {
+  if (
+    firstUsableCausalBtcTimestampMs === null
+    || !Number.isFinite(firstUsableCausalBtcTimestampMs)
+  ) {
+    return null;
+  }
+  const intervals: number[] = [];
+  let previous: number | null = null;
+  for (const point of points) {
+    if (
+      !Number.isFinite(point.timestampMs)
+      || !Number.isFinite(point.priceUsd)
+      || point.priceUsd <= 0
+      || point.timestampMs < firstUsableCausalBtcTimestampMs
+    ) {
+      continue;
+    }
+    if (previous !== null) {
+      const gap = point.timestampMs - previous;
+      if (gap > 0) {
+        intervals.push(gap);
+        if (intervals.length >= 32) {
+          break;
+        }
+      }
+    }
+    previous = point.timestampMs;
+  }
+  if (intervals.length === 0) {
+    return null;
+  }
+  intervals.sort((left, right) => left - right);
+  return intervals[Math.floor((intervals.length - 1) / 2)]!;
 }
 
 /** Earliest finite positive-price BTC timestamp (O(M), single pass). */
@@ -82,7 +166,7 @@ export function findFirstUsableCausalBtcTimestampMs(
 
 /**
  * Structural exclusion is NOT inferred from the rejection reason alone.
- * Timestamp is compared to run-relative boundaries; only history-insufficiency
+ * Timestamp is compared to run-relative boundaries; only run-start attributable
  * failures before those boundaries may be excluded.
  */
 export function classifyStructuralExclusion(input: {
@@ -107,17 +191,25 @@ export function classifyStructuralExclusion(input: {
     return null;
   }
 
-  // Finite-run warm-up: before the feature could possibly have enough history.
+  // Finite-run warm-up: before production could possibly accept a window under
+  // healthy run-start geometry (bar count and/or start-boundary phase).
   if (
     earliestFeatureEvaluableTimestampMs !== null
     && observation.timestampMs < earliestFeatureEvaluableTimestampMs
-    && HISTORY_INSUFFICIENCY_CLASSES.has(observation.attributionClass)
   ) {
-    return "feature-warmup-insufficient-history";
+    if (HISTORY_INSUFFICIENCY_CLASSES.has(observation.attributionClass)) {
+      return "feature-warmup-insufficient-history";
+    }
+    // Run-relative: start-boundary gaps before the evaluable boundary are the
+    // truncated first-bucket offset, not a later outage. After the boundary,
+    // the same class remains an in-domain failure.
+    if (observation.attributionClass === "start-boundary-gap-exceeded") {
+      return "other-structural-boundary";
+    }
   }
 
-  // At/after earliestFeatureEvaluableTimestampMs: insufficient-bars /
-  // insufficient-source-points / future-only are real reconstruction failures.
+  // At/after earliestFeatureEvaluableTimestampMs: history insufficiency and
+  // continuity failures are real reconstruction failures.
   return null;
 }
 
@@ -149,6 +241,8 @@ export function assessReconstructability(
     firstUsableCausalBtcTimestampMs: number | null;
     returnIntervalMs: number;
     requiredCloseCount: number;
+    maximumSourceGapMs: number;
+    healthySourceCadenceMs?: number | null;
   },
 ): ReconstructabilityAssessment {
   const observedTotal = volatilityWindowDiagnostics.observationsAttempted;
@@ -157,6 +251,8 @@ export function assessReconstructability(
     firstUsableCausalBtcTimestampMs: options.firstUsableCausalBtcTimestampMs,
     returnIntervalMs: options.returnIntervalMs,
     requiredCloseCount: options.requiredCloseCount,
+    maximumSourceGapMs: options.maximumSourceGapMs,
+    healthySourceCadenceMs: options.healthySourceCadenceMs,
   });
 
   const structuralExclusionCountsByReason = emptyStructuralCounts();

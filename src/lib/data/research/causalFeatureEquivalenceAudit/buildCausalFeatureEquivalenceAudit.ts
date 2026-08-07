@@ -15,6 +15,7 @@ import { validateSelectedRunDirectory } from "../calibrationFadeForwardValidatio
 import {
   assessReconstructability,
   findFirstUsableCausalBtcTimestampMs,
+  inferHealthySourceCadenceMs,
 } from "./assessReconstructability";
 import { attributeVolatilityWindowRejections } from "./attributeVolatilityWindowRejections";
 import { buildBtcSourceDiagnostics } from "./buildBtcSourceDiagnostics";
@@ -40,8 +41,10 @@ import { reconstructHistoricalVolatilityContract } from "./reconstructHistorical
 export {
   assessReconstructability,
   classifyStructuralExclusion,
+  deriveEarliestFeatureEvaluableBoundary,
   deriveEarliestFeatureEvaluableTimestampMs,
   findFirstUsableCausalBtcTimestampMs,
+  inferHealthySourceCadenceMs,
 } from "./assessReconstructability";
 
 function sha256(content: string): string {
@@ -162,6 +165,11 @@ function buildFutureCaptureRequirements(input: {
     ],
     requiredDuplicateOrderGuarantees:
       "Ascending timestamps; exact timestamp+price duplicates collapsible; conflicting duplicates rejected.",
+    // Conservative operational pre-roll: one full interval per required close
+    // (I * requiredCloseCount), not the mathematical span between first and last
+    // bucket starts (I * (requiredCloseCount - 1)). The extra interval reserves
+    // room for ending-minute sampling and run-start start-boundary phase before
+    // the first feature-evaluable quote — not a change to frozen strategy math.
     requiredPreRollDurationMs:
       input.forward.returnIntervalMs !== null && input.forward.requiredCloseCount !== null
         ? input.forward.returnIntervalMs * input.forward.requiredCloseCount
@@ -174,7 +182,7 @@ function buildFutureCaptureRequirements(input: {
     acceptanceTest:
       "Synthetic and live captures must keep every feature-evaluable adjacent gap (start/internal/trailing) <= maximumSourceGapMs and yield available volatility for Domain A feature-evaluable quotes.",
     note:
-      "Do not set nominal cadence equal to maximumSourceGapMs. Exact operational cadence with jitter margin needs a separate capture-design milestone.",
+      "Do not set nominal cadence equal to maximumSourceGapMs. Exact operational cadence with jitter margin needs a separate capture-design milestone. requiredPreRollDurationMs is conservative operational pre-roll (I * requiredCloseCount), not the I*(requiredCloseCount-1) inter-bucket span.",
   };
 }
 
@@ -324,6 +332,10 @@ export async function buildCausalFeatureEquivalenceAudit(input: {
         );
 
   const firstUsableCausalBtcTimestampMs = findFirstUsableCausalBtcTimestampMs(btcPoints);
+  const healthySourceCadenceMs = inferHealthySourceCadenceMs(
+    btcPoints,
+    firstUsableCausalBtcTimestampMs,
+  );
 
   const reconstructability = assessReconstructability(
     volatilityWindowDiagnostics,
@@ -335,6 +347,8 @@ export async function buildCausalFeatureEquivalenceAudit(input: {
       firstUsableCausalBtcTimestampMs,
       returnIntervalMs: spec.volatilityDefinition.returnIntervalMs,
       requiredCloseCount: spec.volatilityDefinition.lookbackBars + 1,
+      maximumSourceGapMs: spec.volatilityDefinition.maximumSourceGapMs,
+      healthySourceCadenceMs,
     },
   );
 
