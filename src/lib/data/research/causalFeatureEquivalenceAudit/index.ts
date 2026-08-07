@@ -47,7 +47,18 @@ export type {
 export {
   assessReconstructability,
   buildCausalFeatureEquivalenceAudit,
+  classifyStructuralExclusion,
+  deriveEarliestFeatureEvaluableTimestampMs,
+  findFirstUsableCausalBtcTimestampMs,
 } from "./buildCausalFeatureEquivalenceAudit";
+export {
+  RECONSTRUCTABILITY_DENOMINATOR_DEFINITION,
+  STRUCTURAL_EXCLUSION_REASONS,
+} from "./causalFeatureEquivalenceAuditTypes";
+export type {
+  StructuralExclusionReason,
+  VolatilityWindowAttributionObservation,
+} from "./causalFeatureEquivalenceAuditTypes";
 export { hashVolatilityFeatureContract } from "./hashVolatilityFeatureContract";
 export {
   serializeCausalFeatureEquivalenceAuditHtml,

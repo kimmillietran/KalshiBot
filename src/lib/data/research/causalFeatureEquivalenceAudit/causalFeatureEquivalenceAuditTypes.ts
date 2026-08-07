@@ -297,11 +297,35 @@ export type AttributionClassStats = {
   p90FailingGapMs: number | null;
 };
 
+/** Per-observation attribution row retained for reconstructability denominators. */
+export type VolatilityWindowAttributionObservation = {
+  marketTicker: string;
+  timestampMs: number;
+  attributionClass: VolatilityWindowAttributionClass;
+  /** Production rejection reason when unavailable; null when available. */
+  productionRejectionReason: VolatilityWindowRejectionReason | null;
+  failingGapMs: number | null;
+};
+
 export type VolatilityWindowDiagnostics = {
   observationsAttempted: number;
   classes: readonly AttributionClassStats[];
   productionRejectionReasonCounts: Readonly<Partial<Record<VolatilityWindowRejectionReason, number>>>;
+  /** One row per attempted observation, in attribution walk order. */
+  observations: readonly VolatilityWindowAttributionObservation[];
 };
+
+/**
+ * Structural (finite-run boundary) exclusion categories — distinct from production
+ * rejection reasons. Warm-up / pre-source exclusions are not reconstruction failures.
+ */
+export const STRUCTURAL_EXCLUSION_REASONS = [
+  "pre-first-causal-source",
+  "feature-warmup-insufficient-history",
+  "other-structural-boundary",
+] as const;
+
+export type StructuralExclusionReason = (typeof STRUCTURAL_EXCLUSION_REASONS)[number];
 
 export type ReferenceComparisonSummary = {
   performed: boolean;
@@ -326,11 +350,53 @@ export type ReferenceComparisonSummary = {
   }[];
 };
 
+/**
+ * Reconstructability denominator (Domain A):
+ * all feature-evaluable parseable top-of-book observations after structural
+ * finite-run exclusions — independent of hypothesis non-volatility eligibility
+ * gates (probability band, time remaining, open market, book sync, join age).
+ * M12.4 measures source-feature reconstructability for every TOB quote the
+ * volatility window helper is asked to evaluate, not only strategy-eligible rows.
+ */
+export const RECONSTRUCTABILITY_DENOMINATOR_DEFINITION =
+  "Domain A: feature-evaluable parseable top-of-book observations (observedTotal minus structural finite-run warm-up / pre-first-causal-source exclusions). Non-volatility hypothesis eligibility gates are not applied. Structural warm-up exclusions are not reconstruction failures." as const;
+
 export type ReconstructabilityAssessment = {
   reconstructable: boolean;
+  /**
+   * Documents Domain A vs Domain B choice and warm-up exclusion policy.
+   * @see RECONSTRUCTABILITY_DENOMINATOR_DEFINITION
+   */
+  denominatorDefinition: string;
+  /** All parseable selected-run top-of-book observations considered by the audit. */
+  observedTotal: number;
+  structurallyExcludedCount: number;
+  /** observedTotal - structurallyExcludedCount */
+  featureEvaluableCount: number;
+  /** Available windows among feature-evaluable observations only. */
+  availableCount: number;
+  /** Non-available feature-evaluable observations (excludes structural warm-up). */
+  reconstructionFailureCount: number;
+  structuralExclusionCountsByReason: Readonly<Partial<Record<StructuralExclusionReason, number>>>;
+  reconstructionFailureCountsByReason: Readonly<
+    Partial<Record<VolatilityWindowAttributionClass, number>>
+  >;
+  /**
+   * Earliest quote timestamp at which requiredCloseCount consecutive minute
+   * buckets could exist under production candle semantics given the first usable
+   * causal BTC sample. Null when no usable causal BTC exists.
+   */
+  earliestFeatureEvaluableTimestampMs: number | null;
+  /** First finite positive-price causal BTC timestamp used for the boundary. */
+  firstUsableCausalBtcTimestampMs: number | null;
+  /** availableCount / featureEvaluableCount */
+  availableShareOfEvaluable: number | null;
+  /**
+   * Share of feature-evaluable observations attributed to start/internal/trailing
+   * source-gap classes (gap-only diagnostic; does not alone gate reconstructable).
+   */
+  continuityFailureShareOfEvaluable: number | null;
   reason: string;
-  continuityFailureShare: number | null;
-  availableShare: number | null;
 };
 
 export type FutureCaptureRequirements = {

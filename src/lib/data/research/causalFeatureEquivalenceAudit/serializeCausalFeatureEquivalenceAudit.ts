@@ -116,6 +116,14 @@ export function serializeCausalFeatureEquivalenceAuditHtml(
   <pre>${renderJson(report.referenceComparison)}</pre>
 
   <h2>10. Reconstructability</h2>
+  <p>Denominator: ${escapeHtml(report.reconstructability.denominatorDefinition)}</p>
+  <p>Structural warm-up / pre-first-causal-source exclusions are not treated as failures and do not alone trigger future capture redesign.</p>
+  <p>observedTotal=${report.reconstructability.observedTotal};
+     structurallyExcluded=${report.reconstructability.structurallyExcludedCount};
+     featureEvaluable=${report.reconstructability.featureEvaluableCount};
+     available=${report.reconstructability.availableCount};
+     reconstructionFailures=${report.reconstructability.reconstructionFailureCount};
+     earliestFeatureEvaluableTimestampMs=${report.reconstructability.earliestFeatureEvaluableTimestampMs ?? "n/a"}</p>
   <pre>${renderJson(report.reconstructability)}</pre>
 
   <h2>11. Future capture requirements</h2>

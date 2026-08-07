@@ -8,11 +8,14 @@ import {
   readNumber,
   readString,
   resolveSelectedRunId,
-  safeShare,
 } from "../calibrationFadeForwardValidation/calibrationFadeForwardValidationUtils";
 import { loadFrozenHypothesisSpec } from "../calibrationFadeForwardValidation/loadFrozenHypothesisSpec";
 import { validateSelectedRunDirectory } from "../calibrationFadeForwardValidation/loadSelectedRunCalibrationFadeContext";
 
+import {
+  assessReconstructability,
+  findFirstUsableCausalBtcTimestampMs,
+} from "./assessReconstructability";
 import { attributeVolatilityWindowRejections } from "./attributeVolatilityWindowRejections";
 import { buildBtcSourceDiagnostics } from "./buildBtcSourceDiagnostics";
 import { buildQuoteJoinDiagnostics } from "./buildQuoteJoinDiagnostics";
@@ -33,6 +36,13 @@ import { describeCurrentForwardVolatilityContract } from "./describeCurrentForwa
 import { hashVolatilityFeatureContract } from "./hashVolatilityFeatureContract";
 import { loadCausalFeatureEquivalenceEvidence } from "./loadCausalFeatureEquivalenceEvidence";
 import { reconstructHistoricalVolatilityContract } from "./reconstructHistoricalVolatilityContract";
+
+export {
+  assessReconstructability,
+  classifyStructuralExclusion,
+  deriveEarliestFeatureEvaluableTimestampMs,
+  findFirstUsableCausalBtcTimestampMs,
+} from "./assessReconstructability";
 
 function sha256(content: string): string {
   return createHash("sha256").update(content.replace(/^\uFEFF/, ""), "utf8").digest("hex");
@@ -101,88 +111,39 @@ function emptyReferenceComparison(reason: string): ReferenceComparisonSummary {
   };
 }
 
-/**
- * Reconstructability requires successful reconstruction for every evaluated
- * observation: available === total (total > 0). Equivalently, every non-available
- * volatility attribution class counts as a reconstruction failure — including
- * non-gap classes (missing-minute-bucket, nonconsecutive-bars, insufficient-bars,
- * invalid-source-price, etc.), not only the three continuity/gap classes.
- *
- * continuityFailureShare remains a gap-only diagnostic (start/internal/trailing);
- * it does not gate reconstructable. Ambiguity / contract inequivalence still
- * precede the capture-data check.
- */
-export function assessReconstructability(
-  volatilityWindowDiagnostics: CausalFeatureEquivalenceAuditReport["volatilityWindowDiagnostics"],
-  contractEquivalent: boolean,
-  historicalAmbiguous: boolean,
-): ReconstructabilityAssessment {
-  const available =
-    volatilityWindowDiagnostics.classes.find((entry) => entry.class === "available")
-      ?.observationCount ?? 0;
-  const total = volatilityWindowDiagnostics.observationsAttempted;
-  const continuityFailures = volatilityWindowDiagnostics.classes
-    .filter((entry) =>
-      entry.class === "start-boundary-gap-exceeded"
-      || entry.class === "internal-source-gap-exceeded"
-      || entry.class === "trailing-source-age-exceeded"
-    )
-    .reduce((sum, entry) => sum + entry.observationCount, 0);
-  // All non-available observations are reconstruction failures (gap and non-gap).
-  const reconstructionFailures = Math.max(0, total - available);
-
-  if (historicalAmbiguous) {
-    return {
-      reconstructable: false,
-      reason:
-        "Historical feature definition is ambiguous; reconstructability against a unique historical contract cannot be established.",
-      continuityFailureShare: safeShare(continuityFailures, total),
-      availableShare: safeShare(available, total),
-    };
-  }
-
-  if (!contractEquivalent) {
-    return {
-      reconstructable: false,
-      reason: "Forward contract is not semantically equivalent to the historical contract.",
-      continuityFailureShare: safeShare(continuityFailures, total),
-      availableShare: safeShare(available, total),
-    };
-  }
-
-  const reconstructable = total > 0 && available === total && reconstructionFailures === 0;
-  return {
-    reconstructable,
-    reason: reconstructable
-      ? "Contracts are equivalent and every evaluated observation reconstructed an available volatility window."
-      : "Contracts are equivalent but at least one evaluated observation failed volatility-window reconstruction (any attribution class, including non-gap).",
-    continuityFailureShare: safeShare(continuityFailures, total),
-    availableShare: safeShare(available, total),
-  };
-}
-
 function buildFutureCaptureRequirements(input: {
   verdict: CausalFeatureEquivalenceAuditReport["verdict"];
   forward: CausalFeatureEquivalenceAuditReport["currentForwardContract"];
+  reconstructability: ReconstructabilityAssessment;
 }): FutureCaptureRequirements {
-  if (input.verdict !== "frozen-feature-not-reconstructable-from-current-capture") {
-    return {
-      emitted: false,
-      requiredSourceRecordType: null,
-      requiredTimestampField: null,
-      requiredTimestampClockDomain: null,
-      requiredMaximumSourceGapMs: null,
-      requiredNominalCadenceMs: null,
-      requiredSchedulingSafetyMarginMs: null,
-      requiredCaptureFields: [],
-      requiredDuplicateOrderGuarantees: null,
-      requiredPreRollDurationMs: null,
-      requiredMinimumBarWarmup: null,
-      requiredRunStartBehavior: null,
-      requiredMonitoringMetric: null,
-      acceptanceTest: null,
-      note: "Future capture requirements are emitted only when reconstructability fails under equivalent contracts.",
-    };
+  const notEmitted = (note: string): FutureCaptureRequirements => ({
+    emitted: false,
+    requiredSourceRecordType: null,
+    requiredTimestampField: null,
+    requiredTimestampClockDomain: null,
+    requiredMaximumSourceGapMs: null,
+    requiredNominalCadenceMs: null,
+    requiredSchedulingSafetyMarginMs: null,
+    requiredCaptureFields: [],
+    requiredDuplicateOrderGuarantees: null,
+    requiredPreRollDurationMs: null,
+    requiredMinimumBarWarmup: null,
+    requiredRunStartBehavior: null,
+    requiredMonitoringMetric: null,
+    acceptanceTest: null,
+    note,
+  });
+
+  // Emit only when proven-equivalent contracts have ≥1 in-domain reconstruction failure
+  // among feature-evaluable observations. Pure warm-up / zero-evaluable runs do not.
+  if (
+    input.verdict !== "frozen-feature-not-reconstructable-from-current-capture"
+    || input.reconstructability.featureEvaluableCount <= 0
+    || input.reconstructability.reconstructionFailureCount <= 0
+  ) {
+    return notEmitted(
+      "Future capture requirements are emitted only when contracts are equivalent, featureEvaluableCount > 0, and at least one feature-evaluable observation fails reconstruction. Structural warm-up exclusions alone do not trigger redesign.",
+    );
   }
 
   const maxGap = input.forward.sourceGapThresholdMs;
@@ -211,7 +172,7 @@ function buildFutureCaptureRequirements(input: {
     requiredMonitoringMetric:
       "Share of adjacent BTC source intervals <= maximumSourceGapMs (exact threshold, no rounding).",
     acceptanceTest:
-      "Synthetic and live captures must keep every evaluated-window adjacent gap (start/internal/trailing) <= maximumSourceGapMs and yield available volatility for in-band quotes.",
+      "Synthetic and live captures must keep every feature-evaluable adjacent gap (start/internal/trailing) <= maximumSourceGapMs and yield available volatility for Domain A feature-evaluable quotes.",
     note:
       "Do not set nominal cadence equal to maximumSourceGapMs. Exact operational cadence with jitter margin needs a separate capture-design milestone.",
   };
@@ -362,12 +323,19 @@ export async function buildCausalFeatureEquivalenceAudit(input: {
           "Historical contract is not uniquely reconstructable from evidence; historicalReference implementation was not fabricated.",
         );
 
+  const firstUsableCausalBtcTimestampMs = findFirstUsableCausalBtcTimestampMs(btcPoints);
+
   const reconstructability = assessReconstructability(
     volatilityWindowDiagnostics,
     contractComparison.equivalent,
     contractComparison.historicalEvidenceStatus === "ambiguous"
       || contractComparison.historicalEvidenceStatus === "insufficient"
       || contractComparison.hasAmbiguousMissingHistorical,
+    {
+      firstUsableCausalBtcTimestampMs,
+      returnIntervalMs: spec.volatilityDefinition.returnIntervalMs,
+      requiredCloseCount: spec.volatilityDefinition.lookbackBars + 1,
+    },
   );
 
   const classification = classifyCausalFeatureEquivalence({
@@ -385,6 +353,7 @@ export async function buildCausalFeatureEquivalenceAudit(input: {
   const futureCaptureRequirements = buildFutureCaptureRequirements({
     verdict: classification.verdict,
     forward: currentForwardContract,
+    reconstructability,
   });
 
   const warnings: string[] = [];

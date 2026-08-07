@@ -13,6 +13,7 @@ import {
   CausalFeatureEquivalenceAuditError,
   type AttributionClassStats,
   type VolatilityWindowAttributionClass,
+  type VolatilityWindowAttributionObservation,
   type VolatilityWindowDiagnostics,
 } from "./causalFeatureEquivalenceAuditTypes";
 
@@ -295,12 +296,15 @@ export function attributeVolatilityWindowRejections(
 
   const integrity = precomputeCausalVolatilitySourceIntegrity(points);
   opCounter.prefixPointsExamined += integrity.pointsExamined;
+  const observations: VolatilityWindowAttributionObservation[] = [];
 
   for (const quote of quotes) {
     let attributionClass: VolatilityWindowAttributionClass;
     let failingGapMs: number | null = null;
+    let productionRejectionReason: VolatilityWindowRejectionReason | null = null;
 
     if (!integrity.ok) {
+      productionRejectionReason = integrity.rejectionReason;
       productionRejectionReasonCounts[integrity.rejectionReason] =
         (productionRejectionReasonCounts[integrity.rejectionReason] ?? 0) + 1;
       const mapped = mapProductionReasonToAttributionClass(integrity.rejectionReason);
@@ -320,10 +324,12 @@ export function attributeVolatilityWindowRejections(
 
       if (causalEndExclusive === 0) {
         if (futurePointCount > 0) {
+          productionRejectionReason = "future-only-source";
           productionRejectionReasonCounts["future-only-source"] =
             (productionRejectionReasonCounts["future-only-source"] ?? 0) + 1;
           attributionClass = "future-only-source";
         } else {
+          productionRejectionReason = "insufficient-source-points";
           productionRejectionReasonCounts["insufficient-source-points"] =
             (productionRejectionReasonCounts["insufficient-source-points"] ?? 0) + 1;
           attributionClass = "insufficient-source-points";
@@ -348,7 +354,9 @@ export function attributeVolatilityWindowRejections(
 
         if (result.available) {
           attributionClass = "available";
+          productionRejectionReason = null;
         } else if (result.rejectionReason) {
+          productionRejectionReason = result.rejectionReason;
           productionRejectionReasonCounts[result.rejectionReason] =
             (productionRejectionReasonCounts[result.rejectionReason] ?? 0) + 1;
           const mapped = mapProductionReasonToAttributionClass(result.rejectionReason);
@@ -379,6 +387,14 @@ export function attributeVolatilityWindowRejections(
         }
       }
     }
+
+    observations.push({
+      marketTicker: quote.marketTicker,
+      timestampMs: quote.timestampMs,
+      attributionClass,
+      productionRejectionReason,
+      failingGapMs,
+    });
 
     const bucket = classes[attributionClass];
     bucket.observationCount += 1;
@@ -427,6 +443,7 @@ export function attributeVolatilityWindowRejections(
     observationsAttempted: total,
     classes: classStats,
     productionRejectionReasonCounts,
+    observations,
   };
 }
 

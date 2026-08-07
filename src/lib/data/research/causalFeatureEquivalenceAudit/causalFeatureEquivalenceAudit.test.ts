@@ -7,6 +7,12 @@ import type { BtcSpotPoint } from "../btcKalshiLeadLagAnalysis/causalBtcJoin";
 import type { FrozenHypothesisSpec } from "../calibrationFadeForwardValidation/calibrationFadeForwardValidationTypes";
 
 import {
+  assessReconstructability,
+  classifyStructuralExclusion,
+  deriveEarliestFeatureEvaluableTimestampMs,
+  findFirstUsableCausalBtcTimestampMs,
+} from "./assessReconstructability";
+import {
   attributeSourceGapClass,
   attributeVolatilityWindowRejections,
   createEmptyAttributionOpCounter,
@@ -16,7 +22,6 @@ import { buildBtcSourceDiagnostics } from "./buildBtcSourceDiagnostics";
 import { buildQuoteJoinDiagnostics } from "./buildQuoteJoinDiagnostics";
 import { classifyCausalFeatureEquivalence } from "./classifyCausalFeatureEquivalence";
 import { compareVolatilityContracts } from "./compareVolatilityContracts";
-import { assessReconstructability } from "./buildCausalFeatureEquivalenceAudit";
 import {
   CAUSAL_FEATURE_EQUIVALENCE_EVIDENCE_SCHEMA,
   CAUSAL_FEATURE_EQUIVALENCE_EVIDENCE_VERSION,
@@ -24,6 +29,7 @@ import {
   EXPECTED_FREEZE_COMMIT_SHA,
   EXPECTED_HYPOTHESIS_CONFIGURATION_HASH,
   EXPECTED_HYPOTHESIS_ID,
+  RECONSTRUCTABILITY_DENOMINATOR_DEFINITION,
   VOLATILITY_WINDOW_ATTRIBUTION_CLASSES,
   type CausalFeatureEquivalenceEvidenceDocument,
   type ContractComparisonResult,
@@ -31,6 +37,7 @@ import {
   type ReferenceComparisonSummary,
   type VolatilityFeatureContract,
   type VolatilityWindowAttributionClass,
+  type VolatilityWindowAttributionObservation,
   type VolatilityWindowDiagnostics,
 } from "./causalFeatureEquivalenceAuditTypes";
 import {
@@ -45,6 +52,7 @@ import {
 import { reconstructHistoricalVolatilityContract } from "./reconstructHistoricalVolatilityContract";
 import { buildValidatedCausalVolatilityWindow } from "../calibrationFadeForwardValidation/buildValidatedCausalVolatilityWindow";
 import { VOLATILITY_WINDOW_REJECTION_REASONS } from "../calibrationFadeForwardValidation/buildValidatedCausalVolatilityWindow";
+import { serializeCausalFeatureEquivalenceAuditHtml } from "./serializeCausalFeatureEquivalenceAudit";
 
 const COMMITTED_EVIDENCE_PATH =
   "config/research/audits/calibration-fade-causal-feature-equivalence-v1.json";
@@ -148,12 +156,28 @@ function comparisonFrom(
   return compareVolatilityContracts({ historical, forward, historicalEvidenceStatus });
 }
 
-function reconstructability(reconstructable: boolean): ReconstructabilityAssessment {
+function reconstructability(
+  reconstructable: boolean,
+  overrides: Partial<ReconstructabilityAssessment> = {},
+): ReconstructabilityAssessment {
   return {
     reconstructable,
+    denominatorDefinition: RECONSTRUCTABILITY_DENOMINATOR_DEFINITION,
+    observedTotal: reconstructable ? 1 : 1,
+    structurallyExcludedCount: 0,
+    featureEvaluableCount: reconstructable ? 1 : 1,
+    availableCount: reconstructable ? 1 : 0,
+    reconstructionFailureCount: reconstructable ? 0 : 1,
+    structuralExclusionCountsByReason: {},
+    reconstructionFailureCountsByReason: reconstructable
+      ? {}
+      : { "internal-source-gap-exceeded": 1 },
+    earliestFeatureEvaluableTimestampMs: 0,
+    firstUsableCausalBtcTimestampMs: 0,
+    availableShareOfEvaluable: reconstructable ? 1 : 0,
+    continuityFailureShareOfEvaluable: reconstructable ? 0 : 1,
     reason: reconstructable ? "ok" : "not reconstructable",
-    continuityFailureShare: reconstructable ? 0 : 1,
-    availableShare: reconstructable ? 1 : 0,
+    ...overrides,
   };
 }
 
@@ -1133,11 +1157,120 @@ describe("attributeVolatilityWindowRejections", () => {
   });
 });
 
-describe("assessReconstructability", () => {
-  function diagnosticsFromCounts(
-    counts: Partial<Record<VolatilityWindowAttributionClass, number>>,
+describe("earliestFeatureEvaluableTimestampMs derivation", () => {
+  const returnIntervalMs = 60_000;
+  const requiredCloseCount = 11;
+
+  it("aligns to first minute bucket, not naive firstBTC+10min for mid-minute starts", () => {
+    expect(
+      deriveEarliestFeatureEvaluableTimestampMs({
+        firstUsableCausalBtcTimestampMs: 30_000,
+        returnIntervalMs,
+        requiredCloseCount,
+      }),
+    ).toBe(600_000);
+    expect(
+      deriveEarliestFeatureEvaluableTimestampMs({
+        firstUsableCausalBtcTimestampMs: 0,
+        returnIntervalMs,
+        requiredCloseCount,
+      }),
+    ).toBe(600_000);
+    expect(
+      deriveEarliestFeatureEvaluableTimestampMs({
+        firstUsableCausalBtcTimestampMs: 60_000,
+        returnIntervalMs,
+        requiredCloseCount,
+      }),
+    ).toBe(660_000);
+  });
+
+  it("matches production availability at ±1ms around the boundary", () => {
+    const firstBtc = 0;
+    const earliest = deriveEarliestFeatureEvaluableTimestampMs({
+      firstUsableCausalBtcTimestampMs: firstBtc,
+      returnIntervalMs,
+      requiredCloseCount,
+    })!;
+    const pointsBefore = Array.from({ length: Math.floor(earliest / 1000) }, (_, index) => ({
+      timestampMs: index * 1000,
+      receivedAtLocal: "t",
+      priceUsd: 100_000 + (index % 2 === 0 ? 10 : -10),
+    }));
+    const pointsAt = [
+      ...pointsBefore,
+      {
+        timestampMs: earliest,
+        receivedAtLocal: "t",
+        priceUsd: 100_000,
+      },
+    ];
+
+    const before = buildValidatedCausalVolatilityWindow({
+      points: pointsBefore,
+      timestampMs: earliest - 1,
+      barIntervalMs: returnIntervalMs,
+      lookbackBars: 10,
+      maximumSourceGapMs: 5000,
+    });
+    expect(before.available).toBe(false);
+    expect(before.rejectionReason).toMatch(/insufficient/);
+
+    const at = buildValidatedCausalVolatilityWindow({
+      points: pointsAt,
+      timestampMs: earliest,
+      barIntervalMs: returnIntervalMs,
+      lookbackBars: 10,
+      maximumSourceGapMs: 5000,
+    });
+    expect(at.available).toBe(true);
+  });
+});
+
+describe("assessReconstructability (Domain A feature-evaluable denominator)", () => {
+  const returnIntervalMs = 60_000;
+  const requiredCloseCount = 11;
+  const firstUsable = 0;
+  const earliest = 600_000;
+
+  function observation(
+    timestampMs: number,
+    attributionClass: VolatilityWindowAttributionClass,
+    productionRejectionReason: VolatilityWindowAttributionObservation["productionRejectionReason"] = null,
+  ): VolatilityWindowAttributionObservation {
+    return {
+      marketTicker: "M",
+      timestampMs,
+      attributionClass,
+      productionRejectionReason:
+        productionRejectionReason
+        ?? (attributionClass === "available"
+          ? null
+          : attributionClass === "insufficient-bars"
+            ? "insufficient-bars"
+            : attributionClass === "insufficient-source-points"
+              ? "insufficient-source-points"
+              : attributionClass === "future-only-source"
+                ? "future-only-source"
+                : attributionClass === "missing-minute-bucket"
+                  ? "missing-minute-bucket"
+                  : attributionClass === "invalid-source-price"
+                    ? "invalid-source-price"
+                    : attributionClass === "internal-source-gap-exceeded"
+                      ? "source-gap-exceeded"
+                      : "insufficient-bars"),
+      failingGapMs: null,
+    };
+  }
+
+  function diagnosticsFromObservations(
+    observations: VolatilityWindowAttributionObservation[],
   ): VolatilityWindowDiagnostics {
-    const total = Object.values(counts).reduce((sum, value) => sum + (value ?? 0), 0);
+    const counts: Partial<Record<VolatilityWindowAttributionClass, number>> = {};
+    for (const obs of observations) {
+      counts[obs.attributionClass] = (counts[obs.attributionClass] ?? 0) + 1;
+    }
+    const total = observations.length;
     return {
       observationsAttempted: total,
       classes: VOLATILITY_WINDOW_ATTRIBUTION_CLASSES.map((attributionClass) => ({
@@ -1152,63 +1285,394 @@ describe("assessReconstructability", () => {
         p90FailingGapMs: null,
       })),
       productionRejectionReasonCounts: {},
+      observations,
     };
   }
 
-  it("requires every evaluated observation available (mixed available + missing-minute-bucket fails)", () => {
-    const assessment = assessReconstructability(
-      diagnosticsFromCounts({
-        available: 3,
-        "missing-minute-bucket": 1,
-      }),
-      true,
-      false,
+  function assess(
+    observations: VolatilityWindowAttributionObservation[],
+    contractEquivalent = true,
+    historicalAmbiguous = false,
+    firstUsableCausalBtcTimestampMs: number | null = firstUsable,
+  ) {
+    return assessReconstructability(
+      diagnosticsFromObservations(observations),
+      contractEquivalent,
+      historicalAmbiguous,
+      {
+        firstUsableCausalBtcTimestampMs,
+        returnIntervalMs,
+        requiredCloseCount,
+      },
     );
+  }
+
+  it("1. pure warm-up only → structurally excluded, not reconstructable, no capture defect claim", () => {
+    const assessment = assess([
+      observation(100_000, "insufficient-source-points"),
+      observation(200_000, "insufficient-bars"),
+      observation(earliest - 1, "insufficient-bars"),
+    ]);
+    expect(assessment.structurallyExcludedCount).toBe(3);
+    expect(assessment.featureEvaluableCount).toBe(0);
+    expect(assessment.reconstructionFailureCount).toBe(0);
     expect(assessment.reconstructable).toBe(false);
-    expect(assessment.availableShare).toBe(0.75);
-    expect(assessment.continuityFailureShare).toBe(0);
+    expect(assessment.reason).toContain("insufficient-evaluable-forward-duration");
+    expect(assessment.denominatorDefinition).toContain("Domain A");
 
     const classified = classifyCausalFeatureEquivalence({
       contractComparison: comparisonFrom(fullContract(), fullContract(), "proven"),
       reconstructability: assessment,
       referenceComparison: skippedReference(),
     });
-    expect(classified.verdict).toBe("frozen-feature-not-reconstructable-from-current-capture");
-    expect(classified.verdict).not.toBe("exactly-equivalent-and-reconstructable");
+    expect(classified.verdict).toBe("exactly-equivalent-and-reconstructable");
+    expect(classified.verdict).not.toBe("frozen-feature-not-reconstructable-from-current-capture");
   });
 
-  it("treats nonconsecutive-bars / insufficient-bars / invalid-source-price as reconstruction failures", () => {
-    for (const failureClass of [
-      "nonconsecutive-bars",
-      "insufficient-bars",
-      "invalid-source-price",
-    ] as const) {
-      const assessment = assessReconstructability(
-        diagnosticsFromCounts({ available: 2, [failureClass]: 1 }),
-        true,
-        false,
-      );
-      expect(assessment.reconstructable, failureClass).toBe(false);
-    }
+  it("2. warm-up + healthy evaluable → reconstructable", () => {
+    const assessment = assess([
+      ...Array.from({ length: 5 }, (_, index) =>
+        observation(index * 60_000, "insufficient-bars"),
+      ),
+      ...Array.from({ length: 100 }, (_, index) =>
+        observation(earliest + index * 1000, "available"),
+      ),
+    ]);
+    expect(assessment.structurallyExcludedCount).toBe(5);
+    expect(assessment.featureEvaluableCount).toBe(100);
+    expect(assessment.availableCount).toBe(100);
+    expect(assessment.reconstructionFailureCount).toBe(0);
+    expect(assessment.reconstructable).toBe(true);
+    expect(assessment.availableShareOfEvaluable).toBe(1);
   });
 
-  it("is reconstructable only when available === total > 0", () => {
-    const assessment = assessReconstructability(
-      diagnosticsFromCounts({ available: 4 }),
+  it("3. warm-up + missing-minute in evaluable → failure", () => {
+    const assessment = assess([
+      observation(100_000, "insufficient-bars"),
+      observation(earliest + 1_000, "available"),
+      observation(earliest + 2_000, "missing-minute-bucket"),
+    ]);
+    expect(assessment.structurallyExcludedCount).toBe(1);
+    expect(assessment.featureEvaluableCount).toBe(2);
+    expect(assessment.reconstructionFailureCount).toBe(1);
+    expect(assessment.reconstructable).toBe(false);
+    expect(assessment.reconstructionFailureCountsByReason["missing-minute-bucket"]).toBe(1);
+  });
+
+  it("4. warm-up + source-gap in evaluable → failure", () => {
+    const assessment = assess([
+      observation(50_000, "insufficient-source-points"),
+      observation(earliest + 5_000, "internal-source-gap-exceeded"),
+    ]);
+    expect(assessment.reconstructionFailureCount).toBe(1);
+    expect(assessment.reconstructable).toBe(false);
+    expect(assessment.continuityFailureShareOfEvaluable).toBe(1);
+  });
+
+  it("5. warm-up + invalid price in evaluable → failure", () => {
+    const assessment = assess([
+      observation(10_000, "insufficient-bars"),
+      observation(earliest + 1, "invalid-source-price"),
+    ]);
+    expect(assessment.reconstructionFailureCount).toBe(1);
+    expect(assessment.reconstructable).toBe(false);
+  });
+
+  it("6. late insufficient-bars outage (after boundary) → real failure", () => {
+    const assessment = assess([
+      observation(earliest + 3_600_000, "insufficient-bars"),
+    ]);
+    expect(assessment.structurallyExcludedCount).toBe(0);
+    expect(assessment.reconstructionFailureCount).toBe(1);
+    expect(assessment.reconstructable).toBe(false);
+    expect(
+      classifyStructuralExclusion({
+        observation: observation(earliest + 3_600_000, "insufficient-bars"),
+        firstUsableCausalBtcTimestampMs: firstUsable,
+        earliestFeatureEvaluableTimestampMs: earliest,
+      }),
+    ).toBeNull();
+  });
+
+  it("7. pre-first-causal-source is structural", () => {
+    const assessment = assess(
+      [
+        observation(-5_000, "future-only-source"),
+        observation(-1, "insufficient-source-points"),
+      ],
       true,
       false,
+      0,
     );
-    expect(assessment.reconstructable).toBe(true);
+    expect(assessment.structuralExclusionCountsByReason["pre-first-causal-source"]).toBe(2);
+    expect(assessment.featureEvaluableCount).toBe(0);
+    expect(assessment.reconstructionFailureCount).toBe(0);
   });
 
-  it("ambiguity still precedes reconstructability even when all windows are available", () => {
-    const assessment = assessReconstructability(
-      diagnosticsFromCounts({ available: 5 }),
+  it("8. future-only after coverage begun → reconstruction failure", () => {
+    const assessment = assess([
+      observation(earliest + 10_000, "future-only-source"),
+    ]);
+    expect(assessment.structurallyExcludedCount).toBe(0);
+    expect(assessment.reconstructionFailureCount).toBe(1);
+    expect(assessment.reconstructable).toBe(false);
+  });
+
+  it("9. all available → reconstructable", () => {
+    const assessment = assess([
+      observation(earliest, "available"),
+      observation(earliest + 1_000, "available"),
+    ]);
+    expect(assessment.reconstructable).toBe(true);
+    expect(assessment.observedTotal).toBe(2);
+    expect(assessment.featureEvaluableCount).toBe(2);
+  });
+
+  it("10. zero observations → not reconstructable, zero evaluable", () => {
+    const assessment = assess([]);
+    expect(assessment.observedTotal).toBe(0);
+    expect(assessment.featureEvaluableCount).toBe(0);
+    expect(assessment.reconstructable).toBe(false);
+    expect(assessment.reason).toContain("insufficient-evaluable-forward-duration");
+  });
+
+  it("11. zero evaluable + nonzero warm-up → insufficient-evaluable-forward-duration", () => {
+    const assessment = assess([
+      observation(0, "insufficient-source-points"),
+      observation(earliest - 1, "insufficient-bars"),
+    ]);
+    expect(assessment.structurallyExcludedCount).toBe(2);
+    expect(assessment.featureEvaluableCount).toBe(0);
+    expect(assessment.reconstructable).toBe(false);
+    expect(assessment.reason).toContain("insufficient-evaluable-forward-duration");
+  });
+
+  it("12. ambiguity + perfect windows still not reconstructable; verdict ambiguous", () => {
+    const assessment = assess(
+      [observation(earliest, "available"), observation(earliest + 1, "available")],
       true,
       true,
     );
     expect(assessment.reconstructable).toBe(false);
     expect(assessment.reason).toContain("ambiguous");
+    expect(assessment.featureEvaluableCount).toBe(2);
+    const classified = classifyCausalFeatureEquivalence({
+      contractComparison: comparisonFrom(
+        fullContract({ sourceGapDefinition: null }),
+        fullContract(),
+        "ambiguous",
+      ),
+      reconstructability: assessment,
+      referenceComparison: skippedReference(),
+    });
+    expect(classified.verdict).toBe("historical-feature-definition-ambiguous");
+  });
+
+  it("13. mismatch + perfect windows → semantics mismatch verdict", () => {
+    const assessment = assess(
+      [observation(earliest, "available")],
+      false,
+      false,
+    );
+    expect(assessment.reconstructable).toBe(false);
+    const classified = classifyCausalFeatureEquivalence({
+      contractComparison: comparisonFrom(
+        fullContract({ lookbackReturns: 20, requiredCloseCount: 21 }),
+        fullContract(),
+        "proven",
+      ),
+      reconstructability: assessment,
+      referenceComparison: skippedReference(),
+    });
+    expect(classified.verdict).toBe("forward-validator-semantics-mismatch");
+  });
+
+  it("14. equivalent + warm-up + perfect → exactly-equivalent-and-reconstructable", () => {
+    const assessment = assess([
+      observation(100_000, "insufficient-bars"),
+      observation(earliest, "available"),
+      observation(earliest + 1_000, "available"),
+    ]);
+    expect(assessment.reconstructable).toBe(true);
+    const classified = classifyCausalFeatureEquivalence({
+      contractComparison: comparisonFrom(fullContract(), fullContract(), "proven"),
+      reconstructability: assessment,
+      referenceComparison: skippedReference(),
+    });
+    expect(classified.verdict).toBe("exactly-equivalent-and-reconstructable");
+  });
+
+  it("15. equivalent + warm-up + one failure → frozen-feature-not-reconstructable", () => {
+    const assessment = assess([
+      observation(100_000, "insufficient-bars"),
+      observation(earliest, "available"),
+      observation(earliest + 1_000, "missing-minute-bucket"),
+    ]);
+    expect(assessment.reconstructable).toBe(false);
+    expect(assessment.reconstructionFailureCount).toBe(1);
+    const classified = classifyCausalFeatureEquivalence({
+      contractComparison: comparisonFrom(fullContract(), fullContract(), "proven"),
+      reconstructability: assessment,
+      referenceComparison: skippedReference(),
+    });
+    expect(classified.verdict).toBe("frozen-feature-not-reconstructable-from-current-capture");
+  });
+
+  it("16. candidate/settlement/high-vol counts do not affect reconstructability or verdict", () => {
+    const assessment = assess([observation(earliest, "available")]);
+    const classified = classifyCausalFeatureEquivalence({
+      contractComparison: comparisonFrom(fullContract(), fullContract(), "proven"),
+      reconstructability: assessment,
+      referenceComparison: skippedReference(),
+      candidateMarketCount: 0,
+      highVolatilityCount: 99,
+      settlementCoverageShare: null,
+      volatilityAvailableCount: 0,
+    });
+    expect(classified.verdict).toBe("exactly-equivalent-and-reconstructable");
+  });
+
+  it("17. missing-minute during warm-up window is still a real failure (not structural)", () => {
+    const assessment = assess([
+      observation(earliest - 30_000, "missing-minute-bucket"),
+    ]);
+    expect(assessment.structurallyExcludedCount).toBe(0);
+    expect(assessment.reconstructionFailureCount).toBe(1);
+  });
+
+  it("18. ±1ms boundary: before=structural history insufficiency; at=evaluable", () => {
+    const before = assess([observation(earliest - 1, "insufficient-bars")]);
+    expect(before.structurallyExcludedCount).toBe(1);
+    expect(before.featureEvaluableCount).toBe(0);
+
+    const at = assess([observation(earliest, "insufficient-bars")]);
+    expect(at.structurallyExcludedCount).toBe(0);
+    expect(at.reconstructionFailureCount).toBe(1);
+  });
+
+  it("HTML/JSON surface denominators and structural warm-up text; future capture absent for warm-up-only", () => {
+    const assessment = assess([
+      observation(50_000, "insufficient-bars"),
+      observation(100_000, "insufficient-source-points"),
+    ]);
+    expect(assessment.featureEvaluableCount).toBe(0);
+    const classified = classifyCausalFeatureEquivalence({
+      contractComparison: comparisonFrom(fullContract(), fullContract(), "proven"),
+      reconstructability: assessment,
+      referenceComparison: skippedReference(),
+    });
+    expect(classified.verdict).not.toBe("frozen-feature-not-reconstructable-from-current-capture");
+
+    const html = serializeCausalFeatureEquivalenceAuditHtml({
+      analysisVersion: "calibration-fade-causal-feature-equivalence-v1",
+      generatedAt: "2026-08-06T00:00:00.000Z",
+      analysisScope: "selected-run",
+      selectedRunId: "synthetic",
+      captureRunDir: "/tmp/x",
+      outputPath: "/tmp/out.json",
+      htmlOutputPath: "/tmp/out.html",
+      inputFingerprints: [],
+      hypothesisId: EXPECTED_HYPOTHESIS_ID,
+      hypothesisConfigurationHash: EXPECTED_HYPOTHESIS_CONFIGURATION_HASH,
+      auditEvidencePath: "evidence.json",
+      auditEvidenceHash: "abc",
+      historicalContractSemanticHash: "h",
+      currentForwardContractSemanticHash: "f",
+      historicalEvidenceStatus: "proven",
+      historicalContract: fullContract(),
+      currentForwardContract: fullContract(),
+      contractComparison: comparisonFrom(fullContract(), fullContract(), "proven"),
+      btcSourceDiagnostics: {
+        sourceRecordCount: 0,
+        firstTimestampMs: null,
+        lastTimestampMs: null,
+        durationMs: null,
+        finiteTimestampCount: 0,
+        finitePositivePriceCount: 0,
+        invalidPriceCount: 0,
+        outOfOrderCount: 0,
+        exactDuplicateTimestampCount: 0,
+        conflictingDuplicateTimestampCount: 0,
+        observedIntervalCount: 0,
+        minimumIntervalMs: null,
+        maximumIntervalMs: null,
+        meanIntervalMs: null,
+        p50IntervalMs: null,
+        p75IntervalMs: null,
+        p90IntervalMs: null,
+        p95IntervalMs: null,
+        p99IntervalMs: null,
+        thresholdCountSemantics: "cumulative-overlapping",
+        thresholdBins: [],
+        longestGapExamples: [],
+        runStartBoundaryCoverageMs: null,
+        runEndBoundaryCoverageMs: null,
+      },
+      quoteJoinDiagnostics: {
+        observationsScanned: 0,
+        observationsWithCausalSource: 0,
+        observationsWithNoCausalSource: 0,
+        ageMinMs: null,
+        ageMaxMs: null,
+        ageMeanMs: null,
+        ageP50Ms: null,
+        ageP90Ms: null,
+        ageP95Ms: null,
+        ageP99Ms: null,
+        ageAtOrBelow5000Count: 0,
+        ageAtOrBelow5000Share: null,
+        ageAbove5000Count: 0,
+        ageAbove5000Share: null,
+        negativeAgeCount: 0,
+        futureSourceLeakageCount: 0,
+        sourceTimestampField: "t",
+        quoteTimestampField: "t",
+        clockDomainCaveat: "caveat",
+      },
+      volatilityWindowDiagnostics: diagnosticsFromObservations([
+        observation(50_000, "insufficient-bars"),
+      ]),
+      referenceComparison: skippedReference(),
+      reconstructability: assessment,
+      futureCaptureRequirements: {
+        emitted: false,
+        requiredSourceRecordType: null,
+        requiredTimestampField: null,
+        requiredTimestampClockDomain: null,
+        requiredMaximumSourceGapMs: null,
+        requiredNominalCadenceMs: null,
+        requiredSchedulingSafetyMarginMs: null,
+        requiredCaptureFields: [],
+        requiredDuplicateOrderGuarantees: null,
+        requiredPreRollDurationMs: null,
+        requiredMinimumBarWarmup: null,
+        requiredRunStartBehavior: null,
+        requiredMonitoringMetric: null,
+        acceptanceTest: null,
+        note: "not emitted",
+      },
+      verdict: classified.verdict,
+      recommendedNextAction: classified.recommendedNextAction,
+      limitations: [],
+      warnings: [],
+      nonClaims: [],
+    });
+    expect(html).toContain("Structural warm-up");
+    expect(html).toContain("not treated as failures");
+    expect(html).toContain("featureEvaluable=");
+    expect(html).toContain("&quot;emitted&quot;: false");
+    expect(JSON.stringify(assessment)).toContain("featureEvaluableCount");
+    expect(JSON.stringify(assessment)).toContain("structurallyExcludedCount");
+  });
+
+  it("findFirstUsableCausalBtcTimestampMs skips invalid prices", () => {
+    expect(
+      findFirstUsableCausalBtcTimestampMs([
+        { timestampMs: 10, priceUsd: 0 },
+        { timestampMs: 20, priceUsd: Number.NaN },
+        { timestampMs: 30, priceUsd: 100 },
+      ]),
+    ).toBe(30);
   });
 });
 

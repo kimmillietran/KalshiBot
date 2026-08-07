@@ -27,7 +27,10 @@ export type ClassificationResult = {
  * 1. historical-feature-definition-ambiguous
  * 2. forward-validator-semantics-mismatch
  * 3. frozen-feature-not-reconstructable-from-current-capture
+ *    (only when ≥1 feature-evaluable reconstruction failure)
  * 4. exactly-equivalent-and-reconstructable
+ *    (includes equivalent contracts with only structural warm-up exclusions /
+ *     insufficient-evaluable-forward-duration — not a capture redesign claim)
  *
  * Candidate counts / settlements / high-vol counts do not drive verdict.
  */
@@ -38,6 +41,7 @@ export function classifyCausalFeatureEquivalence(
   void input.highVolatilityCount;
   void input.settlementCoverageShare;
   void input.volatilityAvailableCount;
+  void input.referenceComparison;
 
   if (
     input.contractComparison.historicalEvidenceStatus === "ambiguous"
@@ -57,7 +61,10 @@ export function classifyCausalFeatureEquivalence(
     };
   }
 
-  if (!input.reconstructability.reconstructable) {
+  // Do not claim frozen-feature-not-reconstructable unless the feature was
+  // evaluable and failed. Pure warm-up / zero-evaluable runs keep the equivalent
+  // verdict with a truthful reconstructability.reason.
+  if (input.reconstructability.reconstructionFailureCount > 0) {
     return {
       verdict: "frozen-feature-not-reconstructable-from-current-capture",
       recommendedNextAction: "design-equivalent-forward-capture",
