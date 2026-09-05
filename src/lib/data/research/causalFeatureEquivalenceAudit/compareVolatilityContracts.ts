@@ -1,6 +1,7 @@
 import {
   GOVERNED_VOLATILITY_CONTRACT_FIELDS,
   VOLATILITY_CONTRACT_FIELDS,
+  isHistoricalNoAdjacentSourceGapDefinition,
   type ContractComparisonResult,
   type ContractFieldComparison,
   type ContractFieldComparisonStatus,
@@ -29,6 +30,19 @@ function valuesEqual(
   return left === right;
 }
 
+/**
+ * Historical no-gap-gate + null threshold means the threshold is not operative,
+ * not that the historical threshold is unknown.
+ */
+function historicalGapThresholdNotApplicable(
+  historical: VolatilityFeatureContract,
+): boolean {
+  return (
+    isHistoricalNoAdjacentSourceGapDefinition(historical.sourceGapDefinition)
+    && historical.sourceGapThresholdMs === null
+  );
+}
+
 function compareField(
   field: VolatilityContractField,
   historical: VolatilityFeatureContract,
@@ -39,6 +53,19 @@ function compareField(
   const governed = GOVERNED_SET.has(field);
 
   let status: ContractFieldComparisonStatus;
+
+  // Known absence of an operative gap threshold vs forward's operative threshold.
+  if (field === "sourceGapThresholdMs" && historicalGapThresholdNotApplicable(historical)) {
+    if (forwardValue === null) {
+      status = "equivalent";
+    } else if (governed) {
+      status = "mismatch";
+    } else {
+      status = "descriptive-only";
+    }
+    return { field, historicalValue, forwardValue, status, governed };
+  }
+
   if (DESCRIPTIVE_ONLY_FIELDS.has(field) && !governed) {
     status = valuesEqual(historicalValue, forwardValue)
       ? "equivalent"
@@ -63,6 +90,7 @@ function compareField(
 /**
  * Field-by-field contract comparison.
  * Missing historical governed fields → ambiguous-missing-historical (not inferred equality).
+ * Proven no-gap-gate with null threshold → not-applicable (mismatch vs operative forward threshold).
  * Descriptive label differences alone are not semantic mismatches.
  */
 export function compareVolatilityContracts(input: {

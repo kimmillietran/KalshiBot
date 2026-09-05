@@ -203,18 +203,23 @@ describe("buildCausalFeatureEquivalenceAudit CLI", () => {
         recommendedNextAction: string;
       };
       expect(summary.selectedRunId).toBe(runId);
-      expect(summary.verdict).toBe("historical-feature-definition-ambiguous");
-      expect(summary.recommendedNextAction).toBe("resolve-historical-feature-definition");
+      // Evidence-driven: resolved historical no-gap-gate vs forward adjacent-gap enforcement.
+      expect(summary.verdict).toBe("forward-validator-semantics-mismatch");
+      expect(summary.recommendedNextAction).toBe(
+        "correct-forward-validator-to-frozen-semantics",
+      );
 
       const report = JSON.parse(readFileSync(outputPath, "utf8")) as {
         analysisScope: string;
         selectedRunId: string;
         verdict: string;
+        historicalEvidenceStatus: string;
         nonClaims: string[];
       };
       expect(report.analysisScope).toBe("selected-run");
       expect(report.selectedRunId).toBe(runId);
-      expect(report.verdict).toBe("historical-feature-definition-ambiguous");
+      expect(report.historicalEvidenceStatus).toBe("proven");
+      expect(report.verdict).toBe("forward-validator-semantics-mismatch");
       expect(report.nonClaims.join(" ")).toMatch(/No settlement/);
       expect(readFileSync(htmlOutputPath, "utf8")).toContain("Executive verdict");
     } finally {

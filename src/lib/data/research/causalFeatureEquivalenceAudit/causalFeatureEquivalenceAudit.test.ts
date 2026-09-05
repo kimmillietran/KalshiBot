@@ -29,6 +29,8 @@ import {
   EXPECTED_FREEZE_COMMIT_SHA,
   EXPECTED_HYPOTHESIS_CONFIGURATION_HASH,
   EXPECTED_HYPOTHESIS_ID,
+  HISTORICAL_GAP_HANDLING_NONE,
+  HISTORICAL_NO_ADJACENT_SOURCE_GAP_DEFINITION,
   RECONSTRUCTABILITY_DENOMINATOR_DEFINITION,
   VOLATILITY_WINDOW_ATTRIBUTION_CLASSES,
   type CausalFeatureEquivalenceEvidenceDocument,
@@ -331,18 +333,25 @@ describe("loadCausalFeatureEquivalenceEvidence", () => {
 });
 
 describe("reconstructHistoricalVolatilityContract", () => {
-  it("leaves unavailable gap fields null and marks ambiguity", () => {
+  it("reconstructs resolved no-gap-gate historical contract without ambiguity", () => {
     const raw = readFileSync(join(process.cwd(), COMMITTED_EVIDENCE_PATH), "utf8");
     const evidence = loadCausalFeatureEquivalenceEvidence({ rawContent: raw });
     const result = reconstructHistoricalVolatilityContract(evidence);
-    expect(result.contract.sourceGapDefinition).toBeNull();
-    expect(result.contract.startBoundaryHandling).toBeNull();
-    expect(result.contract.internalGapHandling).toBeNull();
-    expect(result.contract.trailingGapHandling).toBeNull();
+    expect(result.contract.sourceGapDefinition).toBe(HISTORICAL_NO_ADJACENT_SOURCE_GAP_DEFINITION);
+    expect(result.contract.startBoundaryHandling).toBe(HISTORICAL_GAP_HANDLING_NONE);
+    expect(result.contract.internalGapHandling).toBe(HISTORICAL_GAP_HANDLING_NONE);
+    expect(result.contract.trailingGapHandling).toBe(HISTORICAL_GAP_HANDLING_NONE);
     expect(result.contract.sourceGapThresholdMs).toBeNull();
+    expect(result.contract.sourceGapThresholdMs).not.toBe(0);
+    expect(result.contract.sourceGapThresholdMs).not.toBe(5000);
     expect(result.contract.lookbackReturns).toBe(10);
+    expect(result.contract.requiredCloseCount).toBe(11);
     expect(result.contract.annualizationMethod).toBe("realized-log-return-annualized");
-    expect(result.historicalEvidenceStatus).toBe("ambiguous");
+    expect(result.contract.sourceRecordType).toBe(
+      "research-output-replay-engineInput-btc-candles",
+    );
+    expect(result.contract.timestampMeaning).toBe("exchange-candle-close-time");
+    expect(result.historicalEvidenceStatus).toBe("proven");
   });
 
   it("does not let project-context-only establish executable fields", () => {
@@ -632,7 +641,7 @@ describe("loadCausalFeatureEquivalenceEvidence unknown-key rejection", () => {
 });
 
 describe("split gap evidence claims", () => {
-  it("keeps declared max gap separate from inferred unused call-chain status", () => {
+  it("keeps declared max gap separate from unused call-chain and no-gap-gate proof", () => {
     const raw = readFileSync(join(process.cwd(), COMMITTED_EVIDENCE_PATH), "utf8");
     const evidence = loadCausalFeatureEquivalenceEvidence({ rawContent: raw });
     const declared = evidence.claims.find(
@@ -641,15 +650,299 @@ describe("split gap evidence claims", () => {
     const unused = evidence.claims.find(
       (claim) => claim.claimId === "maximum-source-gap-unused-at-freeze",
     );
+    const notOperative = evidence.claims.find(
+      (claim) => claim.claimId === "historical-gap-threshold-not-operative",
+    );
     expect(declared?.status).toBe("declared-by-frozen-config");
     expect(declared?.value).toBe(5000);
     expect(unused?.status).toBe("inferred-from-call-chain");
     expect(unused?.status).not.toBe("unavailable");
     expect(unused?.path).toBeTruthy();
     expect(unused?.commitSha).toBe(EXPECTED_FREEZE_COMMIT_SHA);
+    expect(notOperative?.status).toBe("proven-by-executable-code");
+    expect(notOperative?.value).toBeNull();
     const reconstructed = reconstructHistoricalVolatilityContract(evidence);
     expect(reconstructed.contract.sourceGapThresholdMs).toBeNull();
-    expect(reconstructed.historicalEvidenceStatus).toBe("ambiguous");
+    expect(reconstructed.contract.sourceGapThresholdMs).not.toBe(5000);
+    expect(reconstructed.contract.sourceGapDefinition).toBe(
+      HISTORICAL_NO_ADJACENT_SOURCE_GAP_DEFINITION,
+    );
+    expect(reconstructed.historicalEvidenceStatus).toBe("proven");
+  });
+});
+
+describe("M12.5a resolved historical volatility contract", () => {
+  function historicalFromCommittedEvidence(): {
+    contract: VolatilityFeatureContract;
+    historicalEvidenceStatus: "proven" | "ambiguous" | "insufficient";
+  } {
+    const raw = readFileSync(join(process.cwd(), COMMITTED_EVIDENCE_PATH), "utf8");
+    const evidence = loadCausalFeatureEquivalenceEvidence({ rawContent: raw });
+    return reconstructHistoricalVolatilityContract(evidence);
+  }
+
+  it("1. resolved evidence is not ambiguous solely due to no historical gap gate", () => {
+    const result = historicalFromCommittedEvidence();
+    expect(result.contract.sourceGapDefinition).toBe(
+      HISTORICAL_NO_ADJACENT_SOURCE_GAP_DEFINITION,
+    );
+    expect(result.historicalEvidenceStatus).toBe("proven");
+  });
+
+  it("2. known absence of gap threshold is distinguishable from unknown threshold", () => {
+    const knownAbsence = compareVolatilityContracts({
+      historical: fullContract({
+        sourceGapDefinition: HISTORICAL_NO_ADJACENT_SOURCE_GAP_DEFINITION,
+        sourceGapThresholdMs: null,
+        startBoundaryHandling: HISTORICAL_GAP_HANDLING_NONE,
+        internalGapHandling: HISTORICAL_GAP_HANDLING_NONE,
+        trailingGapHandling: HISTORICAL_GAP_HANDLING_NONE,
+      }),
+      forward: fullContract(),
+      historicalEvidenceStatus: "proven",
+    });
+    expect(
+      knownAbsence.fields.find((field) => field.field === "sourceGapThresholdMs")?.status,
+    ).toBe("mismatch");
+    expect(knownAbsence.hasAmbiguousMissingHistorical).toBe(false);
+
+    const unknown = compareVolatilityContracts({
+      historical: fullContract({
+        sourceGapDefinition: null,
+        sourceGapThresholdMs: null,
+      }),
+      forward: fullContract(),
+      historicalEvidenceStatus: "ambiguous",
+    });
+    expect(
+      unknown.fields.find((field) => field.field === "sourceGapThresholdMs")?.status,
+    ).toBe("ambiguous-missing-historical");
+    expect(unknown.hasAmbiguousMissingHistorical).toBe(true);
+  });
+
+  it("3. historical maximumSourceGapMs is not reconstructed as 5000", () => {
+    const result = historicalFromCommittedEvidence();
+    expect(result.contract.sourceGapThresholdMs).not.toBe(5000);
+    expect(result.contract.sourceGapThresholdMs).toBeNull();
+  });
+
+  it("4. historical gap threshold is not a fake zero sentinel", () => {
+    const result = historicalFromCommittedEvidence();
+    expect(result.contract.sourceGapThresholdMs).not.toBe(0);
+  });
+
+  it("5. replay engineInput.btc.candles is the resolved historical ingress", () => {
+    const result = historicalFromCommittedEvidence();
+    expect(result.contract.sourceRecordType).toBe(
+      "research-output-replay-engineInput-btc-candles",
+    );
+  });
+
+  it("6. Coinbase preserved-artifact evidence is represented truthfully", () => {
+    const raw = readFileSync(join(process.cwd(), COMMITTED_EVIDENCE_PATH), "utf8");
+    const evidence = loadCausalFeatureEquivalenceEvidence({ rawContent: raw });
+    const coinbase = evidence.claims.find(
+      (claim) => claim.claimId === "coinbase-spot-preserved-corpus",
+    );
+    expect(coinbase?.status).toBe("proven-by-preserved-artifact");
+    expect(coinbase?.value).toBe("coinbase-spot");
+    expect(coinbase?.contractField).toBeNull();
+    expect(coinbase?.path).toContain("research-output.json");
+    expect(evidence.claims.some((claim) => claim.status === "proven-by-preserved-artifact")).toBe(
+      true,
+    );
+    const result = reconstructHistoricalVolatilityContract(evidence);
+    expect(result.contract.sourceInstrument).toBe("BTC");
+  });
+
+  it("7. exchange-close timestamp semantics are represented truthfully", () => {
+    const result = historicalFromCommittedEvidence();
+    expect(result.contract.timestampMeaning).toBe("exchange-candle-close-time");
+    expect(result.contract.timestampField).toBe("timestamp");
+  });
+
+  it("8. stale unavailable claims do not override stronger resolved evidence", () => {
+    const evidence = loadCausalFeatureEquivalenceEvidence({
+      rawContent: JSON.stringify(
+        baseEvidence({
+          unresolvedAmbiguities: [],
+          claims: [
+            {
+              claimId: "stale-unavailable",
+              claim: "stale unavailable gap definition",
+              status: "unavailable",
+              commitSha: EXPECTED_FREEZE_COMMIT_SHA,
+              path: null,
+              blobSha: null,
+              symbol: null,
+              contractField: "sourceGapDefinition",
+              value: null,
+              summary: "stale",
+              limitations: [],
+            },
+            {
+              claimId: "resolved-no-gap",
+              claim: "resolved no gap gate",
+              status: "proven-by-executable-code",
+              commitSha: EXPECTED_FREEZE_COMMIT_SHA,
+              path: "src/lib/data/strategies/fairValueDiffusion/fairValueDiffusionModel.ts",
+              blobSha: "47ea9ec6cb160f79720c420ba3a794f15a3341c5",
+              symbol: "estimateRealizedVolatility",
+              contractField: "sourceGapDefinition",
+              value: HISTORICAL_NO_ADJACENT_SOURCE_GAP_DEFINITION,
+              summary: "resolved",
+              limitations: [],
+            },
+            {
+              claimId: "lookback",
+              claim: "lookback 10",
+              status: "proven-by-executable-code",
+              commitSha: EXPECTED_FREEZE_COMMIT_SHA,
+              path: "src/lib/data/strategies/fairValueDiffusion/fairValueDiffusionModel.ts",
+              blobSha: "47ea9ec6cb160f79720c420ba3a794f15a3341c5",
+              symbol: "estimateRealizedVolatility",
+              contractField: "lookbackReturns",
+              value: 10,
+              summary: "lookback",
+              limitations: [],
+            },
+          ],
+        }),
+      ),
+    });
+    const result = reconstructHistoricalVolatilityContract(evidence);
+    expect(result.contract.sourceGapDefinition).toBe(
+      HISTORICAL_NO_ADJACENT_SOURCE_GAP_DEFINITION,
+    );
+  });
+
+  it("9. truly unavailable governed historical fields still produce ambiguous verdict", () => {
+    const comparison = comparisonFrom(
+      fullContract({ sourceRecordType: null }),
+      fullContract(),
+      "ambiguous",
+    );
+    expect(comparison.hasAmbiguousMissingHistorical).toBe(true);
+    const classified = classifyCausalFeatureEquivalence({
+      contractComparison: comparison,
+      reconstructability: reconstructability(true),
+      referenceComparison: skippedReference(),
+    });
+    expect(classified.verdict).toBe("historical-feature-definition-ambiguous");
+  });
+
+  it("10. proven historical-vs-forward governed mismatch produces semantics-mismatch", () => {
+    const historical = historicalFromCommittedEvidence();
+    const comparison = compareVolatilityContracts({
+      historical: historical.contract,
+      forward: fullContract(),
+      historicalEvidenceStatus: historical.historicalEvidenceStatus,
+    });
+    expect(comparison.historicalEvidenceStatus).toBe("proven");
+    expect(comparison.hasSemanticMismatch).toBe(true);
+    expect(comparison.hasAmbiguousMissingHistorical).toBe(false);
+    const classified = classifyCausalFeatureEquivalence({
+      contractComparison: comparison,
+      reconstructability: reconstructability(true),
+      referenceComparison: skippedReference(),
+    });
+    expect(classified.verdict).toBe("forward-validator-semantics-mismatch");
+    expect(classified.recommendedNextAction).toBe(
+      "correct-forward-validator-to-frozen-semantics",
+    );
+  });
+
+  it("11. equivalent contracts retain reconstructability verdict behavior", () => {
+    const contract = fullContract();
+    const comparison = comparisonFrom(contract, contract, "proven");
+    expect(comparison.equivalent).toBe(true);
+    const success = classifyCausalFeatureEquivalence({
+      contractComparison: comparison,
+      reconstructability: reconstructability(true),
+      referenceComparison: skippedReference(),
+    });
+    expect(success.verdict).toBe("exactly-equivalent-and-reconstructable");
+    const failure = classifyCausalFeatureEquivalence({
+      contractComparison: comparison,
+      reconstructability: reconstructability(false),
+      referenceComparison: skippedReference(),
+    });
+    expect(failure.verdict).toBe("frozen-feature-not-reconstructable-from-current-capture");
+  });
+
+  it("12. candidates/settlements/high-vol/profit do not influence classification", () => {
+    const historical = historicalFromCommittedEvidence();
+    const comparison = compareVolatilityContracts({
+      historical: historical.contract,
+      forward: fullContract(),
+      historicalEvidenceStatus: historical.historicalEvidenceStatus,
+    });
+    const baseline = classifyCausalFeatureEquivalence({
+      contractComparison: comparison,
+      reconstructability: reconstructability(true),
+      referenceComparison: skippedReference(),
+    });
+    const withNoise = classifyCausalFeatureEquivalence({
+      contractComparison: comparison,
+      reconstructability: reconstructability(true),
+      referenceComparison: skippedReference(),
+      candidateMarketCount: 999,
+      highVolatilityCount: 999,
+      settlementCoverageShare: 1,
+      volatilityAvailableCount: 999,
+    });
+    expect(withNoise).toEqual(baseline);
+  });
+
+  it("accepts proven-by-preserved-artifact in the evidence loader", () => {
+    const evidence = loadCausalFeatureEquivalenceEvidence({
+      rawContent: JSON.stringify(
+        baseEvidence({
+          claims: [
+            {
+              claimId: "artifact",
+              claim: "preserved",
+              status: "proven-by-preserved-artifact",
+              commitSha: null,
+              path: "data/research-results/**/research-output.json",
+              blobSha: null,
+              symbol: null,
+              contractField: null,
+              value: "coinbase-spot",
+              summary: "corpus",
+              limitations: [],
+            },
+          ],
+        }),
+      ),
+    });
+    expect(evidence.claims[0]?.status).toBe("proven-by-preserved-artifact");
+  });
+
+  it("rejects proven-by-preserved-artifact without path", () => {
+    expect(() =>
+      loadCausalFeatureEquivalenceEvidence({
+        rawContent: JSON.stringify(
+          baseEvidence({
+            claims: [
+              {
+                claimId: "artifact",
+                claim: "preserved",
+                status: "proven-by-preserved-artifact",
+                commitSha: null,
+                path: null,
+                blobSha: null,
+                symbol: null,
+                contractField: null,
+                value: "coinbase-spot",
+                summary: "corpus",
+                limitations: [],
+              },
+            ],
+          }),
+        ),
+      }),
+    ).toThrow(/proven-by-preserved-artifact requires path/);
   });
 });
 

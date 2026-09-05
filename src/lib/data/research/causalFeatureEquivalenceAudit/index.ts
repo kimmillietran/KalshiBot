@@ -9,8 +9,11 @@ export {
   EXPECTED_FREEZE_COMMIT_SHA,
   EXPECTED_HYPOTHESIS_CONFIGURATION_HASH,
   EXPECTED_HYPOTHESIS_ID,
+  HISTORICAL_GAP_HANDLING_NONE,
+  HISTORICAL_NO_ADJACENT_SOURCE_GAP_DEFINITION,
   VOLATILITY_WINDOW_ATTRIBUTION_CLASSES,
   CausalFeatureEquivalenceAuditError,
+  isHistoricalNoAdjacentSourceGapDefinition,
 } from "./causalFeatureEquivalenceAuditTypes";
 export type {
   CausalFeatureEquivalenceAuditIo,
