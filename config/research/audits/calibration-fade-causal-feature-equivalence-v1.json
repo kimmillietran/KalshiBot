@@ -23,7 +23,7 @@
     },
     {
       "claimId": "vol-method-realized-log-return-annualized",
-      "claim": "Volatility method is realized log-return annualized via estimateRealizedVolatility.",
+      "claim": "Volatility method is realized log-return annualized via estimateRealizedVolatility (population stdev of log returns).",
       "status": "proven-by-executable-code",
       "commitSha": "f2598cf960472f368cd6ad25f67d4c97a3b3956e",
       "path": "src/lib/data/strategies/fairValueDiffusion/fairValueDiffusionModel.ts",
@@ -31,38 +31,91 @@
       "symbol": "estimateRealizedVolatility",
       "contractField": "annualizationMethod",
       "value": "realized-log-return-annualized",
-      "summary": "Log returns of closes, stableStdDev, annualized by inferred bar interval (else 60s).",
+      "summary": "Log returns of closes, stableStdDev (population), annualized by inferred bar interval (else 60s).",
       "limitations": []
     },
     {
-      "claimId": "atlas-annualized-volatility-attachment",
-      "claim": "Mispricing atlas attaches annualizedVolatility via enrichResearchObservationFeatures from research-output candles parsed by parseMispricingObservations.",
+      "claimId": "atlas-replay-candles-ingress",
+      "claim": "At atlas time, parseMispricingObservations preferred researchRun.backtestResult.replayResult.results[].engineInput.btc.candles whenever replay observations existed.",
       "status": "proven-by-executable-code",
-      "commitSha": "f2598cf960472f368cd6ad25f67d4c97a3b3956e",
-      "path": "src/lib/data/research/mispricingAtlas/enrichResearchObservationFeatures.ts",
-      "blobSha": "737b239f03b1bf5cd89ed0cf7d8ccc9e683985d5",
-      "symbol": "enrichResearchObservationFeatures",
+      "commitSha": "05a4a2a2ae1a18c73bbda0fb2b3e9ae0bc33a9a6",
+      "path": "src/lib/data/research/mispricingAtlas/parseMispricingObservations.ts",
+      "blobSha": "a1217a9dc2dfba0e337ad40cb34b17ff5cd3c677",
+      "symbol": "extractMispricingObservationsFromResearchOutput",
       "contractField": "sourceRecordType",
-      "value": "research-output-btc-candles-or-btcBars",
-      "summary": "Discovery path uses pre-built candles already present in research-output, not capture btc-spot ticks.",
+      "value": "research-output-replay-engineInput-btc-candles",
+      "summary": "replayObservations.length > 0 selects replay candles; snapshot.btcBars is fallback only when replay observations are absent.",
       "limitations": [
-        "Exact upstream candle provider and gap policy for research-output candles are outside the atlas feature path."
+        "Atlas metadata marketCount=10474 (generatedAt 2026-07-07T22:33:23.730Z); preserved corpus audit scanned 19110 later-superset files, not exact atlas membership."
       ]
     },
     {
-      "claimId": "atlas-candle-parse-path",
-      "claim": "parseMispricingObservations prefers engineInput.btc.candles then falls back to snapshot.btcBars.",
-      "status": "proven-by-executable-code",
-      "commitSha": "f2598cf960472f368cd6ad25f67d4c97a3b3956e",
-      "path": "src/lib/data/research/mispricingAtlas/parseMispricingObservations.ts",
-      "blobSha": "daaccd1d02c2f9e25f825e72d1ef4c1dfcba28ee",
-      "symbol": "parseMispricingObservations",
-      "contractField": "sourceRecordType",
-      "value": "research-output-btc-candles-or-btcBars",
-      "summary": "Confirms atlas candle ingress; no adjacent-source-gap enforcement in this mapper.",
+      "claimId": "coinbase-spot-preserved-corpus",
+      "claim": "Every preserved historical research-output.json on the original Windows research machine carried Coinbase-only BTC provenance (coinbase-spot) with populated replay engineInput.btc.candles.",
+      "status": "proven-by-preserved-artifact",
+      "commitSha": null,
+      "path": "data/research-results/**/research-output.json",
+      "blobSha": null,
+      "symbol": null,
+      "contractField": null,
+      "value": "coinbase-spot",
+      "summary": "Corpus audit: filesScanned=19110, coinbaseOnly=19110, replayWithBtcCandles=19110. Provider is evidence metadata; sourceInstrument remains BTC.",
       "limitations": [
-        "Does not uniquely identify which historical discovery runs used candles versus btcBars."
+        "19110 preserved outputs are a later superset of the July-7 atlas input set (marketCount=10474); exact atlas path membership unrecovered.",
+        "Raw corpus is not committed; this claim is a reviewed forensic summary."
       ]
+    },
+    {
+      "claimId": "exchange-candle-close-timestamp",
+      "claim": "Historical BTC candle timestamps are exchange candle close times (e.g. ...:59.999Z) mapped from bar.closeTime into EvaluationCandleSnapshot.timestamp.",
+      "status": "proven-by-executable-code",
+      "commitSha": "05a4a2a2ae1a18c73bbda0fb2b3e9ae0bc33a9a6",
+      "path": "src/lib/data/replay/adaptHistoricalSnapshot.ts",
+      "blobSha": "f66456b89561cbc77fccae50e7cd19ca1832f165",
+      "symbol": "mapBtcBarToEvaluationCandle",
+      "contractField": "timestampMeaning",
+      "value": "exchange-candle-close-time",
+      "summary": "Replay adaptation sets timestamp from BtcBar1m.closeTime; Coinbase importer closeTime is open+granularity-1ms (...:59.999Z for 1m).",
+      "limitations": []
+    },
+    {
+      "claimId": "candle-timestamp-field",
+      "claim": "Atlas/replay candle ingress uses EvaluationCandleSnapshot.timestamp (exchange close).",
+      "status": "proven-by-executable-code",
+      "commitSha": "05a4a2a2ae1a18c73bbda0fb2b3e9ae0bc33a9a6",
+      "path": "src/lib/data/research/mispricingAtlas/parseMispricingObservations.ts",
+      "blobSha": "a1217a9dc2dfba0e337ad40cb34b17ff5cd3c677",
+      "symbol": "mapCandles",
+      "contractField": "timestampField",
+      "value": "timestamp",
+      "summary": "mapCandles/mapEvaluationCandleSnapshots read candle.timestamp from prebuilt exchange OHLC.",
+      "limitations": []
+    },
+    {
+      "claimId": "prebuilt-exchange-1m-ohlc-inclusion",
+      "claim": "Historical discovery used prebuilt exchange completed 1-minute OHLC bars as provided; not tick-rebuilt in-progress minute inclusion.",
+      "status": "proven-by-executable-code",
+      "commitSha": "05a4a2a2ae1a18c73bbda0fb2b3e9ae0bc33a9a6",
+      "path": "src/lib/data/replay/adaptHistoricalSnapshot.ts",
+      "blobSha": "f66456b89561cbc77fccae50e7cd19ca1832f165",
+      "symbol": "mapBtcBarToEvaluationCandle",
+      "contractField": "quoteMinuteInclusionPolicy",
+      "value": "prebuilt-exchange-completed-1m-ohlc",
+      "summary": "engineInput.btc.candles are exchange 1m OHLC already completed at closeTime; distinct from forward tick bucketing.",
+      "limitations": []
+    },
+    {
+      "claimId": "missing-minutes-omit-no-fill",
+      "claim": "Missing minutes in historical candle series are omitted; no fill or interpolation in the discovery volatility path.",
+      "status": "proven-by-executable-code",
+      "commitSha": "05a4a2a2ae1a18c73bbda0fb2b3e9ae0bc33a9a6",
+      "path": "src/lib/data/strategies/fairValueDiffusion/fairValueDiffusionModel.ts",
+      "blobSha": "47ea9ec6cb160f79720c420ba3a794f15a3341c5",
+      "symbol": "estimateRealizedVolatility",
+      "contractField": "missingMinuteBehavior",
+      "value": "omit-missing-minutes-no-fill",
+      "summary": "Estimator consumes the provided close series; absent minutes simply reduce available closes / yield null when lookback unmet. No adjacent-gap reject.",
+      "limitations": []
     },
     {
       "claimId": "vol-high-threshold-0.6",
@@ -87,7 +140,7 @@
       "symbol": "volatilityDefinition.returnIntervalMs",
       "contractField": "returnIntervalMs",
       "value": 60000,
-      "summary": "Config declares one-minute return interval used by freeze-forward candle bucketing.",
+      "summary": "Config declares one-minute return interval used by freeze-forward candle bucketing and matching historical 1m bars.",
       "limitations": []
     },
     {
@@ -100,22 +153,22 @@
       "symbol": "volatilityDefinition.sourceInstrument",
       "contractField": "sourceInstrument",
       "value": "BTC",
-      "summary": "Instrument identity from frozen config.",
+      "summary": "Instrument identity from frozen config; Coinbase is provider provenance, not sourceInstrument.",
       "limitations": []
     },
     {
-      "claimId": "freeze-forward-candles-from-btc-spot",
-      "claim": "At freeze, forward validation rebuilt candles from btc-spot.jsonl via buildBtcCandlesUpToTimestamp without adjacent source-gap enforcement.",
+      "claimId": "freeze-forward-candles-from-btc-spot-note",
+      "claim": "At freeze, forward validation rebuilt candles from btc-spot.jsonl via buildBtcCandlesUpToTimestamp without adjacent source-gap enforcement. That freeze-forward path is distinct from atlas discovery ingress.",
       "status": "proven-by-executable-code",
       "commitSha": "f2598cf960472f368cd6ad25f67d4c97a3b3956e",
       "path": "src/lib/data/research/calibrationFadeForwardValidation/buildBtcCandlesCausal.ts",
       "blobSha": "186d54241c795149928604400efb652534538577",
       "symbol": "buildBtcCandlesUpToTimestamp",
-      "contractField": "quoteMinuteInclusionPolicy",
+      "contractField": null,
       "value": "include-in-progress-minute-when-sampled",
-      "summary": "Causal cutoff, minute buckets, in-progress minute included; missing minutes omitted without fill; no maximumSourceGapMs parameter.",
+      "summary": "Retained as forensic note of freeze-forward candle rebuild; does not override discovery-path quoteMinuteInclusionPolicy.",
       "limitations": [
-        "This freeze-forward candle path differs from the atlas discovery candle ingress, so a single historical source contract is not uniquely established."
+        "Freeze-forward rebuild is not the operative historical discovery source contract resolved in M12.5."
       ]
     },
     {
@@ -128,9 +181,9 @@
       "symbol": "volatilityDefinition.maximumSourceGapMs",
       "contractField": "sourceGapThresholdMs",
       "value": 5000,
-      "summary": "Frozen config declares maximumSourceGapMs=5000 as metadata on volatilityDefinition.",
+      "summary": "Frozen config declares maximumSourceGapMs=5000 as metadata on volatilityDefinition. Declared value is not historical discovery execution.",
       "limitations": [
-        "Declared value alone does not establish executable adjacent-source-gap semantics."
+        "Declared value alone does not establish executable adjacent-source-gap semantics for historical discovery."
       ]
     },
     {
@@ -141,69 +194,129 @@
       "path": "src/lib/data/research/calibrationFadeForwardValidation/buildBtcCandlesCausal.ts",
       "blobSha": "186d54241c795149928604400efb652534538577",
       "symbol": "buildBtcCandlesUpToTimestamp",
+      "contractField": null,
+      "value": null,
+      "summary": "Freeze-forward candles were rebuilt via buildBtcCandlesUpToTimestamp then estimateRealizedVolatility without reading maximumSourceGapMs. Kept separate from discovery no-gap-gate proof.",
+      "limitations": [
+        "Inferred from freeze-commit call chain and repo-wide reference scan; not a dynamic runtime Git re-verification."
+      ]
+    },
+    {
+      "claimId": "historical-no-adjacent-source-gap-gate",
+      "claim": "Historical discovery volatility path had no adjacent-source-gap gate (proven absence, not unknown).",
+      "status": "proven-by-executable-code",
+      "commitSha": "05a4a2a2ae1a18c73bbda0fb2b3e9ae0bc33a9a6",
+      "path": "src/lib/data/research/mispricingAtlas/parseMispricingObservations.ts",
+      "blobSha": "a1217a9dc2dfba0e337ad40cb34b17ff5cd3c677",
+      "symbol": "extractReplayStepObservations",
+      "contractField": "sourceGapDefinition",
+      "value": "no-adjacent-source-gap-gate",
+      "summary": "Atlas discovery attached annualizedVolatility from prebuilt candles via estimateRealizedVolatility with no maximumSourceGapMs / adjacent-gap arguments. buildValidatedCausalVolatilityWindow did not exist.",
+      "limitations": []
+    },
+    {
+      "claimId": "historical-gap-threshold-not-operative",
+      "claim": "No historical adjacent-source-gap threshold was operative on the discovery volatility path (null means not applicable, not unknown; not 0; not 5000).",
+      "status": "proven-by-executable-code",
+      "commitSha": "05a4a2a2ae1a18c73bbda0fb2b3e9ae0bc33a9a6",
+      "path": "src/lib/data/strategies/fairValueDiffusion/fairValueDiffusionModel.ts",
+      "blobSha": "47ea9ec6cb160f79720c420ba3a794f15a3341c5",
+      "symbol": "estimateRealizedVolatility",
       "contractField": "sourceGapThresholdMs",
       "value": null,
-      "summary": "Freeze-forward candles were rebuilt via buildBtcCandlesUpToTimestamp then estimateRealizedVolatility without reading maximumSourceGapMs. Repo-wide at freeze: config/types/loader/fixture references only; zero executable reads in candle build, vol estimate, or eligibility.",
-      "limitations": [
-        "Inferred from freeze-commit call chain and repo-wide reference scan; not a dynamic runtime Git re-verification.",
-        "Intended meaning of maximumSourceGapMs (unused metadata vs intended adjacent-gap rule) cannot be uniquely determined.",
-        "Does not establish an executable historical adjacent-source-gap contract."
-      ]
+      "summary": "Estimator has no gap-threshold parameter. Frozen maximumSourceGapMs=5000 was declared later and unused by discovery.",
+      "limitations": []
     },
     {
-      "claimId": "adjacent-source-gap-enforcement-unavailable",
-      "claim": "Adjacent source-gap enforcement (start/internal/trailing) was not present in executable historical volatility code at freeze; buildValidatedCausalVolatilityWindow did not exist.",
-      "status": "unavailable",
-      "commitSha": "f2598cf960472f368cd6ad25f67d4c97a3b3956e",
-      "path": null,
-      "blobSha": null,
-      "symbol": "buildValidatedCausalVolatilityWindow",
-      "contractField": "sourceGapDefinition",
-      "value": null,
-      "summary": "Historical executable vol path called buildBtcCandlesUpToTimestamp then estimateRealizedVolatility without gap arguments. Adjacent-gap enforcement was added later in M12.3.",
-      "limitations": [
-        "Cannot reconstruct a unique historical adjacent-source-gap contract.",
-        "Missing historical field must classify as ambiguity, not inferred equality with the current forward validator."
-      ]
-    },
-    {
-      "claimId": "start-boundary-gap-unavailable",
-      "claim": "Historical start-boundary gap enforcement is unavailable.",
-      "status": "unavailable",
-      "commitSha": "f2598cf960472f368cd6ad25f67d4c97a3b3956e",
-      "path": null,
-      "blobSha": null,
-      "symbol": null,
+      "claimId": "historical-start-boundary-none",
+      "claim": "Historical discovery had no start-boundary adjacent-source-gap gate.",
+      "status": "proven-by-executable-code",
+      "commitSha": "05a4a2a2ae1a18c73bbda0fb2b3e9ae0bc33a9a6",
+      "path": "src/lib/data/strategies/fairValueDiffusion/fairValueDiffusionModel.ts",
+      "blobSha": "47ea9ec6cb160f79720c420ba3a794f15a3341c5",
+      "symbol": "estimateRealizedVolatility",
       "contractField": "startBoundaryHandling",
-      "value": null,
-      "summary": "No executable historical start-boundary adjacent-gap gate for volatility.",
-      "limitations": ["Leads to ambiguous-missing-historical vs current forward start-boundary enforcement."]
+      "value": "none",
+      "summary": "Proven absence of start-boundary gap enforcement on discovery vol path.",
+      "limitations": []
     },
     {
-      "claimId": "internal-gap-unavailable",
-      "claim": "Historical internal adjacent-source-gap enforcement is unavailable.",
-      "status": "unavailable",
-      "commitSha": "f2598cf960472f368cd6ad25f67d4c97a3b3956e",
-      "path": null,
-      "blobSha": null,
-      "symbol": null,
+      "claimId": "historical-internal-gap-none",
+      "claim": "Historical discovery had no internal adjacent-source-gap gate.",
+      "status": "proven-by-executable-code",
+      "commitSha": "05a4a2a2ae1a18c73bbda0fb2b3e9ae0bc33a9a6",
+      "path": "src/lib/data/strategies/fairValueDiffusion/fairValueDiffusionModel.ts",
+      "blobSha": "47ea9ec6cb160f79720c420ba3a794f15a3341c5",
+      "symbol": "estimateRealizedVolatility",
       "contractField": "internalGapHandling",
-      "value": null,
-      "summary": "No executable historical internal adjacent-gap gate for volatility.",
-      "limitations": ["Leads to ambiguous-missing-historical vs current forward internal-gap enforcement."]
+      "value": "none",
+      "summary": "Proven absence of internal adjacent-gap enforcement on discovery vol path.",
+      "limitations": []
     },
     {
-      "claimId": "trailing-gap-unavailable",
-      "claim": "Historical trailing source-to-quote age enforcement inside the volatility window is unavailable.",
-      "status": "unavailable",
-      "commitSha": "f2598cf960472f368cd6ad25f67d4c97a3b3956e",
-      "path": null,
-      "blobSha": null,
-      "symbol": null,
+      "claimId": "historical-trailing-gap-none",
+      "claim": "Historical discovery had no trailing source-to-observation adjacent-gap gate inside the volatility window.",
+      "status": "proven-by-executable-code",
+      "commitSha": "05a4a2a2ae1a18c73bbda0fb2b3e9ae0bc33a9a6",
+      "path": "src/lib/data/strategies/fairValueDiffusion/fairValueDiffusionModel.ts",
+      "blobSha": "47ea9ec6cb160f79720c420ba3a794f15a3341c5",
+      "symbol": "estimateRealizedVolatility",
       "contractField": "trailingGapHandling",
-      "value": null,
-      "summary": "No executable historical trailing-gap gate on the volatility window path.",
-      "limitations": ["Distinct from BTC join-age gate."]
+      "value": "none",
+      "summary": "Proven absence of trailing vol-window gap gate; distinct from BTC join-age gate.",
+      "limitations": []
+    },
+    {
+      "claimId": "discovery-duplicate-handling-none",
+      "claim": "Historical discovery volatility path did not apply duplicate-collapse/reject gates to prebuilt candles.",
+      "status": "proven-by-executable-code",
+      "commitSha": "05a4a2a2ae1a18c73bbda0fb2b3e9ae0bc33a9a6",
+      "path": "src/lib/data/strategies/fairValueDiffusion/fairValueDiffusionModel.ts",
+      "blobSha": "47ea9ec6cb160f79720c420ba3a794f15a3341c5",
+      "symbol": "estimateRealizedVolatility",
+      "contractField": "duplicateHandling",
+      "value": "none-in-discovery-vol-path-passthrough-prebuilt-candles",
+      "summary": "Prebuilt candles are consumed as provided; no exact-timestamp collapse gate in discovery vol estimate.",
+      "limitations": []
+    },
+    {
+      "claimId": "discovery-ordering-handling-none",
+      "claim": "Historical discovery volatility path did not reject/resort non-ascending candle inputs.",
+      "status": "proven-by-executable-code",
+      "commitSha": "05a4a2a2ae1a18c73bbda0fb2b3e9ae0bc33a9a6",
+      "path": "src/lib/data/strategies/fairValueDiffusion/fairValueDiffusionModel.ts",
+      "blobSha": "47ea9ec6cb160f79720c420ba3a794f15a3341c5",
+      "symbol": "estimateRealizedVolatility",
+      "contractField": "orderingHandling",
+      "value": "none-in-discovery-vol-path-passthrough-prebuilt-candles",
+      "summary": "No non-ascending reject gate on discovery vol path.",
+      "limitations": []
+    },
+    {
+      "claimId": "discovery-invalid-price-estimator-null",
+      "claim": "Non-positive or non-finite closes cause estimateRealizedVolatility to return null via computeLogReturns.",
+      "status": "proven-by-executable-code",
+      "commitSha": "05a4a2a2ae1a18c73bbda0fb2b3e9ae0bc33a9a6",
+      "path": "src/lib/data/strategies/fairValueDiffusion/fairValueDiffusionModel.ts",
+      "blobSha": "47ea9ec6cb160f79720c420ba3a794f15a3341c5",
+      "symbol": "computeLogReturns",
+      "contractField": "invalidPriceHandling",
+      "value": "estimator-returns-null-on-non-positive-or-insufficient-closes",
+      "summary": "Estimator-level null on invalid closes; not the forward window-scope reject taxonomy.",
+      "limitations": []
+    },
+    {
+      "claimId": "discovery-future-sample-not-applicable",
+      "claim": "Prebuilt causal replay candles make forward-style future-point exclusion not applicable on the discovery path.",
+      "status": "proven-by-executable-code",
+      "commitSha": "05a4a2a2ae1a18c73bbda0fb2b3e9ae0bc33a9a6",
+      "path": "src/lib/data/replay/adaptHistoricalSnapshot.ts",
+      "blobSha": "f66456b89561cbc77fccae50e7cd19ca1832f165",
+      "symbol": "buildEvaluationSnapshot",
+      "contractField": "futureSampleHandling",
+      "value": "not-applicable-prebuilt-causal-replay-candles",
+      "summary": "Replay candles are already causal at evaluation; no full-series future-point integrity pass like buildValidatedCausalVolatilityWindow.",
+      "limitations": []
     },
     {
       "claimId": "btc-join-age-separate-from-vol-gap",
@@ -230,32 +343,17 @@
       "value": 5000,
       "summary": "Join gate threshold used by forward requireBtcJoin; independent of maximumSourceGapMs metadata.",
       "limitations": []
-    },
-    {
-      "claimId": "atlas-provider-gap-policy-unavailable",
-      "claim": "Exact atlas candle provider and upstream gap policy cannot be established from the feature attachment path alone.",
-      "status": "unavailable",
-      "commitSha": "f2598cf960472f368cd6ad25f67d4c97a3b3956e",
-      "path": "src/lib/data/research/mispricingAtlas/parseMispricingObservations.ts",
-      "blobSha": "daaccd1d02c2f9e25f825e72d1ef4c1dfcba28ee",
-      "symbol": "parseMispricingObservations",
-      "contractField": "timestampMeaning",
-      "value": null,
-      "summary": "Provider/clock domain for research-output candles lives upstream; atlas code does not pin Coinbase vs Binance vs other.",
-      "limitations": [
-        "Blocks claiming a unique historical source timestamp domain for discovery-path volatility."
-      ]
     }
   ],
-  "unresolvedAmbiguities": [
-    "Intended executable meaning of maximumSourceGapMs at freeze (unused metadata versus intended adjacent-gap rule).",
-    "Exact atlas candle provider and gap policy upstream of research-output.",
-    "Whether historical discovery (research-output candles) and freeze-forward (btc-spot rebuild) share one volatility source contract."
-  ],
+  "unresolvedAmbiguities": [],
   "limitations": [
     "Evidence is a reviewed commit-time forensic record; runtime does not re-run Git.",
     "Declared-by-frozen-config claims are not executable proof.",
-    "Unavailable adjacent-gap fields must not be inferred equal to the current forward validator.",
+    "Proven-by-preserved-artifact claims summarize the recovered Windows corpus; the raw 19110 research-output files are not committed.",
+    "Preserved corpus file count 19110 is a later superset of July-7 atlas marketCount 10474; exact atlas path membership remains unrecovered but does not reopen source-contract ambiguity under uniform Coinbase-only replay-candle provenance.",
+    "Atlas metadata: generatedAt 2026-07-07T22:33:23.730Z, marketCount 10474, parser commit 05a4a2a2ae1a18c73bbda0fb2b3e9ae0bc33a9a6.",
+    "Frozen maximumSourceGapMs=5000 remains declared config metadata; historical discovery did not execute it.",
+    "Probability-band integrity [1/3,2/3) was governed in M12.3 (hash 0bda8f23) and is out of scope for this volatility-contract evidence.",
     "No settlement, return, or profitability evidence is included."
   ]
 }

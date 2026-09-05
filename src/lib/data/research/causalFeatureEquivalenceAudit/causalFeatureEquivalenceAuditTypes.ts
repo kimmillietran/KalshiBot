@@ -32,6 +32,7 @@ export const EXPECTED_FREEZE_COMMIT_SHA =
 export const EVIDENCE_STATUSES = [
   "proven-by-executable-code",
   "proven-by-test",
+  "proven-by-preserved-artifact",
   "declared-by-frozen-config",
   "inferred-from-call-chain",
   "project-context-only",
@@ -39,6 +40,22 @@ export const EVIDENCE_STATUSES = [
 ] as const;
 
 export type EvidenceStatus = (typeof EVIDENCE_STATUSES)[number];
+
+/**
+ * Historical discovery had no adjacent-source-gap gate.
+ * Distinct from null/unknown: this string is a proven absence contract state.
+ */
+export const HISTORICAL_NO_ADJACENT_SOURCE_GAP_DEFINITION =
+  "no-adjacent-source-gap-gate" as const;
+
+/** Proven absence of start/internal/trailing adjacent-source-gap handling. */
+export const HISTORICAL_GAP_HANDLING_NONE = "none" as const;
+
+export function isHistoricalNoAdjacentSourceGapDefinition(
+  definition: string | null,
+): boolean {
+  return definition === HISTORICAL_NO_ADJACENT_SOURCE_GAP_DEFINITION;
+}
 
 export const VOLATILITY_CONTRACT_FIELDS = [
   "sourceInstrument",

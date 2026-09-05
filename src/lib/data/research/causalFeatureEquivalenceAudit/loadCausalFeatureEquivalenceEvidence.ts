@@ -186,6 +186,14 @@ function parseClaim(raw: unknown, index: number): EvidenceClaim {
     }
   }
 
+  if (statusRaw === "proven-by-preserved-artifact") {
+    if (!path) {
+      throw new CausalFeatureEquivalenceAuditError(
+        `claims[${index}] (${claimId}) proven-by-preserved-artifact requires path`,
+      );
+    }
+  }
+
   if (statusRaw === "inferred-from-call-chain") {
     if (!commitSha || !path) {
       throw new CausalFeatureEquivalenceAuditError(
@@ -217,7 +225,11 @@ export function findConflictingProvenContractFields(
   for (const claim of claims) {
     if (
       claim.contractField
-      && (claim.status === "proven-by-executable-code" || claim.status === "proven-by-test")
+      && (
+        claim.status === "proven-by-executable-code"
+        || claim.status === "proven-by-test"
+        || claim.status === "proven-by-preserved-artifact"
+      )
       && claim.value !== null
     ) {
       const existing = byField.get(claim.contractField) ?? [];
