@@ -1,7 +1,9 @@
 import { isRecord } from "../calibrationFadeForwardValidation/calibrationFadeForwardValidationUtils";
 
 import {
+  CALIBRATION_FADE_V2_HYPOTHESIS_ID,
   CALIBRATION_FADE_V2_HYPOTHESIS_VERSION,
+  CALIBRATION_FADE_V2_SOURCE_CANDIDATE_ID,
   CalibrationFadeV2PreregistrationError,
   DEFAULT_CALIBRATION_FADE_V2_HYPOTHESIS_CONFIG_PATH,
   V2_ADJACENT_SOURCE_GAP_POLICY_NONE,
@@ -332,8 +334,22 @@ function parseFreezeDocument(parsed: Record<string, unknown>): CalibrationFadeV2
     fail(`settlementMapping.${key} must be a non-empty string or finite number`);
   }
 
+  const hypothesisId = requireString(parsed, "hypothesisId", "hypothesisId");
+  if (hypothesisId !== CALIBRATION_FADE_V2_HYPOTHESIS_ID) {
+    fail(
+      `hypothesisId must be ${CALIBRATION_FADE_V2_HYPOTHESIS_ID}; received ${JSON.stringify(hypothesisId)}`,
+    );
+  }
+  const sourceCandidateId = requireString(parsed, "sourceCandidateId", "sourceCandidateId");
+  if (sourceCandidateId !== CALIBRATION_FADE_V2_SOURCE_CANDIDATE_ID) {
+    fail(
+      `sourceCandidateId must be ${CALIBRATION_FADE_V2_SOURCE_CANDIDATE_ID}; `
+        + `received ${JSON.stringify(sourceCandidateId)}`,
+    );
+  }
+
   return {
-    hypothesisId: requireString(parsed, "hypothesisId", "hypothesisId"),
+    hypothesisId,
     hypothesisVersion: requireLiteral(parsed, "hypothesisVersion", "hypothesisVersion", [
       CALIBRATION_FADE_V2_HYPOTHESIS_VERSION,
     ] as const),
@@ -343,7 +359,7 @@ function parseFreezeDocument(parsed: Record<string, unknown>): CalibrationFadeV2
       "canonicalSourceArtifacts",
       "canonicalSourceArtifacts",
     ),
-    sourceCandidateId: requireString(parsed, "sourceCandidateId", "sourceCandidateId"),
+    sourceCandidateId,
     axisGroupId: requireString(parsed, "axisGroupId", "axisGroupId"),
     bucketId: requireString(parsed, "bucketId", "bucketId"),
     calibrationDirection: requireLiteral(parsed, "calibrationDirection", "calibrationDirection", [

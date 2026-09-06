@@ -1,6 +1,9 @@
 import { isRecord } from "../calibrationFadeForwardValidation/calibrationFadeForwardValidationUtils";
 
 import {
+  CALIBRATION_FADE_V2_CONCLUSION,
+  CALIBRATION_FADE_V2_FREEZE_COMMIT_SHA,
+  CALIBRATION_FADE_V2_FREEZE_TIMESTAMP,
   CALIBRATION_FADE_V2_HYPOTHESIS_ID,
   CALIBRATION_FADE_V2_HYPOTHESIS_VERSION,
   CALIBRATION_FADE_V2_PREREGISTRATION_SCHEMA,
@@ -246,6 +249,53 @@ function parseProvenanceDocument(parsed: Record<string, unknown>): CalibrationFa
     fail("originalFreezeCommitSha must match v2FreezeCommitSha for this preregistration schema");
   }
 
+  // Pin to the immutable freeze identity — mutual agreement alone is insufficient.
+  if (
+    freezeCommitSha !== PENDING_FREEZE_IDENTITY
+    && freezeCommitSha !== CALIBRATION_FADE_V2_FREEZE_COMMIT_SHA
+  ) {
+    fail(
+      `prospectiveEvidenceBoundary.freezeCommitSha must be ${CALIBRATION_FADE_V2_FREEZE_COMMIT_SHA}; `
+        + `received ${JSON.stringify(freezeCommitSha)}`,
+    );
+  }
+  if (
+    v2FreezeCommitSha !== PENDING_FREEZE_IDENTITY
+    && v2FreezeCommitSha !== CALIBRATION_FADE_V2_FREEZE_COMMIT_SHA
+  ) {
+    fail(
+      `v2FreezeCommitSha must be ${CALIBRATION_FADE_V2_FREEZE_COMMIT_SHA}; `
+        + `received ${JSON.stringify(v2FreezeCommitSha)}`,
+    );
+  }
+  if (
+    originalFreezeCommitSha !== PENDING_FREEZE_IDENTITY
+    && originalFreezeCommitSha !== CALIBRATION_FADE_V2_FREEZE_COMMIT_SHA
+  ) {
+    fail(
+      `originalFreezeCommitSha must be ${CALIBRATION_FADE_V2_FREEZE_COMMIT_SHA}; `
+        + `received ${JSON.stringify(originalFreezeCommitSha)}`,
+    );
+  }
+  if (
+    freezeTimestamp !== PENDING_FREEZE_IDENTITY
+    && freezeTimestamp !== CALIBRATION_FADE_V2_FREEZE_TIMESTAMP
+  ) {
+    fail(
+      `prospectiveEvidenceBoundary.freezeTimestamp must be ${CALIBRATION_FADE_V2_FREEZE_TIMESTAMP}; `
+        + `received ${JSON.stringify(freezeTimestamp)}`,
+    );
+  }
+  if (
+    v2FreezeCommitTimestamp !== PENDING_FREEZE_IDENTITY
+    && v2FreezeCommitTimestamp !== CALIBRATION_FADE_V2_FREEZE_TIMESTAMP
+  ) {
+    fail(
+      `v2FreezeCommitTimestamp must be ${CALIBRATION_FADE_V2_FREEZE_TIMESTAMP}; `
+        + `received ${JSON.stringify(v2FreezeCommitTimestamp)}`,
+    );
+  }
+
   const limitations = requireStringArray(parsed, "limitations", "limitations");
   const hasCorpusCaveat = limitations.some(
     (item) => item.includes("19110") && item.includes("10474"),
@@ -280,7 +330,9 @@ function parseProvenanceDocument(parsed: Record<string, unknown>): CalibrationFa
     originalFreezeCommitSha,
     v2FreezeCommitSha,
     v2FreezeCommitTimestamp,
-    conclusion: requireString(parsed, "conclusion", "conclusion"),
+    conclusion: requireLiteral(parsed, "conclusion", "conclusion", [
+      CALIBRATION_FADE_V2_CONCLUSION,
+    ] as const),
     intentionalDifferences,
     historicalCandidateLineage: {
       role: requireString(lineage, "role", "historicalCandidateLineage.role"),
@@ -340,8 +392,11 @@ export function loadCalibrationFadeV2Provenance(input: {
 
 export function isFreezeIdentityFinalized(provenance: CalibrationFadeV2ProvenanceManifest): boolean {
   return (
-    provenance.v2FreezeCommitSha !== PENDING_FREEZE_IDENTITY
-    && provenance.v2FreezeCommitTimestamp !== PENDING_FREEZE_IDENTITY
+    provenance.v2FreezeCommitSha === CALIBRATION_FADE_V2_FREEZE_COMMIT_SHA
+    && provenance.v2FreezeCommitTimestamp === CALIBRATION_FADE_V2_FREEZE_TIMESTAMP
+    && provenance.originalFreezeCommitSha === CALIBRATION_FADE_V2_FREEZE_COMMIT_SHA
+    && provenance.prospectiveEvidenceBoundary.freezeCommitSha === CALIBRATION_FADE_V2_FREEZE_COMMIT_SHA
+    && provenance.prospectiveEvidenceBoundary.freezeTimestamp === CALIBRATION_FADE_V2_FREEZE_TIMESTAMP
     && GIT_COMMIT_SHA_PATTERN.test(provenance.v2FreezeCommitSha)
     && ISO_8601_TIMESTAMP_PATTERN.test(provenance.v2FreezeCommitTimestamp)
   );

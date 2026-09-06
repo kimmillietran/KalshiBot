@@ -18,6 +18,12 @@ export const CALIBRATION_FADE_V2_SOURCE_CANDIDATE_ID =
 export const CALIBRATION_FADE_V2_FREEZE_COMMIT_SHA =
   "1c5ef9da3ef5e48af26c05b850183b0e8d4290d0" as const;
 
+/** Immutable freeze commit wall time (timezone-aware ISO); eligibility boundary. */
+export const CALIBRATION_FADE_V2_FREEZE_TIMESTAMP = "2026-09-06T15:59:43-07:00" as const;
+
+/** Governed provenance conclusion for this preregistration lineage fork. */
+export const CALIBRATION_FADE_V2_CONCLUSION = "preregistered-prospective-lineage-fork" as const;
+
 export const DEFAULT_CALIBRATION_FADE_V2_HYPOTHESIS_CONFIG_PATH =
   "config/research/hypotheses/high-volatility-late-market-calibration-fade-v2.json";
 export const DEFAULT_CALIBRATION_FADE_V2_PROVENANCE_PATH =

@@ -13,7 +13,9 @@ import {
 import { loadFrozenHypothesisSpec } from "../calibrationFadeForwardValidation/loadFrozenHypothesisSpec";
 
 import {
+  CALIBRATION_FADE_V2_CONCLUSION,
   CALIBRATION_FADE_V2_FREEZE_COMMIT_SHA,
+  CALIBRATION_FADE_V2_FREEZE_TIMESTAMP,
   CALIBRATION_FADE_V2_HYPOTHESIS_ID,
   CALIBRATION_FADE_V2_SOURCE_CANDIDATE_ID,
   DEFAULT_CALIBRATION_FADE_V1_HYPOTHESIS_CONFIG_PATH,
@@ -34,6 +36,7 @@ const V2_CONFIG_PATH = DEFAULT_CALIBRATION_FADE_V2_HYPOTHESIS_CONFIG_PATH;
 const V2_PROVENANCE_PATH = DEFAULT_CALIBRATION_FADE_V2_PROVENANCE_PATH;
 const AUG4_RUN_START = "2026-08-04T10:33:33.601Z";
 const BASE_SHA = "6baa1b4eaae907b7325033dd0063162079d36a92";
+const WRONG_SHA = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 
 function sha256File(path: string): string {
   return createHash("sha256").update(readFileSync(path)).digest("hex");
@@ -57,6 +60,17 @@ function mutateJson(path: string, mutator: (doc: Record<string, unknown>) => voi
   const doc = JSON.parse(readFileSync(path, "utf8")) as Record<string, unknown>;
   mutator(doc);
   return `${JSON.stringify(doc, null, 2)}\n`;
+}
+
+function loadMutatedConfig(mutator: (doc: Record<string, unknown>) => void) {
+  const content = mutateJson(V2_CONFIG_PATH, mutator);
+  return () =>
+    loadCalibrationFadeV2HypothesisSpec({
+      io: {
+        readFile: (path) => (path === V2_CONFIG_PATH ? content : readFileSync(path, "utf8")),
+        fileExists: () => true,
+      },
+    });
 }
 
 function loadMutatedProvenance(mutator: (doc: Record<string, unknown>) => void) {
@@ -108,31 +122,13 @@ describe("M12.6a calibration-fade v2 preregistration", () => {
     expect(spec.volatilityDefinition.maximumSourceGapMs).not.toBe(0);
     expect(spec.volatilityDefinition.maximumSourceGapMs).not.toBe(5000);
 
-    const withZero = mutateJson(V2_CONFIG_PATH, (doc) => {
-      const vol = doc.volatilityDefinition as Record<string, unknown>;
-      vol.maximumSourceGapMs = 0;
-    });
-    expect(() =>
-      loadCalibrationFadeV2HypothesisSpec({
-        io: {
-          readFile: (path) => (path === V2_CONFIG_PATH ? withZero : readFileSync(path, "utf8")),
-          fileExists: () => true,
-        },
-      }),
-    ).toThrow(/explicit null|Sentinels 0 and 5000|forbidden/i);
+    expect(loadMutatedConfig((doc) => {
+      (doc.volatilityDefinition as Record<string, unknown>).maximumSourceGapMs = 0;
+    })).toThrow(/explicit null|Sentinels 0 and 5000|forbidden/i);
 
-    const with5000 = mutateJson(V2_CONFIG_PATH, (doc) => {
-      const vol = doc.volatilityDefinition as Record<string, unknown>;
-      vol.maximumSourceGapMs = 5000;
-    });
-    expect(() =>
-      loadCalibrationFadeV2HypothesisSpec({
-        io: {
-          readFile: (path) => (path === V2_CONFIG_PATH ? with5000 : readFileSync(path, "utf8")),
-          fileExists: () => true,
-        },
-      }),
-    ).toThrow(/explicit null|Sentinels 0 and 5000|forbidden/i);
+    expect(loadMutatedConfig((doc) => {
+      (doc.volatilityDefinition as Record<string, unknown>).maximumSourceGapMs = 5000;
+    })).toThrow(/explicit null|Sentinels 0 and 5000|forbidden/i);
   });
 
   it("6–9. Coinbase completed 1m OHLC, exchange close time, causal completed only, omit/no-fill", () => {
@@ -159,6 +155,36 @@ describe("M12.6a calibration-fade v2 preregistration", () => {
     expect(spec.eligibilityRules.timeRemainingMs.maxExclusive).toBe(900_000);
   });
 
+  it("config identity is bound to canonical hypothesis/source-candidate IDs", () => {
+    const { spec } = loadCalibrationFadeV2HypothesisSpec({ io: filesystemIo() });
+    expect(spec.hypothesisId).toBe(CALIBRATION_FADE_V2_HYPOTHESIS_ID);
+    expect(spec.sourceCandidateId).toBe(CALIBRATION_FADE_V2_SOURCE_CANDIDATE_ID);
+
+    expect(loadMutatedConfig((doc) => {
+      doc.hypothesisId = "other-hypothesis";
+    })).toThrow(/hypothesisId must be/);
+
+    expect(loadMutatedConfig((doc) => {
+      doc.sourceCandidateId = "other-candidate";
+    })).toThrow(/sourceCandidateId must be/);
+
+    expect(loadMutatedConfig((doc) => {
+      doc.hypothesisVersion = "v1";
+    })).toThrow(/hypothesisVersion must be/);
+
+    expect(loadMutatedConfig((doc) => {
+      (doc.volatilityDefinition as Record<string, unknown>).provider = "binance-spot";
+    })).toThrow(/provider must be/);
+
+    expect(loadMutatedConfig((doc) => {
+      (doc.volatilityDefinition as Record<string, unknown>).providerInstrument = "BTCUSDT";
+    })).toThrow(/providerInstrument must be/);
+
+    expect(loadMutatedConfig((doc) => {
+      (doc.volatilityDefinition as Record<string, unknown>).sourceRecordType = "btc-spot-jsonl-points";
+    })).toThrow(/sourceRecordType must be/);
+  });
+
   it("13. lineage exploratory passes=false with reviewed stats", () => {
     const { provenance } = loadCalibrationFadeV2Provenance({ io: filesystemIo() });
     expect(provenance.historicalCandidateLineage.observationCount).toBe(457);
@@ -168,6 +194,9 @@ describe("M12.6a calibration-fade v2 preregistration", () => {
     expect(provenance.hypothesisVersion).toBe("v2");
     expect(provenance.hypothesisId).toBe(CALIBRATION_FADE_V2_HYPOTHESIS_ID);
     expect(provenance.sourceCandidateId).toBe(CALIBRATION_FADE_V2_SOURCE_CANDIDATE_ID);
+    expect(provenance.conclusion).toBe(CALIBRATION_FADE_V2_CONCLUSION);
+    expect(provenance.v2FreezeCommitSha).toBe(CALIBRATION_FADE_V2_FREEZE_COMMIT_SHA);
+    expect(provenance.v2FreezeCommitTimestamp).toBe(CALIBRATION_FADE_V2_FREEZE_TIMESTAMP);
     expect(provenance.descendsFromV1ConfigPath).toBe(V1_CONFIG_PATH);
     expect(provenance.intentionalDifferences[0]?.id).toBe("volatility-source-contract");
     expect(provenance.intentionalDifferences[0]?.v1Unchanged).toBe(true);
@@ -190,15 +219,55 @@ describe("M12.6a calibration-fade v2 preregistration", () => {
     expect(loadMutatedProvenance((doc) => {
       doc.configPath = V1_CONFIG_PATH;
     })).toThrow(/configPath must be/);
+
+    expect(loadMutatedProvenance((doc) => {
+      doc.conclusion = "totally-different";
+    })).toThrow(/conclusion must be/);
   });
 
-  it("14–15. pre-freeze / Aug-4 are non-confirmatory under finalized freeze chronology", () => {
+  it("13c. freeze SHA/timestamp must equal canonical immutable freeze identity", () => {
+    expect(loadMutatedProvenance((doc) => {
+      doc.originalFreezeCommitSha = WRONG_SHA;
+      doc.v2FreezeCommitSha = WRONG_SHA;
+      (doc.prospectiveEvidenceBoundary as Record<string, unknown>).freezeCommitSha = WRONG_SHA;
+    })).toThrow(/must be 1c5ef9da3ef5e48af26c05b850183b0e8d4290d0/);
+
+    expect(loadMutatedProvenance((doc) => {
+      doc.v2FreezeCommitSha = WRONG_SHA;
+    })).toThrow(/v2FreezeCommitSha must match|must be 1c5ef9/);
+
+    expect(loadMutatedProvenance((doc) => {
+      doc.v2FreezeCommitTimestamp = "2026-09-07T00:00:00.000Z";
+      (doc.prospectiveEvidenceBoundary as Record<string, unknown>).freezeTimestamp =
+        "2026-09-07T00:00:00.000Z";
+    })).toThrow(/must be 2026-09-06T15:59:43-07:00/);
+
+    expect(loadMutatedProvenance((doc) => {
+      doc.v2FreezeCommitTimestamp = "2026-09-07T00:00:00.000Z";
+    })).toThrow(/v2FreezeCommitTimestamp must match|must be 2026-09-06T15:59:43-07:00/);
+
+    expect(loadMutatedProvenance((doc) => {
+      (doc.prospectiveEvidenceBoundary as Record<string, unknown>).freezeTimestamp =
+        "2026-09-07T00:00:00.000Z";
+    })).toThrow(/must match|must be 2026-09-06T15:59:43-07:00/);
+
+    expect(loadMutatedProvenance((doc) => {
+      doc.v2FreezeCommitTimestamp = "not-a-timestamp";
+      (doc.prospectiveEvidenceBoundary as Record<string, unknown>).freezeTimestamp = "not-a-timestamp";
+    })).toThrow(/ISO-8601|must be/);
+
+    expect(loadMutatedProvenance((doc) => {
+      doc.v2FreezeCommitTimestamp = "";
+      (doc.prospectiveEvidenceBoundary as Record<string, unknown>).freezeTimestamp = "";
+    })).toThrow(/non-empty|required|must be/);
+  });
+
+  it("14–15. pre-freeze / Aug-4 are non-confirmatory under canonical freeze chronology", () => {
     const { provenance } = loadCalibrationFadeV2Provenance({ io: filesystemIo() });
     expect(provenance.nonConfirmatoryPolicy.preFreezeRuns).toBe("diagnostic-only");
     expect(provenance.nonConfirmatoryPolicy.aug4RunStartIso).toBe(AUG4_RUN_START);
     expect(provenance.nonConfirmatoryPolicy.aug4Status).toMatch(/excluded/i);
 
-    // Aug-4 is before the finalized freeze timestamp → non-confirmatory.
     expect(
       isProspectiveConfirmatoryEvidenceEligible({
         freezeBoundary: provenance,
@@ -206,67 +275,69 @@ describe("M12.6a calibration-fade v2 preregistration", () => {
       }),
     ).toBe(false);
 
-    const finalizedBoundary = {
-      kind: "strictly-after-freeze-commit" as const,
-      freezeCommitSha: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-      freezeTimestamp: "2026-09-06T22:00:00.000Z",
-      rule: provenance.prospectiveEvidenceBoundary.rule,
-    };
     expect(
       isProspectiveConfirmatoryEvidenceEligible({
-        freezeBoundary: finalizedBoundary,
+        freezeBoundary: provenance,
+        runStartIso: CALIBRATION_FADE_V2_FREEZE_TIMESTAMP,
+      }),
+    ).toBe(false);
+
+    expect(
+      isProspectiveConfirmatoryEvidenceEligible({
+        freezeBoundary: provenance.prospectiveEvidenceBoundary,
+        runStartIso: "2026-09-06T15:59:43.001-07:00",
+      }),
+    ).toBe(true);
+
+    // Raw fake earlier boundary cannot become confirmatory.
+    expect(
+      isProspectiveConfirmatoryEvidenceEligible({
+        freezeBoundary: {
+          kind: "strictly-after-freeze-commit",
+          freezeCommitSha: WRONG_SHA,
+          freezeTimestamp: "2020-01-01T00:00:00.000Z",
+          rule: provenance.prospectiveEvidenceBoundary.rule,
+        },
         runStartIso: AUG4_RUN_START,
       }),
     ).toBe(false);
+
     expect(
       isProspectiveConfirmatoryEvidenceEligible({
-        freezeBoundary: finalizedBoundary,
-        runStartIso: "2026-08-03T03:21:26.351Z",
+        freezeBoundary: {
+          kind: "strictly-after-freeze-commit",
+          freezeCommitSha: WRONG_SHA,
+          freezeTimestamp: CALIBRATION_FADE_V2_FREEZE_TIMESTAMP,
+          rule: provenance.prospectiveEvidenceBoundary.rule,
+        },
+        runStartIso: "2026-09-07T00:00:00.000Z",
       }),
     ).toBe(false);
-    expect(
-      isProspectiveConfirmatoryEvidenceEligible({
-        freezeBoundary: finalizedBoundary,
-        runStartIso: "2026-09-06T22:00:00.000Z",
-      }),
-    ).toBe(false);
-    expect(
-      isProspectiveConfirmatoryEvidenceEligible({
-        freezeBoundary: finalizedBoundary,
-        runStartIso: "2026-09-06T22:00:00.001Z",
-      }),
-    ).toBe(true);
   });
 
   it("14c. malformed freeze/run timestamps fail closed (ineligible)", () => {
-    const goodBoundary = {
+    const canonicalBoundary = {
       kind: "strictly-after-freeze-commit" as const,
-      freezeCommitSha: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-      freezeTimestamp: "2026-09-06T22:00:00.000Z",
+      freezeCommitSha: CALIBRATION_FADE_V2_FREEZE_COMMIT_SHA,
+      freezeTimestamp: CALIBRATION_FADE_V2_FREEZE_TIMESTAMP,
       rule: "strictly after",
     };
     expect(
       isProspectiveConfirmatoryEvidenceEligible({
-        freezeBoundary: goodBoundary,
+        freezeBoundary: canonicalBoundary,
         runStartIso: "not-a-timestamp",
       }),
     ).toBe(false);
     expect(
       isProspectiveConfirmatoryEvidenceEligible({
-        freezeBoundary: goodBoundary,
+        freezeBoundary: canonicalBoundary,
         runStartIso: "",
       }),
     ).toBe(false);
     expect(
       isProspectiveConfirmatoryEvidenceEligible({
-        freezeBoundary: goodBoundary,
-        runStartIso: "garbage-xyz",
-      }),
-    ).toBe(false);
-    expect(
-      isProspectiveConfirmatoryEvidenceEligible({
         freezeBoundary: {
-          ...goodBoundary,
+          ...canonicalBoundary,
           freezeTimestamp: "not-a-timestamp",
         },
         runStartIso: "2026-09-07T00:00:00.000Z",
@@ -275,7 +346,7 @@ describe("M12.6a calibration-fade v2 preregistration", () => {
     expect(
       isProspectiveConfirmatoryEvidenceEligible({
         freezeBoundary: {
-          ...goodBoundary,
+          ...canonicalBoundary,
           freezeTimestamp: "",
         },
         runStartIso: "2026-09-07T00:00:00.000Z",
@@ -326,17 +397,16 @@ describe("M12.6a calibration-fade v2 preregistration", () => {
 
     expect(() =>
       failClosedIfCompletedCandleSourceUnavailable({
-        sourceRecordType: "btc-spot-jsonl-points",
-        sourceAvailable: true,
-      }),
-    ).toThrow(/completed-candle source unavailable|silent spot-tick fallback is forbidden/i);
+        sourceRecordType: V2_REQUIRED_SOURCE_RECORD_TYPE,
+      } as { sourceRecordType: string; sourceAvailable: boolean }),
+    ).toThrow(/sourceAvailable=undefined|unavailable/i);
 
     expect(() =>
       failClosedIfCompletedCandleSourceUnavailable({
         sourceRecordType: "btc-spot-jsonl-points",
-        sourceAvailable: false,
+        sourceAvailable: true,
       }),
-    ).toThrow(/silent spot-tick fallback is forbidden/i);
+    ).toThrow(/completed-candle source unavailable|silent spot-tick fallback is forbidden/i);
   });
 
   it("rejects pending freeze when requiring finalized identity", () => {
