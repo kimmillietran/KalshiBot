@@ -1,9 +1,11 @@
 import { isRecord } from "../calibrationFadeForwardValidation/calibrationFadeForwardValidationUtils";
 
 import {
+  CALIBRATION_FADE_V2_HYPOTHESIS_ID,
   CALIBRATION_FADE_V2_HYPOTHESIS_VERSION,
   CALIBRATION_FADE_V2_PREREGISTRATION_SCHEMA,
   CALIBRATION_FADE_V2_PREREGISTRATION_VERSION,
+  CALIBRATION_FADE_V2_SOURCE_CANDIDATE_ID,
   CalibrationFadeV2PreregistrationError,
   DEFAULT_CALIBRATION_FADE_V1_HYPOTHESIS_CONFIG_PATH,
   DEFAULT_CALIBRATION_FADE_V2_HYPOTHESIS_CONFIG_PATH,
@@ -252,13 +254,27 @@ function parseProvenanceDocument(parsed: Record<string, unknown>): CalibrationFa
     fail("limitations must document the 19110 vs 10474 corpus membership caveat");
   }
 
+  const hypothesisId = requireString(parsed, "hypothesisId", "hypothesisId");
+  if (hypothesisId !== CALIBRATION_FADE_V2_HYPOTHESIS_ID) {
+    fail(
+      `hypothesisId must be ${CALIBRATION_FADE_V2_HYPOTHESIS_ID}; received ${JSON.stringify(hypothesisId)}`,
+    );
+  }
+  const sourceCandidateId = requireString(parsed, "sourceCandidateId", "sourceCandidateId");
+  if (sourceCandidateId !== CALIBRATION_FADE_V2_SOURCE_CANDIDATE_ID) {
+    fail(
+      `sourceCandidateId must be ${CALIBRATION_FADE_V2_SOURCE_CANDIDATE_ID}; `
+        + `received ${JSON.stringify(sourceCandidateId)}`,
+    );
+  }
+
   return {
     schema: CALIBRATION_FADE_V2_PREREGISTRATION_SCHEMA,
     version: CALIBRATION_FADE_V2_PREREGISTRATION_VERSION,
     verificationModel: "reviewed-manifest",
-    hypothesisId: requireString(parsed, "hypothesisId", "hypothesisId"),
+    hypothesisId,
     hypothesisVersion: CALIBRATION_FADE_V2_HYPOTHESIS_VERSION,
-    sourceCandidateId: requireString(parsed, "sourceCandidateId", "sourceCandidateId"),
+    sourceCandidateId,
     configPath,
     descendsFromV1ConfigPath,
     originalFreezeCommitSha,

@@ -8,6 +8,16 @@ export const CALIBRATION_FADE_V2_PREREGISTRATION_SCHEMA =
 export const CALIBRATION_FADE_V2_PREREGISTRATION_VERSION = 1 as const;
 export const CALIBRATION_FADE_V2_HYPOTHESIS_VERSION = "v2" as const;
 
+/** Canonical v2 hypothesis / candidate identity (immutable lineage fork of the atlas candidate). */
+export const CALIBRATION_FADE_V2_HYPOTHESIS_ID =
+  "atlas-volatilityProbabilityTime-vol-high-coarse-prob-1-coarse-time-early-over" as const;
+export const CALIBRATION_FADE_V2_SOURCE_CANDIDATE_ID =
+  "atlas-volatilityProbabilityTime-vol-high-coarse-prob-1-coarse-time-early-over" as const;
+
+/** Immutable v2 freeze commit that contains the final hypothesis config bytes. */
+export const CALIBRATION_FADE_V2_FREEZE_COMMIT_SHA =
+  "1c5ef9da3ef5e48af26c05b850183b0e8d4290d0" as const;
+
 export const DEFAULT_CALIBRATION_FADE_V2_HYPOTHESIS_CONFIG_PATH =
   "config/research/hypotheses/high-volatility-late-market-calibration-fade-v2.json";
 export const DEFAULT_CALIBRATION_FADE_V2_PROVENANCE_PATH =

@@ -13,6 +13,9 @@ import {
 import { loadFrozenHypothesisSpec } from "../calibrationFadeForwardValidation/loadFrozenHypothesisSpec";
 
 import {
+  CALIBRATION_FADE_V2_FREEZE_COMMIT_SHA,
+  CALIBRATION_FADE_V2_HYPOTHESIS_ID,
+  CALIBRATION_FADE_V2_SOURCE_CANDIDATE_ID,
   DEFAULT_CALIBRATION_FADE_V1_HYPOTHESIS_CONFIG_PATH,
   DEFAULT_CALIBRATION_FADE_V2_HYPOTHESIS_CONFIG_PATH,
   DEFAULT_CALIBRATION_FADE_V2_PROVENANCE_PATH,
@@ -56,6 +59,17 @@ function mutateJson(path: string, mutator: (doc: Record<string, unknown>) => voi
   return `${JSON.stringify(doc, null, 2)}\n`;
 }
 
+function loadMutatedProvenance(mutator: (doc: Record<string, unknown>) => void) {
+  const content = mutateJson(V2_PROVENANCE_PATH, mutator);
+  return () =>
+    loadCalibrationFadeV2Provenance({
+      io: {
+        readFile: (path) => (path === V2_PROVENANCE_PATH ? content : readFileSync(path, "utf8")),
+        fileExists: () => true,
+      },
+    });
+}
+
 describe("M12.6a calibration-fade v2 preregistration", () => {
   it("1. v1 config remains byte-identical to base SHA content", () => {
     const baseBytes = execFileSync("git", ["show", `${BASE_SHA}:${V1_CONFIG_PATH}`]);
@@ -63,6 +77,18 @@ describe("M12.6a calibration-fade v2 preregistration", () => {
     expect(Buffer.compare(working, baseBytes)).toBe(0);
     expect(sha256File(V1_CONFIG_PATH)).toBe(
       createHash("sha256").update(baseBytes).digest("hex"),
+    );
+  });
+
+  it("1b. v2 config remains byte-identical to recorded freeze commit", () => {
+    const freezeBytes = execFileSync("git", [
+      "show",
+      `${CALIBRATION_FADE_V2_FREEZE_COMMIT_SHA}:${V2_CONFIG_PATH}`,
+    ]);
+    const working = readFileSync(V2_CONFIG_PATH);
+    expect(Buffer.compare(working, freezeBytes)).toBe(0);
+    expect(sha256File(V2_CONFIG_PATH)).toBe(
+      createHash("sha256").update(freezeBytes).digest("hex"),
     );
   });
 
@@ -140,19 +166,39 @@ describe("M12.6a calibration-fade v2 preregistration", () => {
     expect(provenance.historicalCandidateLineage.passes).toBe(false);
     expect(provenance.historicalCandidateLineage.robustnessScore).toBe(59);
     expect(provenance.hypothesisVersion).toBe("v2");
+    expect(provenance.hypothesisId).toBe(CALIBRATION_FADE_V2_HYPOTHESIS_ID);
+    expect(provenance.sourceCandidateId).toBe(CALIBRATION_FADE_V2_SOURCE_CANDIDATE_ID);
     expect(provenance.descendsFromV1ConfigPath).toBe(V1_CONFIG_PATH);
     expect(provenance.intentionalDifferences[0]?.id).toBe("volatility-source-contract");
     expect(provenance.intentionalDifferences[0]?.v1Unchanged).toBe(true);
     expect(provenance.intentionalDifferences[0]?.notIntegrityCorrectionToV1).toBe(true);
   });
 
-  it("14–15. pre-freeze / Aug-4 are non-confirmatory", () => {
+  it("13b. provenance identity mismatch fails closed", () => {
+    expect(loadMutatedProvenance((doc) => {
+      doc.hypothesisId = "other-hypothesis-id";
+    })).toThrow(/hypothesisId must be/);
+
+    expect(loadMutatedProvenance((doc) => {
+      doc.sourceCandidateId = "other-source-candidate";
+    })).toThrow(/sourceCandidateId must be/);
+
+    expect(loadMutatedProvenance((doc) => {
+      doc.hypothesisVersion = "v1";
+    })).toThrow(/hypothesisVersion must be/);
+
+    expect(loadMutatedProvenance((doc) => {
+      doc.configPath = V1_CONFIG_PATH;
+    })).toThrow(/configPath must be/);
+  });
+
+  it("14–15. pre-freeze / Aug-4 are non-confirmatory under finalized freeze chronology", () => {
     const { provenance } = loadCalibrationFadeV2Provenance({ io: filesystemIo() });
     expect(provenance.nonConfirmatoryPolicy.preFreezeRuns).toBe("diagnostic-only");
     expect(provenance.nonConfirmatoryPolicy.aug4RunStartIso).toBe(AUG4_RUN_START);
     expect(provenance.nonConfirmatoryPolicy.aug4Status).toMatch(/excluded/i);
 
-    // Pending freeze → fail closed (not eligible).
+    // Aug-4 is before the finalized freeze timestamp → non-confirmatory.
     expect(
       isProspectiveConfirmatoryEvidenceEligible({
         freezeBoundary: provenance,
@@ -192,6 +238,51 @@ describe("M12.6a calibration-fade v2 preregistration", () => {
     ).toBe(true);
   });
 
+  it("14c. malformed freeze/run timestamps fail closed (ineligible)", () => {
+    const goodBoundary = {
+      kind: "strictly-after-freeze-commit" as const,
+      freezeCommitSha: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      freezeTimestamp: "2026-09-06T22:00:00.000Z",
+      rule: "strictly after",
+    };
+    expect(
+      isProspectiveConfirmatoryEvidenceEligible({
+        freezeBoundary: goodBoundary,
+        runStartIso: "not-a-timestamp",
+      }),
+    ).toBe(false);
+    expect(
+      isProspectiveConfirmatoryEvidenceEligible({
+        freezeBoundary: goodBoundary,
+        runStartIso: "",
+      }),
+    ).toBe(false);
+    expect(
+      isProspectiveConfirmatoryEvidenceEligible({
+        freezeBoundary: goodBoundary,
+        runStartIso: "garbage-xyz",
+      }),
+    ).toBe(false);
+    expect(
+      isProspectiveConfirmatoryEvidenceEligible({
+        freezeBoundary: {
+          ...goodBoundary,
+          freezeTimestamp: "not-a-timestamp",
+        },
+        runStartIso: "2026-09-07T00:00:00.000Z",
+      }),
+    ).toBe(false);
+    expect(
+      isProspectiveConfirmatoryEvidenceEligible({
+        freezeBoundary: {
+          ...goodBoundary,
+          freezeTimestamp: "",
+        },
+        runStartIso: "2026-09-07T00:00:00.000Z",
+      }),
+    ).toBe(false);
+  });
+
   it("16. v1 and v2 coexist; default forward path remains v1", () => {
     expect(DEFAULT_CALIBRATION_FADE_HYPOTHESIS_CONFIG_PATH).toBe(V1_CONFIG_PATH);
     expect(DEFAULT_CALIBRATION_FADE_V2_HYPOTHESIS_CONFIG_PATH).not.toBe(
@@ -207,32 +298,53 @@ describe("M12.6a calibration-fade v2 preregistration", () => {
     expect(v2.spec.volatilityDefinition.maximumSourceGapMs).toBeNull();
   });
 
-  it("17. missing completed-candle source fails closed (no silent spot fallback)", () => {
+  it("17. completed-candle availability requires explicit true (no silent spot fallback)", () => {
     expect(V2_COMPLETED_CANDLE_SOURCE_CONTRACT.silentSpotTickFallbackAllowed).toBe(false);
     expect(V2_COMPLETED_CANDLE_SOURCE_CONTRACT.failClosedWhenUnavailable).toBe(true);
-    expect(() =>
-      failClosedIfCompletedCandleSourceUnavailable({
-        sourceRecordType: "btc-spot-jsonl-points",
-      }),
-    ).toThrow(/completed-candle source unavailable|silent spot-tick fallback is forbidden/i);
-    expect(() =>
-      failClosedIfCompletedCandleSourceUnavailable({
-        sourceRecordType: V2_REQUIRED_SOURCE_RECORD_TYPE,
-        sourceAvailable: false,
-      }),
-    ).toThrow(/unavailable/i);
+
     expect(() =>
       failClosedIfCompletedCandleSourceUnavailable({
         sourceRecordType: V2_REQUIRED_SOURCE_RECORD_TYPE,
         sourceAvailable: true,
       }),
     ).not.toThrow();
+
+    expect(() =>
+      failClosedIfCompletedCandleSourceUnavailable({
+        sourceRecordType: V2_REQUIRED_SOURCE_RECORD_TYPE,
+        sourceAvailable: false,
+      }),
+    ).toThrow(/sourceAvailable=false|unavailable/i);
+
+    expect(() =>
+      failClosedIfCompletedCandleSourceUnavailable({
+        sourceRecordType: V2_REQUIRED_SOURCE_RECORD_TYPE,
+        // @ts-expect-error intentional omitted availability
+        sourceAvailable: undefined,
+      }),
+    ).toThrow(/sourceAvailable=undefined|unavailable/i);
+
+    expect(() =>
+      failClosedIfCompletedCandleSourceUnavailable({
+        sourceRecordType: "btc-spot-jsonl-points",
+        sourceAvailable: true,
+      }),
+    ).toThrow(/completed-candle source unavailable|silent spot-tick fallback is forbidden/i);
+
+    expect(() =>
+      failClosedIfCompletedCandleSourceUnavailable({
+        sourceRecordType: "btc-spot-jsonl-points",
+        sourceAvailable: false,
+      }),
+    ).toThrow(/silent spot-tick fallback is forbidden/i);
   });
 
   it("rejects pending freeze when requiring finalized identity", () => {
     const { provenance } = loadCalibrationFadeV2Provenance({ io: filesystemIo() });
     if (provenance.v2FreezeCommitSha === PENDING_FREEZE_IDENTITY) {
       expect(() => requireFinalizedFreezeBoundary(provenance)).toThrow(/pending|fails closed/i);
+    } else {
+      expect(() => requireFinalizedFreezeBoundary(provenance)).not.toThrow();
     }
   });
 
