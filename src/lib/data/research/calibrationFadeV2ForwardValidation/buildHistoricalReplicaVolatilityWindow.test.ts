@@ -103,7 +103,7 @@ describe("buildHistoricalReplicaVolatilityWindow", () => {
       observation({
         minuteIndex,
         close,
-        observedAtMs: OPEN0 + minuteIndex * 60_000 + V2_CANDLE_CLOSE_OFFSET_MS + 1_000,
+        observedAtMs: OPEN0 + minuteIndex * 60_000 + V2_CANDLE_CLOSE_OFFSET_MS,
       }),
     );
     const index = await loadIndex(records);
@@ -127,20 +127,20 @@ describe("buildHistoricalReplicaVolatilityWindow", () => {
   });
 
   it("uses a candle observed before T and rejects one observed after T", async () => {
+    const quoteMs = OPEN0 + 11 * 60_000;
     const records = Array.from({ length: 11 }, (_, minuteIndex) =>
       observation({
         minuteIndex,
-        observedAtMs: OPEN0 + minuteIndex * 60_000 + 70_000,
+        observedAtMs: OPEN0 + minuteIndex * 60_000 + V2_CANDLE_CLOSE_OFFSET_MS,
       }),
     );
     const lateOnly = [
       ...records.slice(0, 10),
       observation({
         minuteIndex: 10,
-        observedAtMs: OPEN0 + 11 * 60_000 + 5_000,
+        observedAtMs: quoteMs + 5_000,
       }),
     ];
-    const quoteMs = OPEN0 + 11 * 60_000 + 1_000;
     const usable = buildHistoricalReplicaVolatilityWindow({
       index: await loadIndex(records),
       timestampMs: quoteMs,
@@ -285,15 +285,16 @@ describe("buildHistoricalReplicaVolatilityWindow", () => {
 
   it("omits a missing minute, does not interpolate, and allows 11 non-consecutive minutes", async () => {
     const selectedMinutes = [0, 1, 2, 3, 4, 6, 7, 8, 9, 10, 12];
+    const quoteMs = OPEN0 + 13 * 60_000;
     const records = selectedMinutes.map((minuteIndex) =>
       observation({
         minuteIndex,
-        observedAtMs: OPEN0 + minuteIndex * 60_000 + 70_000,
+        observedAtMs: OPEN0 + minuteIndex * 60_000 + V2_CANDLE_CLOSE_OFFSET_MS,
       }),
     );
     const window = buildHistoricalReplicaVolatilityWindow({
       index: await loadIndex(records),
-      timestampMs: OPEN0 + 13 * 60_000,
+      timestampMs: quoteMs,
     });
     expect(window.available).toBe(true);
     expect(window.selectedOpenTimeMs).toEqual(selectedMinutes.map((minuteIndex) => OPEN0 + minuteIndex * 60_000));
@@ -318,7 +319,7 @@ describe("buildHistoricalReplicaVolatilityWindow", () => {
 
   it("does not apply a 5-second adjacency / maximumSourceGapMs rule", () => {
     const source = readFileSync(
-      new URL("./buildHistoricalReplicaVolatilityWindow.ts", import.meta.url),
+      "src/lib/data/research/calibrationFadeV2ForwardValidation/buildHistoricalReplicaVolatilityWindow.ts",
       "utf8",
     );
     expect(source).not.toMatch(/maximumSourceGapMs/);

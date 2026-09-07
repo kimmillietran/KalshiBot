@@ -485,11 +485,11 @@ describe("analyzeCalibrationFadeV2ForwardForRun candle source and spot isolation
 
   it("proves the v2 vol builder cannot receive spot: join helpers stay outside the window module", () => {
     const analyzer = readFileSync(
-      new URL("./analyzeCalibrationFadeV2ForwardForRun.ts", import.meta.url),
+      "src/lib/data/research/calibrationFadeV2ForwardValidation/analyzeCalibrationFadeV2ForwardForRun.ts",
       "utf8",
     );
     const windowBuilder = readFileSync(
-      new URL("./buildHistoricalReplicaVolatilityWindow.ts", import.meta.url),
+      "src/lib/data/research/calibrationFadeV2ForwardValidation/buildHistoricalReplicaVolatilityWindow.ts",
       "utf8",
     );
     expect(analyzer).toMatch(/preloadBtcSpotSeries/);
@@ -503,11 +503,11 @@ describe("analyzeCalibrationFadeV2ForwardForRun candle source and spot isolation
 describe("v1 runtime remains the spot-gap path", () => {
   it("leaves v1 analyzer wiring on maximumSourceGapMs from the frozen v1 spec", () => {
     const v1Analyzer = readFileSync(
-      new URL("../calibrationFadeForwardValidation/analyzeCalibrationFadeForwardForRun.ts", import.meta.url),
+      "src/lib/data/research/calibrationFadeForwardValidation/analyzeCalibrationFadeForwardForRun.ts",
       "utf8",
     );
     const v1Window = readFileSync(
-      new URL("../calibrationFadeForwardValidation/buildValidatedCausalVolatilityWindow.ts", import.meta.url),
+      "src/lib/data/research/calibrationFadeForwardValidation/buildValidatedCausalVolatilityWindow.ts",
       "utf8",
     );
     expect(v1Analyzer).toMatch(/maximumSourceGapMs: spec\.volatilityDefinition\.maximumSourceGapMs/);

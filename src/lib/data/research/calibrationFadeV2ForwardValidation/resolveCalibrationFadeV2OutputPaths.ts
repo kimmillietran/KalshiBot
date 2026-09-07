@@ -63,16 +63,16 @@ export function assertV2OutputPathIsolation(input: {
   if (path.includes("/latest") || path.endsWith("/latest")) {
     throw new CalibrationFadeV2ForwardValidationError("v2 output paths must not use a latest fallback");
   }
-  const expectedFragment = `/calibration-fade-v2/${input.evidenceMode}/${input.runId}/`;
-  if (!path.includes(expectedFragment)) {
-    throw new CalibrationFadeV2ForwardValidationError(
-      `v2 output path must be run-scoped and mode-scoped (expected ${expectedFragment}): ${path}`,
-    );
-  }
   const otherMode = input.evidenceMode === "diagnostic" ? "confirmatory" : "diagnostic";
   if (path.includes(`/calibration-fade-v2/${otherMode}/`)) {
     throw new CalibrationFadeV2ForwardValidationError(
       `Cannot publish ${input.evidenceMode} evaluation into ${otherMode} path ${path}`,
+    );
+  }
+  const expectedFragment = `/calibration-fade-v2/${input.evidenceMode}/${input.runId}/`;
+  if (!path.includes(expectedFragment)) {
+    throw new CalibrationFadeV2ForwardValidationError(
+      `v2 output path must be run-scoped and mode-scoped (expected ${expectedFragment}): ${path}`,
     );
   }
 }
