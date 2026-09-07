@@ -1,5 +1,7 @@
 import { posix } from "node:path";
 
+import { assertWritableBtcCandles1mRecord } from "./persistBtcCandles1mRecord";
+import type { BtcCandles1mPersistedRecord } from "./btcCandles1mSidecarTypes";
 import type { ForwardQuoteCaptureIo } from "./forwardQuoteCaptureTypes";
 
 export function createRunOutputPaths(outputDir: string, runId: string) {
@@ -9,6 +11,7 @@ export function createRunOutputPaths(outputDir: string, runId: string) {
     rawKalshiWsPath: posix.join(runDir, "raw-kalshi-ws.jsonl"),
     topOfBookPath: posix.join(runDir, "top-of-book.jsonl"),
     btcSpotPath: posix.join(runDir, "btc-spot.jsonl"),
+    btcCandles1mPath: posix.join(runDir, "btc-candles-1m.jsonl"),
     marketMetadataPath: posix.join(runDir, "market-metadata.jsonl"),
     captureHealthPath: posix.join(runDir, "capture-health.json"),
     captureLifecyclePath: posix.join(runDir, "capture-lifecycle.jsonl"),
@@ -50,6 +53,7 @@ export const FORWARD_CAPTURE_ARTIFACT_KEYS = [
   "raw",
   "topOfBook",
   "btcSpot",
+  "btcCandles",
   "marketMetadata",
   "lifecycle",
 ] as const;
@@ -181,6 +185,7 @@ export function createJsonlForwardCaptureWriter(
     raw: paths.rawKalshiWsPath,
     topOfBook: paths.topOfBookPath,
     btcSpot: paths.btcSpotPath,
+    btcCandles: paths.btcCandles1mPath,
     marketMetadata: paths.marketMetadataPath,
     lifecycle: paths.captureLifecyclePath,
   };
@@ -205,6 +210,7 @@ export function createJsonlForwardCaptureWriter(
     raw: 0,
     topOfBook: 0,
     btcSpot: 0,
+    btcCandles: 0,
     marketMetadata: 0,
     lifecycle: 0,
   };
@@ -464,6 +470,12 @@ export function createJsonlForwardCaptureWriter(
     },
     appendBtcSpot(record: unknown) {
       append("btcSpot", record);
+    },
+    appendBtcCandles1m(record: unknown) {
+      append(
+        "btcCandles",
+        assertWritableBtcCandles1mRecord(record as BtcCandles1mPersistedRecord),
+      );
     },
     appendMarketMetadata(record: unknown) {
       append("marketMetadata", record);

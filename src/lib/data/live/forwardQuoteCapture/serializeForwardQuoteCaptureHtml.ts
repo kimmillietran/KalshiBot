@@ -103,7 +103,8 @@ export function serializeForwardQuoteCaptureHtml(
 
       <section class="panel">
         <h2>Message Counts</h2>
-        <p>Raw: ${report.capture.rawMessageCount} | Top-of-book: ${report.capture.topOfBookRecordCount} | BTC spot: ${report.capture.btcSpotRecordCount} | Metadata: ${report.capture.marketMetadataRecordCount}</p>
+        <p>Raw: ${report.capture.rawMessageCount} | Top-of-book: ${report.capture.topOfBookRecordCount} | BTC spot: ${report.capture.btcSpotRecordCount} | BTC candles 1m: ${report.capture.btcCandles1mRecordCount} | Metadata: ${report.capture.marketMetadataRecordCount}</p>
+        <p>Candle sidecar: ${report.btcCandles1m?.status ?? "disabled"} | processEpoch: ${escapeHtml(report.btcCandles1m?.processEpochId ?? "—")}</p>
       </section>
 
       <section class="panel">

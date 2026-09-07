@@ -4,6 +4,7 @@ import {
   redactCaptureArtifactText,
   type KalshiCaptureCredentials,
 } from "@/lib/data/live/kalshiWsCaptureSpike";
+import { createDisabledBtcCandles1mHealth } from "./btcCandles1mSidecarTypes";
 import type { ForwardCaptureWriterDiagnostics } from "./jsonlForwardCaptureWriter";
 import type { DryRunForwardCaptureResult } from "./runDryRunForwardQuoteCapture";
 import type { LiveForwardCaptureResult } from "./runLiveForwardQuoteCapture";
@@ -396,11 +397,18 @@ export function buildForwardCaptureHealthReport(input: {
       rawMessageCount: diagnostics.rawMessageCount,
       topOfBookRecordCount: diagnostics.topOfBookRecordsEmitted,
       btcSpotRecordCount: input.captureResult.recordCounts.btcSpot,
+      btcCandles1mRecordCount:
+        "btcCandles" in input.captureResult.recordCounts
+          ? input.captureResult.recordCounts.btcCandles
+          : 0,
       marketMetadataRecordCount: input.captureResult.recordCounts.marketMetadata,
       rawKalshiWsPath: input.captureResult.paths.rawKalshiWsPath,
       topOfBookPath: input.captureResult.paths.topOfBookPath,
       btcSpotPath: input.config.captureBtcSpot
         ? input.captureResult.paths.btcSpotPath
+        : null,
+      btcCandles1mPath: input.config.captureBtcCandles1m
+        ? input.captureResult.paths.btcCandles1mPath
         : null,
       marketMetadataPath: input.captureResult.paths.marketMetadataPath,
       captureHealthPath: input.captureResult.paths.captureHealthPath,
@@ -461,6 +469,10 @@ export function buildForwardCaptureHealthReport(input: {
       provider: input.config.captureBtcSpot ? "coinbase" : null,
       recordsCaptured: input.captureResult.recordCounts.btcSpot,
     },
+    btcCandles1m:
+      "btcCandles1m" in input.captureResult && input.captureResult.btcCandles1m
+        ? input.captureResult.btcCandles1m
+        : createDisabledBtcCandles1mHealth(),
     writer: input.writerDiagnostics,
     watchdog:
       "watchdog" in input.captureResult && input.captureResult.watchdog

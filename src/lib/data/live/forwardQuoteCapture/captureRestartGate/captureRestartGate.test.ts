@@ -158,6 +158,9 @@ describe("canonical eight-hour capture profile", () => {
     expect(CANONICAL_EIGHT_HOUR_CAPTURE_PROFILE.eightHourDurationMinutes).toBe(480);
     expect(CANONICAL_EIGHT_HOUR_CAPTURE_PROFILE.smokeDurationMinutesMin).toBe(15);
     expect(CANONICAL_EIGHT_HOUR_CAPTURE_PROFILE.smokeDurationMinutesMax).toBe(30);
+    expect(
+      "captureBtcCandles1m" in CANONICAL_EIGHT_HOUR_CAPTURE_PROFILE,
+    ).toBe(false);
   });
 
   it("accepts the canonical smoke config and fails closed on missing config", () => {

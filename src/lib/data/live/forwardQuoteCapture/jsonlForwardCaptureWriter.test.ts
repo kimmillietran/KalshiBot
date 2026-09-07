@@ -92,6 +92,37 @@ function parseSeq(chunks: string[]): number[] {
 }
 
 describe("createJsonlForwardCaptureWriter (buffered)", () => {
+  it("appends btc-candles-1m rows and refuses an empty runId", () => {
+    const { writer } = createHarness();
+    const record = {
+      runId: "run-A",
+      processEpochId: "epoch-1",
+      provider: "coinbase-spot" as const,
+      productId: "BTC-USD" as const,
+      sourceRecordType: "exchange-completed-1m-ohlc" as const,
+      source: "coinbase-exchange-rest-candles" as const,
+      granularityMs: 60_000 as const,
+      candleOpenTime: "2026-07-20T13:59:00.000Z",
+      candleCloseTime: "2026-07-20T13:59:59.999Z",
+      open: 1,
+      high: 2,
+      low: 1,
+      close: 1,
+      volume: 1,
+      observedAtLocal: "2026-07-20T14:00:10.000Z",
+      firstObservedAtLocal: "2026-07-20T14:00:10.000Z",
+      retrievalMethod: "startup-backfill" as const,
+      observationIndex: 1,
+      revisionClass: "first-observation" as const,
+      requestStartedAtLocal: "2026-07-20T14:00:10.000Z",
+    };
+
+    writer.appendBtcCandles1m(record);
+    expect(writer.counts.btcCandles).toBe(1);
+    expect(writer.diagnostics().perArtifact.btcCandles.recordsQueued).toBe(1);
+    expect(() => writer.appendBtcCandles1m({ ...record, runId: "" })).toThrow(/runId/);
+  });
+
   it("queues writes during backpressure and flushes them without record loss", () => {
     const { writer, rawStream } = createHarness();
     const stream = rawStream();
