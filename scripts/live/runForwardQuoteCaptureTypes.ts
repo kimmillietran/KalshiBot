@@ -75,6 +75,22 @@ export function parseForwardQuoteCaptureConfigFromArgv(
     marketTicker: readFlagValue(argv, "--market-ticker"),
     privateKeyPath: readFlagValue(argv, "--private-key-path"),
     captureBtcSpot: argv.includes("--capture-btc-spot"),
+    captureBtcCandles1m: argv.includes("--capture-btc-candles-1m"),
+    btcCandles1mPollIntervalMs: readNumberFlag(
+      argv,
+      "--btc-candles-1m-poll-interval-ms",
+      15_000,
+    ),
+    btcCandles1mRequestTimeoutMs: readNumberFlag(
+      argv,
+      "--btc-candles-1m-request-timeout-ms",
+      10_000,
+    ),
+    btcCandles1mBackfillCompletedMinutes: readNumberFlag(
+      argv,
+      "--btc-candles-1m-backfill-completed-minutes",
+      15,
+    ),
     rolloverCheckSeconds: readNumberFlag(argv, "--rollover-check-seconds", 30),
     healthFlushSeconds: readNumberFlag(argv, "--health-flush-seconds", 60),
     topOfBookThrottleMs: readNumberFlag(argv, "--top-of-book-throttle-ms", 0),

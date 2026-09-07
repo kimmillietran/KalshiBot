@@ -16,6 +16,16 @@ import {
   type LatestBtcSpot,
 } from "./forwardCaptureMessageProcessor";
 import {
+  createBtcCandles1mSidecar,
+  createProcessEpochId,
+  type BtcCandles1mSidecar,
+} from "./btcCandles1mSidecar";
+import {
+  createDisabledBtcCandles1mHealth,
+  type BtcCandles1mHealth,
+  type FetchCompletedCandles,
+} from "./btcCandles1mSidecarTypes";
+import {
   createJsonlForwardCaptureWriter,
   createRunOutputPaths,
   type ForwardCaptureWriter,
@@ -58,12 +68,14 @@ export type LiveForwardCaptureResult = {
     raw: number;
     topOfBook: number;
     btcSpot: number;
+    btcCandles: number;
     marketMetadata: number;
     lifecycle: number;
   };
   watchdog: KalshiWsWatchdogDiagnostics | null;
   captureEndReason: CaptureEndReason;
   controlledReconnectValidation: ControlledReconnectValidationDiagnostics | null;
+  btcCandles1m?: BtcCandles1mHealth;
 };
 
 function sleep(ms: number): Promise<void> {
@@ -233,6 +245,8 @@ export async function runLiveForwardQuoteCapture(input: {
   writer?: ForwardCaptureWriter;
   transport?: KalshiWsProbeTransport;
   fetchBtcSpot?: () => Promise<{ price: number; updatedAt: string }>;
+  fetchCompletedCandles?: FetchCompletedCandles;
+  createProcessEpochId?: () => string;
   shouldStop?: () => boolean;
   onLog?: (message: string) => void;
   /**
@@ -272,6 +286,7 @@ export async function runLiveForwardQuoteCapture(input: {
   let shuttingDown = false;
   let acceptingMessages = true;
   let activeBtcPoll: Promise<void> | null = null;
+  let candleSidecar: BtcCandles1mSidecar | null = null;
   let activeRolloverCheck: Promise<void> | null = null;
   let activeWatchdogTick: Promise<void> | null = null;
   const controlledReconnectState: { current: ControlledReconnectPhase } = {
@@ -1202,6 +1217,18 @@ export async function runLiveForwardQuoteCapture(input: {
       });
   }, input.config.rolloverCheckSeconds * 1_000);
 
+  if (input.config.captureBtcCandles1m === true && input.fetchCompletedCandles) {
+    candleSidecar = createBtcCandles1mSidecar({
+      runId: input.runId,
+      processEpochId: (input.createProcessEpochId ?? createProcessEpochId)(),
+      now: () => input.io.now(),
+      writer,
+      fetchCompletedCandles: input.fetchCompletedCandles,
+      pollIntervalMs: input.config.btcCandles1mPollIntervalMs,
+      backfillCompletedMinutes: input.config.btcCandles1mBackfillCompletedMinutes,
+    });
+  }
+
   const btcHandle = input.config.captureBtcSpot
     ? setIntervalFn(() => {
       if (shuttingDown || activeBtcPoll !== null) {
@@ -1246,8 +1273,12 @@ export async function runLiveForwardQuoteCapture(input: {
       clearIntervalFn(watchdogHandle);
     }
 
+    candleSidecar?.setShuttingDown();
+    candleSidecar?.stopScheduler();
+
     await Promise.allSettled([
       activeBtcPoll ?? Promise.resolve(),
+      candleSidecar?.awaitInFlight() ?? Promise.resolve(),
       activeRolloverCheck ?? Promise.resolve(),
       activeWatchdogTick ?? Promise.resolve(),
       controlledReconnectScheduler ?? Promise.resolve(),
@@ -1283,6 +1314,13 @@ export async function runLiveForwardQuoteCapture(input: {
   try {
     if (input.config.captureBtcSpot) {
       await pollBtcSpot();
+    }
+    if (candleSidecar) {
+      await candleSidecar.runStartupBackfill();
+      candleSidecar.startScheduler({
+        setInterval: setIntervalFn,
+        clearInterval: clearIntervalFn,
+      });
     }
 
     while (input.io.now().getTime() < endAt && !input.shouldStop?.()) {
@@ -1512,5 +1550,6 @@ export async function runLiveForwardQuoteCapture(input: {
     watchdog: watchdogDiagnostics,
     captureEndReason,
     controlledReconnectValidation,
+    btcCandles1m: candleSidecar?.health() ?? createDisabledBtcCandles1mHealth(),
   };
 }

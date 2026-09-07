@@ -3,6 +3,8 @@ import { join } from "node:path";
 import { fetchBtcSpotPrice } from "@/features/btc-feed/api/btcServer";
 import type { KalshiWsProbeTransport } from "@/features/market-data/orderbook/types";
 
+import { createProductionCompletedCandleFetcher } from "./fetchCoinbaseCompletedOneMinuteCandles";
+
 import {
   buildForwardCaptureHealthReport,
   serializeForwardCaptureHealthReport,
@@ -98,6 +100,13 @@ export async function runForwardQuoteCapture(input: {
    * ownership of an active capture.
    */
   onRunStarted?: (identity: ForwardQuoteCaptureRunStartedIdentity) => void;
+  /**
+   * Deterministic-harness injection: scripted Coinbase completed-1m fetch.
+   * Production callers omit this and get the public Exchange REST client.
+   */
+  fetchCompletedCandles?: import("./btcCandles1mSidecarTypes").FetchCompletedCandles;
+  /** Deterministic-harness injection for processEpochId. */
+  createProcessEpochId?: () => string;
 }): Promise<ForwardQuoteCaptureRunResult> {
   const startedAt = input.io.now().toISOString();
   const runId = createRunId(input.io.now());
@@ -130,6 +139,8 @@ async function runLockedForwardQuoteCapture(input: {
   writerLimits?: Partial<ForwardCaptureWriterLimits>;
   forceReconnectAfterFirstValidTopOfBook?: boolean;
   onRunStarted?: (identity: ForwardQuoteCaptureRunStartedIdentity) => void;
+  fetchCompletedCandles?: import("./btcCandles1mSidecarTypes").FetchCompletedCandles;
+  createProcessEpochId?: () => string;
   startedAt: string;
   runId: string;
 }): Promise<ForwardQuoteCaptureRunResult> {
@@ -249,7 +260,7 @@ async function runLockedForwardQuoteCapture(input: {
         connectionAttemptCount: 0,
         authHeaderGenerationCount: 0,
         errors: ["Missing or invalid Kalshi credentials."],
-        recordCounts: { raw: 0, topOfBook: 0, btcSpot: 0, marketMetadata: 0 },
+        recordCounts: { raw: 0, topOfBook: 0, btcSpot: 0, btcCandles: 0, marketMetadata: 0 },
       };
     } else if (!discovery.succeeded) {
       blockedBeforeCapture = true;
@@ -278,7 +289,7 @@ async function runLockedForwardQuoteCapture(input: {
         connectionAttemptCount: 0,
         authHeaderGenerationCount: 0,
         errors: [discovery.error ?? "Market discovery failed"],
-        recordCounts: { raw: 0, topOfBook: 0, btcSpot: 0, marketMetadata: 0 },
+        recordCounts: { raw: 0, topOfBook: 0, btcSpot: 0, btcCandles: 0, marketMetadata: 0 },
       };
     } else {
       captureResult = await runLiveForwardQuoteCapture({
@@ -299,6 +310,14 @@ async function runLockedForwardQuoteCapture(input: {
             return { price: response.price, updatedAt: response.updatedAt };
           }
           : undefined,
+        fetchCompletedCandles: input.config.captureBtcCandles1m
+          ? input.fetchCompletedCandles
+            ?? createProductionCompletedCandleFetcher({
+              fetchImpl: input.io.fetchImpl,
+              timeoutMs: input.config.btcCandles1mRequestTimeoutMs,
+            })
+          : undefined,
+        createProcessEpochId: input.createProcessEpochId,
       });
     }
 

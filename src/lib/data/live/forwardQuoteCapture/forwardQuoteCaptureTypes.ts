@@ -33,6 +33,7 @@ export type ForwardCaptureRecommendedAction =
   | "continue-spike-testing";
 
 export type BtcSpotHealthStatus = "enabled" | "disabled" | "degraded" | "healthy";
+export type { BtcCandles1mHealth, BtcCandles1mHealthStatus } from "./btcCandles1mSidecarTypes";
 
 export type CaptureEndReason =
   | "duration-complete"
@@ -61,6 +62,17 @@ export type ForwardQuoteCaptureConfig = {
   marketTicker?: string;
   privateKeyPath?: string;
   captureBtcSpot: boolean;
+  /**
+   * Operational live-capture flag. Default false. Not part of the canonical
+   * 6h/8h profile and not a v1/v2 hypothesis eligibility rule.
+   */
+  captureBtcCandles1m?: boolean;
+  /** Operational candle poll interval. Injectable; not a research threshold. */
+  btcCandles1mPollIntervalMs?: number;
+  /** Operational Coinbase candle request timeout. Injectable. */
+  btcCandles1mRequestTimeoutMs?: number;
+  /** Completed minutes requested at sidecar startup (11 + small margin). */
+  btcCandles1mBackfillCompletedMinutes?: number;
   rolloverCheckSeconds: number;
   healthFlushSeconds: number;
   topOfBookThrottleMs: number;
@@ -336,10 +348,12 @@ export type ForwardCaptureHealthReport = {
     rawMessageCount: number;
     topOfBookRecordCount: number;
     btcSpotRecordCount: number;
+    btcCandles1mRecordCount: number;
     marketMetadataRecordCount: number;
     rawKalshiWsPath: string;
     topOfBookPath: string;
     btcSpotPath: string | null;
+    btcCandles1mPath: string | null;
     marketMetadataPath: string;
     captureHealthPath: string;
     /** Explicit price representation requested on the WS subscribe command. */
@@ -395,6 +409,8 @@ export type ForwardCaptureHealthReport = {
     provider: string | null;
     recordsCaptured: number;
   };
+  /** Additive operational candle health. Absent on pre-M12.6c reports. */
+  btcCandles1m?: import("./btcCandles1mSidecarTypes").BtcCandles1mHealth;
   /**
    * Buffered-writer diagnostics (M12.1E). Absent for legacy reports generated
    * before buffered persistence existed.

@@ -35,7 +35,15 @@ describe("parseForwardQuoteCaptureConfigFromArgv", () => {
     expect(config.durationMinutes).toBe(5);
     expect(config.maxMarkets).toBe(2);
     expect(config.captureBtcSpot).toBe(true);
+    expect(config.captureBtcCandles1m).toBe(false);
     expect(config.dryRun).toBe(true);
+  });
+
+  it("defaults capture-btc-candles-1m to false and enables it only via explicit flag", () => {
+    expect(parseForwardQuoteCaptureConfigFromArgv([]).captureBtcCandles1m).toBe(false);
+    expect(
+      parseForwardQuoteCaptureConfigFromArgv(["--capture-btc-candles-1m"]).captureBtcCandles1m,
+    ).toBe(true);
   });
 });
 

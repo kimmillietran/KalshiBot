@@ -3,6 +3,7 @@ import { generateKeyPairSync } from "node:crypto";
 import { runForwardQuoteCapture } from "../runForwardQuoteCapture";
 import {
   createRunOutputPaths,
+  FORWARD_CAPTURE_ARTIFACT_KEYS,
   type ForwardCaptureAppendStream,
 } from "../jsonlForwardCaptureWriter";
 import { parseCaptureRunStatus, TERMINAL_CAPTURE_RUN_STATES } from "../captureRunStatus";
@@ -452,7 +453,7 @@ export async function runCaptureRecoveryAcceptance(options?: {
     .filter((index) => index !== -1);
   const terminalStatusPublishedAfterStreamsDrained =
     terminalStatusEventIndex !== -1
-    && streamDrainIndexes.length === 5
+    && streamDrainIndexes.length === FORWARD_CAPTURE_ARTIFACT_KEYS.length
     && streamDrainIndexes.every((index) => index < terminalStatusEventIndex);
 
   // Credential-hygiene scan: none of the secret material used for the run may
@@ -516,7 +517,9 @@ export async function runCaptureRecoveryAcceptance(options?: {
     commandErrorsReceived: healthReport.orderbook.commandErrorsReceived,
     pendingCommandTimeoutCount: healthReport.orderbook.pendingCommandTimeoutCount,
     snapshotAckTimeoutCount: healthReport.orderbook.snapshotAckTimeoutCount,
-    bufferedStreamsUsed: appendStreamsCreated === 5 && artifactAppendFileCalls === 0,
+    bufferedStreamsUsed:
+      appendStreamsCreated === FORWARD_CAPTURE_ARTIFACT_KEYS.length
+      && artifactAppendFileCalls === 0,
     writerBackpressureCount: healthReport.writer?.backpressureEventCount ?? 0,
     allStreamsDrained: healthReport.writer?.allStreamsDrained ?? null,
     writerFailure: healthReport.writer?.failure?.reason ?? null,
