@@ -14,6 +14,18 @@ export type CaptureProgressSnapshot = {
   rawFileAgeSeconds: number | null;
   topOfBookFileAgeSeconds: number | null;
   btcFileAgeSeconds: number | null;
+  /**
+   * When false, omit the BTC count/age even if an empty spot file exists.
+   * Undefined defaults to included so existing wrapper output stays stable.
+   */
+  includeBtcSpot?: boolean;
+  /**
+   * When true, show incremental candle count/age. Enablement comes from
+   * capture configuration, never from an eagerly created empty artifact.
+   */
+  includeBtcCandles1m?: boolean;
+  btcCandles1mLineCount?: number;
+  btcCandles1mFileAgeSeconds?: number | null;
 };
 
 export type LineCounterState = {
@@ -91,18 +103,38 @@ export function fileSizeMb(path: string): number {
   }
 }
 
+function formatAgeSeconds(ageSeconds: number | null | undefined): string {
+  return `${ageSeconds ?? "n/a"}s`;
+}
+
 export function formatProgressLine(snapshot: CaptureProgressSnapshot): string {
+  const includeBtcSpot = snapshot.includeBtcSpot !== false;
+  const includeBtcCandles1m = snapshot.includeBtcCandles1m === true;
+
+  const counts = [`topOfBook ${snapshot.topOfBookLineCount}`];
+  if (includeBtcSpot) {
+    counts.push(`btc ${snapshot.btcSpotLineCount}`);
+  }
+  if (includeBtcCandles1m) {
+    counts.push(`candles ${snapshot.btcCandles1mLineCount ?? 0}`);
+  }
+
   const ages = [
-    `raw ${snapshot.rawFileAgeSeconds ?? "n/a"}s`,
-    `TOB ${snapshot.topOfBookFileAgeSeconds ?? "n/a"}s`,
-    `BTC ${snapshot.btcFileAgeSeconds ?? "n/a"}s`,
-  ].join(", ");
+    `raw ${formatAgeSeconds(snapshot.rawFileAgeSeconds)}`,
+    `TOB ${formatAgeSeconds(snapshot.topOfBookFileAgeSeconds)}`,
+  ];
+  if (includeBtcSpot) {
+    ages.push(`BTC ${formatAgeSeconds(snapshot.btcFileAgeSeconds)}`);
+  }
+  if (includeBtcCandles1m) {
+    ages.push(`candles ${formatAgeSeconds(snapshot.btcCandles1mFileAgeSeconds)}`);
+  }
 
   return (
     `[${snapshot.localTime}] ${snapshot.percent}% | run ${snapshot.runId} | `
     + `elapsed ${snapshot.elapsedMinutes}m | remaining ${snapshot.remainingMinutes}m | `
-    + `topOfBook ${snapshot.topOfBookLineCount} | btc ${snapshot.btcSpotLineCount} | `
-    + `raw ${snapshot.rawJsonlSizeMb}MB | file ages: ${ages}`
+    + `${counts.join(" | ")} | `
+    + `raw ${snapshot.rawJsonlSizeMb}MB | file ages: ${ages.join(", ")}`
   );
 }
 
@@ -118,13 +150,21 @@ export function startCaptureProgressMonitor(options: {
   intervalMs: number;
   writeLine: (line: string) => void;
   now?: () => number;
+  /** Defaults true so wrapper output stays stable when the flag is omitted. */
+  includeBtcSpot?: boolean;
+  /** Defaults false. Never infer enablement from an empty candle artifact. */
+  includeBtcCandles1m?: boolean;
 }): ProgressMonitorHandle {
+  const includeBtcSpot = options.includeBtcSpot !== false;
+  const includeBtcCandles1m = options.includeBtcCandles1m === true;
   const topOfBookPath = join(options.runDir, "top-of-book.jsonl");
   const btcPath = join(options.runDir, "btc-spot.jsonl");
+  const candlesPath = join(options.runDir, "btc-candles-1m.jsonl");
   const rawPath = join(options.runDir, "raw-kalshi-ws.jsonl");
 
   let topState: LineCounterState = { path: topOfBookPath, offset: 0, count: 0 };
   let btcState: LineCounterState = { path: btcPath, offset: 0, count: 0 };
+  let candleState: LineCounterState = { path: candlesPath, offset: 0, count: 0 };
   let stopped = false;
   let inFlight = false;
 
@@ -147,7 +187,12 @@ export function startCaptureProgressMonitor(options: {
       );
 
       topState = await countNewLines(topState);
-      btcState = await countNewLines(btcState);
+      if (includeBtcSpot) {
+        btcState = await countNewLines(btcState);
+      }
+      if (includeBtcCandles1m) {
+        candleState = await countNewLines(candleState);
+      }
 
       if (stopped) {
         return;
@@ -160,11 +205,17 @@ export function startCaptureProgressMonitor(options: {
         remainingMinutes,
         percent,
         topOfBookLineCount: topState.count,
-        btcSpotLineCount: btcState.count,
+        btcSpotLineCount: includeBtcSpot ? btcState.count : 0,
+        includeBtcSpot,
+        includeBtcCandles1m,
+        btcCandles1mLineCount: includeBtcCandles1m ? candleState.count : undefined,
+        btcCandles1mFileAgeSeconds: includeBtcCandles1m
+          ? fileAgeSeconds(candlesPath, nowMs)
+          : undefined,
         rawJsonlSizeMb: fileSizeMb(rawPath),
         rawFileAgeSeconds: fileAgeSeconds(rawPath, nowMs),
         topOfBookFileAgeSeconds: fileAgeSeconds(topOfBookPath, nowMs),
-        btcFileAgeSeconds: fileAgeSeconds(btcPath, nowMs),
+        btcFileAgeSeconds: includeBtcSpot ? fileAgeSeconds(btcPath, nowMs) : null,
       };
       options.writeLine(formatProgressLine(snapshot));
     } catch {

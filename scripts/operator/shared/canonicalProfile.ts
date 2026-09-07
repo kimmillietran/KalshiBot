@@ -63,6 +63,11 @@ export function loadCanonicalCaptureProfile(
   return profile;
 }
 
+/**
+ * Canonical capture workload argv only.
+ * Do not add presentation flags (--no-progress, --progress-interval-ms)
+ * or optional sidecar flags (--capture-btc-candles-1m) here.
+ */
 export function buildCanonicalCaptureArgv(
   profile: ValidatedCanonicalProfile,
   durationMinutes: number,

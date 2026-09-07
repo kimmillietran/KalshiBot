@@ -32,6 +32,43 @@ export type ForwardQuoteCaptureCommandIo = {
   clearInterval?: (handle: number) => void;
   setTimeout?: (fn: () => void, ms: number) => number;
   clearTimeout?: (handle: number) => void;
+  /**
+   * Test seam for native CLI progress. Production main injects
+   * startCaptureProgressMonitor. Presentation-only; not capture config.
+   */
+  startProgressMonitor?: (
+    options: ForwardQuoteCaptureProgressMonitorOptions,
+  ) => ForwardQuoteCaptureProgressMonitorHandle;
+};
+
+/** Default native progress cadence for short/medium direct captures. */
+export const DEFAULT_DIRECT_CAPTURE_PROGRESS_INTERVAL_MS = 10_000;
+
+/** Minimum accepted --progress-interval-ms. 0 is not a disable mechanism. */
+export const MIN_DIRECT_CAPTURE_PROGRESS_INTERVAL_MS = 1_000;
+
+/**
+ * CLI-only presentation options. Never part of ForwardQuoteCaptureConfig,
+ * hypothesis config, eligibility, or readiness.
+ */
+export type ForwardQuoteCaptureProgressOptions = {
+  enabled: boolean;
+  intervalMs: number;
+};
+
+export type ForwardQuoteCaptureProgressMonitorOptions = {
+  runId: string;
+  runDir: string;
+  startedAt: string;
+  durationMinutes: number;
+  intervalMs: number;
+  includeBtcSpot: boolean;
+  includeBtcCandles1m: boolean;
+  writeLine: (line: string) => void;
+};
+
+export type ForwardQuoteCaptureProgressMonitorHandle = {
+  stop: () => void;
 };
 
 function readFlagValue(argv: readonly string[], flag: string): string | undefined {
@@ -124,6 +161,51 @@ export function parseHtmlOutputPathFromArgv(
   defaultPath = DEFAULT_FORWARD_QUOTE_CAPTURE_HTML_PATH,
 ): string {
   return readFlagValue(argv, "--html-output") ?? defaultPath;
+}
+
+/**
+ * Parse native direct-CLI progress presentation flags.
+ *
+ * --no-progress disables human progress (stdout protocol is unchanged).
+ * --progress-interval-ms defaults to 10_000 and must be finite and >= 1000.
+ * Do not use 0 to disable; that is what --no-progress is for.
+ */
+export function parseForwardQuoteCaptureProgressOptionsFromArgv(
+  argv: readonly string[],
+): ForwardQuoteCaptureProgressOptions {
+  const enabled = !argv.includes("--no-progress");
+  const raw = readProgressIntervalRaw(argv);
+  if (raw === undefined) {
+    return { enabled, intervalMs: DEFAULT_DIRECT_CAPTURE_PROGRESS_INTERVAL_MS };
+  }
+
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed) || parsed < MIN_DIRECT_CAPTURE_PROGRESS_INTERVAL_MS) {
+    throw new ForwardQuoteCaptureCommandError(
+      `--progress-interval-ms must be a finite number >= ${MIN_DIRECT_CAPTURE_PROGRESS_INTERVAL_MS} `
+        + `(got ${raw})`,
+    );
+  }
+
+  return { enabled, intervalMs: parsed };
+}
+
+function readProgressIntervalRaw(argv: readonly string[]): string | undefined {
+  for (let index = 0; index < argv.length; index += 1) {
+    if (argv[index] !== "--progress-interval-ms") {
+      continue;
+    }
+    const next = argv[index + 1];
+    // Allow numeric negatives such as -1 so they fail the >= 1000 check
+    // instead of being misread as a missing value / next flag.
+    if (next === undefined || next === "" || next.startsWith("--")) {
+      throw new ForwardQuoteCaptureCommandError(
+        "Missing value for --progress-interval-ms <n>",
+      );
+    }
+    return next;
+  }
+  return undefined;
 }
 
 export function formatStdoutOutput(serialized: string): string {
