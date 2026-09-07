@@ -102,8 +102,9 @@ describe("parseClosedMinuteObservation", () => {
   });
 
   it("fails confirmatory parsing when observedAtLocal is missing", () => {
-    const { observedAtLocal: _observedAtLocal, firstObservedAtLocal: _first, ...rest } =
-      validObservation();
+    const rest = validObservation();
+    delete rest.observedAtLocal;
+    delete rest.firstObservedAtLocal;
     expect(() =>
       parseClosedMinuteObservation(rest, { requireObservationTimestamp: true }),
     ).toThrow(/observedAtLocal is required/);
