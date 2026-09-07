@@ -23,7 +23,11 @@ export type {
 
 export { parseClosedMinuteObservation, derivedOneMinuteCloseTimeMs } from "./parseClosedMinuteObservation";
 export {
+  defaultInRunCandlePath,
+  isDefaultInRunCandlePath,
+  normalizeV2ArtifactPath,
   preloadCompletedBtcCandleObservations,
+  requireExplicitCandleRunId,
   selectCausalClosedMinuteAsOfT,
   ohlcUnchanged,
 } from "./preloadCompletedBtcCandleObservations";

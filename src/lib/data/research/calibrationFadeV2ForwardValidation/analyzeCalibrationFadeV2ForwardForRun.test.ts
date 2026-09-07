@@ -57,6 +57,7 @@ function candleRecord(input: {
   observedAtMs: number;
   firstObservedAtMs?: number;
   retrievalMethod?: string;
+  runId?: string;
 }): string {
   return JSON.stringify({
     source: "coinbase-exchange-rest-candles",
@@ -74,15 +75,17 @@ function candleRecord(input: {
     observedAtLocal: iso(input.observedAtMs),
     firstObservedAtLocal: iso(input.firstObservedAtMs ?? input.observedAtMs),
     retrievalMethod: input.retrievalMethod ?? "synthetic-fixture",
+    ...(input.runId ? { runId: input.runId } : {}),
   });
 }
 
-function defaultCandles(open0Ms: number, observedAtMs: number): string {
+function defaultCandles(open0Ms: number, observedAtMs: number, runId?: string): string {
   return Array.from({ length: 11 }, (_, index) =>
     candleRecord({
       openTimeMs: open0Ms + index * 60_000,
       close: highVolClose(index),
       observedAtMs,
+      runId,
     }),
   ).join("\n");
 }
@@ -188,6 +191,7 @@ function analyze(input: {
   runId: string;
   evidenceMode: CalibrationFadeV2EvidenceMode;
   io: CalibrationFadeV2ForwardValidationIo;
+  candlesPath?: string | null;
 }) {
   const captureRunDir = runDir(input.runId);
   const paths = resolveCalibrationFadeV2OutputPaths({
@@ -204,7 +208,7 @@ function analyze(input: {
       provenancePath: DEFAULT_CALIBRATION_FADE_V2_PROVENANCE_PATH,
       importsDir: "data/imports",
       maximumBtcJoinAgeMs: 5000,
-      candlesPath: null,
+      candlesPath: input.candlesPath ?? null,
     },
     io: input.io,
   });
@@ -256,7 +260,7 @@ describe("analyzeCalibrationFadeV2ForwardForRun evidence and identity", () => {
     const fixture = fixtureFiles({
       runId: "run-v2-1ms",
       startedAt: POST_FREEZE_1MS,
-      candles: defaultCandles(OPEN0_MS, QUOTE_MS - 1_000),
+      candles: defaultCandles(OPEN0_MS, QUOTE_MS - 1_000, "run-v2-1ms"),
     });
     const io = createMemoryCalibrationFadeForwardValidationIo(fixture.files, fixture.dirs);
     const { report, evidenceIdentity } = await analyze({
@@ -332,6 +336,7 @@ describe("analyzeCalibrationFadeV2ForwardForRun evidence and identity", () => {
     const fixture = fixtureFiles({
       runId: "run-v2-identity",
       startedAt: POST_FREEZE_1MS,
+      candles: defaultCandles(OPEN0_MS, QUOTE_MS - 1_000, "run-v2-identity"),
     });
     const io = createMemoryCalibrationFadeForwardValidationIo(fixture.files, fixture.dirs);
     const { report, evidenceIdentity } = await analyze({
@@ -399,7 +404,7 @@ describe("analyzeCalibrationFadeV2ForwardForRun candle source and spot isolation
       runId: "run-v2-flat-spot",
       startedAt: POST_FREEZE_1MS,
       spots: flatSpot(QUOTE_MS - 1_000),
-      candles: defaultCandles(OPEN0_MS, QUOTE_MS - 1_000),
+      candles: defaultCandles(OPEN0_MS, QUOTE_MS - 1_000, "run-v2-flat-spot"),
     });
     const io = createMemoryCalibrationFadeForwardValidationIo(fixture.files, fixture.dirs);
     const { report } = await analyze({
@@ -443,6 +448,7 @@ describe("analyzeCalibrationFadeV2ForwardForRun candle source and spot isolation
         observedAtMs: Date.parse(runStart),
         firstObservedAtMs: Date.parse(runStart),
         retrievalMethod: "startup-backfill",
+        runId: "run-v2-backfill",
       }),
     ).join("\n");
     const fixture = fixtureFiles({
@@ -513,5 +519,229 @@ describe("v1 runtime remains the spot-gap path", () => {
     expect(v1Analyzer).toMatch(/maximumSourceGapMs: spec\.volatilityDefinition\.maximumSourceGapMs/);
     expect(v1Window).toMatch(/maximumObservedSourceGapMs > maximumSourceGapMs/);
     expect(v1Window).toMatch(/sourceRecordType: "btc-spot-jsonl-points"/);
+  });
+});
+
+describe("analyzeCalibrationFadeV2ForwardForRun candle run provenance", () => {
+  const OVERRIDE_PATH = "data/tmp/override-candles.jsonl";
+
+  it("accepts selected run-A when every candle runId is run-A", async () => {
+    const fixture = fixtureFiles({
+      runId: "run-A",
+      startedAt: POST_FREEZE_1MS,
+      candles: defaultCandles(OPEN0_MS, QUOTE_MS - 1_000, "run-A"),
+    });
+    const io = createMemoryCalibrationFadeForwardValidationIo(fixture.files, fixture.dirs);
+    const { report } = await analyze({ runId: "run-A", evidenceMode: "confirmatory", io });
+    expect(report.captureRunId).toBe("run-A");
+    expect(report.selectedRunId).toBe("run-A");
+    expect(report.gatePassCounts.volatilityAvailable).toBeGreaterThan(0);
+  });
+
+  it("rejects selected run-A when one candle runId is run-B", async () => {
+    const lines = defaultCandles(OPEN0_MS, QUOTE_MS - 1_000, "run-A").split("\n");
+    lines[3] = candleRecord({
+      openTimeMs: OPEN0_MS + 3 * 60_000,
+      close: highVolClose(3),
+      observedAtMs: QUOTE_MS - 1_000,
+      runId: "run-B",
+    });
+    const fixture = fixtureFiles({
+      runId: "run-A",
+      startedAt: POST_FREEZE_1MS,
+      candles: lines.join("\n"),
+    });
+    const io = createMemoryCalibrationFadeForwardValidationIo(fixture.files, fixture.dirs);
+    await expect(analyze({ runId: "run-A", evidenceMode: "diagnostic", io })).rejects.toThrow(
+      /incompatible with the selected capture run.*expectedRunId=run-A.*actualRunId="run-B"/,
+    );
+  });
+
+  it("rejects selected run-A when every candle runId is run-B", async () => {
+    const fixture = fixtureFiles({
+      runId: "run-A",
+      startedAt: POST_FREEZE_1MS,
+      candles: defaultCandles(OPEN0_MS, QUOTE_MS - 1_000, "run-B"),
+    });
+    const io = createMemoryCalibrationFadeForwardValidationIo(fixture.files, fixture.dirs);
+    await expect(analyze({ runId: "run-A", evidenceMode: "diagnostic", io })).rejects.toThrow(
+      /incompatible with the selected capture run.*expectedRunId=run-A.*actualRunId="run-B"/,
+    );
+  });
+
+  it("rejects mixed run-A/run-B candle rows", async () => {
+    const mixed = [
+      ...defaultCandles(OPEN0_MS, QUOTE_MS - 1_000, "run-A").split("\n").slice(0, 6),
+      ...Array.from({ length: 5 }, (_, index) =>
+        candleRecord({
+          openTimeMs: OPEN0_MS + (6 + index) * 60_000,
+          close: highVolClose(6 + index),
+          observedAtMs: QUOTE_MS - 1_000,
+          runId: "run-B",
+        }),
+      ),
+    ].join("\n");
+    const fixture = fixtureFiles({
+      runId: "run-A",
+      startedAt: POST_FREEZE_1MS,
+      candles: mixed,
+    });
+    const io = createMemoryCalibrationFadeForwardValidationIo(fixture.files, fixture.dirs);
+    await expect(analyze({ runId: "run-A", evidenceMode: "diagnostic", io })).rejects.toThrow(
+      /incompatible with the selected capture run/,
+    );
+  });
+
+  it("accepts confirmatory candles with matching explicit runId", async () => {
+    const fixture = fixtureFiles({
+      runId: "run-A",
+      startedAt: POST_FREEZE_1MS,
+      candles: defaultCandles(OPEN0_MS, QUOTE_MS - 1_000, "run-A"),
+    });
+    const io = createMemoryCalibrationFadeForwardValidationIo(fixture.files, fixture.dirs);
+    const { report } = await analyze({ runId: "run-A", evidenceMode: "confirmatory", io });
+    expect(report.captureRunId).toBe("run-A");
+    expect(report.evidenceMode).toBe("confirmatory");
+  });
+
+  it("rejects confirmatory candles that omit runId", async () => {
+    const fixture = fixtureFiles({
+      runId: "run-A",
+      startedAt: POST_FREEZE_1MS,
+      candles: defaultCandles(OPEN0_MS, QUOTE_MS - 1_000),
+    });
+    const io = createMemoryCalibrationFadeForwardValidationIo(fixture.files, fixture.dirs);
+    await expect(analyze({ runId: "run-A", evidenceMode: "confirmatory", io })).rejects.toThrow(
+      /missing an explicit runId required for this load.*expectedRunId=run-A.*actualRunId=<missing>/,
+    );
+  });
+
+  it("accepts diagnostic default in-run candles that omit runId", async () => {
+    const fixture = fixtureFiles({
+      runId: "run-A",
+      startedAt: POST_FREEZE_1MS,
+      candles: defaultCandles(OPEN0_MS, QUOTE_MS - 1_000),
+    });
+    const io = createMemoryCalibrationFadeForwardValidationIo(fixture.files, fixture.dirs);
+    const { report } = await analyze({ runId: "run-A", evidenceMode: "diagnostic", io });
+    expect(report.captureRunId).toBe("run-A");
+    expect(report.gatePassCounts.volatilityAvailable).toBeGreaterThan(0);
+  });
+
+  it("rejects diagnostic default in-run candles with a mismatching runId", async () => {
+    const fixture = fixtureFiles({
+      runId: "run-A",
+      startedAt: POST_FREEZE_1MS,
+      candles: defaultCandles(OPEN0_MS, QUOTE_MS - 1_000, "run-B"),
+    });
+    const io = createMemoryCalibrationFadeForwardValidationIo(fixture.files, fixture.dirs);
+    await expect(analyze({ runId: "run-A", evidenceMode: "diagnostic", io })).rejects.toThrow(
+      /incompatible with the selected capture run/,
+    );
+  });
+
+  it("rejects diagnostic --candles-path override that omits runId", async () => {
+    const fixture = fixtureFiles({
+      runId: "run-A",
+      startedAt: POST_FREEZE_1MS,
+      candles: null,
+    });
+    const files = {
+      ...fixture.files,
+      [OVERRIDE_PATH]: defaultCandles(OPEN0_MS, QUOTE_MS - 1_000),
+    };
+    const io = createMemoryCalibrationFadeForwardValidationIo(files, fixture.dirs);
+    await expect(
+      analyze({ runId: "run-A", evidenceMode: "diagnostic", io, candlesPath: OVERRIDE_PATH }),
+    ).rejects.toThrow(/missing an explicit runId required for this load/);
+  });
+
+  it("accepts diagnostic --candles-path override when runId matches selected run", async () => {
+    const fixture = fixtureFiles({
+      runId: "run-A",
+      startedAt: POST_FREEZE_1MS,
+      candles: null,
+    });
+    const files = {
+      ...fixture.files,
+      [OVERRIDE_PATH]: defaultCandles(OPEN0_MS, QUOTE_MS - 1_000, "run-A"),
+    };
+    const io = createMemoryCalibrationFadeForwardValidationIo(files, fixture.dirs);
+    const { report } = await analyze({
+      runId: "run-A",
+      evidenceMode: "diagnostic",
+      io,
+      candlesPath: OVERRIDE_PATH,
+    });
+    expect(report.captureRunId).toBe("run-A");
+    expect(report.selectedRunId).toBe("run-A");
+  });
+
+  it("accepts confirmatory --candles-path override when runId matches selected run", async () => {
+    const fixture = fixtureFiles({
+      runId: "run-A",
+      startedAt: POST_FREEZE_1MS,
+      candles: null,
+    });
+    const files = {
+      ...fixture.files,
+      [OVERRIDE_PATH]: defaultCandles(OPEN0_MS, QUOTE_MS - 1_000, "run-A"),
+    };
+    const io = createMemoryCalibrationFadeForwardValidationIo(files, fixture.dirs);
+    const { report } = await analyze({
+      runId: "run-A",
+      evidenceMode: "confirmatory",
+      io,
+      candlesPath: OVERRIDE_PATH,
+    });
+    expect(report.captureRunId).toBe("run-A");
+    expect(report.evidenceMode).toBe("confirmatory");
+  });
+
+  it("rejects confirmatory --candles-path override with mismatching runId", async () => {
+    const fixture = fixtureFiles({
+      runId: "run-A",
+      startedAt: POST_FREEZE_1MS,
+      candles: null,
+    });
+    const files = {
+      ...fixture.files,
+      [OVERRIDE_PATH]: defaultCandles(OPEN0_MS, QUOTE_MS - 1_000, "run-B"),
+    };
+    const io = createMemoryCalibrationFadeForwardValidationIo(files, fixture.dirs);
+    await expect(
+      analyze({ runId: "run-A", evidenceMode: "confirmatory", io, candlesPath: OVERRIDE_PATH }),
+    ).rejects.toThrow(/incompatible with the selected capture run.*actualRunId="run-B"/);
+  });
+
+  it("keeps report captureRunId equal to selectedRunId after a valid load", async () => {
+    const fixture = fixtureFiles({
+      runId: "run-A",
+      startedAt: POST_FREEZE_1MS,
+      candles: defaultCandles(OPEN0_MS, QUOTE_MS - 1_000, "run-A"),
+    });
+    const io = createMemoryCalibrationFadeForwardValidationIo(fixture.files, fixture.dirs);
+    const { report, evidenceIdentity } = await analyze({
+      runId: "run-A",
+      evidenceMode: "confirmatory",
+      io,
+    });
+    expect(report.captureRunId).toBe("run-A");
+    expect(report.selectedRunId).toBe("run-A");
+    expect(evidenceIdentity.captureRunId).toBe("run-A");
+    expect(report.sourceRunIds).toEqual(["run-A"]);
+  });
+
+  it("fails closed on runId mismatch before volatility or candidate evaluation", async () => {
+    const fixture = fixtureFiles({
+      runId: "run-A",
+      startedAt: POST_FREEZE_1MS,
+      candles: defaultCandles(OPEN0_MS, QUOTE_MS - 1_000, "run-B"),
+      quotes: topOfBook(QUOTE_MS),
+    });
+    const io = createMemoryCalibrationFadeForwardValidationIo(fixture.files, fixture.dirs);
+    await expect(analyze({ runId: "run-A", evidenceMode: "diagnostic", io })).rejects.toThrow(
+      /Candle observation runId is incompatible/,
+    );
   });
 });

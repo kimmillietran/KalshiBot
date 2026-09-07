@@ -74,6 +74,8 @@ async function loadIndex(records: readonly Record<string, unknown>[]): Promise<C
     io,
     captureRunDir: RUN_DIR,
     evidenceMode: "diagnostic",
+    expectedRunId: "run-v2-window",
+    requireExplicitRunId: false,
   });
 }
 

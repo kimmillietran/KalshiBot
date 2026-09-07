@@ -60,7 +60,11 @@ import {
   type CalibrationFadeV2ForwardValidationReport,
   type CalibrationFadeV2OutputPaths,
 } from "./calibrationFadeV2ForwardValidationTypes";
-import { preloadCompletedBtcCandleObservations } from "./preloadCompletedBtcCandleObservations";
+import {
+  defaultInRunCandlePath,
+  preloadCompletedBtcCandleObservations,
+  requireExplicitCandleRunId,
+} from "./preloadCompletedBtcCandleObservations";
 
 type ParsedTopOfBook = {
   marketTicker: string;
@@ -415,8 +419,7 @@ export async function analyzeCalibrationFadeV2ForwardForRun(input: {
     );
   }
 
-  const candlesPath =
-    input.config.candlesPath ?? joinPath(captureRunDir, "btc-candles-1m.jsonl");
+  const candlesPath = input.config.candlesPath ?? defaultInRunCandlePath(captureRunDir);
   failClosedIfCompletedCandleSourceUnavailable({
     sourceRecordType: V2_REQUIRED_SOURCE_RECORD_TYPE,
     sourceAvailable: input.io.fileExists(candlesPath),
@@ -428,6 +431,12 @@ export async function analyzeCalibrationFadeV2ForwardForRun(input: {
     captureRunDir,
     candlesPath,
     evidenceMode: input.config.evidenceMode,
+    expectedRunId: runId,
+    requireExplicitRunId: requireExplicitCandleRunId({
+      evidenceMode: input.config.evidenceMode,
+      candlesPath,
+      captureRunDir,
+    }),
   });
 
   const { points: btcPoints, recordsScanned: btcSpotRecordsScanned } = await preloadBtcSpotSeries(
