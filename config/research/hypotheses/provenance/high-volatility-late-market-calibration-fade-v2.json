@@ -1,0 +1,57 @@
+{
+  "schema": "calibration-fade-hypothesis-preregistration",
+  "version": 1,
+  "verificationModel": "reviewed-manifest",
+  "hypothesisId": "atlas-volatilityProbabilityTime-vol-high-coarse-prob-1-coarse-time-early-over",
+  "hypothesisVersion": "v2",
+  "sourceCandidateId": "atlas-volatilityProbabilityTime-vol-high-coarse-prob-1-coarse-time-early-over",
+  "configPath": "config/research/hypotheses/high-volatility-late-market-calibration-fade-v2.json",
+  "descendsFromV1ConfigPath": "config/research/hypotheses/high-volatility-late-market-calibration-fade-v1.json",
+  "originalFreezeCommitSha": "1c5ef9da3ef5e48af26c05b850183b0e8d4290d0",
+  "v2FreezeCommitSha": "1c5ef9da3ef5e48af26c05b850183b0e8d4290d0",
+  "v2FreezeCommitTimestamp": "2026-09-06T15:59:43-07:00",
+  "conclusion": "preregistered-prospective-lineage-fork",
+  "intentionalDifferences": [
+    {
+      "id": "volatility-source-contract",
+      "summary": "v2 replaces the v1 spot-tick + maximumSourceGapMs=5000 operative gap gate with an explicit Coinbase completed 1m OHLC source contract and adjacentSourceGapPolicy=none (maximumSourceGapMs=null, not applicable).",
+      "v1Unchanged": true,
+      "notIntegrityCorrectionToV1": true
+    }
+  ],
+  "historicalCandidateLineage": {
+    "role": "exploratory-lineage-only-not-prospective-v2-performance",
+    "observationCount": 457,
+    "uniqueTradingDays": 63,
+    "passes": false,
+    "robustnessScore": 59,
+    "notes": [
+      "Same historical candidate lineage as immutable v1.",
+      "v2 is NOT the original frozen v1.",
+      "Created after M12.4/M12.5/M12.6 diagnostics (preserve-v1-and-create-prospective-v2).",
+      "Historical stats are exploratory lineage evidence only; they are not prospective confirmatory v2 performance."
+    ]
+  },
+  "prospectiveEvidenceBoundary": {
+    "kind": "strictly-after-freeze-commit",
+    "freezeCommitSha": "1c5ef9da3ef5e48af26c05b850183b0e8d4290d0",
+    "freezeTimestamp": "2026-09-06T15:59:43-07:00",
+    "rule": "A forward run is eligible for formal v2 confirmatory evidence only if its run start time is strictly after the immutable v2 freeze commit/time recorded in this manifest. Eligibility must not use filesystem mtime, latest-file selection, or lexical latest run directories."
+  },
+  "nonConfirmatoryPolicy": {
+    "preFreezeRuns": "diagnostic-only",
+    "aug4RunStartIso": "2026-08-04T10:33:33.601Z",
+    "aug4Status": "excluded-from-v2-confirmatory-evidence",
+    "notes": [
+      "All captures whose run start is at or before the v2 freeze boundary are non-confirmatory for v2.",
+      "In particular, 2026-08-03T03:21:26.351Z and 2026-08-04T10:33:33.601Z may be used for diagnostics only."
+    ]
+  },
+  "limitations": [
+    "Canonical historical discovery artifacts may be absent from the checkout; lineage statistics are reviewed exploratory values, not reconstructed from live atlas files here.",
+    "Preserved Windows corpus file count 19110 is a later superset of July-7 atlas marketCount 10474; exact atlas path membership remains unrecovered.",
+    "Reviewed forensic conclusion: preserved outputs were Coinbase-spot with replay engineInput.btc.candles; corpus membership caveat still applies.",
+    "This preregistration does not implement the completed-candle capture pipeline or a full v2 forward evaluator.",
+    "Immutable v2 freeze identity is commit 1c5ef9da3ef5e48af26c05b850183b0e8d4290d0 (config + loader); this provenance commit only records that freeze SHA/timestamp."
+  ]
+}
