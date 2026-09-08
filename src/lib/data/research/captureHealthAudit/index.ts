@@ -1,6 +1,12 @@
 export { buildCaptureHealthAuditReport } from "./buildCaptureHealthAuditReport";
 export { computeCaptureHealthMetrics } from "./computeCaptureHealthMetrics";
 export {
+  CaptureHealthAccumulator,
+  createCaptureHealthAccumulator,
+} from "./captureHealthStreamingAccumulator";
+export { streamCaptureTopOfBook } from "./streamCaptureTopOfBook";
+export { parseTopOfBookLine } from "./parseCaptureHealthRecords";
+export {
   createCaptureHealthAuditConfig,
   CAPTURE_HEALTH_AUDIT_CAVEATS,
   CAPTURE_HEALTH_AUDIT_DISCLAIMER,

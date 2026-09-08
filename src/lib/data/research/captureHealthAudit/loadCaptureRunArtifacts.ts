@@ -11,9 +11,13 @@ import type {
 } from "./captureHealthAuditTypes";
 import { CaptureHealthAuditError, CaptureHealthAuditErrorCode } from "./captureHealthAuditTypes";
 import {
-  hourBucketFromIso,
-  parseIsoTimestampMs,
-} from "./captureHealthAuditUtils";
+  parseBtcSpotLine,
+  parseMarketMetadataLine,
+} from "./parseCaptureHealthRecords";
+import {
+  streamCaptureTopOfBook,
+  type StreamCaptureTopOfBookProgress,
+} from "./streamCaptureTopOfBook";
 
 export type LoadedCaptureHealthJson = {
   runId?: string;
@@ -45,6 +49,12 @@ export type LoadedCaptureRunArtifacts = {
   artifacts: CaptureArtifactPaths;
   rawMessageCount: number;
   rawInvalidLineCount: number;
+  topOfBookCount: number;
+  /**
+   * Compatibility materialization for non-audit consumers (e.g. reconciliation).
+   * Canonical long-run audits must use loadCaptureRunSideArtifacts + streaming
+   * and must not retain this array.
+   */
   topOfBookRecords: ParsedTopOfBookRecord[];
   topOfBookInvalidLineCount: number;
   btcSpotRecords: ParsedBtcSpotRecord[];
@@ -69,97 +79,6 @@ function firstExistingPath(
   return null;
 }
 
-function parseTopOfBookLine(line: string, lineNumber: number): ParsedTopOfBookRecord | null {
-  const parsed = JSON.parse(line) as Record<string, unknown>;
-  const marketTicker = typeof parsed.marketTicker === "string" ? parsed.marketTicker : null;
-  const receivedAtLocal = typeof parsed.receivedAtLocal === "string" ? parsed.receivedAtLocal : null;
-
-  if (!marketTicker || !receivedAtLocal) {
-    return null;
-  }
-
-  const receivedAtMs = parseIsoTimestampMs(receivedAtLocal);
-  if (receivedAtMs === null) {
-    return null;
-  }
-
-  return {
-    lineNumber,
-    runId: typeof parsed.runId === "string" ? parsed.runId : null,
-    marketTicker,
-    eventTicker: typeof parsed.eventTicker === "string" ? parsed.eventTicker : null,
-    seriesTicker: typeof parsed.seriesTicker === "string" ? parsed.seriesTicker : null,
-    receivedAtLocal,
-    receivedAtMs,
-    exchangeTimestampMs:
-      typeof parsed.exchangeTimestampMs === "number" ? parsed.exchangeTimestampMs : null,
-    sequence: typeof parsed.sequence === "number" ? parsed.sequence : null,
-    bookState: typeof parsed.bookState === "string" ? parsed.bookState : "unknown",
-    yesBestBidCents:
-      typeof parsed.yesBestBidCents === "number" ? parsed.yesBestBidCents : null,
-    yesBestAskCents:
-      typeof parsed.yesBestAskCents === "number" ? parsed.yesBestAskCents : null,
-    yesBestBidSize:
-      typeof parsed.yesBestBidSize === "number" ? parsed.yesBestBidSize : null,
-    yesBestAskSize:
-      typeof parsed.yesBestAskSize === "number" ? parsed.yesBestAskSize : null,
-    noBestBidCents:
-      typeof parsed.noBestBidCents === "number" ? parsed.noBestBidCents : null,
-    noBestAskCents:
-      typeof parsed.noBestAskCents === "number" ? parsed.noBestAskCents : null,
-    noBestBidSize:
-      typeof parsed.noBestBidSize === "number" ? parsed.noBestBidSize : null,
-    noBestAskSize:
-      typeof parsed.noBestAskSize === "number" ? parsed.noBestAskSize : null,
-    yesSpreadCents: typeof parsed.yesSpreadCents === "number" ? parsed.yesSpreadCents : null,
-    noSpreadCents: typeof parsed.noSpreadCents === "number" ? parsed.noSpreadCents : null,
-    isEconomicallyValid:
-      typeof parsed.isEconomicallyValid === "boolean" ? parsed.isEconomicallyValid : undefined,
-    isParityUsable:
-      typeof parsed.isParityUsable === "boolean" ? parsed.isParityUsable : undefined,
-    economicBookState:
-      typeof parsed.economicBookState === "string" ? parsed.economicBookState : undefined,
-    hourBucket: hourBucketFromIso(receivedAtLocal),
-  };
-}
-
-function parseBtcSpotLine(line: string): ParsedBtcSpotRecord | null {
-  const parsed = JSON.parse(line) as Record<string, unknown>;
-  const receivedAtLocal = typeof parsed.receivedAtLocal === "string" ? parsed.receivedAtLocal : null;
-  const priceUsd = typeof parsed.priceUsd === "number" ? parsed.priceUsd : null;
-
-  if (!receivedAtLocal || priceUsd === null) {
-    return null;
-  }
-
-  const receivedAtMs = parseIsoTimestampMs(receivedAtLocal);
-  if (receivedAtMs === null) {
-    return null;
-  }
-
-  return {
-    receivedAtLocal,
-    receivedAtMs,
-    exchangeTimestampMs:
-      typeof parsed.exchangeTimestampMs === "number" ? parsed.exchangeTimestampMs : null,
-    priceUsd,
-  };
-}
-
-function parseMarketMetadataLine(line: string): ParsedMarketMetadataRecord | null {
-  const parsed = JSON.parse(line) as Record<string, unknown>;
-  const marketTicker = typeof parsed.marketTicker === "string" ? parsed.marketTicker : null;
-
-  if (!marketTicker) {
-    return null;
-  }
-
-  return {
-    marketTicker,
-    eventTicker: typeof parsed.eventTicker === "string" ? parsed.eventTicker : null,
-  };
-}
-
 function resolveHealthRawMessageCount(captureHealth: LoadedCaptureHealthJson | null): number | null {
   const fromHealth =
     captureHealth?.capture?.messagesReceived
@@ -172,11 +91,19 @@ function resolveHealthRawMessageCount(captureHealth: LoadedCaptureHealthJson | n
   return null;
 }
 
-/** Resolves capture artifact paths and streams JSONL inputs from a run directory. */
-export async function loadCaptureRunArtifacts(input: {
+/**
+ * Loads side artifacts (native health, raw-count, BTC spot, metadata) without
+ * materializing top-of-book records. BTC is available before TOB streaming so
+ * join distances can be computed in one pass.
+ */
+export async function loadCaptureRunSideArtifacts(input: {
   captureRunDir: string;
   io: CaptureHealthAuditIo;
-}): Promise<LoadedCaptureRunArtifacts> {
+}): Promise<Omit<LoadedCaptureRunArtifacts, "topOfBookCount" | "topOfBookInvalidLineCount" | "topOfBookRecords"> & {
+  topOfBookCount: 0;
+  topOfBookInvalidLineCount: 0;
+  topOfBookRecords: [];
+}> {
   const captureRunDir = input.captureRunDir.replaceAll("\\", "/");
   if (!input.io.fileExists(captureRunDir) || !input.io.isDirectory(captureRunDir)) {
     throw new CaptureHealthAuditError(
@@ -200,8 +127,6 @@ export async function loadCaptureRunArtifacts(input: {
   const loadWarnings: string[] = [];
   let rawMessageCount = 0;
   let rawInvalidLineCount = 0;
-  let topOfBookRecords: ParsedTopOfBookRecord[] = [];
-  let topOfBookInvalidLineCount = 0;
   let btcSpotRecords: ParsedBtcSpotRecord[] = [];
   let btcSpotInvalidLineCount = 0;
   let marketMetadataRecords: ParsedMarketMetadataRecord[] = [];
@@ -233,18 +158,6 @@ export async function loadCaptureRunArtifacts(input: {
     }
   }
 
-  if (artifacts.topOfBookPath) {
-    const parsed = await collectJsonlRecords({
-      path: artifacts.topOfBookPath,
-      io: input.io,
-      parseLine: parseTopOfBookLine,
-    });
-    topOfBookRecords = parsed.records;
-    topOfBookInvalidLineCount = parsed.summary.invalidLineCount;
-  } else {
-    loadWarnings.push("top-of-book.jsonl is missing.");
-  }
-
   if (artifacts.btcSpotPath) {
     const parsed = await collectJsonlRecords({
       path: artifacts.btcSpotPath,
@@ -264,8 +177,8 @@ export async function loadCaptureRunArtifacts(input: {
     marketMetadataRecords = parsed.records;
   }
 
-  if (topOfBookInvalidLineCount > 0) {
-    loadWarnings.push(`${topOfBookInvalidLineCount} invalid top-of-book JSONL line(s).`);
+  if (!artifacts.topOfBookPath) {
+    loadWarnings.push("top-of-book.jsonl is missing.");
   }
   if (rawInvalidLineCount > 0) {
     loadWarnings.push(`${rawInvalidLineCount} invalid raw message JSONL line(s).`);
@@ -278,12 +191,58 @@ export async function loadCaptureRunArtifacts(input: {
     artifacts,
     rawMessageCount,
     rawInvalidLineCount,
-    topOfBookRecords,
-    topOfBookInvalidLineCount,
+    topOfBookCount: 0,
+    topOfBookInvalidLineCount: 0,
+    topOfBookRecords: [],
     btcSpotRecords,
     btcSpotInvalidLineCount,
     marketMetadataRecords,
     captureHealth,
     loadWarnings,
+  };
+}
+
+/** Resolves capture artifact paths and streams JSONL inputs from a run directory. */
+export async function loadCaptureRunArtifacts(input: {
+  captureRunDir: string;
+  io: CaptureHealthAuditIo;
+  onTopOfBookRecord?: (record: ParsedTopOfBookRecord) => void;
+  onTopOfBookProgress?: (progress: StreamCaptureTopOfBookProgress) => void;
+  /**
+   * Default true so existing non-audit callers keep receiving records.
+   * Formal capture-health audits must pass false / use side-artifact loading.
+   */
+  retainTopOfBookRecords?: boolean;
+}): Promise<LoadedCaptureRunArtifacts> {
+  const loaded = await loadCaptureRunSideArtifacts(input);
+  const retainTopOfBookRecords = input.retainTopOfBookRecords !== false;
+  const topOfBookRecords: ParsedTopOfBookRecord[] = [];
+  let topOfBookCount = 0;
+  let topOfBookInvalidLineCount = 0;
+
+  if (loaded.artifacts.topOfBookPath) {
+    const streamed = await streamCaptureTopOfBook({
+      path: loaded.artifacts.topOfBookPath,
+      io: input.io,
+      onRecord: (record) => {
+        if (retainTopOfBookRecords) {
+          topOfBookRecords.push(record);
+        }
+        input.onTopOfBookRecord?.(record);
+      },
+      onProgress: input.onTopOfBookProgress,
+    });
+    topOfBookCount = streamed.topOfBookCount;
+    topOfBookInvalidLineCount = streamed.invalidLineCount;
+    if (topOfBookInvalidLineCount > 0) {
+      loaded.loadWarnings.push(`${topOfBookInvalidLineCount} invalid top-of-book JSONL line(s).`);
+    }
+  }
+
+  return {
+    ...loaded,
+    topOfBookCount,
+    topOfBookInvalidLineCount,
+    topOfBookRecords,
   };
 }

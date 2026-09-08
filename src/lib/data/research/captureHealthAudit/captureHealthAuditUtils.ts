@@ -113,3 +113,77 @@ export function findNearestBtcDistanceMs(
 
   return nearestDistance;
 }
+
+export type IndexedBtcTimestamp = {
+  timestampMs: number;
+  originalIndex: number;
+};
+
+/**
+ * Sort BTC timestamps for O(log B) nearest-neighbor lookup while preserving
+ * the original linear-scan tie-break (first original index wins on equal distance).
+ */
+export function indexBtcTimestampsForNearestLookup(
+  btcTimestampsMs: readonly number[],
+): IndexedBtcTimestamp[] {
+  return btcTimestampsMs
+    .map((timestampMs, originalIndex) => ({ timestampMs, originalIndex }))
+    .sort((left, right) =>
+      left.timestampMs - right.timestampMs || left.originalIndex - right.originalIndex
+    );
+}
+
+export function findNearestBtcDistanceMsIndexed(
+  kalshiTimestampMs: number,
+  sortedBtc: readonly IndexedBtcTimestamp[],
+): number | null {
+  if (sortedBtc.length === 0) {
+    return null;
+  }
+
+  let lo = 0;
+  let hi = sortedBtc.length;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (sortedBtc[mid]!.timestampMs < kalshiTimestampMs) {
+      lo = mid + 1;
+    } else {
+      hi = mid;
+    }
+  }
+
+  const right = lo < sortedBtc.length ? sortedBtc[lo] : null;
+  const left =
+    lo > 0 ? firstIndexedTimestampAtValue(sortedBtc, lo - 1) : null;
+  if (!left && !right) {
+    return null;
+  }
+  if (!left) {
+    return Math.abs(kalshiTimestampMs - right!.timestampMs);
+  }
+  if (!right) {
+    return Math.abs(kalshiTimestampMs - left.timestampMs);
+  }
+
+  const leftDistance = Math.abs(kalshiTimestampMs - left.timestampMs);
+  const rightDistance = Math.abs(kalshiTimestampMs - right.timestampMs);
+  if (leftDistance < rightDistance) {
+    return leftDistance;
+  }
+  if (rightDistance < leftDistance) {
+    return rightDistance;
+  }
+  return left.originalIndex < right.originalIndex ? leftDistance : rightDistance;
+}
+
+function firstIndexedTimestampAtValue(
+  sortedBtc: readonly IndexedBtcTimestamp[],
+  index: number,
+): IndexedBtcTimestamp {
+  const timestampMs = sortedBtc[index]!.timestampMs;
+  let cursor = index;
+  while (cursor > 0 && sortedBtc[cursor - 1]!.timestampMs === timestampMs) {
+    cursor -= 1;
+  }
+  return sortedBtc[cursor]!;
+}

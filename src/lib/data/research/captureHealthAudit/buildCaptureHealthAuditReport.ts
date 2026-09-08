@@ -2,13 +2,15 @@ import {
   CAPTURE_HEALTH_AUDIT_CAVEATS,
   CAPTURE_HEALTH_AUDIT_DISCLAIMER,
 } from "./captureHealthAuditConfig";
-import { computeCaptureHealthMetrics } from "./computeCaptureHealthMetrics";
+import { createCaptureHealthAccumulator } from "./captureHealthStreamingAccumulator";
 import type { CaptureHealthAuditConfig, CaptureHealthAuditReport } from "./captureHealthAuditTypes";
 import { evaluateCaptureReadinessVerdict } from "./evaluateCaptureReadinessVerdict";
-import { loadCaptureRunArtifacts } from "./loadCaptureRunArtifacts";
+import { loadCaptureRunSideArtifacts } from "./loadCaptureRunArtifacts";
 import type { CaptureHealthAuditIo } from "./captureHealthAuditTypes";
 import { SELECTED_RUN_CAPTURE_HEALTH_ANALYSIS_VERSION } from "../selectedRunCaptureHealth/selectedRunCaptureHealthTypes";
 import { resolveSelectedRunId } from "../selectedRunCaptureHealth/selectedRunCaptureHealthUtils";
+import { streamCaptureTopOfBook } from "./streamCaptureTopOfBook";
+import type { StreamCaptureTopOfBookProgress } from "./streamCaptureTopOfBook";
 
 /** Loads capture artifacts and builds the full capture health audit report. */
 export async function buildCaptureHealthAuditReport(input: {
@@ -18,18 +20,44 @@ export async function buildCaptureHealthAuditReport(input: {
   captureRunDir: string;
   config: CaptureHealthAuditConfig;
   io: CaptureHealthAuditIo;
+  onTopOfBookProgress?: (progress: StreamCaptureTopOfBookProgress) => void;
 }): Promise<CaptureHealthAuditReport> {
-  const loaded = await loadCaptureRunArtifacts({
+  const side = await loadCaptureRunSideArtifacts({
     captureRunDir: input.captureRunDir,
     io: input.io,
   });
 
-  const metrics = computeCaptureHealthMetrics({
+  const accumulator = createCaptureHealthAccumulator({
     config: input.config,
-    topOfBookRecords: loaded.topOfBookRecords,
-    btcSpotRecords: loaded.btcSpotRecords,
-    captureHealth: loaded.captureHealth,
+    btcSpotRecords: side.btcSpotRecords,
+    captureHealth: side.captureHealth,
   });
+
+  let topOfBookCount = 0;
+  let topOfBookInvalidLineCount = 0;
+  if (side.artifacts.topOfBookPath) {
+    const streamed = await streamCaptureTopOfBook({
+      path: side.artifacts.topOfBookPath,
+      io: input.io,
+      onRecord: (record) => {
+        accumulator.add(record);
+      },
+      onProgress: input.onTopOfBookProgress,
+    });
+    topOfBookCount = streamed.topOfBookCount;
+    topOfBookInvalidLineCount = streamed.invalidLineCount;
+    if (topOfBookInvalidLineCount > 0) {
+      side.loadWarnings.push(`${topOfBookInvalidLineCount} invalid top-of-book JSONL line(s).`);
+    }
+  }
+
+  const loaded = {
+    ...side,
+    topOfBookCount,
+    topOfBookInvalidLineCount,
+  };
+
+  const metrics = accumulator.finalize();
 
   const evaluation = evaluateCaptureReadinessVerdict({
     config: input.config,
@@ -71,7 +99,7 @@ export async function buildCaptureHealthAuditReport(input: {
   };
 
   const inputArtifactIdentities = [
-    fingerprint(loaded.artifacts.topOfBookPath, "top-of-book", loaded.topOfBookRecords.length),
+    fingerprint(loaded.artifacts.topOfBookPath, "top-of-book", loaded.topOfBookCount),
     fingerprint(loaded.artifacts.btcSpotPath, "btc-spot", loaded.btcSpotRecords.length),
     fingerprint(loaded.artifacts.rawMessagesPath, "raw-messages", loaded.rawMessageCount),
     fingerprint(
@@ -98,7 +126,7 @@ export async function buildCaptureHealthAuditReport(input: {
     sourceRunIds: [resolveSelectedRunId(loaded.artifacts.captureRunDir)],
     analysisVersion: SELECTED_RUN_CAPTURE_HEALTH_ANALYSIS_VERSION,
     inputArtifactIdentities,
-    recordsScanned: loaded.topOfBookRecords.length,
+    recordsScanned: loaded.topOfBookCount,
     artifacts: loaded.artifacts,
     config: input.config,
     summary: {
@@ -106,7 +134,7 @@ export async function buildCaptureHealthAuditReport(input: {
       recommendedNextAction: evaluation.recommendedNextAction,
       runDurationSeconds: metrics.runDurationSeconds,
       rawMessageCount: loaded.rawMessageCount,
-      topOfBookCount: loaded.topOfBookRecords.length,
+      topOfBookCount: loaded.topOfBookCount,
       btcSpotCount: loaded.btcSpotRecords.length,
       marketsCovered: metrics.marketsCovered,
       eventTickersCovered: metrics.eventTickersCovered,
