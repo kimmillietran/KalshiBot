@@ -125,7 +125,7 @@ export async function countJsonlLines(input: {
 export function streamJsonlLinesFromString(
   content: string,
   options: JsonlStreamOptions,
-): JsonlStreamSummary {
+): Promise<JsonlStreamSummary> {
   return iterateJsonlLines(content.split(/\r?\n/), options);
 }
 

@@ -23,7 +23,7 @@ export type StreamCaptureTopOfBookResult = {
 export async function streamCaptureTopOfBook(input: {
   path: string;
   io: CaptureHealthAuditIo;
-  onRecord: (record: ParsedTopOfBookRecord) => void;
+  onRecord: (record: ParsedTopOfBookRecord) => void | Promise<void>;
   onProgress?: (progress: StreamCaptureTopOfBookProgress) => void;
   progressEveryRecords?: number;
 }): Promise<StreamCaptureTopOfBookResult> {
@@ -34,32 +34,36 @@ export async function streamCaptureTopOfBook(input: {
   let invalidLineCount = 0;
 
   const summary = await input.io.iterateJsonl(input.path, {
-    onLine: (line, lineNumber) => {
+    onLine: async (line, lineNumber) => {
+      let record: ParsedTopOfBookRecord | null;
       try {
-        const record = parseTopOfBookLine(line, lineNumber);
-        if (record === null) {
-          invalidLineCount += 1;
-          return "skip";
-        }
-        input.onRecord(record);
-        topOfBookCount += 1;
-        if (
-          input.onProgress
-          && topOfBookCount > 0
-          && topOfBookCount % progressEveryRecords === 0
-        ) {
-          input.onProgress({
-            recordsProcessed: topOfBookCount,
-            invalidLineCount,
-            elapsedMs: Date.now() - startedAt,
-            fileSizeBytes,
-          });
-        }
-        return "continue";
+        record = parseTopOfBookLine(line, lineNumber);
       } catch {
         invalidLineCount += 1;
         return "skip";
       }
+      if (record === null) {
+        invalidLineCount += 1;
+        return "skip";
+      }
+
+      // Consumer/accumulator failures must abort the audit. Do not catch them
+      // as invalid JSONL lines.
+      await input.onRecord(record);
+      topOfBookCount += 1;
+      if (
+        input.onProgress
+        && topOfBookCount > 0
+        && topOfBookCount % progressEveryRecords === 0
+      ) {
+        input.onProgress({
+          recordsProcessed: topOfBookCount,
+          invalidLineCount,
+          elapsedMs: Date.now() - startedAt,
+          fileSizeBytes,
+        });
+      }
+      return "continue";
     },
   });
 

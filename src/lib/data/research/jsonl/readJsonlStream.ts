@@ -9,9 +9,14 @@ export type JsonlStreamSummary = {
   truncated: boolean;
 };
 
+export type JsonlLineAction = "continue" | "stop" | "skip";
+
 export type JsonlStreamOptions = {
   maxRecords?: number;
-  onLine: (line: string, lineNumber: number) => "continue" | "stop" | "skip";
+  onLine: (
+    line: string,
+    lineNumber: number,
+  ) => JsonlLineAction | Promise<JsonlLineAction>;
 };
 
 export async function readJsonlStream(
@@ -47,7 +52,7 @@ export async function readJsonlStream(
         break;
       }
 
-      const action = options.onLine(trimmed, summary.linesRead);
+      const action = await options.onLine(trimmed, summary.linesRead);
       if (action === "skip") {
         summary.invalidLineCount += 1;
         continue;
@@ -66,10 +71,10 @@ export async function readJsonlStream(
   return summary;
 }
 
-export function iterateJsonlLines(
+export async function iterateJsonlLines(
   lines: Iterable<string>,
   options: JsonlStreamOptions,
-): JsonlStreamSummary {
+): Promise<JsonlStreamSummary> {
   const summary: JsonlStreamSummary = {
     linesRead: 0,
     blankLinesSkipped: 0,
@@ -93,7 +98,7 @@ export function iterateJsonlLines(
       break;
     }
 
-    const action = options.onLine(trimmed, summary.linesRead);
+    const action = await options.onLine(trimmed, summary.linesRead);
     if (action === "skip") {
       summary.invalidLineCount += 1;
       continue;

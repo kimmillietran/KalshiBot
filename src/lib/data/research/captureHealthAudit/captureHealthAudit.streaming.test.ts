@@ -1,12 +1,15 @@
 import { describe, expect, it } from "vitest";
 
+import { createMemoryJsonlIo } from "@/lib/data/research/jsonl";
+import type { JsonlStreamSummary } from "@/lib/data/research/jsonl";
+
 import { buildCaptureHealthAuditReport } from "./buildCaptureHealthAuditReport";
 import { createCaptureHealthAuditConfig } from "./captureHealthAuditConfig";
 import { createCaptureHealthAccumulator } from "./captureHealthStreamingAccumulator";
 import type { CaptureHealthAuditIo, ParsedTopOfBookRecord } from "./captureHealthAuditTypes";
 import { computeCaptureHealthMetrics } from "./computeCaptureHealthMetrics";
 import { parseTopOfBookLine } from "./parseCaptureHealthRecords";
-import type { JsonlStreamSummary } from "@/lib/data/research/jsonl";
+import { streamCaptureTopOfBook } from "./streamCaptureTopOfBook";
 
 const HIGH_VOLUME = 150_000;
 const RUN_DIR = "data/live-capture/kalshi-ws-spike/high-volume-synthetic";
@@ -66,9 +69,9 @@ function createGeneratedCaptureIo(): CaptureHealthAuditIo {
   const iterateJsonl: CaptureHealthAuditIo["iterateJsonl"] = async (path, options) => {
     const normalized = path.replaceAll("\\", "/");
     const summary = emptySummary();
-    const emit = (line: string) => {
+    const emit = async (line: string) => {
       summary.linesRead += 1;
-      const action = options.onLine(line, summary.linesRead);
+      const action = await options.onLine(line, summary.linesRead);
       if (action === "skip") {
         summary.invalidLineCount += 1;
         return;
@@ -78,13 +81,13 @@ function createGeneratedCaptureIo(): CaptureHealthAuditIo {
 
     if (normalized === TOP_PATH) {
       for (let index = 0; index < HIGH_VOLUME; index += 1) {
-        emit(syntheticTopOfBookLine(index));
+        await emit(syntheticTopOfBookLine(index));
       }
       return summary;
     }
     if (normalized === BTC_PATH) {
       for (let index = 0; index < btcCount; index += 1) {
-        emit(syntheticBtcLine(index));
+        await emit(syntheticBtcLine(index));
       }
       return summary;
     }
@@ -212,5 +215,94 @@ describe("bounded-memory capture-health streaming", () => {
       accumulator.add(record);
     }
     expect(accumulator.finalize()).toEqual(reference);
+  });
+});
+
+function createStreamTestIo(
+  files: Record<string, string>,
+  dirs: string[],
+): CaptureHealthAuditIo {
+  const dirSet = new Set(dirs.map((dir) => dir.replaceAll("\\", "/")));
+  const jsonl = createMemoryJsonlIo(files);
+  return {
+    ...jsonl,
+    fileExists: (path) => {
+      const normalized = path.replaceAll("\\", "/");
+      return jsonl.fileExists(path) || dirSet.has(normalized);
+    },
+    isDirectory: (path) => dirSet.has(path.replaceAll("\\", "/")),
+  };
+}
+
+describe("streamCaptureTopOfBook consumer fail-closed", () => {
+  const runDir = "data/live-capture/kalshi-ws-spike/consumer-fail";
+  const topPath = `${runDir}/top-of-book.jsonl`;
+
+  it("propagates synchronous onRecord failures instead of counting them as invalid lines", async () => {
+    const io = createStreamTestIo(
+      {
+        [topPath]: `${syntheticTopOfBookLine(0)}\n${syntheticTopOfBookLine(1)}\n`,
+      },
+      [runDir],
+    );
+    let callbackCount = 0;
+
+    await expect(
+      streamCaptureTopOfBook({
+        path: topPath,
+        io,
+        onRecord: () => {
+          callbackCount += 1;
+          throw new Error("consumer failure");
+        },
+      }),
+    ).rejects.toThrow("consumer failure");
+
+    expect(callbackCount).toBe(1);
+  });
+
+  it("propagates async onRecord rejections instead of counting them as invalid lines", async () => {
+    const io = createStreamTestIo(
+      {
+        [topPath]: `${syntheticTopOfBookLine(0)}\n${syntheticTopOfBookLine(1)}\n`,
+      },
+      [runDir],
+    );
+    let callbackCount = 0;
+
+    await expect(
+      streamCaptureTopOfBook({
+        path: topPath,
+        io,
+        onRecord: async () => {
+          callbackCount += 1;
+          throw new Error("consumer async failure");
+        },
+      }),
+    ).rejects.toThrow("consumer async failure");
+
+    expect(callbackCount).toBe(1);
+  });
+
+  it("counts malformed lines as invalid and still delivers later valid rows", async () => {
+    const io = createStreamTestIo(
+      {
+        [topPath]: `{bad\n${syntheticTopOfBookLine(0)}\n`,
+      },
+      [runDir],
+    );
+    const received: string[] = [];
+
+    const streamed = await streamCaptureTopOfBook({
+      path: topPath,
+      io,
+      onRecord: (record) => {
+        received.push(record.marketTicker);
+      },
+    });
+
+    expect(streamed.invalidLineCount).toBe(1);
+    expect(streamed.topOfBookCount).toBe(1);
+    expect(received).toEqual(["MKT-0"]);
   });
 });

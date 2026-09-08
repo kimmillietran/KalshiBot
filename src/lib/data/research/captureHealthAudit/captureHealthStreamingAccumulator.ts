@@ -346,4 +346,3 @@ function resolveRunDurationSeconds(input: {
 
   return Math.max(0, Math.round((input.maxReceivedAtMs - input.minReceivedAtMs) / 1000));
 }
-
