@@ -1,8 +1,11 @@
+import { readFileSync } from "node:fs";
+
 import { describe, expect, it } from "vitest";
 
 import { createMemoryJsonlIo } from "@/lib/data/research/jsonl";
 
 import {
+  computeValidBookShareFromNativeHealth,
   RESEARCH_READY_CAPTURE_VERDICT,
   resolveSelectedRunCaptureHealth,
   resolveSelectedRunId,
@@ -81,7 +84,10 @@ function nativeHealth(overrides: Record<string, unknown> = {}) {
     runId: RUN_ID,
     config: { durationSeconds: 28_655 },
     orderbook: {
+      // Economic-validity legacy alias — MUST NOT drive formal validBookShare.
       validTopOfBookRecords: 43_650,
+      economicallyValidTopOfBookRecords: 43_650,
+      sequenceValidTopOfBookRecords: 43_650,
       topOfBookRecordsEmitted: 44_870,
       reconnectCount: 0,
       sequenceGapCount: 0,
@@ -619,6 +625,7 @@ describe("resolveSelectedRunCaptureHealth", () => {
       [`${RUN_DIR}/capture-health.json`]: nativeHealth({
         orderbook: {
           validTopOfBookRecords: 0,
+          sequenceValidTopOfBookRecords: 0,
           topOfBookRecordsEmitted: 1,
           reconnectCount: 0,
           sequenceGapCount: 0,
@@ -632,6 +639,277 @@ describe("resolveSelectedRunCaptureHealth", () => {
     const resolved = resolveSelectedRunCaptureHealth({ io, captureRunDir: RUN_DIR });
     expect(resolved.reconnectCount).toBe(0);
     expect(resolved.validBookShare).toBe(0);
+  });
+});
+
+describe("computeValidBookShareFromNativeHealth", () => {
+  const SMOKE_TOTAL = 178_197;
+  const SMOKE_SEQUENCE_VALID = 178_148;
+  const SMOKE_ECONOMIC_VALID = 94_660;
+
+  function nativeShareHealth(
+    orderbook: Record<string, unknown>,
+    capture: Record<string, unknown> = { topOfBookRecordCount: SMOKE_TOTAL },
+  ): Record<string, unknown> {
+    return { orderbook, capture };
+  }
+
+  it("1. uses the sequence-valid numerator for native validBookShare", () => {
+    const share = computeValidBookShareFromNativeHealth(
+      nativeShareHealth({
+        sequenceValidTopOfBookRecords: 90,
+        validTopOfBookRecords: 10,
+        topOfBookRecordsEmitted: 100,
+      }, { topOfBookRecordCount: 100 }),
+    );
+    expect(share).toBe(0.9);
+  });
+
+  it("2. exact 8-minute smoke regression reports 0.9997, not 0.5312", () => {
+    // validTopOfBookRecords is an economic-validity legacy alias and MUST NOT
+    // be used for formal validBookShare.
+    const share = computeValidBookShareFromNativeHealth(
+      nativeShareHealth({
+        sequenceValidTopOfBookRecords: SMOKE_SEQUENCE_VALID,
+        validTopOfBookRecords: SMOKE_ECONOMIC_VALID,
+        economicallyValidTopOfBookRecords: SMOKE_ECONOMIC_VALID,
+        topOfBookRecordsEmitted: SMOKE_TOTAL,
+      }),
+    );
+    expect(share).toBe(0.9997);
+    expect(share).not.toBe(0.5312);
+  });
+
+  it("3. ignores the economic-valid numerator", () => {
+    const share = computeValidBookShareFromNativeHealth(
+      nativeShareHealth({
+        sequenceValidTopOfBookRecords: SMOKE_SEQUENCE_VALID,
+        validTopOfBookRecords: SMOKE_ECONOMIC_VALID,
+        economicallyValidTopOfBookRecords: SMOKE_ECONOMIC_VALID,
+      }),
+    );
+    expect(share).toBe(0.9997);
+  });
+
+  it("4. missing sequenceValidTopOfBookRecords fails closed to null", () => {
+    expect(
+      computeValidBookShareFromNativeHealth(
+        nativeShareHealth({
+          validTopOfBookRecords: SMOKE_ECONOMIC_VALID,
+          economicallyValidTopOfBookRecords: SMOKE_ECONOMIC_VALID,
+          topOfBookRecordsEmitted: SMOKE_TOTAL,
+        }),
+      ),
+    ).toBeNull();
+  });
+
+  it("5. zero total count fails closed to null", () => {
+    expect(
+      computeValidBookShareFromNativeHealth(
+        nativeShareHealth(
+          { sequenceValidTopOfBookRecords: 0, topOfBookRecordsEmitted: 0 },
+          { topOfBookRecordCount: 0 },
+        ),
+      ),
+    ).toBeNull();
+  });
+
+  it("6. invalid/nonfinite sequence count fails closed to null", () => {
+    expect(
+      computeValidBookShareFromNativeHealth(
+        nativeShareHealth({ sequenceValidTopOfBookRecords: Number.NaN }),
+      ),
+    ).toBeNull();
+    expect(
+      computeValidBookShareFromNativeHealth(
+        nativeShareHealth({ sequenceValidTopOfBookRecords: Number.POSITIVE_INFINITY }),
+      ),
+    ).toBeNull();
+    expect(
+      computeValidBookShareFromNativeHealth(
+        nativeShareHealth({ sequenceValidTopOfBookRecords: "178148" }),
+      ),
+    ).toBeNull();
+  });
+});
+
+describe("native selected-run validBookShare plumbing", () => {
+  it("7. matching run-scoped formal audit still wins over native sequence-valid share", () => {
+    const files = {
+      [TOP_OF_BOOK]: "{}",
+      [BTC_SPOT]: "{}",
+      [`${RUN_DIR}/capture-health.json`]: nativeHealth({
+        orderbook: {
+          sequenceValidTopOfBookRecords: 178_148,
+          validTopOfBookRecords: 94_660,
+          economicallyValidTopOfBookRecords: 94_660,
+          topOfBookRecordsEmitted: 178_197,
+          reconnectCount: 0,
+          sequenceGapCount: 0,
+        },
+        capture: { topOfBookRecordCount: 178_197 },
+      }),
+    };
+    files[`${RUN_DIR}/capture-health-audit.json`] = researchReadyAudit(files);
+    const io = createIo(files);
+
+    const resolved = resolveSelectedRunCaptureHealth({ io, captureRunDir: RUN_DIR });
+    expect(resolved.healthSource).toBe("native-capture-health");
+    expect(resolved.validBookShare).toBe(0.9729);
+    expect(resolved.captureVerdict).toBe(RESEARCH_READY_CAPTURE_VERDICT);
+  });
+
+  it("8. matching global formal audit still overlays native health", () => {
+    const files = {
+      [`${RUN_DIR}/capture-health.json`]: nativeHealth({
+        orderbook: {
+          sequenceValidTopOfBookRecords: 178_148,
+          validTopOfBookRecords: 94_660,
+          topOfBookRecordsEmitted: 178_197,
+          reconnectCount: 0,
+          sequenceGapCount: 0,
+        },
+        capture: { topOfBookRecordCount: 178_197 },
+      }),
+      [TOP_OF_BOOK]: "{}",
+      [BTC_SPOT]: "{}",
+    };
+    files["data/research-results/capture-health-audit.json"] = researchReadyAudit(files);
+    const io = createIo(files);
+
+    const resolved = resolveSelectedRunCaptureHealth({ io, captureRunDir: RUN_DIR });
+    expect(resolved.healthSource).toBe("native-capture-health");
+    expect(resolved.globalAuditPath).toBe("data/research-results/capture-health-audit.json");
+    expect(resolved.validBookShare).toBe(0.9729);
+    expect(resolved.captureVerdict).toBe(RESEARCH_READY_CAPTURE_VERDICT);
+    expect(resolved.researchReadyVerified).toBe(true);
+  });
+
+  it("9. stale matching audit still fails closed instead of using native sequence-valid share", () => {
+    const files = {
+      [`${RUN_DIR}/capture-health.json`]: nativeHealth({
+        orderbook: {
+          sequenceValidTopOfBookRecords: 178_148,
+          validTopOfBookRecords: 94_660,
+          economicallyValidTopOfBookRecords: 94_660,
+          topOfBookRecordsEmitted: 178_197,
+          reconnectCount: 0,
+          sequenceGapCount: 0,
+        },
+        capture: { topOfBookRecordCount: 178_197 },
+      }),
+      [TOP_OF_BOOK]: "{}",
+      [BTC_SPOT]: "{}",
+    };
+    files[`${RUN_DIR}/capture-health-audit.json`] = researchReadyAudit(files);
+    files[TOP_OF_BOOK] = '{"changed":true}';
+    const io = createIo(files);
+
+    expect(() => resolveSelectedRunCaptureHealth({ io, captureRunDir: RUN_DIR })).toThrow(
+      /stale: top-of-book size changed/,
+    );
+  });
+
+  it("9b. mismatching audit does not supply validBookShare; native sequence-valid is used", () => {
+    const files = {
+      [`${RUN_DIR}/capture-health.json`]: nativeHealth({
+        orderbook: {
+          sequenceValidTopOfBookRecords: 178_148,
+          validTopOfBookRecords: 94_660,
+          economicallyValidTopOfBookRecords: 94_660,
+          topOfBookRecordsEmitted: 178_197,
+          reconnectCount: 0,
+          sequenceGapCount: 0,
+        },
+        capture: { topOfBookRecordCount: 178_197 },
+      }),
+      [TOP_OF_BOOK]: "{}",
+      [BTC_SPOT]: "{}",
+    };
+    files[`${RUN_DIR}/capture-health-audit.json`] = researchReadyAudit(files, {
+      selectedRunId: "other-run",
+      sourceRunIds: ["other-run"],
+    });
+    const io = createIo(files);
+
+    const resolved = resolveSelectedRunCaptureHealth({ io, captureRunDir: RUN_DIR });
+    expect(resolved.healthSource).toBe("native-capture-health");
+    expect(resolved.validBookShare).toBe(0.9997);
+    expect(resolved.captureVerdict).toBeNull();
+    expect(
+      resolved.warnings.some((warning) => warning.includes("does not match selected run")),
+    ).toBe(true);
+  });
+
+  it("10. native fallback leaves btcJoinCoverageShare null when no audit supplies it", () => {
+    const io = createIo({
+      [`${RUN_DIR}/capture-health.json`]: nativeHealth({
+        orderbook: {
+          sequenceValidTopOfBookRecords: 178_148,
+          validTopOfBookRecords: 94_660,
+          topOfBookRecordsEmitted: 178_197,
+          reconnectCount: 0,
+          sequenceGapCount: 0,
+        },
+        capture: { topOfBookRecordCount: 178_197 },
+      }),
+      [TOP_OF_BOOK]: "{}",
+      [BTC_SPOT]: "{}",
+    });
+
+    const resolved = resolveSelectedRunCaptureHealth({ io, captureRunDir: RUN_DIR });
+    expect(resolved.healthSource).toBe("native-capture-health");
+    expect(resolved.validBookShare).toBe(0.9997);
+    expect(resolved.btcJoinCoverageShare).toBeNull();
+  });
+
+  it("11. researchReadyVerified remains false for native-health-only runs", () => {
+    const io = createIo({
+      [`${RUN_DIR}/capture-health.json`]: nativeHealth({
+        orderbook: {
+          sequenceValidTopOfBookRecords: 178_148,
+          validTopOfBookRecords: 94_660,
+          topOfBookRecordsEmitted: 178_197,
+          reconnectCount: 0,
+          sequenceGapCount: 0,
+        },
+        capture: { topOfBookRecordCount: 178_197 },
+      }),
+      [TOP_OF_BOOK]: "{}",
+      [BTC_SPOT]: "{}",
+    });
+
+    const resolved = resolveSelectedRunCaptureHealth({ io, captureRunDir: RUN_DIR });
+    expect(resolved.captureVerdict).toBeNull();
+    expect(resolved.researchReadyVerified).toBe(false);
+    expect(resolved.nativeCaptureVerdict).toBeNull();
+  });
+
+  it("12. does not change frozen minimumValidBookShare or v2 volatility threshold", () => {
+    const v1 = JSON.parse(
+      readFileSync(
+        "config/research/hypotheses/high-volatility-late-market-calibration-fade-v1.json",
+        "utf8",
+      ),
+    ) as {
+      eligibilityRules: { volatility: { minInclusive: number } };
+      minimumEvidenceRequirements: { minimumValidBookShare: number; minimumBtcJoinCoverageShare: number };
+    };
+    const v2 = JSON.parse(
+      readFileSync(
+        "config/research/hypotheses/high-volatility-late-market-calibration-fade-v2.json",
+        "utf8",
+      ),
+    ) as {
+      eligibilityRules: { volatility: { minInclusive: number } };
+      minimumEvidenceRequirements: { minimumValidBookShare: number; minimumBtcJoinCoverageShare: number };
+    };
+    expect(v1.minimumEvidenceRequirements.minimumValidBookShare).toBe(0.9);
+    expect(v2.minimumEvidenceRequirements.minimumValidBookShare).toBe(0.9);
+    expect(v1.minimumEvidenceRequirements.minimumBtcJoinCoverageShare).toBe(0.9);
+    expect(v2.minimumEvidenceRequirements.minimumBtcJoinCoverageShare).toBe(0.9);
+    expect(v1.eligibilityRules.volatility.minInclusive).toBe(0.6);
+    expect(v2.eligibilityRules.volatility.minInclusive).toBe(0.6);
   });
 });
 
