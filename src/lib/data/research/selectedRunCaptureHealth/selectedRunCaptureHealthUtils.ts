@@ -406,6 +406,18 @@ export function isVerifiedResearchReady(input: {
   );
 }
 
+/**
+ * Native fallback for formal capture-health-audit `summary.bookState.validBookShare`.
+ *
+ * Formal audit and the v2 evaluator define that share as persisted
+ * `bookState === "valid"` / TOB rows, counted natively as
+ * `sequenceValidTopOfBookRecords`.
+ *
+ * `validTopOfBookRecords` is an economic-validity legacy alias (incremented
+ * alongside `economicallyValidTopOfBookRecords`) and MUST NOT be used for
+ * formal validBookShare. A missing or non-finite sequence-valid numerator
+ * fails closed (null); never fall back to the economic counter.
+ */
 export function computeValidBookShareFromNativeHealth(
   health: Record<string, unknown> | null,
 ): number | null {
@@ -420,7 +432,7 @@ export function computeValidBookShareFromNativeHealth(
     health.capture && typeof health.capture === "object"
       ? (health.capture as Record<string, unknown>)
       : null;
-  const validCount = readNumber(orderbook?.validTopOfBookRecords);
+  const validCount = readNumber(orderbook?.sequenceValidTopOfBookRecords);
   const totalCount =
     readNumber(capture?.topOfBookRecordCount)
     ?? readNumber(orderbook?.topOfBookRecordsEmitted);

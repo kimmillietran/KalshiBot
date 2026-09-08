@@ -5,6 +5,7 @@ export {
 export {
   artifactMatchesRun,
   captureHealthAuditMatchesSelectedRun,
+  computeValidBookShareFromNativeHealth,
   isVerifiedResearchReady,
   joinCapturePath,
   normalizeCapturePath,
