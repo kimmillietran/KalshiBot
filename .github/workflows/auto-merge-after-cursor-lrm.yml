@@ -1,0 +1,134 @@
+name: Auto-merge after Cursor LRM
+
+# Fail-closed auto-merge for PRs whose latest exact-current-head Cursor LRM
+# review says APPROVED FOR MERGE, whose exact-head Quality Gates succeeded,
+# and which have zero unresolved review threads plus normal mergeability.
+#
+# Bootstrap rule:
+#   The first pull request that introduces this workflow MUST be reviewed
+#   independently and merged manually. GitHub runs this workflow from the
+#   default-branch revision; until that revision exists on main, the jobs
+#   no-op. PRs that change this workflow or its trusted helper also stay
+#   blocked for manual merge so a PR cannot rewrite and then exercise its
+#   own merge authority.
+#
+# Security:
+#   Never check out the candidate PR branch. Never npm install from PR HEAD.
+#   Never execute PR-controlled scripts. Operate on GitHub metadata/API only,
+#   using the helper checked out from the trusted default branch.
+#
+# Cursor authorization:
+#   trusted actor = cursor[bot]
+#   review.commit_id == current PR head SHA
+#   governed "## Verdict" == APPROVED FOR MERGE
+#   Latest exact-head Cursor review wins. COMMENTED is acceptable because
+#   repository rules require zero formal approving reviews; do not require
+#   review.state == APPROVED. Do not dismiss CHANGES_REQUESTED reviews.
+#
+# Base-drift policy:
+#   GitHub review objects bind commit_id (head) but not the reviewed base
+#   SHA. pull_request.base.sha moves with main, so it is not a reviewed-base
+#   snapshot. At merge time the PR must not be behind main (compare
+#   main...head behind_by == 0). When a pull_request_review event carries a
+#   base SHA, it must still equal current main. If main has advanced, leave
+#   the PR open for refresh and a new exact-head Cursor review. Never
+#   auto-rebase or update the branch.
+
+on:
+  pull_request_review:
+    types:
+      - submitted
+  workflow_run:
+    workflows:
+      - Quality Gates
+    types:
+      - completed
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: Pull request number to re-evaluate after thread resolution or a transient API/mergeability delay
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: read
+  checks: read
+
+jobs:
+  resolve:
+    name: Resolve candidate PRs
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      prs: ${{ steps.resolve.outputs.prs || steps.bootstrap.outputs.prs || '[]' }}
+    steps:
+      - name: Check out default branch only
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+
+      - name: Require trusted helper on the default branch
+        id: bootstrap
+        run: |
+          if [[ -f scripts/github/runAutoMergeGate.ts ]]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "AUTO-MERGE NO-OP: bootstrap — helper is not on the default branch yet"
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "prs=[]" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up Node.js
+        if: steps.bootstrap.outputs.present == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies from default branch
+        if: steps.bootstrap.outputs.present == 'true'
+        run: npm ci
+
+      - name: Resolve candidate pull requests
+        id: resolve
+        if: steps.bootstrap.outputs.present == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx tsx scripts/github/runAutoMergeGate.ts --resolve-only
+
+  evaluate:
+    name: Evaluate PR ${{ matrix.pr_number }}
+    needs: resolve
+    if: needs.resolve.outputs.prs != '[]' && needs.resolve.outputs.prs != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        pr_number: ${{ fromJson(needs.resolve.outputs.prs) }}
+    concurrency:
+      group: auto-merge-pr-${{ matrix.pr_number }}
+      cancel-in-progress: false
+    steps:
+      - name: Check out default branch only
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies from default branch
+        run: npm ci
+
+      - name: Evaluate exact-head auto-merge gate
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx tsx scripts/github/runAutoMergeGate.ts --pr "${{ matrix.pr_number }}"
