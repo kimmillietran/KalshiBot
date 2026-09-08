@@ -195,6 +195,8 @@ export async function runCaptureWithProgressCommand(
     const captureRoot =
       readFlagValue(argv, "--capture-root") ?? DEFAULT_CAPTURE_ROOT;
     const logRoot = readFlagValue(argv, "--log-root") ?? DEFAULT_LOG_ROOT;
+    // Wrapper-only cadence. Do not forward this flag to the child: the child
+    // receives --no-progress so native direct-CLI progress does not double-print.
     const progressIntervalMs =
       readNumberFlag(argv, "--progress-interval-ms") ?? PROGRESS_INTERVAL_MS;
     const restartAuthDir = readFlagValue(
@@ -251,6 +253,9 @@ export async function runCaptureWithProgressCommand(
 
     const profile: ValidatedCanonicalProfile = loadCanonicalCaptureProfile();
     const captureArgv = buildCanonicalCaptureArgv(profile, durationMinutes);
+    // Launcher presentation plumbing only. Not part of the canonical profile,
+    // research config, or frozen workload identity.
+    const childCaptureArgv = [...captureArgv, "--no-progress"];
 
     if (dryRunPlan) {
       deps.io.writeStdout(`DRY-RUN-PLAN: capture-with-progress (${modeLabel})\n`);
@@ -285,7 +290,7 @@ export async function runCaptureWithProgressCommand(
         );
       }
       deps.io.writeStdout(
-        `  planned child: npx tsx scripts/live/runForwardQuoteCapture.ts ${captureArgv.join(" ")}\n`,
+        `  planned child: npx tsx scripts/live/runForwardQuoteCapture.ts ${childCaptureArgv.join(" ")}\n`,
       );
       deps.io.writeStdout(
         "  note: dry-run-plan does not start capture, create locks, or pass production gates.\n",
@@ -454,7 +459,7 @@ export async function runCaptureWithProgressCommand(
         command: resolveNpxCommand(),
         args: buildTsxArgs(
           "scripts/live/runForwardQuoteCapture.ts",
-          captureArgv,
+          childCaptureArgv,
         ),
         logPath,
         env: process.env,

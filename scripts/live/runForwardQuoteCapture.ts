@@ -12,13 +12,38 @@ import { runForwardQuoteCapture } from "@/lib/data/live/forwardQuoteCapture";
 import { createNodeForwardCaptureAppendStream } from "@/lib/data/live/forwardQuoteCapture/nodeForwardCaptureAppendStream";
 import { stableStringify } from "@/lib/trading/config/hashConfig";
 
+import { startCaptureProgressMonitor } from "../operator/shared/progress";
 import {
   formatStdoutOutput,
   mapCommandError,
   parseForwardQuoteCaptureConfigFromArgv,
+  parseForwardQuoteCaptureProgressOptionsFromArgv,
   parseHtmlOutputPathFromArgv,
 } from "./runForwardQuoteCaptureTypes";
-import type { ForwardQuoteCaptureCommandIo } from "./runForwardQuoteCaptureTypes";
+import type {
+  ForwardQuoteCaptureCommandIo,
+  ForwardQuoteCaptureProgressMonitorHandle,
+  ForwardQuoteCaptureProgressMonitorOptions,
+} from "./runForwardQuoteCaptureTypes";
+
+function startDirectCaptureProgressMonitor(
+  options: ForwardQuoteCaptureProgressMonitorOptions,
+): ForwardQuoteCaptureProgressMonitorHandle {
+  const startedAtMs = Date.parse(options.startedAt);
+  if (!Number.isFinite(startedAtMs)) {
+    return { stop: () => undefined };
+  }
+  return startCaptureProgressMonitor({
+    runId: options.runId,
+    runDir: options.runDir,
+    durationMinutes: options.durationMinutes,
+    startedAtMs,
+    intervalMs: options.intervalMs,
+    includeBtcSpot: options.includeBtcSpot,
+    includeBtcCandles1m: options.includeBtcCandles1m,
+    writeLine: options.writeLine,
+  });
+}
 
 let shutdownRequested = false;
 
@@ -34,9 +59,26 @@ export async function runForwardQuoteCaptureCommand(
   argv: readonly string[],
   io: ForwardQuoteCaptureCommandIo,
 ): Promise<number> {
+  let progressHandle: ForwardQuoteCaptureProgressMonitorHandle | null = null;
+  const stopProgress = (): void => {
+    if (progressHandle === null) {
+      return;
+    }
+    const handle = progressHandle;
+    progressHandle = null;
+    try {
+      handle.stop();
+    } catch {
+      // Progress failure must never terminate capture.
+    }
+  };
+
   try {
     const config = parseForwardQuoteCaptureConfigFromArgv(argv);
+    const progressOptions = parseForwardQuoteCaptureProgressOptionsFromArgv(argv);
     const htmlOutputPath = parseHtmlOutputPathFromArgv(argv);
+    const startProgressMonitor =
+      io.startProgressMonitor ?? startDirectCaptureProgressMonitor;
 
     const result = await runForwardQuoteCapture({
       config,
@@ -56,6 +98,31 @@ export async function runForwardQuoteCaptureCommand(
             }),
           ),
         );
+
+        if (!progressOptions.enabled) {
+          return;
+        }
+        try {
+          // Attach only to the exact handshake identity. Never scan latest/mtime/lock.
+          progressHandle = startProgressMonitor({
+            runId: identity.runId,
+            runDir: identity.runDir,
+            startedAt: identity.startedAt,
+            durationMinutes: config.durationMinutes,
+            intervalMs: progressOptions.intervalMs,
+            includeBtcSpot: config.captureBtcSpot === true,
+            includeBtcCandles1m: config.captureBtcCandles1m === true,
+            writeLine: (line) => {
+              try {
+                io.writeStderr(line.endsWith("\n") ? line : `${line}\n`);
+              } catch {
+                // Progress failure must never terminate capture.
+              }
+            },
+          });
+        } catch {
+          // Progress failure must never terminate capture.
+        }
       },
       io: {
         readFile: io.readFile,
@@ -122,6 +189,8 @@ export async function runForwardQuoteCaptureCommand(
   } catch (error) {
     io.writeStderr(`${mapCommandError(error)}\n`);
     return 1;
+  } finally {
+    stopProgress();
   }
 }
 
@@ -138,6 +207,7 @@ function main(): void {
     writeStderr: (text) => {
       process.stderr.write(text);
     },
+    startProgressMonitor: startDirectCaptureProgressMonitor,
     writeFile: (path, data) => {
       writeFileSync(path, data, "utf8");
     },

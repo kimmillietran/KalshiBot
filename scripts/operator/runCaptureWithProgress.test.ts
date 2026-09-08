@@ -21,6 +21,10 @@ import {
   startCaptureProgressMonitor,
   type LineCounterState,
 } from "./shared/progress";
+import {
+  buildCanonicalCaptureArgv,
+  loadCanonicalCaptureProfile,
+} from "./shared/canonicalProfile";
 import { runCaptureWithProgressCommand } from "./runCaptureWithProgress";
 import type { CommandIo, OperatorCommandRunner, RunTsxResult } from "./shared/commandRunner";
 import type { SpawnTeeOptions, SpawnTeeResult } from "./shared/childProcess";
@@ -751,6 +755,150 @@ describe("runCaptureWithProgress child lifecycle", () => {
     );
     expect(exitCode).toBe(1);
     expect(stderr.join("")).toMatch(/preflight failed|lockPresent/i);
+  });
+});
+
+describe("wrapper disables child native progress without changing the canonical profile", () => {
+  it("keeps canonical 6h/8h argv free of presentation and candle flags", () => {
+    const profile = loadCanonicalCaptureProfile();
+    const sixHour = buildCanonicalCaptureArgv(profile, 360);
+    const eightHour = buildCanonicalCaptureArgv(profile, 480);
+    for (const argv of [sixHour, eightHour]) {
+      expect(argv).toContain("--series");
+      expect(argv).toContain("KXBTC15M");
+      expect(argv).toContain("--capture-btc-spot");
+      expect(argv).not.toContain("--no-progress");
+      expect(argv).not.toContain("--progress-interval-ms");
+      expect(argv).not.toContain("--capture-btc-candles-1m");
+    }
+    expect(sixHour).toContain("360");
+    expect(eightHour).toContain("480");
+    expect(profile).not.toHaveProperty("captureBtcCandles1m");
+  });
+
+  it("appends --no-progress to the child only and does not forward the wrapper interval", async () => {
+    const { io, stdout } = createIo();
+    const captureRoot = mkdtempSync(join(tmpdir(), "kalshi-child-progress-"));
+    try {
+      const runId = "wrapper-run";
+      const exactRunDir = join(captureRoot, runId);
+      mkdirSync(exactRunDir, { recursive: true });
+      let childArgs: readonly string[] = [];
+
+      const exitCode = await runCaptureWithProgressCommand(
+        ["--preset", "6h", "--progress-interval-ms", "600000"],
+        {
+          io,
+          requireCredentials: false,
+          now: () => new Date(STARTED),
+          runner: mockRunner(() => passingPreflight(captureRoot)),
+          spawnCapture: async (options) => {
+            childArgs = options.args;
+            const startup = startupJson(runId, captureRoot, exactRunDir);
+            options.onStdoutChunk?.(startup);
+            options.onStdoutChunk?.(finalJson(runId, captureRoot));
+            return {
+              exitCode: 0,
+              signal: null,
+              stdout: startup + finalJson(runId, captureRoot),
+              stderr: "",
+            };
+          },
+          exists: existsSync,
+          mkdirp: () => undefined,
+        },
+      );
+
+      expect(exitCode).toBe(0);
+      expect(childArgs).toContain("scripts/live/runForwardQuoteCapture.ts");
+      expect(childArgs).toContain("--no-progress");
+      expect(childArgs).toContain("--series");
+      expect(childArgs).toContain("KXBTC15M");
+      expect(childArgs).toContain("--duration-minutes");
+      expect(childArgs).toContain("360");
+      expect(childArgs).toContain("--capture-btc-spot");
+      expect(childArgs).not.toContain("--progress-interval-ms");
+      expect(childArgs).not.toContain("600000");
+      expect(childArgs).not.toContain("--capture-btc-candles-1m");
+      expect(childArgs.filter((arg) => arg === "--no-progress")).toHaveLength(1);
+
+      const canonical = buildCanonicalCaptureArgv(loadCanonicalCaptureProfile(), 360);
+      const scriptIndex = childArgs.indexOf("scripts/live/runForwardQuoteCapture.ts");
+      expect(childArgs.slice(scriptIndex + 1)).toEqual([...canonical, "--no-progress"]);
+
+      expect(stdout.join("")).toContain("Capture progress attached:");
+      expect(stdout.join("")).toContain(`runId:  ${runId}`);
+      expect(stdout.join("")).toContain("NONCANONICAL-DURATION");
+    } finally {
+      await removeTempDir(captureRoot);
+    }
+  });
+
+  it("eight-hour spawn keeps gates and only adds --no-progress to the child", async () => {
+    const { io } = createIo();
+    const captureRoot = mkdtempSync(join(tmpdir(), "kalshi-8h-child-"));
+    try {
+      const runId = "eight-hour-run";
+      const exactRunDir = join(captureRoot, runId);
+      mkdirSync(exactRunDir, { recursive: true });
+      const scripts: string[] = [];
+      let childArgs: readonly string[] = [];
+
+      const exitCode = await runCaptureWithProgressCommand(
+        [
+          "--preset",
+          "8h",
+          "--progress-interval-ms",
+          "120000",
+          "--authorized-by-restart-smoke-run-dir",
+          "/tmp/restart",
+          "--authorized-by-reconnect-smoke-run-dir",
+          "/tmp/reconnect",
+        ],
+        {
+          io,
+          requireCredentials: false,
+          runner: mockRunner((script) => {
+            scripts.push(script);
+            if (script.includes("evaluateCaptureRestartGate")) {
+              return passingPreflight(captureRoot);
+            }
+            return { exitCode: 0, stdout: "", stderr: "" };
+          }),
+          spawnCapture: async (options) => {
+            childArgs = options.args;
+            return {
+              exitCode: 0,
+              signal: null,
+              stdout: finalJson(runId, captureRoot),
+              stderr: "",
+            };
+          },
+          exists: () => true,
+          mkdirp: () => undefined,
+        },
+      );
+
+      expect(exitCode).toBe(0);
+      expect(scripts.some((script) => script.includes("evaluateCaptureRestartGate"))).toBe(true);
+      expect(scripts.some((script) => script.includes("verifyReconnectSmokeAuthorization"))).toBe(true);
+      expect(childArgs).toContain("480");
+      expect(childArgs).toContain("--no-progress");
+      expect(childArgs).not.toContain("--progress-interval-ms");
+      expect(childArgs).not.toContain("120000");
+      expect(childArgs).not.toContain("--capture-btc-candles-1m");
+    } finally {
+      await removeTempDir(captureRoot);
+    }
+  });
+
+  it("documents that wrapper --progress-interval-ms is not a child flag", () => {
+    const source = readOperatorSource("runCaptureWithProgress.ts");
+    expect(source).toContain('const childCaptureArgv = [...captureArgv, "--no-progress"]');
+    expect(source).toContain("Do not forward this flag to the child");
+    expect(source).toContain("buildCanonicalCaptureArgv(profile, durationMinutes)");
+    expect(source).not.toMatch(/captureArgv\.push\("--capture-btc-candles-1m"\)/);
+    expect(source).not.toMatch(/childCaptureArgv.*progress-interval-ms/);
   });
 });
 
