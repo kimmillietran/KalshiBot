@@ -414,13 +414,48 @@ describe("captureHealthAudit", () => {
       captureRunDir: runDir,
       io: createCaptureHealthMemoryIo({ [topPath]: lines.join("\n") }, [runDir]),
     });
+    const records = lines.map((line, index) => {
+      const parsed = JSON.parse(line) as {
+        runId: string;
+        marketTicker: string;
+        eventTicker: string;
+        seriesTicker: string;
+        receivedAtLocal: string;
+        exchangeTimestampMs: number;
+        sequence: number;
+        bookState: string;
+        yesBestBidCents: number;
+        yesBestAskCents: number;
+        yesSpreadCents: number;
+        noSpreadCents: number;
+      };
+      return {
+        lineNumber: index + 1,
+        runId: parsed.runId,
+        marketTicker: parsed.marketTicker,
+        eventTicker: parsed.eventTicker,
+        seriesTicker: parsed.seriesTicker,
+        receivedAtLocal: parsed.receivedAtLocal,
+        receivedAtMs: Date.parse(parsed.receivedAtLocal),
+        exchangeTimestampMs: parsed.exchangeTimestampMs,
+        sequence: parsed.sequence,
+        bookState: parsed.bookState,
+        yesBestBidCents: parsed.yesBestBidCents,
+        yesBestAskCents: parsed.yesBestAskCents,
+        yesSpreadCents: parsed.yesSpreadCents,
+        noSpreadCents: parsed.noSpreadCents,
+        hourBucket: parsed.receivedAtLocal.slice(0, 13),
+      };
+    });
 
     const metrics = computeCaptureHealthMetrics({
       config: createCaptureHealthAuditConfig(),
-      topOfBookRecords: loaded.topOfBookRecords,
+      topOfBookRecords: records,
       btcSpotRecords: [],
       captureHealth: null,
     });
+
+    expect(loaded.topOfBookCount).toBe(3);
 
     expect(metrics.segments.marketTicker["MKT-A"]?.recordCount).toBe(2);
     expect(metrics.segments.bookState["gap-detected"]?.recordCount).toBe(1);

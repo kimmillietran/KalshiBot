@@ -9,4 +9,4 @@ export {
 } from "./createJsonlIo";
 export type { JsonlIo } from "./createJsonlIo";
 export { iterateJsonlLines, readJsonlStream } from "./readJsonlStream";
-export type { JsonlStreamOptions, JsonlStreamSummary } from "./readJsonlStream";
+export type { JsonlLineAction, JsonlStreamOptions, JsonlStreamSummary } from "./readJsonlStream";

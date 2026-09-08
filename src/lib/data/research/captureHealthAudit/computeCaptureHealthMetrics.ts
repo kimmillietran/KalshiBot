@@ -18,6 +18,12 @@ import {
   resolveKalshiTimestampMs,
   roundShare,
 } from "./captureHealthAuditUtils";
+import {
+  isCrossedOrInverted,
+  isMissingBidOrAsk,
+  isZeroSpread,
+  segmentKey,
+} from "./parseCaptureHealthRecords";
 
 export type ComputedCaptureMetrics = {
   runDurationSeconds: number | null;
@@ -31,46 +37,6 @@ export type ComputedCaptureMetrics = {
   btcJoin: CaptureBtcJoinMetrics;
   segments: CaptureSegmentBreakdown;
 };
-
-function isZeroSpread(record: ParsedTopOfBookRecord): boolean {
-  if (record.yesSpreadCents === 0) {
-    return true;
-  }
-
-  if (record.noSpreadCents === 0) {
-    return true;
-  }
-
-  if (
-    record.yesBestBidCents !== null
-    && record.yesBestAskCents !== null
-    && record.yesBestBidCents === record.yesBestAskCents
-  ) {
-    return true;
-  }
-
-  return false;
-}
-
-function isCrossedOrInverted(record: ParsedTopOfBookRecord): boolean {
-  if (
-    record.yesBestBidCents !== null
-    && record.yesBestAskCents !== null
-    && record.yesBestBidCents >= record.yesBestAskCents
-  ) {
-    return true;
-  }
-
-  return false;
-}
-
-function isMissingBidOrAsk(record: ParsedTopOfBookRecord): boolean {
-  return record.yesBestBidCents === null || record.yesBestAskCents === null;
-}
-
-function segmentKey(value: string | null, fallback = "unknown"): string {
-  return value?.trim() ? value : fallback;
-}
 
 function buildSegmentMetrics(records: readonly ParsedTopOfBookRecord[]): CaptureSegmentMetrics {
   if (records.length === 0) {
@@ -145,7 +111,11 @@ function resolveRunDurationSeconds(input: {
   return Math.max(0, Math.round((max - min) / 1000));
 }
 
-/** Computes continuity, spread, BTC join, and segmented capture metrics. */
+/**
+ * In-memory reference implementation of capture-health metrics.
+ * Production audits must use CaptureHealthAccumulator (streaming).
+ * Tests compare this reference to the streaming path for exact equality.
+ */
 export function computeCaptureHealthMetrics(input: {
   config: CaptureHealthAuditConfig;
   topOfBookRecords: readonly ParsedTopOfBookRecord[];

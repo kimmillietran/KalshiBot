@@ -50,7 +50,7 @@ describe("readJsonlStream", () => {
   });
 
   it("respects maxRecords", async () => {
-    const summary = iterateJsonlLines(
+    const summary = await iterateJsonlLines(
       ['{"id":1}', '{"id":2}', '{"id":3}'],
       {
         maxRecords: 2,

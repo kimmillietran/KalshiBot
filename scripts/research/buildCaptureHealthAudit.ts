@@ -85,6 +85,19 @@ export async function runCaptureHealthAuditCommand(
       captureRunDir,
       config,
       io,
+      onTopOfBookProgress: (progress) => {
+        if (progress.elapsedMs < 30_000 && progress.recordsProcessed < 250_000) {
+          return;
+        }
+        const elapsedSeconds = (progress.elapsedMs / 1000).toFixed(1);
+        const fileProgress =
+          progress.fileSizeBytes !== null
+            ? ` fileSizeBytes=${progress.fileSizeBytes}`
+            : "";
+        io.writeStderr(
+          `capture-health-audit: processed ${progress.recordsProcessed} top-of-book records in ${elapsedSeconds}s${fileProgress}\n`,
+        );
+      },
     });
 
     const serializedReport = serializeCaptureHealthAuditReport({

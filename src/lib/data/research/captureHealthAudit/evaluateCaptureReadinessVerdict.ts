@@ -42,7 +42,7 @@ export function evaluateCaptureReadinessVerdict(input: {
   const thresholds = config.thresholds;
   const blockingReasons: string[] = [];
 
-  const topOfBookCount = loaded.topOfBookRecords.length;
+  const topOfBookCount = loaded.topOfBookCount;
   const rawCount = loaded.rawMessageCount;
 
   if (topOfBookCount === 0 && rawCount === 0) {
