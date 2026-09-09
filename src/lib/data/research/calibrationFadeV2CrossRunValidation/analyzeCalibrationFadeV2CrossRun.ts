@@ -2,7 +2,7 @@ import { fnv1a32, stableStringify } from "@/lib/trading/config/hashConfig";
 
 import type { FrozenHypothesisSpec } from "../calibrationFadeForwardValidation/calibrationFadeForwardValidationTypes";
 import { classifyCalibrationFadeInterpretation } from "../calibrationFadeForwardValidation/classifyCalibrationFadeInterpretation";
-import { aggregateCrossRunMetrics } from "../calibrationFadeCrossRunValidation/aggregateCrossRunMetrics";
+import { aggregateV2CrossRunMetrics } from "./aggregateV2CrossRunMetrics";
 import { deduplicateCandidateMarkets } from "../calibrationFadeCrossRunValidation/deduplicateCandidateMarkets";
 import type { CrossRunRunSummary } from "../calibrationFadeCrossRunValidation/calibrationFadeCrossRunValidationTypes";
 import {
@@ -50,6 +50,10 @@ export type CalibrationFadeV2CrossRunValidationReport = {
   rawCandidateAppearanceCount: number;
   uniqueCandidateMarketCount: number;
   evaluatedIndependentCandidateMarketCount: number;
+  executableEntryAvailableCount: number;
+  evaluatedExecutableCandidateCount: number;
+  grossReturnCents: number | null;
+  feeAdjustedReturnCents: number | null;
   minimumIndependentCandidateMarkets: number;
   settlementCoverageShare: number | null;
   minimumSettlementCoverageShare: number;
@@ -249,7 +253,7 @@ export function analyzeCalibrationFadeV2CrossRun(input: {
     };
   });
 
-  const metrics = aggregateCrossRunMetrics({
+  const metrics = aggregateV2CrossRunMetrics({
     uniqueMarkets: deduped.uniqueMarkets,
     perRunSummaries: perRunSummariesForMetrics,
   });
@@ -316,6 +320,10 @@ export function analyzeCalibrationFadeV2CrossRun(input: {
     rawCandidateAppearanceCount: deduped.rawCandidateMarketAppearanceCount,
     uniqueCandidateMarketCount: deduped.uniqueCandidateMarketCount,
     evaluatedIndependentCandidateMarketCount: metrics.calibration.candidateMarketCount,
+    executableEntryAvailableCount: metrics.executable.executableEntryAvailableCount,
+    evaluatedExecutableCandidateCount: metrics.executable.evaluatedExecutableCandidateCount,
+    grossReturnCents: metrics.executable.grossReturnCents,
+    feeAdjustedReturnCents: metrics.executable.feeAdjustedReturnCents,
     minimumIndependentCandidateMarkets:
       spec.minimumEvidenceRequirements.minimumIndependentCandidateMarkets,
     settlementCoverageShare: metrics.settlementCoverage.settlementCoverageShare,

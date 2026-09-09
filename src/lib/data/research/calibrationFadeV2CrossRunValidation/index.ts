@@ -37,3 +37,8 @@ export {
   serializeJsonl,
 } from "./serializeCalibrationFadeV2CrossRunValidation";
 export { assertV2CrossRunPublishCompatible } from "./assertV2CrossRunPublishCompatible";
+export { aggregateV2CrossRunMetrics } from "./aggregateV2CrossRunMetrics";
+export {
+  assertV2ExecutableReturnPairIntegrity,
+  isV2ExecutableReturnEvaluable,
+} from "./v2ExecutableReturnIntegrity";

@@ -226,9 +226,10 @@ function expectAnalyzeRejected(
   runB: string,
   pattern: RegExp,
   extraArgv: string[] = [],
+  dirs: readonly string[] = [],
 ): void {
   seedFrozenConfigs(files);
-  const io = createMemoryCalibrationFadeForwardValidationIo(files);
+  const io = createMemoryCalibrationFadeForwardValidationIo(files, dirs);
   expect(() =>
     analyzeCalibrationFadeV2CrossRun({
       config: parseCalibrationFadeV2CrossRunValidationArgv([
@@ -600,6 +601,202 @@ describe("calibrationFadeV2CrossRunValidation admission and aggregation", () => 
     expect(withOverlay.report.settlementCoverageShare).toBe(0.2);
     expect(withOverlay.report.interpretationClassification).toBe("settlement-coverage-incomplete");
     expect(withOverlay.marketLines.join("\n")).not.toContain(extra);
+    expect(withOverlay.report.evaluatedExecutableCandidateCount).toBe(0);
+    expect(withOverlay.report.grossReturnCents).toBeNull();
+    expect(withOverlay.report.feeAdjustedReturnCents).toBeNull();
+    const overlayMarket = JSON.parse(
+      withOverlay.marketLines.find((line) => line.includes(tickers[0]!)) ?? "{}",
+    ) as {
+      selectedCanonicalEntry?: {
+        executableAvailable?: boolean;
+        settledOutcome?: string;
+        grossReturnCents?: number | null;
+        feeAdjustedReturnCents?: number | null;
+      };
+    };
+    expect(overlayMarket.selectedCanonicalEntry?.executableAvailable).toBe(true);
+    expect(overlayMarket.selectedCanonicalEntry?.settledOutcome).toBe("no");
+    expect(overlayMarket.selectedCanonicalEntry?.grossReturnCents).toBeNull();
+    expect(overlayMarket.selectedCanonicalEntry?.feeAdjustedReturnCents).toBeNull();
+  });
+
+  it("does not manufacture zero-return executable evidence from overlay-settled null returns", () => {
+    const files: Record<string, string> = {};
+    const ticker = "KXBTC15M-26SEP081000-00";
+    const companion = "KXBTC15M-26SEP081015-15";
+    const dirs = ["data/imports", "data/imports/KXBTC15M", `data/imports/KXBTC15M/${ticker}`];
+    seedAdmittedRun(files, "run-a", [
+      market(ticker, {
+        executableAvailable: true,
+        settlementStatus: "unknown",
+        settledOutcome: "unknown",
+        grossReturnCents: null,
+        feeAdjustedReturnCents: null,
+      }),
+    ]);
+    seedAdmittedRun(files, "run-b", [market(companion)]);
+    files[`data/imports/KXBTC15M/${ticker}/import-result.json`] = importResult(ticker, "no");
+    const result = analyzePair(files, dirs, "run-a", "run-b", ["--imports-dir", "data/imports"]);
+    expect(result.report.evaluatedExecutableCandidateCount).toBe(0);
+    expect(result.report.grossReturnCents).toBeNull();
+    expect(result.report.feeAdjustedReturnCents).toBeNull();
+    expect(result.report.settlementCoverageShare).toBe(0.5);
+    expect(result.report.interpretationClassification).not.toMatch(
+      /forward-supports-executable-fade|forward-contradicts-executability/,
+    );
+  });
+
+  it("preserves valid sealed executable returns and counts them as evaluated", () => {
+    const files: Record<string, string> = {};
+    seedAdmittedRun(files, "run-a", [
+      market("KXBTC15M-26SEP081000-00", {
+        settledOutcome: "no",
+        settlementStatus: "known",
+        grossReturnCents: 57,
+        feeAdjustedReturnCents: 56,
+        calibrationGapSigned: -0.5,
+      }),
+    ]);
+    seedAdmittedRun(files, "run-b", [market("KXBTC15M-26SEP081015-15")]);
+    const result = analyzePair(files, [], "run-a", "run-b");
+    expect(result.report.evaluatedExecutableCandidateCount).toBe(1);
+    expect(result.report.grossReturnCents).toBe(57);
+    expect(result.report.feeAdjustedReturnCents).toBe(56);
+  });
+
+  it("preserves sealed returns when overlay repeats the same settled outcome", () => {
+    const files: Record<string, string> = {};
+    const ticker = "KXBTC15M-26SEP081000-00";
+    const dirs = ["data/imports", "data/imports/KXBTC15M", `data/imports/KXBTC15M/${ticker}`];
+    seedAdmittedRun(files, "run-a", [
+      market(ticker, {
+        settledOutcome: "no",
+        settlementStatus: "known",
+        grossReturnCents: 57,
+        feeAdjustedReturnCents: 56,
+        calibrationGapSigned: -0.5,
+      }),
+    ]);
+    seedAdmittedRun(files, "run-b", [market("KXBTC15M-26SEP081015-15")]);
+    files[`data/imports/KXBTC15M/${ticker}/import-result.json`] = importResult(ticker, "no");
+    const result = analyzePair(files, dirs, "run-a", "run-b", ["--imports-dir", "data/imports"]);
+    expect(result.report.evaluatedExecutableCandidateCount).toBe(1);
+    expect(result.report.grossReturnCents).toBe(57);
+    expect(result.report.feeAdjustedReturnCents).toBe(56);
+    expect(result.report.runSetHash).toBe(analyzePair({ ...files }, dirs, "run-a", "run-b").report.runSetHash);
+  });
+
+  it("fails closed when overlay contradicts a sealed settled outcome", () => {
+    const files: Record<string, string> = {};
+    const ticker = "KXBTC15M-26SEP081000-00";
+    seedAdmittedRun(files, "run-a", [
+      market(ticker, {
+        settledOutcome: "no",
+        settlementStatus: "known",
+        grossReturnCents: 57,
+        feeAdjustedReturnCents: 56,
+        calibrationGapSigned: -0.5,
+      }),
+    ]);
+    seedAdmittedRun(files, "run-b", [market("KXBTC15M-26SEP081015-15")]);
+    files[`data/imports/KXBTC15M/${ticker}/import-result.json`] = importResult(ticker, "yes");
+    expectAnalyzeRejected(
+      files,
+      "run-a",
+      "run-b",
+      /conflicts with sealed outcome/,
+      ["--imports-dir", "data/imports"],
+      ["data/imports", "data/imports/KXBTC15M", `data/imports/KXBTC15M/${ticker}`],
+    );
+  });
+
+  it("keeps settlement coverage and calibration when executable returns remain unknown", () => {
+    const files: Record<string, string> = {};
+    const tickers = [
+      "KXBTC15M-26SEP081000-00",
+      "KXBTC15M-26SEP081015-15",
+      "KXBTC15M-26SEP081030-00",
+      "KXBTC15M-26SEP081045-15",
+      "KXBTC15M-26SEP081100-00",
+    ];
+    const dirs = ["data/imports", "data/imports/KXBTC15M", ...tickers.map((ticker) => `data/imports/KXBTC15M/${ticker}`)];
+    seedAdmittedRun(files, "run-a", [market(tickers[0]!), market(tickers[1]!), market(tickers[2]!)]);
+    seedAdmittedRun(files, "run-b", [market(tickers[3]!), market(tickers[4]!)]);
+    for (const ticker of tickers) {
+      files[`data/imports/KXBTC15M/${ticker}/import-result.json`] = importResult(ticker, "no");
+    }
+    const result = analyzePair(files, dirs, "run-a", "run-b", ["--imports-dir", "data/imports"]);
+    expect(result.report.evaluatedIndependentCandidateMarketCount).toBe(5);
+    expect(result.report.settlementCoverageShare).toBe(1);
+    expect(result.report.evaluatedExecutableCandidateCount).toBe(0);
+    expect(result.report.grossReturnCents).toBeNull();
+    expect(result.report.feeAdjustedReturnCents).toBeNull();
+    expect(result.report.interpretationClassification).not.toBe("insufficient-forward-events");
+    expect(result.report.interpretationClassification).not.toBe("settlement-coverage-incomplete");
+    expect(result.report.interpretationClassification).not.toMatch(
+      /forward-supports-executable-fade|forward-contradicts-executability/,
+    );
+  });
+
+  it("does not invent executable returns for a non-executable overlay-settled market", () => {
+    const files: Record<string, string> = {};
+    const ticker = "KXBTC15M-26SEP081000-00";
+    const dirs = ["data/imports", "data/imports/KXBTC15M", `data/imports/KXBTC15M/${ticker}`];
+    seedAdmittedRun(files, "run-a", [
+      market(ticker, {
+        executableAvailable: false,
+        noAskCents: null,
+      }),
+    ]);
+    seedAdmittedRun(files, "run-b", [market("KXBTC15M-26SEP081015-15")]);
+    files[`data/imports/KXBTC15M/${ticker}/import-result.json`] = importResult(ticker, "yes");
+    const result = analyzePair(files, dirs, "run-a", "run-b", ["--imports-dir", "data/imports"]);
+    expect(result.report.settlementCoverageShare).toBe(0.5);
+    expect(result.report.evaluatedExecutableCandidateCount).toBe(0);
+    expect(result.report.grossReturnCents).toBeNull();
+    expect(result.report.feeAdjustedReturnCents).toBeNull();
+    const overlayMarket = JSON.parse(
+      result.marketLines.find((line) => line.includes(ticker)) ?? "{}",
+    ) as {
+      selectedCanonicalEntry?: {
+        executableAvailable?: boolean;
+        settledOutcome?: string;
+        grossReturnCents?: number | null;
+        feeAdjustedReturnCents?: number | null;
+      };
+    };
+    expect(overlayMarket.selectedCanonicalEntry?.executableAvailable).toBe(false);
+    expect(overlayMarket.selectedCanonicalEntry?.settledOutcome).toBe("yes");
+    expect(overlayMarket.selectedCanonicalEntry?.grossReturnCents).toBeNull();
+    expect(overlayMarket.selectedCanonicalEntry?.feeAdjustedReturnCents).toBeNull();
+  });
+
+  it("fails closed on partial sealed executable returns", () => {
+    const grossOnly: Record<string, string> = {};
+    seedAdmittedRun(grossOnly, "run-a", [
+      market("KXBTC15M-26SEP081000-00", {
+        settledOutcome: "no",
+        settlementStatus: "known",
+        grossReturnCents: 57,
+        feeAdjustedReturnCents: null,
+        calibrationGapSigned: -0.5,
+      }),
+    ]);
+    seedAdmittedRun(grossOnly, "run-b", [market("KXBTC15M-26SEP081015-15")]);
+    expectAnalyzeRejected(grossOnly, "run-a", "run-b", /partial executable returns/);
+
+    const feeOnly: Record<string, string> = {};
+    seedAdmittedRun(feeOnly, "run-a", [
+      market("KXBTC15M-26SEP081000-00", {
+        settledOutcome: "no",
+        settlementStatus: "known",
+        grossReturnCents: null,
+        feeAdjustedReturnCents: 56,
+        calibrationGapSigned: -0.5,
+      }),
+    ]);
+    seedAdmittedRun(feeOnly, "run-b", [market("KXBTC15M-26SEP081015-15")]);
+    expectAnalyzeRejected(feeOnly, "run-a", "run-b", /partial executable returns/);
   });
 
   it("rejects a diagnostic artifact even when settlements exist", () => {
