@@ -34,6 +34,29 @@ export class GithubApiError extends Error {
   }
 }
 
+/**
+ * GitHub Actions workflow REST routes accept a numeric workflow id or the workflow
+ * *filename* (e.g. `quality-gates.yml`), not the full repository-relative path.
+ * Trust validation still requires the returned `path` to equal
+ * `QUALITY_GATES_WORKFLOW_PATH` exactly.
+ */
+export function qualityGatesWorkflowRestIdentifier(
+  trustedPath: string = QUALITY_GATES_WORKFLOW_PATH,
+): string {
+  const normalized = trustedPath.replace(/\\/g, "/");
+  const segments = normalized.split("/").filter((segment) => segment.length > 0);
+  const filename = segments[segments.length - 1];
+  if (
+    !filename
+    || filename.includes("..")
+    || filename.includes("/")
+    || !filename.endsWith(".yml")
+  ) {
+    throw new GithubApiError("unable to derive trusted Quality Gates workflow REST identifier");
+  }
+  return filename;
+}
+
 function nextLink(linkHeader: string | null): string | null {
   if (!linkHeader) {
     return null;
@@ -266,9 +289,8 @@ export function createGithubApi(config: GithubApiConfig) {
   }
 
   async function loadTrustedQualityGatesWorkflow(): Promise<QualityGatesWorkflowIdentity> {
-    const response = await githubFetch(
-      `${repoPath}/actions/workflows/${QUALITY_GATES_WORKFLOW_PATH}`,
-    );
+    const workflowRestId = qualityGatesWorkflowRestIdentifier();
+    const response = await githubFetch(`${repoPath}/actions/workflows/${workflowRestId}`);
     if (response.status === 404) {
       throw new GithubApiError("trusted Quality Gates workflow is unavailable or deleted", 404);
     }

@@ -9,8 +9,27 @@ import {
   mapPullRequestFile,
   mapQualityGatesWorkflowIdentity,
   mapReview,
+  qualityGatesWorkflowRestIdentifier,
 } from "./githubApi";
 import { prTouchesTrustedAutoMergePaths } from "./autoMergeGate";
+
+describe("qualityGatesWorkflowRestIdentifier", () => {
+  it("derives the REST filename from the trusted full workflow path", () => {
+    expect(qualityGatesWorkflowRestIdentifier()).toBe("quality-gates.yml");
+    expect(qualityGatesWorkflowRestIdentifier(QUALITY_GATES_WORKFLOW_PATH)).toBe(
+      "quality-gates.yml",
+    );
+  });
+
+  it("fails closed on unusable trusted-path shapes", () => {
+    expect(() => qualityGatesWorkflowRestIdentifier(".github/workflows/")).toThrow(
+      /REST identifier/,
+    );
+    expect(() => qualityGatesWorkflowRestIdentifier("quality-gates.json")).toThrow(
+      /REST identifier/,
+    );
+  });
+});
 
 describe("githubApi mapping", () => {
   it("maps mergeable true to MERGEABLE", () => {
@@ -195,7 +214,7 @@ describe("githubApi mapping", () => {
     const fetchImpl: typeof fetch = async (input) => {
       const url = String(input);
       requested.push(url);
-      if (url.includes("/actions/workflows/.github/workflows/quality-gates.yml")) {
+      if (url.includes("/actions/workflows/quality-gates.yml")) {
         return new Response(
           JSON.stringify({
             id: 100,
@@ -241,9 +260,99 @@ describe("githubApi mapping", () => {
       fetchImpl,
     });
     const runs = await api.fetchQualityGatesRuns("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb");
+    expect(
+      requested.some((url) => url.includes("/actions/workflows/quality-gates.yml")),
+    ).toBe(true);
+    expect(
+      requested.some((url) =>
+        url.includes("/actions/workflows/.github/workflows/quality-gates.yml"),
+      ),
+    ).toBe(false);
     expect(requested.some((url) => url.includes("/actions/workflows/100/runs"))).toBe(true);
     expect(requested.some((url) => url.includes("/actions/runs?"))).toBe(false);
     expect(runs[0]?.workflowId).toBe(100);
     expect(runs[0]?.workflowPath).toBe(QUALITY_GATES_WORKFLOW_PATH);
+  });
+
+  it("resolves the production trusted Quality Gates workflow via filename REST lookup", async () => {
+    const requested: string[] = [];
+    const fetchImpl: typeof fetch = async (input) => {
+      const url = String(input);
+      requested.push(url);
+      if (url.endsWith("/actions/workflows/quality-gates.yml")) {
+        return new Response(
+          JSON.stringify({
+            id: 317116257,
+            path: ".github/workflows/quality-gates.yml",
+            name: "Quality Gates",
+            state: "active",
+          }),
+          { status: 200 },
+        );
+      }
+      return new Response("not found", { status: 404 });
+    };
+    const api = createGithubApi({
+      token: "test-token",
+      owner: "kimmillietran",
+      repo: "KalshiBot",
+      fetchImpl,
+    });
+    const identity = await api.fetchTrustedQualityGatesWorkflow();
+    expect(identity).toEqual({
+      id: 317116257,
+      path: QUALITY_GATES_WORKFLOW_PATH,
+      name: "Quality Gates",
+      state: "active",
+    });
+    expect(requested).toEqual([
+      "https://api.github.com/repos/kimmillietran/KalshiBot/actions/workflows/quality-gates.yml",
+    ]);
+  });
+
+  it("fails closed when the workflow API returns a mismatched trusted path", async () => {
+    const fetchImpl: typeof fetch = async () =>
+      new Response(
+        JSON.stringify({
+          id: 317116257,
+          path: ".github/workflows/not-quality-gates.yml",
+          name: "Quality Gates",
+          state: "active",
+        }),
+        { status: 200 },
+      );
+    const api = createGithubApi({
+      token: "test-token",
+      owner: "o",
+      repo: "r",
+      fetchImpl,
+    });
+    await expect(api.fetchTrustedQualityGatesWorkflow()).rejects.toThrow(/path mismatch/);
+  });
+
+  it("fails closed when the trusted Quality Gates workflow REST identity is unavailable", async () => {
+    const requested: string[] = [];
+    const fetchImpl: typeof fetch = async (input) => {
+      requested.push(String(input));
+      return new Response("not found", { status: 404 });
+    };
+    const api = createGithubApi({
+      token: "test-token",
+      owner: "o",
+      repo: "r",
+      fetchImpl,
+    });
+    await expect(api.fetchTrustedQualityGatesWorkflow()).rejects.toMatchObject({
+      message: expect.stringMatching(/unavailable or deleted/),
+      status: 404,
+    } satisfies Partial<GithubApiError>);
+    expect(
+      requested.some((url) => url.includes("/actions/workflows/quality-gates.yml")),
+    ).toBe(true);
+    expect(
+      requested.some((url) =>
+        url.includes("/actions/workflows/.github/workflows/quality-gates.yml"),
+      ),
+    ).toBe(false);
   });
 });
