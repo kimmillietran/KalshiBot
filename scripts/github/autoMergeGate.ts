@@ -11,7 +11,9 @@ import {
   type EvaluateResult,
   type GateReport,
   type GithubReview,
+  type GithubReviewState,
   type MergeResult,
+  type PullRequestFileSnapshot,
   type PullRequestSnapshot,
   type QualityGatesRunSnapshot,
   type ResolvePrResult,
@@ -26,8 +28,10 @@ import {
  * cursor[bot] review, not review.state == APPROVED.
  *
  * Formal CHANGES_REQUESTED review state on the current head still blocks.
- * This helper never dismisses reviews, resolves threads, or bypasses
- * branch protection. Merge uses merge_method=merge and sha=CURRENT_HEAD.
+ * DISMISSED and PENDING reviews never authorize merge; the latest ACTIVE
+ * exact-head Cursor LRM wins. This helper never dismisses reviews, resolves
+ * threads, or bypasses branch protection. Merge uses merge_method=merge
+ * and sha=CURRENT_HEAD.
  *
  * Bootstrap: the first PR that adds this workflow must be merged manually.
  * Subsequent PRs that change the trusted auto-merge helper or the Quality
@@ -187,6 +191,10 @@ function isBlockingIncomplete(status: string, conclusion: CheckConclusion): bool
   );
 }
 
+export function isActiveCursorLrmReviewState(state: GithubReviewState): boolean {
+  return state !== "DISMISSED" && state !== "PENDING";
+}
+
 export function selectLatestExactHeadCursorReview(
   reviews: readonly GithubReview[],
   currentHeadSha: string,
@@ -194,6 +202,7 @@ export function selectLatestExactHeadCursorReview(
   const exactHead = reviews
     .filter((review) => review.userLogin === TRUSTED_CURSOR_LOGIN)
     .filter((review) => review.commitId === currentHeadSha)
+    .filter((review) => isActiveCursorLrmReviewState(review.state))
     .slice()
     .sort((left, right) => (left.submittedAt ?? "").localeCompare(right.submittedAt ?? ""));
 
@@ -204,9 +213,15 @@ export function selectLatestExactHeadCursorReview(
   return { review, verdict: parseGovernedCursorLrmVerdict(review.body) };
 }
 
-export function prTouchesTrustedAutoMergePaths(filenames: readonly string[]): boolean {
-  return filenames.some((filename) =>
-    (AUTO_MERGE_TRUSTED_PATHS as readonly string[]).includes(filename),
+function isTrustedAutoMergePath(path: string | null): boolean {
+  return path != null && (AUTO_MERGE_TRUSTED_PATHS as readonly string[]).includes(path);
+}
+
+export function prTouchesTrustedAutoMergePaths(
+  files: readonly PullRequestFileSnapshot[],
+): boolean {
+  return files.some(
+    (file) => isTrustedAutoMergePath(file.filename) || isTrustedAutoMergePath(file.previousFilename),
   );
 }
 
@@ -284,7 +299,11 @@ export function evaluateAutoMergeGate(input: EvaluateInput): EvaluateResult {
 
   const latestCursor = selectLatestExactHeadCursorReview(input.reviews, pr.headSha);
   const hasStaleCursorApproval = input.reviews.some((review) => {
-    if (review.userLogin !== TRUSTED_CURSOR_LOGIN || review.commitId === pr.headSha) {
+    if (
+      review.userLogin !== TRUSTED_CURSOR_LOGIN
+      || review.commitId === pr.headSha
+      || !isActiveCursorLrmReviewState(review.state)
+    ) {
       return false;
     }
     return parseGovernedCursorLrmVerdict(review.body).verdict === "APPROVED_FOR_MERGE";
@@ -431,7 +450,7 @@ export type AutoMergeRuntime = {
   fetchQualityGatesRuns: (headSha: string) => Promise<readonly QualityGatesRunSnapshot[]>;
   compareHeadToMain: (headSha: string) => Promise<{ behindBy: number; mainSha: string }>;
   fetchDefaultBranchHasAutoMergeWorkflow: () => Promise<boolean>;
-  fetchPullRequestFiles: (prNumber: number) => Promise<readonly string[]>;
+  fetchPullRequestFiles: (prNumber: number) => Promise<readonly PullRequestFileSnapshot[]>;
   mergePullRequest: (prNumber: number, sha: string) => Promise<MergeResult>;
   writeLog: (text: string) => void;
   reviewEventBaseSha?: string | null;

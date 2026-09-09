@@ -21,9 +21,10 @@ name: Auto-merge after Cursor LRM
 #   trusted actor = cursor[bot]
 #   review.commit_id == current PR head SHA
 #   governed "## Verdict" == APPROVED FOR MERGE
-#   Latest exact-head Cursor review wins. COMMENTED is acceptable because
-#   repository rules require zero formal approving reviews; do not require
-#   review.state == APPROVED. Do not dismiss CHANGES_REQUESTED reviews.
+#   Latest ACTIVE exact-head Cursor review wins. COMMENTED is acceptable
+#   because repository rules require zero formal approving reviews; do not
+#   require review.state == APPROVED. DISMISSED and PENDING reviews never
+#   authorize merge. Do not dismiss CHANGES_REQUESTED reviews.
 #
 # Base-drift policy:
 #   GitHub review objects bind commit_id (head) but not the reviewed base

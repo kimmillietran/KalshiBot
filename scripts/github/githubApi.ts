@@ -7,6 +7,7 @@ import {
   type GithubReviewState,
   type MergeResult,
   type Mergeability,
+  type PullRequestFileSnapshot,
   type PullRequestSnapshot,
   type QualityGatesRunSnapshot,
   type ReviewThread,
@@ -117,7 +118,10 @@ export function mapReview(raw: {
   if (typeof raw.id !== "number") {
     throw new GithubApiError("malformed review: missing id");
   }
-  const state = typeof raw.state === "string" ? raw.state.toUpperCase() : "COMMENTED";
+  if (typeof raw.state !== "string" || raw.state.trim() === "") {
+    throw new GithubApiError("malformed review: missing state");
+  }
+  const state = raw.state.toUpperCase();
   const allowed: GithubReviewState[] = [
     "APPROVED",
     "CHANGES_REQUESTED",
@@ -125,13 +129,46 @@ export function mapReview(raw: {
     "DISMISSED",
     "PENDING",
   ];
+  if (!allowed.includes(state as GithubReviewState)) {
+    throw new GithubApiError(`malformed review: unknown state ${raw.state}`);
+  }
   return {
     id: raw.id,
     userLogin: typeof raw.user?.login === "string" ? raw.user.login : null,
     commitId: typeof raw.commit_id === "string" ? raw.commit_id : null,
     submittedAt: typeof raw.submitted_at === "string" ? raw.submitted_at : null,
-    state: allowed.includes(state as GithubReviewState) ? (state as GithubReviewState) : "COMMENTED",
+    state: state as GithubReviewState,
     body: typeof raw.body === "string" ? raw.body : null,
+  };
+}
+
+export function mapPullRequestFile(raw: {
+  filename?: unknown;
+  previous_filename?: unknown;
+  status?: unknown;
+}): PullRequestFileSnapshot {
+  if (typeof raw.filename !== "string" || raw.filename.trim() === "") {
+    throw new GithubApiError("malformed pull request file: missing filename");
+  }
+  if (typeof raw.status !== "string" || raw.status.trim() === "") {
+    throw new GithubApiError("malformed pull request file: missing status");
+  }
+
+  let previousFilename: string | null = null;
+  if (raw.previous_filename != null) {
+    if (typeof raw.previous_filename !== "string" || raw.previous_filename.trim() === "") {
+      throw new GithubApiError("malformed pull request file: invalid previous_filename");
+    }
+    previousFilename = raw.previous_filename;
+  }
+  if (raw.status === "renamed" && previousFilename == null) {
+    throw new GithubApiError("malformed pull request file: renamed without previous_filename");
+  }
+
+  return {
+    filename: raw.filename,
+    previousFilename,
+    status: raw.status,
   };
 }
 
@@ -390,17 +427,16 @@ export function createGithubApi(config: GithubApiConfig) {
       return true;
     },
 
-    async fetchPullRequestFiles(prNumber: number): Promise<string[]> {
-      const files = await paginateJsonArray<{ filename?: unknown }>(
+    async fetchPullRequestFiles(prNumber: number): Promise<PullRequestFileSnapshot[]> {
+      const files = await paginateJsonArray<{
+        filename?: unknown;
+        previous_filename?: unknown;
+        status?: unknown;
+      }>(
         `${repoPath}/pulls/${prNumber}/files?per_page=100`,
         "pull request file pagination",
       );
-      return files.map((file) => {
-        if (typeof file.filename !== "string") {
-          throw new GithubApiError("malformed pull request file entry");
-        }
-        return file.filename;
-      });
+      return files.map(mapPullRequestFile);
     },
 
     async mergePullRequest(prNumber: number, sha: string): Promise<MergeResult> {

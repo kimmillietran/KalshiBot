@@ -7,10 +7,12 @@ import {
   runAutoMergeForPullRequest,
 } from "./autoMergeGate";
 import {
+  AUTO_MERGE_WORKFLOW_PATH,
   QUALITY_GATES_WORKFLOW_PATH,
   type CheckRunSnapshot,
   type EvaluateInput,
   type GithubReview,
+  type PullRequestFileSnapshot,
   type PullRequestSnapshot,
   type QualityGatesRunSnapshot,
 } from "./autoMergeGateTypes";
@@ -50,6 +52,18 @@ function pr(overrides: Partial<PullRequestSnapshot> = {}): PullRequestSnapshot {
     mergeCommitSha: null,
     body: "ordinary PR description",
     authorLogin: "builder",
+    ...overrides,
+  };
+}
+
+function prFile(
+  filename: string,
+  overrides: Partial<PullRequestFileSnapshot> = {},
+): PullRequestFileSnapshot {
+  return {
+    filename,
+    previousFilename: null,
+    status: "modified",
     ...overrides,
   };
 }
@@ -415,7 +429,7 @@ describe("SHA-guarded merge and API failures", () => {
         fetchQualityGatesRuns: async () => qualityGates(HEAD_B),
         compareHeadToMain: async () => ({ behindBy: 0, mainSha: MAIN_SHA }),
         fetchDefaultBranchHasAutoMergeWorkflow: async () => true,
-        fetchPullRequestFiles: async () => ["README.md"],
+        fetchPullRequestFiles: async () => [prFile("README.md")],
         mergePullRequest: async () => {
           throw new Error("merge should not run");
         },
@@ -460,7 +474,7 @@ describe("SHA-guarded merge and API failures", () => {
         fetchQualityGatesRuns: async () => qualityGates(HEAD_B),
         compareHeadToMain: async () => ({ behindBy: 0, mainSha: MAIN_SHA }),
         fetchDefaultBranchHasAutoMergeWorkflow: async () => true,
-        fetchPullRequestFiles: async () => ["README.md"],
+        fetchPullRequestFiles: async () => [prFile("README.md")],
         mergePullRequest: async () => {
           throw new Error("Head SHA did not match / expected sha mismatch");
         },
@@ -487,7 +501,7 @@ describe("SHA-guarded merge and API failures", () => {
         fetchQualityGatesRuns: async () => qualityGates(HEAD_B),
         compareHeadToMain: async () => ({ behindBy: 0, mainSha: MAIN_SHA }),
         fetchDefaultBranchHasAutoMergeWorkflow: async () => true,
-        fetchPullRequestFiles: async () => ["README.md"],
+        fetchPullRequestFiles: async () => [prFile("README.md")],
         mergePullRequest: async (_prNumber, sha) => {
           mergedShas.push(sha);
           return { merged: true, sha: "dddddddddddddddddddddddddddddddddddddddd", message: "merged" };
@@ -525,11 +539,11 @@ describe("SHA-guarded merge and API failures", () => {
   });
 
   it("treats quality-gates.yml as trusted CI authority that requires manual merge", () => {
-    expect(prTouchesTrustedAutoMergePaths([QUALITY_GATES_WORKFLOW_PATH])).toBe(true);
+    expect(prTouchesTrustedAutoMergePaths([prFile(QUALITY_GATES_WORKFLOW_PATH)])).toBe(true);
     const result = evaluateAutoMergeGate(
       eligibleInput({
         prTouchesAutoMergeWorkflow: prTouchesTrustedAutoMergePaths([
-          QUALITY_GATES_WORKFLOW_PATH,
+          prFile(QUALITY_GATES_WORKFLOW_PATH),
         ]),
       }),
     );
@@ -541,12 +555,12 @@ describe("SHA-guarded merge and API failures", () => {
 
   it("does not treat an ordinary workflow as trusted CI authority", () => {
     expect(
-      prTouchesTrustedAutoMergePaths([".github/workflows/unrelated-report.yml"]),
+      prTouchesTrustedAutoMergePaths([prFile(".github/workflows/unrelated-report.yml")]),
     ).toBe(false);
     const result = evaluateAutoMergeGate(
       eligibleInput({
         prTouchesAutoMergeWorkflow: prTouchesTrustedAutoMergePaths([
-          ".github/workflows/unrelated-report.yml",
+          prFile(".github/workflows/unrelated-report.yml"),
         ]),
       }),
     );
@@ -554,11 +568,11 @@ describe("SHA-guarded merge and API failures", () => {
   });
 
   it("blocks when ordinary code is mixed with quality-gates.yml", () => {
-    const filenames = ["src/lib/foo.ts", QUALITY_GATES_WORKFLOW_PATH];
-    expect(prTouchesTrustedAutoMergePaths(filenames)).toBe(true);
+    const files = [prFile("src/lib/foo.ts"), prFile(QUALITY_GATES_WORKFLOW_PATH)];
+    expect(prTouchesTrustedAutoMergePaths(files)).toBe(true);
     const result = evaluateAutoMergeGate(
       eligibleInput({
-        prTouchesAutoMergeWorkflow: prTouchesTrustedAutoMergePaths(filenames),
+        prTouchesAutoMergeWorkflow: prTouchesTrustedAutoMergePaths(files),
       }),
     );
     expect(result.kind).toBe("blocked");
@@ -576,7 +590,7 @@ describe("SHA-guarded merge and API failures", () => {
         fetchQualityGatesRuns: async () => qualityGates(HEAD_A),
         compareHeadToMain: async () => ({ behindBy: 0, mainSha: MAIN_SHA }),
         fetchDefaultBranchHasAutoMergeWorkflow: async () => true,
-        fetchPullRequestFiles: async () => [QUALITY_GATES_WORKFLOW_PATH],
+        fetchPullRequestFiles: async () => [prFile(QUALITY_GATES_WORKFLOW_PATH)],
         mergePullRequest: async () => {
           mergeCalls += 1;
           throw new Error("merge should not run");
@@ -591,5 +605,168 @@ describe("SHA-guarded merge and API failures", () => {
       "PR changes trusted auto-merge / CI authority and requires manual merge",
     );
     expect(mergeCalls).toBe(0);
+  });
+});
+
+describe("trusted-path rename and delete authority", () => {
+  it("A. trusted auto-merge workflow renamed away is blocked", () => {
+    const files = [
+      prFile("docs/moved-auto-merge.yml", {
+        previousFilename: AUTO_MERGE_WORKFLOW_PATH,
+        status: "renamed",
+      }),
+    ];
+    expect(prTouchesTrustedAutoMergePaths(files)).toBe(true);
+  });
+
+  it("B. quality-gates workflow renamed away is blocked", () => {
+    const files = [
+      prFile("docs/moved-quality-gates.yml", {
+        previousFilename: QUALITY_GATES_WORKFLOW_PATH,
+        status: "renamed",
+      }),
+    ];
+    expect(prTouchesTrustedAutoMergePaths(files)).toBe(true);
+    expect(
+      evaluateAutoMergeGate(
+        eligibleInput({ prTouchesAutoMergeWorkflow: prTouchesTrustedAutoMergePaths(files) }),
+      ).kind,
+    ).toBe("blocked");
+  });
+
+  it("C. trusted helper renamed away is blocked", () => {
+    expect(
+      prTouchesTrustedAutoMergePaths([
+        prFile("scripts/github/movedGate.ts", {
+          previousFilename: "scripts/github/autoMergeGate.ts",
+          status: "renamed",
+        }),
+      ]),
+    ).toBe(true);
+  });
+
+  it("D. untrusted file renamed onto a trusted path is blocked", () => {
+    expect(
+      prTouchesTrustedAutoMergePaths([
+        prFile(QUALITY_GATES_WORKFLOW_PATH, {
+          previousFilename: "docs/old-ci.yml",
+          status: "renamed",
+        }),
+      ]),
+    ).toBe(true);
+  });
+
+  it("E. unrelated rename is not blocked solely by the trusted-path rule", () => {
+    expect(
+      prTouchesTrustedAutoMergePaths([
+        prFile("src/lib/bar.ts", {
+          previousFilename: "src/lib/foo.ts",
+          status: "renamed",
+        }),
+      ]),
+    ).toBe(false);
+  });
+
+  it("F. deleted trusted file is blocked", () => {
+    expect(
+      prTouchesTrustedAutoMergePaths([
+        prFile("scripts/github/githubApi.ts", { status: "removed" }),
+      ]),
+    ).toBe(true);
+  });
+
+  it("G. modified trusted file is blocked", () => {
+    expect(
+      prTouchesTrustedAutoMergePaths([prFile(AUTO_MERGE_WORKFLOW_PATH, { status: "modified" })]),
+    ).toBe(true);
+  });
+});
+
+describe("active exact-head Cursor review-state authority", () => {
+  it("K. DISMISSED exact-head Cursor APPROVED body cannot authorize", () => {
+    const result = evaluateAutoMergeGate(
+      eligibleInput({
+        reviews: [cursorReview({ state: "DISMISSED", body: APPROVED_BODY })],
+      }),
+    );
+    expect(result.kind).toBe("blocked");
+    expect(result.reason).toBe("missing exact-head Cursor LRM");
+  });
+
+  it("L. PENDING exact-head Cursor APPROVED body cannot authorize", () => {
+    const result = evaluateAutoMergeGate(
+      eligibleInput({
+        reviews: [cursorReview({ state: "PENDING", body: APPROVED_BODY })],
+      }),
+    );
+    expect(result.kind).toBe("blocked");
+    expect(result.reason).toBe("missing exact-head Cursor LRM");
+  });
+
+  it("M. COMMENTED exact-head Cursor APPROVED remains eligible", () => {
+    expect(evaluateAutoMergeGate(eligibleInput()).kind).toBe("eligible");
+  });
+
+  it("N. active exact-head APPROVED then active CHANGES REQUESTED is blocked", () => {
+    const result = evaluateAutoMergeGate(
+      eligibleInput({
+        reviews: [
+          cursorReview({ id: 1, submittedAt: "2026-09-08T19:00:00.000Z", body: APPROVED_BODY }),
+          cursorReview({ id: 2, submittedAt: "2026-09-08T20:00:00.000Z", body: CHANGES_BODY }),
+        ],
+      }),
+    );
+    expect(result.kind).toBe("blocked");
+    expect(result.reason).toBe("CHANGES REQUESTED");
+  });
+
+  it("O. later DISMISSED approval does not replace an earlier active approval", () => {
+    const result = evaluateAutoMergeGate(
+      eligibleInput({
+        reviews: [
+          cursorReview({ id: 1, submittedAt: "2026-09-08T19:00:00.000Z", body: APPROVED_BODY }),
+          cursorReview({
+            id: 2,
+            submittedAt: "2026-09-08T21:00:00.000Z",
+            state: "DISMISSED",
+            body: APPROVED_BODY,
+          }),
+        ],
+      }),
+    );
+    expect(result.kind).toBe("eligible");
+  });
+
+  it("P. old-head DISMISSED approval is not stale-authority evidence", () => {
+    const result = evaluateAutoMergeGate(
+      eligibleInput({
+        reviews: [
+          cursorReview({
+            commitId: HEAD_A,
+            state: "DISMISSED",
+            body: APPROVED_BODY,
+          }),
+        ],
+      }),
+    );
+    expect(result.kind).toBe("blocked");
+    expect(result.reason).toBe("missing exact-head Cursor LRM");
+  });
+
+  it("Q. dismissed CHANGES_REQUESTED does not create an active requested-changes block", () => {
+    const result = evaluateAutoMergeGate(
+      eligibleInput({
+        reviews: [
+          cursorReview({ id: 1, body: APPROVED_BODY, state: "COMMENTED" }),
+          cursorReview({
+            id: 2,
+            submittedAt: "2026-09-08T21:00:00.000Z",
+            state: "DISMISSED",
+            body: CHANGES_BODY,
+          }),
+        ],
+      }),
+    );
+    expect(result.kind).toBe("eligible");
   });
 });

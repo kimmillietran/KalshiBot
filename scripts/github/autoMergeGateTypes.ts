@@ -72,6 +72,12 @@ export type GithubReview = {
   body: string | null;
 };
 
+export type PullRequestFileSnapshot = {
+  filename: string;
+  previousFilename: string | null;
+  status: string;
+};
+
 export type ReviewThread = {
   isResolved: boolean;
 };
