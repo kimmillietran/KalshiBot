@@ -136,6 +136,7 @@ export async function runAutoMergeGateCli(
         fetchReviewThreads: (number) => api.fetchReviewThreads(number),
         fetchCheckRuns: (headSha) => api.fetchCheckRuns(headSha),
         fetchQualityGatesRuns: (headSha) => api.fetchQualityGatesRuns(headSha),
+        fetchTrustedQualityGatesWorkflow: () => api.fetchTrustedQualityGatesWorkflow(),
         compareHeadToMain: (headSha) => api.compareHeadToMain(headSha),
         fetchDefaultBranchHasAutoMergeWorkflow: () => api.fetchDefaultBranchHasAutoMergeWorkflow(),
         fetchPullRequestFiles: (number) => api.fetchPullRequestFiles(number),

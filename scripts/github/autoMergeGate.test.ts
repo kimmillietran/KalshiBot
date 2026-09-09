@@ -15,12 +15,25 @@ import {
   type PullRequestFileSnapshot,
   type PullRequestSnapshot,
   type QualityGatesRunSnapshot,
+  type QualityGatesWorkflowIdentity,
 } from "./autoMergeGateTypes";
 import { parseGovernedCursorLrmVerdict } from "./parseCursorLrmVerdict";
 
 const HEAD_A = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 const HEAD_B = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
 const MAIN_SHA = "cccccccccccccccccccccccccccccccccccccccc";
+const TRUSTED_QG_WORKFLOW: QualityGatesWorkflowIdentity = {
+  id: 100,
+  path: QUALITY_GATES_WORKFLOW_PATH,
+  name: "Quality Gates",
+  state: "active",
+};
+const SPOOFED_QG_WORKFLOW: QualityGatesWorkflowIdentity = {
+  id: 999,
+  path: ".github/workflows/fake-quality.yml",
+  name: "Quality Gates",
+  state: "active",
+};
 
 const APPROVED_BODY = `# LRM Review
 
@@ -88,14 +101,20 @@ function requiredChecks(headSha: string, conclusion: CheckRunSnapshot["conclusio
   ];
 }
 
-function qualityGates(headSha: string): QualityGatesRunSnapshot[] {
+function qualityGates(
+  headSha: string,
+  overrides: Partial<QualityGatesRunSnapshot> = {},
+): QualityGatesRunSnapshot[] {
   return [
     {
       id: 9,
+      workflowId: TRUSTED_QG_WORKFLOW.id,
+      workflowPath: TRUSTED_QG_WORKFLOW.path,
       name: "Quality Gates",
       headSha,
       status: "completed",
       conclusion: "success",
+      createdAt: "2026-09-08T20:00:00.000Z",
       jobs: [
         { name: "Lint, build, and test", status: "completed", conclusion: "success" },
         { name: "Operator matrix (macOS)", status: "completed", conclusion: "success" },
@@ -106,6 +125,7 @@ function qualityGates(headSha: string): QualityGatesRunSnapshot[] {
           conclusion: "failure",
         },
       ],
+      ...overrides,
     },
   ];
 }
@@ -118,6 +138,7 @@ function eligibleInput(overrides: Partial<EvaluateInput> = {}): EvaluateInput {
     threads: [{ isResolved: true }],
     checkRuns: requiredChecks(pullRequest.headSha),
     qualityGatesRuns: qualityGates(pullRequest.headSha),
+    trustedQualityGatesWorkflow: TRUSTED_QG_WORKFLOW,
     compareToMain: { behindBy: 0 },
     currentMainSha: MAIN_SHA,
     reviewEventBaseSha: MAIN_SHA,
@@ -427,6 +448,7 @@ describe("SHA-guarded merge and API failures", () => {
         fetchReviewThreads: async () => [{ isResolved: true }],
         fetchCheckRuns: async () => requiredChecks(HEAD_B),
         fetchQualityGatesRuns: async () => qualityGates(HEAD_B),
+        fetchTrustedQualityGatesWorkflow: async () => TRUSTED_QG_WORKFLOW,
         compareHeadToMain: async () => ({ behindBy: 0, mainSha: MAIN_SHA }),
         fetchDefaultBranchHasAutoMergeWorkflow: async () => true,
         fetchPullRequestFiles: async () => [prFile("README.md")],
@@ -452,6 +474,7 @@ describe("SHA-guarded merge and API failures", () => {
         fetchReviewThreads: async () => [],
         fetchCheckRuns: async () => [],
         fetchQualityGatesRuns: async () => [],
+        fetchTrustedQualityGatesWorkflow: async () => TRUSTED_QG_WORKFLOW,
         compareHeadToMain: async () => ({ behindBy: 0, mainSha: MAIN_SHA }),
         fetchDefaultBranchHasAutoMergeWorkflow: async () => true,
         fetchPullRequestFiles: async () => [],
@@ -472,6 +495,7 @@ describe("SHA-guarded merge and API failures", () => {
         fetchReviewThreads: async () => [{ isResolved: true }],
         fetchCheckRuns: async () => requiredChecks(HEAD_B),
         fetchQualityGatesRuns: async () => qualityGates(HEAD_B),
+        fetchTrustedQualityGatesWorkflow: async () => TRUSTED_QG_WORKFLOW,
         compareHeadToMain: async () => ({ behindBy: 0, mainSha: MAIN_SHA }),
         fetchDefaultBranchHasAutoMergeWorkflow: async () => true,
         fetchPullRequestFiles: async () => [prFile("README.md")],
@@ -499,6 +523,7 @@ describe("SHA-guarded merge and API failures", () => {
         fetchReviewThreads: async () => [{ isResolved: true }],
         fetchCheckRuns: async () => requiredChecks(HEAD_B),
         fetchQualityGatesRuns: async () => qualityGates(HEAD_B),
+        fetchTrustedQualityGatesWorkflow: async () => TRUSTED_QG_WORKFLOW,
         compareHeadToMain: async () => ({ behindBy: 0, mainSha: MAIN_SHA }),
         fetchDefaultBranchHasAutoMergeWorkflow: async () => true,
         fetchPullRequestFiles: async () => [prFile("README.md")],
@@ -549,14 +574,17 @@ describe("SHA-guarded merge and API failures", () => {
     );
     expect(result.kind).toBe("blocked");
     expect(result.reason).toBe(
-      "PR changes trusted auto-merge / CI authority and requires manual merge",
+      "PR changes trusted auto-merge / CI / package-runtime authority and requires manual merge",
     );
   });
 
-  it("does not treat an ordinary workflow as trusted CI authority", () => {
+  it("deliberate policy tightening: any .github/workflows path requires manual merge", () => {
+    // Supersedes the earlier assumption that an unrelated workflow file
+    // could auto-merge. A newly added workflow is repository automation
+    // authority and must not bootstrap itself through the merge bot.
     expect(
       prTouchesTrustedAutoMergePaths([prFile(".github/workflows/unrelated-report.yml")]),
-    ).toBe(false);
+    ).toBe(true);
     const result = evaluateAutoMergeGate(
       eligibleInput({
         prTouchesAutoMergeWorkflow: prTouchesTrustedAutoMergePaths([
@@ -564,7 +592,8 @@ describe("SHA-guarded merge and API failures", () => {
         ]),
       }),
     );
-    expect(result.kind).toBe("eligible");
+    expect(result.kind).toBe("blocked");
+    expect(result.reason).toMatch(/manual merge/);
   });
 
   it("blocks when ordinary code is mixed with quality-gates.yml", () => {
@@ -576,7 +605,7 @@ describe("SHA-guarded merge and API failures", () => {
       }),
     );
     expect(result.kind).toBe("blocked");
-    expect(result.reason).toMatch(/trusted auto-merge \/ CI authority/);
+    expect(result.reason).toMatch(/trusted auto-merge \/ CI \/ package-runtime authority/);
   });
 
   it("does not merge when Quality Gates workflow is in the changed files", async () => {
@@ -588,6 +617,7 @@ describe("SHA-guarded merge and API failures", () => {
         fetchReviewThreads: async () => [{ isResolved: true }],
         fetchCheckRuns: async () => requiredChecks(HEAD_A),
         fetchQualityGatesRuns: async () => qualityGates(HEAD_A),
+        fetchTrustedQualityGatesWorkflow: async () => TRUSTED_QG_WORKFLOW,
         compareHeadToMain: async () => ({ behindBy: 0, mainSha: MAIN_SHA }),
         fetchDefaultBranchHasAutoMergeWorkflow: async () => true,
         fetchPullRequestFiles: async () => [prFile(QUALITY_GATES_WORKFLOW_PATH)],
@@ -602,7 +632,7 @@ describe("SHA-guarded merge and API failures", () => {
     );
     expect(result.kind).toBe("blocked");
     expect(result.reason).toBe(
-      "PR changes trusted auto-merge / CI authority and requires manual merge",
+      "PR changes trusted auto-merge / CI / package-runtime authority and requires manual merge",
     );
     expect(mergeCalls).toBe(0);
   });
@@ -768,5 +798,266 @@ describe("active exact-head Cursor review-state authority", () => {
       }),
     );
     expect(result.kind).toBe("eligible");
+  });
+});
+
+describe("trusted Quality Gates workflow identity", () => {
+  it("blocks a spoofed display-name Quality Gates run without the trusted workflow id", () => {
+    const result = evaluateAutoMergeGate(
+      eligibleInput({
+        qualityGatesRuns: qualityGates(HEAD_B, {
+          id: 50,
+          workflowId: SPOOFED_QG_WORKFLOW.id,
+          workflowPath: SPOOFED_QG_WORKFLOW.path,
+          name: "Quality Gates",
+        }),
+      }),
+    );
+    expect(result.kind).toBe("blocked");
+    expect(result.reason).toBe("trusted exact-head Quality Gates run absent");
+  });
+
+  it("accepts a successful exact-head run from the trusted workflow id", () => {
+    expect(evaluateAutoMergeGate(eligibleInput()).kind).toBe("eligible");
+  });
+
+  it("fails closed when trusted workflow identity cannot be established", () => {
+    const result = evaluateAutoMergeGate(
+      eligibleInput({ trustedQualityGatesWorkflow: null }),
+    );
+    expect(result.kind).toBe("system_failure");
+    expect(result.reason).toMatch(/trusted Quality Gates workflow identity/);
+  });
+
+  it("does not fall back to an older successful trusted run when a newer one failed", () => {
+    const result = evaluateAutoMergeGate(
+      eligibleInput({
+        qualityGatesRuns: [
+          ...qualityGates(HEAD_B, {
+            id: 8,
+            createdAt: "2026-09-08T19:00:00.000Z",
+            conclusion: "success",
+          }),
+          ...qualityGates(HEAD_B, {
+            id: 11,
+            createdAt: "2026-09-08T21:00:00.000Z",
+            conclusion: "failure",
+          }),
+        ],
+      }),
+    );
+    expect(result.kind).toBe("blocked");
+    expect(result.reason).toBe("Quality Gates failed");
+  });
+
+  it("1. fake Quality Gates name success with no trusted run is blocked", async () => {
+    let mergeCalls = 0;
+    const result = await runAutoMergeForPullRequest(
+      {
+        fetchPullRequest: async () => pr(),
+        fetchReviews: async () => [cursorReview()],
+        fetchReviewThreads: async () => [{ isResolved: true }],
+        fetchCheckRuns: async () => requiredChecks(HEAD_B),
+        fetchQualityGatesRuns: async () =>
+          qualityGates(HEAD_B, {
+            workflowId: SPOOFED_QG_WORKFLOW.id,
+            workflowPath: SPOOFED_QG_WORKFLOW.path,
+          }),
+        fetchTrustedQualityGatesWorkflow: async () => TRUSTED_QG_WORKFLOW,
+        compareHeadToMain: async () => ({ behindBy: 0, mainSha: MAIN_SHA }),
+        fetchDefaultBranchHasAutoMergeWorkflow: async () => true,
+        fetchPullRequestFiles: async () => [prFile("src/lib/foo.ts")],
+        mergePullRequest: async () => {
+          mergeCalls += 1;
+          throw new Error("merge should not run");
+        },
+        writeLog: () => {},
+        reviewEventBaseSha: MAIN_SHA,
+      },
+      55,
+    );
+    expect(result.kind).toBe("blocked");
+    expect(result.reason).toBe("trusted exact-head Quality Gates run absent");
+    expect(mergeCalls).toBe(0);
+  });
+
+  it("2. trusted workflow id success on an ordinary source PR is eligible", () => {
+    const result = evaluateAutoMergeGate(
+      eligibleInput({
+        prTouchesAutoMergeWorkflow: prTouchesTrustedAutoMergePaths([prFile("src/lib/foo.ts")]),
+      }),
+    );
+    expect(result.kind).toBe("eligible");
+  });
+});
+
+describe("workflow-prefix and package-runtime authority", () => {
+  it("A. modify quality-gates.yml requires manual merge", () => {
+    expect(prTouchesTrustedAutoMergePaths([prFile(QUALITY_GATES_WORKFLOW_PATH)])).toBe(true);
+  });
+
+  it("B. modify auto-merge workflow requires manual merge", () => {
+    expect(prTouchesTrustedAutoMergePaths([prFile(AUTO_MERGE_WORKFLOW_PATH)])).toBe(true);
+  });
+
+  it("C. add fake-quality.yml requires manual merge", () => {
+    expect(
+      prTouchesTrustedAutoMergePaths([
+        prFile(".github/workflows/fake-quality.yml", { status: "added" }),
+      ]),
+    ).toBe(true);
+  });
+
+  it("D. add unrelated-report.yml requires manual merge", () => {
+    expect(
+      prTouchesTrustedAutoMergePaths([
+        prFile(".github/workflows/unrelated-report.yml", { status: "added" }),
+      ]),
+    ).toBe(true);
+  });
+
+  it("E. rename a workflow away still requires manual merge", () => {
+    expect(
+      prTouchesTrustedAutoMergePaths([
+        prFile("docs/foo.yml", {
+          previousFilename: ".github/workflows/foo.yml",
+          status: "renamed",
+        }),
+      ]),
+    ).toBe(true);
+  });
+
+  it("F. rename a file into .github/workflows requires manual merge", () => {
+    expect(
+      prTouchesTrustedAutoMergePaths([
+        prFile(".github/workflows/foo.yml", {
+          previousFilename: "docs/foo.yml",
+          status: "renamed",
+        }),
+      ]),
+    ).toBe(true);
+  });
+
+  it("G. ordinary source file is not blocked solely by trusted-path authority", () => {
+    expect(prTouchesTrustedAutoMergePaths([prFile("src/lib/foo.ts")])).toBe(false);
+  });
+
+  it("H. package.json modified requires manual merge", () => {
+    expect(prTouchesTrustedAutoMergePaths([prFile("package.json")])).toBe(true);
+  });
+
+  it("I. package-lock.json modified requires manual merge", () => {
+    expect(prTouchesTrustedAutoMergePaths([prFile("package-lock.json")])).toBe(true);
+  });
+
+  it("J. package.json renamed away requires manual merge", () => {
+    expect(
+      prTouchesTrustedAutoMergePaths([
+        prFile("docs/old-package.json", {
+          previousFilename: "package.json",
+          status: "renamed",
+        }),
+      ]),
+    ).toBe(true);
+  });
+
+  it("K. arbitrary file renamed to package.json requires manual merge", () => {
+    expect(
+      prTouchesTrustedAutoMergePaths([
+        prFile("package.json", {
+          previousFilename: "docs/pkg.json",
+          status: "renamed",
+        }),
+      ]),
+    ).toBe(true);
+  });
+
+  it("L. package-lock.json deleted requires manual merge", () => {
+    expect(
+      prTouchesTrustedAutoMergePaths([prFile("package-lock.json", { status: "removed" })]),
+    ).toBe(true);
+  });
+
+  it("M. npm-shrinkwrap.json added requires manual merge", () => {
+    expect(
+      prTouchesTrustedAutoMergePaths([prFile("npm-shrinkwrap.json", { status: "added" })]),
+    ).toBe(true);
+  });
+
+  it("N. .npmrc added requires manual merge", () => {
+    expect(prTouchesTrustedAutoMergePaths([prFile(".npmrc", { status: "added" })])).toBe(true);
+  });
+
+  it("O. README.md modified is not blocked solely by runtime-authority", () => {
+    expect(prTouchesTrustedAutoMergePaths([prFile("README.md")])).toBe(false);
+  });
+
+  it("P. src/lib/foo.ts modified is not blocked solely by runtime-authority", () => {
+    expect(prTouchesTrustedAutoMergePaths([prFile("src/lib/foo.ts")])).toBe(false);
+  });
+
+  it("3. package.json change stays blocked even when Cursor and trusted CI pass", () => {
+    const result = evaluateAutoMergeGate(
+      eligibleInput({
+        prTouchesAutoMergeWorkflow: prTouchesTrustedAutoMergePaths([prFile("package.json")]),
+      }),
+    );
+    expect(result.kind).toBe("blocked");
+    expect(result.reason).toMatch(/manual merge/);
+  });
+
+  it("4. adding an arbitrary workflow stays blocked even when other gates pass", () => {
+    const result = evaluateAutoMergeGate(
+      eligibleInput({
+        prTouchesAutoMergeWorkflow: prTouchesTrustedAutoMergePaths([
+          prFile(".github/workflows/foo.yml", { status: "added" }),
+        ]),
+      }),
+    );
+    expect(result.kind).toBe("blocked");
+  });
+
+  it("5. trusted workflow renamed away stays blocked", () => {
+    const result = evaluateAutoMergeGate(
+      eligibleInput({
+        prTouchesAutoMergeWorkflow: prTouchesTrustedAutoMergePaths([
+          prFile("docs/moved-quality-gates.yml", {
+            previousFilename: QUALITY_GATES_WORKFLOW_PATH,
+            status: "renamed",
+          }),
+        ]),
+      }),
+    );
+    expect(result.kind).toBe("blocked");
+  });
+
+  it("6. latest active exact-head CHANGES REQUESTED stays blocked", () => {
+    expect(
+      evaluateAutoMergeGate(
+        eligibleInput({
+          reviews: [cursorReview({ body: CHANGES_BODY })],
+        }),
+      ).reason,
+    ).toBe("CHANGES REQUESTED");
+  });
+
+  it("7. dismissed exact-head APPROVED cannot authorize", () => {
+    expect(
+      evaluateAutoMergeGate(
+        eligibleInput({
+          reviews: [cursorReview({ state: "DISMISSED", body: APPROVED_BODY })],
+        }),
+      ).reason,
+    ).toBe("missing exact-head Cursor LRM");
+  });
+
+  it("8. stale exact-head mismatch stays blocked", () => {
+    expect(
+      evaluateAutoMergeGate(
+        eligibleInput({
+          reviews: [cursorReview({ commitId: HEAD_A })],
+        }),
+      ).reason,
+    ).toBe("stale Cursor review");
   });
 });

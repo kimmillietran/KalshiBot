@@ -1,6 +1,7 @@
 import {
   AUTO_MERGE_WORKFLOW_PATH,
   QUALITY_GATES_WORKFLOW_NAME,
+  QUALITY_GATES_WORKFLOW_PATH,
   REQUIRED_BASE_BRANCH,
   type CheckRunSnapshot,
   type GithubReview,
@@ -10,6 +11,7 @@ import {
   type PullRequestFileSnapshot,
   type PullRequestSnapshot,
   type QualityGatesRunSnapshot,
+  type QualityGatesWorkflowIdentity,
   type ReviewThread,
 } from "./autoMergeGateTypes";
 
@@ -172,6 +174,26 @@ export function mapPullRequestFile(raw: {
   };
 }
 
+export function mapQualityGatesWorkflowIdentity(raw: {
+  id?: unknown;
+  path?: unknown;
+  name?: unknown;
+  state?: unknown;
+}): QualityGatesWorkflowIdentity {
+  if (typeof raw.id !== "number" || !Number.isInteger(raw.id) || raw.id <= 0) {
+    throw new GithubApiError("unable to establish trusted Quality Gates workflow id");
+  }
+  if (typeof raw.path !== "string" || raw.path !== QUALITY_GATES_WORKFLOW_PATH) {
+    throw new GithubApiError("trusted Quality Gates workflow path mismatch");
+  }
+  return {
+    id: raw.id,
+    path: raw.path,
+    name: typeof raw.name === "string" ? raw.name : QUALITY_GATES_WORKFLOW_NAME,
+    state: typeof raw.state === "string" ? raw.state : null,
+  };
+}
+
 export function createGithubApi(config: GithubApiConfig) {
   const fetchImpl: GithubFetch = config.fetchImpl ?? fetch;
   const repoPath = `/repos/${config.owner}/${config.repo}`;
@@ -241,6 +263,20 @@ export function createGithubApi(config: GithubApiConfig) {
       url = nextLink(response.headers.get("link"));
     }
     return items;
+  }
+
+  async function loadTrustedQualityGatesWorkflow(): Promise<QualityGatesWorkflowIdentity> {
+    const response = await githubFetch(
+      `${repoPath}/actions/workflows/${QUALITY_GATES_WORKFLOW_PATH}`,
+    );
+    if (response.status === 404) {
+      throw new GithubApiError("trusted Quality Gates workflow is unavailable or deleted", 404);
+    }
+    const raw = await readJson<Parameters<typeof mapQualityGatesWorkflowIdentity>[0]>(
+      response,
+      "trusted Quality Gates workflow identity",
+    );
+    return mapQualityGatesWorkflowIdentity(raw);
   }
 
   return {
@@ -350,25 +386,34 @@ export function createGithubApi(config: GithubApiConfig) {
       });
     },
 
+    async fetchTrustedQualityGatesWorkflow(): Promise<QualityGatesWorkflowIdentity> {
+      return loadTrustedQualityGatesWorkflow();
+    },
+
     async fetchQualityGatesRuns(headSha: string): Promise<QualityGatesRunSnapshot[]> {
+      const identity = await loadTrustedQualityGatesWorkflow();
       const runs = await paginateJsonArray<{
         id?: unknown;
+        workflow_id?: unknown;
         name?: unknown;
         head_sha?: unknown;
         status?: unknown;
         conclusion?: unknown;
+        created_at?: unknown;
       }>(
-        `${repoPath}/actions/runs?head_sha=${encodeURIComponent(headSha)}&per_page=100`,
-        "workflow-run pagination",
+        `${repoPath}/actions/workflows/${identity.id}/runs?head_sha=${encodeURIComponent(headSha)}&per_page=100`,
+        "trusted Quality Gates workflow-run pagination",
       );
-      const qualityGates = runs
-        .filter((run) => run.name === QUALITY_GATES_WORKFLOW_NAME && run.head_sha === headSha)
-        .sort((left, right) => Number(left.id) - Number(right.id));
 
       const snapshots: QualityGatesRunSnapshot[] = [];
-      for (const run of qualityGates) {
+      for (const run of runs) {
         if (typeof run.id !== "number") {
           throw new GithubApiError("malformed Quality Gates workflow run");
+        }
+        if (run.workflow_id !== identity.id) {
+          throw new GithubApiError(
+            "trusted Quality Gates workflow run returned a mismatching workflow_id",
+          );
         }
         const jobs = await paginateJsonArray<{
           name?: unknown;
@@ -377,10 +422,13 @@ export function createGithubApi(config: GithubApiConfig) {
         }>(`${repoPath}/actions/runs/${run.id}/jobs?per_page=100`, "workflow-job pagination");
         snapshots.push({
           id: run.id,
-          name: QUALITY_GATES_WORKFLOW_NAME,
-          headSha,
+          workflowId: identity.id,
+          workflowPath: identity.path,
+          name: typeof run.name === "string" ? run.name : QUALITY_GATES_WORKFLOW_NAME,
+          headSha: typeof run.head_sha === "string" ? run.head_sha : headSha,
           status: typeof run.status === "string" ? run.status : "unknown",
           conclusion: typeof run.conclusion === "string" ? (run.conclusion as QualityGatesRunSnapshot["conclusion"]) : null,
+          createdAt: typeof run.created_at === "string" ? run.created_at : null,
           jobs: jobs.map((job) => {
             if (typeof job.name !== "string") {
               throw new GithubApiError("malformed Quality Gates job");

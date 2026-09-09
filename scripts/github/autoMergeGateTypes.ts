@@ -9,6 +9,13 @@ export const QUALITY_GATES_WORKFLOW_NAME = "Quality Gates";
 export const ADVISORY_CHECK_NAME_SUBSTRING = "advisory";
 export const AUTO_MERGE_WORKFLOW_PATH = ".github/workflows/auto-merge-after-cursor-lrm.yml";
 export const QUALITY_GATES_WORKFLOW_PATH = ".github/workflows/quality-gates.yml";
+export const GITHUB_WORKFLOWS_PREFIX = ".github/workflows/";
+export const TRUSTED_RUNTIME_EXACT_PATHS = [
+  "package.json",
+  "package-lock.json",
+  "npm-shrinkwrap.json",
+  ".npmrc",
+] as const;
 export const AUTO_MERGE_TRUSTED_PATHS = [
   AUTO_MERGE_WORKFLOW_PATH,
   QUALITY_GATES_WORKFLOW_PATH,
@@ -95,12 +102,22 @@ export type WorkflowJobSnapshot = {
   conclusion: CheckConclusion;
 };
 
+export type QualityGatesWorkflowIdentity = {
+  id: number;
+  path: string;
+  name: string;
+  state: string | null;
+};
+
 export type QualityGatesRunSnapshot = {
   id: number;
+  workflowId: number;
+  workflowPath: string;
   name: string;
   headSha: string;
   status: string;
   conclusion: CheckConclusion;
+  createdAt: string | null;
   jobs: readonly WorkflowJobSnapshot[];
 };
 
@@ -137,6 +154,7 @@ export type EvaluateInput = {
   threads: readonly ReviewThread[];
   checkRuns: readonly CheckRunSnapshot[];
   qualityGatesRuns: readonly QualityGatesRunSnapshot[];
+  trustedQualityGatesWorkflow: QualityGatesWorkflowIdentity | null;
   compareToMain: CompareSnapshot;
   currentMainSha: string;
   reviewEventBaseSha?: string | null;

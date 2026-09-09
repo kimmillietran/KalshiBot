@@ -2,7 +2,10 @@ import { parseGovernedCursorLrmVerdict } from "./parseCursorLrmVerdict";
 import {
   ADVISORY_CHECK_NAME_SUBSTRING,
   AUTO_MERGE_TRUSTED_PATHS,
+  GITHUB_WORKFLOWS_PREFIX,
   QUALITY_GATES_WORKFLOW_NAME,
+  QUALITY_GATES_WORKFLOW_PATH,
+  TRUSTED_RUNTIME_EXACT_PATHS,
   REQUIRED_BASE_BRANCH,
   REQUIRED_CHECK_NAMES,
   TRUSTED_CURSOR_LOGIN,
@@ -16,6 +19,7 @@ import {
   type PullRequestFileSnapshot,
   type PullRequestSnapshot,
   type QualityGatesRunSnapshot,
+  type QualityGatesWorkflowIdentity,
   type ResolvePrResult,
 } from "./autoMergeGateTypes";
 
@@ -175,6 +179,29 @@ function isSuccessfulConclusion(conclusion: CheckConclusion, status?: string): b
   return status === "completed" && conclusion === "success";
 }
 
+export function isValidTrustedQualityGatesIdentity(
+  identity: QualityGatesWorkflowIdentity | null | undefined,
+): identity is QualityGatesWorkflowIdentity {
+  return (
+    identity != null
+    && Number.isInteger(identity.id)
+    && identity.id > 0
+    && identity.path === QUALITY_GATES_WORKFLOW_PATH
+  );
+}
+
+function compareTrustedQualityGatesRuns(
+  left: QualityGatesRunSnapshot,
+  right: QualityGatesRunSnapshot,
+): number {
+  const leftCreated = left.createdAt ?? "";
+  const rightCreated = right.createdAt ?? "";
+  if (leftCreated !== "" && rightCreated !== "" && leftCreated !== rightCreated) {
+    return leftCreated.localeCompare(rightCreated);
+  }
+  return left.id - right.id;
+}
+
 function isBlockingIncomplete(status: string, conclusion: CheckConclusion): boolean {
   if (status === "queued" || status === "in_progress" || status === "pending") {
     return true;
@@ -213,8 +240,21 @@ export function selectLatestExactHeadCursorReview(
   return { review, verdict: parseGovernedCursorLrmVerdict(review.body) };
 }
 
+function isUnderGithubWorkflowsPrefix(path: string): boolean {
+  return path === GITHUB_WORKFLOWS_PREFIX.slice(0, -1) || path.startsWith(GITHUB_WORKFLOWS_PREFIX);
+}
+
 function isTrustedAutoMergePath(path: string | null): boolean {
-  return path != null && (AUTO_MERGE_TRUSTED_PATHS as readonly string[]).includes(path);
+  if (path == null) {
+    return false;
+  }
+  if (isUnderGithubWorkflowsPrefix(path)) {
+    return true;
+  }
+  if ((TRUSTED_RUNTIME_EXACT_PATHS as readonly string[]).includes(path)) {
+    return true;
+  }
+  return (AUTO_MERGE_TRUSTED_PATHS as readonly string[]).includes(path);
 }
 
 export function prTouchesTrustedAutoMergePaths(
@@ -273,7 +313,7 @@ export function evaluateAutoMergeGate(input: EvaluateInput): EvaluateResult {
 
   if (input.prTouchesAutoMergeWorkflow) {
     return blocked(
-      "PR changes trusted auto-merge / CI authority and requires manual merge",
+      "PR changes trusted auto-merge / CI / package-runtime authority and requires manual merge",
       reportBase,
     );
   }
@@ -398,12 +438,34 @@ export function evaluateAutoMergeGate(input: EvaluateInput): EvaluateResult {
     }
   }
 
-  const qualityGates = input.qualityGatesRuns.filter(
-    (run) => run.name === QUALITY_GATES_WORKFLOW_NAME && run.headSha === pr.headSha,
-  );
+  const trustedWorkflow = input.trustedQualityGatesWorkflow;
+  if (!isValidTrustedQualityGatesIdentity(trustedWorkflow)) {
+    return {
+      kind: "system_failure",
+      reason: "unable to establish trusted Quality Gates workflow identity",
+      authorizedHeadSha: null,
+      report: emptyReport({
+        ...reportBase,
+        decision: "SYSTEM FAILURE",
+        reason: "unable to establish trusted Quality Gates workflow identity",
+      }),
+    };
+  }
+
+  // Latest trusted exact-head run wins: sort by createdAt, then run id.
+  // A newer failed/pending trusted run blocks; do not fall back to an older success.
+  // Display name is presentational only; identity is path → workflow id → run.workflow_id.
+  const qualityGates = input.qualityGatesRuns
+    .filter((run) =>
+      run.workflowId === trustedWorkflow.id
+      && run.workflowPath === trustedWorkflow.path
+      && run.headSha === pr.headSha,
+    )
+    .slice()
+    .sort(compareTrustedQualityGatesRuns);
   if (qualityGates.length === 0) {
     ci[QUALITY_GATES_WORKFLOW_NAME] = "absent";
-    return blocked("exact-head Quality Gates run absent", { ...reportBase, ci });
+    return blocked("trusted exact-head Quality Gates run absent", { ...reportBase, ci });
   }
   const latestQualityGates = qualityGates[qualityGates.length - 1]!;
   ci[QUALITY_GATES_WORKFLOW_NAME] = conclusionLabel(
@@ -448,6 +510,7 @@ export type AutoMergeRuntime = {
   fetchReviewThreads: (prNumber: number) => Promise<EvaluateInput["threads"]>;
   fetchCheckRuns: (headSha: string) => Promise<EvaluateInput["checkRuns"]>;
   fetchQualityGatesRuns: (headSha: string) => Promise<readonly QualityGatesRunSnapshot[]>;
+  fetchTrustedQualityGatesWorkflow: () => Promise<QualityGatesWorkflowIdentity>;
   compareHeadToMain: (headSha: string) => Promise<{ behindBy: number; mainSha: string }>;
   fetchDefaultBranchHasAutoMergeWorkflow: () => Promise<boolean>;
   fetchPullRequestFiles: (prNumber: number) => Promise<readonly PullRequestFileSnapshot[]>;
@@ -477,13 +540,15 @@ export async function runAutoMergeForPullRequest(
   }
 
   try {
-    const [reviews, threads, compare, bootstrapPresent, prFiles] = await Promise.all([
-      runtime.fetchReviews(prNumber),
-      runtime.fetchReviewThreads(prNumber),
-      runtime.compareHeadToMain(pullRequest.headSha),
-      runtime.fetchDefaultBranchHasAutoMergeWorkflow(),
-      runtime.fetchPullRequestFiles(prNumber),
-    ]);
+    const [reviews, threads, compare, bootstrapPresent, prFiles, trustedQualityGatesWorkflow] =
+      await Promise.all([
+        runtime.fetchReviews(prNumber),
+        runtime.fetchReviewThreads(prNumber),
+        runtime.compareHeadToMain(pullRequest.headSha),
+        runtime.fetchDefaultBranchHasAutoMergeWorkflow(),
+        runtime.fetchPullRequestFiles(prNumber),
+        runtime.fetchTrustedQualityGatesWorkflow(),
+      ]);
     const [checkRuns, qualityGatesRuns] = await Promise.all([
       runtime.fetchCheckRuns(pullRequest.headSha),
       runtime.fetchQualityGatesRuns(pullRequest.headSha),
@@ -496,6 +561,7 @@ export async function runAutoMergeForPullRequest(
       threads,
       checkRuns,
       qualityGatesRuns,
+      trustedQualityGatesWorkflow,
       compareToMain: { behindBy: compare.behindBy },
       currentMainSha: compare.mainSha,
       reviewEventBaseSha: runtime.reviewEventBaseSha ?? null,

@@ -1,12 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { AUTO_MERGE_WORKFLOW_PATH } from "./autoMergeGateTypes";
+import { AUTO_MERGE_WORKFLOW_PATH, QUALITY_GATES_WORKFLOW_PATH } from "./autoMergeGateTypes";
 import {
   GithubApiError,
   createGithubApi,
   mapMergeability,
   mapPullRequest,
   mapPullRequestFile,
+  mapQualityGatesWorkflowIdentity,
   mapReview,
 } from "./githubApi";
 import { prTouchesTrustedAutoMergePaths } from "./autoMergeGate";
@@ -151,5 +152,98 @@ describe("githubApi mapping", () => {
       },
     ]);
     expect(prTouchesTrustedAutoMergePaths(files)).toBe(true);
+  });
+
+  it("binds Quality Gates identity to the trusted path and numeric id", () => {
+    expect(
+      mapQualityGatesWorkflowIdentity({
+        id: 100,
+        path: QUALITY_GATES_WORKFLOW_PATH,
+        name: "Quality Gates",
+        state: "active",
+      }),
+    ).toEqual({
+      id: 100,
+      path: QUALITY_GATES_WORKFLOW_PATH,
+      name: "Quality Gates",
+      state: "active",
+    });
+  });
+
+  it("fails closed when the workflow path is not the trusted Quality Gates file", () => {
+    expect(() =>
+      mapQualityGatesWorkflowIdentity({
+        id: 999,
+        path: ".github/workflows/fake-quality.yml",
+        name: "Quality Gates",
+        state: "active",
+      }),
+    ).toThrow(/path mismatch/);
+  });
+
+  it("fails closed when the trusted workflow id is missing", () => {
+    expect(() =>
+      mapQualityGatesWorkflowIdentity({
+        path: QUALITY_GATES_WORKFLOW_PATH,
+        name: "Quality Gates",
+      }),
+    ).toThrow(/workflow id/);
+  });
+
+  it("fetches exact-head runs from the trusted workflow id endpoint", async () => {
+    const requested: string[] = [];
+    const fetchImpl: typeof fetch = async (input) => {
+      const url = String(input);
+      requested.push(url);
+      if (url.includes("/actions/workflows/.github/workflows/quality-gates.yml")) {
+        return new Response(
+          JSON.stringify({
+            id: 100,
+            path: QUALITY_GATES_WORKFLOW_PATH,
+            name: "Quality Gates",
+            state: "active",
+          }),
+          { status: 200 },
+        );
+      }
+      if (url.includes("/actions/workflows/100/runs")) {
+        return new Response(
+          JSON.stringify({
+            workflow_runs: [
+              {
+                id: 9,
+                workflow_id: 100,
+                name: "Quality Gates",
+                head_sha: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+                status: "completed",
+                conclusion: "success",
+                created_at: "2026-09-08T20:00:00Z",
+              },
+            ],
+          }),
+          { status: 200 },
+        );
+      }
+      if (url.includes("/actions/runs/9/jobs")) {
+        return new Response(
+          JSON.stringify({
+            jobs: [{ name: "Lint, build, and test", status: "completed", conclusion: "success" }],
+          }),
+          { status: 200 },
+        );
+      }
+      return new Response("not found", { status: 404 });
+    };
+    const api = createGithubApi({
+      token: "test-token",
+      owner: "o",
+      repo: "r",
+      fetchImpl,
+    });
+    const runs = await api.fetchQualityGatesRuns("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb");
+    expect(requested.some((url) => url.includes("/actions/workflows/100/runs"))).toBe(true);
+    expect(requested.some((url) => url.includes("/actions/runs?"))).toBe(false);
+    expect(runs[0]?.workflowId).toBe(100);
+    expect(runs[0]?.workflowPath).toBe(QUALITY_GATES_WORKFLOW_PATH);
   });
 });

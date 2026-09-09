@@ -26,6 +26,18 @@ name: Auto-merge after Cursor LRM
 #   require review.state == APPROVED. DISMISSED and PENDING reviews never
 #   authorize merge. Do not dismiss CHANGES_REQUESTED reviews.
 #
+# CI identity:
+#   Trusted path .github/workflows/quality-gates.yml → GitHub workflow id →
+#   exact-head run.workflow_id. Display name "Quality Gates" is
+#   presentational only. workflow_run events are wake-up signals, not
+#   authorization. Latest trusted exact-head run (created_at, then id) wins;
+#   a newer failed/pending trusted run blocks and does not fall back.
+#
+# Manual-merge authority:
+#   Any path under .github/workflows/, the trusted helper scripts, and
+#   package.json / package-lock.json / npm-shrinkwrap.json / .npmrc.
+#   Renames inspect filename and previousFilename.
+#
 # Base-drift policy:
 #   GitHub review objects bind commit_id (head) but not the reviewed base
 #   SHA. pull_request.base.sha moves with main, so it is not a reviewed-base
