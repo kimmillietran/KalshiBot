@@ -35,14 +35,16 @@ function sameStringList(left: unknown, right: readonly string[]): boolean {
 }
 
 /**
- * Protects a content-addressed confirmatory aggregate from semantic overwrite.
- * Semantically equivalent republish (generation timestamps only) is allowed.
+ * Protects a content-addressed confirmatory settlement snapshot from semantic overwrite.
+ * Identity is runSetHash + settlementSnapshotHash. Semantically equivalent republish
+ * (generation timestamps only) is allowed.
  */
 export function assertV2CrossRunPublishCompatible(input: {
   io: CalibrationFadeV2CrossRunValidationIo;
   outputPath: string;
   identity: {
     runSetHash: string;
+    settlementSnapshotHash: string;
     evidenceMode: "confirmatory";
     configurationHash: string;
     freezeCommitSha: string;
@@ -68,12 +70,14 @@ export function assertV2CrossRunPublishCompatible(input: {
   }
 
   const existingHash = readString(parsed.runSetHash);
+  const existingSnapshot = readString(parsed.settlementSnapshotHash);
   const existingMode = readString(parsed.evidenceMode);
   const existingConfig =
     readString(parsed.configurationHash) ?? readString(parsed.hypothesisConfigurationHash);
   const existingFreeze = readString(parsed.freezeCommitSha);
   if (
     existingHash !== input.identity.runSetHash
+    || existingSnapshot !== input.identity.settlementSnapshotHash
     || existingMode !== input.identity.evidenceMode
     || existingConfig !== input.identity.configurationHash
     || existingFreeze !== input.identity.freezeCommitSha
@@ -86,7 +90,8 @@ export function assertV2CrossRunPublishCompatible(input: {
 
   if (stableStringify(stripNonSemantic(parsed)) !== stableStringify(stripNonSemantic(input.semanticBody))) {
     throw new CalibrationFadeV2CrossRunValidationError(
-      `Refusing to overwrite ${input.outputPath}: same runSetHash but different semantic body`,
+      `Refusing to overwrite ${input.outputPath}: same runSetHash + settlementSnapshotHash `
+        + "but different semantic body",
     );
   }
 }

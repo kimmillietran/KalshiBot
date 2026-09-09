@@ -29,6 +29,10 @@ import {
   type V2CrossRunHashPayload,
 } from "./calibrationFadeV2CrossRunValidationTypes";
 import { computeV2RunSetHash } from "./computeV2RunSetHash";
+import {
+  computeV2SettlementSnapshotHash,
+  type V2SettlementSnapshotPayload,
+} from "./computeV2SettlementSnapshotHash";
 import type { CalibrationFadeV2CrossRunCliConfig } from "./parseCalibrationFadeV2CrossRunValidationArgv";
 import { resolveCalibrationFadeV2CrossRunOutputPaths } from "./resolveCalibrationFadeV2CrossRunOutputPaths";
 
@@ -37,6 +41,7 @@ export type CalibrationFadeV2CrossRunValidationReport = {
   generatedAt: string;
   artifactGeneratedAt: string;
   runSetHash: string;
+  settlementSnapshotHash: string;
   evidenceMode: "confirmatory";
   hypothesisId: string;
   hypothesisVersion: "v2";
@@ -64,6 +69,7 @@ export type CalibrationFadeV2CrossRunValidationReport = {
   provenance: {
     confirmatoryArtifactConsumption: "sealed-published-v2-outputs";
     runSetHashPayload: V2CrossRunHashPayload;
+    settlementSnapshotPayload: V2SettlementSnapshotPayload;
     overlaySourceArtifacts: readonly string[];
     outputPaths: CalibrationFadeV2CrossRunOutputPaths;
   };
@@ -162,14 +168,6 @@ export function analyzeCalibrationFadeV2CrossRun(input: {
     selectedRunIds,
     perRun: admitted.map((entry) => entry.identity),
   });
-  const outputPaths = resolveCalibrationFadeV2CrossRunOutputPaths({
-    runSetHash,
-    outputPath: input.config.outputPath,
-    htmlOutputPath: input.config.htmlOutputPath,
-    marketsOutputPath: input.config.marketsOutputPath,
-    runsOutputPath: input.config.runsOutputPath,
-    appearancesOutputPath: input.config.appearancesOutputPath,
-  });
 
   const overlayAppearances = admitted.flatMap((entry) => {
     const overlay = applyOfflineSettlementOverlay({
@@ -198,6 +196,21 @@ export function analyzeCalibrationFadeV2CrossRun(input: {
       hypothesisConfigurationHash: entry.hypothesisConfigurationHash,
       targetOutcomeSide: entry.targetOutcomeSide,
     })),
+  });
+
+  const { settlementSnapshotHash, payload: settlementSnapshotPayload } =
+    computeV2SettlementSnapshotHash({
+      runSetHash,
+      uniqueMarkets: deduped.uniqueMarkets,
+    });
+  const outputPaths = resolveCalibrationFadeV2CrossRunOutputPaths({
+    runSetHash,
+    settlementSnapshotHash,
+    outputPath: input.config.outputPath,
+    htmlOutputPath: input.config.htmlOutputPath,
+    marketsOutputPath: input.config.marketsOutputPath,
+    runsOutputPath: input.config.runsOutputPath,
+    appearancesOutputPath: input.config.appearancesOutputPath,
   });
 
   const perRunLedgers: CalibrationFadeV2CrossRunPerRunLedger[] = admitted
@@ -307,6 +320,7 @@ export function analyzeCalibrationFadeV2CrossRun(input: {
     generatedAt: input.generatedAt,
     artifactGeneratedAt: input.generatedAt,
     runSetHash,
+    settlementSnapshotHash,
     evidenceMode: "confirmatory",
     hypothesisId: CALIBRATION_FADE_V2_HYPOTHESIS_ID,
     hypothesisVersion: CALIBRATION_FADE_V2_HYPOTHESIS_VERSION,
@@ -336,6 +350,7 @@ export function analyzeCalibrationFadeV2CrossRun(input: {
     provenance: {
       confirmatoryArtifactConsumption: "sealed-published-v2-outputs",
       runSetHashPayload: payload,
+      settlementSnapshotPayload,
       overlaySourceArtifacts,
       outputPaths,
     },
@@ -351,6 +366,7 @@ export function analyzeCalibrationFadeV2CrossRun(input: {
     outputPath: outputPaths.outputPath,
     identity: {
       runSetHash,
+      settlementSnapshotHash,
       evidenceMode: "confirmatory",
       configurationHash,
       freezeCommitSha: CALIBRATION_FADE_V2_FREEZE_COMMIT_SHA,

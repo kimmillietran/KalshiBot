@@ -403,13 +403,15 @@ describe("calibrationFadeV2CrossRunValidation admission and aggregation", () => 
       generatedAt: "2026-09-08T13:00:00.000Z",
     });
     expect(left.report.runSetHash).toBe(right.report.runSetHash);
+    expect(left.report.settlementSnapshotHash).toBe(right.report.settlementSnapshotHash);
     expect(left.report.outputPath).toBe(right.report.outputPath);
     expect(left.report.outputPath).toContain(
-      `/calibration-fade-v2/cross-run/confirmatory/${left.report.runSetHash}/`,
+      `/calibration-fade-v2/cross-run/confirmatory/${left.report.runSetHash}/settlement-snapshots/${left.report.settlementSnapshotHash}/`,
     );
     expect(left.report.outputPath).not.toContain("/latest");
     expect(left.report.outputPath).not.toContain("calibration-fade-cross-run-validation.json");
     expect(JSON.stringify(left.report.provenance.runSetHashPayload)).not.toMatch(/mtime/i);
+    expect(JSON.stringify(left.report.provenance.settlementSnapshotPayload)).not.toMatch(/mtime/i);
   });
 
   function expectAdmissionOverrideRejected(overrides: Record<string, unknown>, pattern: RegExp): void {
@@ -758,6 +760,8 @@ describe("calibrationFadeV2CrossRunValidation admission and aggregation", () => 
     expect(withOverlay.report.uniqueCandidateMarketCount).toBe(without.report.uniqueCandidateMarketCount);
     expect(withOverlay.report.selectedRunIds).toEqual(without.report.selectedRunIds);
     expect(withOverlay.report.runSetHash).toBe(without.report.runSetHash);
+    expect(withOverlay.report.settlementSnapshotHash).not.toBe(without.report.settlementSnapshotHash);
+    expect(withOverlay.report.outputPath).not.toBe(without.report.outputPath);
     expect(withOverlay.report.settlementCoverageShare).toBe(0.2);
     expect(withOverlay.report.interpretationClassification).toBe("settlement-coverage-incomplete");
     expect(withOverlay.marketLines.join("\n")).not.toContain(extra);
@@ -844,6 +848,9 @@ describe("calibrationFadeV2CrossRunValidation admission and aggregation", () => 
     expect(result.report.grossReturnCents).toBe(57);
     expect(result.report.feeAdjustedReturnCents).toBe(56);
     expect(result.report.runSetHash).toBe(analyzePair({ ...files }, dirs, "run-a", "run-b").report.runSetHash);
+    expect(result.report.settlementSnapshotHash).toBe(
+      analyzePair({ ...files }, dirs, "run-a", "run-b").report.settlementSnapshotHash,
+    );
   });
 
   it("fails closed when overlay contradicts a sealed settled outcome", () => {
@@ -1008,6 +1015,7 @@ describe("calibrationFadeV2CrossRunValidation admission and aggregation", () => 
     });
     const republish = analyzePair(files, [], "run-a", "run-b");
     expect(republish.report.runSetHash).toBe(first.report.runSetHash);
+    expect(republish.report.settlementSnapshotHash).toBe(first.report.settlementSnapshotHash);
   });
 
   it("does not hash mtime in the v2 runSetHash payload", () => {
@@ -1045,5 +1053,241 @@ describe("calibrationFadeV2CrossRunValidation admission and aggregation", () => 
     expect(hashed.payload.selectedRunIds).toEqual(["a", "b"]);
     expect(hashed.payload.perRun.map((entry) => entry.runId)).toEqual(["a", "b"]);
     expect(JSON.stringify(hashed.payload)).not.toMatch(/mtime|ctime/i);
+  });
+});
+
+describe("M12.6e.1 settlement snapshot lifecycle", () => {
+  const FIVE = [
+    "KXBTC15M-26SEP081000-00",
+    "KXBTC15M-26SEP081015-15",
+    "KXBTC15M-26SEP081030-00",
+    "KXBTC15M-26SEP081045-15",
+    "KXBTC15M-26SEP081100-00",
+  ] as const;
+
+  function seedFiveUnresolved(files: Record<string, string>): void {
+    seedAdmittedRun(files, "run-a", [market(FIVE[0]), market(FIVE[1]), market(FIVE[2])]);
+    seedAdmittedRun(files, "run-b", [market(FIVE[3]), market(FIVE[4])]);
+  }
+
+  function importDirsFor(tickers: readonly string[]): string[] {
+    return ["data/imports", "data/imports/KXBTC15M", ...tickers.map((ticker) => `data/imports/KXBTC15M/${ticker}`)];
+  }
+
+  it("publishes a new settlement snapshot for zero→partial overlay without overwriting the prior one", () => {
+    const files: Record<string, string> = {};
+    seedFiveUnresolved(files);
+    const initial = analyzePair(files, [], "run-a", "run-b");
+    expect(initial.report.evaluatedIndependentCandidateMarketCount).toBe(5);
+    expect(initial.report.settlementCoverageShare).toBe(0);
+    expect(initial.report.interpretationClassification).toBe("settlement-coverage-incomplete");
+    expect(initial.report.outputPath).toContain("/settlement-snapshots/");
+
+    files[initial.report.outputPath] = JSON.stringify(initial.report);
+
+    const settled = [FIVE[0], FIVE[1]] as const;
+    for (const ticker of settled) {
+      files[`data/imports/KXBTC15M/${ticker}/import-result.json`] = importResult(ticker, "no");
+    }
+    const partial = analyzePair(files, importDirsFor(settled), "run-a", "run-b", [
+      "--imports-dir",
+      "data/imports",
+    ]);
+
+    expect(partial.report.runSetHash).toBe(initial.report.runSetHash);
+    expect(partial.report.settlementSnapshotHash).not.toBe(initial.report.settlementSnapshotHash);
+    expect(partial.report.outputPath).not.toBe(initial.report.outputPath);
+    expect(partial.report.settlementCoverageShare).toBe(0.4);
+    expect(files[initial.report.outputPath]).toBe(JSON.stringify(initial.report));
+    expect(partial.report.outputPath).toContain(
+      `/settlement-snapshots/${partial.report.settlementSnapshotHash}/`,
+    );
+  });
+
+  it("allows partial→sufficient coverage to leave settlement-coverage-incomplete", () => {
+    const files: Record<string, string> = {};
+    seedFiveUnresolved(files);
+    const settled = [FIVE[0], FIVE[1], FIVE[2], FIVE[3]] as const;
+    for (const ticker of settled) {
+      files[`data/imports/KXBTC15M/${ticker}/import-result.json`] = importResult(ticker, "no");
+    }
+    const result = analyzePair(files, importDirsFor(settled), "run-a", "run-b", [
+      "--imports-dir",
+      "data/imports",
+    ]);
+    expect(result.report.evaluatedIndependentCandidateMarketCount).toBe(5);
+    expect(result.report.settlementCoverageShare).toBe(0.8);
+    expect(result.report.interpretationClassification).not.toBe("insufficient-forward-events");
+    expect(result.report.interpretationClassification).not.toBe("settlement-coverage-incomplete");
+    expect(result.report.evaluatedExecutableCandidateCount).toBe(0);
+    expect(result.report.grossReturnCents).toBeNull();
+    expect(result.report.feeAdjustedReturnCents).toBeNull();
+  });
+
+  it("is idempotent for the same settlement snapshot state", () => {
+    const files: Record<string, string> = {};
+    seedFiveUnresolved(files);
+    files[`data/imports/KXBTC15M/${FIVE[0]}/import-result.json`] = importResult(FIVE[0], "no");
+    const dirs = importDirsFor([FIVE[0]]);
+    const first = analyzePair(files, dirs, "run-a", "run-b", ["--imports-dir", "data/imports"]);
+    files[first.report.outputPath] = JSON.stringify({
+      ...first.report,
+      generatedAt: "2026-09-08T12:00:00.000Z",
+      artifactGeneratedAt: "2026-09-08T12:00:00.000Z",
+    });
+    const second = analyzePair(files, dirs, "run-b", "run-a", ["--imports-dir", "data/imports"]);
+    expect(second.report.runSetHash).toBe(first.report.runSetHash);
+    expect(second.report.settlementSnapshotHash).toBe(first.report.settlementSnapshotHash);
+    expect(second.report.outputPath).toBe(first.report.outputPath);
+    expect(second.report.settlementCoverageShare).toBe(first.report.settlementCoverageShare);
+  });
+
+  it("fails closed on same snapshot identity with altered semantic body", () => {
+    const files: Record<string, string> = {};
+    seedFiveUnresolved(files);
+    const first = analyzePair(files, [], "run-a", "run-b");
+    files[first.report.outputPath] = JSON.stringify({
+      ...first.report,
+      interpretationClassification: "forward-supports-calibration-effect",
+    });
+    expectAnalyzeRejected(files, "run-a", "run-b", /different semantic body/);
+  });
+
+  it("keeps settlementSnapshotHash order-invariant for runs and candidate settlement order", () => {
+    const filesA: Record<string, string> = {};
+    const filesB: Record<string, string> = {};
+    seedFiveUnresolved(filesA);
+    seedFiveUnresolved(filesB);
+    const settled = [FIVE[0], FIVE[1], FIVE[2]] as const;
+    for (const ticker of settled) {
+      filesA[`data/imports/KXBTC15M/${ticker}/import-result.json`] = importResult(ticker, "no");
+      filesB[`data/imports/KXBTC15M/${ticker}/import-result.json`] = importResult(ticker, "no");
+    }
+    const left = analyzePair(filesA, importDirsFor(settled), "run-a", "run-b", [
+      "--imports-dir",
+      "data/imports",
+    ]);
+    const right = analyzePair(filesB, importDirsFor([...settled].reverse()), "run-b", "run-a", [
+      "--imports-dir",
+      "data/imports",
+    ]);
+    expect(left.report.runSetHash).toBe(right.report.runSetHash);
+    expect(left.report.settlementSnapshotHash).toBe(right.report.settlementSnapshotHash);
+  });
+
+  it("ignores unrelated imported markets for settlementSnapshotHash", () => {
+    const files: Record<string, string> = {};
+    seedFiveUnresolved(files);
+    files[`data/imports/KXBTC15M/${FIVE[0]}/import-result.json`] = importResult(FIVE[0], "no");
+    const unrelated = "KXBTC15M-26SEP081200-00";
+    const dirs = importDirsFor([FIVE[0], unrelated]);
+    const withoutExtra = analyzePair({ ...files }, dirs, "run-a", "run-b", [
+      "--imports-dir",
+      "data/imports",
+    ]);
+    files[`data/imports/KXBTC15M/${unrelated}/import-result.json`] = importResult(unrelated, "yes");
+    const withExtra = analyzePair(files, dirs, "run-a", "run-b", ["--imports-dir", "data/imports"]);
+    expect(withExtra.report.runSetHash).toBe(withoutExtra.report.runSetHash);
+    expect(withExtra.report.settlementSnapshotHash).toBe(withoutExtra.report.settlementSnapshotHash);
+    expect(withExtra.marketLines.join("\n")).not.toContain(unrelated);
+  });
+
+  it("changes settlementSnapshotHash when a relevant candidate settlement changes", () => {
+    const files: Record<string, string> = {};
+    seedFiveUnresolved(files);
+    files[`data/imports/KXBTC15M/${FIVE[0]}/import-result.json`] = importResult(FIVE[0], "no");
+    const dirs = importDirsFor([FIVE[0], FIVE[1]]);
+    const first = analyzePair(files, dirs, "run-a", "run-b", ["--imports-dir", "data/imports"]);
+    files[`data/imports/KXBTC15M/${FIVE[1]}/import-result.json`] = importResult(FIVE[1], "yes");
+    const second = analyzePair(files, dirs, "run-a", "run-b", ["--imports-dir", "data/imports"]);
+    expect(second.report.runSetHash).toBe(first.report.runSetHash);
+    expect(second.report.settlementSnapshotHash).not.toBe(first.report.settlementSnapshotHash);
+  });
+
+  it("preserves a legacy runSet-root artifact while publishing a settlement snapshot", () => {
+    const files: Record<string, string> = {};
+    seedFiveUnresolved(files);
+    const initial = analyzePair(files, [], "run-a", "run-b");
+    const legacyRoot =
+      `data/research-results/calibration-fade-v2/cross-run/confirmatory/${initial.report.runSetHash}/`
+      + "calibration-fade-v2-cross-run-validation.json";
+    const legacyBody = JSON.stringify({
+      ...initial.report,
+      outputPath: legacyRoot,
+      settlementSnapshotHash: undefined,
+    });
+    files[legacyRoot] = legacyBody;
+
+    files[`data/imports/KXBTC15M/${FIVE[0]}/import-result.json`] = importResult(FIVE[0], "no");
+    const next = analyzePair(files, importDirsFor([FIVE[0]]), "run-a", "run-b", [
+      "--imports-dir",
+      "data/imports",
+    ]);
+
+    expect(next.report.runSetHash).toBe(initial.report.runSetHash);
+    expect(next.report.outputPath).toContain("/settlement-snapshots/");
+    expect(next.report.outputPath).not.toBe(legacyRoot);
+    expect(files[legacyRoot]).toBe(legacyBody);
+  });
+
+  it("rejects custom output paths outside the settlement-snapshot namespace", () => {
+    const files: Record<string, string> = {};
+    seedFiveUnresolved(files);
+    seedFrozenConfigs(files);
+    const io = createMemoryCalibrationFadeForwardValidationIo(files);
+    expect(() =>
+      analyzeCalibrationFadeV2CrossRun({
+        config: parseCalibrationFadeV2CrossRunValidationArgv([
+          "--capture-run-dir",
+          "data/live-capture/forward-quotes/run-a",
+          "--capture-run-dir",
+          "data/live-capture/forward-quotes/run-b",
+          "--evidence-mode",
+          "confirmatory",
+          "--output",
+          "data/research-results/calibration-fade-cross-run-validation.json",
+        ]),
+        io,
+        generatedAt: "2026-09-08T12:00:00.000Z",
+      }),
+    ).toThrow(/v1 canonical path|content-addressed|settlement-snapshots/);
+  });
+
+  it("preserves sealed entry identity fields across settlement overlay", () => {
+    const files: Record<string, string> = {};
+    const ticker = FIVE[0];
+    seedAdmittedRun(files, "run-a", [
+      market(ticker, {
+        entryTimestamp: "2026-09-08T10:00:05.000Z",
+        noAskCents: 48,
+        executableAvailable: true,
+      }),
+      market(FIVE[1]),
+      market(FIVE[2]),
+    ]);
+    seedAdmittedRun(files, "run-b", [market(FIVE[3]), market(FIVE[4])]);
+    files[`data/imports/KXBTC15M/${ticker}/import-result.json`] = importResult(ticker, "no");
+    const result = analyzePair(files, importDirsFor([ticker]), "run-a", "run-b", [
+      "--imports-dir",
+      "data/imports",
+    ]);
+    const canonical = JSON.parse(
+      result.marketLines.find((line) => line.includes(ticker)) ?? "{}",
+    ) as {
+      selectedCanonicalEntry?: {
+        entryTimestamp?: string;
+        noAskCents?: number | null;
+        executableAvailable?: boolean;
+        settledOutcome?: string;
+        grossReturnCents?: number | null;
+        feeAdjustedReturnCents?: number | null;
+      };
+    };
+    expect(canonical.selectedCanonicalEntry?.entryTimestamp).toBe("2026-09-08T10:00:05.000Z");
+    expect(canonical.selectedCanonicalEntry?.noAskCents).toBe(48);
+    expect(canonical.selectedCanonicalEntry?.executableAvailable).toBe(true);
+    expect(canonical.selectedCanonicalEntry?.settledOutcome).toBe("no");
+    expect(canonical.selectedCanonicalEntry?.grossReturnCents).toBeNull();
+    expect(canonical.selectedCanonicalEntry?.feeAdjustedReturnCents).toBeNull();
   });
 });
