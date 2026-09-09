@@ -2,6 +2,7 @@ export { buildForwardSettlementCoverageReport } from "./buildForwardSettlementCo
 export { serializeForwardSettlementCoverageReport } from "./buildForwardSettlementCoverageReport";
 export { runForwardSettlementBackfill, createProductionForwardSettlementBackfillDeps } from "./backfillForwardSettlements";
 export { extractSelectedRunMarketInventory } from "./extractSelectedRunMarketInventory";
+export { createFilesystemForwardSettlementCoverageIo } from "./createFilesystemForwardSettlementCoverageIo";
 export {
   classifyMarketSettlementCoverage,
   classifyInvalidMarketEntry,

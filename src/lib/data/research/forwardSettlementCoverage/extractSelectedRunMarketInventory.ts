@@ -93,54 +93,73 @@ function mergeInventoryEntry(
   });
 }
 
-function ingestJsonlInventory(input: {
+function resolveObservedAt(
+  record: Record<string, unknown>,
+  observedAtField: string,
+): string | null {
+  return (
+    readString(record[observedAtField])
+    ?? readString(record.receivedAtLocal)
+    ?? readString(record.recordedAtLocal)
+    ?? readString(record.timestamp)
+  );
+}
+
+/**
+ * Single-pass JSONL inventory ingest. Updates compact per-ticker accumulators only;
+ * does not retain raw lines or records.
+ * Returns true when the line contributed a real-market inventory observation.
+ */
+export function ingestInventoryJsonlLine(input: {
   map: Map<string, CapturedMarketInventoryEntry>;
-  content: string;
+  excludedTickers: Array<{ marketTicker: string; reason: string }>;
+  seenInvalid: Set<string>;
+  line: string;
   sourceArtifact: string;
   observedAtField: string;
   includeCloseTime?: boolean;
-}): number {
-  let count = 0;
-
-  for (const line of input.content.split(/\r?\n/)) {
-    const trimmed = line.trim();
-    if (!trimmed) {
-      continue;
-    }
-
-    const record = parseJsonLine(trimmed);
-    if (!record) {
-      continue;
-    }
-
-    const marketTicker = readString(record.marketTicker);
-    if (!marketTicker || !isRealCaptureMarketTicker(marketTicker)) {
-      continue;
-    }
-
-    const observedAt =
-      readString(record[input.observedAtField])
-      ?? readString(record.receivedAtLocal)
-      ?? readString(record.recordedAtLocal)
-      ?? readString(record.timestamp);
-    if (!observedAt) {
-      continue;
-    }
-
-    count += 1;
-    mergeInventoryEntry(input.map, {
-      marketTicker,
-      observedAt,
-      eventTicker: readString(record.eventTicker),
-      seriesTicker: readString(record.seriesTicker),
-      marketCloseTime: input.includeCloseTime
-        ? readString(record.closeTime)
-        : null,
-      sourceArtifact: input.sourceArtifact,
-    });
+  collectInvalidExclusions: boolean;
+}): { action: "continue" | "skip"; inventoried: boolean } {
+  const trimmed = input.line.trim();
+  if (!trimmed) {
+    return { action: "continue", inventoried: false };
   }
 
-  return count;
+  const record = parseJsonLine(trimmed);
+  if (!record) {
+    return { action: "skip", inventoried: false };
+  }
+
+  const marketTicker = readString(record.marketTicker);
+  if (!marketTicker) {
+    return { action: "skip", inventoried: false };
+  }
+
+  if (!isRealCaptureMarketTicker(marketTicker)) {
+    if (input.collectInvalidExclusions && !input.seenInvalid.has(marketTicker)) {
+      input.seenInvalid.add(marketTicker);
+      input.excludedTickers.push({
+        marketTicker,
+        reason: classifyInvalidMarketReason(marketTicker) ?? "excluded ticker",
+      });
+    }
+    return { action: "continue", inventoried: false };
+  }
+
+  const observedAt = resolveObservedAt(record, input.observedAtField);
+  if (!observedAt) {
+    return { action: "skip", inventoried: false };
+  }
+
+  mergeInventoryEntry(input.map, {
+    marketTicker,
+    observedAt,
+    eventTicker: readString(record.eventTicker),
+    seriesTicker: readString(record.seriesTicker),
+    marketCloseTime: input.includeCloseTime ? readString(record.closeTime) : null,
+    sourceArtifact: input.sourceArtifact,
+  });
+  return { action: "continue", inventoried: true };
 }
 
 function resolveExpectedSettlementAvailability(input: {
@@ -164,17 +183,63 @@ export function resolveSelectedRunId(captureRunDir: string): string {
   return posix.basename(captureRunDir.replace(/\\/g, "/"));
 }
 
-/** Extracts deduplicated real-market inventory from one selected capture run. */
-export function extractSelectedRunMarketInventory(input: {
+async function streamInventoryArtifact(input: {
+  io: ForwardSettlementCoverageIo;
+  path: string;
+  map: Map<string, CapturedMarketInventoryEntry>;
+  excludedTickers: Array<{ marketTicker: string; reason: string }>;
+  seenInvalid: Set<string>;
+  observedAtField: string;
+  includeCloseTime?: boolean;
+  collectInvalidExclusions: boolean;
+}): Promise<number> {
+  let usableRecords = 0;
+  try {
+    await input.io.iterateJsonl(input.path, {
+      onLine: (line) => {
+        const result = ingestInventoryJsonlLine({
+          map: input.map,
+          excludedTickers: input.excludedTickers,
+          seenInvalid: input.seenInvalid,
+          line,
+          sourceArtifact: input.path,
+          observedAtField: input.observedAtField,
+          includeCloseTime: input.includeCloseTime,
+          collectInvalidExclusions: input.collectInvalidExclusions,
+        });
+        if (result.inventoried) {
+          usableRecords += 1;
+        }
+        return result.action;
+      },
+    });
+  } catch (error) {
+    if (error instanceof ForwardSettlementCoverageError) {
+      throw error;
+    }
+    throw new ForwardSettlementCoverageError(
+      `Failed to stream inventory JSONL ${input.path}: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    );
+  }
+  return usableRecords;
+}
+
+/**
+ * Extracts deduplicated real-market inventory from one selected capture run.
+ * Streams top-of-book.jsonl once with memory scaling by distinct tickers.
+ */
+export async function extractSelectedRunMarketInventory(input: {
   io: ForwardSettlementCoverageIo;
   captureRunDir: string;
   evaluatedAt: string;
-}): {
+}): Promise<{
   selectedRunId: string;
   inventory: readonly CapturedMarketInventoryEntry[];
   excludedTickers: readonly { marketTicker: string; reason: string }[];
   warnings: string[];
-} {
+}> {
   const captureRunDir = input.captureRunDir.replace(/\\/g, "/");
   if (!input.io.fileExists(captureRunDir) || !input.io.isDirectory(captureRunDir)) {
     throw new ForwardSettlementCoverageError(
@@ -190,36 +255,14 @@ export function extractSelectedRunMarketInventory(input: {
 
   const topOfBookPath = posix.join(captureRunDir, "top-of-book.jsonl");
   if (input.io.fileExists(topOfBookPath)) {
-    const rawLines = input.io.readFile(topOfBookPath).split(/\r?\n/);
-    for (const line of rawLines) {
-      const trimmed = line.trim();
-      if (!trimmed) {
-        continue;
-      }
-
-      const record = parseJsonLine(trimmed);
-      const marketTicker = readString(record?.marketTicker);
-      if (!marketTicker) {
-        continue;
-      }
-
-      if (!isRealCaptureMarketTicker(marketTicker)) {
-        if (!seenInvalid.has(marketTicker)) {
-          seenInvalid.add(marketTicker);
-          excludedTickers.push({
-            marketTicker,
-            reason: classifyInvalidMarketReason(marketTicker) ?? "excluded ticker",
-          });
-        }
-        continue;
-      }
-    }
-
-    const ingested = ingestJsonlInventory({
+    const ingested = await streamInventoryArtifact({
+      io: input.io,
+      path: topOfBookPath,
       map,
-      content: input.io.readFile(topOfBookPath),
-      sourceArtifact: topOfBookPath,
+      excludedTickers,
+      seenInvalid,
       observedAtField: "receivedAtLocal",
+      collectInvalidExclusions: true,
     });
     if (ingested === 0) {
       warnings.push("top-of-book.jsonl contained no usable real-market records.");
@@ -230,12 +273,15 @@ export function extractSelectedRunMarketInventory(input: {
 
   const metadataPath = posix.join(captureRunDir, "market-metadata.jsonl");
   if (input.io.fileExists(metadataPath)) {
-    ingestJsonlInventory({
+    await streamInventoryArtifact({
+      io: input.io,
+      path: metadataPath,
       map,
-      content: input.io.readFile(metadataPath),
-      sourceArtifact: metadataPath,
+      excludedTickers,
+      seenInvalid,
       observedAtField: "receivedAtLocal",
       includeCloseTime: true,
+      collectInvalidExclusions: false,
     });
   } else {
     warnings.push(`Missing market-metadata.jsonl in ${captureRunDir}`);

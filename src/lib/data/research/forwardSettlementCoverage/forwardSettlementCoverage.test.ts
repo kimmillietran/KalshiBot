@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
+import { iterateJsonlLines } from "@/lib/data/research/jsonl";
+
 import { runForwardSettlementBackfill, createProductionForwardSettlementBackfillDeps } from "./backfillForwardSettlements";
 import { buildForwardSettlementCoverageReport } from "./buildForwardSettlementCoverageReport";
 import { buildCaptureMarketImportConfig, resolveMarketImportPaths } from "./buildCaptureMarketImportConfig";
@@ -151,6 +153,10 @@ function createIo(
       return [...entries];
     },
     isDirectory: (path) => dirs.includes(path),
+    iterateJsonl: async (path, options) => {
+      const content = files[path] ?? written[path] ?? "";
+      return iterateJsonlLines(content.split(/\r?\n/), options);
+    },
     writeFile: (path, data) => {
       written[path] = data;
       files[path] = data;
@@ -177,12 +183,12 @@ function defaultConfig(overrides: Partial<ForwardSettlementCoverageConfig> = {})
 }
 
 describe("forwardSettlementCoverage", () => {
-  it("extracts and deduplicates selected-run real market tickers", () => {
+  it("extracts and deduplicates selected-run real market tickers", async () => {
     const files: Record<string, string> = {};
     const dirs: string[] = [];
     seedRun(files, dirs);
 
-    const extracted = extractSelectedRunMarketInventory({
+    const extracted = await extractSelectedRunMarketInventory({
       io: createIo(files, dirs),
       captureRunDir: RUN_DIR,
       evaluatedAt: EVALUATED_AT,
@@ -199,7 +205,7 @@ describe("forwardSettlementCoverage", () => {
     expect(isRealCaptureMarketTicker("KXBTC15M-MOCK")).toBe(false);
   });
 
-  it("reads forward capture metadata timestamps from recordedAtLocal", () => {
+  it("reads forward capture metadata timestamps from recordedAtLocal", async () => {
     const files: Record<string, string> = {};
     const dirs: string[] = [];
     dirs.push(RUN_DIR, "data/live-capture/forward-quotes");
@@ -215,7 +221,7 @@ describe("forwardSettlementCoverage", () => {
       recordedAtLocal: "2026-07-11T11:08:00.000Z",
     });
 
-    const extracted = extractSelectedRunMarketInventory({
+    const extracted = await extractSelectedRunMarketInventory({
       io: createIo(files, dirs),
       captureRunDir: RUN_DIR,
       evaluatedAt: EVALUATED_AT,
@@ -256,13 +262,13 @@ describe("forwardSettlementCoverage", () => {
     expect(joinJson.marketJoins.map((join) => join.marketTicker)).toEqual([MARKET_A]);
   });
 
-  it("detects existing settlement-ready markets", () => {
+  it("detects existing settlement-ready markets", async () => {
     const files: Record<string, string> = {};
     const dirs: string[] = [];
     seedRun(files, dirs);
     files[`data/imports/KXBTC15M/${MARKET_A}/import-result.json`] = createImportResult(MARKET_A, "yes");
 
-    const extracted = extractSelectedRunMarketInventory({
+    const extracted = await extractSelectedRunMarketInventory({
       io: createIo(files, dirs),
       captureRunDir: RUN_DIR,
       evaluatedAt: EVALUATED_AT,
@@ -280,12 +286,12 @@ describe("forwardSettlementCoverage", () => {
     expect(classified.settledOutcome).toBe("yes");
   });
 
-  it("classifies missing settlement source", () => {
+  it("classifies missing settlement source", async () => {
     const files: Record<string, string> = {};
     const dirs: string[] = [];
     seedRun(files, dirs);
 
-    const extracted = extractSelectedRunMarketInventory({
+    const extracted = await extractSelectedRunMarketInventory({
       io: createIo(files, dirs),
       captureRunDir: RUN_DIR,
       evaluatedAt: EVALUATED_AT,
@@ -302,7 +308,7 @@ describe("forwardSettlementCoverage", () => {
     expect(classified.classification).toBe("missing-settlement-source");
   });
 
-  it("classifies stale settlement imports", () => {
+  it("classifies stale settlement imports", async () => {
     const files: Record<string, string> = {};
     const dirs: string[] = [];
     seedRun(files, dirs);
@@ -310,7 +316,7 @@ describe("forwardSettlementCoverage", () => {
       collectionTime: "2026-07-11T11:07:00.000Z",
     });
 
-    const extracted = extractSelectedRunMarketInventory({
+    const extracted = await extractSelectedRunMarketInventory({
       io: createIo(files, dirs),
       captureRunDir: RUN_DIR,
       evaluatedAt: EVALUATED_AT,
@@ -327,12 +333,12 @@ describe("forwardSettlementCoverage", () => {
     expect(classified.classification).toBe("settlement-present-but-stale");
   });
 
-  it("classifies unsettled markets", () => {
+  it("classifies unsettled markets", async () => {
     const files: Record<string, string> = {};
     const dirs: string[] = [];
     seedRun(files, dirs);
 
-    const extracted = extractSelectedRunMarketInventory({
+    const extracted = await extractSelectedRunMarketInventory({
       io: createIo(files, dirs),
       captureRunDir: RUN_DIR,
       evaluatedAt: EVALUATED_AT,
@@ -366,7 +372,7 @@ describe("forwardSettlementCoverage", () => {
     const io = createIo(files, dirs);
     const runMarketImport = vi.fn(async () => ({ success: true }));
 
-    const extracted = extractSelectedRunMarketInventory({
+    const extracted = await extractSelectedRunMarketInventory({
       io,
       captureRunDir: RUN_DIR,
       evaluatedAt: EVALUATED_AT,
@@ -425,7 +431,7 @@ describe("forwardSettlementCoverage", () => {
       return { success: true };
     });
 
-    const extracted = extractSelectedRunMarketInventory({ io, captureRunDir: RUN_DIR, evaluatedAt: EVALUATED_AT });
+    const extracted = await extractSelectedRunMarketInventory({ io, captureRunDir: RUN_DIR, evaluatedAt: EVALUATED_AT });
     const markets = extracted.inventory
       .filter((entry) => [MARKET_A, MARKET_B].includes(entry.marketTicker))
       .map((inventory) =>
@@ -472,11 +478,11 @@ describe("forwardSettlementCoverage", () => {
       return { success: true };
     });
 
-    const inventory = extractSelectedRunMarketInventory({
+    const inventory = (await extractSelectedRunMarketInventory({
       io,
       captureRunDir: RUN_DIR,
       evaluatedAt: EVALUATED_AT,
-    }).inventory.find((entry) => entry.marketTicker === MARKET_B)!;
+    })).inventory.find((entry) => entry.marketTicker === MARKET_B)!;
 
     const markets = [
       classifyMarketSettlementCoverage({
@@ -528,11 +534,11 @@ describe("forwardSettlementCoverage", () => {
       return { success: true };
     });
 
-    const inventory = extractSelectedRunMarketInventory({
+    const inventory = (await extractSelectedRunMarketInventory({
       io,
       captureRunDir: RUN_DIR,
       evaluatedAt: EVALUATED_AT,
-    }).inventory.find((entry) => entry.marketTicker === MARKET_B)!;
+    })).inventory.find((entry) => entry.marketTicker === MARKET_B)!;
     const markets = [
       classifyMarketSettlementCoverage({
         io,
@@ -588,11 +594,11 @@ describe("forwardSettlementCoverage", () => {
         createImportResult(market.marketTicker, "no");
       return { success: true };
     });
-    const inventory = extractSelectedRunMarketInventory({
+    const inventory = (await extractSelectedRunMarketInventory({
       io,
       captureRunDir: RUN_DIR,
       evaluatedAt: EVALUATED_AT,
-    }).inventory.find((entry) => entry.marketTicker === MARKET_B)!;
+    })).inventory.find((entry) => entry.marketTicker === MARKET_B)!;
     const markets = [
       classifyMarketSettlementCoverage({
         io,
@@ -645,11 +651,11 @@ describe("forwardSettlementCoverage", () => {
 
     const io = createIo(files, dirs);
     const runMarketImport = vi.fn(async () => ({ success: true }));
-    const inventory = extractSelectedRunMarketInventory({
+    const inventory = (await extractSelectedRunMarketInventory({
       io,
       captureRunDir: RUN_DIR,
       evaluatedAt: EVALUATED_AT,
-    }).inventory.find((entry) => entry.marketTicker === MARKET_B)!;
+    })).inventory.find((entry) => entry.marketTicker === MARKET_B)!;
     const markets = [
       classifyMarketSettlementCoverage({
         io,
@@ -704,11 +710,11 @@ describe("forwardSettlementCoverage", () => {
         createImportResult(market.marketTicker, "no");
       return { success: true };
     });
-    const inventory = extractSelectedRunMarketInventory({
+    const inventory = (await extractSelectedRunMarketInventory({
       io,
       captureRunDir: RUN_DIR,
       evaluatedAt: EVALUATED_AT,
-    }).inventory.find((entry) => entry.marketTicker === MARKET_B)!;
+    })).inventory.find((entry) => entry.marketTicker === MARKET_B)!;
     const markets = [
       classifyMarketSettlementCoverage({
         io,
@@ -770,11 +776,11 @@ describe("forwardSettlementCoverage", () => {
     );
 
     const io = createIo(files, dirs);
-    const inventory = extractSelectedRunMarketInventory({
+    const inventory = (await extractSelectedRunMarketInventory({
       io,
       captureRunDir: RUN_DIR,
       evaluatedAt: EVALUATED_AT,
-    }).inventory.find((entry) => entry.marketTicker === MARKET_B)!;
+    })).inventory.find((entry) => entry.marketTicker === MARKET_B)!;
     const paths = resolveMarketImportPaths({
       importsDir: "data/imports",
       market: inventory,
@@ -830,11 +836,11 @@ describe("forwardSettlementCoverage", () => {
     });
 
     const io = createIo(files, dirs);
-    const inventory = extractSelectedRunMarketInventory({
+    const inventory = (await extractSelectedRunMarketInventory({
       io,
       captureRunDir: RUN_DIR,
       evaluatedAt: EVALUATED_AT,
-    }).inventory.find((entry) => entry.marketTicker === MARKET_B)!;
+    })).inventory.find((entry) => entry.marketTicker === MARKET_B)!;
     const paths = resolveMarketImportPaths({
       importsDir: "data/imports",
       market: inventory,
@@ -887,7 +893,7 @@ describe("forwardSettlementCoverage", () => {
     expect(entry.classification).toBe("invalid-market");
   });
 
-  it("resolves import paths from market ticker series when capture seriesTicker is wrong", () => {
+  it("resolves import paths from market ticker series when capture seriesTicker is wrong", async () => {
     const files: Record<string, string> = {};
     const dirs: string[] = [];
     seedRun(files, dirs);
@@ -897,7 +903,7 @@ describe("forwardSettlementCoverage", () => {
     );
     files[`data/imports/KXBTC15M/${MARKET_A}/import-result.json`] = createImportResult(MARKET_A, "yes");
 
-    const extracted = extractSelectedRunMarketInventory({
+    const extracted = await extractSelectedRunMarketInventory({
       io: createIo(files, dirs),
       captureRunDir: RUN_DIR,
       evaluatedAt: EVALUATED_AT,
@@ -999,11 +1005,11 @@ describe("forwardSettlementCoverage", () => {
         createImportResult(market.marketTicker, "no");
       return { success: true };
     });
-    const inventory = extractSelectedRunMarketInventory({
+    const inventory = (await extractSelectedRunMarketInventory({
       io,
       captureRunDir: RUN_DIR,
       evaluatedAt: EVALUATED_AT,
-    }).inventory.find((entry) => entry.marketTicker === MARKET_B)!;
+    })).inventory.find((entry) => entry.marketTicker === MARKET_B)!;
     const markets = [
       classifyMarketSettlementCoverage({
         io,
@@ -1034,7 +1040,7 @@ describe("forwardSettlementCoverage", () => {
     ).toBe("prior run failure");
   });
 
-  it("classifies future-close markets as not-yet-settled before import-failed", () => {
+  it("classifies future-close markets as not-yet-settled before import-failed", async () => {
     const files: Record<string, string> = {};
     const dirs: string[] = [];
     seedRun(files, dirs);
@@ -1051,7 +1057,7 @@ describe("forwardSettlementCoverage", () => {
       bronzeRecords: [],
     });
 
-    const extracted = extractSelectedRunMarketInventory({
+    const extracted = await extractSelectedRunMarketInventory({
       io: createIo(files, dirs),
       captureRunDir: RUN_DIR,
       evaluatedAt: EVALUATED_AT,
@@ -1226,11 +1232,11 @@ describe("forwardSettlementCoverage", () => {
       return { success: true };
     });
 
-    const inventory = extractSelectedRunMarketInventory({
+    const inventory = (await extractSelectedRunMarketInventory({
       io,
       captureRunDir: RUN_DIR,
       evaluatedAt: "2026-07-12T12:00:00.000Z",
-    }).inventory;
+    })).inventory;
     expect(inventory).toHaveLength(MARKET_COUNT);
 
     const markets = inventory.map((entry) =>
@@ -1401,11 +1407,11 @@ describe("forwardSettlementCoverage", () => {
         classifyMarketSettlementCoverage({
           io: createIo(files, dirs),
           importsDir: "data/imports",
-          inventory: extractSelectedRunMarketInventory({
+          inventory: (await extractSelectedRunMarketInventory({
             io: createIo(files, dirs),
             captureRunDir: RUN_DIR,
             evaluatedAt: EVALUATED_AT,
-          }).inventory.find((entry) => entry.marketTicker === MARKET_B)!,
+          })).inventory.find((entry) => entry.marketTicker === MARKET_B)!,
           evaluatedAt: EVALUATED_AT,
           staleAfterCaptureObservation: true,
         }),
@@ -1469,11 +1475,11 @@ describe("forwardSettlementCoverage", () => {
           market: classifyMarketSettlementCoverage({
             io: createIo(files, dirs),
             importsDir: "data/imports",
-            inventory: extractSelectedRunMarketInventory({
+            inventory: (await extractSelectedRunMarketInventory({
               io: createIo(files, dirs),
               captureRunDir: RUN_DIR,
               evaluatedAt: "2026-07-12T12:00:00.000Z",
-            }).inventory.find((entry) => entry.marketTicker === MARKET_B)!,
+            })).inventory.find((entry) => entry.marketTicker === MARKET_B)!,
             evaluatedAt: "2026-07-12T12:00:00.000Z",
             staleAfterCaptureObservation: true,
           }),
