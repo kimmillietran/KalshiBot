@@ -42,6 +42,19 @@ export {
   settlementSnapshotNamespaceFragment,
 } from "./resolveCalibrationFadeV2CrossRunOutputPaths";
 export {
+  classifyV2CrossRunArtifactAuthority,
+  parseV2CrossRunArtifactPathIdentity,
+  requireSnapshotScopedV2CrossRunArtifact,
+  resolveExplicitV2SettlementSnapshotReportPath,
+  resolveLegacyV2CrossRunRootReportPath,
+  V2_CROSS_RUN_ARTIFACT_AUTHORITY_KINDS,
+} from "./classifyV2CrossRunArtifactAuthority";
+export type {
+  V2CrossRunArtifactAuthorityClassification,
+  V2CrossRunArtifactAuthorityKind,
+  V2CrossRunArtifactPathIdentity,
+} from "./classifyV2CrossRunArtifactAuthority";
+export {
   serializeCalibrationFadeV2CrossRunValidationHtml,
   serializeCalibrationFadeV2CrossRunValidationJson,
   serializeJsonl,
