@@ -8,8 +8,10 @@ export const REQUIRED_CHECK_NAMES = [
 export const QUALITY_GATES_WORKFLOW_NAME = "Quality Gates";
 export const ADVISORY_CHECK_NAME_SUBSTRING = "advisory";
 export const AUTO_MERGE_WORKFLOW_PATH = ".github/workflows/auto-merge-after-cursor-lrm.yml";
+export const QUALITY_GATES_WORKFLOW_PATH = ".github/workflows/quality-gates.yml";
 export const AUTO_MERGE_TRUSTED_PATHS = [
   AUTO_MERGE_WORKFLOW_PATH,
+  QUALITY_GATES_WORKFLOW_PATH,
   "scripts/github/autoMergeGate.ts",
   "scripts/github/autoMergeGateTypes.ts",
   "scripts/github/parseCursorLrmVerdict.ts",

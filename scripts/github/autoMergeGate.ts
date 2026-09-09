@@ -30,8 +30,9 @@ import {
  * branch protection. Merge uses merge_method=merge and sha=CURRENT_HEAD.
  *
  * Bootstrap: the first PR that adds this workflow must be merged manually.
- * Subsequent PRs that change the trusted workflow/helper also require a
- * manual merge so a PR cannot rewrite and then exercise its own authority.
+ * Subsequent PRs that change the trusted auto-merge helper or the Quality
+ * Gates workflow also require a manual merge so a PR cannot rewrite CI
+ * authority and then exercise its own merge.
  */
 export type WorkflowEventName =
   | "pull_request_review"
@@ -257,7 +258,7 @@ export function evaluateAutoMergeGate(input: EvaluateInput): EvaluateResult {
 
   if (input.prTouchesAutoMergeWorkflow) {
     return blocked(
-      "bootstrap: PRs that change the auto-merge workflow or trusted helper require manual merge",
+      "PR changes trusted auto-merge / CI authority and requires manual merge",
       reportBase,
     );
   }
