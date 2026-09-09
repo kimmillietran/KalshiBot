@@ -1,8 +1,5 @@
 import { midProbabilityFromCents } from "@/lib/features/contractPricing";
 import type { MispricingObservation } from "@/lib/data/research/mispricingAtlas/mispricingAtlasTypes";
-import { computeFillCostBreakdown } from "@/lib/data/backtesting/costModel/computeFillCostBreakdown";
-import { resolveExecutionCostModel } from "@/lib/data/backtesting/costModel/resolveExecutionCostModel";
-import { DEFAULT_BACKTEST_FILL_SIMULATION_CONFIG } from "@/lib/data/backtesting/strategyTypes";
 import { loadKnownSettlementsFromImports } from "@/lib/data/research/forwardSettlementJoin/loadForwardSettlementJoinInputs";
 import { fnv1a32, stableStringify } from "@/lib/trading/config/hashConfig";
 
@@ -60,6 +57,7 @@ import {
   type CalibrationFadeV2ForwardValidationReport,
   type CalibrationFadeV2OutputPaths,
 } from "./calibrationFadeV2ForwardValidationTypes";
+import { deriveV2NoHoldToSettlementReturns } from "./deriveV2NoHoldToSettlementReturns";
 import {
   defaultInRunCandlePath,
   preloadCompletedBtcCandleObservations,
@@ -153,11 +151,6 @@ function buildObservation(
     momentumPercent: null,
     timestampMs: quote.timestampMs,
   };
-}
-
-function computeGrossReturnCents(side: "no" | "yes", entryPriceCents: number, outcome: "yes" | "no"): number {
-  const wins = (side === "no" && outcome === "no") || (side === "yes" && outcome === "yes");
-  return wins ? 100 - entryPriceCents : -entryPriceCents;
 }
 
 function computeMetricsFromMarkets(markets: readonly CalibrationFadeMarketRecord[]) {
@@ -723,26 +716,16 @@ export async function analyzeCalibrationFadeV2ForwardForRun(input: {
     importsDir: input.config.importsDir,
     marketTickers: [...marketFirstEntries.keys()],
   });
-  const costModels = resolveExecutionCostModel(DEFAULT_BACKTEST_FILL_SIMULATION_CONFIG, {
-    executionCostModel: { kind: "per-contract-fee", feeCentsPerContract: 1 },
-  });
 
   const marketRecords: CalibrationFadeMarketRecord[] = [...marketFirstEntries.values()].map((entry) => {
     const settlement = settlementSource.settlementsByMarket.get(entry.marketTicker);
     const settledOutcome = settlement?.settledOutcome ?? "unknown";
     const executableAvailable = isValidQuoteCents(entry.noAskCents);
-    let grossReturnCents: number | null = null;
-    let feeAdjustedReturnCents: number | null = null;
-    if (executableAvailable && (settledOutcome === "yes" || settledOutcome === "no")) {
-      grossReturnCents = computeGrossReturnCents("no", entry.noAskCents!, settledOutcome);
-      const fee = computeFillCostBreakdown({
-        action: "buy",
-        grossPriceCents: entry.noAskCents!,
-        quantity: 1,
-        models: costModels,
-      });
-      feeAdjustedReturnCents = grossReturnCents - fee.feeCents;
-    }
+    const derivedReturns = deriveV2NoHoldToSettlementReturns({
+      noAskCents: entry.noAskCents,
+      executableAvailable,
+      settledOutcome,
+    });
     return {
       marketTicker: entry.marketTicker,
       entryTimestamp: entry.timestamp,
@@ -751,8 +734,8 @@ export async function analyzeCalibrationFadeV2ForwardForRun(input: {
       executableAvailable,
       settlementStatus: settlement?.settlementStatus ?? "missing-source",
       settledOutcome,
-      grossReturnCents,
-      feeAdjustedReturnCents,
+      grossReturnCents: derivedReturns.grossReturnCents,
+      feeAdjustedReturnCents: derivedReturns.feeAdjustedReturnCents,
       calibrationGapSigned:
         settledOutcome === "yes" || settledOutcome === "no"
           ? entry.impliedYesProbability - (settledOutcome === "yes" ? 1 : 0)

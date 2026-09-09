@@ -1,15 +1,43 @@
 import { loadKnownSettlementsFromImports } from "../forwardSettlementJoin/loadForwardSettlementJoinInputs";
+import { deriveV2NoHoldToSettlementReturns } from "../calibrationFadeV2ForwardValidation/deriveV2NoHoldToSettlementReturns";
 
 import type { SealedV2CandidateMarket } from "./admitV2ConfirmatoryRuns";
 import {
   CalibrationFadeV2CrossRunValidationError,
   type CalibrationFadeV2CrossRunValidationIo,
 } from "./calibrationFadeV2CrossRunValidationTypes";
-import { assertV2ExecutableReturnPairIntegrity } from "./v2ExecutableReturnIntegrity";
+import {
+  assertV2ExecutableReturnPairIntegrity,
+  isV2ExecutableReturnEvaluable,
+} from "./v2ExecutableReturnIntegrity";
+
+function resolveOverlayExecutableReturns(input: {
+  market: SealedV2CandidateMarket;
+  settledOutcome: string;
+}): {
+  grossReturnCents: number | null;
+  feeAdjustedReturnCents: number | null;
+} {
+  // Trusted sealed executable evidence is immutable once present.
+  if (isV2ExecutableReturnEvaluable(input.market)) {
+    return {
+      grossReturnCents: input.market.grossReturnCents,
+      feeAdjustedReturnCents: input.market.feeAdjustedReturnCents,
+    };
+  }
+
+  return deriveV2NoHoldToSettlementReturns({
+    noAskCents: input.market.noAskCents,
+    executableAvailable: input.market.executableAvailable,
+    settledOutcome: input.settledOutcome,
+  });
+}
 
 /**
  * Offline settlement overlay on already-admitted candidate tickers only.
  * Does not change evidence mode, admission, candidate membership, or entry time.
+ * When settlement becomes known and sealed executable returns are absent, derives
+ * the same NO hold-to-settlement returns as the single-run v2 evaluator.
  */
 export function applyOfflineSettlementOverlay(input: {
   io: CalibrationFadeV2CrossRunValidationIo;
@@ -57,7 +85,11 @@ export function applyOfflineSettlementOverlay(input: {
             + `sealed=${sealedOutcome} import=${settlement.settledOutcome}`,
         );
       }
-      return {
+      const returns = resolveOverlayExecutableReturns({
+        market,
+        settledOutcome: sealedOutcome,
+      });
+      const overlaid = {
         ...market,
         settlementStatus: settlement.settlementStatus,
         settledOutcome: sealedOutcome,
@@ -65,16 +97,25 @@ export function applyOfflineSettlementOverlay(input: {
         entryTimestamp: market.entryTimestamp,
         noAskCents: market.noAskCents,
         executableAvailable: market.executableAvailable,
-        grossReturnCents: market.grossReturnCents,
-        feeAdjustedReturnCents: market.feeAdjustedReturnCents,
+        grossReturnCents: returns.grossReturnCents,
+        feeAdjustedReturnCents: returns.feeAdjustedReturnCents,
       };
+      assertV2ExecutableReturnPairIntegrity(
+        overlaid,
+        `Overlay market ${market.marketTicker}`,
+      );
+      return overlaid;
     }
     const settledOutcome = settlement.settledOutcome;
     const calibrationGapSigned =
       settledOutcome === "yes" || settledOutcome === "no"
         ? market.impliedYesProbability - (settledOutcome === "yes" ? 1 : 0)
         : market.calibrationGapSigned;
-    return {
+    const returns = resolveOverlayExecutableReturns({
+      market,
+      settledOutcome,
+    });
+    const overlaid = {
       ...market,
       settlementStatus: settlement.settlementStatus,
       settledOutcome,
@@ -83,9 +124,14 @@ export function applyOfflineSettlementOverlay(input: {
       entryTimestamp: market.entryTimestamp,
       noAskCents: market.noAskCents,
       executableAvailable: market.executableAvailable,
-      grossReturnCents: market.grossReturnCents,
-      feeAdjustedReturnCents: market.feeAdjustedReturnCents,
+      grossReturnCents: returns.grossReturnCents,
+      feeAdjustedReturnCents: returns.feeAdjustedReturnCents,
     };
+    assertV2ExecutableReturnPairIntegrity(
+      overlaid,
+      `Overlay market ${market.marketTicker}`,
+    );
+    return overlaid;
   });
 
   return {
