@@ -1,0 +1,692 @@
+import { readFileSync } from "node:fs";
+
+import { describe, expect, it } from "vitest";
+
+import { fnv1a32, stableStringify } from "@/lib/trading/config/hashConfig";
+
+import { createMemoryCalibrationFadeForwardValidationIo } from "../calibrationFadeForwardValidation/createCalibrationFadeForwardValidationIo";
+import { CALIBRATION_FADE_V2_FORWARD_VALIDATION_VERSION } from "../calibrationFadeV2ForwardValidation/calibrationFadeV2ForwardValidationTypes";
+import {
+  CALIBRATION_FADE_V2_FREEZE_COMMIT_SHA,
+  CALIBRATION_FADE_V2_HYPOTHESIS_ID,
+  DEFAULT_CALIBRATION_FADE_V2_HYPOTHESIS_CONFIG_PATH,
+  DEFAULT_CALIBRATION_FADE_V2_PROVENANCE_PATH,
+  V2_REQUIRED_SOURCE_RECORD_TYPE,
+  loadCalibrationFadeV2HypothesisSpec,
+} from "../calibrationFadeV2Preregistration";
+
+import { analyzeCalibrationFadeV2CrossRun } from "./analyzeCalibrationFadeV2CrossRun";
+import { computeV2RunSetHash } from "./computeV2RunSetHash";
+import { parseCalibrationFadeV2CrossRunValidationArgv } from "./parseCalibrationFadeV2CrossRunValidationArgv";
+import { CALIBRATION_FADE_V2_CROSS_RUN_ANALYSIS_VERSION } from "./calibrationFadeV2CrossRunValidationTypes";
+
+const CONFIG_BYTES = readFileSync(DEFAULT_CALIBRATION_FADE_V2_HYPOTHESIS_CONFIG_PATH, "utf8");
+const PROVENANCE_BYTES = readFileSync(DEFAULT_CALIBRATION_FADE_V2_PROVENANCE_PATH, "utf8");
+const FROZEN_HASH = fnv1a32(
+  stableStringify(
+    loadCalibrationFadeV2HypothesisSpec({
+      io: {
+        readFile: (path) => readFileSync(path, "utf8"),
+        fileExists: () => true,
+      },
+    }).spec,
+  ),
+);
+const POST_FREEZE_START = "2026-09-08T07:46:44.416Z";
+const PRE_FREEZE_START = "2026-09-01T00:00:00.000Z";
+const REAL_TICKERS = ["KXBTC15M-26SEP081000-00", "KXBTC15M-26SEP081015-15"] as const;
+
+function quality(runId: string) {
+  return {
+    selectedRunId: runId,
+    captureHealthSource: "run-scoped-capture-health-audit",
+    runDurationSeconds: 28_800,
+    validBookShare: 0.99,
+    btcJoinCoverageShare: 0.99,
+    bidSizeCoverageShare: 0.99,
+    reconnectCount: 0,
+    sequenceGapCount: 0,
+    suspectedSystemSleepSeconds: 0,
+    captureVerdict: "capture-research-ready",
+    reconciliationVerdict: "ok",
+    nativeCaptureVerdict: "ok",
+    captureEndReason: "duration-elapsed",
+    terminalFailureReason: null,
+    completedNormally: true,
+    researchReadyVerified: true,
+    auditFingerprintsVerified: true,
+  };
+}
+
+function market(ticker: string, extras: Record<string, unknown> = {}) {
+  return {
+    marketTicker: ticker,
+    entryTimestamp: extras.entryTimestamp ?? "2026-09-08T10:00:05.000Z",
+    impliedYesProbability: 0.5,
+    noAskCents: 48,
+    executableAvailable: true,
+    settlementStatus: extras.settlementStatus ?? "unknown",
+    settledOutcome: extras.settledOutcome ?? "unknown",
+    grossReturnCents: null,
+    feeAdjustedReturnCents: null,
+    calibrationGapSigned: extras.calibrationGapSigned ?? null,
+    ...extras,
+  };
+}
+
+function report(input: {
+  runId: string;
+  markets: readonly ReturnType<typeof market>[];
+  episodes?: number;
+  overrides?: Record<string, unknown>;
+}) {
+  const evidenceIdentity = {
+    hypothesisId: CALIBRATION_FADE_V2_HYPOTHESIS_ID,
+    hypothesisVersion: "v2",
+    configurationHash: FROZEN_HASH,
+    freezeCommitSha: CALIBRATION_FADE_V2_FREEZE_COMMIT_SHA,
+    sourceRecordType: V2_REQUIRED_SOURCE_RECORD_TYPE,
+    sourceContractId: V2_REQUIRED_SOURCE_RECORD_TYPE,
+    captureRunId: input.runId,
+    captureStartedAt: POST_FREEZE_START,
+    evidenceMode: "confirmatory",
+    confirmatoryEligibility: true,
+    confirmatoryIneligibilityReason: null,
+  };
+  return {
+    analysisVersion: CALIBRATION_FADE_V2_FORWARD_VALIDATION_VERSION,
+    analysisScope: "selected-run",
+    selectedRunId: input.runId,
+    selectedRunDirectory: `data/live-capture/forward-quotes/${input.runId}`,
+    sourceRunIds: [input.runId],
+    hypothesisId: CALIBRATION_FADE_V2_HYPOTHESIS_ID,
+    hypothesisVersion: "v2",
+    hypothesisConfigurationHash: FROZEN_HASH,
+    freezeCommitSha: CALIBRATION_FADE_V2_FREEZE_COMMIT_SHA,
+    sourceRecordType: V2_REQUIRED_SOURCE_RECORD_TYPE,
+    sourceContractId: V2_REQUIRED_SOURCE_RECORD_TYPE,
+    captureRunId: input.runId,
+    captureStartedAt: POST_FREEZE_START,
+    evidenceMode: "confirmatory",
+    confirmatoryEligibility: true,
+    confirmatoryIneligibilityReason: null,
+    recordsScanned: 1000,
+    marketsScanned: input.markets.length,
+    btcSpotRecordsScanned: 100,
+    candleObservationsScanned: 200,
+    qualifyingObservationCount: 10,
+    candidateEpisodeCount: input.episodes ?? input.markets.length,
+    candidateMarketCount: new Set(input.markets.map((entry) => entry.marketTicker)).size,
+    executableCandidateCount: 0,
+    settlementCoverageShare: 0,
+    warnings: [],
+    selectedRunQuality: quality(input.runId),
+    evidenceIdentity,
+    featureCompatibility: {
+      probabilityMeasureAvailable: true,
+      volatilityMeasureAvailable: true,
+      timeRemainingAvailable: true,
+      incompatibleFeatures: [],
+      spotUsedForVolatility: false,
+    },
+    summary: {
+      interpretationClassification: "insufficient-forward-events",
+      recommendedNextAction: "collect-additional-clean-forward-captures",
+      rationale: "fixture",
+    },
+    ...input.overrides,
+  };
+}
+
+function readiness(runId: string, verdict = "v2-capture-ready") {
+  return {
+    schemaVersion: 1,
+    selectedRunId: runId,
+    captureRunDir: `data/live-capture/forward-quotes/${runId}`,
+    verdict,
+    confirmatoryEligibility: true,
+  };
+}
+
+function seedFrozenConfigs(files: Record<string, string>): void {
+  files[DEFAULT_CALIBRATION_FADE_V2_HYPOTHESIS_CONFIG_PATH] = CONFIG_BYTES;
+  files[DEFAULT_CALIBRATION_FADE_V2_PROVENANCE_PATH] = PROVENANCE_BYTES;
+}
+
+function seedAdmittedRun(
+  files: Record<string, string>,
+  runId: string,
+  markets: readonly ReturnType<typeof market>[],
+  options?: { episodes?: number; reportOverrides?: Record<string, unknown>; readinessVerdict?: string },
+): void {
+  const payload = report({
+    runId,
+    markets,
+    episodes: options?.episodes,
+    overrides: options?.reportOverrides,
+  });
+  files[`data/research-results/calibration-fade-v2/confirmatory/${runId}/calibration-fade-forward-validation.json`] =
+    JSON.stringify(payload);
+  files[`data/research-results/calibration-fade-v2/confirmatory/${runId}/calibration-fade-forward-markets.jsonl`] =
+    `${markets.map((entry) => JSON.stringify(entry)).join("\n")}\n`;
+  files[`data/research-results/calibration-fade-v2/readiness/${runId}/capture-readiness.json`] =
+    JSON.stringify(readiness(runId, options?.readinessVerdict));
+}
+
+function importResult(ticker: string, outcome: "yes" | "no"): string {
+  return JSON.stringify({
+    bronzeRecords: [
+      {
+        contentType: "kalshi.historical.settlement",
+        ticker,
+        payload: {
+          market: {
+            ticker,
+            event_ticker: "KXBTC15M-26SEP081000",
+            result: outcome,
+            settlement_ts: "2026-09-08T10:15:00Z",
+          },
+        },
+      },
+    ],
+  });
+}
+
+function analyzePair(
+  files: Record<string, string>,
+  dirs: readonly string[],
+  runA: string,
+  runB: string,
+  extraArgv: string[] = [],
+) {
+  seedFrozenConfigs(files);
+  const io = createMemoryCalibrationFadeForwardValidationIo(files, dirs);
+  return analyzeCalibrationFadeV2CrossRun({
+    config: parseCalibrationFadeV2CrossRunValidationArgv([
+      "--capture-run-dir",
+      `data/live-capture/forward-quotes/${runA}`,
+      "--capture-run-dir",
+      `data/live-capture/forward-quotes/${runB}`,
+      "--evidence-mode",
+      "confirmatory",
+      ...extraArgv,
+    ]),
+    io,
+    generatedAt: "2026-09-08T12:00:00.000Z",
+  });
+}
+
+function expectRejected(argv: readonly string[], pattern: RegExp): void {
+  expect(() => parseCalibrationFadeV2CrossRunValidationArgv(argv)).toThrow(pattern);
+}
+
+function expectAnalyzeRejected(
+  files: Record<string, string>,
+  runA: string,
+  runB: string,
+  pattern: RegExp,
+  extraArgv: string[] = [],
+): void {
+  seedFrozenConfigs(files);
+  const io = createMemoryCalibrationFadeForwardValidationIo(files);
+  expect(() =>
+    analyzeCalibrationFadeV2CrossRun({
+      config: parseCalibrationFadeV2CrossRunValidationArgv([
+        "--capture-run-dir",
+        `data/live-capture/forward-quotes/${runA}`,
+        "--capture-run-dir",
+        `data/live-capture/forward-quotes/${runB}`,
+        "--evidence-mode",
+        "confirmatory",
+        ...extraArgv,
+      ]),
+      io,
+      generatedAt: "2026-09-08T12:00:00.000Z",
+    }),
+  ).toThrow(pattern);
+}
+
+describe("calibrationFadeV2CrossRunValidation CLI", () => {
+  it("rejects a single capture-run-dir", () => {
+    expectRejected(
+      ["--capture-run-dir", "data/live-capture/forward-quotes/run-a", "--evidence-mode", "confirmatory"],
+      /at least two explicit/,
+    );
+  });
+
+  it("rejects --latest", () => {
+    expectRejected(["--latest", "--evidence-mode", "confirmatory"], /Unknown CLI flag|--latest/);
+  });
+
+  it("rejects --use-latest", () => {
+    expectRejected(["--use-latest", "--evidence-mode", "confirmatory"], /Unknown CLI flag|--use-latest|latest/);
+  });
+
+  it("rejects empty, dot, and parent run-dir segments", () => {
+    expectRejected(
+      ["--capture-run-dir", ".", "--capture-run-dir", "run-b", "--evidence-mode", "confirmatory"],
+      /Invalid capture run directory/,
+    );
+    expectRejected(
+      ["--capture-run-dir", "..", "--capture-run-dir", "run-b", "--evidence-mode", "confirmatory"],
+      /Invalid capture run directory/,
+    );
+  });
+
+  it("rejects unknown CLI flags", () => {
+    expectRejected(
+      [
+        "--capture-run-dir",
+        "a",
+        "--capture-run-dir",
+        "b",
+        "--evidence-mode",
+        "confirmatory",
+        "--newest",
+      ],
+      /Unknown CLI flag/,
+    );
+  });
+
+  it("rejects omitted evidence mode", () => {
+    expectRejected(
+      ["--capture-run-dir", "run-a", "--capture-run-dir", "run-b"],
+      /--evidence-mode is required/,
+    );
+  });
+
+  it("rejects diagnostic evidence mode", () => {
+    expectRejected(
+      ["--capture-run-dir", "run-a", "--capture-run-dir", "run-b", "--evidence-mode", "diagnostic"],
+      /must be confirmatory/,
+    );
+  });
+
+  it("rejects a duplicate normalized run dir", () => {
+    expectRejected(
+      [
+        "--capture-run-dir",
+        "data/live-capture/forward-quotes/run-a/",
+        "--capture-run-dir",
+        "data/live-capture/forward-quotes/run-a",
+        "--evidence-mode",
+        "confirmatory",
+      ],
+      /Duplicate normalized/,
+    );
+  });
+
+  it("rejects a duplicate resolved runId", () => {
+    expectRejected(
+      [
+        "--capture-run-dir",
+        "data/a/run-shared",
+        "--capture-run-dir",
+        "data/b/run-shared",
+        "--evidence-mode",
+        "confirmatory",
+      ],
+      /Duplicate resolved runId/,
+    );
+  });
+});
+
+describe("calibrationFadeV2CrossRunValidation admission and aggregation", () => {
+  it("uses the frozen v2 configuration hash 79e2a134", () => {
+    expect(FROZEN_HASH).toBe("79e2a134");
+  });
+
+  it("reorders the same run set to the same runSetHash and output path", () => {
+    const files: Record<string, string> = {};
+    seedAdmittedRun(files, "run-a", [market("M1"), market("M2")]);
+    seedAdmittedRun(files, "run-b", [market("M3"), market("M4")]);
+    seedFrozenConfigs(files);
+    const io = createMemoryCalibrationFadeForwardValidationIo(files);
+    const left = analyzeCalibrationFadeV2CrossRun({
+      config: parseCalibrationFadeV2CrossRunValidationArgv([
+        "--capture-run-dir",
+        "data/live-capture/forward-quotes/run-a",
+        "--capture-run-dir",
+        "data/live-capture/forward-quotes/run-b",
+        "--evidence-mode",
+        "confirmatory",
+      ]),
+      io,
+      generatedAt: "2026-09-08T12:00:00.000Z",
+    });
+    const right = analyzeCalibrationFadeV2CrossRun({
+      config: parseCalibrationFadeV2CrossRunValidationArgv([
+        "--capture-run-dir",
+        "data/live-capture/forward-quotes/run-b",
+        "--capture-run-dir",
+        "data/live-capture/forward-quotes/run-a",
+        "--evidence-mode",
+        "confirmatory",
+      ]),
+      io,
+      generatedAt: "2026-09-08T13:00:00.000Z",
+    });
+    expect(left.report.runSetHash).toBe(right.report.runSetHash);
+    expect(left.report.outputPath).toBe(right.report.outputPath);
+    expect(left.report.outputPath).toContain(
+      `/calibration-fade-v2/cross-run/confirmatory/${left.report.runSetHash}/`,
+    );
+    expect(left.report.outputPath).not.toContain("/latest");
+    expect(left.report.outputPath).not.toContain("calibration-fade-cross-run-validation.json");
+    expect(JSON.stringify(left.report.provenance.runSetHashPayload)).not.toMatch(/mtime/i);
+  });
+
+  function expectAdmissionOverrideRejected(overrides: Record<string, unknown>, pattern: RegExp): void {
+    const files: Record<string, string> = {};
+    seedAdmittedRun(files, "run-a", [market("M1")], { reportOverrides: overrides });
+    seedAdmittedRun(files, "run-b", [market("M2")]);
+    expectAnalyzeRejected(files, "run-a", "run-b", pattern);
+  }
+
+  it("rejects a v1 artifact", () => {
+    expectAdmissionOverrideRejected(
+      { analysisVersion: "calibration-fade-forward-validation-v1" },
+      /v1|analysisVersion/,
+    );
+  });
+
+  it("rejects a hypothesisVersion mismatch", () => {
+    expectAdmissionOverrideRejected({ hypothesisVersion: "v1" }, /hypothesisVersion/);
+  });
+
+  it("rejects a configurationHash mismatch", () => {
+    expectAdmissionOverrideRejected({ hypothesisConfigurationHash: "deadbeef" }, /configurationHash/);
+  });
+
+  it("rejects a freezeCommitSha mismatch", () => {
+    expectAdmissionOverrideRejected({ freezeCommitSha: "0".repeat(40) }, /freezeCommitSha/);
+  });
+
+  it("rejects a sourceRecordType mismatch", () => {
+    expectAdmissionOverrideRejected({ sourceRecordType: "btc-spot-ticks" }, /sourceRecordType/);
+  });
+
+  it("rejects confirmatoryEligibility=false", () => {
+    expectAdmissionOverrideRejected({ confirmatoryEligibility: false }, /confirmatoryEligibility/);
+  });
+
+  it("rejects a pre-freeze captureStartedAt", () => {
+    expectAdmissionOverrideRejected({ captureStartedAt: PRE_FREEZE_START }, /prospectively eligible/);
+  });
+
+  it("rejects incompatible featureCompatibility", () => {
+    expectAdmissionOverrideRejected(
+      {
+        featureCompatibility: {
+          probabilityMeasureAvailable: true,
+          volatilityMeasureAvailable: false,
+          timeRemainingAvailable: true,
+          incompatibleFeatures: ["volatility"],
+          spotUsedForVolatility: false,
+        },
+      },
+      /incompatibleFeatures/,
+    );
+  });
+
+  it("rejects spotUsedForVolatility=true", () => {
+    expectAdmissionOverrideRejected(
+      {
+        featureCompatibility: {
+          probabilityMeasureAvailable: true,
+          volatilityMeasureAvailable: true,
+          timeRemainingAvailable: true,
+          incompatibleFeatures: [],
+          spotUsedForVolatility: true,
+        },
+      },
+      /spotUsedForVolatility/,
+    );
+  });
+
+  it("rejects capture health that is not formally research-ready", () => {
+    expectAdmissionOverrideRejected(
+      { selectedRunQuality: { ...quality("run-a"), captureVerdict: "capture-gappy" } },
+      /capture-research-ready/,
+    );
+  });
+
+  it("rejects researchReadyVerified=false", () => {
+    expectAdmissionOverrideRejected(
+      { selectedRunQuality: { ...quality("run-a"), researchReadyVerified: false } },
+      /researchReadyVerified/,
+    );
+  });
+
+  it("rejects analysisVersion mismatch across the selected set", () => {
+    const files: Record<string, string> = {};
+    seedAdmittedRun(files, "run-a", [market("M1")]);
+    seedAdmittedRun(files, "run-b", [market("M2")], {
+      reportOverrides: { analysisVersion: "calibration-fade-v2-forward-validation-v9" },
+    });
+    expectAnalyzeRejected(files, "run-a", "run-b", /analysisVersion/);
+  });
+
+  it("rejects a missing readiness artifact", () => {
+    const missing: Record<string, string> = {};
+    seedAdmittedRun(missing, "run-a", [market("M1")]);
+    seedAdmittedRun(missing, "run-b", [market("M2")]);
+    delete missing["data/research-results/calibration-fade-v2/readiness/run-b/capture-readiness.json"];
+    expectAnalyzeRejected(missing, "run-a", "run-b", /readiness artifact missing|v2 readiness artifact missing/i);
+  });
+
+  it("rejects a readiness verdict other than v2-capture-ready", () => {
+    const notReady: Record<string, string> = {};
+    seedAdmittedRun(notReady, "run-a", [market("M1")]);
+    seedAdmittedRun(notReady, "run-b", [market("M2")], { readinessVerdict: "v2-capture-not-ready" });
+    expectAnalyzeRejected(notReady, "run-a", "run-b", /v2-capture-ready/);
+  });
+
+  it("rejects malformed confirmatory JSON", () => {
+    const malformedJson: Record<string, string> = {};
+    seedAdmittedRun(malformedJson, "run-a", [market("M1")]);
+    seedAdmittedRun(malformedJson, "run-b", [market("M2")]);
+    malformedJson[
+      "data/research-results/calibration-fade-v2/confirmatory/run-b/calibration-fade-forward-validation.json"
+    ] = "{not-json";
+    expectAnalyzeRejected(malformedJson, "run-a", "run-b", /Malformed confirmatory JSON/);
+  });
+
+  it("rejects malformed markets JSONL", () => {
+    const malformedMarkets: Record<string, string> = {};
+    seedAdmittedRun(malformedMarkets, "run-a", [market("M1")]);
+    seedAdmittedRun(malformedMarkets, "run-b", [market("M2")]);
+    malformedMarkets[
+      "data/research-results/calibration-fade-v2/confirmatory/run-b/calibration-fade-forward-markets.jsonl"
+    ] = "{not-json\n";
+    expectAnalyzeRejected(malformedMarkets, "run-a", "run-b", /Malformed confirmatory markets JSONL/);
+  });
+
+  it("rejects a market row identity mismatch", () => {
+    const identity: Record<string, string> = {};
+    seedAdmittedRun(identity, "run-a", [market("M1")]);
+    seedAdmittedRun(identity, "run-b", [market("M2", { selectedRunId: "other-run" })]);
+    expectAnalyzeRejected(identity, "run-a", "run-b", /Market row identity mismatch/);
+  });
+
+  it("counts 79 episodes / 2 markets as 2 independent markets", () => {
+    const files: Record<string, string> = {};
+    seedAdmittedRun(
+      files,
+      "2026-09-08T07-46-44-416Z",
+      [market(REAL_TICKERS[0]), market(REAL_TICKERS[1])],
+      { episodes: 79 },
+    );
+    seedAdmittedRun(files, "run-companion", [market("KXBTC15M-26SEP081030-00"), market("KXBTC15M-26SEP081045-15")]);
+    const result = analyzePair(files, [], "2026-09-08T07-46-44-416Z", "run-companion");
+    expect(result.report.perRunSummaries.find((run) => run.runId === "2026-09-08T07-46-44-416Z")).toMatchObject({
+      candidateEpisodeCount: 79,
+      candidateMarketCount: 2,
+    });
+    expect(result.report.uniqueCandidateMarketCount).toBe(4);
+    expect(result.report.evaluatedIndependentCandidateMarketCount).toBe(4);
+    expect(result.report.interpretationClassification).toBe("insufficient-forward-events");
+  });
+
+  it("deduplicates the same ticker across confirmatory runs", () => {
+    const files: Record<string, string> = {};
+    seedAdmittedRun(files, "run-a", [market("SHARED")]);
+    seedAdmittedRun(files, "run-b", [market("SHARED", { entryTimestamp: "2026-09-08T11:00:00.000Z" })]);
+    const result = analyzePair(files, [], "run-a", "run-b");
+    expect(result.report.rawCandidateAppearanceCount).toBe(2);
+    expect(result.report.uniqueCandidateMarketCount).toBe(1);
+    expect(result.appearanceLines.join("\n")).toContain("suppressed-later-than-earliest-causal-entry");
+  });
+
+  it("counts 2 + 4 markets with one overlap as 5 independent markets", () => {
+    const files: Record<string, string> = {};
+    seedAdmittedRun(files, "run-a", [market("M1"), market("M2")]);
+    seedAdmittedRun(files, "run-b", [market("M2"), market("M3"), market("M4"), market("M5")]);
+    const result = analyzePair(files, [], "run-a", "run-b");
+    expect(result.report.rawCandidateAppearanceCount).toBe(6);
+    expect(result.report.uniqueCandidateMarketCount).toBe(5);
+    expect(result.report.evaluatedIndependentCandidateMarketCount).toBe(5);
+  });
+
+  it("marks a conflicting target side as not evaluated", () => {
+    const files: Record<string, string> = {};
+    seedAdmittedRun(files, "run-a", [market("CONFLICT", { targetOutcomeSide: "no" }), market("OK1")]);
+    seedAdmittedRun(files, "run-b", [
+      market("CONFLICT", { targetOutcomeSide: "yes", entryTimestamp: "2026-09-08T11:00:00.000Z" }),
+      market("OK2"),
+    ]);
+    const result = analyzePair(files, [], "run-a", "run-b");
+    expect(result.report.uniqueCandidateMarketCount).toBe(3);
+    expect(result.report.evaluatedIndependentCandidateMarketCount).toBe(2);
+    expect(result.appearanceLines.join("\n")).toContain("conflicting-target-side");
+  });
+
+  it("keeps unresolved settlements in the candidate set and reports incomplete coverage", () => {
+    const files: Record<string, string> = {};
+    seedAdmittedRun(files, "run-a", [market("M1"), market("M2"), market("M3")]);
+    seedAdmittedRun(files, "run-b", [market("M4"), market("M5")]);
+    const result = analyzePair(files, [], "run-a", "run-b");
+    expect(result.report.evaluatedIndependentCandidateMarketCount).toBe(5);
+    expect(result.report.settlementCoverageShare).toBe(0);
+    expect(result.report.interpretationClassification).toBe("settlement-coverage-incomplete");
+  });
+
+  it("applies settlement overlay without changing evidence mode or adding tickers", () => {
+    const files: Record<string, string> = {};
+    const tickers = [
+      "KXBTC15M-26SEP081000-00",
+      "KXBTC15M-26SEP081015-15",
+      "KXBTC15M-26SEP081030-00",
+      "KXBTC15M-26SEP081045-15",
+      "KXBTC15M-26SEP081100-00",
+    ];
+    const extra = "KXBTC15M-26SEP081200-00";
+    const dirs = [
+      "data/imports",
+      "data/imports/KXBTC15M",
+      `data/imports/KXBTC15M/${tickers[0]}`,
+      `data/imports/KXBTC15M/${extra}`,
+    ];
+    seedAdmittedRun(files, "run-a", [market(tickers[0]!), market(tickers[1]!), market(tickers[2]!)]);
+    seedAdmittedRun(files, "run-b", [market(tickers[3]!), market(tickers[4]!)]);
+    files[`data/imports/KXBTC15M/${tickers[0]}/import-result.json`] = importResult(tickers[0]!, "no");
+    files[`data/imports/KXBTC15M/${extra}/import-result.json`] = importResult(extra, "yes");
+    const without = analyzePair({ ...files }, dirs, "run-a", "run-b");
+    const withOverlay = analyzePair(files, dirs, "run-a", "run-b", ["--imports-dir", "data/imports"]);
+    expect(withOverlay.report.evidenceMode).toBe("confirmatory");
+    expect(withOverlay.report.uniqueCandidateMarketCount).toBe(without.report.uniqueCandidateMarketCount);
+    expect(withOverlay.report.selectedRunIds).toEqual(without.report.selectedRunIds);
+    expect(withOverlay.report.runSetHash).toBe(without.report.runSetHash);
+    expect(withOverlay.report.settlementCoverageShare).toBe(0.2);
+    expect(withOverlay.report.interpretationClassification).toBe("settlement-coverage-incomplete");
+    expect(withOverlay.marketLines.join("\n")).not.toContain(extra);
+  });
+
+  it("rejects a diagnostic artifact even when settlements exist", () => {
+    const files: Record<string, string> = {};
+    seedAdmittedRun(files, "run-a", [market("M1")]);
+    seedAdmittedRun(files, "run-b", [market("M2")], {
+      reportOverrides: { evidenceMode: "diagnostic", confirmatoryEligibility: false },
+    });
+    files["data/imports/KXBTC15M/M2/import-result.json"] = importResult("M2", "yes");
+    expectAnalyzeRejected(files, "run-a", "run-b", /evidenceMode|confirmatoryEligibility/, [
+      "--imports-dir",
+      "data/imports",
+    ]);
+  });
+
+  it("changes runSetHash when sealed confirmatory bytes change and stays deterministic otherwise", () => {
+    const files: Record<string, string> = {};
+    seedAdmittedRun(files, "run-a", [market("M1")]);
+    seedAdmittedRun(files, "run-b", [market("M2")]);
+    const first = analyzePair(files, [], "run-a", "run-b");
+    const second = analyzePair({ ...files }, [], "run-a", "run-b");
+    expect(first.report.runSetHash).toBe(second.report.runSetHash);
+    expect(first.report.provenance.runSetHashPayload.analysisVersion).toBe(
+      CALIBRATION_FADE_V2_CROSS_RUN_ANALYSIS_VERSION,
+    );
+    expect(first.report.provenance.runSetHashPayload).not.toHaveProperty("mtime");
+
+    seedAdmittedRun(files, "run-b", [market("M2-CHANGED")]);
+    const changed = analyzePair(files, [], "run-a", "run-b");
+    expect(changed.report.runSetHash).not.toBe(first.report.runSetHash);
+  });
+
+  it("fails closed on same-hash semantic overwrite and allows equivalent republish", () => {
+    const files: Record<string, string> = {};
+    seedAdmittedRun(files, "run-a", [market("M1")]);
+    seedAdmittedRun(files, "run-b", [market("M2")]);
+    const first = analyzePair(files, [], "run-a", "run-b");
+    const conflicting = {
+      ...first.report,
+      interpretationClassification: "forward-supports-calibration-effect",
+    };
+    files[first.report.outputPath] = JSON.stringify(conflicting);
+    expectAnalyzeRejected(files, "run-a", "run-b", /different semantic body/);
+
+    files[first.report.outputPath] = JSON.stringify({
+      ...first.report,
+      generatedAt: "2026-09-08T18:00:00.000Z",
+      artifactGeneratedAt: "2026-09-08T18:00:00.000Z",
+    });
+    const republish = analyzePair(files, [], "run-a", "run-b");
+    expect(republish.report.runSetHash).toBe(first.report.runSetHash);
+  });
+
+  it("does not hash mtime in the v2 runSetHash payload", () => {
+    const hashed = computeV2RunSetHash({
+      hypothesisId: CALIBRATION_FADE_V2_HYPOTHESIS_ID,
+      configurationHash: FROZEN_HASH,
+      freezeCommitSha: CALIBRATION_FADE_V2_FREEZE_COMMIT_SHA,
+      sourceRecordType: V2_REQUIRED_SOURCE_RECORD_TYPE,
+      selectedRunIds: ["b", "a"],
+      perRun: [
+        {
+          runId: "b",
+          configurationHash: FROZEN_HASH,
+          freezeCommitSha: CALIBRATION_FADE_V2_FREEZE_COMMIT_SHA,
+          evidenceMode: "confirmatory",
+          sourceRecordType: V2_REQUIRED_SOURCE_RECORD_TYPE,
+          analysisVersion: CALIBRATION_FADE_V2_FORWARD_VALIDATION_VERSION,
+          confirmatoryReportSha: "aaaa",
+          confirmatoryMarketsSha: "bbbb",
+          readinessVerdict: "v2-capture-ready",
+        },
+        {
+          runId: "a",
+          configurationHash: FROZEN_HASH,
+          freezeCommitSha: CALIBRATION_FADE_V2_FREEZE_COMMIT_SHA,
+          evidenceMode: "confirmatory",
+          sourceRecordType: V2_REQUIRED_SOURCE_RECORD_TYPE,
+          analysisVersion: CALIBRATION_FADE_V2_FORWARD_VALIDATION_VERSION,
+          confirmatoryReportSha: "cccc",
+          confirmatoryMarketsSha: "dddd",
+          readinessVerdict: "v2-capture-ready",
+        },
+      ],
+    });
+    expect(hashed.payload.selectedRunIds).toEqual(["a", "b"]);
+    expect(hashed.payload.perRun.map((entry) => entry.runId)).toEqual(["a", "b"]);
+    expect(JSON.stringify(hashed.payload)).not.toMatch(/mtime|ctime/i);
+  });
+});
