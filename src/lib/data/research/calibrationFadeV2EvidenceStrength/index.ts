@@ -37,3 +37,9 @@ export {
   assessLoroInformativeness,
   assessStoppingRule,
 } from "./assessEvidenceStrengthContext";
+export {
+  assessSourceArtifactAuthority,
+  buildDiscoveryMethodologyContext,
+  buildHistoricalLineageContext,
+  computeDesignedAtlasDiscoveryScale,
+} from "./buildDiscoveryMethodologyContext";

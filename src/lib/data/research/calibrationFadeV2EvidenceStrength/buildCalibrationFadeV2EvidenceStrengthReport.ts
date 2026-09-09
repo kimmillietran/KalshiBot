@@ -16,7 +16,6 @@ import {
 import {
   assessLoroInformativeness,
   assessStoppingRule,
-  buildHistoricalLineageContext,
   buildMethodologyWarnings,
   recommendResearchAction,
 } from "./assessEvidenceStrengthContext";
@@ -25,6 +24,13 @@ import {
   buildRunConcentration,
   buildUtcHourConcentration,
 } from "./buildConcentrationAndIncidence";
+import {
+  assessSourceArtifactAuthority,
+  assessVolatilityWindowContiguity,
+  buildDiscoveryMethodologyContext,
+  buildEvidenceLayerDistinction,
+  buildHistoricalLineageContext,
+} from "./buildDiscoveryMethodologyContext";
 import { buildPowerAnalysisSensitivity } from "./buildPowerAnalysisSensitivity";
 import { enumerateExactCalibratedNull } from "./enumerateExactCalibratedNull";
 import {
@@ -63,6 +69,12 @@ export function buildCalibrationFadeV2EvidenceStrengthReport(input: {
   generatedAt?: string;
 }): CalibrationFadeV2EvidenceStrengthReport {
   const report = loadCrossRunReport(input.io, input.config.crossRunReportPath);
+  const sourceArtifactAuthority = assessSourceArtifactAuthority({
+    io: input.io,
+    crossRunReportPath: input.config.crossRunReportPath,
+    runSetHash: report.runSetHash,
+    settlementSnapshotHash: report.settlementSnapshotHash,
+  });
   const marketsPath = resolveMarketsPath({
     io: input.io,
     crossRunReportPath: input.config.crossRunReportPath,
@@ -160,6 +172,19 @@ export function buildCalibrationFadeV2EvidenceStrengthReport(input: {
     notes: provenance.historicalCandidateLineage.notes,
     limitations: provenance.limitations,
   });
+  const discoveryMethodologyContext = buildDiscoveryMethodologyContext();
+  const volatilityWindowContiguity = assessVolatilityWindowContiguity({
+    missingMinuteBehavior: loadedThresholds.missingMinuteBehavior,
+    returnIntervalMs: loadedThresholds.returnIntervalMs,
+  });
+  const evidenceLayerDistinction = buildEvidenceLayerDistinction({
+    governedInterpretationClassification: report.interpretationClassification,
+    inferentialStrengthSummary:
+      `n=${markets.length}; observedGap=${String(enumerated.uncertainty.observedSignedCalibrationGap)}; `
+      + `P(reject|calibrated-null)=${enumerated.distribution.probabilityOfReject}; `
+      + `inconclusiveReachable=${String(enumerated.reachability.inconclusiveBandReachable)}.`,
+    historicalPasses: historicalLineageContext.passes,
+  });
 
   const methodologyWarnings = buildMethodologyWarnings({
     candidateMarketCount: markets.length,
@@ -168,6 +193,10 @@ export function buildCalibrationFadeV2EvidenceStrengthReport(input: {
     loro: loroAssessment,
     probabilityOfReject: enumerated.distribution.probabilityOfReject,
     candidateContributingRunCount: loroAssessment.candidateContributingRunCount,
+    historicalLineage: historicalLineageContext,
+    discovery: discoveryMethodologyContext,
+    sourceArtifactAuthority,
+    volatilityWindowContiguity,
   });
 
   const finiteRequiredNs = powerAnalysis.rows
@@ -232,6 +261,10 @@ export function buildCalibrationFadeV2EvidenceStrengthReport(input: {
     candidateIncidence,
     stoppingRuleAssessment,
     historicalLineageContext,
+    discoveryMethodologyContext,
+    evidenceLayerDistinction,
+    sourceArtifactAuthority,
+    volatilityWindowContiguity,
     loroAssessment,
     methodologyWarnings,
     recommendedResearchAction,

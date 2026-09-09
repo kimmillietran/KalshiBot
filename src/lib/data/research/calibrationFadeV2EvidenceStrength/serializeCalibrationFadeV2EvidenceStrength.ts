@@ -65,7 +65,21 @@ export function serializeCalibrationFadeV2EvidenceStrengthHtml(
   <p>observationCount: ${report.historicalLineageContext.observationCount}</p>
   <p>uniqueTradingDays: ${report.historicalLineageContext.uniqueTradingDays}</p>
   <p>passes: ${String(report.historicalLineageContext.passes)}</p>
+  <p>failedAvailablePromotionGate: ${String(report.historicalLineageContext.failedAvailablePromotionGate)}</p>
   <p>robustnessScore: ${report.historicalLineageContext.robustnessScore}</p>
+  <p>${escapeHtml(report.historicalLineageContext.promotionGateNote)}</p>
+  <h2>Evidence layers</h2>
+  <p>classifier: ${escapeHtml(report.evidenceLayerDistinction.preregisteredClassifierCorrectness.status)}</p>
+  <p>inferential: ${escapeHtml(report.evidenceLayerDistinction.inferentialEvidenceStrength.summary)}</p>
+  <p>discovery: ${escapeHtml(report.evidenceLayerDistinction.upstreamDiscoverySelectionQuality.status)}</p>
+  <h2>Discovery methodology</h2>
+  <p>designed buckets/tests: ${report.discoveryMethodologyContext.designedTemplateBucketCount} / ${report.discoveryMethodologyContext.designedDirectionalTestCount}</p>
+  <p>fdrOosOnPromotionPath: ${String(report.discoveryMethodologyContext.fdrOosMachineryOnPromotionPath)}</p>
+  <h2>Source artifact authority</h2>
+  <p>pathKind: ${escapeHtml(report.sourceArtifactAuthority.pathKind)}</p>
+  <p>legacyAlsoPresent: ${String(report.sourceArtifactAuthority.legacyRunSetRootAlsoPresent)}</p>
+  <h2>Volatility contiguity</h2>
+  <p>contiguityRiskFlag: ${String(report.volatilityWindowContiguity.contiguityRiskFlag)}</p>
   <h2>Power sensitivity</h2>
   <table>
     <thead><tr><th>assumptionId</th><th>requiredN</th><th>targetGap</th><th>power</th></tr></thead>

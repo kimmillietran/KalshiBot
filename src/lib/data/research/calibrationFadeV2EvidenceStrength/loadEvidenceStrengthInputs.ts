@@ -52,6 +52,8 @@ export type LoadedHypothesisThresholds = {
   materialSupportCalibrationGap: number;
   calibrationDirection: "over" | "under";
   minimumSettlementCoverageShare: number;
+  missingMinuteBehavior: string | null;
+  returnIntervalMs: number | null;
   hasExplicitFixedN: boolean;
   hasExplicitHorizon: boolean;
   hasSequentialCorrection: boolean;
@@ -298,6 +300,9 @@ export function loadFrozenHypothesisThresholds(
   }
 
   const rawKeys = Object.keys(parsed);
+  const volatilityDefinition = isRecord(parsed.volatilityDefinition)
+    ? parsed.volatilityDefinition
+    : null;
   const hasExplicitFixedN =
     rawKeys.includes("fixedFinalN")
     || rawKeys.includes("fixedSampleSize")
@@ -317,6 +322,12 @@ export function loadFrozenHypothesisThresholds(
     materialSupportCalibrationGap,
     calibrationDirection,
     minimumSettlementCoverageShare,
+    missingMinuteBehavior: volatilityDefinition
+      ? readString(volatilityDefinition.missingMinuteBehavior)
+      : null,
+    returnIntervalMs: volatilityDefinition
+      ? readNumber(volatilityDefinition.returnIntervalMs)
+      : null,
     hasExplicitFixedN,
     hasExplicitHorizon,
     hasSequentialCorrection,

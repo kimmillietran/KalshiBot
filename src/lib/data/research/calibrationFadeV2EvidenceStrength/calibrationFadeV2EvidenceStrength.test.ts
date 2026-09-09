@@ -307,6 +307,8 @@ describe("stopping-rule and LORO assessments", () => {
   it("flags minimum-floor-only stopping rule", () => {
     const loaded: LoadedHypothesisThresholds = {
       ...PRODUCTION_THRESHOLDS,
+      missingMinuteBehavior: "omit-missing-exchange-candles-no-fill",
+      returnIntervalMs: 60_000,
       hasExplicitFixedN: false,
       hasExplicitHorizon: false,
       hasSequentialCorrection: false,
@@ -383,8 +385,26 @@ describe("buildCalibrationFadeV2EvidenceStrengthReport", () => {
     expect(report.historicalLineageContext.observationCount).toBe(457);
     expect(report.historicalLineageContext.uniqueTradingDays).toBe(63);
     expect(report.historicalLineageContext.passes).toBe(false);
+    expect(report.historicalLineageContext.failedAvailablePromotionGate).toBe(true);
     expect(report.historicalLineageContext.robustnessScore).toBe(59);
     expect(report.historicalLineageContext.distinction).toMatch(/exploratory/);
+    expect(report.historicalLineageContext.promotionGateNote).toMatch(/passes=false/);
+    expect(report.discoveryMethodologyContext.designedDirectionalTestCount).toBe(
+      report.discoveryMethodologyContext.designedTemplateBucketCount * 2,
+    );
+    expect(report.discoveryMethodologyContext.fdrOosMachineryOnPromotionPath).toBe(false);
+    expect(report.discoveryMethodologyContext.historicalRobustnessCharacter).toBe(
+      "in-sample-not-held-out",
+    );
+    expect(report.evidenceLayerDistinction.upstreamDiscoverySelectionQuality.status).toBe(
+      "historical-lineage-failed-available-gate",
+    );
+    expect(report.sourceArtifactAuthority.pathKind).toBe("settlement-snapshot-scoped");
+    expect(report.volatilityWindowContiguity.contiguityRiskFlag).toBe(true);
+    expect(report.powerAnalysis.note).toMatch(/n=100/);
+    expect(report.methodologyWarnings.some((warning) => warning.includes("three layers"))).toBe(
+      true,
+    );
     expect(report.runConcentration).toHaveLength(2);
     expect(report.selectedRunCount).toBe(2);
     expect(report.candidateContributingRunCount).toBe(2);
@@ -400,6 +420,73 @@ describe("buildCalibrationFadeV2EvidenceStrengthReport", () => {
     expect(serialized).toBe(`${stableStringify(report)}\n`);
     const again = serializeCalibrationFadeV2EvidenceStrengthJson(report);
     expect(again).toBe(serialized);
+  });
+
+  it("rejects legacy runSet-root when snapshot-scoped artifact also exists", () => {
+    const markets = [
+      market({
+        marketTicker: "X",
+        impliedYesProbability: 0.5,
+        settledOutcome: "yes",
+        selectedRunId: "r1",
+      }),
+    ];
+    const files = buildCrossRunFixture({ markets });
+    const snapshotPath =
+      "data/research-results/calibration-fade-v2/cross-run/confirmatory/aaaaaaaa/settlement-snapshots/bbbbbbbb/calibration-fade-v2-cross-run-validation.json";
+    const legacyPath =
+      "data/research-results/calibration-fade-v2/cross-run/confirmatory/aaaaaaaa/calibration-fade-v2-cross-run-validation.json";
+    files[legacyPath] = files[snapshotPath]!;
+    const io = createMemoryIo(files);
+    expect(() =>
+      buildCalibrationFadeV2EvidenceStrengthReport({
+        config: {
+          crossRunReportPath: legacyPath,
+          marketsPath: null,
+          hypothesisConfigPath:
+            "config/research/hypotheses/high-volatility-late-market-calibration-fade-v2.json",
+          provenancePath:
+            "config/research/hypotheses/provenance/high-volatility-late-market-calibration-fade-v2.json",
+          outputPath: null,
+          htmlOutputPath: null,
+        },
+        io,
+      }),
+    ).toThrow(/legacy runSet root|settlement-snapshots/);
+  });
+
+  it("warns when snapshot-scoped path is used while legacy root also exists", () => {
+    const markets = PRODUCTION_P.map((p, index) =>
+      market({
+        marketTicker: `KXBTC15M-${index}`,
+        impliedYesProbability: p,
+        settledOutcome: index === 0 || index === 1 || index === 4 ? "yes" : "no",
+        selectedRunId: index < 2 ? "2026-09-08T07-46-44-416Z" : "2026-09-09T06-39-04-259Z",
+      }),
+    );
+    const files = buildCrossRunFixture({ markets });
+    const snapshotPath =
+      "data/research-results/calibration-fade-v2/cross-run/confirmatory/aaaaaaaa/settlement-snapshots/bbbbbbbb/calibration-fade-v2-cross-run-validation.json";
+    const legacyPath =
+      "data/research-results/calibration-fade-v2/cross-run/confirmatory/aaaaaaaa/calibration-fade-v2-cross-run-validation.json";
+    files[legacyPath] = files[snapshotPath]!;
+    const io = createMemoryIo(files);
+    const report = buildCalibrationFadeV2EvidenceStrengthReport({
+      config: {
+        crossRunReportPath: snapshotPath,
+        marketsPath: null,
+        hypothesisConfigPath:
+          "config/research/hypotheses/high-volatility-late-market-calibration-fade-v2.json",
+        provenancePath:
+          "config/research/hypotheses/provenance/high-volatility-late-market-calibration-fade-v2.json",
+        outputPath: null,
+        htmlOutputPath: null,
+      },
+      io,
+      generatedAt: "2026-09-09T12:00:00.000Z",
+    });
+    expect(report.sourceArtifactAuthority.legacyRunSetRootAlsoPresent).toBe(true);
+    expect(report.sourceArtifactAuthority.warning).toMatch(/non-authoritative/);
   });
 
   it("rejects non-confirmatory evidence mode", () => {
@@ -434,5 +521,15 @@ describe("buildCalibrationFadeV2EvidenceStrengthReport", () => {
         io,
       }),
     ).toThrow(CalibrationFadeV2EvidenceStrengthError);
+  });
+});
+
+describe("discovery methodology scale", () => {
+  it("computes designed atlas scale near the independent-audit ~254/~508 figures", async () => {
+    const { computeDesignedAtlasDiscoveryScale } = await import("./buildDiscoveryMethodologyContext");
+    const scale = computeDesignedAtlasDiscoveryScale();
+    expect(scale.designedTemplateBucketCount).toBeGreaterThanOrEqual(240);
+    expect(scale.designedTemplateBucketCount).toBeLessThanOrEqual(260);
+    expect(scale.designedDirectionalTestCount).toBe(scale.designedTemplateBucketCount * 2);
   });
 });

@@ -84,7 +84,8 @@ export function buildPowerAnalysisSensitivity(input: {
     method: "normal-approximation-one-tailed-mean-gap",
     note:
       "Required N depends on variance and target-gap assumptions. "
-      + "These rows are methodological planning aids, not a change to the frozen minimum of 5.",
+      + "These rows are methodological planning aids, not a change to the frozen minimum of 5. "
+      + "Do not hard-code n=100 or any other single heuristic as a requirement.",
     rows,
   };
 }

@@ -1,8 +1,11 @@
 import type {
+  DiscoveryMethodologyContext,
   HistoricalLineageContext,
   LoroAssessment,
   RecommendedResearchAction,
+  SourceArtifactAuthorityAssessment,
   StoppingRuleAssessment,
+  VolatilityWindowContiguityAssessment,
 } from "./calibrationFadeV2EvidenceStrengthTypes";
 import type { LoadedHypothesisThresholds } from "./loadEvidenceStrengthInputs";
 
@@ -113,29 +116,6 @@ export function assessLoroInformativeness(input: {
   };
 }
 
-export function buildHistoricalLineageContext(input: {
-  observationCount: number;
-  uniqueTradingDays: number;
-  passes: boolean;
-  robustnessScore: number;
-  role: string;
-  notes: readonly string[];
-  limitations: readonly string[];
-}): HistoricalLineageContext {
-  return {
-    observationCount: input.observationCount,
-    uniqueTradingDays: input.uniqueTradingDays,
-    passes: input.passes,
-    robustnessScore: input.robustnessScore,
-    role: input.role,
-    limitations: [...input.notes, ...input.limitations],
-    distinction:
-      "historicalCandidateLineage is exploratory discovery context only. "
-      + "It is not prospective confirmatory evidence and must not be pooled with "
-      + "the sealed forward result when interpreting the governed verdict.",
-  };
-}
-
 export function buildMethodologyWarnings(input: {
   candidateMarketCount: number;
   inconclusiveBandReachable: boolean;
@@ -143,13 +123,43 @@ export function buildMethodologyWarnings(input: {
   loro: LoroAssessment;
   probabilityOfReject: number;
   candidateContributingRunCount: number;
+  historicalLineage: HistoricalLineageContext;
+  discovery: DiscoveryMethodologyContext;
+  sourceArtifactAuthority: SourceArtifactAuthorityAssessment;
+  volatilityWindowContiguity: VolatilityWindowContiguityAssessment;
 }): readonly string[] {
   const warnings: string[] = [];
+  warnings.push(
+    "Distinguish three layers: (1) preregistered classifier correctness on the sealed artifact, "
+      + "(2) inferential evidence strength of the prospective result, and "
+      + "(3) upstream discovery-selection quality. Do not collapse these into one verdict.",
+  );
   warnings.push(
     "Do not apply a new FDR correction retroactively to this frozen v2 prospective result. "
       + "Existing Benjamini–Hochberg / Benjamini–Yekutieli machinery in overfittingDiagnostics "
       + "and oosPowerCorrection should be applied in a future discovery/promotion pipeline "
       + "before preregistration of the next family, not after sealing confirmatory outcomes.",
+  );
+  warnings.push(
+    `Upstream discovery scale: designed ${input.discovery.designedTemplateBucketCount} template `
+      + `buckets / ${input.discovery.designedDirectionalTestCount} directional tests `
+      + `(audit ≈${input.discovery.auditApproximateTemplateBucketCount}/`
+      + `≈${input.discovery.auditApproximateDirectionalTestCount}); hypotheses are correlated; `
+      + "historical robustness is in-sample rather than held-out; FDR/OOS machinery was not on "
+      + "the promotion path for this lineage.",
+  );
+  if (input.historicalLineage.failedAvailablePromotionGate) {
+    warnings.push(input.historicalLineage.promotionGateNote);
+  }
+  if (input.sourceArtifactAuthority.warning) {
+    warnings.push(input.sourceArtifactAuthority.warning);
+  }
+  if (input.volatilityWindowContiguity.warning) {
+    warnings.push(input.volatilityWindowContiguity.warning);
+  }
+  warnings.push(
+    "Required prospective sample size must come from explicit power assumptions in this report; "
+      + "do not treat an audit-suggested n=100 (or any other single heuristic) as a hard-coded requirement.",
   );
   if (input.candidateMarketCount < 30) {
     warnings.push(

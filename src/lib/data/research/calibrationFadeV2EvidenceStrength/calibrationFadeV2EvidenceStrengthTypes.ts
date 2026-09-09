@@ -157,8 +157,67 @@ export type HistoricalLineageContext = {
   passes: boolean;
   robustnessScore: number;
   role: string;
+  /** True when historical lineage failed its available promotion/validation gate. */
+  failedAvailablePromotionGate: boolean;
+  referencedPromotionPassScoreThreshold: number;
+  historicalValidationCharacter: "in-sample-exploratory-not-held-out";
+  promotionGateNote: string;
   limitations: readonly string[];
   distinction: string;
+};
+
+export type DiscoveryMethodologyContext = {
+  role: "upstream-discovery-selection-quality-only";
+  axisGroupCount: number;
+  designedTemplateBucketCount: number;
+  designedDirectionalTestCount: number;
+  auditApproximateTemplateBucketCount: number;
+  auditApproximateDirectionalTestCount: number;
+  directionalExpansion: "each-template-bucket-evaluated-as-over-and-under";
+  hypothesesCorrelated: boolean;
+  historicalRobustnessCharacter: "in-sample-not-held-out";
+  fdrOosMachineryOnPromotionPath: boolean;
+  notes: readonly string[];
+};
+
+export type EvidenceLayerDistinction = {
+  preregisteredClassifierCorrectness: {
+    status: "governed-artifact-authoritative";
+    governedInterpretationClassification: string;
+    note: string;
+  };
+  inferentialEvidenceStrength: {
+    status: "separately-quantified";
+    summary: string;
+    note: string;
+  };
+  upstreamDiscoverySelectionQuality: {
+    status:
+      | "historical-lineage-failed-available-gate"
+      | "historical-lineage-passed-available-gate";
+    note: string;
+  };
+};
+
+export type SourceArtifactAuthorityAssessment = {
+  pathKind:
+    | "settlement-snapshot-scoped"
+    | "legacy-runset-root"
+    | "latest-forbidden"
+    | "other";
+  authoritativeForThisAudit: boolean;
+  legacyRunSetRootAlsoPresent: boolean;
+  settlementSnapshotHash: string;
+  warning: string | null;
+};
+
+export type VolatilityWindowContiguityAssessment = {
+  missingMinuteBehavior: string | null;
+  contractedReturnIntervalMs: number | null;
+  annualizationIntervalSource: string;
+  contiguityRiskFlag: boolean;
+  doesNotModifyFrozenVolatilitySemantics: true;
+  warning: string | null;
 };
 
 export type LoroAssessment = {
@@ -202,6 +261,10 @@ export type CalibrationFadeV2EvidenceStrengthReport = {
   candidateIncidence: CandidateIncidenceSummary;
   stoppingRuleAssessment: StoppingRuleAssessment;
   historicalLineageContext: HistoricalLineageContext;
+  discoveryMethodologyContext: DiscoveryMethodologyContext;
+  evidenceLayerDistinction: EvidenceLayerDistinction;
+  sourceArtifactAuthority: SourceArtifactAuthorityAssessment;
+  volatilityWindowContiguity: VolatilityWindowContiguityAssessment;
   loroAssessment: LoroAssessment;
   methodologyWarnings: readonly string[];
   recommendedResearchAction: RecommendedResearchAction;
