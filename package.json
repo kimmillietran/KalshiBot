@@ -96,6 +96,7 @@
     "research:calibration-fade-v2-capture-readiness": "tsx scripts/research/evaluateCalibrationFadeV2CaptureReadiness.ts",
     "research:calibration-fade-cross-run-validation": "tsx scripts/research/buildCalibrationFadeCrossRunValidation.ts",
     "research:calibration-fade-v2-cross-run": "tsx scripts/research/buildCalibrationFadeV2CrossRunValidation.ts",
+    "research:calibration-fade-v2-evidence-strength": "tsx scripts/research/buildCalibrationFadeV2EvidenceStrength.ts",
     "research:causal-feature-equivalence-audit": "tsx scripts/research/buildCausalFeatureEquivalenceAudit.ts",
     "research:forward-settlement-join": "tsx scripts/research/buildForwardSettlementJoin.ts",
     "research:forward-settlement-coverage": "tsx scripts/research/buildForwardSettlementCoverage.ts",
