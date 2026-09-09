@@ -765,9 +765,9 @@ describe("calibrationFadeV2CrossRunValidation admission and aggregation", () => 
     expect(withOverlay.report.settlementCoverageShare).toBe(0.2);
     expect(withOverlay.report.interpretationClassification).toBe("settlement-coverage-incomplete");
     expect(withOverlay.marketLines.join("\n")).not.toContain(extra);
-    expect(withOverlay.report.evaluatedExecutableCandidateCount).toBe(0);
-    expect(withOverlay.report.grossReturnCents).toBeNull();
-    expect(withOverlay.report.feeAdjustedReturnCents).toBeNull();
+    expect(withOverlay.report.evaluatedExecutableCandidateCount).toBe(1);
+    expect(withOverlay.report.grossReturnCents).toBe(52);
+    expect(withOverlay.report.feeAdjustedReturnCents).toBe(51);
     const overlayMarket = JSON.parse(
       withOverlay.marketLines.find((line) => line.includes(tickers[0]!)) ?? "{}",
     ) as {
@@ -776,12 +776,41 @@ describe("calibrationFadeV2CrossRunValidation admission and aggregation", () => 
         settledOutcome?: string;
         grossReturnCents?: number | null;
         feeAdjustedReturnCents?: number | null;
+        marketTicker?: string;
+        entryTimestamp?: string;
       };
     };
     expect(overlayMarket.selectedCanonicalEntry?.executableAvailable).toBe(true);
     expect(overlayMarket.selectedCanonicalEntry?.settledOutcome).toBe("no");
-    expect(overlayMarket.selectedCanonicalEntry?.grossReturnCents).toBeNull();
-    expect(overlayMarket.selectedCanonicalEntry?.feeAdjustedReturnCents).toBeNull();
+    expect(overlayMarket.selectedCanonicalEntry?.grossReturnCents).toBe(52);
+    expect(overlayMarket.selectedCanonicalEntry?.feeAdjustedReturnCents).toBe(51);
+    expect(overlayMarket.selectedCanonicalEntry?.marketTicker).toBe(tickers[0]);
+  });
+
+  it("derives executable returns when overlay settles a previously unknown sealed market", () => {
+    const files: Record<string, string> = {};
+    const ticker = "KXBTC15M-26SEP081000-00";
+    const companion = "KXBTC15M-26SEP081015-15";
+    const dirs = ["data/imports", "data/imports/KXBTC15M", `data/imports/KXBTC15M/${ticker}`];
+    seedAdmittedRun(files, "run-a", [
+      market(ticker, {
+        executableAvailable: true,
+        settlementStatus: "unknown",
+        settledOutcome: "unknown",
+        grossReturnCents: null,
+        feeAdjustedReturnCents: null,
+      }),
+    ]);
+    seedAdmittedRun(files, "run-b", [market(companion)]);
+    files[`data/imports/KXBTC15M/${ticker}/import-result.json`] = importResult(ticker, "no");
+    const without = analyzePair({ ...files }, dirs, "run-a", "run-b");
+    const result = analyzePair(files, dirs, "run-a", "run-b", ["--imports-dir", "data/imports"]);
+    expect(result.report.runSetHash).toBe(without.report.runSetHash);
+    expect(result.report.settlementSnapshotHash).not.toBe(without.report.settlementSnapshotHash);
+    expect(result.report.evaluatedExecutableCandidateCount).toBe(1);
+    expect(result.report.grossReturnCents).toBe(52);
+    expect(result.report.feeAdjustedReturnCents).toBe(51);
+    expect(result.report.settlementCoverageShare).toBe(0.5);
   });
 
   it("does not manufacture zero-return executable evidence from overlay-settled null returns", () => {
@@ -801,13 +830,11 @@ describe("calibrationFadeV2CrossRunValidation admission and aggregation", () => 
     seedAdmittedRun(files, "run-b", [market(companion)]);
     files[`data/imports/KXBTC15M/${ticker}/import-result.json`] = importResult(ticker, "no");
     const result = analyzePair(files, dirs, "run-a", "run-b", ["--imports-dir", "data/imports"]);
-    expect(result.report.evaluatedExecutableCandidateCount).toBe(0);
-    expect(result.report.grossReturnCents).toBeNull();
-    expect(result.report.feeAdjustedReturnCents).toBeNull();
-    expect(result.report.settlementCoverageShare).toBe(0.5);
-    expect(result.report.interpretationClassification).not.toMatch(
-      /forward-supports-executable-fade|forward-contradicts-executability/,
-    );
+    expect(result.report.evaluatedExecutableCandidateCount).toBe(1);
+    expect(result.report.grossReturnCents).not.toBe(0);
+    expect(result.report.feeAdjustedReturnCents).not.toBe(0);
+    expect(result.report.grossReturnCents).toBe(52);
+    expect(result.report.feeAdjustedReturnCents).toBe(51);
   });
 
   it("preserves valid sealed executable returns and counts them as evaluated", () => {
@@ -895,14 +922,11 @@ describe("calibrationFadeV2CrossRunValidation admission and aggregation", () => 
     const result = analyzePair(files, dirs, "run-a", "run-b", ["--imports-dir", "data/imports"]);
     expect(result.report.evaluatedIndependentCandidateMarketCount).toBe(5);
     expect(result.report.settlementCoverageShare).toBe(1);
-    expect(result.report.evaluatedExecutableCandidateCount).toBe(0);
-    expect(result.report.grossReturnCents).toBeNull();
-    expect(result.report.feeAdjustedReturnCents).toBeNull();
+    expect(result.report.evaluatedExecutableCandidateCount).toBe(5);
+    expect(result.report.grossReturnCents).toBe(260);
+    expect(result.report.feeAdjustedReturnCents).toBe(255);
     expect(result.report.interpretationClassification).not.toBe("insufficient-forward-events");
     expect(result.report.interpretationClassification).not.toBe("settlement-coverage-incomplete");
-    expect(result.report.interpretationClassification).not.toMatch(
-      /forward-supports-executable-fade|forward-contradicts-executability/,
-    );
   });
 
   it("does not invent executable returns for a non-executable overlay-settled market", () => {
@@ -1119,9 +1143,9 @@ describe("M12.6e.1 settlement snapshot lifecycle", () => {
     expect(result.report.settlementCoverageShare).toBe(0.8);
     expect(result.report.interpretationClassification).not.toBe("insufficient-forward-events");
     expect(result.report.interpretationClassification).not.toBe("settlement-coverage-incomplete");
-    expect(result.report.evaluatedExecutableCandidateCount).toBe(0);
-    expect(result.report.grossReturnCents).toBeNull();
-    expect(result.report.feeAdjustedReturnCents).toBeNull();
+    expect(result.report.evaluatedExecutableCandidateCount).toBe(4);
+    expect(result.report.grossReturnCents).toBe(208);
+    expect(result.report.feeAdjustedReturnCents).toBe(204);
   });
 
   it("is idempotent for the same settlement snapshot state", () => {
@@ -1287,7 +1311,7 @@ describe("M12.6e.1 settlement snapshot lifecycle", () => {
     expect(canonical.selectedCanonicalEntry?.noAskCents).toBe(48);
     expect(canonical.selectedCanonicalEntry?.executableAvailable).toBe(true);
     expect(canonical.selectedCanonicalEntry?.settledOutcome).toBe("no");
-    expect(canonical.selectedCanonicalEntry?.grossReturnCents).toBeNull();
-    expect(canonical.selectedCanonicalEntry?.feeAdjustedReturnCents).toBeNull();
+    expect(canonical.selectedCanonicalEntry?.grossReturnCents).toBe(52);
+    expect(canonical.selectedCanonicalEntry?.feeAdjustedReturnCents).toBe(51);
   });
 });
