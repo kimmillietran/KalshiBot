@@ -1,14 +1,13 @@
 import { parseGovernedCursorLrmVerdict } from "./parseCursorLrmVerdict";
 import {
-  ADVISORY_CHECK_NAME_SUBSTRING,
   AUTO_MERGE_TRUSTED_PATHS,
   GITHUB_WORKFLOWS_PREFIX,
   QUALITY_GATES_WORKFLOW_NAME,
   QUALITY_GATES_WORKFLOW_PATH,
-  TRUSTED_RUNTIME_EXACT_PATHS,
   REQUIRED_BASE_BRANCH,
   REQUIRED_CHECK_NAMES,
   TRUSTED_CURSOR_LOGIN,
+  TRUSTED_RUNTIME_EXACT_PATHS,
   type CheckConclusion,
   type EvaluateInput,
   type EvaluateResult,
@@ -20,6 +19,7 @@ import {
   type PullRequestSnapshot,
   type QualityGatesRunSnapshot,
   type QualityGatesWorkflowIdentity,
+  type WorkflowJobSnapshot,
   type ResolvePrResult,
 } from "./autoMergeGateTypes";
 
@@ -160,14 +160,6 @@ export function resolveCandidatePullRequests(
   return { kind: "system_failure", reason: `unsupported event: ${eventName}` };
 }
 
-function isRequiredCheckName(name: string): boolean {
-  return (REQUIRED_CHECK_NAMES as readonly string[]).includes(name);
-}
-
-function isAdvisoryCheckName(name: string): boolean {
-  return name.toLowerCase().includes(ADVISORY_CHECK_NAME_SUBSTRING);
-}
-
 function conclusionLabel(conclusion: CheckConclusion, status?: string): string {
   if (status && status !== "completed" && conclusion == null) {
     return status;
@@ -188,6 +180,64 @@ export function isValidTrustedQualityGatesIdentity(
     && identity.id > 0
     && identity.path === QUALITY_GATES_WORKFLOW_PATH
   );
+}
+
+export type TrustedRequiredJobValidation =
+  | { kind: "ok"; ci: Record<string, string> }
+  | { kind: "blocked"; reason: string; ci: Record<string, string> };
+
+/**
+ * Authoritative CI job gate: every REQUIRED_CHECK_NAME must appear exactly
+ * once inside the selected trusted Quality Gates run and be completed/success.
+ * Generic commit check-run names are not a substitute.
+ *
+ * Quality Gates currently has one job per required name. Duplicate required
+ * names in the same run are fail-closed rather than picking a green copy.
+ */
+export function validateTrustedQualityGatesRequiredJobs(
+  jobs: readonly WorkflowJobSnapshot[],
+): TrustedRequiredJobValidation {
+  const ci: Record<string, string> = {};
+  for (const required of REQUIRED_CHECK_NAMES) {
+    const matches = jobs.filter((job) => job.name === required);
+    if (matches.length === 0) {
+      ci[required] = "absent";
+      return {
+        kind: "blocked",
+        reason: `trusted Quality Gates required job absent: ${required}`,
+        ci,
+      };
+    }
+    if (matches.length > 1) {
+      ci[required] = "duplicate";
+      return {
+        kind: "blocked",
+        reason: `duplicate trusted Quality Gates required job: ${required}`,
+        ci,
+      };
+    }
+    const job = matches[0]!;
+    ci[required] = conclusionLabel(job.conclusion, job.status);
+    if (isSuccessfulConclusion(job.conclusion, job.status)) {
+      continue;
+    }
+    if (
+      job.status === "queued"
+      || job.status === "in_progress"
+      || job.status === "pending"
+      || job.conclusion === "pending"
+      || job.conclusion === "queued"
+      || job.conclusion === "in_progress"
+    ) {
+      return { kind: "blocked", reason: "CI pending", ci };
+    }
+    return {
+      kind: "blocked",
+      reason: `trusted Quality Gates required job not successful: ${required}`,
+      ci,
+    };
+  }
+  return { kind: "ok", ci };
 }
 
 function compareTrustedQualityGatesRuns(
@@ -416,6 +466,8 @@ export function evaluateAutoMergeGate(input: EvaluateInput): EvaluateResult {
   }
 
   const ci: Record<string, string> = {};
+  // Secondary confirmation only. Same-named commit check-runs cannot
+  // authorize merge if the trusted Quality Gates run is missing a job.
   const exactHeadChecks = input.checkRuns.filter((run) => run.headSha === pr.headSha);
 
   for (const required of REQUIRED_CHECK_NAMES) {
@@ -481,14 +533,10 @@ export function evaluateAutoMergeGate(input: EvaluateInput): EvaluateResult {
       { ...reportBase, ci },
     );
   }
-  for (const job of latestQualityGates.jobs) {
-    if (isAdvisoryCheckName(job.name) || !isRequiredCheckName(job.name)) {
-      continue;
-    }
-    ci[job.name] = conclusionLabel(job.conclusion, job.status);
-    if (!isSuccessfulConclusion(job.conclusion, job.status)) {
-      return blocked("Quality Gates required job not successful", { ...reportBase, ci });
-    }
+  const requiredJobs = validateTrustedQualityGatesRequiredJobs(latestQualityGates.jobs);
+  Object.assign(ci, requiredJobs.ci);
+  if (requiredJobs.kind === "blocked") {
+    return blocked(requiredJobs.reason, { ...reportBase, ci });
   }
 
   return {

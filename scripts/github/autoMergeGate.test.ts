@@ -5,6 +5,7 @@ import {
   prTouchesTrustedAutoMergePaths,
   resolveCandidatePullRequests,
   runAutoMergeForPullRequest,
+  validateTrustedQualityGatesRequiredJobs,
 } from "./autoMergeGate";
 import {
   AUTO_MERGE_WORKFLOW_PATH,
@@ -1059,5 +1060,166 @@ describe("workflow-prefix and package-runtime authority", () => {
         }),
       ).reason,
     ).toBe("stale Cursor review");
+  });
+});
+
+describe("trusted Quality Gates required jobs", () => {
+  it("blocks when the trusted run is green but contains no required jobs", async () => {
+    let mergeCalls = 0;
+    const result = await runAutoMergeForPullRequest(
+      {
+        fetchPullRequest: async () => pr(),
+        fetchReviews: async () => [cursorReview()],
+        fetchReviewThreads: async () => [{ isResolved: true }],
+        fetchCheckRuns: async () => requiredChecks(HEAD_B),
+        fetchQualityGatesRuns: async () => qualityGates(HEAD_B, { jobs: [] }),
+        fetchTrustedQualityGatesWorkflow: async () => TRUSTED_QG_WORKFLOW,
+        compareHeadToMain: async () => ({ behindBy: 0, mainSha: MAIN_SHA }),
+        fetchDefaultBranchHasAutoMergeWorkflow: async () => true,
+        fetchPullRequestFiles: async () => [prFile("src/lib/foo.ts")],
+        mergePullRequest: async () => {
+          mergeCalls += 1;
+          throw new Error("merge should not run");
+        },
+        writeLog: () => {},
+        reviewEventBaseSha: MAIN_SHA,
+      },
+      55,
+    );
+    expect(result.kind).toBe("blocked");
+    expect(result.reason).toMatch(/trusted Quality Gates required job absent/);
+    expect(mergeCalls).toBe(0);
+  });
+
+  it("A. only Lint, build, and test in the trusted run is blocked", () => {
+    const result = evaluateAutoMergeGate(
+      eligibleInput({
+        qualityGatesRuns: qualityGates(HEAD_B, {
+          jobs: [{ name: "Lint, build, and test", status: "completed", conclusion: "success" }],
+        }),
+      }),
+    );
+    expect(result.kind).toBe("blocked");
+    expect(result.reason).toBe(
+      "trusted Quality Gates required job absent: Operator matrix (macOS)",
+    );
+  });
+
+  it("B. Lint + macOS without Ubuntu is blocked", () => {
+    const result = evaluateAutoMergeGate(
+      eligibleInput({
+        qualityGatesRuns: qualityGates(HEAD_B, {
+          jobs: [
+            { name: "Lint, build, and test", status: "completed", conclusion: "success" },
+            { name: "Operator matrix (macOS)", status: "completed", conclusion: "success" },
+          ],
+        }),
+      }),
+    );
+    expect(result.kind).toBe("blocked");
+    expect(result.reason).toBe(
+      "trusted Quality Gates required job absent: Operator matrix (Ubuntu)",
+    );
+  });
+
+  it("C. all three required trusted jobs successful pass this gate", () => {
+    expect(
+      validateTrustedQualityGatesRequiredJobs([
+        { name: "Lint, build, and test", status: "completed", conclusion: "success" },
+        { name: "Operator matrix (macOS)", status: "completed", conclusion: "success" },
+        { name: "Operator matrix (Ubuntu)", status: "completed", conclusion: "success" },
+      ]).kind,
+    ).toBe("ok");
+    expect(evaluateAutoMergeGate(eligibleInput()).kind).toBe("eligible");
+  });
+
+  it("D. advisory Windows failure does not block required-job validation", () => {
+    expect(evaluateAutoMergeGate(eligibleInput()).kind).toBe("eligible");
+  });
+
+  it("E. missing trusted job is not rescued by a green global check of the same name", () => {
+    const result = evaluateAutoMergeGate(
+      eligibleInput({
+        checkRuns: requiredChecks(HEAD_B),
+        qualityGatesRuns: qualityGates(HEAD_B, {
+          jobs: [
+            { name: "Lint, build, and test", status: "completed", conclusion: "success" },
+            { name: "Operator matrix (macOS)", status: "completed", conclusion: "success" },
+          ],
+        }),
+      }),
+    );
+    expect(result.kind).toBe("blocked");
+    expect(result.reason).toContain("Operator matrix (Ubuntu)");
+  });
+
+  it("F. failed trusted job is not rescued by a green global check of the same name", () => {
+    const result = evaluateAutoMergeGate(
+      eligibleInput({
+        checkRuns: requiredChecks(HEAD_B),
+        qualityGatesRuns: qualityGates(HEAD_B, {
+          jobs: [
+            { name: "Lint, build, and test", status: "completed", conclusion: "failure" },
+            { name: "Operator matrix (macOS)", status: "completed", conclusion: "success" },
+            { name: "Operator matrix (Ubuntu)", status: "completed", conclusion: "success" },
+          ],
+        }),
+      }),
+    );
+    expect(result.kind).toBe("blocked");
+    expect(result.reason).toBe(
+      "trusted Quality Gates required job not successful: Lint, build, and test",
+    );
+  });
+
+  it("G. pending trusted job is not rescued by a green global check of the same name", () => {
+    const result = evaluateAutoMergeGate(
+      eligibleInput({
+        checkRuns: requiredChecks(HEAD_B),
+        qualityGatesRuns: qualityGates(HEAD_B, {
+          jobs: [
+            { name: "Lint, build, and test", status: "in_progress", conclusion: null },
+            { name: "Operator matrix (macOS)", status: "completed", conclusion: "success" },
+            { name: "Operator matrix (Ubuntu)", status: "completed", conclusion: "success" },
+          ],
+        }),
+      }),
+    );
+    expect(result.kind).toBe("blocked");
+    expect(result.reason).toBe("CI pending");
+  });
+
+  it("trusted run-level success does not mask a required job failure", () => {
+    const result = evaluateAutoMergeGate(
+      eligibleInput({
+        qualityGatesRuns: qualityGates(HEAD_B, {
+          conclusion: "success",
+          jobs: [
+            { name: "Lint, build, and test", status: "completed", conclusion: "success" },
+            { name: "Operator matrix (macOS)", status: "completed", conclusion: "failure" },
+            { name: "Operator matrix (Ubuntu)", status: "completed", conclusion: "success" },
+          ],
+        }),
+      }),
+    );
+    expect(result.kind).toBe("blocked");
+    expect(result.reason).toBe(
+      "trusted Quality Gates required job not successful: Operator matrix (macOS)",
+    );
+  });
+
+  it("duplicate required jobs in the same trusted run fail closed", () => {
+    expect(
+      validateTrustedQualityGatesRequiredJobs([
+        { name: "Lint, build, and test", status: "completed", conclusion: "success" },
+        { name: "Lint, build, and test", status: "completed", conclusion: "failure" },
+        { name: "Operator matrix (macOS)", status: "completed", conclusion: "success" },
+        { name: "Operator matrix (Ubuntu)", status: "completed", conclusion: "success" },
+      ]),
+    ).toEqual({
+      kind: "blocked",
+      reason: "duplicate trusted Quality Gates required job: Lint, build, and test",
+      ci: { "Lint, build, and test": "duplicate" },
+    });
   });
 });
