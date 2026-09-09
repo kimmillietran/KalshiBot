@@ -362,7 +362,11 @@ describe("forwardSettlementCoverage", () => {
       content: createImportResult(MARKET_A, "yes", { conflicting: true }),
     });
 
-    expect(detectSettlementConflicts(candidates)).toContain("conflicting outcomes");
+    expect(detectSettlementConflicts({
+      candidates,
+      marketTicker: MARKET_A,
+      seriesTicker: "KXBTC15M",
+    })).toContain("conflicting outcomes");
   });
 
   it("runs idempotent dry-run backfill without mutating imports", async () => {
@@ -1123,7 +1127,11 @@ describe("forwardSettlementCoverage", () => {
     });
 
     expect(candidates).toHaveLength(1);
-    expect(detectSettlementConflicts(candidates)).toBeNull();
+    expect(detectSettlementConflicts({
+      candidates,
+      marketTicker: MARKET_A,
+      seriesTicker: "KXBTC15M",
+    })).toBeNull();
   });
 
   it("reconciles failed checkpoint entries as import-failed instead of missing-source", async () => {

@@ -131,7 +131,12 @@ export function classifyMarketSettlementCoverage(input: {
     };
   }
 
-  const conflictReason = detectSettlementConflicts(importState.candidates);
+  const conflictReason = detectSettlementConflicts({
+    candidates: importState.candidates,
+    marketTicker: input.inventory.marketTicker,
+    seriesTicker: input.inventory.seriesTicker,
+    expectedEventTicker: input.inventory.eventTicker,
+  });
   if (conflictReason) {
     const preferred = choosePreferredSettlementCandidate(importState.candidates);
     return {
