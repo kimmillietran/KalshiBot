@@ -65,6 +65,25 @@ export type ForwardSettlementCoverageIo = {
   fileExists: (path: string) => boolean;
   readdir: (path: string) => readonly string[];
   isDirectory: (path: string) => boolean;
+  /**
+   * Bounded-memory JSONL line iteration. Required for large capture artifacts
+   * such as top-of-book.jsonl; must not whole-file materialize the path.
+   */
+  iterateJsonl: (
+    path: string,
+    options: {
+      onLine: (
+        line: string,
+        lineNumber: number,
+      ) => "continue" | "stop" | "skip" | Promise<"continue" | "stop" | "skip">;
+    },
+  ) => Promise<{
+    linesRead: number;
+    blankLinesSkipped: number;
+    invalidLineCount: number;
+    recordsHandled: number;
+    truncated: boolean;
+  }>;
   writeFile?: (path: string, data: string) => void;
   mkdirSync?: (path: string, options?: { recursive?: boolean }) => void;
 };

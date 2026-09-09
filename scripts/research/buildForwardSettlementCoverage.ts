@@ -1,15 +1,9 @@
 import { dirname } from "node:path";
-import {
-  existsSync,
-  mkdirSync,
-  readdirSync,
-  readFileSync,
-  statSync,
-  writeFileSync,
-} from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 
 import {
   buildForwardSettlementCoverageReport,
+  createFilesystemForwardSettlementCoverageIo,
   parseForwardSettlementCoverageArgv,
   serializeForwardSettlementCoverageHtml,
   serializeForwardSettlementCoverageReport,
@@ -19,18 +13,7 @@ import { stableStringify } from "@/lib/trading/config/hashConfig";
 function main(): void {
   const parsed = parseForwardSettlementCoverageArgv(process.argv.slice(2));
   const generatedAt = new Date().toISOString();
-  const io = {
-    readFile: (path: string) => readFileSync(path, "utf8").replace(/^\uFEFF/, ""),
-    fileExists: (path: string) => existsSync(path),
-    readdir: (path: string) => readdirSync(path),
-    isDirectory: (path: string) => statSync(path).isDirectory(),
-    writeFile: (path: string, data: string) => {
-      writeFileSync(path, data, "utf8");
-    },
-    mkdirSync: (path: string, options?: { recursive?: boolean }) => {
-      mkdirSync(path, options);
-    },
-  };
+  const io = createFilesystemForwardSettlementCoverageIo();
 
   buildForwardSettlementCoverageReport({
     generatedAt,

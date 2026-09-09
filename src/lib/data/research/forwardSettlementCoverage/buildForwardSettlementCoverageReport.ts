@@ -264,7 +264,7 @@ function buildSummary(input: {
 function classifyExtractedMarkets(input: {
   config: ForwardSettlementCoverageConfig;
   io: ForwardSettlementCoverageIo;
-  extracted: ReturnType<typeof extractSelectedRunMarketInventory>;
+  extracted: Awaited<ReturnType<typeof extractSelectedRunMarketInventory>>;
   evaluatedAt: string;
   checkpoint?: import("./forwardSettlementCoverageTypes").ForwardSettlementBackfillCheckpoint | null;
 }): MarketSettlementCoverageEntry[] {
@@ -302,7 +302,7 @@ export async function buildForwardSettlementCoverageReport(input: {
   const warnings: string[] = [];
   const errors: string[] = [];
 
-  const extracted = extractSelectedRunMarketInventory({
+  const extracted = await extractSelectedRunMarketInventory({
     io: input.io,
     captureRunDir: input.config.captureRunDir,
     evaluatedAt: input.generatedAt,
