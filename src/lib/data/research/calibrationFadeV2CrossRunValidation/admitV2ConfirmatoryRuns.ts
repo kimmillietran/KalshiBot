@@ -29,7 +29,7 @@ import {
 import { RESEARCH_READY_CAPTURE_VERDICT } from "../selectedRunCaptureHealth";
 
 import { hashArtifactContents } from "./hashArtifactContents";
-import type { NormalizedCaptureRun } from "./normalizeCaptureRunDirs";
+import { identifyCaptureRunDir, type NormalizedCaptureRun } from "./normalizeCaptureRunDirs";
 import {
   CalibrationFadeV2CrossRunValidationError,
   type CalibrationFadeV2CrossRunValidationIo,
@@ -101,6 +101,41 @@ function requireExactString(
     );
   }
   return value;
+}
+
+function requireMatchingIdentityString(input: {
+  field: string;
+  topLevel: unknown;
+  nested: unknown;
+  runId: string;
+  expected?: string;
+}): string {
+  const topLevel = readString(input.topLevel);
+  const nested = readString(input.nested);
+  if (!topLevel) {
+    throw new CalibrationFadeV2CrossRunValidationError(
+      `sealed identity ${input.field} missing at top-level report for ${input.runId}`,
+    );
+  }
+  if (!nested) {
+    throw new CalibrationFadeV2CrossRunValidationError(
+      `sealed identity evidenceIdentity.${input.field} missing for ${input.runId}`,
+    );
+  }
+  if (topLevel !== nested) {
+    throw new CalibrationFadeV2CrossRunValidationError(
+      `sealed identity evidenceIdentity.${input.field} mismatch for ${input.runId}: `
+        + `report.${input.field}=${JSON.stringify(topLevel)} `
+        + `evidenceIdentity.${input.field}=${JSON.stringify(nested)}`,
+    );
+  }
+  if (input.expected !== undefined && topLevel !== input.expected) {
+    throw new CalibrationFadeV2CrossRunValidationError(
+      `sealed identity ${input.field} must equal explicit run-dir segment ${input.expected} `
+        + `for ${input.runId}; received ${JSON.stringify(topLevel)}`,
+    );
+  }
+  return topLevel;
 }
 
 function parseSealedMarkets(
@@ -230,10 +265,26 @@ export function admitV2ConfirmatoryRun(input: {
     );
   }
 
-  const captureStartedAt = readString(report.captureStartedAt) ?? readString(evidenceIdentity.captureStartedAt);
-  if (!captureStartedAt) {
-    throw new CalibrationFadeV2CrossRunValidationError(`captureStartedAt missing for ${runId}`);
+  const selectedRunId = readString(report.selectedRunId);
+  if (selectedRunId !== runId) {
+    throw new CalibrationFadeV2CrossRunValidationError(
+      `selectedRunId must equal explicit run-dir segment ${runId}`,
+    );
   }
+  requireMatchingIdentityString({
+    field: "captureRunId",
+    topLevel: report.captureRunId,
+    nested: evidenceIdentity.captureRunId,
+    runId,
+    expected: runId,
+  });
+
+  const captureStartedAt = requireMatchingIdentityString({
+    field: "captureStartedAt",
+    topLevel: report.captureStartedAt,
+    nested: evidenceIdentity.captureStartedAt,
+    runId,
+  });
   if (
     !isProspectiveConfirmatoryEvidenceEligible({
       freezeBoundary: input.provenance,
@@ -243,14 +294,6 @@ export function admitV2ConfirmatoryRun(input: {
   ) {
     throw new CalibrationFadeV2CrossRunValidationError(
       `captureStartedAt is not prospectively eligible for confirmatory aggregation: ${runId}`,
-    );
-  }
-
-  const selectedRunId = readString(report.selectedRunId);
-  const captureRunId = readString(report.captureRunId) ?? readString(evidenceIdentity.captureRunId);
-  if (selectedRunId !== runId || captureRunId !== runId) {
-    throw new CalibrationFadeV2CrossRunValidationError(
-      `captureRunId/selectedRunId must equal explicit run-dir segment ${runId}`,
     );
   }
 
@@ -294,6 +337,23 @@ export function admitV2ConfirmatoryRun(input: {
   if (readiness.verdict !== "v2-capture-ready") {
     throw new CalibrationFadeV2CrossRunValidationError(
       `Readiness verdict must be v2-capture-ready for ${runId}; received ${JSON.stringify(readiness.verdict)}`,
+    );
+  }
+  if (readiness.confirmatoryEligibility !== true) {
+    throw new CalibrationFadeV2CrossRunValidationError(
+      `Readiness confirmatoryEligibility must be true for ${runId}`,
+    );
+  }
+  const readinessCaptureRunDir = readString(readiness.captureRunDir);
+  if (!readinessCaptureRunDir) {
+    throw new CalibrationFadeV2CrossRunValidationError(
+      `Readiness captureRunDir missing for ${runId}`,
+    );
+  }
+  const readinessRun = identifyCaptureRunDir(readinessCaptureRunDir);
+  if (readinessRun.runId !== runId) {
+    throw new CalibrationFadeV2CrossRunValidationError(
+      `Readiness captureRunDir must identify explicit run ${runId}; resolved ${readinessRun.runId}`,
     );
   }
 

@@ -79,7 +79,16 @@ function report(input: {
   markets: readonly ReturnType<typeof market>[];
   episodes?: number;
   overrides?: Record<string, unknown>;
+  identityOverrides?: Record<string, unknown>;
 }) {
+  const topLevelOverrides = { ...(input.overrides ?? {}) };
+  const overrideIdentity =
+    typeof topLevelOverrides.evidenceIdentity === "object"
+      && topLevelOverrides.evidenceIdentity !== null
+      && !Array.isArray(topLevelOverrides.evidenceIdentity)
+      ? (topLevelOverrides.evidenceIdentity as Record<string, unknown>)
+      : undefined;
+  delete topLevelOverrides.evidenceIdentity;
   const evidenceIdentity = {
     hypothesisId: CALIBRATION_FADE_V2_HYPOTHESIS_ID,
     hypothesisVersion: "v2",
@@ -92,6 +101,8 @@ function report(input: {
     evidenceMode: "confirmatory",
     confirmatoryEligibility: true,
     confirmatoryIneligibilityReason: null,
+    ...input.identityOverrides,
+    ...overrideIdentity,
   };
   return {
     analysisVersion: CALIBRATION_FADE_V2_FORWARD_VALIDATION_VERSION,
@@ -121,7 +132,6 @@ function report(input: {
     settlementCoverageShare: 0,
     warnings: [],
     selectedRunQuality: quality(input.runId),
-    evidenceIdentity,
     featureCompatibility: {
       probabilityMeasureAvailable: true,
       volatilityMeasureAvailable: true,
@@ -134,17 +144,23 @@ function report(input: {
       recommendedNextAction: "collect-additional-clean-forward-captures",
       rationale: "fixture",
     },
-    ...input.overrides,
+    ...topLevelOverrides,
+    evidenceIdentity,
   };
 }
 
-function readiness(runId: string, verdict = "v2-capture-ready") {
+function readiness(
+  runId: string,
+  verdict = "v2-capture-ready",
+  overrides: Record<string, unknown> = {},
+) {
   return {
     schemaVersion: 1,
     selectedRunId: runId,
     captureRunDir: `data/live-capture/forward-quotes/${runId}`,
     verdict,
     confirmatoryEligibility: true,
+    ...overrides,
   };
 }
 
@@ -157,20 +173,39 @@ function seedAdmittedRun(
   files: Record<string, string>,
   runId: string,
   markets: readonly ReturnType<typeof market>[],
-  options?: { episodes?: number; reportOverrides?: Record<string, unknown>; readinessVerdict?: string },
+  options?: {
+    episodes?: number;
+    reportOverrides?: Record<string, unknown>;
+    identityOverrides?: Record<string, unknown>;
+    readinessVerdict?: string;
+    readinessOverrides?: Record<string, unknown>;
+  },
 ): void {
   const payload = report({
     runId,
     markets,
     episodes: options?.episodes,
     overrides: options?.reportOverrides,
+    identityOverrides: options?.identityOverrides,
   });
   files[`data/research-results/calibration-fade-v2/confirmatory/${runId}/calibration-fade-forward-validation.json`] =
     JSON.stringify(payload);
   files[`data/research-results/calibration-fade-v2/confirmatory/${runId}/calibration-fade-forward-markets.jsonl`] =
     `${markets.map((entry) => JSON.stringify(entry)).join("\n")}\n`;
   files[`data/research-results/calibration-fade-v2/readiness/${runId}/capture-readiness.json`] =
-    JSON.stringify(readiness(runId, options?.readinessVerdict));
+    JSON.stringify(readiness(runId, options?.readinessVerdict, options?.readinessOverrides));
+}
+
+function mutateAdmittedReport(
+  files: Record<string, string>,
+  runId: string,
+  mutate: (payload: Record<string, unknown>) => void,
+): void {
+  const path =
+    `data/research-results/calibration-fade-v2/confirmatory/${runId}/calibration-fade-forward-validation.json`;
+  const payload = JSON.parse(files[path]!) as Record<string, unknown>;
+  mutate(payload);
+  files[path] = JSON.stringify(payload);
 }
 
 function importResult(ticker: string, outcome: "yes" | "no"): string {
@@ -412,7 +447,104 @@ describe("calibrationFadeV2CrossRunValidation admission and aggregation", () => 
   });
 
   it("rejects a pre-freeze captureStartedAt", () => {
-    expectAdmissionOverrideRejected({ captureStartedAt: PRE_FREEZE_START }, /prospectively eligible/);
+    expectAdmissionOverrideRejected(
+      {
+        captureStartedAt: PRE_FREEZE_START,
+        evidenceIdentity: { captureStartedAt: PRE_FREEZE_START },
+      },
+      /prospectively eligible/,
+    );
+  });
+
+  it("rejects nested evidenceIdentity.captureRunId that disagrees with the explicit run", () => {
+    const files: Record<string, string> = {};
+    seedAdmittedRun(files, "run-a", [market("M1")], {
+      identityOverrides: { captureRunId: "run-b" },
+    });
+    seedAdmittedRun(files, "run-b", [market("M2")]);
+    expectAnalyzeRejected(files, "run-a", "run-b", /evidenceIdentity\.captureRunId mismatch/);
+  });
+
+  it("rejects nested pre-freeze captureStartedAt even when top-level is post-freeze", () => {
+    const files: Record<string, string> = {};
+    seedAdmittedRun(files, "run-a", [market("M1")], {
+      identityOverrides: { captureStartedAt: PRE_FREEZE_START },
+    });
+    seedAdmittedRun(files, "run-b", [market("M2")]);
+    expectAnalyzeRejected(files, "run-a", "run-b", /evidenceIdentity\.captureStartedAt mismatch/);
+  });
+
+  it("rejects top-level captureRunId mismatch even when nested identity is correct", () => {
+    const files: Record<string, string> = {};
+    seedAdmittedRun(files, "run-a", [market("M1")], {
+      reportOverrides: { captureRunId: "wrong-run" },
+    });
+    seedAdmittedRun(files, "run-b", [market("M2")]);
+    expectAnalyzeRejected(files, "run-a", "run-b", /evidenceIdentity\.captureRunId mismatch/);
+  });
+
+  it("rejects a missing top-level captureRunId even when nested is valid", () => {
+    const files: Record<string, string> = {};
+    seedAdmittedRun(files, "run-a", [market("M1")]);
+    seedAdmittedRun(files, "run-b", [market("M2")]);
+    mutateAdmittedReport(files, "run-a", (payload) => {
+      delete payload.captureRunId;
+    });
+    expectAnalyzeRejected(files, "run-a", "run-b", /captureRunId missing at top-level/);
+  });
+
+  it("rejects a missing nested captureRunId even when top-level is valid", () => {
+    const files: Record<string, string> = {};
+    seedAdmittedRun(files, "run-a", [market("M1")]);
+    seedAdmittedRun(files, "run-b", [market("M2")]);
+    mutateAdmittedReport(files, "run-a", (payload) => {
+      const identity = payload.evidenceIdentity as Record<string, unknown>;
+      delete identity.captureRunId;
+    });
+    expectAnalyzeRejected(files, "run-a", "run-b", /evidenceIdentity\.captureRunId missing/);
+  });
+
+  it("rejects a missing top-level captureStartedAt even when nested is valid", () => {
+    const files: Record<string, string> = {};
+    seedAdmittedRun(files, "run-a", [market("M1")]);
+    seedAdmittedRun(files, "run-b", [market("M2")]);
+    mutateAdmittedReport(files, "run-a", (payload) => {
+      delete payload.captureStartedAt;
+    });
+    expectAnalyzeRejected(files, "run-a", "run-b", /captureStartedAt missing at top-level/);
+  });
+
+  it("rejects a missing nested captureStartedAt even when top-level is valid", () => {
+    const files: Record<string, string> = {};
+    seedAdmittedRun(files, "run-a", [market("M1")]);
+    seedAdmittedRun(files, "run-b", [market("M2")]);
+    mutateAdmittedReport(files, "run-a", (payload) => {
+      const identity = payload.evidenceIdentity as Record<string, unknown>;
+      delete identity.captureStartedAt;
+    });
+    expectAnalyzeRejected(files, "run-a", "run-b", /evidenceIdentity\.captureStartedAt missing/);
+  });
+
+  it("admits matching top-level and nested capture identity", () => {
+    const files: Record<string, string> = {};
+    seedAdmittedRun(files, "run-a", [market("M1")]);
+    seedAdmittedRun(files, "run-b", [market("M2")]);
+    const sealed = JSON.parse(
+      files["data/research-results/calibration-fade-v2/confirmatory/run-a/calibration-fade-forward-validation.json"]!,
+    ) as {
+      selectedRunId: string;
+      captureRunId: string;
+      captureStartedAt: string;
+      evidenceIdentity: { captureRunId: string; captureStartedAt: string };
+    };
+    expect(sealed.selectedRunId).toBe("run-a");
+    expect(sealed.captureRunId).toBe("run-a");
+    expect(sealed.evidenceIdentity.captureRunId).toBe("run-a");
+    expect(sealed.captureStartedAt).toBe(POST_FREEZE_START);
+    expect(sealed.evidenceIdentity.captureStartedAt).toBe(POST_FREEZE_START);
+    const result = analyzePair(files, [], "run-a", "run-b");
+    expect(result.report.selectedRunIds).toEqual(["run-a", "run-b"]);
+    expect(result.report.interpretationClassification).toBe("insufficient-forward-events");
   });
 
   it("rejects incompatible featureCompatibility", () => {
@@ -481,6 +613,34 @@ describe("calibrationFadeV2CrossRunValidation admission and aggregation", () => 
     seedAdmittedRun(notReady, "run-a", [market("M1")]);
     seedAdmittedRun(notReady, "run-b", [market("M2")], { readinessVerdict: "v2-capture-not-ready" });
     expectAnalyzeRejected(notReady, "run-a", "run-b", /v2-capture-ready/);
+  });
+
+  it("rejects readiness confirmatoryEligibility that is not true", () => {
+    const files: Record<string, string> = {};
+    seedAdmittedRun(files, "run-a", [market("M1")]);
+    seedAdmittedRun(files, "run-b", [market("M2")], {
+      readinessOverrides: { confirmatoryEligibility: false },
+    });
+    expectAnalyzeRejected(files, "run-a", "run-b", /Readiness confirmatoryEligibility must be true/);
+  });
+
+  it("rejects a readiness captureRunDir that identifies a different run", () => {
+    const files: Record<string, string> = {};
+    seedAdmittedRun(files, "run-a", [market("M1")]);
+    seedAdmittedRun(files, "run-b", [market("M2")], {
+      readinessOverrides: { captureRunDir: "data/live-capture/forward-quotes/run-a" },
+    });
+    expectAnalyzeRejected(files, "run-a", "run-b", /Readiness captureRunDir must identify explicit run run-b/);
+  });
+
+  it("admits an equivalent readiness captureRunDir that resolves to the same runId", () => {
+    const files: Record<string, string> = {};
+    seedAdmittedRun(files, "run-a", [market("M1")], {
+      readinessOverrides: { captureRunDir: "/tmp/archive/data/live-capture/forward-quotes/run-a/" },
+    });
+    seedAdmittedRun(files, "run-b", [market("M2")]);
+    const result = analyzePair(files, [], "run-a", "run-b");
+    expect(result.report.selectedRunIds).toEqual(["run-a", "run-b"]);
   });
 
   it("rejects malformed confirmatory JSON", () => {
