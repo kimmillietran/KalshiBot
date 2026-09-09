@@ -328,7 +328,6 @@ export function choosePreferredSettlementCandidate(
 export function detectSettlementConflicts(input: {
   candidates: readonly ParsedSettlementCandidate[];
   marketTicker: string;
-  seriesTicker?: string | null;
   expectedEventTicker?: string | null;
 }): string | null {
   const candidates = input.candidates;
@@ -346,9 +345,7 @@ export function detectSettlementConflicts(input: {
     return "duplicate settlements disagree on settlement timestamp";
   }
 
-  const seriesTicker =
-    input.seriesTicker?.trim()
-    || resolveSeriesTicker(input.marketTicker);
+  const seriesTicker = resolveSeriesTicker(input.marketTicker);
   const derivedEventTicker = resolveEventTickerFromMarketTicker(input.marketTicker);
   const inventoryEventTicker = input.expectedEventTicker?.trim() || null;
   const expectedEventTicker = inventoryEventTicker ?? derivedEventTicker;

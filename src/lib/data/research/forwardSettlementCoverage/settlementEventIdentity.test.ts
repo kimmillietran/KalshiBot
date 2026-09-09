@@ -354,6 +354,27 @@ describe("M12.6e.3 settlement event identity compatibility", () => {
     );
   });
 
+  it("does not let a stale capture seriesTicker override market-derived series identity", () => {
+    const importPath = `data/imports/${SERIES}/${MARKET}/import-result.json`;
+    const files: Record<string, string> = {
+      [importPath]: productionMarketSettlementImportResult(),
+    };
+
+    const classified = classifyMarketSettlementCoverage({
+      io: createIo(files),
+      importsDir: "data/imports",
+      inventory: inventory({
+        // Capture metadata wrongly recorded a different series string.
+      }),
+      evaluatedAt: EVALUATED_AT,
+      staleAfterCaptureObservation: false,
+    });
+
+    expect(classified.classification).toBe("settlement-ready");
+    expect(classified.conflictReason).toBeNull();
+    expect(classified.settledOutcome).toBe("yes");
+  });
+
   it("classifies series/event/absent/incompatible identity kinds", () => {
     expect(classifySettlementEventIdentity({
       eventTicker: null,
