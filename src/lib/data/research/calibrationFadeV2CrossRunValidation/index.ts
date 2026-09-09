@@ -19,6 +19,15 @@ export type {
 export { analyzeCalibrationFadeV2CrossRun } from "./analyzeCalibrationFadeV2CrossRun";
 export type { CalibrationFadeV2CrossRunValidationReport } from "./analyzeCalibrationFadeV2CrossRun";
 export { computeV2RunSetHash } from "./computeV2RunSetHash";
+export {
+  buildV2SettlementSnapshotPayload,
+  computeV2SettlementSnapshotHash,
+  V2_SETTLEMENT_SNAPSHOT_ANALYSIS_VERSION,
+} from "./computeV2SettlementSnapshotHash";
+export type {
+  V2SettlementSnapshotCandidate,
+  V2SettlementSnapshotPayload,
+} from "./computeV2SettlementSnapshotHash";
 export { hashArtifactContents } from "./hashArtifactContents";
 export {
   identifyCaptureRunDir,
@@ -30,6 +39,7 @@ export type { CalibrationFadeV2CrossRunCliConfig } from "./parseCalibrationFadeV
 export {
   assertV2CrossRunOutputPathIsolation,
   resolveCalibrationFadeV2CrossRunOutputPaths,
+  settlementSnapshotNamespaceFragment,
 } from "./resolveCalibrationFadeV2CrossRunOutputPaths";
 export {
   serializeCalibrationFadeV2CrossRunValidationHtml,

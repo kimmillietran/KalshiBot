@@ -21,6 +21,7 @@ export function serializeCalibrationFadeV2CrossRunValidationHtml(
   <h1>Governed v2 confirmatory cross-run aggregation</h1>
   <p>analysisVersion: ${report.analysisVersion}</p>
   <p>runSetHash: ${report.runSetHash}</p>
+  <p>settlementSnapshotHash: ${report.settlementSnapshotHash}</p>
   <p>evidenceMode: ${report.evidenceMode}</p>
   <p>selectedRunIds: ${report.selectedRunIds.join(", ")}</p>
   <p>uniqueCandidateMarketCount: ${report.uniqueCandidateMarketCount}</p>

@@ -74,10 +74,12 @@ export async function runCalibrationFadeV2CrossRunValidationCommand(
       `${stableStringify({
         analysisVersion: report.analysisVersion,
         runSetHash: report.runSetHash,
+        settlementSnapshotHash: report.settlementSnapshotHash,
         evidenceMode: report.evidenceMode,
         selectedRunIds: report.selectedRunIds,
         uniqueCandidateMarketCount: report.uniqueCandidateMarketCount,
         evaluatedIndependentCandidateMarketCount: report.evaluatedIndependentCandidateMarketCount,
+        settlementCoverageShare: report.settlementCoverageShare,
         interpretationClassification: report.interpretationClassification,
         recommendedNextAction: report.recommendedNextAction,
         outputPath: report.outputPath,
