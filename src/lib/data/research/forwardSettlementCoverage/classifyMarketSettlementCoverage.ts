@@ -49,11 +49,12 @@ export function classifyMarketSettlementCoverage(input: {
   evaluatedAt: string;
   staleAfterCaptureObservation: boolean;
 }): MarketSettlementCoverageEntry {
+  const seriesTicker = resolveSeriesTicker(input.inventory.marketTicker);
   const importState = loadMarketImportSettlementState({
     io: input.io,
     importsDir: input.importsDir,
     marketTicker: input.inventory.marketTicker,
-    seriesTicker: resolveSeriesTicker(input.inventory.marketTicker),
+    seriesTicker,
   });
 
   const closeTime =
@@ -131,7 +132,13 @@ export function classifyMarketSettlementCoverage(input: {
     };
   }
 
-  const conflictReason = detectSettlementConflicts(importState.candidates);
+  const conflictReason = detectSettlementConflicts({
+    candidates: importState.candidates,
+    marketTicker: input.inventory.marketTicker,
+    // Series identity is derived inside conflict detection from marketTicker.
+    // Capture inventory.seriesTicker is not authoritative for compatibility.
+    expectedEventTicker: input.inventory.eventTicker,
+  });
   if (conflictReason) {
     const preferred = choosePreferredSettlementCandidate(importState.candidates);
     return {

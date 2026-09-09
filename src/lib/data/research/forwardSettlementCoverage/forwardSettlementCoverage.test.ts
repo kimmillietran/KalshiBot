@@ -87,24 +87,20 @@ function seedRun(files: Record<string, string>, dirs: string[]): void {
   files[`${RUN_DIR}/top-of-book.jsonl`] = [
     JSON.stringify({
       marketTicker: MARKET_A,
-      seriesTicker: "KXBTC15M",
       eventTicker: "KXBTC15M-26JUL111100",
       receivedAtLocal: "2026-07-11T11:08:00.000Z",
     }),
     JSON.stringify({
       marketTicker: MARKET_B,
-      seriesTicker: "KXBTC15M",
       eventTicker: "KXBTC15M-26JUL111115",
       receivedAtLocal: "2026-07-11T11:09:00.000Z",
     }),
     JSON.stringify({
       marketTicker: "KXBTC15M-MOCK",
-      seriesTicker: "KXBTC15M",
       receivedAtLocal: "2026-07-11T11:09:30.000Z",
     }),
     JSON.stringify({
       marketTicker: MARKET_PENDING,
-      seriesTicker: "KXBTC15M",
       receivedAtLocal: "2026-07-11T11:10:00.000Z",
     }),
   ].join("\n");
@@ -112,19 +108,16 @@ function seedRun(files: Record<string, string>, dirs: string[]): void {
   files[`${RUN_DIR}/market-metadata.jsonl`] = [
     JSON.stringify({
       marketTicker: MARKET_A,
-      seriesTicker: "KXBTC15M",
       closeTime: "2026-07-11T11:15:00.000Z",
       receivedAtLocal: "2026-07-11T11:08:00.000Z",
     }),
     JSON.stringify({
       marketTicker: MARKET_B,
-      seriesTicker: "KXBTC15M",
       closeTime: "2026-07-11T11:30:00.000Z",
       receivedAtLocal: "2026-07-11T11:09:00.000Z",
     }),
     JSON.stringify({
       marketTicker: MARKET_PENDING,
-      seriesTicker: "KXBTC15M",
       closeTime: "2026-07-11T13:00:00.000Z",
       receivedAtLocal: "2026-07-11T11:10:00.000Z",
     }),
@@ -211,12 +204,10 @@ describe("forwardSettlementCoverage", () => {
     dirs.push(RUN_DIR, "data/live-capture/forward-quotes");
     files[`${RUN_DIR}/top-of-book.jsonl`] = JSON.stringify({
       marketTicker: MARKET_A,
-      seriesTicker: "KXBTC15M",
       receivedAtLocal: "2026-07-11T11:08:00.000Z",
     });
     files[`${RUN_DIR}/market-metadata.jsonl`] = JSON.stringify({
       marketTicker: MARKET_A,
-      seriesTicker: "KXBTC15M",
       closeTime: "2026-07-11T11:15:00.000Z",
       recordedAtLocal: "2026-07-11T11:08:00.000Z",
     });
@@ -362,7 +353,10 @@ describe("forwardSettlementCoverage", () => {
       content: createImportResult(MARKET_A, "yes", { conflicting: true }),
     });
 
-    expect(detectSettlementConflicts(candidates)).toContain("conflicting outcomes");
+    expect(detectSettlementConflicts({
+      candidates,
+      marketTicker: MARKET_A,
+    })).toContain("conflicting outcomes");
   });
 
   it("runs idempotent dry-run backfill without mutating imports", async () => {
@@ -954,7 +948,6 @@ describe("forwardSettlementCoverage", () => {
     const config = buildCaptureMarketImportConfig({
       market: {
         marketTicker: MARKET_A,
-        seriesTicker: "KXBTC15M",
         firstObservedAt: closeTime,
         lastObservedAt: closeTime,
         observationCount: 1,
@@ -1080,7 +1073,6 @@ describe("forwardSettlementCoverage", () => {
     dirs.push(RUN_DIR, "data/live-capture/forward-quotes");
     files[`${RUN_DIR}/top-of-book.jsonl`] = JSON.stringify({
       marketTicker: MARKET_A,
-      seriesTicker: "KXBTC15M",
       receivedAtLocal: "2026-07-11T11:08:00.000Z",
     });
     files[`${RUN_DIR}/market-metadata.jsonl`] = "";
@@ -1123,7 +1115,10 @@ describe("forwardSettlementCoverage", () => {
     });
 
     expect(candidates).toHaveLength(1);
-    expect(detectSettlementConflicts(candidates)).toBeNull();
+    expect(detectSettlementConflicts({
+      candidates,
+      marketTicker: MARKET_A,
+    })).toBeNull();
   });
 
   it("reconciles failed checkpoint entries as import-failed instead of missing-source", async () => {
@@ -1182,7 +1177,6 @@ describe("forwardSettlementCoverage", () => {
       .map((marketTicker) =>
         JSON.stringify({
           marketTicker,
-          seriesTicker: "KXBTC15M",
           receivedAtLocal: "2026-07-11T11:08:00.000Z",
         }))
       .join("\n");
@@ -1190,7 +1184,6 @@ describe("forwardSettlementCoverage", () => {
       .map((marketTicker) =>
         JSON.stringify({
           marketTicker,
-          seriesTicker: "KXBTC15M",
           closeTime,
           receivedAtLocal: "2026-07-11T11:08:00.000Z",
         }))
@@ -1339,12 +1332,10 @@ describe("forwardSettlementCoverage", () => {
     const dirs: string[] = [RUN_DIR, "data/live-capture/forward-quotes", "data/imports"];
     files[`${RUN_DIR}/top-of-book.jsonl`] = JSON.stringify({
       marketTicker: MARKET_B,
-      seriesTicker: "KXBTC15M",
       receivedAtLocal: "2026-07-11T11:09:00.000Z",
     });
     files[`${RUN_DIR}/market-metadata.jsonl`] = JSON.stringify({
       marketTicker: MARKET_B,
-      seriesTicker: "KXBTC15M",
       closeTime: "2026-07-11T11:30:00.000Z",
       receivedAtLocal: "2026-07-11T11:09:00.000Z",
     });
@@ -1432,12 +1423,10 @@ describe("forwardSettlementCoverage", () => {
     const dirs: string[] = [RUN_DIR, "data/live-capture/forward-quotes", "data/imports"];
     files[`${RUN_DIR}/top-of-book.jsonl`] = JSON.stringify({
       marketTicker: MARKET_B,
-      seriesTicker: "KXBTC15M",
       receivedAtLocal: "2026-07-11T11:09:00.000Z",
     });
     files[`${RUN_DIR}/market-metadata.jsonl`] = JSON.stringify({
       marketTicker: MARKET_B,
-      seriesTicker: "KXBTC15M",
       closeTime: "2026-07-11T11:30:00.000Z",
       receivedAtLocal: "2026-07-11T11:09:00.000Z",
     });

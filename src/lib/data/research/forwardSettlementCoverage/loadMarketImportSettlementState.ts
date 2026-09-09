@@ -4,12 +4,50 @@ import {
   readString,
   resolveSeriesTicker,
 } from "@/lib/data/audit/settlementTrace/settlementTraceUtils";
+import { resolveEventTickerFromMarketTicker } from "@/lib/data/research/quoteFidelityGate/resolveEventTickerFromMarketTicker";
 import { SILVER_BRONZE_CONTENT_TYPE } from "@/lib/data/silver";
 
 import type {
   ForwardSettlementCoverageIo,
   ParsedSettlementCandidate,
 } from "./forwardSettlementCoverageTypes";
+
+export type SettlementEventIdentityKind =
+  | "absent"
+  | "series-level"
+  | "event-level"
+  | "incompatible";
+
+/**
+ * Classifies a candidate eventTicker relative to the selected market's series
+ * and expected specific event identity. Series-level values are less-specific
+ * identity, not contradictory event identity.
+ */
+export function classifySettlementEventIdentity(input: {
+  eventTicker: string | null;
+  seriesTicker: string;
+  expectedEventTicker: string | null;
+}): SettlementEventIdentityKind {
+  const eventTicker = input.eventTicker?.trim() || null;
+  if (!eventTicker) {
+    return "absent";
+  }
+
+  if (eventTicker === input.seriesTicker) {
+    return "series-level";
+  }
+
+  const eventSeries = resolveSeriesTicker(eventTicker);
+  if (eventSeries !== input.seriesTicker) {
+    return "incompatible";
+  }
+
+  if (input.expectedEventTicker && eventTicker !== input.expectedEventTicker) {
+    return "incompatible";
+  }
+
+  return "event-level";
+}
 
 export type ImportSettlementState = {
   importResultPath: string | null;
@@ -287,9 +325,12 @@ export function choosePreferredSettlementCandidate(
   return sorted[0] ?? null;
 }
 
-export function detectSettlementConflicts(
-  candidates: readonly ParsedSettlementCandidate[],
-): string | null {
+export function detectSettlementConflicts(input: {
+  candidates: readonly ParsedSettlementCandidate[];
+  marketTicker: string;
+  expectedEventTicker?: string | null;
+}): string | null {
+  const candidates = input.candidates;
   const outcomes = new Set(candidates.map((candidate) => candidate.settledOutcome));
   if (outcomes.size > 1) {
     return `conflicting outcomes: ${[...outcomes].join(", ")}`;
@@ -304,12 +345,37 @@ export function detectSettlementConflicts(
     return "duplicate settlements disagree on settlement timestamp";
   }
 
-  const eventTickers = new Set(
-    candidates
-      .map((candidate) => candidate.eventTicker)
-      .filter((value): value is string => value !== null),
-  );
-  if (eventTickers.size > 1) {
+  const seriesTicker = resolveSeriesTicker(input.marketTicker);
+  const derivedEventTicker = resolveEventTickerFromMarketTicker(input.marketTicker);
+  const inventoryEventTicker = input.expectedEventTicker?.trim() || null;
+  const expectedEventTicker = inventoryEventTicker ?? derivedEventTicker;
+
+  if (
+    inventoryEventTicker
+    && derivedEventTicker
+    && inventoryEventTicker !== derivedEventTicker
+  ) {
+    return "market metadata disagrees with settlement record event ticker";
+  }
+
+  const specificEventTickers = new Set<string>();
+  for (const candidate of candidates) {
+    const kind = classifySettlementEventIdentity({
+      eventTicker: candidate.eventTicker,
+      seriesTicker,
+      expectedEventTicker,
+    });
+
+    if (kind === "incompatible") {
+      return "market metadata disagrees with settlement record event ticker";
+    }
+
+    if (kind === "event-level" && candidate.eventTicker) {
+      specificEventTickers.add(candidate.eventTicker);
+    }
+  }
+
+  if (specificEventTickers.size > 1) {
     return "market metadata disagrees with settlement record event ticker";
   }
 

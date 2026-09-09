@@ -14,7 +14,9 @@ export {
   parseAllImportResultSettlements,
   detectSettlementConflicts,
   choosePreferredSettlementCandidate,
+  classifySettlementEventIdentity,
 } from "./loadMarketImportSettlementState";
+export type { SettlementEventIdentityKind } from "./loadMarketImportSettlementState";
 export { isRealCaptureMarketTicker } from "./isRealCaptureMarketTicker";
 export { parseForwardSettlementCoverageArgv } from "./parseForwardSettlementCoverageArgv";
 export { serializeForwardSettlementCoverageHtml } from "./serializeForwardSettlementCoverageHtml";
