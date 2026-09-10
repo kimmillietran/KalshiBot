@@ -7,6 +7,7 @@ import { createFilesystemLeadLagDiscoveryIo } from "@/lib/data/research/btcKalsh
 import {
   buildAndPublishLeadLagReplicationReadiness,
   LeadLagReplicationReadinessError,
+  loadReplicationLineageArtifacts,
   parseLeadLagReplicationReadinessArgv,
 } from "@/lib/data/research/btcKalshiLeadLagReplicationReadiness";
 
@@ -29,10 +30,20 @@ async function main(): Promise<void> {
   const config = parseLeadLagReplicationReadinessArgv(process.argv.slice(2));
   const io = createFilesystemLeadLagDiscoveryIo(createBtcKalshiLeadLagAnalysisIo());
 
+  const lineage = loadReplicationLineageArtifacts({
+    io,
+    discoveryIdentityHash: config.discoveryIdentityHash,
+    discoveryReportPath: config.discoveryReportPath,
+    validationIdentityHash: config.validationIdentityHash,
+    validationReportPath: config.validationReportPath,
+    holdoutIdentityHash: config.holdoutIdentityHash,
+    holdoutReportPath: config.holdoutReportPath,
+    expectedEvidenceContractIdentity: config.expectedEvidenceContractIdentity,
+  });
   const runIds = [
-    "2026-09-08T07-46-44-416Z",
-    "2026-09-09T06-39-04-259Z",
-    "2026-09-09T20-37-36-719Z",
+    lineage.discovery.splitManifest.train.runId,
+    lineage.validation.validationRunId,
+    lineage.holdout.holdoutRunId,
   ];
   const observedBytesByRun = runIds.map((runId) => {
     let observedBytes: number | null = null;
