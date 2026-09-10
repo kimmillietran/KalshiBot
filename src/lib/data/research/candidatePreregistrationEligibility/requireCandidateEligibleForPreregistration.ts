@@ -290,23 +290,18 @@ export function evaluateCandidateEligibleForPreregistration(input: {
     });
   }
 
-  const validationPasses =
-    entry.evidence?.validationPasses ?? entry.supportingMetrics.validationPasses;
-  const promotionAccepted = computePromotionAccepted({
-    decision: entry.decision,
-    validationPasses,
-  });
-
   const boundValidationEntryContentHash =
     entry.evidence?.validationEntryContentHash ?? null;
   const boundCandidateDefinitionContentHash =
     entry.evidence?.candidateDefinitionContentHash ?? null;
 
-  // Derive current entry hashes from artifacts when possible.
+  // Derive current entry hashes + authoritative passes from bound artifacts.
+  // Never trust promotion-asserted validationPasses as source of truth.
   let currentValidationEntryHash: string | null =
     input.expectedValidationEntryContentHash ?? null;
   let currentCandidateDefinitionHash: string | null =
     input.expectedCandidateDefinitionContentHash ?? null;
+  let artifactValidationPasses: boolean | null = null;
 
   try {
     const validationDoc = JSON.parse(input.validationArtifactContent.replace(/^\uFEFF/, "")) as {
@@ -319,17 +314,19 @@ export function evaluateCandidateEligibleForPreregistration(input: {
           && typeof row === "object"
           && (row as { hypothesisId?: unknown }).hypothesisId === hypothesisId,
       );
-      if (match) {
+      if (match && typeof match === "object") {
         currentValidationEntryHash = hashValidationEntryContent(
           match as Parameters<typeof hashValidationEntryContent>[0],
         );
+        const passesField = (match as { passes?: unknown }).passes;
+        artifactValidationPasses = typeof passesField === "boolean" ? passesField : null;
       }
     }
   } catch {
     return ineligible({
       hypothesisId,
       promotionDecision: entry.decision,
-      validationPasses,
+      validationPasses: null,
       promotionAccepted: false,
       reasonCode: "malformed-promotion-artifact",
       reasons: ["Validation artifact is not valid JSON"],
@@ -363,7 +360,7 @@ export function evaluateCandidateEligibleForPreregistration(input: {
     return ineligible({
       hypothesisId,
       promotionDecision: entry.decision,
-      validationPasses,
+      validationPasses: artifactValidationPasses,
       promotionAccepted: false,
       reasonCode: "malformed-promotion-artifact",
       reasons: ["Candidate/synthesis artifact is not valid JSON"],
@@ -379,7 +376,7 @@ export function evaluateCandidateEligibleForPreregistration(input: {
     return ineligible({
       hypothesisId,
       promotionDecision: entry.decision,
-      validationPasses,
+      validationPasses: artifactValidationPasses,
       promotionAccepted: false,
       reasonCode: "promotion-evidence-incomplete",
       reasons: [
@@ -394,14 +391,30 @@ export function evaluateCandidateEligibleForPreregistration(input: {
     });
   }
 
-  if (
-    currentValidationEntryHash
-    && boundValidationEntryContentHash !== currentValidationEntryHash
-  ) {
+  if (!currentValidationEntryHash) {
     return ineligible({
       hypothesisId,
       promotionDecision: entry.decision,
-      validationPasses,
+      validationPasses: artifactValidationPasses,
+      promotionAccepted: false,
+      reasonCode: "validation-artifact-hash-mismatch",
+      reasons: [
+        `Validation artifact does not contain hypothesis ${hypothesisId}; `
+          + "cannot bind promotion evidence to authoritative passes",
+      ],
+      candidateArtifactContentHash,
+      validationArtifactContentHash,
+      promotionArtifactContentHash: parsedPromotion.contentHash,
+      boundCandidateDefinitionContentHash,
+      boundValidationEntryContentHash,
+    });
+  }
+
+  if (boundValidationEntryContentHash !== currentValidationEntryHash) {
+    return ineligible({
+      hypothesisId,
+      promotionDecision: entry.decision,
+      validationPasses: artifactValidationPasses,
       promotionAccepted: false,
       reasonCode: "validation-artifact-hash-mismatch",
       reasons: [
@@ -416,14 +429,30 @@ export function evaluateCandidateEligibleForPreregistration(input: {
     });
   }
 
-  if (
-    currentCandidateDefinitionHash
-    && boundCandidateDefinitionContentHash !== currentCandidateDefinitionHash
-  ) {
+  if (!currentCandidateDefinitionHash) {
     return ineligible({
       hypothesisId,
       promotionDecision: entry.decision,
-      validationPasses,
+      validationPasses: artifactValidationPasses,
+      promotionAccepted: false,
+      reasonCode: "candidate-artifact-hash-mismatch",
+      reasons: [
+        `Candidate/synthesis artifact does not contain strategy ${entry.strategyId} `
+          + `for hypothesis ${hypothesisId}`,
+      ],
+      candidateArtifactContentHash,
+      validationArtifactContentHash,
+      promotionArtifactContentHash: parsedPromotion.contentHash,
+      boundCandidateDefinitionContentHash,
+      boundValidationEntryContentHash,
+    });
+  }
+
+  if (boundCandidateDefinitionContentHash !== currentCandidateDefinitionHash) {
+    return ineligible({
+      hypothesisId,
+      promotionDecision: entry.decision,
+      validationPasses: artifactValidationPasses,
       promotionAccepted: false,
       reasonCode: "candidate-artifact-hash-mismatch",
       reasons: [
@@ -437,6 +466,32 @@ export function evaluateCandidateEligibleForPreregistration(input: {
       boundValidationEntryContentHash,
     });
   }
+
+  // Authoritative passes come from the bound validation artifact entry only.
+  const validationPasses = artifactValidationPasses;
+  const assertedPasses = entry.evidence?.validationPasses ?? entry.supportingMetrics.validationPasses;
+  if (assertedPasses !== null && assertedPasses !== validationPasses) {
+    return ineligible({
+      hypothesisId,
+      promotionDecision: entry.decision,
+      validationPasses,
+      promotionAccepted: false,
+      reasonCode: "validation-does-not-pass",
+      reasons: [
+        "Promotion evidence validationPasses does not match the bound validation artifact passes field",
+      ],
+      candidateArtifactContentHash,
+      validationArtifactContentHash,
+      promotionArtifactContentHash: parsedPromotion.contentHash,
+      boundCandidateDefinitionContentHash,
+      boundValidationEntryContentHash,
+    });
+  }
+
+  const promotionAccepted = computePromotionAccepted({
+    decision: entry.decision,
+    validationPasses,
+  });
 
   if (validationPasses !== true) {
     return ineligible({

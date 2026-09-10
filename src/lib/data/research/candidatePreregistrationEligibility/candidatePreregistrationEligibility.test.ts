@@ -394,6 +394,55 @@ describe("M12.7a candidate preregistration eligibility", () => {
     );
   });
 
+  it("11b: forged accepted decision cannot override validation passes:false", () => {
+    const artifacts = buildPromotionArtifacts({
+      strategy: createStrategy({
+        hypothesisId: FAILING_ID,
+        strategyId: `synth-${FAILING_ID}`,
+        promotionStatus: "experimental",
+        validationSummary: {
+          robustnessScore: 59,
+          passes: false,
+          observationCount: 457,
+        },
+      }),
+      validation: createValidation({
+        hypothesisId: FAILING_ID,
+        robustnessScore: 59,
+        passes: false,
+        observationCount: 457,
+      }),
+      harness: createHarness({
+        strategyId: `synth-${FAILING_ID}`,
+        hypothesisId: FAILING_ID,
+      }),
+    });
+    expect(artifacts.report.promotions[0]?.decision).toBe("rejected");
+    const forged = JSON.parse(artifacts.promotionContent) as {
+      promotions: Array<{
+        decision: string;
+        supportingMetrics: { validationPasses: boolean | null };
+        evidence: {
+          validationPasses: boolean | null;
+          promotionAccepted: boolean;
+        };
+      }>;
+    };
+    forged.promotions[0]!.decision = "candidate";
+    forged.promotions[0]!.supportingMetrics.validationPasses = true;
+    forged.promotions[0]!.evidence.validationPasses = true;
+    forged.promotions[0]!.evidence.promotionAccepted = true;
+    const result = evaluateCandidateEligibleForPreregistration({
+      hypothesisId: FAILING_ID,
+      promotionArtifactContent: JSON.stringify(forged),
+      candidateArtifactContent: artifacts.candidateContent,
+      validationArtifactContent: artifacts.validationContent,
+    });
+    expect(result.preregistrationEligible).toBe(false);
+    expect(result.reasonCode).toBe("validation-does-not-pass");
+    expect(result.validationPasses).toBe(false);
+  });
+
   it("12: artifact ordering does not alter identity hashes", () => {
     const validationA = createValidation({ hypothesisId: PASSING_ID, reasons: ["a", "b"] });
     const validationB = createValidation({ hypothesisId: PASSING_ID, reasons: ["a", "b"] });
