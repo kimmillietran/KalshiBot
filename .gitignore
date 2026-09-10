@@ -28,6 +28,10 @@
 # runtime capture artifacts (M12.1B)
 data/live-capture/
 
+# generated research/report artifacts (never commit)
+data/research-results/
+data/reports/
+
 *.log
 data/debug/
 npm-debug.log*
