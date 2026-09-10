@@ -22,8 +22,22 @@ const EMPTY_INPUT_HASHES: CandidatePromotionInputArtifactHashes = {
   strategySynthesis: null,
   harnessResults: null,
   statisticalSignificance: null,
+  oosPowerCorrection: null,
 };
 
+function emptyOosContext(): import("./candidatePromotionTypes").ParsedOosPromotionContext {
+  return {
+    present: false,
+    artifactContentHash: null,
+    discoveryIsolation: null,
+    prospectiveDesign: null,
+    testedHypothesisCount: null,
+    alpha: null,
+    targetPower: null,
+    holdoutMonthsHash: null,
+    entriesByHypothesisId: new Map(),
+  };
+}
 function buildSummary(
   promotions: readonly { decision: CandidatePromotionDecision }[],
 ): CandidatePromotionSummary {
@@ -47,7 +61,7 @@ function buildSummary(
   };
 }
 
-/** Builds the advisory candidate promotion report from parsed research inputs. */
+/** Builds the candidate promotion report with M12.7c OOS/FDR/power binding. */
 export function buildCandidatePromotionReport(
   input: BuildCandidatePromotionReportInput,
 ): CandidatePromotionReport {
@@ -61,6 +75,7 @@ export function buildCandidatePromotionReport(
     ),
     harnessByStrategyId: indexHarnessStrategies(input.inputs.harnessStrategies),
     significanceByFamily: input.inputs.significanceByFamily,
+    oos: input.inputs.oos ?? emptyOosContext(),
     config,
   });
 

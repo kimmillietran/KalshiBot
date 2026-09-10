@@ -82,6 +82,11 @@ export function parseCandidatePromotionConfigFromArgv(
     "--statistical-significance",
     inputPaths.statisticalSignificancePath,
   );
+  inputPaths.oosPowerCorrectionPath = readFlagValue(
+    argv,
+    "--oos-power-correction",
+    inputPaths.oosPowerCorrectionPath,
+  );
 
   if (hasFlag(argv, "--help")) {
     throw new Error("help");

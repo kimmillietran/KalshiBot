@@ -28,8 +28,18 @@ export type OosStatisticalVerdict =
   | "fail"
   | "underpowered"
   | "insufficient-data"
-  | "skipped";
+  | "skipped"
+  | "invalid";
 
+export type OosDiscoveryIsolationStatus =
+  | "train-only-discovery"
+  | "discovery-saw-full-corpus"
+  | "not-proven";
+
+export type OosDiscoveryIsolation = {
+  status: OosDiscoveryIsolationStatus;
+  reason: string;
+};
 export type OosTemporalSplitRanges = {
   trainMonths: readonly string[];
   validationMonths: readonly string[];
@@ -130,6 +140,13 @@ export type OosPowerCorrectionReport = {
   splitSummary: OosTemporalSplitSummary;
   summary: OosPowerCorrectionSummary;
   entries: readonly OosPowerCorrectionEntry[];
+  /**
+   * Default production builds mark discovery as full-corpus (not sealed from holdout).
+   * Only an explicit train-only isolation claim may authorize promotion.
+   */
+  discoveryIsolation: OosDiscoveryIsolation;
+  /** Optional prospective design contract; required for accepted promotion. */
+  prospectiveDesign: unknown | null;
   investigatorNotes: readonly string[];
   limitations: readonly string[];
 };
@@ -148,6 +165,12 @@ export type BuildOosPowerCorrectionReportInput = {
   inputPaths: OosPowerCorrectionInputPaths;
   io: OosPowerCorrectionIo;
   config?: Partial<OosPowerCorrectionConfig>;
+  /**
+   * Optional override for discovery isolation. Production callers should omit this;
+   * the default fails closed as full-corpus discovery.
+   */
+  discoveryIsolation?: OosDiscoveryIsolation;
+  prospectiveDesign?: unknown | null;
 };
 
 export class OosPowerCorrectionError extends Error {

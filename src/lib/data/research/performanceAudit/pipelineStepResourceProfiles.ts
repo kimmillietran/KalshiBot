@@ -232,6 +232,19 @@ export function buildPipelineStepResourceProfiles(): ReadonlyMap<
       largeJsonInputs: [DEFAULT_HARNESS_RESULTS_OUTPUT_PATH],
       fullDirectoryRecompute: false,
     }),
+    profile("oos-power-correction", {
+      filesRead: [
+        "data/research-results/hypothesis-candidates.json",
+        "data/research-results/regime-tags.json",
+      ],
+      filesWritten: ["data/research-results/oos-power-correction.json"],
+      directoryScans: [],
+      networkOperations: [],
+      cpuBoundShare: 0.7,
+      ioBoundShare: 0.3,
+      largeJsonInputs: ["data/research-results/hypothesis-candidates.json"],
+      fullDirectoryRecompute: false,
+    }),
     profile("candidate-promotions", {
       filesRead: [DEFAULT_RESEARCH_CANDIDATE_REGISTRY_OUTPUT_PATH],
       filesWritten: [DEFAULT_CANDIDATE_PROMOTIONS_OUTPUT_PATH],

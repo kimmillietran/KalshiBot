@@ -2,6 +2,11 @@ import { z } from "zod";
 
 import { inspectResearchOutputDocument } from "@/lib/data/research/inspect/parseResearchOutputInspection";
 import { hashArtifactContent } from "@/lib/data/research/candidatePreregistrationEligibility/promotionEvidenceIdentity";
+import { fnv1a32, stableStringify } from "@/lib/trading/config/hashConfig";
+import type {
+  OosDiscoveryIsolation,
+  OosPowerCorrectionEntry,
+} from "@/lib/data/research/oosPowerCorrection/oosPowerCorrectionTypes";
 
 import {
   CandidatePromotionError,
@@ -10,6 +15,7 @@ import {
   type CandidatePromotionIo,
   type ParsedCandidatePromotionInputs,
   type ParsedHarnessStrategyMetrics,
+  type ParsedOosPromotionContext,
   type ParsedSynthesisStrategy,
   type ParsedValidationEntry,
 } from "./candidatePromotionTypes";
@@ -351,11 +357,14 @@ export function loadCandidatePromotionInputs(
     );
   }
 
+  const oos = loadOosPromotionContext(io, inputPaths.oosPowerCorrectionPath);
+
   const inputArtifactContentHashes: CandidatePromotionInputArtifactHashes = {
     hypothesisValidation: hashArtifactContent(validationContent),
     strategySynthesis: hashArtifactContent(synthesisContent),
     harnessResults: harnessResultsHash,
     statisticalSignificance: statisticalSignificanceHash,
+    oosPowerCorrection: oos.artifactContentHash,
   };
 
   return {
@@ -366,7 +375,86 @@ export function loadCandidatePromotionInputs(
       io,
       inputPaths.statisticalSignificancePath,
     ),
+    oos,
     inputArtifactContentHashes,
+  };
+}
+
+function loadOosPromotionContext(
+  io: CandidatePromotionIo,
+  path: string,
+): ParsedOosPromotionContext {
+  if (!io.fileExists(path)) {
+    return {
+      present: false,
+      artifactContentHash: null,
+      discoveryIsolation: null,
+      prospectiveDesign: null,
+      testedHypothesisCount: null,
+      alpha: null,
+      targetPower: null,
+      holdoutMonthsHash: null,
+      entriesByHypothesisId: new Map(),
+    };
+  }
+
+  const content = io.readFile(path);
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(content.replace(/^\uFEFF/, ""));
+  } catch {
+    throw new CandidatePromotionError(`Invalid JSON in OOS power correction artifact: ${path}`);
+  }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw new CandidatePromotionError(`OOS power correction root must be an object: ${path}`);
+  }
+
+  const document = parsed as Record<string, unknown>;
+  const entriesRaw = document.entries;
+  const entriesByHypothesisId = new Map<string, OosPowerCorrectionEntry>();
+  if (Array.isArray(entriesRaw)) {
+    for (const entry of entriesRaw) {
+      if (
+        entry
+        && typeof entry === "object"
+        && typeof (entry as { hypothesisId?: unknown }).hypothesisId === "string"
+      ) {
+        entriesByHypothesisId.set(
+          (entry as OosPowerCorrectionEntry).hypothesisId,
+          entry as OosPowerCorrectionEntry,
+        );
+      }
+    }
+  }
+
+  const discoveryIsolation =
+    document.discoveryIsolation && typeof document.discoveryIsolation === "object"
+      ? (document.discoveryIsolation as OosDiscoveryIsolation)
+      : null;
+  const config = document.config && typeof document.config === "object"
+    ? (document.config as Record<string, unknown>)
+    : null;
+  const summary = document.summary && typeof document.summary === "object"
+    ? (document.summary as Record<string, unknown>)
+    : null;
+  const splitSummary = document.splitSummary && typeof document.splitSummary === "object"
+    ? (document.splitSummary as Record<string, unknown>)
+    : null;
+  const holdoutMonths = Array.isArray(splitSummary?.holdoutMonths)
+    ? [...(splitSummary!.holdoutMonths as string[])].sort((a, b) => a.localeCompare(b))
+    : [];
+
+  return {
+    present: true,
+    artifactContentHash: hashArtifactContent(content),
+    discoveryIsolation,
+    prospectiveDesign: document.prospectiveDesign ?? null,
+    testedHypothesisCount:
+      typeof summary?.testedCount === "number" ? summary.testedCount : entriesByHypothesisId.size,
+    alpha: typeof config?.alpha === "number" ? config.alpha : null,
+    targetPower: typeof config?.targetPower === "number" ? config.targetPower : null,
+    holdoutMonthsHash: fnv1a32(stableStringify(holdoutMonths)),
+    entriesByHypothesisId,
   };
 }
 

@@ -53,8 +53,31 @@ export function isAcceptedPromotionDecision(
 export function computePromotionAccepted(input: {
   decision: CandidatePromotionDecision;
   validationPasses: boolean | null;
+  statisticalGates?: {
+    oosFinalStatisticalVerdict: string | null;
+    oosPassesCorrected: boolean | null;
+    oosClearsMde: boolean | null;
+    oosIsUnderpowered: boolean | null;
+    discoveryIsolationStatus: string | null;
+    prospectiveDesignValid: boolean | null;
+  } | null;
 }): boolean {
-  return isAcceptedPromotionDecision(input.decision) && input.validationPasses === true;
+  if (!isAcceptedPromotionDecision(input.decision) || input.validationPasses !== true) {
+    return false;
+  }
+  // M12.7c: legacy validation alone is never sufficient for accepted promotion.
+  const gates = input.statisticalGates;
+  if (!gates) {
+    return false;
+  }
+  return (
+    gates.oosFinalStatisticalVerdict === "pass"
+    && gates.oosPassesCorrected === true
+    && gates.oosClearsMde === true
+    && gates.oosIsUnderpowered === false
+    && gates.discoveryIsolationStatus === "train-only-discovery"
+    && gates.prospectiveDesignValid === true
+  );
 }
 
 export function selectPromotionEntryForHypothesis(
@@ -68,13 +91,7 @@ export function selectPromotionEntryForHypothesis(
     return null;
   }
   // Prefer an accepted entry when multiple strategies share a hypothesis id.
-  const accepted = matches.find((entry) =>
-    computePromotionAccepted({
-      decision: entry.decision,
-      validationPasses: entry.evidence?.validationPasses
-        ?? entry.supportingMetrics.validationPasses,
-    })
-  );
+  const accepted = matches.find((entry) => entry.evidence?.promotionAccepted === true);
   return accepted ?? matches[0] ?? null;
 }
 

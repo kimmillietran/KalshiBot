@@ -1,5 +1,9 @@
 import {
-  computePromotionAccepted,
+  buildOosPromotionStatisticalGates,
+  type OosPromotionStatisticalGates,
+} from "@/lib/data/research/candidatePreregistrationEligibility/oosPromotionStatisticalGates";
+import { computePromotionAccepted } from "@/lib/data/research/candidatePreregistrationEligibility/promotionEvidenceIdentity";
+import {
   hashCandidateDefinitionContent,
   hashValidationEntryContent,
 } from "@/lib/data/research/candidatePreregistrationEligibility/promotionEvidenceIdentity";
@@ -8,9 +12,11 @@ import type {
   CandidatePromotionConfig,
   CandidatePromotionDecision,
   CandidatePromotionEntry,
+  CandidatePromotionEntryEvidence,
   CandidatePromotionNextAction,
   CandidatePromotionSupportingMetrics,
   ParsedHarnessStrategyMetrics,
+  ParsedOosPromotionContext,
   ParsedSynthesisStrategy,
   ParsedValidationEntry,
 } from "./candidatePromotionTypes";
@@ -54,7 +60,20 @@ type ClassificationContext = {
     pValue: number | null;
     insufficientSample: boolean;
   } | null;
+  oos?: ParsedOosPromotionContext;
   config: CandidatePromotionConfig;
+};
+
+const EMPTY_OOS: ParsedOosPromotionContext = {
+  present: false,
+  artifactContentHash: null,
+  discoveryIsolation: null,
+  prospectiveDesign: null,
+  testedHypothesisCount: null,
+  alpha: null,
+  targetPower: null,
+  holdoutMonthsHash: null,
+  entriesByHypothesisId: new Map(),
 };
 
 function buildSupportingMetrics(input: ClassificationContext): CandidatePromotionSupportingMetrics {
@@ -145,7 +164,92 @@ function buildExplanation(input: {
   return `Production watchlist (${scoreLabel}, ${tradeLabel}). Strong validation, harness depth, and significance support advisory promotion review.`;
 }
 
-/** Classifies one synthesized strategy into an advisory promotion decision. */
+function appendStatisticalBlockingIssues(
+  blockingIssues: string[],
+  gates: OosPromotionStatisticalGates,
+  oosPresent: boolean,
+): void {
+  if (!oosPresent) {
+    blockingIssues.push("Missing OOS/power/correction artifact; promotion cannot be accepted.");
+    return;
+  }
+  if (gates.oosFinalStatisticalVerdict == null) {
+    blockingIssues.push("Hypothesis missing from OOS/power/correction family.");
+  } else if (gates.oosFinalStatisticalVerdict !== "pass") {
+    blockingIssues.push(
+      `OOS finalStatisticalVerdict is ${gates.oosFinalStatisticalVerdict} (only pass authorizes promotion).`,
+    );
+  }
+  if (gates.oosPassesCorrected !== true) {
+    blockingIssues.push("Multiple-testing correction did not pass (passesCorrected !== true).");
+  }
+  if (gates.oosIsUnderpowered === true || gates.oosClearsMde !== true) {
+    blockingIssues.push("Power/MDE gate did not clear (underpowered or observed effect below MDE).");
+  }
+  if (gates.discoveryIsolationStatus !== "train-only-discovery") {
+    blockingIssues.push(
+      `Discovery isolation is ${gates.discoveryIsolationStatus ?? "missing"}; `
+        + "holdout-contaminated or unproven discovery cannot authorize promotion.",
+    );
+  }
+  if (gates.prospectiveDesignValid !== true) {
+    blockingIssues.push("Prospective statistical design contract is missing or invalid.");
+  }
+}
+
+function buildEvidence(input: {
+  strategy: ParsedSynthesisStrategy;
+  validation: ParsedValidationEntry | null;
+  decision: CandidatePromotionDecision;
+  validationPasses: boolean | null;
+  oos: ParsedOosPromotionContext;
+}): CandidatePromotionEntryEvidence {
+  const oosEntry = input.oos.entriesByHypothesisId.get(input.strategy.hypothesisId) ?? null;
+  const gates = buildOosPromotionStatisticalGates({
+    entry: oosEntry,
+    discoveryIsolation: input.oos.discoveryIsolation,
+    prospectiveDesign: input.oos.prospectiveDesign,
+    testedHypothesisCount: input.oos.testedHypothesisCount,
+    alpha: input.oos.alpha,
+    targetPower: input.oos.targetPower,
+  });
+
+  return {
+    validationEntryContentHash: input.validation
+      ? hashValidationEntryContent(input.validation)
+      : null,
+    candidateDefinitionContentHash: hashCandidateDefinitionContent(input.strategy),
+    validationPasses: input.validationPasses,
+    promotionAccepted: computePromotionAccepted({
+      decision: input.decision,
+      validationPasses: input.validationPasses,
+      statisticalGates: gates,
+    }),
+    oosFinalStatisticalVerdict: gates.oosFinalStatisticalVerdict,
+    oosPassesCorrected: gates.oosPassesCorrected,
+    oosClearsMde: gates.oosClearsMde,
+    oosIsUnderpowered: gates.oosIsUnderpowered,
+    oosQValue: gates.oosQValue,
+    oosUncorrectedPValue: gates.oosUncorrectedPValue,
+    oosCorrectionMethod: gates.oosCorrectionMethod,
+    oosNumberOfHypothesesTested: gates.oosNumberOfHypothesesTested,
+    oosAlpha: gates.oosAlpha,
+    oosTargetPower: gates.oosTargetPower,
+    oosMinimumDetectableEffect: gates.oosMinimumDetectableEffect,
+    oosObservedEffect: gates.oosObservedEffect,
+    oosEffectiveSampleSize: gates.oosEffectiveSampleSize,
+    oosIndependentMarketCount: gates.oosIndependentMarketCount,
+    oosMarketDayCount: gates.oosMarketDayCount,
+    discoveryIsolationStatus: gates.discoveryIsolationStatus,
+    prospectiveDesignValid: gates.prospectiveDesignValid,
+    prospectiveDesignContentHash: gates.prospectiveDesignContentHash,
+    oosEntryContentHash: gates.oosEntryContentHash,
+    oosArtifactContentHash: input.oos.artifactContentHash,
+    oosHoldoutMonthsHash: input.oos.holdoutMonthsHash,
+  };
+}
+
+/** Classifies one synthesized strategy into a promotion decision with M12.7c statistical gates. */
 export function classifyCandidatePromotion(
   input: ClassificationContext,
 ): CandidatePromotionEntry {
@@ -243,6 +347,43 @@ export function classifyCandidatePromotion(
   }
 
   const validationPassesMetric = metrics.validationPasses;
+  const oos = input.oos ?? EMPTY_OOS;
+  const evidence = buildEvidence({
+    strategy: input.strategy,
+    validation: input.validation,
+    decision,
+    validationPasses: validationPassesMetric,
+    oos,
+  });
+
+  if (decision === "candidate" || decision === "production-watchlist") {
+    appendStatisticalBlockingIssues(
+      blockingIssues,
+      {
+        oosFinalStatisticalVerdict: evidence.oosFinalStatisticalVerdict,
+        oosPassesCorrected: evidence.oosPassesCorrected,
+        oosClearsMde: evidence.oosClearsMde,
+        oosIsUnderpowered: evidence.oosIsUnderpowered,
+        oosQValue: evidence.oosQValue,
+        oosUncorrectedPValue: evidence.oosUncorrectedPValue,
+        oosCorrectionMethod: evidence.oosCorrectionMethod,
+        oosNumberOfHypothesesTested: evidence.oosNumberOfHypothesesTested,
+        oosAlpha: evidence.oosAlpha,
+        oosTargetPower: evidence.oosTargetPower,
+        oosMinimumDetectableEffect: evidence.oosMinimumDetectableEffect,
+        oosObservedEffect: evidence.oosObservedEffect,
+        oosEffectiveSampleSize: evidence.oosEffectiveSampleSize,
+        oosIndependentMarketCount: evidence.oosIndependentMarketCount,
+        oosMarketDayCount: evidence.oosMarketDayCount,
+        discoveryIsolationStatus: evidence.discoveryIsolationStatus,
+        prospectiveDesignValid: evidence.prospectiveDesignValid,
+        prospectiveDesignContentHash: evidence.prospectiveDesignContentHash,
+        oosEntryContentHash: evidence.oosEntryContentHash,
+      },
+      oos.present,
+    );
+  }
+
   return {
     strategyId: input.strategy.strategyId,
     hypothesisId: input.strategy.hypothesisId,
@@ -253,17 +394,7 @@ export function classifyCandidatePromotion(
     blockingIssues: [...new Set(blockingIssues)],
     warnings: [...new Set(warnings)],
     recommendedNextAction: resolveNextAction({ decision, blockingIssues }),
-    evidence: {
-      validationEntryContentHash: input.validation
-        ? hashValidationEntryContent(input.validation)
-        : null,
-      candidateDefinitionContentHash: hashCandidateDefinitionContent(input.strategy),
-      validationPasses: validationPassesMetric,
-      promotionAccepted: computePromotionAccepted({
-        decision,
-        validationPasses: validationPassesMetric,
-      }),
-    },
+    evidence,
   };
 }
 
@@ -275,6 +406,7 @@ export function classifyAllCandidatePromotions(input: {
     string,
     { statisticallySignificant: boolean; pValue: number | null; insufficientSample: boolean }
   >;
+  oos?: ParsedOosPromotionContext;
   config: CandidatePromotionConfig;
 }): CandidatePromotionEntry[] {
   return [...input.strategies]
@@ -287,6 +419,7 @@ export function classifyAllCandidatePromotions(input: {
         significance: input.significanceByFamily.get(strategy.strategyFamily)
           ?? input.significanceByFamily.get(strategy.strategyId)
           ?? null,
+        oos: input.oos,
         config: input.config,
       }),
     );
