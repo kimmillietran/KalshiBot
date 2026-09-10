@@ -97,6 +97,7 @@
     "research:btc-kalshi-lead-lag-validation": "tsx scripts/research/buildBtcKalshiLeadLagValidation.ts",
     "research:btc-kalshi-lead-lag-evidence-contract": "tsx scripts/research/buildBtcKalshiLeadLagEvidenceContract.ts",
     "research:btc-kalshi-lead-lag-holdout": "tsx scripts/research/buildBtcKalshiLeadLagHoldout.ts",
+    "research:btc-kalshi-lead-lag-prospective-cohort": "tsx scripts/research/buildBtcKalshiLeadLagProspectiveCohort.ts",
     "research:calibration-fade-forward-validation": "tsx scripts/research/buildCalibrationFadeForwardValidation.ts",
     "research:calibration-fade-v2-forward": "tsx scripts/research/buildCalibrationFadeV2ForwardValidation.ts",
     "research:calibration-fade-v2-capture-readiness": "tsx scripts/research/evaluateCalibrationFadeV2CaptureReadiness.ts",
