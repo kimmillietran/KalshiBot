@@ -91,8 +91,8 @@ export function buildCandidateIncidenceAssessment(input: {
     return emptyIncidence(
       "needs-definition",
       "top-of-book-field-presence-only",
-      "TOB fields are densely captured; a microstructure entry rule is undefined, so candidate "
-        + "incidence cannot be estimated without fabricating a signal.",
+      "TOB fields are densely captured. M13.0a seals the TOB imbalance family definition, but "
+        + "TRAIN-only discovery incidence has not been measured yet — do not fabricate episode rates.",
       {
         captureHoursObserved: input.exploratoryCaptureHours,
         fadeIndependentMarketsPerEightHours: fade,
@@ -134,9 +134,13 @@ export function scoreFamilyReadiness(input: {
   const causalStatus: ReadinessStatus =
     inventory.familyId === "btc-kalshi-lead-lag"
       ? "ready"
-      : inventory.familyId === "momentum"
-        ? "needs-work"
-        : "needs-definition";
+      : inventory.familyId === "spread-liquidity-microstructure"
+        ? inventory.familyDefinitionAvailable
+          ? "ready"
+          : "needs-definition"
+        : inventory.familyId === "momentum"
+          ? "needs-work"
+          : "needs-definition";
   dims.push({
     dimension: "causalFeatureSemanticsEstablished",
     status: causalStatus,

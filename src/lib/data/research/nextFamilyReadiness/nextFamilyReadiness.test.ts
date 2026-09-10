@@ -38,6 +38,13 @@ const MICRO_FILES = {
   "src/lib/data/research/executableConfirmationDesign/buildExecutableConfirmationDesignReport.ts": "ok",
 } as const;
 
+const MICRO_FAMILY_DEFINITION_FILES = {
+  "src/lib/data/research/spreadLiquidityMicrostructureFamily/index.ts": "ok",
+  "src/lib/data/research/spreadLiquidityMicrostructureFamily/buildMicrostructureFamilyDefinitionReport.ts":
+    "ok",
+  "scripts/research/buildSpreadLiquidityMicrostructureFamily.ts": "ok",
+} as const;
+
 const MOMENTUM_FILES = {
   "src/lib/data/research/dimensions/momentum/momentumResearchTypes.ts": "ok",
   "src/lib/data/research/dimensions/momentum/momentumBucketDefinitions.ts": "ok",
@@ -224,6 +231,25 @@ describe("nextFamilyReadiness", () => {
     expect(scoredMicro.dimensions.find((d) => d.dimension === "familyDefinitionAvailable")?.status)
       .toBe("needs-definition");
     expect(scoredMicro.candidateIncidence.estimatedEligibleObservationsPerCaptureHour).toBeNull();
+  });
+
+  it("8b. microstructure family definition modules → familyDefinitionAvailable", () => {
+    const io = createMemoryCalibrationFadeForwardValidationIo({
+      ...MICRO_FILES,
+      ...MICRO_FAMILY_DEFINITION_FILES,
+    });
+    const micro = inventoryMicrostructureFamily(io);
+    expect(micro.familyDefinitionAvailable).toBe(true);
+    expect(micro.multiplicity.responseWindowCount).toBe(3);
+    expect(micro.multiplicity.magnitudeBinCount).toBe(2);
+    expect(micro.multiplicity.timeRemainingBinCount).toBe(2);
+    expect(micro.multiplicity.note).toMatch(/12 hypotheses/i);
+    const scored = readinessFromInventory(micro);
+    expect(scored.dimensions.find((d) => d.dimension === "familyDefinitionAvailable")?.status)
+      .toBe("ready");
+    expect(scored.dimensions.find((d) => d.dimension === "causalFeatureSemanticsEstablished")?.status)
+      .toBe("ready");
+    expect(isEligibleForDiscoveryRecommendation(scored)).toBe(true);
   });
 
   it("9. deterministic ranking/status independent of filesystem order", () => {
@@ -495,8 +521,11 @@ describe("M12.9 lead-lag disposition + family reassessment", () => {
     );
   });
 
-  it("10-12. microstructure/momentum re-evaluated; no family forced to win discovery", () => {
-    const io = createMemoryCalibrationFadeForwardValidationIo(lineageFiles());
+  it("10-12. microstructure definition available → discovery recommendation; no forced alpha", () => {
+    const io = createMemoryCalibrationFadeForwardValidationIo({
+      ...lineageFiles(),
+      ...MICRO_FAMILY_DEFINITION_FILES,
+    });
     const report = buildNextFamilyReadinessReport({
       config: lineageConfig(),
       io,
@@ -506,10 +535,30 @@ describe("M12.9 lead-lag disposition + family reassessment", () => {
       (f) => f.familyId === "spread-liquidity-microstructure",
     )!;
     const momentum = report.familyReadiness.find((f) => f.familyId === "momentum")!;
+    expect(micro.inventory.familyDefinitionAvailable).toBe(true);
     expect(micro.inventory.microstructureDataSupport?.length).toBeGreaterThan(0);
     expect(micro.maturity).toBe("partial");
     expect(momentum.maturity).toBe("needs-definition");
     expect(isEligibleForDiscoveryRecommendation(momentum)).toBe(false);
+    expect(isEligibleForDiscoveryRecommendation(micro)).toBe(true);
+    expect(report.selectionStatus).toBe("recommended-for-discovery");
+    expect(report.recommendedFamily).toBe("spread-liquidity-microstructure");
+    expect(report.recommendedNextAction).toBe("start-new-family-discovery");
+    expect(report.freezeForbidden).toBe(true);
+    expect(report.promotionForbidden).toBe(true);
+  });
+
+  it("10b. without microstructure definition modules, prepare-family-definition remains", () => {
+    const io = createMemoryCalibrationFadeForwardValidationIo(lineageFiles());
+    const report = buildNextFamilyReadinessReport({
+      config: lineageConfig(),
+      io,
+      generatedAt: "2026-09-10T12:00:00.000Z",
+    });
+    const micro = report.familyReadiness.find(
+      (f) => f.familyId === "spread-liquidity-microstructure",
+    )!;
+    expect(micro.inventory.familyDefinitionAvailable).toBe(false);
     expect(report.selectionStatus).toBe("prepare-family-definition");
     expect(report.recommendedFamily).toBe("spread-liquidity-microstructure");
     expect(report.recommendedNextAction).toBe("prepare-family-definition");
