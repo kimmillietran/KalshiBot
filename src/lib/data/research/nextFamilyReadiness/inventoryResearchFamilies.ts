@@ -46,8 +46,9 @@ const MOMENTUM_FAMILY_ANALYSIS_MISSING = [
   "scripts/research/buildMomentumFamilyAnalysis.ts",
 ] as const;
 
-const MICROSTRUCTURE_FAMILY_ANALYSIS_MISSING = [
-  "src/lib/data/research/spreadLiquidityMicrostructureFamily/",
+const MICROSTRUCTURE_FAMILY_DEFINITION_MODULES = [
+  "src/lib/data/research/spreadLiquidityMicrostructureFamily/index.ts",
+  "src/lib/data/research/spreadLiquidityMicrostructureFamily/buildMicrostructureFamilyDefinitionReport.ts",
   "scripts/research/buildSpreadLiquidityMicrostructureFamily.ts",
 ] as const;
 
@@ -199,46 +200,79 @@ export function buildMicrostructureDataSupportInventory(): readonly Microstructu
 
 export function inventoryMicrostructureFamily(io: NextFamilyReadinessIo): FamilyInventory {
   const modules = presentPaths(io, MICROSTRUCTURE_MODULES);
-  const missingFamily = presentPaths(io, MICROSTRUCTURE_FAMILY_ANALYSIS_MISSING);
+  const familyDefinition = presentPaths(io, MICROSTRUCTURE_FAMILY_DEFINITION_MODULES);
+  const familyDefinitionAvailable = familyDefinition.missing.length === 0;
   const dataSupport = buildMicrostructureDataSupportInventory();
   return {
     familyId: "spread-liquidity-microstructure",
     displayName: "Spread / liquidity microstructure",
-    maturity: modules.present.length >= 2 ? "partial" : "not-established",
+    maturity: familyDefinitionAvailable
+      ? "partial"
+      : modules.present.length >= 2
+        ? "partial"
+        : "not-established",
     independenceFromCalibrationFade: "medium",
     conceptualThesis:
-      "Top-of-book spread, depth/size, quote dynamics, and book integrity — not calibration overconfidence.",
-    modulePathsPresent: modules.present,
-    modulePathsMissing: [...modules.missing, ...missingFamily.missing],
+      "Endogenous Kalshi TOB displayed-size imbalance and short-horizon executable YES repricing "
+      + "(complement-book semantics) — not calibration overconfidence and independent of lead-lag.",
+    modulePathsPresent: [...modules.present, ...familyDefinition.present],
+    modulePathsMissing: [...modules.missing, ...familyDefinition.missing],
     npmScriptsPresent: [
       "research:bid-size-coverage-audit",
       "research:quote-fidelity-gate",
       "research:static-parity-scan",
       "research:executable-confirmation-design",
+      ...(familyDefinitionAvailable
+        ? ["research:spread-liquidity-microstructure-family"]
+        : []),
     ],
-    familyDefinitionAvailable: false,
-    causalSemanticsNotes: [
-      "Infrastructure audits exist, but no sealed microstructure alpha family definition/report module was found.",
-      "Current capture is top-of-book oriented; full depth / order-flow is not established as available.",
-      "M12.9 readiness inventory lists TOB-supported features only; no hypotheses are created here.",
-    ],
+    familyDefinitionAvailable,
+    causalSemanticsNotes: familyDefinitionAvailable
+      ? [
+          "M13.0a seals tob-size-imbalance-short-horizon-repricing-v1 with complement-book semantics.",
+          "Event features use only information at/before event time; response match is post-event only.",
+          "Ask size is complement of opposite bid (not independent depth); size decreases are not cancel/trade/withdrawal.",
+          "BTC features are forbidden. Historical discovery/validation/holdout/promotion/freeze are not marked complete.",
+        ]
+      : [
+          "Infrastructure audits exist, but no sealed microstructure alpha family definition/report module was found.",
+          "Current capture is top-of-book oriented; full depth / order-flow is not established as available.",
+          "M12.9 readiness inventory lists TOB-supported features only; no hypotheses are created here.",
+        ],
     executableInputNotes: [
       "Best bid/ask, sizes, valid-book, sequence/resync counters are captured in forward TOB streams.",
-      "Parity/executable-confirmation designs exist as diagnostics, not a preregisterable entry rule.",
+      familyDefinitionAvailable
+        ? "Primary economic evidence is one-contract executable bid/complement-ask response; midpoint is diagnostic; fees remain gross until bound."
+        : "Parity/executable-confirmation designs exist as diagnostics, not a preregisterable entry rule.",
     ],
-    multiplicity: {
-      status: "needs-definition",
-      returnHorizonCount: null,
-      responseWindowCount: null,
-      magnitudeBinCount: null,
-      timeRemainingBinCount: null,
-      impliedProbabilityBinCount: null,
-      atlasAxisGroupCount: null,
-      momentumBucketCount: null,
-      note:
-        "No coded microstructure alpha search grid was found. "
-        + "Do not invent an order-flow thesis from unavailable depth data.",
-    },
+    multiplicity: familyDefinitionAvailable
+      ? {
+          status: "needs-work",
+          returnHorizonCount: null,
+          responseWindowCount: 3,
+          magnitudeBinCount: 2,
+          timeRemainingBinCount: 2,
+          impliedProbabilityBinCount: null,
+          atlasAxisGroupCount: null,
+          momentumBucketCount: null,
+          note:
+            "Governed first-pass universe is hard-capped at 12 hypotheses "
+            + "(2 |imbalance| thresholds × 3 response horizons × 2 time-remaining bins × 1 fixed direction). "
+            + "No continuous threshold search, spread×imbalance, probability, hour, or volatility axes.",
+        }
+      : {
+          status: "needs-definition",
+          returnHorizonCount: null,
+          responseWindowCount: null,
+          magnitudeBinCount: null,
+          timeRemainingBinCount: null,
+          impliedProbabilityBinCount: null,
+          atlasAxisGroupCount: null,
+          momentumBucketCount: null,
+          note:
+            "No coded microstructure alpha search grid was found. "
+            + "Do not invent an order-flow thesis from unavailable depth data.",
+        },
     overlapsWithCalibrationFade: [
       "Forward-capture readiness includes calibrationFadeSpreadRealism gates.",
       "Cost-aware atlas can adjust calibration-style EV for spread — shared capture economics, different signal thesis if defined.",
