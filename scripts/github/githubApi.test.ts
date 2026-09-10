@@ -9,6 +9,7 @@ import {
   mapPullRequestFile,
   mapQualityGatesWorkflowIdentity,
   mapReview,
+  mapReviewThread,
   qualityGatesWorkflowRestIdentifier,
 } from "./githubApi";
 import { prTouchesTrustedAutoMergePaths } from "./autoMergeGate";
@@ -66,17 +67,49 @@ describe("githubApi mapping", () => {
     expect(snapshot.merged).toBe(true);
   });
 
-  it("maps a COMMENTED Cursor review without requiring GitHub APPROVED", () => {
-    const review = mapReview({
-      id: 9,
-      user: { login: "cursor[bot]" },
-      commit_id: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-      submitted_at: "2026-09-08T20:00:00Z",
-      state: "COMMENTED",
-      body: "## Verdict\n\nAPPROVED FOR MERGE\n",
+  it("maps review threads with GraphQL id and associated review binding", () => {
+    const thread = mapReviewThread({
+      id: "PRRT_abc",
+      isResolved: false,
+      comments: {
+        nodes: [
+          {
+            author: { login: "cursor[bot]" },
+            body: "[NON-BLOCKING]\nnote",
+            createdAt: "2026-09-10T00:00:00Z",
+            pullRequestReview: {
+              databaseId: 42,
+              state: "COMMENTED",
+              commit: { oid: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" },
+            },
+          },
+        ],
+      },
     });
-    expect(review.state).toBe("COMMENTED");
-    expect(review.userLogin).toBe("cursor[bot]");
+    expect(thread).toEqual({
+      id: "PRRT_abc",
+      isResolved: false,
+      comments: [
+        {
+          authorLogin: "cursor[bot]",
+          body: "[NON-BLOCKING]\nnote",
+          createdAt: "2026-09-10T00:00:00Z",
+          pullRequestReviewDatabaseId: 42,
+          pullRequestReviewCommitOid: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          pullRequestReviewState: "COMMENTED",
+        },
+      ],
+    });
+  });
+
+  it("fails closed on malformed review thread comment nodes", () => {
+    expect(() =>
+      mapReviewThread({
+        id: "PRRT_x",
+        isResolved: false,
+        comments: { nodes: [null] },
+      }),
+    ).toThrow(/malformed review thread comment/);
   });
 
   it("H. API mapping preserves previous_filename", () => {

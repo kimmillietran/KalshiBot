@@ -17,6 +17,7 @@ import {
   type PullRequestSnapshot,
   type QualityGatesRunSnapshot,
   type QualityGatesWorkflowIdentity,
+  type ReviewThread,
 } from "./autoMergeGateTypes";
 import { parseGovernedCursorLrmVerdict } from "./parseCursorLrmVerdict";
 
@@ -35,6 +36,27 @@ const SPOOFED_QG_WORKFLOW: QualityGatesWorkflowIdentity = {
   name: "Quality Gates",
   state: "active",
 };
+
+function resolvedThread(id = "PRRT_resolved"): ReviewThread {
+  return { id, isResolved: true, comments: [] };
+}
+
+function unresolvedThread(id = "PRRT_unresolved"): ReviewThread {
+  return {
+    id,
+    isResolved: false,
+    comments: [
+      {
+        authorLogin: "human",
+        body: "Potential stale identity bug here.",
+        createdAt: "2026-09-08T20:00:00.000Z",
+        pullRequestReviewDatabaseId: null,
+        pullRequestReviewCommitOid: null,
+        pullRequestReviewState: null,
+      },
+    ],
+  };
+}
 
 const APPROVED_BODY = `# LRM Review
 
@@ -136,7 +158,7 @@ function eligibleInput(overrides: Partial<EvaluateInput> = {}): EvaluateInput {
   return {
     reviews: [cursorReview()],
     issueComments: [],
-    threads: [{ isResolved: true }],
+    threads: [resolvedThread()],
     checkRuns: requiredChecks(pullRequest.headSha),
     qualityGatesRuns: qualityGates(pullRequest.headSha),
     trustedQualityGatesWorkflow: TRUSTED_QG_WORKFLOW,
@@ -317,7 +339,7 @@ describe("auto-merge security gates", () => {
 
   it("11. unresolved thread is blocked", () => {
     const result = evaluateAutoMergeGate(
-      eligibleInput({ threads: [{ isResolved: false }, { isResolved: true }] }),
+      eligibleInput({ threads: [unresolvedThread(), resolvedThread()] }),
     );
     expect(result.kind).toBe("blocked");
     expect(result.reason).toBe("AUTO-MERGE BLOCKED: unresolved review threads = 1");
@@ -408,7 +430,7 @@ describe("auto-merge behavioral orderings", () => {
 
   it("E. Cursor approves B but an unresolved thread remains", () => {
     const result = evaluateAutoMergeGate(
-      eligibleInput({ threads: [{ isResolved: false }] }),
+      eligibleInput({ threads: [unresolvedThread()] }),
     );
     expect(result.kind).toBe("blocked");
     expect(result.reason).toContain("unresolved review threads = 1");
@@ -416,7 +438,7 @@ describe("auto-merge behavioral orderings", () => {
 
   it("F. later resolved threads make the same snapshot eligible", () => {
     expect(
-      evaluateAutoMergeGate(eligibleInput({ threads: [{ isResolved: true }] })).kind,
+      evaluateAutoMergeGate(eligibleInput({ threads: [resolvedThread()] })).kind,
     ).toBe("eligible");
   });
 
@@ -446,7 +468,10 @@ describe("SHA-guarded merge and API failures", () => {
           return fetches === 1 ? pr() : pr({ headSha: HEAD_A });
         },
         fetchReviews: async () => [cursorReview()],
-        fetchReviewThreads: async () => [{ isResolved: true }],
+        fetchReviewThreads: async () => [resolvedThread()],
+        resolveReviewThread: async () => {
+          throw new Error("resolveReviewThread should not be called for already-resolved stubs");
+        },
         fetchCheckRuns: async () => requiredChecks(HEAD_B),
         fetchQualityGatesRuns: async () => qualityGates(HEAD_B),
         fetchTrustedQualityGatesWorkflow: async () => TRUSTED_QG_WORKFLOW,
@@ -473,6 +498,9 @@ describe("SHA-guarded merge and API failures", () => {
         },
         fetchReviews: async () => [],
         fetchReviewThreads: async () => [],
+        resolveReviewThread: async () => {
+          throw new Error("resolveReviewThread should not be called");
+        },
         fetchCheckRuns: async () => [],
         fetchQualityGatesRuns: async () => [],
         fetchTrustedQualityGatesWorkflow: async () => TRUSTED_QG_WORKFLOW,
@@ -493,7 +521,10 @@ describe("SHA-guarded merge and API failures", () => {
       {
         fetchPullRequest: async () => pr(),
         fetchReviews: async () => [cursorReview()],
-        fetchReviewThreads: async () => [{ isResolved: true }],
+        fetchReviewThreads: async () => [resolvedThread()],
+        resolveReviewThread: async () => {
+          throw new Error("resolveReviewThread should not be called for already-resolved stubs");
+        },
         fetchCheckRuns: async () => requiredChecks(HEAD_B),
         fetchQualityGatesRuns: async () => qualityGates(HEAD_B),
         fetchTrustedQualityGatesWorkflow: async () => TRUSTED_QG_WORKFLOW,
@@ -521,7 +552,10 @@ describe("SHA-guarded merge and API failures", () => {
             ? pr()
             : pr({ merged: true, state: "closed", mergeCommitSha: "dddddddddddddddddddddddddddddddddddddddd" }),
         fetchReviews: async () => [cursorReview()],
-        fetchReviewThreads: async () => [{ isResolved: true }],
+        fetchReviewThreads: async () => [resolvedThread()],
+        resolveReviewThread: async () => {
+          throw new Error("resolveReviewThread should not be called for already-resolved stubs");
+        },
         fetchCheckRuns: async () => requiredChecks(HEAD_B),
         fetchQualityGatesRuns: async () => qualityGates(HEAD_B),
         fetchTrustedQualityGatesWorkflow: async () => TRUSTED_QG_WORKFLOW,
@@ -615,7 +649,10 @@ describe("SHA-guarded merge and API failures", () => {
       {
         fetchPullRequest: async () => pr({ headSha: HEAD_A }),
         fetchReviews: async () => [cursorReview({ commitId: HEAD_A })],
-        fetchReviewThreads: async () => [{ isResolved: true }],
+        fetchReviewThreads: async () => [resolvedThread()],
+        resolveReviewThread: async () => {
+          throw new Error("resolveReviewThread should not be called for already-resolved stubs");
+        },
         fetchCheckRuns: async () => requiredChecks(HEAD_A),
         fetchQualityGatesRuns: async () => qualityGates(HEAD_A),
         fetchTrustedQualityGatesWorkflow: async () => TRUSTED_QG_WORKFLOW,
@@ -857,7 +894,10 @@ describe("trusted Quality Gates workflow identity", () => {
       {
         fetchPullRequest: async () => pr(),
         fetchReviews: async () => [cursorReview()],
-        fetchReviewThreads: async () => [{ isResolved: true }],
+        fetchReviewThreads: async () => [resolvedThread()],
+        resolveReviewThread: async () => {
+          throw new Error("resolveReviewThread should not be called for already-resolved stubs");
+        },
         fetchCheckRuns: async () => requiredChecks(HEAD_B),
         fetchQualityGatesRuns: async () =>
           qualityGates(HEAD_B, {
@@ -1070,7 +1110,10 @@ describe("trusted Quality Gates required jobs", () => {
       {
         fetchPullRequest: async () => pr(),
         fetchReviews: async () => [cursorReview()],
-        fetchReviewThreads: async () => [{ isResolved: true }],
+        fetchReviewThreads: async () => [resolvedThread()],
+        resolveReviewThread: async () => {
+          throw new Error("resolveReviewThread should not be called for already-resolved stubs");
+        },
         fetchCheckRuns: async () => requiredChecks(HEAD_B),
         fetchQualityGatesRuns: async () => qualityGates(HEAD_B, { jobs: [] }),
         fetchTrustedQualityGatesWorkflow: async () => TRUSTED_QG_WORKFLOW,
@@ -1221,5 +1264,160 @@ describe("trusted Quality Gates required jobs", () => {
       reason: "duplicate trusted Quality Gates required job: Lint, build, and test",
       ci: { "Lint, build, and test": "duplicate" },
     });
+  });
+});
+
+describe("trusted [NON-BLOCKING] thread auto-resolution", () => {
+  function nonBlockingExactHeadThread(): ReviewThread {
+    return {
+      id: "PRRT_nb_gate",
+      isResolved: false,
+      comments: [
+        {
+          authorLogin: "cursor[bot]",
+          body: "[NON-BLOCKING]\nCould simplify this helper later.",
+          createdAt: "2026-09-10T00:00:00.000Z",
+          pullRequestReviewDatabaseId: 1,
+          pullRequestReviewCommitOid: HEAD_B,
+          pullRequestReviewState: "COMMENTED",
+        },
+      ],
+    };
+  }
+
+  function baseRuntime(overrides: Record<string, unknown> = {}) {
+    return {
+      fetchPullRequest: async () => pr({ merged: false }),
+      fetchReviews: async () => [cursorReview()],
+      fetchReviewThreads: async () => [resolvedThread()],
+      resolveReviewThread: async () => {
+        throw new Error("unexpected resolveReviewThread");
+      },
+      fetchCheckRuns: async () => requiredChecks(HEAD_B),
+      fetchQualityGatesRuns: async () => qualityGates(HEAD_B),
+      fetchTrustedQualityGatesWorkflow: async () => TRUSTED_QG_WORKFLOW,
+      compareHeadToMain: async () => ({ behindBy: 0, mainSha: MAIN_SHA }),
+      fetchDefaultBranchHasAutoMergeWorkflow: async () => true,
+      fetchPullRequestFiles: async () => [],
+      mergePullRequest: async () => ({ merged: true, sha: "m".repeat(40), message: "merged" }),
+      writeLog: () => {},
+      ...overrides,
+    };
+  }
+
+  it("8. resolution API failure blocks merge", async () => {
+    const result = await runAutoMergeForPullRequest(
+      baseRuntime({
+        fetchPullRequest: async () => pr(),
+        fetchReviewThreads: async () => [nonBlockingExactHeadThread()],
+        resolveReviewThread: async () => {
+          throw new Error("GraphQL resolveReviewThread failed: boom");
+        },
+        mergePullRequest: async () => {
+          throw new Error("merge must not run");
+        },
+      }) as never,
+      55,
+    );
+    expect(result.kind).toBe("system_failure");
+    expect(result.reason).toMatch(/failed to resolve trusted \[NON-BLOCKING\]/i);
+  });
+
+  it("9-11. resolves trusted NON-BLOCKING thread, refetches, then can merge", async () => {
+    let threadFetchCount = 0;
+    let resolvedViaApi = false;
+    let mergeCalled = false;
+    const result = await runAutoMergeForPullRequest(
+      baseRuntime({
+        fetchPullRequest: async () => {
+          if (mergeCalled) {
+            return pr({ merged: true, mergeCommitSha: "m".repeat(40) });
+          }
+          return pr({ merged: false });
+        },
+        fetchReviewThreads: async () => {
+          threadFetchCount += 1;
+          if (!resolvedViaApi) {
+            return [nonBlockingExactHeadThread()];
+          }
+          return [resolvedThread("PRRT_nb_gate")];
+        },
+        resolveReviewThread: async (threadId: string) => {
+          expect(threadId).toBe("PRRT_nb_gate");
+          resolvedViaApi = true;
+          return { id: threadId, isResolved: true };
+        },
+        mergePullRequest: async (_pr: number, sha: string) => {
+          expect(resolvedViaApi).toBe(true);
+          expect(threadFetchCount).toBeGreaterThanOrEqual(2);
+          expect(sha).toBe(HEAD_B);
+          mergeCalled = true;
+          return { merged: true, sha: "m".repeat(40), message: "merged" };
+        },
+      }) as never,
+      55,
+    );
+    expect(result.kind).toBe("eligible");
+    expect(result.report.unresolvedThreads).toBe(0);
+    expect(resolvedViaApi).toBe(true);
+    expect(mergeCalled).toBe(true);
+    expect(threadFetchCount).toBeGreaterThanOrEqual(2);
+  });
+
+  it("10. remaining ordinary unresolved thread still blocks after NON-BLOCKING resolution", async () => {
+    let threadFetchCount = 0;
+    const result = await runAutoMergeForPullRequest(
+      baseRuntime({
+        fetchReviewThreads: async () => {
+          threadFetchCount += 1;
+          if (threadFetchCount === 1) {
+            return [nonBlockingExactHeadThread(), unresolvedThread("PRRT_ordinary")];
+          }
+          return [resolvedThread("PRRT_nb_gate"), unresolvedThread("PRRT_ordinary")];
+        },
+        resolveReviewThread: async (threadId: string) => {
+          expect(threadId).toBe("PRRT_nb_gate");
+          return { id: threadId, isResolved: true };
+        },
+        mergePullRequest: async () => {
+          throw new Error("merge must not run");
+        },
+      }) as never,
+      55,
+    );
+    expect(result.kind).toBe("blocked");
+    expect(result.reason).toContain("unresolved review threads = 1");
+  });
+
+  it("12. CHANGES REQUESTED cannot become mergeable via NON-BLOCKING resolution", async () => {
+    const result = await runAutoMergeForPullRequest(
+      baseRuntime({
+        fetchReviews: async () => [cursorReview({ body: CHANGES_BODY, state: "CHANGES_REQUESTED" })],
+        fetchReviewThreads: async () => [nonBlockingExactHeadThread()],
+        resolveReviewThread: async (threadId: string) => ({ id: threadId, isResolved: true }),
+        mergePullRequest: async () => {
+          throw new Error("merge must not run");
+        },
+      }) as never,
+      55,
+    );
+    expect(result.kind).toBe("blocked");
+    expect(result.reason).toMatch(/CHANGES REQUESTED/i);
+  });
+
+  it("13. trusted authority path/manual-merge protection remains unchanged", async () => {
+    const result = await runAutoMergeForPullRequest(
+      baseRuntime({
+        fetchPullRequestFiles: async () => [prFile(AUTO_MERGE_WORKFLOW_PATH)],
+        fetchReviewThreads: async () => [nonBlockingExactHeadThread()],
+        resolveReviewThread: async (threadId: string) => ({ id: threadId, isResolved: true }),
+        mergePullRequest: async () => {
+          throw new Error("merge must not run");
+        },
+      }) as never,
+      55,
+    );
+    expect(result.kind).toBe("blocked");
+    expect(result.reason).toMatch(/requires manual merge/i);
   });
 });

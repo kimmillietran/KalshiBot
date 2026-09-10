@@ -134,6 +134,7 @@ export async function runAutoMergeGateCli(
         fetchPullRequest: (number) => api.fetchPullRequest(number),
         fetchReviews: (number) => api.fetchReviews(number),
         fetchReviewThreads: (number) => api.fetchReviewThreads(number),
+        resolveReviewThread: (threadId) => api.resolveReviewThread(threadId),
         fetchCheckRuns: (headSha) => api.fetchCheckRuns(headSha),
         fetchQualityGatesRuns: (headSha) => api.fetchQualityGatesRuns(headSha),
         fetchTrustedQualityGatesWorkflow: () => api.fetchTrustedQualityGatesWorkflow(),

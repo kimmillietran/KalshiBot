@@ -22,6 +22,7 @@ export const AUTO_MERGE_TRUSTED_PATHS = [
   "scripts/github/autoMergeGate.ts",
   "scripts/github/autoMergeGateTypes.ts",
   "scripts/github/parseCursorLrmVerdict.ts",
+  "scripts/github/nonBlockingReviewThreads.ts",
   "scripts/github/githubApi.ts",
   "scripts/github/runAutoMergeGate.ts",
 ] as const;
@@ -85,8 +86,20 @@ export type PullRequestFileSnapshot = {
   status: string;
 };
 
+export type ReviewThreadComment = {
+  authorLogin: string | null;
+  body: string | null;
+  createdAt: string | null;
+  pullRequestReviewDatabaseId: number | null;
+  pullRequestReviewCommitOid: string | null;
+  pullRequestReviewState: string | null;
+};
+
 export type ReviewThread = {
+  /** GraphQL node id; required to resolve the thread via the GitHub API. */
+  id: string | null;
   isResolved: boolean;
+  comments: readonly ReviewThreadComment[];
 };
 
 export type CheckRunSnapshot = {

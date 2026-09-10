@@ -1,4 +1,5 @@
 import { parseGovernedCursorLrmVerdict } from "./parseCursorLrmVerdict";
+import { selectAutoResolvableNonBlockingThreadIds } from "./nonBlockingReviewThreads";
 import {
   AUTO_MERGE_TRUSTED_PATHS,
   GITHUB_WORKFLOWS_PREFIX,
@@ -33,9 +34,12 @@ import {
  *
  * Formal CHANGES_REQUESTED review state on the current head still blocks.
  * DISMISSED and PENDING reviews never authorize merge; the latest ACTIVE
- * exact-head Cursor LRM wins. This helper never dismisses reviews, resolves
- * threads, or bypasses branch protection. Merge uses merge_method=merge
- * and sha=CURRENT_HEAD.
+ * exact-head Cursor LRM wins. Before evaluation, this helper may resolve
+ * only unresolved review threads that are explicitly marked `[NON-BLOCKING]`
+ * by exact-head trusted cursor[bot] with no replies; it never dismisses
+ * reviews, never auto-resolves unmarked/human/stale threads, and never
+ * bypasses branch protection. Merge uses merge_method=merge and
+ * sha=CURRENT_HEAD.
  *
  * Bootstrap: the first PR that adds this workflow must be merged manually.
  * Subsequent PRs that change the trusted auto-merge helper or the Quality
@@ -556,6 +560,7 @@ export type AutoMergeRuntime = {
   fetchPullRequest: (prNumber: number) => Promise<PullRequestSnapshot>;
   fetchReviews: (prNumber: number) => Promise<readonly GithubReview[]>;
   fetchReviewThreads: (prNumber: number) => Promise<EvaluateInput["threads"]>;
+  resolveReviewThread: (threadId: string) => Promise<{ id: string; isResolved: boolean }>;
   fetchCheckRuns: (headSha: string) => Promise<EvaluateInput["checkRuns"]>;
   fetchQualityGatesRuns: (headSha: string) => Promise<readonly QualityGatesRunSnapshot[]>;
   fetchTrustedQualityGatesWorkflow: () => Promise<QualityGatesWorkflowIdentity>;
@@ -588,7 +593,7 @@ export async function runAutoMergeForPullRequest(
   }
 
   try {
-    const [reviews, threads, compare, bootstrapPresent, prFiles, trustedQualityGatesWorkflow] =
+    const [reviews, initialThreads, compare, bootstrapPresent, prFiles, trustedQualityGatesWorkflow] =
       await Promise.all([
         runtime.fetchReviews(prNumber),
         runtime.fetchReviewThreads(prNumber),
@@ -601,6 +606,49 @@ export async function runAutoMergeForPullRequest(
       runtime.fetchCheckRuns(pullRequest.headSha),
       runtime.fetchQualityGatesRuns(pullRequest.headSha),
     ]);
+
+    let threads = initialThreads;
+    const exactHeadCursor = selectLatestExactHeadCursorReview(reviews, pullRequest.headSha);
+    if (exactHeadCursor) {
+      const { eligibleThreadIds, decisions } = selectAutoResolvableNonBlockingThreadIds({
+        threads,
+        currentHeadSha: pullRequest.headSha,
+        reviews,
+      });
+      if (eligibleThreadIds.length > 0) {
+        runtime.writeLog(
+          [
+            "Auto-resolving trusted [NON-BLOCKING] Cursor review threads:",
+            ...eligibleThreadIds.map((id) => `  ${id}`),
+            ...decisions
+              .filter((decision) => decision.kind === "eligible")
+              .map((decision) => `  reason: ${decision.reason}`),
+          ].join("\n"),
+        );
+        try {
+          for (const threadId of eligibleThreadIds) {
+            const resolved = await runtime.resolveReviewThread(threadId);
+            if (!resolved.isResolved) {
+              throw new Error(`resolveReviewThread returned unresolved for ${threadId}`);
+            }
+          }
+        } catch (error) {
+          return {
+            kind: "system_failure",
+            reason: `failed to resolve trusted [NON-BLOCKING] review thread(s): ${String(error)}`,
+            authorizedHeadSha: null,
+            report: emptyReport({
+              prNumber,
+              headSha: pullRequest.headSha,
+              decision: "SYSTEM FAILURE",
+              reason: "failed to resolve trusted [NON-BLOCKING] review thread(s)",
+            }),
+          };
+        }
+        // Actual GitHub state must be re-read; do not pretend in-memory resolution.
+        threads = await runtime.fetchReviewThreads(prNumber);
+      }
+    }
 
     const evaluation = evaluateAutoMergeGate({
       pullRequest,

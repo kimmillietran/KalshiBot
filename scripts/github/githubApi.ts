@@ -167,6 +167,57 @@ export function mapReview(raw: {
   };
 }
 
+export function mapReviewThreadComment(raw: {
+  author?: { login?: unknown } | null;
+  body?: unknown;
+  createdAt?: unknown;
+  pullRequestReview?: {
+    databaseId?: unknown;
+    state?: unknown;
+    commit?: { oid?: unknown } | null;
+  } | null;
+}): import("./autoMergeGateTypes").ReviewThreadComment {
+  return {
+    authorLogin: typeof raw.author?.login === "string" ? raw.author.login : null,
+    body: typeof raw.body === "string" ? raw.body : null,
+    createdAt: typeof raw.createdAt === "string" ? raw.createdAt : null,
+    pullRequestReviewDatabaseId:
+      typeof raw.pullRequestReview?.databaseId === "number"
+        ? raw.pullRequestReview.databaseId
+        : null,
+    pullRequestReviewCommitOid:
+      typeof raw.pullRequestReview?.commit?.oid === "string"
+        ? raw.pullRequestReview.commit.oid
+        : null,
+    pullRequestReviewState:
+      typeof raw.pullRequestReview?.state === "string" ? raw.pullRequestReview.state : null,
+  };
+}
+
+export function mapReviewThread(raw: {
+  id?: unknown;
+  isResolved?: unknown;
+  comments?: {
+    nodes?: Array<Parameters<typeof mapReviewThreadComment>[0] | null> | null;
+  } | null;
+}): ReviewThread {
+  if (typeof raw.isResolved !== "boolean") {
+    throw new GithubApiError("malformed review thread node: isResolved missing");
+  }
+  const id = typeof raw.id === "string" && raw.id.trim() !== "" ? raw.id : null;
+  const commentNodes = raw.comments?.nodes;
+  if (!Array.isArray(commentNodes)) {
+    throw new GithubApiError("malformed review thread node: comments missing");
+  }
+  const comments = commentNodes.map((node) => {
+    if (node == null) {
+      throw new GithubApiError("malformed review thread comment node");
+    }
+    return mapReviewThreadComment(node);
+  });
+  return { id, isResolved: raw.isResolved, comments };
+}
+
 export function mapPullRequestFile(raw: {
   filename?: unknown;
   previous_filename?: unknown;
@@ -334,7 +385,22 @@ export function createGithubApi(config: GithubApiConfig) {
                   pullRequest(number: $number) {
                     reviewThreads(first: 100, after: $cursor) {
                       pageInfo { hasNextPage endCursor }
-                      nodes { isResolved }
+                      nodes {
+                        id
+                        isResolved
+                        comments(first: 100) {
+                          nodes {
+                            author { login }
+                            body
+                            createdAt
+                            pullRequestReview {
+                              databaseId
+                              state
+                              commit { oid }
+                            }
+                          }
+                        }
+                      }
                     }
                   }
                 }
@@ -355,7 +421,7 @@ export function createGithubApi(config: GithubApiConfig) {
               pullRequest?: {
                 reviewThreads?: {
                   pageInfo?: { hasNextPage?: boolean; endCursor?: string | null };
-                  nodes?: Array<{ isResolved?: boolean } | null> | null;
+                  nodes?: Array<Parameters<typeof mapReviewThread>[0] | null> | null;
                 };
               } | null;
             } | null;
@@ -372,10 +438,10 @@ export function createGithubApi(config: GithubApiConfig) {
           throw new GithubApiError("malformed unexpected API response during review thread pagination");
         }
         for (const node of connection.nodes) {
-          if (node == null || typeof node.isResolved !== "boolean") {
-            throw new GithubApiError("malformed review thread node: isResolved missing");
+          if (node == null) {
+            throw new GithubApiError("malformed review thread node");
           }
-          threads.push({ isResolved: node.isResolved });
+          threads.push(mapReviewThread(node));
         }
         if (!connection.pageInfo?.hasNextPage) {
           break;
@@ -386,6 +452,57 @@ export function createGithubApi(config: GithubApiConfig) {
         cursor = connection.pageInfo.endCursor;
       }
       return threads;
+    },
+
+    async resolveReviewThread(threadId: string): Promise<{ id: string; isResolved: boolean }> {
+      if (typeof threadId !== "string" || threadId.trim() === "") {
+        throw new GithubApiError("resolveReviewThread requires a non-empty GraphQL thread id");
+      }
+      const response = await githubFetch("/graphql", {
+        method: "POST",
+        body: JSON.stringify({
+          query: `
+            mutation($threadId: ID!) {
+              resolveReviewThread(input: { threadId: $threadId }) {
+                thread {
+                  id
+                  isResolved
+                }
+              }
+            }
+          `,
+          variables: { threadId },
+        }),
+      });
+      const payload = await readJson<{
+        errors?: Array<{ message?: string }>;
+        data?: {
+          resolveReviewThread?: {
+            thread?: { id?: unknown; isResolved?: unknown } | null;
+          } | null;
+        };
+      }>(response, "resolveReviewThread GraphQL");
+
+      if (payload.errors?.length) {
+        throw new GithubApiError(
+          `GraphQL resolveReviewThread failed: ${payload.errors.map((error) => error.message).join("; ")}`,
+        );
+      }
+      const thread = payload.data?.resolveReviewThread?.thread;
+      if (
+        thread == null
+        || typeof thread.id !== "string"
+        || thread.id.trim() === ""
+        || typeof thread.isResolved !== "boolean"
+      ) {
+        throw new GithubApiError("malformed resolveReviewThread response");
+      }
+      if (!thread.isResolved) {
+        throw new GithubApiError(
+          `resolveReviewThread did not leave thread resolved (id=${thread.id})`,
+        );
+      }
+      return { id: thread.id, isResolved: thread.isResolved };
     },
 
     async fetchCheckRuns(headSha: string): Promise<CheckRunSnapshot[]> {
