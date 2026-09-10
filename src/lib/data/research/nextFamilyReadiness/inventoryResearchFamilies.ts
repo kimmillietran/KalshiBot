@@ -14,6 +14,7 @@ import { MOMENTUM_BUCKET_DEFINITIONS } from "../dimensions/momentum/momentumBuck
 
 import type {
   CompletedLeadLagLineageSummary,
+  CompletedTobImbalanceTrainLineageSummary,
   FamilyInventory,
   MicrostructureDataSupportRow,
   NextFamilyReadinessIo,
@@ -149,6 +150,39 @@ export function applyLeadLagEmpiricalDisposition(
     causalSemanticsNotes: [
       ...inventory.causalSemanticsNotes,
       "M12.8 discovery→validation→holdout completed for one locked candidate; lineage is spent for historical evidence.",
+    ],
+  };
+}
+
+export function applyTobImbalanceTrainDisposition(
+  inventory: FamilyInventory,
+  lineage: CompletedTobImbalanceTrainLineageSummary,
+): FamilyInventory {
+  if (inventory.familyId !== "spread-liquidity-microstructure") {
+    return inventory;
+  }
+  return {
+    ...inventory,
+    // Broad family remains partial — only the v1 subfamily TRAIN lineage stopped.
+    maturity: "partial",
+    familyDefinitionAvailable: true,
+    tobImbalanceV1StoppedAfterTrain: true,
+    broadFamilyNotExhausted: true,
+    empiricalLineageNotes: [
+      lineage.lineageSummary,
+      `Disposition=${lineage.disposition} (not statistical-reject / not holdout-reject / not globally disproven).`,
+      `Shortlist=${lineage.shortlistCount}; validationAuthorized=${String(lineage.validationAuthorized)}; `
+        + `holdoutAuthorized=${String(lineage.holdoutAuthorized)}; `
+        + `promotionAuthorized=${String(lineage.promotionAuthorized)}; `
+        + `freezeAuthorized=${String(lineage.prospectiveFreezeAuthorized)}.`,
+      lineage.reasonNoCandidateAdvanced,
+      "Broad spread-liquidity-microstructure is NOT exhausted; future independent subfamilies "
+        + "require new governed definitions and fresh outcome-isolation plans.",
+      "Forbidden: resurrect reverse-direction / learned-sign / neighboring cells from this TRAIN table.",
+    ],
+    causalSemanticsNotes: [
+      ...inventory.causalSemanticsNotes,
+      "M13.0b sealed same-direction TOB-imbalance-v1 TRAIN discovery completed with zero eligible candidates.",
     ],
   };
 }

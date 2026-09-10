@@ -94,9 +94,18 @@ ${dimList}
   <p>completedLineage: ${escapeHtml(
     report.completedLineage ? report.completedLineage.lineageSummary : "null",
   )}</p>
+  <h2>TOB-imbalance-v1 TRAIN disposition</h2>
+  <p>tobImbalanceLineageDisposition: ${escapeHtml(report.tobImbalanceLineageDisposition)}</p>
+  <p>completedTobImbalanceTrainLineage: ${escapeHtml(
+    report.completedTobImbalanceTrainLineage
+      ? report.completedTobImbalanceTrainLineage.lineageSummary
+      : "null",
+  )}</p>
+  <p>requiresFreshOutcomeIsolation: ${String(report.requiresFreshOutcomeIsolation)}</p>
   <h2>Selection</h2>
   <p>selectionStatus: ${escapeHtml(report.selectionStatus)}</p>
   <p>recommendedFamily: ${escapeHtml(report.recommendedFamily ?? "null")}</p>
+  <p>recommendedSubfamily: ${escapeHtml(report.recommendedSubfamily ?? "null")}</p>
   <p>recommendedNextAction: ${escapeHtml(report.recommendedNextAction)}</p>
   <p>confirmatoryReuseForbidden: ${String(report.confirmatoryReuseForbidden)}</p>
   <p>${escapeHtml(report.confirmatoryReuseWarning)}</p>

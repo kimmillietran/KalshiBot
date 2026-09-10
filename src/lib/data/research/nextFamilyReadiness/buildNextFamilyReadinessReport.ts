@@ -5,10 +5,15 @@ import { stableStringify } from "@/lib/trading/config/hashConfig";
 
 import {
   applyLeadLagEmpiricalDisposition,
+  applyTobImbalanceTrainDisposition,
   inventoryAllFamilies,
   listEvaluatedFamilyIds,
 } from "./inventoryResearchFamilies";
 import { loadCompletedLeadLagLineage } from "./loadCompletedLeadLagLineage";
+import {
+  buildMicrostructureContaminationReusePolicy,
+  loadCompletedTobImbalanceTrainLineage,
+} from "./loadCompletedTobImbalanceTrainLineage";
 import {
   loadExploratoryCaptureIdentity,
   loadFadeIndependentMarketsPerEightHours,
@@ -88,11 +93,22 @@ export function buildNextFamilyReadinessReport(input: {
   const completedLineage = input.config.leadLagLineage
     ? loadCompletedLeadLagLineage({ io: input.io, binding: input.config.leadLagLineage })
     : null;
+  const completedTobImbalanceTrainLineage = input.config.tobImbalanceLineage
+    ? loadCompletedTobImbalanceTrainLineage({
+        io: input.io,
+        binding: input.config.tobImbalanceLineage,
+      })
+    : null;
 
   let inventories = inventoryAllFamilies(input.io);
   if (completedLineage) {
     inventories = inventories.map((inventory) =>
       applyLeadLagEmpiricalDisposition(inventory, completedLineage)
+    );
+  }
+  if (completedTobImbalanceTrainLineage) {
+    inventories = inventories.map((inventory) =>
+      applyTobImbalanceTrainDisposition(inventory, completedTobImbalanceTrainLineage)
     );
   }
 
@@ -129,6 +145,20 @@ export function buildNextFamilyReadinessReport(input: {
         requiredFreshEss: completedLineage.prospectiveRequiredFreshEss,
       });
     }
+    if (
+      completedTobImbalanceTrainLineage
+      && inventory.familyId === "spread-liquidity-microstructure"
+    ) {
+      incidence = {
+        ...incidence,
+        status: "insufficient-evidence",
+        source: "bound-m13.0b-tob-imbalance-train-disposition",
+        note:
+          "TOB-imbalance-v1 TRAIN discovery completed with zero eligible shortlist candidates. "
+          + "Do not treat that TRAIN incidence as confirmatory evidence or as justification to "
+          + "flip signs / expand the grid. Future independent subfamilies need fresh isolation.",
+      };
+    }
     return scoreFamilyReadiness({
       inventory,
       incidence,
@@ -138,12 +168,25 @@ export function buildNextFamilyReadinessReport(input: {
     });
   });
 
-  // Deterministic order by familyId (never filesystem / input order).
   familyReadiness.sort((left, right) => left.familyId.localeCompare(right.familyId));
 
   const selection = selectNextFamily(familyReadiness, {
     leadLagDeferred: completedLineage != null,
   });
+
+  const requiresFreshOutcomeIsolation =
+    selection.recommendedNextAction === "prepare-new-independent-subfamily-definition"
+    || (completedTobImbalanceTrainLineage != null
+      && selection.recommendedFamily === "spread-liquidity-microstructure");
+
+  const recommendedSubfamily =
+    selection.recommendedNextAction === "prepare-new-independent-subfamily-definition"
+      ? null // must be newly defined; do not invent from PR #80 outcomes
+      : null;
+
+  const contaminationPolicy = completedTobImbalanceTrainLineage
+    ? buildMicrostructureContaminationReusePolicy(completedTobImbalanceTrainLineage)
+    : null;
 
   const identityPayload = {
     analysisVersion: NEXT_FAMILY_READINESS_ANALYSIS_VERSION,
@@ -171,6 +214,18 @@ export function buildNextFamilyReadinessReport(input: {
           disposition: "deferred-for-prospective-replication",
         }
       : null,
+    completedTobImbalanceTrainLineage: completedTobImbalanceTrainLineage
+      ? {
+          discoveryIdentity: completedTobImbalanceTrainLineage.discoveryIdentity,
+          familyDefinitionIdentity: completedTobImbalanceTrainLineage.familyDefinitionIdentity,
+          evidenceContractIdentity: completedTobImbalanceTrainLineage.evidenceContractIdentity,
+          splitManifestIdentity: completedTobImbalanceTrainLineage.splitManifestIdentity,
+          trainRunId: completedTobImbalanceTrainLineage.trainRunId,
+          shortlistCount: completedTobImbalanceTrainLineage.shortlistCount,
+          discoveryStatus: completedTobImbalanceTrainLineage.discoveryStatus,
+          disposition: completedTobImbalanceTrainLineage.disposition,
+        }
+      : null,
     inventoryDigest: inventories.map((inventory) => ({
       familyId: inventory.familyId,
       modulePathsPresent: inventory.modulePathsPresent,
@@ -179,10 +234,13 @@ export function buildNextFamilyReadinessReport(input: {
       maturity: inventory.maturity,
       multiplicity: inventory.multiplicity,
       microstructureDataSupport: inventory.microstructureDataSupport ?? null,
+      tobImbalanceV1StoppedAfterTrain: inventory.tobImbalanceV1StoppedAfterTrain ?? false,
+      broadFamilyNotExhausted: inventory.broadFamilyNotExhausted ?? false,
     })),
     selectionStatus: selection.selectionStatus,
     recommendedFamily: selection.recommendedFamily,
     recommendedNextAction: selection.recommendedNextAction,
+    requiresFreshOutcomeIsolation,
   };
   const reportIdentityHash = sha256Hex(stableStringify(identityPayload));
   const outputs = resolveNextFamilyReadinessOutputPaths({
@@ -208,6 +266,14 @@ export function buildNextFamilyReadinessReport(input: {
           "Lead-lag prospective freeze (M12.8e) is separate and requires capture-budget approval before any fresh capture.",
         ]
       : []),
+    ...(completedTobImbalanceTrainLineage
+      ? [
+          "TOB-imbalance-v1 TRAIN run is outcome-consumed for that subfamily; related sign-flipped "
+            + "imbalance theses cannot treat it as untouched TRAIN/VALIDATION/HOLDOUT.",
+          "Any new microstructure subfamily requires an independent definition + fresh outcome-isolation plan "
+            + "(no mining of the M13.0b 12-cell outcome table).",
+        ]
+      : []),
   ];
 
   const governancePipelineExpectations = [
@@ -226,6 +292,7 @@ export function buildNextFamilyReadinessReport(input: {
     generatedAt: input.generatedAt ?? new Date().toISOString(),
     reportIdentityHash,
     completedLineage,
+    completedTobImbalanceTrainLineage,
     historicalVerdict: completedLineage?.holdoutStatisticalVerdict ?? null,
     prospectiveReplicationStatus: completedLineage
       ? "available-but-not-authorized"
@@ -246,6 +313,10 @@ export function buildNextFamilyReadinessReport(input: {
     lineageDisposition: completedLineage
       ? "deferred-for-prospective-replication"
       : "not-applicable",
+    tobImbalanceLineageDisposition: completedTobImbalanceTrainLineage
+      ? "stopped-after-train-no-eligible-candidates"
+      : "not-applicable",
+    microstructureContaminationReusePolicy: contaminationPolicy,
     candidateShoppingForbidden: true,
     promotionForbidden: true,
     freezeForbidden: true,
@@ -254,6 +325,8 @@ export function buildNextFamilyReadinessReport(input: {
     familiesEvaluated: listEvaluatedFamilyIds(),
     familyReadiness,
     recommendedFamily: selection.recommendedFamily,
+    recommendedSubfamily,
+    requiresFreshOutcomeIsolation,
     selectionStatus: selection.selectionStatus,
     recommendedNextAction: selection.recommendedNextAction,
     recommendationRationale: selection.recommendationRationale,
@@ -263,7 +336,11 @@ export function buildNextFamilyReadinessReport(input: {
     confirmatoryReuseWarning:
       "Exploratory capture identities inspected by this audit are design data only and must never "
       + "be silently reused as prospective confirmatory evidence for a future family. "
-      + "Historical lead-lag Runs 1–3 are outcome-inspected and cannot become fresh prospective N.",
+      + "Historical lead-lag Runs 1–3 are outcome-inspected and cannot become fresh prospective N. "
+      + (completedTobImbalanceTrainLineage
+        ? `TOB-imbalance-v1 TRAIN run ${completedTobImbalanceTrainLineage.trainRunId} is outcome-consumed `
+          + "for that subfamily; sign-flipped / related imbalance reuse as untouched is forbidden."
+        : ""),
     whatMustBeFrozenBeforeNewCapture,
     governancePipelineExpectations,
     outputPath: outputs.outputPath,
