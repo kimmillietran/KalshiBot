@@ -13,6 +13,7 @@ export {
   computeMinimumDetectableEffect,
   computeObservedPower,
   computeRequiredSampleSize,
+  zCriticalForOneTailedAlpha,
   mean,
   sampleStandardDeviation,
   sampleVariance,

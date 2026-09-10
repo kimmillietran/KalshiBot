@@ -1,9 +1,29 @@
 /** Fixed normal quantiles for deterministic power analysis (one-tailed α, power). */
 export const NORMAL_Z_ONE_TAILED_ALPHA_005 = 1.6448536269;
+export const NORMAL_Z_ONE_TAILED_ALPHA_010 = 1.2815515655;
+export const NORMAL_Z_ONE_TAILED_ALPHA_025 = 1.9599639845;
+export const NORMAL_Z_ONE_TAILED_ALPHA_001 = 2.326347874;
 export const NORMAL_Z_POWER_080 = 0.8416212336;
 export const NORMAL_Z_POWER_090 = 1.2815515655;
 export const NORMAL_Z_POWER_095 = 1.6448536269;
 export const NORMAL_Z_TWO_TAILED_975 = 1.9599639845;
+
+/** One-tailed z_{1-α} for supported α values (no continuous inverse-normal fork). */
+export function zCriticalForOneTailedAlpha(alpha: number): number {
+  if (alpha === 0.05) {
+    return NORMAL_Z_ONE_TAILED_ALPHA_005;
+  }
+  if (alpha === 0.1 || alpha === 0.10) {
+    return NORMAL_Z_ONE_TAILED_ALPHA_010;
+  }
+  if (alpha === 0.025) {
+    return NORMAL_Z_ONE_TAILED_ALPHA_025;
+  }
+  if (alpha === 0.01) {
+    return NORMAL_Z_ONE_TAILED_ALPHA_001;
+  }
+  throw new Error(`Unsupported one-tailed alpha: ${alpha}`);
+}
 
 const T_CRITICAL_975: readonly number[] = [
   12.706, 4.303, 3.182, 2.776, 2.571, 2.447, 2.365, 2.306, 2.262, 2.228,
@@ -98,7 +118,7 @@ export function computeRequiredSampleSize(input: {
     return null;
   }
 
-  const zAlpha = NORMAL_Z_ONE_TAILED_ALPHA_005;
+  const zAlpha = zCriticalForOneTailedAlpha(input.alpha);
   const zBeta = zCriticalForPower(input.targetPower);
   const numerator = (zAlpha + zBeta) ** 2 * input.standardDeviation ** 2;
   const denominator = input.edgeCents ** 2;
@@ -116,7 +136,7 @@ export function computeMinimumDetectableEffect(input: {
     return null;
   }
 
-  const zAlpha = NORMAL_Z_ONE_TAILED_ALPHA_005;
+  const zAlpha = zCriticalForOneTailedAlpha(input.alpha);
   const zBeta = zCriticalForPower(input.targetPower);
   const mde =
     ((zAlpha + zBeta) * input.standardDeviation) / Math.sqrt(input.sampleSize);
@@ -143,7 +163,7 @@ export function computeObservedPower(input: {
     return roundMetric(input.alpha);
   }
 
-  const zAlpha = NORMAL_Z_ONE_TAILED_ALPHA_005;
+  const zAlpha = zCriticalForOneTailedAlpha(input.alpha);
   const nonCentrality =
     (input.meanPnlCents * Math.sqrt(input.sampleSize)) / input.standardDeviation;
   const zScore = zAlpha - nonCentrality;
