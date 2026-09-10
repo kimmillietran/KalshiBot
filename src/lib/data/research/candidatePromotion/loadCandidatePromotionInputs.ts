@@ -132,19 +132,6 @@ function parseDocument<T>(path: string, json: string, schema: z.ZodType<T>): T {
   return result.data;
 }
 
-function readRequiredDocument<T>(
-  io: CandidatePromotionIo,
-  path: string,
-  schema: z.ZodType<T>,
-  label: string,
-): T {
-  if (!io.fileExists(path)) {
-    throw new CandidatePromotionError(`Missing required ${label}: ${path}`);
-  }
-
-  return parseDocument(path, io.readFile(path), schema);
-}
-
 function readOptionalDocument<T>(
   io: CandidatePromotionIo,
   path: string,
