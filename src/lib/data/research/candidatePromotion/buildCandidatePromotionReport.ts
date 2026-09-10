@@ -11,9 +11,18 @@ import {
 import type {
   BuildCandidatePromotionReportInput,
   CandidatePromotionDecision,
+  CandidatePromotionInputArtifactHashes,
   CandidatePromotionReport,
   CandidatePromotionSummary,
 } from "./candidatePromotionTypes";
+import { CANDIDATE_PROMOTION_EVIDENCE_ANALYSIS_VERSION } from "./candidatePromotionTypes";
+
+const EMPTY_INPUT_HASHES: CandidatePromotionInputArtifactHashes = {
+  hypothesisValidation: null,
+  strategySynthesis: null,
+  harnessResults: null,
+  statisticalSignificance: null,
+};
 
 function buildSummary(
   promotions: readonly { decision: CandidatePromotionDecision }[],
@@ -63,6 +72,9 @@ export function buildCandidatePromotionReport(
     config,
     summary: buildSummary(promotions),
     promotions,
+    evidenceAnalysisVersion: CANDIDATE_PROMOTION_EVIDENCE_ANALYSIS_VERSION,
+    inputArtifactContentHashes:
+      input.inputs.inputArtifactContentHashes ?? EMPTY_INPUT_HASHES,
   };
 }
 

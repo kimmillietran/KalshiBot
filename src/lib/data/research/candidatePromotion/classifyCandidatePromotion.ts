@@ -1,3 +1,9 @@
+import {
+  computePromotionAccepted,
+  hashCandidateDefinitionContent,
+  hashValidationEntryContent,
+} from "@/lib/data/research/candidatePreregistrationEligibility/promotionEvidenceIdentity";
+
 import type {
   CandidatePromotionConfig,
   CandidatePromotionDecision,
@@ -236,6 +242,7 @@ export function classifyCandidatePromotion(
     decision = "exploratory";
   }
 
+  const validationPassesMetric = metrics.validationPasses;
   return {
     strategyId: input.strategy.strategyId,
     hypothesisId: input.strategy.hypothesisId,
@@ -246,6 +253,17 @@ export function classifyCandidatePromotion(
     blockingIssues: [...new Set(blockingIssues)],
     warnings: [...new Set(warnings)],
     recommendedNextAction: resolveNextAction({ decision, blockingIssues }),
+    evidence: {
+      validationEntryContentHash: input.validation
+        ? hashValidationEntryContent(input.validation)
+        : null,
+      candidateDefinitionContentHash: hashCandidateDefinitionContent(input.strategy),
+      validationPasses: validationPassesMetric,
+      promotionAccepted: computePromotionAccepted({
+        decision,
+        validationPasses: validationPassesMetric,
+      }),
+    },
   };
 }
 

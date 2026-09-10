@@ -240,6 +240,17 @@ export function buildFullResearchSteps(
       independent: false,
     },
     {
+      id: "preregistration-eligibility",
+      label: "Preregistration eligibility gate",
+      npmScript: "research:verify-preregistration-eligibility",
+      args: [],
+      expectedOutputs: [
+        "data/research-results/preregistration-eligibility.json",
+      ],
+      upstreamStepIds: ["candidate-promotions"],
+      independent: false,
+    },
+    {
       id: "artifact-index",
       label: "Research artifact index",
       npmScript: "research:artifact-index",

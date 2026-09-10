@@ -34,6 +34,7 @@
     "research:harness": "tsx scripts/research/runStrategyHarness.ts",
     "research:harness-results": "tsx scripts/research/buildHarnessResults.ts",
     "research:candidate-promotions": "tsx scripts/research/buildCandidatePromotions.ts",
+    "research:verify-preregistration-eligibility": "tsx scripts/research/verifyPreregistrationEligibility.ts",
     "research:candidate-registry": "tsx scripts/research/buildResearchCandidateRegistry.ts",
     "research:cross-validation": "tsx scripts/research/buildCrossValidation.ts",
     "research:coverage-validation": "tsx scripts/research/buildCoverageAwareValidation.ts",

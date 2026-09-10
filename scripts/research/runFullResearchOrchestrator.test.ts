@@ -19,6 +19,7 @@ const BASE_REGISTERED_SCRIPTS = [
   "research:harness-results",
   "research:candidate-registry",
   "research:candidate-promotions",
+  "research:verify-preregistration-eligibility",
   "research:artifact-index",
   "research:hypothesis-lifecycle",
   "research:hypothesis-history",
@@ -49,7 +50,7 @@ describe("runFullResearchOrchestratorCommand", () => {
     }, { generatedAt: GENERATED_AT });
 
     expect(exitCode).toBe(0);
-    expect(calls).toHaveLength(17);
+    expect(calls).toHaveLength(18);
     expect(calls.some((call) => call.npmScript === "research:execute-expansion-import")).toBe(false);
 
     const parsed = JSON.parse(writes.get(OUTPUT_PATH)!);
