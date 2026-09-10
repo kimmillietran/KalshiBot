@@ -143,24 +143,38 @@ export function scoreFamilyReadiness(input: {
     rationale: inventory.causalSemanticsNotes.join(" "),
   });
 
-  dims.push({
-    dimension: "historicalDataCoverage",
-    status:
-      inventory.maturity === "mature"
+  const historicalCoverageStatus: ReadinessStatus =
+    inventory.maturity === "empirically-investigated"
+      ? "insufficient-evidence"
+      : inventory.maturity === "mature"
         ? "needs-work"
         : inventory.maturity === "partial"
           ? "insufficient-evidence"
-          : "not-established",
+          : "not-established";
+  dims.push({
+    dimension: "historicalDataCoverage",
+    status: historicalCoverageStatus,
     rationale:
-      "Historical coverage for a next-family design exists primarily as exploratory capture/atlas artifacts; "
-      + "not sealed confirmatory evidence for this family.",
+      inventory.maturity === "empirically-investigated"
+        ? "Lead-lag historical lineage completed: holdout underpowered (ESS below required evidence). "
+          + "Historical runs are spent design/outcome-inspected data and cannot count as fresh confirmatory N."
+        : "Historical coverage for a next-family design exists primarily as exploratory capture/atlas artifacts; "
+          + "not sealed confirmatory evidence for this family.",
   });
 
   dims.push({
     dimension: "independentSampleAvailability",
-    status: inventory.familyId === "btc-kalshi-lead-lag" ? "needs-work" : "insufficient-evidence",
+    status:
+      inventory.maturity === "empirically-investigated"
+        ? "insufficient-evidence"
+        : inventory.familyId === "btc-kalshi-lead-lag"
+          ? "needs-work"
+          : "insufficient-evidence",
     rationale:
-      "Independent market/day sample design is not yet frozen for a prospective contract.",
+      inventory.maturity === "empirically-investigated"
+        ? "Independent historical sample for the locked candidate is exhausted for confirmatory reuse; "
+          + "fresh prospective ESS would be required under the bound readiness contract."
+        : "Independent market/day sample design is not yet frozen for a prospective contract.",
   });
 
   dims.push({
@@ -218,19 +232,26 @@ export function scoreFamilyReadiness(input: {
   const tinyObs =
     incidence.estimatedEligibleObservationsPerCaptureHour !== null
     && incidence.estimatedEligibleObservationsPerCaptureHour < 0.25;
-  const powerStatus: ReadinessStatus = tinyObs
-    ? "blocked"
-    : incidence.status === "needs-definition"
-      ? "needs-definition"
-      : incidence.status === "insufficient-evidence"
-        ? "insufficient-evidence"
-        : "needs-work";
+  const powerStatus: ReadinessStatus =
+    inventory.maturity === "empirically-investigated"
+      ? "insufficient-evidence"
+      : tinyObs
+        ? "blocked"
+        : incidence.status === "needs-definition"
+          ? "needs-definition"
+          : incidence.status === "insufficient-evidence"
+            ? "insufficient-evidence"
+            : "needs-work";
   dims.push({
     dimension: "powerFeasibility",
     status: powerStatus,
     rationale:
-      incidence.powerAssumptions
-      ?? "Power feasibility not established without incidence + explicit power assumptions.",
+      inventory.maturity === "empirically-investigated"
+        ? "Prospective power model remains bound (required fresh ESS from readiness artifact), but collection "
+          + "is operationally costly and unauthorized without capture-budget approval. "
+          + "Do not retune MDE/alpha/power to reduce N."
+        : incidence.powerAssumptions
+          ?? "Power feasibility not established without incidence + explicit power assumptions.",
   });
 
   dims.push({
@@ -255,25 +276,46 @@ export function scoreFamilyReadiness(input: {
 
   dims.push({
     dimension: "existingArtifactProvenance",
-    status: inventory.maturity === "mature" ? "needs-work" : "not-established",
+    status:
+      inventory.maturity === "empirically-investigated"
+        ? "ready"
+        : inventory.maturity === "mature"
+          ? "needs-work"
+          : "not-established",
     rationale:
-      "Existing family outputs (if any) are exploratory/diagnostic unless sealed under a future governed contract.",
+      inventory.maturity === "empirically-investigated"
+        ? "Identity-addressed discovery/validation/holdout/readiness artifacts are bound; "
+          + "historical underpowered verdict is preserved without relabeling."
+        : "Existing family outputs (if any) are exploratory/diagnostic unless sealed under a future governed contract.",
   });
 
   dims.push({
     dimension: "implementationMaturity",
     status:
-      inventory.maturity === "mature"
+      inventory.maturity === "empirically-investigated"
         ? "ready"
-        : inventory.maturity === "partial"
-          ? "needs-work"
-          : inventory.maturity === "needs-definition"
-            ? "needs-definition"
-            : "not-established",
+        : inventory.maturity === "mature"
+          ? "ready"
+          : inventory.maturity === "partial"
+            ? "needs-work"
+            : inventory.maturity === "needs-definition"
+              ? "needs-definition"
+              : "not-established",
     rationale: `Inventory maturity=${inventory.maturity}.`,
   });
 
   const blockingRequirements: string[] = [];
+  if (inventory.maturity === "empirically-investigated") {
+    blockingRequirements.push(
+      "Do not promote or freeze the locked lead-lag candidate; historical holdout remains underpowered.",
+    );
+    blockingRequirements.push(
+      "Do not reopen other validation survivors against historical holdout (candidate shopping forbidden).",
+    );
+    blockingRequirements.push(
+      "Prospective lead-lag replication remains available-but-not-authorized until capture-budget approval + M12.8e freeze.",
+    );
+  }
   if (!inventory.familyDefinitionAvailable) {
     blockingRequirements.push(
       "Define a governed family analysis contract/module before discovery freeze.",

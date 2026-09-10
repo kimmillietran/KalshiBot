@@ -82,9 +82,22 @@ ${dimList}
   <p>analysisVersion: ${escapeHtml(report.analysisVersion)}</p>
   <p>reportIdentityHash: ${escapeHtml(report.reportIdentityHash)}</p>
   <p>generatedAt: ${escapeHtml(report.generatedAt)}</p>
+  <h2>Lead-lag lineage disposition</h2>
+  <p>lineageDisposition: ${escapeHtml(report.lineageDisposition)}</p>
+  <p>historicalVerdict: ${escapeHtml(report.historicalVerdict ?? "null")}</p>
+  <p>prospectiveReplicationStatus: ${escapeHtml(report.prospectiveReplicationStatus)}</p>
+  <p>prospectiveRequiredFreshEss: ${report.prospectiveRequiredFreshEss ?? "null"}</p>
+  <p>candidateShoppingForbidden: ${String(report.candidateShoppingForbidden)}</p>
+  <p>promotionForbidden: ${String(report.promotionForbidden)}</p>
+  <p>freezeForbidden: ${String(report.freezeForbidden)}</p>
+  <p>prospectiveCaptureStarted: ${String(report.prospectiveCaptureStarted)}</p>
+  <p>completedLineage: ${escapeHtml(
+    report.completedLineage ? report.completedLineage.lineageSummary : "null",
+  )}</p>
   <h2>Selection</h2>
   <p>selectionStatus: ${escapeHtml(report.selectionStatus)}</p>
   <p>recommendedFamily: ${escapeHtml(report.recommendedFamily ?? "null")}</p>
+  <p>recommendedNextAction: ${escapeHtml(report.recommendedNextAction)}</p>
   <p>confirmatoryReuseForbidden: ${String(report.confirmatoryReuseForbidden)}</p>
   <p>${escapeHtml(report.confirmatoryReuseWarning)}</p>
   <ul>

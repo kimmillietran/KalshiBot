@@ -1,5 +1,6 @@
 import type {
   FamilyReadiness,
+  RecommendedNextAction,
   ResearchFamilyId,
   SelectionStatus,
 } from "./nextFamilyReadinessTypes";
@@ -7,6 +8,7 @@ import type {
 export type NextFamilySelection = {
   recommendedFamily: ResearchFamilyId | null;
   selectionStatus: SelectionStatus;
+  recommendedNextAction: RecommendedNextAction;
   recommendationRationale: readonly string[];
   rankedFamilyIds: readonly ResearchFamilyId[];
 };
@@ -29,8 +31,12 @@ function dimensionStatus(
 /**
  * Minimum bar for "recommended for discovery work" (not freeze/promotion).
  * Explicitly ignores exploratoryHistoricalReturnProxy.
+ * Empirically-investigated families are excluded — discovery already occurred.
  */
 export function isEligibleForDiscoveryRecommendation(family: FamilyReadiness): boolean {
+  if (family.maturity === "empirically-investigated") {
+    return false;
+  }
   if (
     family.independenceFromCalibrationFade === "low"
     || family.independenceFromCalibrationFade === "not-established"
@@ -56,6 +62,28 @@ export function isEligibleForDiscoveryRecommendation(family: FamilyReadiness): b
     return false;
   }
   return true;
+}
+
+/** Families that are the strongest next *definition* targets (not yet discovery-ready). */
+export function isEligibleForDefinitionPreparation(family: FamilyReadiness): boolean {
+  if (family.maturity === "empirically-investigated") {
+    return false;
+  }
+  if (
+    family.independenceFromCalibrationFade === "low"
+    || family.independenceFromCalibrationFade === "not-established"
+  ) {
+    return false;
+  }
+  if (family.maturity === "not-established") {
+    return false;
+  }
+  // Prefer partial families with TOB/data support but missing sealed definition.
+  if (family.inventory.familyDefinitionAvailable) {
+    return false;
+  }
+  const causal = dimensionStatus(family, "causalFeatureSemanticsEstablished");
+  return causal === "needs-definition" || causal === "needs-work";
 }
 
 function compareDiscoveryCandidates(left: FamilyReadiness, right: FamilyReadiness): number {
@@ -123,8 +151,35 @@ function compareDiscoveryCandidates(left: FamilyReadiness, right: FamilyReadines
   return left.familyId.localeCompare(right.familyId);
 }
 
+function compareDefinitionCandidates(left: FamilyReadiness, right: FamilyReadiness): number {
+  const independence = INDEPENDENCE_RANK[left.independenceFromCalibrationFade]
+    - INDEPENDENCE_RANK[right.independenceFromCalibrationFade];
+  if (independence !== 0) {
+    return independence;
+  }
+  const maturityRank = (maturity: FamilyReadiness["maturity"]): number => {
+    if (maturity === "partial") return 0;
+    if (maturity === "needs-definition") return 1;
+    return 2;
+  };
+  const maturity = maturityRank(left.maturity) - maturityRank(right.maturity);
+  if (maturity !== 0) {
+    return maturity;
+  }
+  const supportCount = (family: FamilyReadiness): number =>
+    (family.inventory.microstructureDataSupport ?? []).filter(
+      (row) => row.status === "available" || row.status === "partial" || row.status === "derivable-not-frozen",
+    ).length;
+  const support = supportCount(right) - supportCount(left);
+  if (support !== 0) {
+    return support;
+  }
+  return left.familyId.localeCompare(right.familyId);
+}
+
 export function selectNextFamily(
   familyReadiness: readonly FamilyReadiness[],
+  options?: { leadLagDeferred?: boolean },
 ): NextFamilySelection {
   // Sort a copy so callers' array order cannot affect ranking.
   const sortedInput = [...familyReadiness].sort((left, right) =>
@@ -132,42 +187,86 @@ export function selectNextFamily(
   );
   const eligible = sortedInput.filter(isEligibleForDiscoveryRecommendation);
 
-  if (eligible.length === 0) {
+  if (eligible.length > 0) {
+    const ranked = [...eligible].sort(compareDiscoveryCandidates);
+    const winner = ranked[0]!;
     return {
-      recommendedFamily: null,
-      selectionStatus: "no-family-ready",
+      recommendedFamily: winner.familyId,
+      selectionStatus: "recommended-for-discovery",
+      recommendedNextAction: "start-new-family-discovery",
       recommendationRationale: [
-        "No evaluated family cleared the minimum discovery-recommendation bar "
-          + "(independence, family definition, freezeable causal semantics, non-blocked power).",
-        "Selection intentionally ignores exploratory historical return proxies.",
+        `Selected ${winner.familyId} using ordered criteria: independence → causal freezeability `
+          + "→ design data / family definition → incidence → execution → multiplicity → power.",
+        `Independence from calibration-fade: ${winner.independenceFromCalibrationFade}.`,
+        `Causal semantics: ${dimensionStatus(winner, "causalFeatureSemanticsEstablished")}.`,
+        `Family definition available: ${String(winner.inventory.familyDefinitionAvailable)}.`,
+        `Prospective incidence: ${dimensionStatus(winner, "prospectiveCandidateIncidence")}.`,
+        `Multiple-testing burden: ${dimensionStatus(winner, "multipleTestingBurden")}.`,
+        "Exploratory historical return proxies were not used for ranking.",
+        "This recommendation is for next governed discovery work only — not freeze, promotion, or alpha.",
+      ],
+      rankedFamilyIds: [
+        ...ranked.map((family) => family.familyId),
+        ...sortedInput
+          .filter((family) => !eligible.some((entry) => entry.familyId === family.familyId))
+          .map((family) => family.familyId),
+      ],
+    };
+  }
+
+  const definitionEligible = sortedInput.filter(isEligibleForDefinitionPreparation);
+  if (definitionEligible.length > 0) {
+    const ranked = [...definitionEligible].sort(compareDefinitionCandidates);
+    const winner = ranked[0]!;
+    return {
+      recommendedFamily: winner.familyId,
+      selectionStatus: "prepare-family-definition",
+      recommendedNextAction: "prepare-family-definition",
+      recommendationRationale: [
+        `No family cleared the discovery-recommendation bar; strongest next independent direction is `
+          + `${winner.familyId} for governed family-definition preparation.`,
+        "Ranking uses independence → maturity/data-support → deterministic familyId; never historical return.",
+        `Independence: ${winner.independenceFromCalibrationFade}; maturity=${winner.maturity}.`,
+        options?.leadLagDeferred
+          ? "Completed lead-lag investigation is deferred (underpowered + costly prospective replication), "
+            + "so it is not recommended-for-discovery."
+          : "Lead-lag lineage disposition was not bound in this run.",
+        "This does not force a family to win discovery; it only recommends definition preparation.",
+        "No capture, freeze, promotion, or live trading is authorized by this selection.",
+      ],
+      rankedFamilyIds: [
+        ...ranked.map((family) => family.familyId),
+        ...sortedInput
+          .filter((family) => !definitionEligible.some((entry) => entry.familyId === family.familyId))
+          .map((family) => family.familyId),
+      ],
+    };
+  }
+
+  if (options?.leadLagDeferred) {
+    return {
+      recommendedFamily: "btc-kalshi-lead-lag",
+      selectionStatus: "defer-and-collect-prospective-lead-lag",
+      recommendedNextAction: "defer-and-collect-prospective-lead-lag",
+      recommendationRationale: [
+        "No other family is ready for discovery or definition preparation.",
+        "Lead-lag remains deferred-for-prospective-replication (available-but-not-authorized).",
+        "Historical return proxies were not used.",
       ],
       rankedFamilyIds: sortedInput.map((family) => family.familyId),
     };
   }
 
-  const ranked = [...eligible].sort(compareDiscoveryCandidates);
-  const winner = ranked[0]!;
-  const rationale = [
-    `Selected ${winner.familyId} using ordered criteria: independence → causal freezeability `
-      + "→ design data / family definition → incidence → execution → multiplicity → power.",
-    `Independence from calibration-fade: ${winner.independenceFromCalibrationFade}.`,
-    `Causal semantics: ${dimensionStatus(winner, "causalFeatureSemanticsEstablished")}.`,
-    `Family definition available: ${String(winner.inventory.familyDefinitionAvailable)}.`,
-    `Prospective incidence: ${dimensionStatus(winner, "prospectiveCandidateIncidence")}.`,
-    `Multiple-testing burden: ${dimensionStatus(winner, "multipleTestingBurden")}.`,
-    "Exploratory historical return proxies were not used for ranking.",
-    "This recommendation is for next governed discovery work only — not freeze, promotion, or alpha.",
-  ];
-
   return {
-    recommendedFamily: winner.familyId,
-    selectionStatus: "recommended-for-discovery",
-    recommendationRationale: rationale,
-    rankedFamilyIds: [
-      ...ranked.map((family) => family.familyId),
-      ...sortedInput
-        .filter((family) => !eligible.some((entry) => entry.familyId === family.familyId))
-        .map((family) => family.familyId),
+    recommendedFamily: null,
+    selectionStatus: "no-family-ready",
+    recommendedNextAction: "no-action-ready",
+    recommendationRationale: [
+      "No evaluated family cleared the minimum discovery-recommendation bar "
+        + "(independence, family definition, freezeable causal semantics, non-blocked power).",
+      "No family cleared the definition-preparation bar either.",
+      "Selection intentionally ignores exploratory historical return proxies.",
     ],
+    rankedFamilyIds: sortedInput.map((family) => family.familyId),
   };
 }

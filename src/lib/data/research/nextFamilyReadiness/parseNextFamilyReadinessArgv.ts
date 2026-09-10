@@ -1,13 +1,32 @@
 import {
   NextFamilyReadinessError,
+  type LeadLagLineageBindingConfig,
   type NextFamilyReadinessConfig,
   type ResearchFamilyId,
 } from "./nextFamilyReadinessTypes";
+
+const DEFAULT_DISCOVERY_ID =
+  "a4b5fd8a50bd04207f1041846f30a4f7d9f07bf34b03ddf12e293a2278520a24";
+const DEFAULT_VALIDATION_ID =
+  "d87619c312e0e3e2341d98f68a7742addd623446e6fce11d9f4ea39699488fe0";
+const DEFAULT_HOLDOUT_ID =
+  "6d8df318342d2e8c274f43ee9c5b9259bf620266ab6c2d9716ce85d1ca288756";
+const DEFAULT_READINESS_ID =
+  "8cf1f72069af4a67692ae7060ebe618a9813c6bb6b38f035be3c485f52379053";
 
 const KNOWN_FLAGS = new Set([
   "--exploratory-capture-run",
   "--fade-confirmatory-report",
   "--historical-return-proxy",
+  "--bind-lead-lag-lineage",
+  "--discovery-identity",
+  "--discovery-report",
+  "--validation-identity",
+  "--validation-report",
+  "--holdout-identity",
+  "--holdout-report",
+  "--readiness-identity",
+  "--readiness-report",
   "--output",
   "--html-output",
 ]);
@@ -62,6 +81,23 @@ function parseHistoricalReturnProxies(
   return proxies;
 }
 
+function parseLeadLagLineageBinding(argv: readonly string[]): LeadLagLineageBindingConfig | null {
+  const bind = argv.includes("--bind-lead-lag-lineage");
+  if (!bind) {
+    return null;
+  }
+  return {
+    discoveryIdentityHash: readFlagValue(argv, "--discovery-identity") ?? DEFAULT_DISCOVERY_ID,
+    discoveryReportPath: readFlagValue(argv, "--discovery-report"),
+    validationIdentityHash: readFlagValue(argv, "--validation-identity") ?? DEFAULT_VALIDATION_ID,
+    validationReportPath: readFlagValue(argv, "--validation-report"),
+    holdoutIdentityHash: readFlagValue(argv, "--holdout-identity") ?? DEFAULT_HOLDOUT_ID,
+    holdoutReportPath: readFlagValue(argv, "--holdout-report"),
+    readinessIdentityHash: readFlagValue(argv, "--readiness-identity") ?? DEFAULT_READINESS_ID,
+    readinessReportPath: readFlagValue(argv, "--readiness-report"),
+  };
+}
+
 export function parseNextFamilyReadinessArgv(
   argv: readonly string[],
 ): NextFamilyReadinessConfig {
@@ -87,6 +123,7 @@ export function parseNextFamilyReadinessArgv(
     exploratoryCaptureRunDirs: readAllFlagValues(argv, "--exploratory-capture-run"),
     fadeConfirmatoryReportPaths: readAllFlagValues(argv, "--fade-confirmatory-report"),
     exploratoryHistoricalReturnProxies: parseHistoricalReturnProxies(argv),
+    leadLagLineage: parseLeadLagLineageBinding(argv),
     outputPath: readFlagValue(argv, "--output"),
     htmlOutputPath: readFlagValue(argv, "--html-output"),
   };
