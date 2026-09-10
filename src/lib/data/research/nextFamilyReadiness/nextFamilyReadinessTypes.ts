@@ -1,7 +1,7 @@
 import type { CalibrationFadeForwardValidationIo } from "../calibrationFadeForwardValidation/calibrationFadeForwardValidationTypes";
 
 export const NEXT_FAMILY_READINESS_ANALYSIS_VERSION =
-  "next-family-readiness-v2" as const;
+  "next-family-readiness-v3" as const;
 
 export const NEXT_FAMILY_READINESS_JSON_ROOT =
   "data/research-results/next-family-readiness" as const;
@@ -11,10 +11,11 @@ export const NEXT_FAMILY_READINESS_JSON_FILENAME = "next-family-readiness.json" 
 export const NEXT_FAMILY_READINESS_HTML_FILENAME = "next-family-readiness.html" as const;
 
 export const NEXT_FAMILY_READINESS_DISCLAIMER =
-  "Next-family readiness v2 records completed lead-lag lineage disposition and reassesses "
-  + "research-family priority. It does not promote, preregister, freeze, declare alpha, authorize "
-  + "trading, start capture, reopen validation survivors on historical holdout, or rewrite the "
-  + "historical holdout underpowered verdict. Exploratory captures remain design data only.";
+  "Next-family readiness v3 records completed lead-lag disposition and the TOB-imbalance-v1 "
+  + "TRAIN discovery stop (no eligible shortlist), then reassesses research-family priority. "
+  + "It does not promote, preregister, freeze, declare alpha, authorize trading, start capture, "
+  + "reopen spent lineages, flip imbalance signs, or run new raw historical outcome analyses. "
+  + "Exploratory captures remain design data only.";
 
 export class NextFamilyReadinessError extends Error {
   constructor(message: string) {
@@ -41,6 +42,8 @@ export type ReadinessStatus =
 export type SelectionStatus =
   | "recommended-for-discovery"
   | "prepare-family-definition"
+  | "prepare-new-independent-subfamily-definition"
+  | "prepare-data-infrastructure"
   | "defer-and-collect-prospective-lead-lag"
   | "no-family-ready"
   | "insufficient-evidence";
@@ -48,6 +51,8 @@ export type SelectionStatus =
 export type RecommendedNextAction =
   | "start-new-family-discovery"
   | "prepare-family-definition"
+  | "prepare-new-independent-subfamily-definition"
+  | "prepare-data-infrastructure"
   | "defer-and-collect-prospective-lead-lag"
   | "no-action-ready";
 
@@ -66,6 +71,10 @@ export type FamilyMaturity =
 
 export type LeadLagLineageDisposition =
   | "deferred-for-prospective-replication"
+  | "not-applicable";
+
+export type TobImbalanceLineageDisposition =
+  | "stopped-after-train-no-eligible-candidates"
   | "not-applicable";
 
 export type ProspectiveReplicationStatus =
@@ -171,6 +180,13 @@ export type FamilyInventory = {
   microstructureDataSupport?: readonly MicrostructureDataSupportRow[];
   /** Present when lead-lag M12.8 lineage is bound. */
   empiricalLineageNotes?: readonly string[];
+  /**
+   * When true, tob-size-imbalance-short-horizon-repricing-v1 TRAIN discovery stopped
+   * with zero eligible shortlist. Broad microstructure family is NOT globally disproven.
+   */
+  tobImbalanceV1StoppedAfterTrain?: boolean;
+  /** Broad family may still host future independent subfamilies. */
+  broadFamilyNotExhausted?: boolean;
 };
 
 export type FamilyReadiness = {
@@ -221,12 +237,50 @@ export type CompletedLeadLagLineageSummary = {
   descriptiveEffectsNote: string;
 };
 
+export type CompletedTobImbalanceTrainLineageSummary = {
+  family: "spread-liquidity-microstructure";
+  subfamily: "tob-size-imbalance-short-horizon-repricing-v1";
+  disposition: "stopped-after-train-no-eligible-candidates";
+  familyDefinitionIdentity: string;
+  evidenceContractIdentity: string;
+  splitManifestIdentity: string;
+  discoveryIdentity: string;
+  trainRunId: string;
+  discoveryHypothesisCount: 12;
+  directionCount: 1;
+  shortlistCount: 0;
+  discoveryStatus: "no-candidates-eligible";
+  discoveryIsolationStatus: "train-only-discovery";
+  reasonNoCandidateAdvanced: string;
+  validationAuthorized: false;
+  holdoutAuthorized: false;
+  promotionAuthorized: false;
+  prospectiveFreezeAuthorized: false;
+  statisticalRejectClaimed: false;
+  broadFamilyGloballyDisproven: false;
+  reverseDirectionResurrectionForbidden: true;
+  gridMutationForbidden: true;
+  lineageSummary: string;
+};
+
+export type MicrostructureContaminationReusePolicy = {
+  trainRunId: string;
+  outcomeConsumedForSubfamily: "tob-size-imbalance-short-horizon-repricing-v1";
+  schemaOrFieldAvailabilityReuse: "permitted";
+  signFlippedImbalanceAsUntouchedTrain: "forbidden";
+  relatedImbalanceDerivedAsUntouchedValidationOrHoldout: "forbidden";
+  unrelatedFamilyReuse: string;
+  failConservativeWhenAmbiguous: true;
+  antiShoppingNote: string;
+};
+
 export type NextFamilyReadinessReport = {
   analysisVersion: typeof NEXT_FAMILY_READINESS_ANALYSIS_VERSION;
   disclaimer: typeof NEXT_FAMILY_READINESS_DISCLAIMER;
   generatedAt: string;
   reportIdentityHash: string;
   completedLineage: CompletedLeadLagLineageSummary | null;
+  completedTobImbalanceTrainLineage: CompletedTobImbalanceTrainLineageSummary | null;
   historicalVerdict: "underpowered" | null;
   prospectiveReplicationStatus: ProspectiveReplicationStatus;
   prospectiveRequiredFreshEss: number | null;
@@ -237,6 +291,8 @@ export type NextFamilyReadinessReport = {
     burdenClass: string | null;
   } | null;
   lineageDisposition: LeadLagLineageDisposition;
+  tobImbalanceLineageDisposition: TobImbalanceLineageDisposition;
+  microstructureContaminationReusePolicy: MicrostructureContaminationReusePolicy | null;
   candidateShoppingForbidden: true;
   promotionForbidden: true;
   freezeForbidden: true;
@@ -245,6 +301,8 @@ export type NextFamilyReadinessReport = {
   familiesEvaluated: readonly ResearchFamilyId[];
   familyReadiness: readonly FamilyReadiness[];
   recommendedFamily: ResearchFamilyId | null;
+  recommendedSubfamily: string | null;
+  requiresFreshOutcomeIsolation: boolean;
   selectionStatus: SelectionStatus;
   recommendedNextAction: RecommendedNextAction;
   recommendationRationale: readonly string[];
@@ -269,6 +327,11 @@ export type LeadLagLineageBindingConfig = {
   readinessReportPath: string | null;
 };
 
+export type TobImbalanceLineageBindingConfig = {
+  discoveryIdentityHash: string;
+  discoveryReportPath: string | null;
+};
+
 export type NextFamilyReadinessConfig = {
   exploratoryCaptureRunDirs: readonly string[];
   fadeConfirmatoryReportPaths: readonly string[];
@@ -276,6 +339,8 @@ export type NextFamilyReadinessConfig = {
   exploratoryHistoricalReturnProxies: Readonly<Partial<Record<ResearchFamilyId, number>>>;
   /** When set, bind completed M12.8 lineage and record disposition. */
   leadLagLineage: LeadLagLineageBindingConfig | null;
+  /** When set, bind completed M13.0b TOB-imbalance TRAIN discovery disposition. */
+  tobImbalanceLineage: TobImbalanceLineageBindingConfig | null;
   outputPath: string | null;
   htmlOutputPath: string | null;
 };

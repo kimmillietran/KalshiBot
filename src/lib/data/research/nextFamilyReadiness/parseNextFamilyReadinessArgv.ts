@@ -3,7 +3,9 @@ import {
   type LeadLagLineageBindingConfig,
   type NextFamilyReadinessConfig,
   type ResearchFamilyId,
+  type TobImbalanceLineageBindingConfig,
 } from "./nextFamilyReadinessTypes";
+import { DEFAULT_TOB_IMBALANCE_DISCOVERY_IDENTITY } from "./loadCompletedTobImbalanceTrainLineage";
 
 const DEFAULT_DISCOVERY_ID =
   "a4b5fd8a50bd04207f1041846f30a4f7d9f07bf34b03ddf12e293a2278520a24";
@@ -27,6 +29,9 @@ const KNOWN_FLAGS = new Set([
   "--holdout-report",
   "--readiness-identity",
   "--readiness-report",
+  "--bind-tob-imbalance-lineage",
+  "--tob-imbalance-discovery-identity",
+  "--tob-imbalance-discovery-report",
   "--output",
   "--html-output",
 ]);
@@ -98,6 +103,21 @@ function parseLeadLagLineageBinding(argv: readonly string[]): LeadLagLineageBind
   };
 }
 
+function parseTobImbalanceLineageBinding(
+  argv: readonly string[],
+): TobImbalanceLineageBindingConfig | null {
+  const bind = argv.includes("--bind-tob-imbalance-lineage");
+  if (!bind) {
+    return null;
+  }
+  return {
+    discoveryIdentityHash:
+      readFlagValue(argv, "--tob-imbalance-discovery-identity")
+      ?? DEFAULT_TOB_IMBALANCE_DISCOVERY_IDENTITY,
+    discoveryReportPath: readFlagValue(argv, "--tob-imbalance-discovery-report"),
+  };
+}
+
 export function parseNextFamilyReadinessArgv(
   argv: readonly string[],
 ): NextFamilyReadinessConfig {
@@ -124,6 +144,7 @@ export function parseNextFamilyReadinessArgv(
     fadeConfirmatoryReportPaths: readAllFlagValues(argv, "--fade-confirmatory-report"),
     exploratoryHistoricalReturnProxies: parseHistoricalReturnProxies(argv),
     leadLagLineage: parseLeadLagLineageBinding(argv),
+    tobImbalanceLineage: parseTobImbalanceLineageBinding(argv),
     outputPath: readFlagValue(argv, "--output"),
     htmlOutputPath: readFlagValue(argv, "--html-output"),
   };

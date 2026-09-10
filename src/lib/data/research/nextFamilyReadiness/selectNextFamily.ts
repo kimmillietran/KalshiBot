@@ -37,6 +37,10 @@ export function isEligibleForDiscoveryRecommendation(family: FamilyReadiness): b
   if (family.maturity === "empirically-investigated") {
     return false;
   }
+  // Spent TOB-imbalance-v1 TRAIN shortlist: no candidate may advance; do not re-recommend discovery.
+  if (family.inventory.tobImbalanceV1StoppedAfterTrain === true) {
+    return false;
+  }
   if (
     family.independenceFromCalibrationFade === "low"
     || family.independenceFromCalibrationFade === "not-established"
@@ -84,6 +88,31 @@ export function isEligibleForDefinitionPreparation(family: FamilyReadiness): boo
   }
   const causal = dimensionStatus(family, "causalFeatureSemanticsEstablished");
   return causal === "needs-definition" || causal === "needs-work";
+}
+
+/**
+ * Broad microstructure may host a *new* independent subfamily after v1 TRAIN stop.
+ * Must not mine PR #80 outcomes; requires fresh outcome isolation.
+ */
+export function isEligibleForNewIndependentSubfamilyPreparation(
+  family: FamilyReadiness,
+): boolean {
+  if (family.familyId !== "spread-liquidity-microstructure") {
+    return false;
+  }
+  if (family.inventory.tobImbalanceV1StoppedAfterTrain !== true) {
+    return false;
+  }
+  if (family.inventory.broadFamilyNotExhausted !== true) {
+    return false;
+  }
+  if (
+    family.independenceFromCalibrationFade === "low"
+    || family.independenceFromCalibrationFade === "not-established"
+  ) {
+    return false;
+  }
+  return true;
 }
 
 function compareDiscoveryCandidates(left: FamilyReadiness, right: FamilyReadiness): number {
@@ -218,6 +247,9 @@ export function selectNextFamily(
   if (definitionEligible.length > 0) {
     const ranked = [...definitionEligible].sort(compareDefinitionCandidates);
     const winner = ranked[0]!;
+    const tobStopped = sortedInput.some(
+      (family) => family.inventory.tobImbalanceV1StoppedAfterTrain === true,
+    );
     return {
       recommendedFamily: winner.familyId,
       selectionStatus: "prepare-family-definition",
@@ -225,12 +257,18 @@ export function selectNextFamily(
       recommendationRationale: [
         `No family cleared the discovery-recommendation bar; strongest next independent direction is `
           + `${winner.familyId} for governed family-definition preparation.`,
-        "Ranking uses independence → maturity/data-support → deterministic familyId; never historical return.",
+        "Ranking uses independence → maturity/data-support → deterministic familyId; never historical return "
+          + "and never PR #80 TOB-imbalance effect magnitudes or sign shopping.",
         `Independence: ${winner.independenceFromCalibrationFade}; maturity=${winner.maturity}.`,
         options?.leadLagDeferred
           ? "Completed lead-lag investigation is deferred (underpowered + costly prospective replication), "
             + "so it is not recommended-for-discovery."
           : "Lead-lag lineage disposition was not bound in this run.",
+        tobStopped
+          ? "TOB-imbalance-v1 TRAIN stopped with zero eligible candidates; reverse-direction resurrection "
+            + "from that TRAIN table is forbidden. Broad microstructure may later host a new independent "
+            + "subfamily only under fresh outcome isolation — not selected here over a cleaner definition target."
+          : "TOB-imbalance TRAIN disposition was not bound in this run.",
         "This does not force a family to win discovery; it only recommends definition preparation.",
         "No capture, freeze, promotion, or live trading is authorized by this selection.",
       ],
@@ -240,6 +278,26 @@ export function selectNextFamily(
           .filter((family) => !definitionEligible.some((entry) => entry.familyId === family.familyId))
           .map((family) => family.familyId),
       ],
+    };
+  }
+
+  const subfamilyEligible = sortedInput.filter(isEligibleForNewIndependentSubfamilyPreparation);
+  if (subfamilyEligible.length > 0) {
+    const winner = subfamilyEligible.sort((left, right) =>
+      left.familyId.localeCompare(right.familyId)
+    )[0]!;
+    return {
+      recommendedFamily: winner.familyId,
+      selectionStatus: "prepare-new-independent-subfamily-definition",
+      recommendedNextAction: "prepare-new-independent-subfamily-definition",
+      recommendationRationale: [
+        "No sealed family is ready for discovery or first-time family-definition preparation.",
+        `${winner.familyId} remains broad-family-not-exhausted after tob-imbalance-v1 TRAIN stop.`,
+        "Next step is prepare-new-independent-subfamily-definition with requiresFreshOutcomeIsolation=true.",
+        "Do not mine PR #80 outcomes to choose reverse imbalance, neighboring thresholds, or horizons.",
+        "Historical return proxies were not used.",
+      ],
+      rankedFamilyIds: sortedInput.map((family) => family.familyId),
     };
   }
 
@@ -264,7 +322,7 @@ export function selectNextFamily(
     recommendationRationale: [
       "No evaluated family cleared the minimum discovery-recommendation bar "
         + "(independence, family definition, freezeable causal semantics, non-blocked power).",
-      "No family cleared the definition-preparation bar either.",
+      "No family cleared the definition-preparation or new-independent-subfamily bars either.",
       "Selection intentionally ignores exploratory historical return proxies.",
     ],
     rankedFamilyIds: sortedInput.map((family) => family.familyId),

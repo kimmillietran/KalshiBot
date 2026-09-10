@@ -10,6 +10,7 @@ export {
 export type {
   CandidateIncidenceAssessment,
   CompletedLeadLagLineageSummary,
+  CompletedTobImbalanceTrainLineageSummary,
   DimensionAssessment,
   ExploratoryCaptureIdentity,
   FamilyInventory,
@@ -18,6 +19,7 @@ export type {
   IndependenceFromCalibrationFade,
   LeadLagLineageBindingConfig,
   LeadLagLineageDisposition,
+  MicrostructureContaminationReusePolicy,
   MicrostructureDataSupportRow,
   MultiplicityBurden,
   NextFamilyReadinessConfig,
@@ -29,20 +31,29 @@ export type {
   RecommendedNextAction,
   ResearchFamilyId,
   SelectionStatus,
+  TobImbalanceLineageBindingConfig,
+  TobImbalanceLineageDisposition,
 } from "./nextFamilyReadinessTypes";
 
 export { buildNextFamilyReadinessReport, resolveNextFamilyReadinessOutputPaths } from "./buildNextFamilyReadinessReport";
 export {
   applyLeadLagEmpiricalDisposition,
+  applyTobImbalanceTrainDisposition,
   buildMicrostructureDataSupportInventory,
   inventoryAllFamilies,
   listEvaluatedFamilyIds,
 } from "./inventoryResearchFamilies";
 export { loadCompletedLeadLagLineage } from "./loadCompletedLeadLagLineage";
+export {
+  DEFAULT_TOB_IMBALANCE_DISCOVERY_IDENTITY,
+  buildMicrostructureContaminationReusePolicy,
+  loadCompletedTobImbalanceTrainLineage,
+} from "./loadCompletedTobImbalanceTrainLineage";
 export { parseNextFamilyReadinessArgv } from "./parseNextFamilyReadinessArgv";
 export {
   isEligibleForDefinitionPreparation,
   isEligibleForDiscoveryRecommendation,
+  isEligibleForNewIndependentSubfamilyPreparation,
   selectNextFamily,
 } from "./selectNextFamily";
 export {
