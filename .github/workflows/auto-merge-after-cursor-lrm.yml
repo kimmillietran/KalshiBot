@@ -26,6 +26,19 @@ name: Auto-merge after Cursor LRM
 #   require review.state == APPROVED. DISMISSED and PENDING reviews never
 #   authorize merge. Do not dismiss CHANGES_REQUESTED reviews.
 #
+# Review-thread policy:
+#   GitHub required_review_thread_resolution remains enabled. Unresolved
+#   ordinary/blocking threads always block merge. Before evaluation, this
+#   workflow may resolve ONLY unresolved inline threads that satisfy ALL of:
+#     root author == cursor[bot]
+#     root body begins with exact marker "[NON-BLOCKING]"
+#     associated Cursor review is bound to the exact current PR HEAD
+#     thread has no replies
+#   Fuzzy words (nit/optional/minor/suggestion/FYI) never authorize resolution.
+#   Prefer placing non-blocking caveats in the top-level LRM review body.
+#   Resolution uses GitHub's resolveReviewThread mutation, then refetches
+#   thread state before the normal auto-merge evaluation.
+#
 # CI identity:
 #   Trusted path .github/workflows/quality-gates.yml → GitHub workflow id →
 #   exact-head run.workflow_id. Display name "Quality Gates" is
