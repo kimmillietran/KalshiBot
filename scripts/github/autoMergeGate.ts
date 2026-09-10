@@ -1,5 +1,8 @@
 import { parseGovernedCursorLrmVerdict } from "./parseCursorLrmVerdict";
-import { selectAutoResolvableNonBlockingThreadIds } from "./nonBlockingReviewThreads";
+import {
+  formatIneligibleThreadLogLine,
+  selectAutoResolvableNonBlockingThreadIds,
+} from "./nonBlockingReviewThreads";
 import {
   AUTO_MERGE_TRUSTED_PATHS,
   GITHUB_WORKFLOWS_PREFIX,
@@ -35,11 +38,11 @@ import {
  * Formal CHANGES_REQUESTED review state on the current head still blocks.
  * DISMISSED and PENDING reviews never authorize merge; the latest ACTIVE
  * exact-head Cursor LRM wins. Before evaluation, this helper may resolve
- * only unresolved review threads that are explicitly marked `[NON-BLOCKING]`
- * by exact-head trusted cursor[bot] with no replies; it never dismisses
- * reviews, never auto-resolves unmarked/human/stale threads, and never
- * bypasses branch protection. Merge uses merge_method=merge and
- * sha=CURRENT_HEAD.
+ * only unresolved review threads whose normalized root body begins with
+ * `[NON-BLOCKING]` or legacy `Non-blocking:` from exact-head trusted
+ * cursor[bot] with no replies; it never dismisses reviews, never
+ * auto-resolves unmarked/human/stale threads, and never bypasses branch
+ * protection. Merge uses merge_method=merge and sha=CURRENT_HEAD.
  *
  * Bootstrap: the first PR that adds this workflow must be merged manually.
  * Subsequent PRs that change the trusted auto-merge helper or the Quality
@@ -615,10 +618,36 @@ export async function runAutoMergeForPullRequest(
         currentHeadSha: pullRequest.headSha,
         reviews,
       });
+      const ineligibleUnresolved = decisions.flatMap((decision, index) => {
+        if (decision.kind !== "ineligible") {
+          return [];
+        }
+        const thread = threads[index];
+        if (thread == null || thread.isResolved) {
+          return [];
+        }
+        const threadId =
+          typeof thread.id === "string" && thread.id.trim() !== ""
+            ? thread.id
+            : `index-${index}`;
+        return [
+          formatIneligibleThreadLogLine({
+            ...decision,
+            threadId,
+          }),
+        ];
+      });
+      if (ineligibleUnresolved.length > 0) {
+        runtime.writeLog(
+          ["Trusted Cursor review present; unresolved threads not auto-resolved:", ...ineligibleUnresolved].join(
+            "\n",
+          ),
+        );
+      }
       if (eligibleThreadIds.length > 0) {
         runtime.writeLog(
           [
-            "Auto-resolving trusted [NON-BLOCKING] Cursor review threads:",
+            "Auto-resolving trusted non-blocking Cursor review threads:",
             ...eligibleThreadIds.map((id) => `  ${id}`),
             ...decisions
               .filter((decision) => decision.kind === "eligible")

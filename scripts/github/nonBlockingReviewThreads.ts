@@ -1,33 +1,84 @@
 import { TRUSTED_CURSOR_LOGIN, type GithubReview, type ReviewThread } from "./autoMergeGateTypes";
 
-/** Exact trusted marker. Fuzzy language (nit/optional/minor) never authorizes resolution. */
+/** Preferred canonical marker after body normalization. */
 export const NON_BLOCKING_MARKER = "[NON-BLOCKING]";
 
+/**
+ * Legacy Cursor Automation visible prefix (case-sensitive).
+ * Observed after leading `<!-- CURSOR_AUTOMATION_ID: ... -->` metadata.
+ */
+export const NON_BLOCKING_LEGACY_PREFIX = "Non-blocking:";
+
 export type AutoResolvableThreadDecision =
-  | { kind: "eligible"; threadId: string; reason: string }
+  | { kind: "eligible"; threadId: string; reason: string; marker: "canonical" | "legacy" }
   | { kind: "ineligible"; reason: string };
 
-function normalizeBody(body: string | null | undefined): string | null {
+/**
+ * Normalize ONLY for marker inspection:
+ * 1. strip BOM
+ * 2. trim leading whitespace
+ * 3. strip one or more leading HTML comments only
+ * 4. trim leading whitespace again
+ *
+ * Malformed leading `<!--` without a closing `-->` fails closed (returns null).
+ * Does not remove arbitrary Markdown or prose.
+ */
+export function normalizeRootCommentBodyForMarker(
+  body: string | null | undefined,
+): string | null {
   if (typeof body !== "string") {
     return null;
   }
-  return body.replace(/^\uFEFF/, "");
+  let remaining = body.replace(/^\uFEFF/, "");
+  remaining = remaining.replace(/^\s+/, "");
+
+  while (remaining.startsWith("<!--")) {
+    const closeIndex = remaining.indexOf("-->");
+    if (closeIndex < 0) {
+      // Malformed HTML-comment prefix — fail closed.
+      return null;
+    }
+    remaining = remaining.slice(closeIndex + 3).replace(/^\s+/, "");
+  }
+
+  return remaining;
+}
+
+export type NonBlockingMarkerMatch =
+  | { matched: true; marker: "canonical" | "legacy" }
+  | { matched: false };
+
+/**
+ * After normalization, accept only:
+ * - exact prefix `[NON-BLOCKING]`
+ * - exact case-sensitive prefix `Non-blocking:`
+ *
+ * Fuzzy language (nit/optional/minor/suggestion/FYI) never matches.
+ */
+export function matchNonBlockingMarker(body: string | null | undefined): NonBlockingMarkerMatch {
+  const normalized = normalizeRootCommentBodyForMarker(body);
+  if (normalized == null) {
+    return { matched: false };
+  }
+  if (normalized.startsWith(NON_BLOCKING_MARKER)) {
+    return { matched: true, marker: "canonical" };
+  }
+  if (normalized.startsWith(NON_BLOCKING_LEGACY_PREFIX)) {
+    return { matched: true, marker: "legacy" };
+  }
+  return { matched: false };
 }
 
 /**
- * Root comment body must begin with the exact marker `[NON-BLOCKING]`.
- * Leading whitespace (other than BOM strip) is not allowed.
+ * Root comment body begins with an approved explicit non-blocking marker
+ * after Cursor HTML-metadata normalization.
  */
 export function bodyBeginsWithNonBlockingMarker(body: string | null | undefined): boolean {
-  const normalized = normalizeBody(body);
-  if (normalized == null) {
-    return false;
-  }
-  return normalized.startsWith(NON_BLOCKING_MARKER);
+  return matchNonBlockingMarker(body).matched;
 }
 
 function isBlockingReplyBody(body: string | null | undefined): boolean {
-  const normalized = normalizeBody(body);
+  const normalized = normalizeRootCommentBodyForMarker(body);
   if (normalized == null || normalized.trim() === "") {
     return false;
   }
@@ -48,7 +99,7 @@ function isBlockingReplyBody(body: string | null | undefined): boolean {
  * - unresolved
  * - GraphQL thread id present
  * - root author == cursor[bot]
- * - root body begins with exact `[NON-BLOCKING]`
+ * - normalized root body begins with `[NON-BLOCKING]` or `Non-blocking:`
  * - associated Cursor review bound to exact current PR HEAD
  * - no replies (any additional comment fails closed)
  * - no blocking/CHANGES REQUESTED reply semantics (defense in depth)
@@ -77,8 +128,13 @@ export function classifyAutoResolvableNonBlockingThread(input: {
   if (root.authorLogin !== TRUSTED_CURSOR_LOGIN) {
     return { kind: "ineligible", reason: "root author is not trusted cursor[bot]" };
   }
-  if (!bodyBeginsWithNonBlockingMarker(root.body)) {
-    return { kind: "ineligible", reason: "root body does not begin with exact [NON-BLOCKING] marker" };
+
+  const markerMatch = matchNonBlockingMarker(root.body);
+  if (!markerMatch.matched) {
+    if (normalizeRootCommentBodyForMarker(root.body) == null) {
+      return { kind: "ineligible", reason: "malformed HTML-comment prefix" };
+    }
+    return { kind: "ineligible", reason: "marker not recognized" };
   }
 
   // Any reply fails closed (human dispute, follow-ups, or incomplete metadata).
@@ -92,7 +148,7 @@ export function classifyAutoResolvableNonBlockingThread(input: {
         return { kind: "ineligible", reason: "thread has a blocking/CHANGES REQUESTED reply" };
       }
       // Even trusted cursor replies fail closed — classification must stay unambiguous.
-      return { kind: "ineligible", reason: "thread has replies; only single-comment NON-BLOCKING roots are eligible" };
+      return { kind: "ineligible", reason: "thread has replies" };
     }
   }
 
@@ -109,7 +165,7 @@ export function classifyAutoResolvableNonBlockingThread(input: {
   }
 
   if (reviewCommitOid != null && reviewCommitOid !== currentHeadSha) {
-    return { kind: "ineligible", reason: "associated Cursor review is not on the exact current PR HEAD" };
+    return { kind: "ineligible", reason: "stale review head" };
   }
 
   const matchingExactHeadReview = exactHeadCursorReviews.find((review) => {
@@ -136,8 +192,19 @@ export function classifyAutoResolvableNonBlockingThread(input: {
   return {
     kind: "eligible",
     threadId: thread.id,
-    reason: "trusted exact-head cursor[bot] [NON-BLOCKING] single-comment thread",
+    marker: markerMatch.marker,
+    reason:
+      markerMatch.marker === "canonical"
+        ? "trusted exact-head cursor[bot] [NON-BLOCKING] single-comment thread"
+        : "trusted exact-head cursor[bot] Non-blocking: single-comment thread",
   };
+}
+
+export function formatIneligibleThreadLogLine(decision: AutoResolvableThreadDecision & {
+  kind: "ineligible";
+  threadId: string;
+}): string {
+  return `thread ${decision.threadId}: unresolved — ${decision.reason}`;
 }
 
 export function selectAutoResolvableNonBlockingThreadIds(input: {

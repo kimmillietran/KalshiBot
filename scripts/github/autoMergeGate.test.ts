@@ -1285,6 +1285,25 @@ describe("trusted [NON-BLOCKING] thread auto-resolution", () => {
     };
   }
 
+  function realCursorLegacyNonBlockingThread(): ReviewThread {
+    return {
+      id: "PRRT_nb_real_cursor",
+      isResolved: false,
+      comments: [
+        {
+          authorLogin: "cursor[bot]",
+          body:
+            "<!-- CURSOR_AUTOMATION_ID: 88a68416-7cc4-11f1-ba66-0e7d0216e441 | RUN_ID: bc-2192b8db-b4bf-4070-a8a6-b76191e775e5 -->\n"
+            + "Non-blocking: `tryMeasureDirectoryBytes` always returns `null`.",
+          createdAt: "2026-09-10T00:00:00.000Z",
+          pullRequestReviewDatabaseId: 1,
+          pullRequestReviewCommitOid: HEAD_B,
+          pullRequestReviewState: "COMMENTED",
+        },
+      ],
+    };
+  }
+
   function baseRuntime(overrides: Record<string, unknown> = {}) {
     return {
       fetchPullRequest: async () => pr({ merged: false }),
@@ -1419,5 +1438,50 @@ describe("trusted [NON-BLOCKING] thread auto-resolution", () => {
     );
     expect(result.kind).toBe("blocked");
     expect(result.reason).toMatch(/requires manual merge/i);
+  });
+
+  it("15-16. real Cursor Non-blocking: fixture invokes resolveReviewThread and refetches", async () => {
+    let threadFetchCount = 0;
+    let resolvedViaApi = false;
+    let mergeCalled = false;
+    const logs: string[] = [];
+    const result = await runAutoMergeForPullRequest(
+      baseRuntime({
+        fetchPullRequest: async () => {
+          if (mergeCalled) {
+            return pr({ merged: true, mergeCommitSha: "m".repeat(40) });
+          }
+          return pr({ merged: false });
+        },
+        fetchReviewThreads: async () => {
+          threadFetchCount += 1;
+          if (!resolvedViaApi) {
+            return [realCursorLegacyNonBlockingThread()];
+          }
+          return [resolvedThread("PRRT_nb_real_cursor")];
+        },
+        resolveReviewThread: async (threadId: string) => {
+          expect(threadId).toBe("PRRT_nb_real_cursor");
+          resolvedViaApi = true;
+          return { id: threadId, isResolved: true };
+        },
+        mergePullRequest: async (_pr: number, sha: string) => {
+          expect(resolvedViaApi).toBe(true);
+          expect(threadFetchCount).toBeGreaterThanOrEqual(2);
+          expect(sha).toBe(HEAD_B);
+          mergeCalled = true;
+          return { merged: true, sha: "m".repeat(40), message: "merged" };
+        },
+        writeLog: (text: string) => {
+          logs.push(text);
+        },
+      }) as never,
+      55,
+    );
+    expect(result.kind).toBe("eligible");
+    expect(resolvedViaApi).toBe(true);
+    expect(mergeCalled).toBe(true);
+    expect(threadFetchCount).toBeGreaterThanOrEqual(2);
+    expect(logs.some((line) => line.includes("Auto-resolving trusted non-blocking"))).toBe(true);
   });
 });

@@ -31,11 +31,20 @@ name: Auto-merge after Cursor LRM
 #   ordinary/blocking threads always block merge. Before evaluation, this
 #   workflow may resolve ONLY unresolved inline threads that satisfy ALL of:
 #     root author == cursor[bot]
-#     root body begins with exact marker "[NON-BLOCKING]"
 #     associated Cursor review is bound to the exact current PR HEAD
 #     thread has no replies
+#     after normalization, visible root body begins with an approved marker
+#   Normalization (marker inspection only):
+#     trim leading whitespace → strip leading HTML comments only → trim again.
+#     Cursor injects metadata such as:
+#       <!-- CURSOR_AUTOMATION_ID: ... | RUN_ID: ... -->
+#     That stripping is parsing normalization only, not authorization.
+#   Approved explicit markers (after normalization):
+#     Preferred canonical: [NON-BLOCKING]
+#     Legacy Cursor Automation: Non-blocking:
 #   Fuzzy words (nit/optional/minor/suggestion/FYI) never authorize resolution.
 #   Prefer placing non-blocking caveats in the top-level LRM review body.
+#   Inline review comments should be reserved for blockers where possible.
 #   Resolution uses GitHub's resolveReviewThread mutation, then refetches
 #   thread state before the normal auto-merge evaluation.
 #
