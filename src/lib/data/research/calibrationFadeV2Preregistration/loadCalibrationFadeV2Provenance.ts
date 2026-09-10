@@ -1,4 +1,5 @@
 import { isRecord } from "../calibrationFadeForwardValidation/calibrationFadeForwardValidationUtils";
+import { enforceFrozenHypothesisPromotionGovernance } from "@/lib/data/research/candidatePreregistrationEligibility/enforceFrozenHypothesisPromotionGovernance";
 
 import {
   CALIBRATION_FADE_V2_CONCLUSION,
@@ -387,7 +388,27 @@ export function loadCalibrationFadeV2Provenance(input: {
   if (!isRecord(parsed)) {
     fail(`v2 provenance root must be an object at ${provenancePath}`);
   }
-  return { provenancePath, provenance: parseProvenanceDocument(parsed) };
+  const provenance = parseProvenanceDocument(parsed);
+
+  // M12.7a: non-legacy freezes require bound accepted promotion evidence.
+  // Existing v2 calibration-fade preregistration is explicitly grandfathered.
+  try {
+    enforceFrozenHypothesisPromotionGovernance({
+      io: input.io,
+      configPath: provenance.configPath,
+      freezeCommitSha: provenance.v2FreezeCommitSha,
+      hypothesisVersion: provenance.hypothesisVersion,
+      hypothesisId: provenance.hypothesisId,
+    });
+  } catch (error) {
+    fail(
+      error instanceof Error
+        ? error.message
+        : `Promotion governance failed for v2 provenance: ${String(error)}`,
+    );
+  }
+
+  return { provenancePath, provenance };
 }
 
 export function isFreezeIdentityFinalized(provenance: CalibrationFadeV2ProvenanceManifest): boolean {

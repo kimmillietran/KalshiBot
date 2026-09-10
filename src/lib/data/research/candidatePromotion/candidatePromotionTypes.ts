@@ -6,6 +6,30 @@ export const DEFAULT_CANDIDATE_PROMOTIONS_OUTPUT_PATH =
   "data/research-results/candidate-promotions.json";
 export const DEFAULT_CANDIDATE_PROMOTIONS_HTML_PATH =
   "data/reports/research-candidate-promotions.html";
+
+/** M12.7a evidence-binding version stamped onto promotion reports. */
+export const CANDIDATE_PROMOTION_EVIDENCE_ANALYSIS_VERSION =
+  "m12.7a-candidate-promotion-evidence-v1" as const;
+
+export type CandidatePromotionInputArtifactHashes = {
+  hypothesisValidation: string | null;
+  strategySynthesis: string | null;
+  harnessResults: string | null;
+  statisticalSignificance: string | null;
+};
+
+export type CandidatePromotionEntryEvidence = {
+  /** Semantic hash of the matched validation entry. */
+  validationEntryContentHash: string | null;
+  /** Semantic hash of the matched synthesis/candidate definition. */
+  candidateDefinitionContentHash: string | null;
+  validationPasses: boolean | null;
+  /**
+   * True only when decision is candidate|production-watchlist AND
+   * validationPasses === true. Rejected/failed validation never accepts.
+   */
+  promotionAccepted: boolean;
+};
 export const DEFAULT_STRATEGY_SYNTHESIS_INPUT_PATH =
   "data/research-results/strategy-synthesis-candidates.json";
 export const DEFAULT_HARNESS_RESULTS_INPUT_PATH =
@@ -81,6 +105,7 @@ export type CandidatePromotionEntry = {
   blockingIssues: readonly string[];
   warnings: readonly string[];
   recommendedNextAction: CandidatePromotionNextAction;
+  evidence: CandidatePromotionEntryEvidence;
 };
 
 export type CandidatePromotionSummary = {
@@ -98,6 +123,9 @@ export type CandidatePromotionReport = {
   config: CandidatePromotionConfig;
   summary: CandidatePromotionSummary;
   promotions: readonly CandidatePromotionEntry[];
+  evidenceAnalysisVersion: typeof CANDIDATE_PROMOTION_EVIDENCE_ANALYSIS_VERSION;
+  /** Content hashes of input artifacts (no mtime). */
+  inputArtifactContentHashes: CandidatePromotionInputArtifactHashes;
 };
 
 export type ParsedSynthesisStrategy = {
@@ -153,6 +181,7 @@ export type ParsedCandidatePromotionInputs = {
     pValue: number | null;
     insufficientSample: boolean;
   }>;
+  inputArtifactContentHashes?: CandidatePromotionInputArtifactHashes;
 };
 
 export type BuildCandidatePromotionReportInput = {

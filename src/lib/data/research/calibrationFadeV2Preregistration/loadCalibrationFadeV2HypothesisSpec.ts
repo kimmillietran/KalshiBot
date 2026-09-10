@@ -1,4 +1,6 @@
 import { isRecord } from "../calibrationFadeForwardValidation/calibrationFadeForwardValidationUtils";
+import { enforceFrozenHypothesisPromotionGovernance } from "@/lib/data/research/candidatePreregistrationEligibility/enforceFrozenHypothesisPromotionGovernance";
+import { CandidatePreregistrationEligibilityError } from "@/lib/data/research/candidatePreregistrationEligibility/candidatePreregistrationEligibilityTypes";
 
 import {
   CALIBRATION_FADE_V2_HYPOTHESIS_ID,
@@ -506,5 +508,25 @@ export function loadCalibrationFadeV2HypothesisSpec(input: {
   if (!isRecord(parsed)) {
     fail(`v2 hypothesis config root must be an object at ${configPath}`);
   }
-  return { configPath, spec: parseFreezeDocument(parsed) };
+  const spec = parseFreezeDocument(parsed);
+
+  // M12.7a: non-legacy freezes under the governed root require bound accepted
+  // promotion evidence. Existing v2 calibration-fade config is grandfathered.
+  try {
+    enforceFrozenHypothesisPromotionGovernance({
+      io: input.io,
+      configPath,
+      freezeCommitSha: null,
+      hypothesisVersion: spec.hypothesisVersion,
+      hypothesisId: spec.hypothesisId,
+    });
+  } catch (error) {
+    fail(
+      error instanceof CandidatePreregistrationEligibilityError || error instanceof Error
+        ? error.message
+        : `Promotion governance failed for v2 hypothesis config: ${String(error)}`,
+    );
+  }
+
+  return { configPath, spec };
 }

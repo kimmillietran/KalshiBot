@@ -242,6 +242,26 @@ export function buildPipelineStepResourceProfiles(): ReadonlyMap<
       largeJsonInputs: [DEFAULT_RESEARCH_CANDIDATE_REGISTRY_OUTPUT_PATH],
       fullDirectoryRecompute: false,
     }),
+    profile("preregistration-eligibility", {
+      filesRead: [
+        DEFAULT_CANDIDATE_PROMOTIONS_OUTPUT_PATH,
+        "config/research/hypotheses/high-volatility-late-market-calibration-fade-v1.json",
+        "config/research/hypotheses/high-volatility-late-market-calibration-fade-v2.json",
+      ],
+      filesWritten: ["data/research-results/preregistration-eligibility.json"],
+      directoryScans: [
+        {
+          rootPath: "config/research/hypotheses",
+          recursive: false,
+          purpose: "enumerate frozen hypothesis configs",
+        },
+      ],
+      networkOperations: [],
+      cpuBoundShare: 0.4,
+      ioBoundShare: 0.6,
+      largeJsonInputs: [DEFAULT_CANDIDATE_PROMOTIONS_OUTPUT_PATH],
+      fullDirectoryRecompute: false,
+    }),
     profile("artifact-index", {
       filesRead: [DISCOVERY, LEADERBOARD],
       filesWritten: [ARTIFACT_INDEX],

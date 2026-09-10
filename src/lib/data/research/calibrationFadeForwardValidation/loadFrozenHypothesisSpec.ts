@@ -1,5 +1,7 @@
 import { fnv1a32, stableStringify } from "@/lib/trading/config/hashConfig";
 import type { HypothesisCandidate } from "@/lib/data/research/hypothesisCandidates/hypothesisCandidateTypes";
+import { enforceFrozenHypothesisPromotionGovernance } from "@/lib/data/research/candidatePreregistrationEligibility/enforceFrozenHypothesisPromotionGovernance";
+import { CandidatePreregistrationEligibilityError } from "@/lib/data/research/candidatePreregistrationEligibility/candidatePreregistrationEligibilityTypes";
 
 import {
   CALIBRATION_FADE_CONFIGURATION_HASH_SEMANTICS,
@@ -1062,6 +1064,23 @@ export function loadFrozenHypothesisSpec(input: {
     runtimeLoadedArtifacts,
   });
   warnings.push(...reconciliationWarnings);
+
+  // M12.7a: non-legacy freezes require bound accepted promotion evidence.
+  // Existing v1 calibration-fade freeze is explicitly grandfathered by path+identity.
+  try {
+    enforceFrozenHypothesisPromotionGovernance({
+      io: input.io,
+      configPath,
+      freezeCommitSha: provenance.originalFreezeCommitSha,
+      hypothesisVersion: spec.hypothesisVersion,
+      hypothesisId: spec.hypothesisId,
+    });
+  } catch (error) {
+    if (error instanceof CandidatePreregistrationEligibilityError) {
+      throw new CalibrationFadeForwardValidationError(error.message);
+    }
+    throw error;
+  }
 
   // Rule-freeze provenance comes from the validated manifest (even when candidate JSON is absent).
   // Historical benchmark statistics remain null when discovery artifacts are missing.

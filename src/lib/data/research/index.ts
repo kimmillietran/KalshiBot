@@ -1277,6 +1277,24 @@ export type {
 } from "./candidatePromotion";
 
 export {
+  ACCEPTED_PREREGISTRATION_PROMOTION_DECISIONS,
+  CANDIDATE_PREREGISTRATION_ELIGIBILITY_ANALYSIS_VERSION,
+  CandidatePreregistrationEligibilityError,
+  DEFAULT_PREREGISTRATION_ELIGIBILITY_REPORT_PATH,
+  LEGACY_GRANDFATHERED_FROZEN_HYPOTHESES,
+  assertPreregistrationEligibilityReportPass,
+  enforceFrozenHypothesisPromotionGovernance,
+  evaluateCandidateEligibleForPreregistration,
+  isLegacyGrandfatheredFrozenHypothesis,
+  requireCandidateEligibleForPreregistration,
+  verifyPreregistrationEligibilityForHypothesisConfigs,
+} from "./candidatePreregistrationEligibility";
+export type {
+  CandidatePreregistrationEligibilityResult,
+  VerifyPreregistrationEligibilityReport,
+} from "./candidatePreregistrationEligibility";
+
+export {
   buildResearchCandidateRegistryReport,
   buildResearchCandidateRegistryReportFromInputs,
   loadExistingResearchCandidateRegistry,

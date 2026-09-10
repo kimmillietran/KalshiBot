@@ -1,9 +1,11 @@
 import { z } from "zod";
 
 import { inspectResearchOutputDocument } from "@/lib/data/research/inspect/parseResearchOutputInspection";
+import { hashArtifactContent } from "@/lib/data/research/candidatePreregistrationEligibility/promotionEvidenceIdentity";
 
 import {
   CandidatePromotionError,
+  type CandidatePromotionInputArtifactHashes,
   type CandidatePromotionInputPaths,
   type CandidatePromotionIo,
   type ParsedCandidatePromotionInputs,
@@ -128,19 +130,6 @@ function parseDocument<T>(path: string, json: string, schema: z.ZodType<T>): T {
     );
   }
   return result.data;
-}
-
-function readRequiredDocument<T>(
-  io: CandidatePromotionIo,
-  path: string,
-  schema: z.ZodType<T>,
-  label: string,
-): T {
-  if (!io.fileExists(path)) {
-    throw new CandidatePromotionError(`Missing required ${label}: ${path}`);
-  }
-
-  return parseDocument(path, io.readFile(path), schema);
 }
 
 function readOptionalDocument<T>(
@@ -322,19 +311,52 @@ export function loadCandidatePromotionInputs(
   io: CandidatePromotionIo,
   inputPaths: CandidatePromotionInputPaths,
 ): ParsedCandidatePromotionInputs {
-  const validation = readRequiredDocument(
-    io,
+  if (!io.fileExists(inputPaths.hypothesisValidationPath)) {
+    throw new CandidatePromotionError(
+      `Missing required hypothesis validation report: ${inputPaths.hypothesisValidationPath}`,
+    );
+  }
+  if (!io.fileExists(inputPaths.strategySynthesisPath)) {
+    throw new CandidatePromotionError(
+      `Missing required strategy synthesis report: ${inputPaths.strategySynthesisPath}`,
+    );
+  }
+
+  const validationContent = io.readFile(inputPaths.hypothesisValidationPath);
+  const synthesisContent = io.readFile(inputPaths.strategySynthesisPath);
+  const validation = parseDocument(
     inputPaths.hypothesisValidationPath,
+    validationContent,
     validationDocumentSchema,
-    "hypothesis validation report",
+  );
+  const synthesis = parseDocument(
+    inputPaths.strategySynthesisPath,
+    synthesisContent,
+    synthesisDocumentSchema,
   );
 
-  const synthesis = readRequiredDocument(
-    io,
-    inputPaths.strategySynthesisPath,
-    synthesisDocumentSchema,
-    "strategy synthesis report",
-  );
+  let harnessResultsHash: string | null = null;
+  if (io.fileExists(inputPaths.harnessResultsPath)) {
+    harnessResultsHash = hashArtifactContent(io.readFile(inputPaths.harnessResultsPath));
+  } else if (io.fileExists(inputPaths.harnessSummaryFallbackPath)) {
+    harnessResultsHash = hashArtifactContent(
+      io.readFile(inputPaths.harnessSummaryFallbackPath),
+    );
+  }
+
+  let statisticalSignificanceHash: string | null = null;
+  if (io.fileExists(inputPaths.statisticalSignificancePath)) {
+    statisticalSignificanceHash = hashArtifactContent(
+      io.readFile(inputPaths.statisticalSignificancePath),
+    );
+  }
+
+  const inputArtifactContentHashes: CandidatePromotionInputArtifactHashes = {
+    hypothesisValidation: hashArtifactContent(validationContent),
+    strategySynthesis: hashArtifactContent(synthesisContent),
+    harnessResults: harnessResultsHash,
+    statisticalSignificance: statisticalSignificanceHash,
+  };
 
   return {
     validation,
@@ -344,6 +366,7 @@ export function loadCandidatePromotionInputs(
       io,
       inputPaths.statisticalSignificancePath,
     ),
+    inputArtifactContentHashes,
   };
 }
 
