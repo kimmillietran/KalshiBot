@@ -3,12 +3,12 @@ import {
   type CandidatePromotionDecision,
 } from "@/lib/data/research/candidatePromotion/candidatePromotionTypes";
 
-/** Governed promotion-evidence analysis version for M12.7a+. */
+/** Governed promotion-evidence analysis version for M12.7c+. */
 export const CANDIDATE_PREREGISTRATION_ELIGIBILITY_ANALYSIS_VERSION =
-  "m12.7a-candidate-preregistration-eligibility-v1" as const;
+  "m12.7c-candidate-preregistration-eligibility-v1" as const;
 
 export const CANDIDATE_PROMOTION_EVIDENCE_ANALYSIS_VERSION =
-  "m12.7a-candidate-promotion-evidence-v1" as const;
+  "m12.7c-candidate-promotion-evidence-v1" as const;
 
 export const DEFAULT_PREREGISTRATION_ELIGIBILITY_REPORT_PATH =
   "data/research-results/preregistration-eligibility.json";
@@ -35,6 +35,7 @@ export type CandidatePreregistrationEligibilityReasonCode =
   | "missing-candidate-artifact"
   | "missing-validation-artifact"
   | "missing-promotion-artifact"
+  | "missing-oos-artifact"
   | "malformed-promotion-artifact"
   | "hypothesis-not-found-in-promotion"
   | "validation-does-not-pass"
@@ -42,6 +43,10 @@ export type CandidatePreregistrationEligibilityReasonCode =
   | "unknown-promotion-decision"
   | "candidate-artifact-hash-mismatch"
   | "validation-artifact-hash-mismatch"
+  | "oos-artifact-hash-mismatch"
+  | "oos-statistical-gate-failed"
+  | "discovery-contamination"
+  | "prospective-design-invalid"
   | "promotion-evidence-incomplete"
   | "mtime-or-latest-forbidden";
 

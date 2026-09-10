@@ -56,7 +56,16 @@ const promotionEntrySchema = z.object({
       candidateDefinitionContentHash: z.string().nullable(),
       validationPasses: z.boolean().nullable(),
       promotionAccepted: z.boolean(),
+      oosFinalStatisticalVerdict: z.string().nullable().optional(),
+      oosPassesCorrected: z.boolean().nullable().optional(),
+      oosClearsMde: z.boolean().nullable().optional(),
+      oosIsUnderpowered: z.boolean().nullable().optional(),
+      discoveryIsolationStatus: z.string().nullable().optional(),
+      prospectiveDesignValid: z.boolean().nullable().optional(),
+      oosEntryContentHash: z.string().nullable().optional(),
+      oosArtifactContentHash: z.string().nullable().optional(),
     })
+    .passthrough()
     .optional(),
 });
 
@@ -75,7 +84,9 @@ const promotionReportSchema = z.object({
       strategySynthesis: z.string().nullable(),
       harnessResults: z.string().nullable(),
       statisticalSignificance: z.string().nullable(),
+      oosPowerCorrection: z.string().nullable().optional(),
     })
+    .passthrough()
     .optional(),
 });
 
@@ -491,6 +502,14 @@ export function evaluateCandidateEligibleForPreregistration(input: {
   const promotionAccepted = computePromotionAccepted({
     decision: entry.decision,
     validationPasses,
+    statisticalGates: {
+      oosFinalStatisticalVerdict: entry.evidence?.oosFinalStatisticalVerdict ?? null,
+      oosPassesCorrected: entry.evidence?.oosPassesCorrected ?? null,
+      oosClearsMde: entry.evidence?.oosClearsMde ?? null,
+      oosIsUnderpowered: entry.evidence?.oosIsUnderpowered ?? null,
+      discoveryIsolationStatus: entry.evidence?.discoveryIsolationStatus ?? null,
+      prospectiveDesignValid: entry.evidence?.prospectiveDesignValid ?? null,
+    },
   });
 
   if (validationPasses !== true) {
@@ -501,6 +520,83 @@ export function evaluateCandidateEligibleForPreregistration(input: {
       promotionAccepted: false,
       reasonCode: "validation-does-not-pass",
       reasons: ["Hypothesis validation did not pass; preregistration is forbidden"],
+      candidateArtifactContentHash,
+      validationArtifactContentHash,
+      promotionArtifactContentHash: parsedPromotion.contentHash,
+      boundCandidateDefinitionContentHash,
+      boundValidationEntryContentHash,
+    });
+  }
+
+  if (entry.evidence?.oosArtifactContentHash == null && entry.evidence?.oosFinalStatisticalVerdict == null) {
+    return ineligible({
+      hypothesisId,
+      promotionDecision: entry.decision,
+      validationPasses,
+      promotionAccepted: false,
+      reasonCode: "missing-oos-artifact",
+      reasons: ["Promotion evidence is missing bound OOS/FDR/power gates"],
+      candidateArtifactContentHash,
+      validationArtifactContentHash,
+      promotionArtifactContentHash: parsedPromotion.contentHash,
+      boundCandidateDefinitionContentHash,
+      boundValidationEntryContentHash,
+    });
+  }
+
+  if (entry.evidence?.discoveryIsolationStatus !== "train-only-discovery") {
+    return ineligible({
+      hypothesisId,
+      promotionDecision: entry.decision,
+      validationPasses,
+      promotionAccepted: false,
+      reasonCode: "discovery-contamination",
+      reasons: [
+        `Discovery isolation is ${entry.evidence?.discoveryIsolationStatus ?? "missing"}; `
+          + "true OOS promotion requires train-only-discovery",
+      ],
+      candidateArtifactContentHash,
+      validationArtifactContentHash,
+      promotionArtifactContentHash: parsedPromotion.contentHash,
+      boundCandidateDefinitionContentHash,
+      boundValidationEntryContentHash,
+    });
+  }
+
+  if (entry.evidence?.prospectiveDesignValid !== true) {
+    return ineligible({
+      hypothesisId,
+      promotionDecision: entry.decision,
+      validationPasses,
+      promotionAccepted: false,
+      reasonCode: "prospective-design-invalid",
+      reasons: ["Prospective statistical design contract is missing or invalid"],
+      candidateArtifactContentHash,
+      validationArtifactContentHash,
+      promotionArtifactContentHash: parsedPromotion.contentHash,
+      boundCandidateDefinitionContentHash,
+      boundValidationEntryContentHash,
+    });
+  }
+
+  if (
+    entry.evidence?.oosFinalStatisticalVerdict !== "pass"
+    || entry.evidence?.oosPassesCorrected !== true
+    || entry.evidence?.oosClearsMde !== true
+    || entry.evidence?.oosIsUnderpowered === true
+  ) {
+    return ineligible({
+      hypothesisId,
+      promotionDecision: entry.decision,
+      validationPasses,
+      promotionAccepted: false,
+      reasonCode: "oos-statistical-gate-failed",
+      reasons: [
+        `OOS/FDR/power gates failed (verdict=${entry.evidence?.oosFinalStatisticalVerdict}, `
+          + `passesCorrected=${String(entry.evidence?.oosPassesCorrected)}, `
+          + `clearsMde=${String(entry.evidence?.oosClearsMde)}, `
+          + `underpowered=${String(entry.evidence?.oosIsUnderpowered)})`,
+      ],
       candidateArtifactContentHash,
       validationArtifactContentHash,
       promotionArtifactContentHash: parsedPromotion.contentHash,

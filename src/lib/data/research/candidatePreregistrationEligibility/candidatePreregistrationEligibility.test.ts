@@ -10,11 +10,13 @@ import {
 import { DEFAULT_CANDIDATE_PROMOTION_INPUT_PATHS } from "@/lib/data/research/candidatePromotion/candidatePromotionTypes";
 import type {
   ParsedHarnessStrategyMetrics,
+  ParsedOosPromotionContext,
   ParsedSynthesisStrategy,
   ParsedValidationEntry,
 } from "@/lib/data/research/candidatePromotion/candidatePromotionTypes";
 import { buildFullResearchSteps } from "@/lib/data/research/fullOrchestrator/buildFullResearchSteps";
 import { createDefaultFullResearchOrchestratorConfig } from "@/lib/data/research/fullOrchestrator/runFullResearchOrchestrator";
+import type { OosPowerCorrectionEntry } from "@/lib/data/research/oosPowerCorrection/oosPowerCorrectionTypes";
 
 import {
   CandidatePreregistrationEligibilityError,
@@ -24,12 +26,11 @@ import {
   LEGACY_GRANDFATHERED_FROZEN_HYPOTHESES,
   requireCandidateEligibleForPreregistration,
   verifyPreregistrationEligibilityForHypothesisConfigs,
-} from "./index";
-import {
+  buildValidProspectiveStatisticalPromotionContract,
   hashArtifactContent,
   hashCandidateDefinitionContent,
   hashValidationEntryContent,
-} from "./promotionEvidenceIdentity";
+} from "./index";
 
 const GENERATED_AT = "2026-09-09T18:00:00.000Z";
 const FAILING_ID = "calibration-like-test";
@@ -88,10 +89,104 @@ function createHarness(
   };
 }
 
+function createAuthorizingOos(hypothesisId: string): ParsedOosPromotionContext {
+  const temporalSplit = {
+    trainMonths: ["2024-01", "2024-02", "2024-03"],
+    validationMonths: ["2024-04"],
+    holdoutMonths: ["2024-05"],
+  };
+  const entry: OosPowerCorrectionEntry = {
+    hypothesisId,
+    hypothesis: hypothesisId,
+    sourceArtifact: "hypothesis-candidates.json",
+    candidate: {
+      candidateId: hypothesisId,
+      confidence: "medium",
+      bucketMetadata: {},
+    },
+    splitMetrics: {
+      train: {
+        split: "train",
+        rawObservationCount: 100,
+        independentMarketCount: 20,
+        marketDayCount: 40,
+        effectiveSampleSizeEstimate: 20,
+        observedNetEdge: 0.03,
+        standardError: 0.01,
+        confidenceInterval95: { lower: 0.01, upper: 0.05 },
+        minimumDetectableEffect: 0.02,
+        tStatistic: 3,
+        uncorrectedPValue: 0.01,
+        clearsMde: true,
+        isUnderpowered: false,
+        underpoweredReason: null,
+      },
+      validation: {
+        split: "validation",
+        rawObservationCount: 40,
+        independentMarketCount: 10,
+        marketDayCount: 15,
+        effectiveSampleSizeEstimate: 10,
+        observedNetEdge: 0.02,
+        standardError: 0.01,
+        confidenceInterval95: { lower: 0, upper: 0.04 },
+        minimumDetectableEffect: 0.025,
+        tStatistic: 2,
+        uncorrectedPValue: 0.04,
+        clearsMde: true,
+        isUnderpowered: false,
+        underpoweredReason: null,
+      },
+      holdout: {
+        split: "holdout",
+        rawObservationCount: 50,
+        independentMarketCount: 12,
+        marketDayCount: 20,
+        effectiveSampleSizeEstimate: 12,
+        observedNetEdge: 0.04,
+        standardError: 0.01,
+        confidenceInterval95: { lower: 0.02, upper: 0.06 },
+        minimumDetectableEffect: 0.025,
+        tStatistic: 4,
+        uncorrectedPValue: 0.001,
+        clearsMde: true,
+        isUnderpowered: false,
+        underpoweredReason: null,
+      },
+    },
+    uncorrectedPValue: 0.001,
+    correctedPValue: 0.01,
+    qValue: 0.01,
+    correctionMethod: "benjaminiYekutieli",
+    passesUncorrected: true,
+    passesCorrected: true,
+    clearsMde: true,
+    isUnderpowered: false,
+    finalStatisticalVerdict: "pass",
+    dependenceWarnings: [],
+    tradeReplayAvailable: false,
+  };
+  return {
+    present: true,
+    artifactContentHash: "oos-hash",
+    discoveryIsolation: {
+      status: "train-only-discovery",
+      reason: "fixture train-only discovery",
+    },
+    prospectiveDesign: buildValidProspectiveStatisticalPromotionContract(temporalSplit),
+    testedHypothesisCount: 1,
+    alpha: 0.05,
+    targetPower: 0.8,
+    holdoutMonthsHash: "holdout-hash",
+    entriesByHypothesisId: new Map([[hypothesisId, entry]]),
+  };
+}
+
 function buildPromotionArtifacts(input: {
   strategy: ParsedSynthesisStrategy;
   validation: ParsedValidationEntry;
   harness?: ParsedHarnessStrategyMetrics;
+  oos?: ParsedOosPromotionContext;
 }) {
   const harness = input.harness ?? createHarness({
     strategyId: input.strategy.strategyId,
@@ -107,6 +202,17 @@ function buildPromotionArtifacts(input: {
   };
   const validationContent = `${JSON.stringify(validationDoc)}\n`;
   const candidateContent = `${JSON.stringify(synthesisDoc)}\n`;
+  const oos = input.oos ?? {
+    present: false,
+    artifactContentHash: null,
+    discoveryIsolation: null,
+    prospectiveDesign: null,
+    testedHypothesisCount: null,
+    alpha: null,
+    targetPower: null,
+    holdoutMonthsHash: null,
+    entriesByHypothesisId: new Map(),
+  };
   const report = buildCandidatePromotionReport({
     generatedAt: GENERATED_AT,
     outputPath: "data/research-results/candidate-promotions.json",
@@ -117,11 +223,13 @@ function buildPromotionArtifacts(input: {
       synthesis: synthesisDoc,
       harnessStrategies: [harness],
       significanceByFamily: new Map(),
+      oos,
       inputArtifactContentHashes: {
         hypothesisValidation: hashArtifactContent(validationContent),
         strategySynthesis: hashArtifactContent(candidateContent),
         harnessResults: null,
         statisticalSignificance: null,
+        oosPowerCorrection: oos.artifactContentHash,
       },
     },
   });
@@ -213,6 +321,7 @@ describe("M12.7a candidate preregistration eligibility", () => {
         strategyId: `synth-${PASSING_ID}`,
         hypothesisId: PASSING_ID,
       }),
+      oos: createAuthorizingOos(PASSING_ID),
     });
     expect(artifacts.report.promotions[0]?.decision).toBe("candidate");
     expect(artifacts.report.promotions[0]?.evidence.promotionAccepted).toBe(true);

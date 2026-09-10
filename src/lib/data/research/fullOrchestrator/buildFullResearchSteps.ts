@@ -22,6 +22,10 @@ import {
   DEFAULT_HYPOTHESIS_VALIDATION_HTML_PATH,
   DEFAULT_HYPOTHESIS_VALIDATION_OUTPUT_PATH,
 } from "@/lib/data/research/hypothesisRobustness/hypothesisRobustnessTypes";
+import {
+  DEFAULT_OOS_POWER_CORRECTION_HTML_PATH,
+  DEFAULT_OOS_POWER_CORRECTION_OUTPUT_PATH,
+} from "@/lib/data/research/oosPowerCorrection/oosPowerCorrectionTypes";
 
 import {
   COVERAGE_VALIDATION_HTML_PATH,
@@ -228,6 +232,18 @@ export function buildFullResearchSteps(
       independent: false,
     },
     {
+      id: "oos-power-correction",
+      label: "OOS power and FDR correction",
+      npmScript: "research:oos-power-correction",
+      args: [],
+      expectedOutputs: [
+        DEFAULT_OOS_POWER_CORRECTION_OUTPUT_PATH,
+        DEFAULT_OOS_POWER_CORRECTION_HTML_PATH,
+      ],
+      upstreamStepIds: ["hypotheses"],
+      independent: false,
+    },
+    {
       id: "candidate-promotions",
       label: "Candidate promotions",
       npmScript: "research:candidate-promotions",
@@ -236,7 +252,7 @@ export function buildFullResearchSteps(
         DEFAULT_CANDIDATE_PROMOTIONS_OUTPUT_PATH,
         DEFAULT_CANDIDATE_PROMOTIONS_HTML_PATH,
       ],
-      upstreamStepIds: ["candidate-registry"],
+      upstreamStepIds: ["candidate-registry", "oos-power-correction"],
       independent: false,
     },
     {

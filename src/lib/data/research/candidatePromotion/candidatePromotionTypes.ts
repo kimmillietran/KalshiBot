@@ -1,5 +1,12 @@
 import { DEFAULT_HYPOTHESIS_VALIDATION_OUTPUT_PATH } from "@/lib/data/research/hypothesisRobustness/hypothesisRobustnessTypes";
 import { DEFAULT_STATISTICAL_SIGNIFICANCE_OUTPUT_PATH } from "@/lib/data/research/statisticalSignificance/statisticalSignificanceTypes";
+import { DEFAULT_OOS_POWER_CORRECTION_OUTPUT_PATH } from "@/lib/data/research/oosPowerCorrection/oosPowerCorrectionTypes";
+import type {
+  OosDiscoveryIsolation,
+  OosDiscoveryIsolationStatus,
+  OosPowerCorrectionEntry,
+  OosStatisticalVerdict,
+} from "@/lib/data/research/oosPowerCorrection/oosPowerCorrectionTypes";
 
 export const CANDIDATE_PROMOTIONS_FILENAME = "candidate-promotions.json";
 export const DEFAULT_CANDIDATE_PROMOTIONS_OUTPUT_PATH =
@@ -7,15 +14,16 @@ export const DEFAULT_CANDIDATE_PROMOTIONS_OUTPUT_PATH =
 export const DEFAULT_CANDIDATE_PROMOTIONS_HTML_PATH =
   "data/reports/research-candidate-promotions.html";
 
-/** M12.7a evidence-binding version stamped onto promotion reports. */
+/** M12.7c evidence-binding version stamped onto promotion reports. */
 export const CANDIDATE_PROMOTION_EVIDENCE_ANALYSIS_VERSION =
-  "m12.7a-candidate-promotion-evidence-v1" as const;
+  "m12.7c-candidate-promotion-evidence-v1" as const;
 
 export type CandidatePromotionInputArtifactHashes = {
   hypothesisValidation: string | null;
   strategySynthesis: string | null;
   harnessResults: string | null;
   statisticalSignificance: string | null;
+  oosPowerCorrection: string | null;
 };
 
 export type CandidatePromotionEntryEvidence = {
@@ -26,9 +34,31 @@ export type CandidatePromotionEntryEvidence = {
   validationPasses: boolean | null;
   /**
    * True only when decision is candidate|production-watchlist AND
-   * validationPasses === true. Rejected/failed validation never accepts.
+   * validationPasses === true AND M12.7c statistical gates authorize promotion.
    */
   promotionAccepted: boolean;
+  /** Bound OOS/FDR/power gates (nulls fail closed). */
+  oosFinalStatisticalVerdict: OosStatisticalVerdict | null;
+  oosPassesCorrected: boolean | null;
+  oosClearsMde: boolean | null;
+  oosIsUnderpowered: boolean | null;
+  oosQValue: number | null;
+  oosUncorrectedPValue: number | null;
+  oosCorrectionMethod: string | null;
+  oosNumberOfHypothesesTested: number | null;
+  oosAlpha: number | null;
+  oosTargetPower: number | null;
+  oosMinimumDetectableEffect: number | null;
+  oosObservedEffect: number | null;
+  oosEffectiveSampleSize: number | null;
+  oosIndependentMarketCount: number | null;
+  oosMarketDayCount: number | null;
+  discoveryIsolationStatus: OosDiscoveryIsolationStatus | null;
+  prospectiveDesignValid: boolean | null;
+  prospectiveDesignContentHash: string | null;
+  oosEntryContentHash: string | null;
+  oosArtifactContentHash: string | null;
+  oosHoldoutMonthsHash: string | null;
 };
 export const DEFAULT_STRATEGY_SYNTHESIS_INPUT_PATH =
   "data/research-results/strategy-synthesis-candidates.json";
@@ -76,8 +106,20 @@ export type CandidatePromotionInputPaths = {
   harnessResultsPath: string;
   harnessSummaryFallbackPath: string;
   statisticalSignificancePath: string;
+  oosPowerCorrectionPath: string;
 };
 
+export type ParsedOosPromotionContext = {
+  present: boolean;
+  artifactContentHash: string | null;
+  discoveryIsolation: OosDiscoveryIsolation | null;
+  prospectiveDesign: unknown | null;
+  testedHypothesisCount: number | null;
+  alpha: number | null;
+  targetPower: number | null;
+  holdoutMonthsHash: string | null;
+  entriesByHypothesisId: ReadonlyMap<string, OosPowerCorrectionEntry>;
+};
 export type CandidatePromotionSupportingMetrics = {
   robustnessScore: number | null;
   validationPasses: boolean | null;
@@ -181,6 +223,7 @@ export type ParsedCandidatePromotionInputs = {
     pValue: number | null;
     insufficientSample: boolean;
   }>;
+  oos: ParsedOosPromotionContext;
   inputArtifactContentHashes?: CandidatePromotionInputArtifactHashes;
 };
 
@@ -213,4 +256,5 @@ export const DEFAULT_CANDIDATE_PROMOTION_INPUT_PATHS: CandidatePromotionInputPat
   harnessResultsPath: DEFAULT_HARNESS_RESULTS_INPUT_PATH,
   harnessSummaryFallbackPath: DEFAULT_STRATEGY_HARNESS_SUMMARY_FALLBACK_PATH,
   statisticalSignificancePath: DEFAULT_STATISTICAL_SIGNIFICANCE_OUTPUT_PATH,
+  oosPowerCorrectionPath: DEFAULT_OOS_POWER_CORRECTION_OUTPUT_PATH,
 };

@@ -34,6 +34,27 @@ export {
 } from "./promotionEvidenceIdentity";
 
 export {
+  buildOosPromotionStatisticalGates,
+  hashOosPromotionEntryContent,
+  statisticalGatesAuthorizePromotion,
+} from "./oosPromotionStatisticalGates";
+export type {
+  OosDiscoveryIsolationStatus,
+  OosPromotionStatisticalGates,
+} from "./oosPromotionStatisticalGates";
+
+export {
+  PROSPECTIVE_STATISTICAL_PROMOTION_CONTRACT_VERSION,
+  buildValidProspectiveStatisticalPromotionContract,
+  hashProspectiveDesignContent,
+  validateProspectiveStatisticalPromotionContract,
+} from "./prospectiveStatisticalPromotionContract";
+export type {
+  ProspectiveEvidenceStoppingRule,
+  ProspectiveStatisticalPromotionContract,
+} from "./prospectiveStatisticalPromotionContract";
+
+export {
   evaluateCandidateEligibleForPreregistration,
   loadArtifactContentOrNull,
   requireCandidateEligibleForPreregistration,

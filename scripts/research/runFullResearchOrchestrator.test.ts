@@ -18,6 +18,7 @@ const BASE_REGISTERED_SCRIPTS = [
   "research:harness",
   "research:harness-results",
   "research:candidate-registry",
+  "research:oos-power-correction",
   "research:candidate-promotions",
   "research:verify-preregistration-eligibility",
   "research:artifact-index",
@@ -50,7 +51,7 @@ describe("runFullResearchOrchestratorCommand", () => {
     }, { generatedAt: GENERATED_AT });
 
     expect(exitCode).toBe(0);
-    expect(calls).toHaveLength(18);
+    expect(calls).toHaveLength(19);
     expect(calls.some((call) => call.npmScript === "research:execute-expansion-import")).toBe(false);
 
     const parsed = JSON.parse(writes.get(OUTPUT_PATH)!);

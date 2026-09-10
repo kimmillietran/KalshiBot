@@ -4,6 +4,7 @@ import { loadRegimeVolatilityByMarket } from "@/lib/data/research/mispricingAtla
 import { evaluateOosPowerCandidates, loadOosPowerCorrectionInputs } from "./evaluateOosPowerCandidates";
 import type {
   BuildOosPowerCorrectionReportInput,
+  OosDiscoveryIsolation,
   OosPowerCorrectionConfig,
   OosPowerCorrectionReport,
   OosPowerCorrectionSummary,
@@ -63,7 +64,15 @@ const LIMITATIONS = [
   "This overlay does not regenerate hypotheses; train split is evaluative only.",
   "Holdout verdicts require sufficient holdout-month observations per bucket.",
   "Positive M11.6 in-sample replay does not imply corrected statistical pass here.",
+  "M12.7c: default discoveryIsolation is discovery-saw-full-corpus; train-only isolation must be proven explicitly before promotion.",
 ] as const;
+
+const DEFAULT_DISCOVERY_ISOLATION: OosDiscoveryIsolation = {
+  status: "discovery-saw-full-corpus",
+  reason:
+    "Hypothesis candidates were generated from full-corpus atlas aggregates; "
+    + "holdout months were not sealed from candidate selection/direction/bucket admission.",
+};
 
 /** Builds the OOS power and dependence correction report. */
 export function buildOosPowerCorrectionReport(
@@ -97,7 +106,7 @@ export function buildOosPowerCorrectionReport(
   );
 
   const investigatorNotes = [
-    "Statistical overlay only — does not modify hypothesis generation or promotion.",
+    "Statistical overlay — OOS/FDR/power bind into promotion under M12.7c (missing/underpowered/contaminated fail closed).",
     `Correction method: ${config.correctionMethod}.`,
     `Split mode: ${evaluated.splitSummary.splitMode}.`,
     `Train months: ${evaluated.splitSummary.trainMonths.join(", ") || "none"}.`,
@@ -113,6 +122,9 @@ export function buildOosPowerCorrectionReport(
     investigatorNotes.push("hypothesis-trade-replay.json missing; power uses observation edges only.");
   }
 
+  const discoveryIsolation = input.discoveryIsolation ?? DEFAULT_DISCOVERY_ISOLATION;
+  investigatorNotes.push(`Discovery isolation: ${discoveryIsolation.status} — ${discoveryIsolation.reason}`);
+
   return {
     generatedAt: input.generatedAt,
     outputPath: input.outputPath,
@@ -123,6 +135,8 @@ export function buildOosPowerCorrectionReport(
     splitSummary: evaluated.splitSummary,
     summary,
     entries: evaluated.entries,
+    discoveryIsolation,
+    prospectiveDesign: input.prospectiveDesign ?? null,
     investigatorNotes,
     limitations: [...LIMITATIONS],
   };
