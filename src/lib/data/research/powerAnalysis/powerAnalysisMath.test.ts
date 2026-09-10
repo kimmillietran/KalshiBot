@@ -20,6 +20,19 @@ describe("powerAnalysisMath", () => {
     expect(required).toBe(155);
   });
 
+  it("changes required sample size when alpha changes", () => {
+    const base = {
+      edgeCents: 2,
+      standardDeviation: 10,
+      targetPower: 0.8 as const,
+    };
+    const at05 = computeRequiredSampleSize({ ...base, alpha: 0.05 });
+    const at01 = computeRequiredSampleSize({ ...base, alpha: 0.01 });
+    expect(at05).not.toBeNull();
+    expect(at01).not.toBeNull();
+    expect(at01!).toBeGreaterThan(at05!);
+  });
+
   it("computes minimum detectable effect from sample size and variance", () => {
     const mde = computeMinimumDetectableEffect({
       sampleSize: 100,
