@@ -19,6 +19,10 @@ export function serializeCalibrationFadeV2CrossRunValidationHtml(
 </head>
 <body>
   <h1>Governed v2 confirmatory cross-run aggregation</h1>
+  <p><strong>Settlement evidence authority:</strong> snapshot-scoped
+  (<code>runSetHash</code> + <code>settlementSnapshotHash</code>).
+  Legacy run-set root artifacts are historical only and must not be treated as
+  current settlement-state authority.</p>
   <p>analysisVersion: ${report.analysisVersion}</p>
   <p>runSetHash: ${report.runSetHash}</p>
   <p>settlementSnapshotHash: ${report.settlementSnapshotHash}</p>
