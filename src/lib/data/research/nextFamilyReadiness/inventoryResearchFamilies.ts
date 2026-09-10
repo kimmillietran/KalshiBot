@@ -1,0 +1,238 @@
+import {
+  BTC_MAGNITUDE_BINS,
+  BTC_RETURN_HORIZONS_MS,
+  IMPLIED_PROBABILITY_BINS,
+  RESPONSE_WINDOWS_MS,
+  TIME_REMAINING_BINS,
+} from "../btcKalshiLeadLagAnalysis/btcKalshiLeadLagAnalysisTypes";
+import {
+  DEFAULT_RESEARCH_MOMENTUM_LOOKBACK_BARS,
+  MOMENTUM_MODERATE_THRESHOLD_PERCENT,
+  MOMENTUM_STRONG_THRESHOLD_PERCENT,
+} from "../dimensions/momentum/momentumResearchTypes";
+import { MOMENTUM_BUCKET_DEFINITIONS } from "../dimensions/momentum/momentumBucketDefinitions";
+
+import type {
+  FamilyInventory,
+  NextFamilyReadinessIo,
+  ResearchFamilyId,
+} from "./nextFamilyReadinessTypes";
+
+const LEAD_LAG_MODULES = [
+  "src/lib/data/research/btcKalshiLeadLagAnalysis/analyzeBtcKalshiLeadLagForRun.ts",
+  "src/lib/data/research/btcKalshiLeadLagAnalysis/causalBtcJoin.ts",
+  "src/lib/data/research/btcKalshiLeadLagAnalysis/classifyLeadLagInterpretation.ts",
+  "scripts/research/buildBtcKalshiLeadLagAnalysis.ts",
+] as const;
+
+const MICROSTRUCTURE_MODULES = [
+  "src/lib/data/research/bidSizeCoverageAudit/buildBidSizeCoverageAuditReport.ts",
+  "src/lib/data/research/quoteFidelityGate/buildQuoteFidelityGateReport.ts",
+  "src/lib/data/research/staticParityScan/buildStaticParityScanReport.ts",
+  "src/lib/data/research/executableConfirmationDesign/buildExecutableConfirmationDesignReport.ts",
+] as const;
+
+const MOMENTUM_MODULES = [
+  "src/lib/data/research/dimensions/momentum/momentumResearchTypes.ts",
+  "src/lib/data/research/dimensions/momentum/momentumBucketDefinitions.ts",
+  "src/lib/features/momentum.ts",
+  "src/lib/data/strategies/plugin/builtins/simpleMomentumStrategyPlugin.ts",
+] as const;
+
+const MOMENTUM_FAMILY_ANALYSIS_MISSING = [
+  "src/lib/data/research/momentumFamilyAnalysis/",
+  "scripts/research/buildMomentumFamilyAnalysis.ts",
+] as const;
+
+const MICROSTRUCTURE_FAMILY_ANALYSIS_MISSING = [
+  "src/lib/data/research/spreadLiquidityMicrostructureFamily/",
+  "scripts/research/buildSpreadLiquidityMicrostructureFamily.ts",
+] as const;
+
+function presentPaths(
+  io: NextFamilyReadinessIo,
+  paths: readonly string[],
+): { present: string[]; missing: string[] } {
+  const present: string[] = [];
+  const missing: string[] = [];
+  for (const path of paths) {
+    if (io.fileExists(path)) {
+      present.push(path);
+    } else {
+      missing.push(path);
+    }
+  }
+  return { present, missing };
+}
+
+export function inventoryLeadLagFamily(io: NextFamilyReadinessIo): FamilyInventory {
+  const modules = presentPaths(io, LEAD_LAG_MODULES);
+  const candleIntegrityPresent = io.fileExists(
+    "src/lib/data/research/completedCandleWindowIntegrity/index.ts",
+  );
+  return {
+    familyId: "btc-kalshi-lead-lag",
+    displayName: "BTC / Kalshi lead-lag",
+    maturity: modules.missing.length === 0 ? "mature" : "partial",
+    independenceFromCalibrationFade: "high",
+    conceptualThesis:
+      "BTC moves first and Kalshi implied probability reacts later "
+      + "(impulse → forward response), distinct from calibration overconfidence in a vol/time bucket.",
+    modulePathsPresent: modules.present,
+    modulePathsMissing: modules.missing,
+    npmScriptsPresent: ["research:btc-kalshi-lead-lag-analysis", "research:lead-lag"],
+    familyDefinitionAvailable: modules.present.length >= 3,
+    causalSemanticsNotes: [
+      "causalBtcJoin is backward-only (last BTC at-or-before Kalshi timestamp) with age cap.",
+      "Report stamps futureLeakageGuardStatus and btcJoinDirection.",
+      "Do not select the best lag/horizon on all exploratory data and call it a hypothesis.",
+    ],
+    executableInputNotes: [
+      "Lead-lag characterization uses executableBuyYesCents / executableSellYesCents and spread/size fields.",
+      "Midpoint response is diagnostic, not executable P&L.",
+    ],
+    multiplicity: {
+      status: "needs-work",
+      returnHorizonCount: BTC_RETURN_HORIZONS_MS.length,
+      responseWindowCount: RESPONSE_WINDOWS_MS.length,
+      magnitudeBinCount: BTC_MAGNITUDE_BINS.length,
+      timeRemainingBinCount: TIME_REMAINING_BINS.length,
+      impliedProbabilityBinCount: IMPLIED_PROBABILITY_BINS.length,
+      atlasAxisGroupCount: null,
+      momentumBucketCount: null,
+      note:
+        `${BTC_RETURN_HORIZONS_MS.length} BTC return horizons × `
+        + `${RESPONSE_WINDOWS_MS.length} response windows × `
+        + `${BTC_MAGNITUDE_BINS.length} magnitude × `
+        + `${TIME_REMAINING_BINS.length} time-remaining × `
+        + `${IMPLIED_PROBABILITY_BINS.length} implied-prob bins form a large exploratory grid. `
+        + "Prospective work must freeze a small pre-registered subset before confirmatory capture.",
+    },
+    overlapsWithCalibrationFade: [
+      "Shares forward-quote capture plumbing, top-of-book fidelity, and bid-size coverage audits.",
+      "Does not share the calibration-fade eligibility rule or signed calibration-gap classifier.",
+    ],
+    volatilityContiguityDependency: candleIntegrityPresent ? "needs-work" : "not-established",
+    volatilityContiguityNote: candleIntegrityPresent
+      ? "Completed-candle contiguity primitives exist for future contracts; lead-lag primary path uses causal spot join. "
+        + "If a future lead-lag rule depends on completed-candle returns/volatility, requireContiguousWindow must be opt-in."
+      : "completedCandleWindowIntegrity module not found in this checkout.",
+  };
+}
+
+export function inventoryMicrostructureFamily(io: NextFamilyReadinessIo): FamilyInventory {
+  const modules = presentPaths(io, MICROSTRUCTURE_MODULES);
+  const missingFamily = presentPaths(io, MICROSTRUCTURE_FAMILY_ANALYSIS_MISSING);
+  return {
+    familyId: "spread-liquidity-microstructure",
+    displayName: "Spread / liquidity microstructure",
+    maturity: modules.present.length >= 2 ? "partial" : "not-established",
+    independenceFromCalibrationFade: "medium",
+    conceptualThesis:
+      "Top-of-book spread, depth/size, quote dynamics, and book integrity — not calibration overconfidence.",
+    modulePathsPresent: modules.present,
+    modulePathsMissing: [...modules.missing, ...missingFamily.missing],
+    npmScriptsPresent: [
+      "research:bid-size-coverage-audit",
+      "research:quote-fidelity-gate",
+      "research:static-parity-scan",
+      "research:executable-confirmation-design",
+    ],
+    familyDefinitionAvailable: false,
+    causalSemanticsNotes: [
+      "Infrastructure audits exist, but no sealed microstructure alpha family definition/report module was found.",
+      "Current capture is top-of-book oriented; full depth / order-flow is not established as available.",
+    ],
+    executableInputNotes: [
+      "Best bid/ask, sizes, valid-book, sequence/resync counters are captured in forward TOB streams.",
+      "Parity/executable-confirmation designs exist as diagnostics, not a preregisterable entry rule.",
+    ],
+    multiplicity: {
+      status: "needs-definition",
+      returnHorizonCount: null,
+      responseWindowCount: null,
+      magnitudeBinCount: null,
+      timeRemainingBinCount: null,
+      impliedProbabilityBinCount: null,
+      atlasAxisGroupCount: null,
+      momentumBucketCount: null,
+      note:
+        "No coded microstructure alpha search grid was found. "
+        + "Do not invent an order-flow thesis from unavailable depth data.",
+    },
+    overlapsWithCalibrationFade: [
+      "Forward-capture readiness includes calibrationFadeSpreadRealism gates.",
+      "Cost-aware atlas can adjust calibration-style EV for spread — shared capture economics, different signal thesis if defined.",
+    ],
+    volatilityContiguityDependency: "not-established",
+    volatilityContiguityNote:
+      "Microstructure family as currently evidenced does not require completed-candle volatility windows.",
+  };
+}
+
+export function inventoryMomentumFamily(io: NextFamilyReadinessIo): FamilyInventory {
+  const modules = presentPaths(io, MOMENTUM_MODULES);
+  const missingFamily = presentPaths(io, MOMENTUM_FAMILY_ANALYSIS_MISSING);
+  const candleIntegrityPresent = io.fileExists(
+    "src/lib/data/research/completedCandleWindowIntegrity/index.ts",
+  );
+  const momentumAxisGroups = 4; // momentumBuckets + momentumTime + momentumVolatility + momentumHour
+  return {
+    familyId: "momentum",
+    displayName: "Momentum",
+    maturity: modules.present.length >= 2 ? "needs-definition" : "not-established",
+    independenceFromCalibrationFade: "medium",
+    conceptualThesis:
+      "Continuation/reversal from BTC (or market) returns over a lookback — distinct from probability calibration fade, "
+      + "but currently only defined as atlas dimension buckets rather than a governed family evidence contract.",
+    modulePathsPresent: modules.present,
+    modulePathsMissing: [...modules.missing, ...missingFamily.missing],
+    npmScriptsPresent: [],
+    familyDefinitionAvailable: false,
+    causalSemanticsNotes: [
+      `Research momentum lookback defaults to ${DEFAULT_RESEARCH_MOMENTUM_LOOKBACK_BARS} one-minute bars `
+        + `(strong/moderate thresholds ${MOMENTUM_STRONG_THRESHOLD_PERCENT}% / ${MOMENTUM_MODERATE_THRESHOLD_PERCENT}%).`,
+      "Live feature momentum defaults differ from research 15m lookback — family contract must freeze one definition.",
+      "No dedicated momentum family analysis CLI/report module was found.",
+    ],
+    executableInputNotes: [
+      "Baseline simpleMomentumStrategyPlugin reads yes-ask (buy side).",
+      "Atlas momentum cells feed the shared hypothesis-candidate path, not a sealed momentum confirmatory pipeline.",
+    ],
+    multiplicity: {
+      status: "needs-work",
+      returnHorizonCount: null,
+      responseWindowCount: null,
+      magnitudeBinCount: null,
+      timeRemainingBinCount: null,
+      impliedProbabilityBinCount: null,
+      atlasAxisGroupCount: momentumAxisGroups,
+      momentumBucketCount: MOMENTUM_BUCKET_DEFINITIONS.length,
+      note:
+        `${MOMENTUM_BUCKET_DEFINITIONS.length} momentum buckets across ${momentumAxisGroups} atlas axis groups `
+        + "(momentumBuckets, momentumTime, momentumVolatility, momentumHour) "
+        + "create a combinatorial search space. A prospective family must freeze a tiny pre-registered subset.",
+    },
+    overlapsWithCalibrationFade: [
+      "Shares mispricing-atlas / hypothesis-candidate machinery and completed-candle windows used by fade volatility.",
+      "Signal is return-based rather than calibration-gap based, but discovery path is coupled.",
+    ],
+    volatilityContiguityDependency: candleIntegrityPresent ? "needs-work" : "not-established",
+    volatilityContiguityNote: candleIntegrityPresent
+      ? "Any future momentum family using completed 1m candles should opt into requireContiguousWindow / expectedBarIntervalMs=60000. "
+        + "Frozen calibration-fade v2 semantics must not be changed."
+      : "completedCandleWindowIntegrity module not found; candle-window integrity dependency not established.",
+  };
+}
+
+export function inventoryAllFamilies(io: NextFamilyReadinessIo): FamilyInventory[] {
+  return [
+    inventoryLeadLagFamily(io),
+    inventoryMicrostructureFamily(io),
+    inventoryMomentumFamily(io),
+  ].sort((left, right) => left.familyId.localeCompare(right.familyId));
+}
+
+export function listEvaluatedFamilyIds(): ResearchFamilyId[] {
+  return ["btc-kalshi-lead-lag", "momentum", "spread-liquidity-microstructure"];
+}
