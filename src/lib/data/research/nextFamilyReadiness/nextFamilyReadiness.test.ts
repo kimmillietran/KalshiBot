@@ -52,6 +52,7 @@ function baseConfig(
     exploratoryCaptureRunDirs: [],
     fadeConfirmatoryReportPaths: [],
     exploratoryHistoricalReturnProxies: {},
+    leadLagLineage: null,
     outputPath: "data/research-results/next-family-readiness/test/next-family-readiness.json",
     htmlOutputPath: "data/reports/next-family-readiness/test/next-family-readiness.html",
     ...overrides,
@@ -337,5 +338,200 @@ describe("nextFamilyReadiness", () => {
       generatedAt: "2026-09-10T00:00:00.000Z",
     });
     expect(io.readFile(fadePath)).toBe(fadeBody);
+  });
+});
+
+describe("M12.9 lead-lag disposition + family reassessment", () => {
+  const DISCOVERY_ID = "a4b5fd8a50bd04207f1041846f30a4f7d9f07bf34b03ddf12e293a2278520a24";
+  const VALIDATION_ID = "d87619c312e0e3e2341d98f68a7742addd623446e6fce11d9f4ea39699488fe0";
+  const HOLDOUT_ID = "6d8df318342d2e8c274f43ee9c5b9259bf620266ab6c2d9716ce85d1ca288756";
+  const EVIDENCE_ID = "ed60f336af8517abe536d5642b9875e8dd26dddb0eaf6db9302368f75203ae38";
+  const READINESS_ID = "8cf1f72069af4a67692ae7060ebe618a9813c6bb6b38f035be3c485f52379053";
+  const CANDIDATE =
+    "30000|60000|5-to-10-bps|5-to-10-minutes|70-to-90-percent|reverse-btc";
+
+  function lineageFiles(): Record<string, string> {
+    const locked = {
+      candidateId: CANDIDATE,
+      hypothesisId: CANDIDATE,
+      exactDefinition: {
+        candidateId: CANDIDATE,
+        hypothesisId: CANDIDATE,
+        trainMedianSignedMidResponseCents: 6.75,
+      },
+    };
+    return {
+      ...LEAD_LAG_FILES,
+      ...MICRO_FILES,
+      ...MOMENTUM_FILES,
+      "fixture/discovery.json": JSON.stringify({
+        discoveryIdentityHash: DISCOVERY_ID,
+        discoveryIsolationStatus: "train-only-discovery",
+      }),
+      "fixture/validation.json": JSON.stringify({
+        validationIdentityHash: VALIDATION_ID,
+        discoveryIdentity: DISCOVERY_ID,
+        lockedHoldoutCandidate: locked,
+        candidateResults: [
+          {
+            candidateId: CANDIDATE,
+            hypothesisId: CANDIDATE,
+            validationStatus: "validated",
+            midpointResponseCents: 2,
+          },
+          {
+            candidateId: "other-a",
+            hypothesisId: "other-a",
+            validationStatus: "validated",
+            midpointResponseCents: 9,
+          },
+          {
+            candidateId: "other-b",
+            hypothesisId: "other-b",
+            validationStatus: "validated",
+            midpointResponseCents: 8,
+          },
+        ],
+      }),
+      "fixture/holdout.json": JSON.stringify({
+        holdoutIdentityHash: HOLDOUT_ID,
+        discoveryIdentity: DISCOVERY_ID,
+        validationIdentity: VALIDATION_ID,
+        evidenceContractIdentity: EVIDENCE_ID,
+        lockedCandidateId: CANDIDATE,
+        holdoutStatisticalVerdict: "underpowered",
+        holdoutOverallStatus: "holdout-underpowered",
+        recommendedNextAction: "insufficient-holdout-evidence",
+        candidateMetrics: {
+          effectiveSampleSize: 3,
+          holdoutEffectCents: -4.5,
+        },
+      }),
+      "fixture/readiness.json": JSON.stringify({
+        readinessIdentityHash: READINESS_ID,
+        requiredFreshEffectiveN: 155,
+        replicationReadiness: "technically-ready-but-operationally-costly",
+        decisionRequired: "capture-budget-approval",
+        lineage: {
+          evidenceContractIdentity: EVIDENCE_ID,
+          candidateId: CANDIDATE,
+        },
+        operationalBurden: {
+          projectedCaptureHoursPooled: 114.81481481481481,
+        },
+        powerContract: { requiredEffectiveN: 155 },
+      }),
+    };
+  }
+
+  function lineageConfig() {
+    return baseConfig({
+      leadLagLineage: {
+        discoveryIdentityHash: DISCOVERY_ID,
+        discoveryReportPath: "fixture/discovery.json",
+        validationIdentityHash: VALIDATION_ID,
+        validationReportPath: "fixture/validation.json",
+        holdoutIdentityHash: HOLDOUT_ID,
+        holdoutReportPath: "fixture/holdout.json",
+        readinessIdentityHash: READINESS_ID,
+        readinessReportPath: "fixture/readiness.json",
+      },
+    });
+  }
+
+  it("1-4. underpowered preserved; no promote/freeze; replication unauthorized", () => {
+    const io = createMemoryCalibrationFadeForwardValidationIo(lineageFiles());
+    const report = buildNextFamilyReadinessReport({
+      config: lineageConfig(),
+      io,
+      generatedAt: "2026-09-10T12:00:00.000Z",
+    });
+    expect(report.historicalVerdict).toBe("underpowered");
+    expect(report.completedLineage?.holdoutStatisticalVerdict).toBe("underpowered");
+    expect(report.lineageDisposition).toBe("deferred-for-prospective-replication");
+    expect(report.prospectiveReplicationStatus).toBe("available-but-not-authorized");
+    expect(report.promotionForbidden).toBe(true);
+    expect(report.freezeForbidden).toBe(true);
+    expect(report.prospectiveCaptureStarted).toBe(false);
+    expect(report.liveTradingImplemented).toBe(false);
+  });
+
+  it("5-7. candidate shopping forbidden; historical N not fresh; ESS bound", () => {
+    const io = createMemoryCalibrationFadeForwardValidationIo(lineageFiles());
+    const report = buildNextFamilyReadinessReport({
+      config: lineageConfig(),
+      io,
+      generatedAt: "2026-09-10T12:00:00.000Z",
+    });
+    expect(report.candidateShoppingForbidden).toBe(true);
+    expect(report.completedLineage?.validationSurvivorCount).toBe(3);
+    expect(report.confirmatoryReuseWarning).toMatch(/cannot become fresh/i);
+    expect(report.prospectiveRequiredFreshEss).toBe(155);
+    expect(report.completedLineage?.prospectiveRequiredFreshEss).toBe(155);
+    const leadLag = report.familyReadiness.find((f) => f.familyId === "btc-kalshi-lead-lag");
+    expect(leadLag?.candidateIncidence.confirmatoryReuseForbidden).toBe(true);
+  });
+
+  it("8-9. ranking ignores return; completed investigation changes lead-lag state", () => {
+    const io = createMemoryCalibrationFadeForwardValidationIo(lineageFiles());
+    const report = buildNextFamilyReadinessReport({
+      config: {
+        ...lineageConfig(),
+        exploratoryHistoricalReturnProxies: {
+          "btc-kalshi-lead-lag": 999,
+          "spread-liquidity-microstructure": -999,
+          momentum: 500,
+        },
+      },
+      io,
+      generatedAt: "2026-09-10T12:00:00.000Z",
+    });
+    const leadLag = report.familyReadiness.find((f) => f.familyId === "btc-kalshi-lead-lag")!;
+    expect(leadLag.maturity).toBe("empirically-investigated");
+    expect(isEligibleForDiscoveryRecommendation(leadLag)).toBe(false);
+    expect(report.selectionStatus).not.toBe("recommended-for-discovery");
+    expect(report.recommendationRationale.some((line) => /historical return/i.test(line))).toBe(
+      true,
+    );
+  });
+
+  it("10-12. microstructure/momentum re-evaluated; no family forced to win discovery", () => {
+    const io = createMemoryCalibrationFadeForwardValidationIo(lineageFiles());
+    const report = buildNextFamilyReadinessReport({
+      config: lineageConfig(),
+      io,
+      generatedAt: "2026-09-10T12:00:00.000Z",
+    });
+    const micro = report.familyReadiness.find(
+      (f) => f.familyId === "spread-liquidity-microstructure",
+    )!;
+    const momentum = report.familyReadiness.find((f) => f.familyId === "momentum")!;
+    expect(micro.inventory.microstructureDataSupport?.length).toBeGreaterThan(0);
+    expect(micro.maturity).toBe("partial");
+    expect(momentum.maturity).toBe("needs-definition");
+    expect(isEligibleForDiscoveryRecommendation(momentum)).toBe(false);
+    expect(report.selectionStatus).toBe("prepare-family-definition");
+    expect(report.recommendedFamily).toBe("spread-liquidity-microstructure");
+    expect(report.recommendedNextAction).toBe("prepare-family-definition");
+  });
+
+  it("13-16. deterministic identity; no latest/mtime; no capture/trading", () => {
+    const io = createMemoryCalibrationFadeForwardValidationIo(lineageFiles());
+    const a = buildNextFamilyReadinessReport({
+      config: lineageConfig(),
+      io,
+      generatedAt: "2026-09-10T12:00:00.000Z",
+    });
+    const b = buildNextFamilyReadinessReport({
+      config: lineageConfig(),
+      io,
+      generatedAt: "2026-09-11T12:00:00.000Z",
+    });
+    expect(a.reportIdentityHash).toBe(b.reportIdentityHash);
+    expect(() =>
+      parseNextFamilyReadinessArgv(["--bind-lead-lag-lineage", "--latest"]),
+    ).toThrow(/latest\/mtime/i);
+    expect(a.prospectiveCaptureStarted).toBe(false);
+    expect(a.liveTradingImplemented).toBe(false);
   });
 });

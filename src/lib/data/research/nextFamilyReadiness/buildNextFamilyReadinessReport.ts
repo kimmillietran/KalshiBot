@@ -3,7 +3,12 @@ import { join } from "node:path";
 
 import { stableStringify } from "@/lib/trading/config/hashConfig";
 
-import { inventoryAllFamilies, listEvaluatedFamilyIds } from "./inventoryResearchFamilies";
+import {
+  applyLeadLagEmpiricalDisposition,
+  inventoryAllFamilies,
+  listEvaluatedFamilyIds,
+} from "./inventoryResearchFamilies";
+import { loadCompletedLeadLagLineage } from "./loadCompletedLeadLagLineage";
 import {
   loadExploratoryCaptureIdentity,
   loadFadeIndependentMarketsPerEightHours,
@@ -15,6 +20,7 @@ import {
   NEXT_FAMILY_READINESS_HTML_ROOT,
   NEXT_FAMILY_READINESS_JSON_FILENAME,
   NEXT_FAMILY_READINESS_JSON_ROOT,
+  type CandidateIncidenceAssessment,
   type NextFamilyReadinessConfig,
   type NextFamilyReadinessIo,
   type NextFamilyReadinessReport,
@@ -52,12 +58,44 @@ export function resolveNextFamilyReadinessOutputPaths(input: {
   };
 }
 
+function leadLagIncidenceFromLineage(input: {
+  base: CandidateIncidenceAssessment;
+  projectedCaptureHoursPooled: number | null;
+  requiredFreshEss: number;
+}): CandidateIncidenceAssessment {
+  return {
+    ...input.base,
+    status: "insufficient-evidence",
+    source: "bound-m12.8-replication-readiness",
+    exploratoryOnly: true,
+    confirmatoryReuseForbidden: true,
+    expectedCaptureHoursForPlausiblePower: input.projectedCaptureHoursPooled,
+    powerAssumptions:
+      `Bound prospective required fresh ESS=${input.requiredFreshEss} from readiness artifact. `
+      + "Historical Runs 1–3 cannot count toward fresh N.",
+    note:
+      "Lead-lag candidate-specific incidence was measured in M12.8d readiness (design only). "
+      + "Historical holdout remains underpowered; prospective replication is operationally costly "
+      + "and available-but-not-authorized.",
+  };
+}
+
 export function buildNextFamilyReadinessReport(input: {
   config: NextFamilyReadinessConfig;
   io: NextFamilyReadinessIo;
   generatedAt?: string;
 }): NextFamilyReadinessReport {
-  const inventories = inventoryAllFamilies(input.io);
+  const completedLineage = input.config.leadLagLineage
+    ? loadCompletedLeadLagLineage({ io: input.io, binding: input.config.leadLagLineage })
+    : null;
+
+  let inventories = inventoryAllFamilies(input.io);
+  if (completedLineage) {
+    inventories = inventories.map((inventory) =>
+      applyLeadLagEmpiricalDisposition(inventory, completedLineage)
+    );
+  }
+
   const exploratoryDirs = [...input.config.exploratoryCaptureRunDirs].sort((left, right) =>
     left.localeCompare(right)
   );
@@ -79,11 +117,18 @@ export function buildNextFamilyReadinessReport(input: {
   ].sort((left, right) => left.localeCompare(right));
 
   const familyReadiness = inventories.map((inventory) => {
-    const incidence = buildCandidateIncidenceAssessment({
+    let incidence = buildCandidateIncidenceAssessment({
       familyId: inventory.familyId,
       fadeIndependentMarketsPerEightHours,
       exploratoryCaptureHours: exploratoryCaptureHours > 0 ? exploratoryCaptureHours : null,
     });
+    if (completedLineage && inventory.familyId === "btc-kalshi-lead-lag") {
+      incidence = leadLagIncidenceFromLineage({
+        base: incidence,
+        projectedCaptureHoursPooled: completedLineage.projectedCaptureHoursPooled,
+        requiredFreshEss: completedLineage.prospectiveRequiredFreshEss,
+      });
+    }
     return scoreFamilyReadiness({
       inventory,
       incidence,
@@ -96,7 +141,9 @@ export function buildNextFamilyReadinessReport(input: {
   // Deterministic order by familyId (never filesystem / input order).
   familyReadiness.sort((left, right) => left.familyId.localeCompare(right.familyId));
 
-  const selection = selectNextFamily(familyReadiness);
+  const selection = selectNextFamily(familyReadiness, {
+    leadLagDeferred: completedLineage != null,
+  });
 
   const identityPayload = {
     analysisVersion: NEXT_FAMILY_READINESS_ANALYSIS_VERSION,
@@ -111,6 +158,19 @@ export function buildNextFamilyReadinessReport(input: {
     fadeConfirmatoryReportPaths: [...input.config.fadeConfirmatoryReportPaths].sort((a, b) =>
       a.localeCompare(b)
     ),
+    completedLineage: completedLineage
+      ? {
+          discoveryIdentity: completedLineage.discoveryIdentity,
+          validationIdentity: completedLineage.validationIdentity,
+          holdoutIdentity: completedLineage.holdoutIdentity,
+          readinessIdentity: completedLineage.readinessIdentity,
+          evidenceContractIdentity: completedLineage.evidenceContractIdentity,
+          candidateId: completedLineage.candidateId,
+          holdoutStatisticalVerdict: completedLineage.holdoutStatisticalVerdict,
+          prospectiveRequiredFreshEss: completedLineage.prospectiveRequiredFreshEss,
+          disposition: "deferred-for-prospective-replication",
+        }
+      : null,
     inventoryDigest: inventories.map((inventory) => ({
       familyId: inventory.familyId,
       modulePathsPresent: inventory.modulePathsPresent,
@@ -118,9 +178,11 @@ export function buildNextFamilyReadinessReport(input: {
       familyDefinitionAvailable: inventory.familyDefinitionAvailable,
       maturity: inventory.maturity,
       multiplicity: inventory.multiplicity,
+      microstructureDataSupport: inventory.microstructureDataSupport ?? null,
     })),
     selectionStatus: selection.selectionStatus,
     recommendedFamily: selection.recommendedFamily,
+    recommendedNextAction: selection.recommendedNextAction,
   };
   const reportIdentityHash = sha256Hex(stableStringify(identityPayload));
   const outputs = resolveNextFamilyReadinessOutputPaths({
@@ -141,6 +203,11 @@ export function buildNextFamilyReadinessReport(input: {
     "Discovery → validation → clean holdout → promotion evidence artifacts (#66 pipeline).",
     "Explicit labeling that prior exploratory captures are design data only (not confirmatory).",
     "If using completed-candle volatility/returns: requireContiguousWindow + expectedBarIntervalMs.",
+    ...(completedLineage
+      ? [
+          "Lead-lag prospective freeze (M12.8e) is separate and requires capture-budget approval before any fresh capture.",
+        ]
+      : []),
   ];
 
   const governancePipelineExpectations = [
@@ -158,17 +225,45 @@ export function buildNextFamilyReadinessReport(input: {
     disclaimer: NEXT_FAMILY_READINESS_DISCLAIMER,
     generatedAt: input.generatedAt ?? new Date().toISOString(),
     reportIdentityHash,
+    completedLineage,
+    historicalVerdict: completedLineage?.holdoutStatisticalVerdict ?? null,
+    prospectiveReplicationStatus: completedLineage
+      ? "available-but-not-authorized"
+      : "not-applicable",
+    prospectiveRequiredFreshEss: completedLineage?.prospectiveRequiredFreshEss ?? null,
+    operationalBurden: completedLineage
+      ? {
+          projectedCaptureHoursPooled: completedLineage.projectedCaptureHoursPooled,
+          projectedEightHourRunsPooled:
+            completedLineage.projectedEightHourRunsPooled
+            ?? (completedLineage.projectedCaptureHoursPooled != null
+              ? completedLineage.projectedCaptureHoursPooled / 8
+              : null),
+          projectedStorageGiBPooled: completedLineage.projectedStorageGiBPooled,
+          burdenClass: completedLineage.burdenClass,
+        }
+      : null,
+    lineageDisposition: completedLineage
+      ? "deferred-for-prospective-replication"
+      : "not-applicable",
+    candidateShoppingForbidden: true,
+    promotionForbidden: true,
+    freezeForbidden: true,
+    prospectiveCaptureStarted: false,
+    liveTradingImplemented: false,
     familiesEvaluated: listEvaluatedFamilyIds(),
     familyReadiness,
     recommendedFamily: selection.recommendedFamily,
     selectionStatus: selection.selectionStatus,
+    recommendedNextAction: selection.recommendedNextAction,
     recommendationRationale: selection.recommendationRationale,
     blockingRequirements,
     exploratoryDataIdentities,
     confirmatoryReuseForbidden: true,
     confirmatoryReuseWarning:
       "Exploratory capture identities inspected by this audit are design data only and must never "
-      + "be silently reused as prospective confirmatory evidence for a future family.",
+      + "be silently reused as prospective confirmatory evidence for a future family. "
+      + "Historical lead-lag Runs 1–3 are outcome-inspected and cannot become fresh prospective N.",
     whatMustBeFrozenBeforeNewCapture,
     governancePipelineExpectations,
     outputPath: outputs.outputPath,

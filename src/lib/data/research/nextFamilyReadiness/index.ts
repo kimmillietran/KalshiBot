@@ -9,26 +9,39 @@ export {
 } from "./nextFamilyReadinessTypes";
 export type {
   CandidateIncidenceAssessment,
+  CompletedLeadLagLineageSummary,
   DimensionAssessment,
   ExploratoryCaptureIdentity,
   FamilyInventory,
   FamilyMaturity,
   FamilyReadiness,
   IndependenceFromCalibrationFade,
+  LeadLagLineageBindingConfig,
+  LeadLagLineageDisposition,
+  MicrostructureDataSupportRow,
   MultiplicityBurden,
   NextFamilyReadinessConfig,
   NextFamilyReadinessIo,
   NextFamilyReadinessReport,
+  ProspectiveReplicationStatus,
   ReadinessDimensionId,
   ReadinessStatus,
+  RecommendedNextAction,
   ResearchFamilyId,
   SelectionStatus,
 } from "./nextFamilyReadinessTypes";
 
 export { buildNextFamilyReadinessReport, resolveNextFamilyReadinessOutputPaths } from "./buildNextFamilyReadinessReport";
-export { inventoryAllFamilies, listEvaluatedFamilyIds } from "./inventoryResearchFamilies";
+export {
+  applyLeadLagEmpiricalDisposition,
+  buildMicrostructureDataSupportInventory,
+  inventoryAllFamilies,
+  listEvaluatedFamilyIds,
+} from "./inventoryResearchFamilies";
+export { loadCompletedLeadLagLineage } from "./loadCompletedLeadLagLineage";
 export { parseNextFamilyReadinessArgv } from "./parseNextFamilyReadinessArgv";
 export {
+  isEligibleForDefinitionPreparation,
   isEligibleForDiscoveryRecommendation,
   selectNextFamily,
 } from "./selectNextFamily";

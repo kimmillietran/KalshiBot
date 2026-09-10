@@ -13,7 +13,9 @@ import {
 import { MOMENTUM_BUCKET_DEFINITIONS } from "../dimensions/momentum/momentumBucketDefinitions";
 
 import type {
+  CompletedLeadLagLineageSummary,
   FamilyInventory,
+  MicrostructureDataSupportRow,
   NextFamilyReadinessIo,
   ResearchFamilyId,
 } from "./nextFamilyReadinessTypes";
@@ -120,9 +122,85 @@ export function inventoryLeadLagFamily(io: NextFamilyReadinessIo): FamilyInvento
   };
 }
 
+export function applyLeadLagEmpiricalDisposition(
+  inventory: FamilyInventory,
+  lineage: CompletedLeadLagLineageSummary,
+): FamilyInventory {
+  if (inventory.familyId !== "btc-kalshi-lead-lag") {
+    return inventory;
+  }
+  return {
+    ...inventory,
+    maturity: "empirically-investigated",
+    familyDefinitionAvailable: true,
+    empiricalLineageNotes: [
+      lineage.lineageSummary,
+      `Historical holdout remains ${lineage.holdoutStatisticalVerdict} `
+        + `(not rejected/support). Disposition=deferred-for-prospective-replication.`,
+      `Prospective replication: requiredFreshESS=${lineage.prospectiveRequiredFreshEss}; `
+        + `status=available-but-not-authorized (budget not approved).`,
+      `Descriptive locked effects (not aggregated): TRAIN=${lineage.trainLockedEffectCents ?? "n/a"}¢, `
+        + `VALIDATION=${lineage.validationLockedEffectCents ?? "n/a"}¢, `
+        + `HOLDOUT=${lineage.holdoutLockedEffectCents ?? "n/a"}¢.`,
+      "Candidate shopping forbidden: other validation survivors must not be opened on historical holdout.",
+      "Any future lead-lag exploration requires a new governed discovery lineage with fresh OOS allocation.",
+    ],
+    causalSemanticsNotes: [
+      ...inventory.causalSemanticsNotes,
+      "M12.8 discovery→validation→holdout completed for one locked candidate; lineage is spent for historical evidence.",
+    ],
+  };
+}
+
+export function buildMicrostructureDataSupportInventory(): readonly MicrostructureDataSupportRow[] {
+  return [
+    {
+      feature: "spread",
+      status: "available",
+      note: "TOB best bid/ask and spread fields are captured and audited (quote fidelity / spread realism).",
+    },
+    {
+      feature: "bid-ask-depth",
+      status: "partial",
+      note: "Top-of-book only; full book depth / multi-level order-flow is not established as available.",
+    },
+    {
+      feature: "bid-ask-size",
+      status: "available",
+      note: "Bid/ask size fields exist in forward TOB streams; bid-size coverage audits exist.",
+    },
+    {
+      feature: "imbalance",
+      status: "derivable-not-frozen",
+      note: "Size imbalance can be derived from bid/ask size, but no frozen imbalance feature contract exists.",
+    },
+    {
+      feature: "quote-changes",
+      status: "partial",
+      note: "TOB stream timestamps/sequence support change detection; no sealed quote-change hypothesis module.",
+    },
+    {
+      feature: "liquidity-withdrawal",
+      status: "unavailable",
+      note: "Liquidity withdrawal / cancel-flow is not established from current TOB-only capture.",
+    },
+    {
+      feature: "short-horizon-repricing",
+      status: "partial",
+      note: "Short-horizon mid/ask moves are observable in TOB; no family entry rule is defined.",
+    },
+    {
+      feature: "market-state-time-remaining",
+      status: "available",
+      note: "Market metadata / time-remaining style fields are available via capture market-metadata streams.",
+    },
+  ];
+}
+
 export function inventoryMicrostructureFamily(io: NextFamilyReadinessIo): FamilyInventory {
   const modules = presentPaths(io, MICROSTRUCTURE_MODULES);
   const missingFamily = presentPaths(io, MICROSTRUCTURE_FAMILY_ANALYSIS_MISSING);
+  const dataSupport = buildMicrostructureDataSupportInventory();
   return {
     familyId: "spread-liquidity-microstructure",
     displayName: "Spread / liquidity microstructure",
@@ -142,6 +220,7 @@ export function inventoryMicrostructureFamily(io: NextFamilyReadinessIo): Family
     causalSemanticsNotes: [
       "Infrastructure audits exist, but no sealed microstructure alpha family definition/report module was found.",
       "Current capture is top-of-book oriented; full depth / order-flow is not established as available.",
+      "M12.9 readiness inventory lists TOB-supported features only; no hypotheses are created here.",
     ],
     executableInputNotes: [
       "Best bid/ask, sizes, valid-book, sequence/resync counters are captured in forward TOB streams.",
@@ -167,6 +246,7 @@ export function inventoryMicrostructureFamily(io: NextFamilyReadinessIo): Family
     volatilityContiguityDependency: "not-established",
     volatilityContiguityNote:
       "Microstructure family as currently evidenced does not require completed-candle volatility windows.",
+    microstructureDataSupport: dataSupport,
   };
 }
 
