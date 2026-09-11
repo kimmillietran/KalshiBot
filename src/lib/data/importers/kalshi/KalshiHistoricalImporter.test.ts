@@ -530,7 +530,10 @@ describe("KalshiHistoricalImporter", () => {
 
   it("does not call global fetch or localStorage", async () => {
     const fetchSpy = vi.spyOn(globalThis, "fetch");
-    const storageSpy = vi.spyOn(Storage.prototype, "setItem");
+    const storageSpy =
+      typeof Storage !== "undefined"
+        ? vi.spyOn(Storage.prototype, "setItem")
+        : undefined;
 
     const client = createFakeClient(() => ({
       status: 200,
@@ -544,10 +547,12 @@ describe("KalshiHistoricalImporter", () => {
     await createImporter(client).getHistoricalCutoff();
 
     expect(fetchSpy).not.toHaveBeenCalled();
-    expect(storageSpy).not.toHaveBeenCalled();
+    if (storageSpy) {
+      expect(storageSpy).not.toHaveBeenCalled();
+      storageSpy.mockRestore();
+    }
 
     fetchSpy.mockRestore();
-    storageSpy.mockRestore();
   });
 
   it("rejects seriesTicker-only trade scope without inventing ticker filter", async () => {
