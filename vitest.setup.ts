@@ -3,8 +3,8 @@ import { afterEach } from "vitest";
 /**
  * Setup is shared across Node and jsdom environments.
  *
- * Convention: `vitest.config.ts` defaults to `node` and maps
- * `*.{test,spec}.tsx` → `jsdom` via `environmentMatchGlobs`.
+ * Convention: `vitest.config.ts` uses Vitest projects — `unit-node` for
+ * `*.{test,spec}.ts` and `unit-jsdom` for `*.{test,spec}.tsx`.
  * Browser/RTL helpers therefore load only when `document` exists.
  */
 const isJsdomEnvironment = typeof document !== "undefined";
