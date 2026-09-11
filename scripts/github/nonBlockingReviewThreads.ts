@@ -9,8 +9,24 @@ export const NON_BLOCKING_MARKER = "[NON-BLOCKING]";
  */
 export const NON_BLOCKING_LEGACY_PREFIX = "Non-blocking:";
 
+/**
+ * Legacy bold Markdown form observed in production Cursor Automation comments.
+ * Exactly `**Non-blocking:**` — not arbitrary emphasis.
+ */
+export const NON_BLOCKING_LEGACY_BOLD_PREFIX = "**Non-blocking:**";
+
+/**
+ * GitHub review-thread GraphQL surfaces Cursor root comments as `cursor`
+ * while the associated pull-request review actor remains `cursor[bot]`.
+ * This alias is NEVER sufficient alone — linked exact-head trusted review
+ * authorization is required.
+ */
+export const CURSOR_THREAD_COMMENT_AUTHOR_ALIAS = "cursor";
+
+export type NonBlockingMarkerKind = "canonical" | "legacy" | "legacy-bold";
+
 export type AutoResolvableThreadDecision =
-  | { kind: "eligible"; threadId: string; reason: string; marker: "canonical" | "legacy" }
+  | { kind: "eligible"; threadId: string; reason: string; marker: NonBlockingMarkerKind }
   | { kind: "ineligible"; reason: string };
 
 /**
@@ -45,15 +61,17 @@ export function normalizeRootCommentBodyForMarker(
 }
 
 export type NonBlockingMarkerMatch =
-  | { matched: true; marker: "canonical" | "legacy" }
+  | { matched: true; marker: NonBlockingMarkerKind }
   | { matched: false };
 
 /**
  * After normalization, accept only:
  * - exact prefix `[NON-BLOCKING]`
  * - exact case-sensitive prefix `Non-blocking:`
+ * - exact case-sensitive prefix `**Non-blocking:**`
  *
  * Fuzzy language (nit/optional/minor/suggestion/FYI) never matches.
+ * Unsupported emphasis (`***Non-blocking:***`) never matches.
  */
 export function matchNonBlockingMarker(body: string | null | undefined): NonBlockingMarkerMatch {
   const normalized = normalizeRootCommentBodyForMarker(body);
@@ -62,6 +80,9 @@ export function matchNonBlockingMarker(body: string | null | undefined): NonBloc
   }
   if (normalized.startsWith(NON_BLOCKING_MARKER)) {
     return { matched: true, marker: "canonical" };
+  }
+  if (normalized.startsWith(NON_BLOCKING_LEGACY_BOLD_PREFIX)) {
+    return { matched: true, marker: "legacy-bold" };
   }
   if (normalized.startsWith(NON_BLOCKING_LEGACY_PREFIX)) {
     return { matched: true, marker: "legacy" };
@@ -75,6 +96,53 @@ export function matchNonBlockingMarker(body: string | null | undefined): NonBloc
  */
 export function bodyBeginsWithNonBlockingMarker(body: string | null | undefined): boolean {
   return matchNonBlockingMarker(body).matched;
+}
+
+/**
+ * Trusted thread-author compatibility.
+ *
+ * Canonical trusted identity remains `cursor[bot]`.
+ * Alias `cursor` is accepted ONLY when `associatedReview` is independently
+ * proven to be an exact-current-head trusted `cursor[bot]` review.
+ * The string `cursor` alone is never sufficient authorization.
+ */
+export function isTrustedCursorThreadAuthor(input: {
+  rootAuthorLogin: string | null | undefined;
+  associatedReview: GithubReview | null;
+  currentHeadSha: string;
+}): { trusted: true } | { trusted: false; reason: string } {
+  const login = input.rootAuthorLogin;
+  if (login !== TRUSTED_CURSOR_LOGIN && login !== CURSOR_THREAD_COMMENT_AUTHOR_ALIAS) {
+    return {
+      trusted: false,
+      reason: "root author is not trusted cursor[bot]",
+    };
+  }
+
+  const review = input.associatedReview;
+  if (review == null) {
+    return {
+      trusted: false,
+      reason:
+        login === CURSOR_THREAD_COMMENT_AUTHOR_ALIAS
+          ? "author alias not backed by trusted exact-head Cursor review"
+          : "associated Cursor review is not an active exact-head trusted Cursor LRM review",
+    };
+  }
+  if (review.userLogin !== TRUSTED_CURSOR_LOGIN) {
+    return {
+      trusted: false,
+      reason: "author alias not backed by trusted exact-head Cursor review",
+    };
+  }
+  if (review.commitId !== input.currentHeadSha) {
+    return { trusted: false, reason: "associated review is stale" };
+  }
+  if (review.state === "DISMISSED" || review.state === "PENDING") {
+    return { trusted: false, reason: "associated review is dismissed/pending" };
+  }
+
+  return { trusted: true };
 }
 
 function isBlockingReplyBody(body: string | null | undefined): boolean {
@@ -92,14 +160,25 @@ function isBlockingReplyBody(body: string | null | undefined): boolean {
   return false;
 }
 
+function markerEligibleReason(marker: NonBlockingMarkerKind): string {
+  if (marker === "canonical") {
+    return "trusted exact-head cursor[bot] [NON-BLOCKING] single-comment thread";
+  }
+  if (marker === "legacy-bold") {
+    return "trusted exact-head cursor[bot] **Non-blocking:** single-comment thread";
+  }
+  return "trusted exact-head cursor[bot] Non-blocking: single-comment thread";
+}
+
 /**
  * Decide whether an unresolved review thread may be auto-resolved.
  *
  * Requires ALL of:
  * - unresolved
  * - GraphQL thread id present
- * - root author == cursor[bot]
- * - normalized root body begins with `[NON-BLOCKING]` or `Non-blocking:`
+ * - root author is `cursor[bot]`, OR `cursor` backed by linked exact-head
+ *   trusted `cursor[bot]` review (GitHub thread-API representation)
+ * - normalized root body begins with an approved non-blocking marker
  * - associated Cursor review bound to exact current PR HEAD
  * - no replies (any additional comment fails closed)
  * - no blocking/CHANGES REQUESTED reply semantics (defense in depth)
@@ -125,9 +204,6 @@ export function classifyAutoResolvableNonBlockingThread(input: {
   if (root == null) {
     return { kind: "ineligible", reason: "malformed thread: missing root comment" };
   }
-  if (root.authorLogin !== TRUSTED_CURSOR_LOGIN) {
-    return { kind: "ineligible", reason: "root author is not trusted cursor[bot]" };
-  }
 
   const markerMatch = matchNonBlockingMarker(root.body);
   if (!markerMatch.matched) {
@@ -141,7 +217,10 @@ export function classifyAutoResolvableNonBlockingThread(input: {
   if (thread.comments.length > 1) {
     for (let index = 1; index < thread.comments.length; index += 1) {
       const reply = thread.comments[index]!;
-      if (reply.authorLogin !== TRUSTED_CURSOR_LOGIN) {
+      if (
+        reply.authorLogin !== TRUSTED_CURSOR_LOGIN
+        && reply.authorLogin !== CURSOR_THREAD_COMMENT_AUTHOR_ALIAS
+      ) {
         return { kind: "ineligible", reason: "thread has a non-cursor reply" };
       }
       if (isBlockingReplyBody(reply.body)) {
@@ -164,8 +243,15 @@ export function classifyAutoResolvableNonBlockingThread(input: {
     };
   }
 
+  if (
+    root.pullRequestReviewState === "DISMISSED"
+    || root.pullRequestReviewState === "PENDING"
+  ) {
+    return { kind: "ineligible", reason: "associated review is dismissed/pending" };
+  }
+
   if (reviewCommitOid != null && reviewCommitOid !== currentHeadSha) {
-    return { kind: "ineligible", reason: "stale review head" };
+    return { kind: "ineligible", reason: "associated review is stale" };
   }
 
   const matchingExactHeadReview = exactHeadCursorReviews.find((review) => {
@@ -175,12 +261,24 @@ export function classifyAutoResolvableNonBlockingThread(input: {
     if (review.commitId !== currentHeadSha) {
       return false;
     }
+    if (review.state === "DISMISSED" || review.state === "PENDING") {
+      return false;
+    }
     if (reviewDatabaseId != null && review.id === reviewDatabaseId) {
       return true;
     }
     // When database id is unavailable, require commit oid already matched current head above.
     return reviewDatabaseId == null && reviewCommitOid === currentHeadSha;
+  }) ?? null;
+
+  const authorTrust = isTrustedCursorThreadAuthor({
+    rootAuthorLogin: root.authorLogin,
+    associatedReview: matchingExactHeadReview,
+    currentHeadSha,
   });
+  if (!authorTrust.trusted) {
+    return { kind: "ineligible", reason: authorTrust.reason };
+  }
 
   if (!matchingExactHeadReview) {
     return {
@@ -193,10 +291,7 @@ export function classifyAutoResolvableNonBlockingThread(input: {
     kind: "eligible",
     threadId: thread.id,
     marker: markerMatch.marker,
-    reason:
-      markerMatch.marker === "canonical"
-        ? "trusted exact-head cursor[bot] [NON-BLOCKING] single-comment thread"
-        : "trusted exact-head cursor[bot] Non-blocking: single-comment thread",
+    reason: markerEligibleReason(markerMatch.marker),
   };
 }
 
@@ -205,6 +300,10 @@ export function formatIneligibleThreadLogLine(decision: AutoResolvableThreadDeci
   threadId: string;
 }): string {
   return `thread ${decision.threadId}: unresolved — ${decision.reason}`;
+}
+
+export function formatResolvedThreadLogLine(threadId: string): string {
+  return `thread ${threadId}: auto-resolved trusted exact-head Cursor non-blocking thread`;
 }
 
 export function selectAutoResolvableNonBlockingThreadIds(input: {
