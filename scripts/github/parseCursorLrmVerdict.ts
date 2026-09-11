@@ -6,8 +6,47 @@ export type ParsedCursorLrmVerdict = {
 };
 
 const VERDICT_HEADING = /^#{1,3}[ \t]+Verdict[ \t]*$/i;
-const APPROVED = /^APPROVED FOR MERGE[ \t]*$/i;
-const CHANGES = /^CHANGES REQUESTED[ \t]*$/i;
+const APPROVED_PLAIN = "APPROVED FOR MERGE";
+const CHANGES_PLAIN = "CHANGES REQUESTED";
+
+/**
+ * Normalize a Verdict-section value line.
+ *
+ * Accepts only:
+ * - exact `APPROVED FOR MERGE`
+ * - exact `CHANGES REQUESTED`
+ * - the same tokens wrapped in exactly one balanced outer Markdown bold pair
+ *   (`**APPROVED FOR MERGE**` / `**CHANGES REQUESTED**`)
+ *
+ * Case-sensitive. Rejects mixed case, trailing punctuation, inline prose,
+ * triple emphasis, code fences/backticks, and other wrappers.
+ */
+export function normalizeFormalVerdictToken(value: string): CursorLrmVerdict | "malformed" {
+  const trimmed = value.trim();
+  if (trimmed === APPROVED_PLAIN) {
+    return "APPROVED_FOR_MERGE";
+  }
+  if (trimmed === CHANGES_PLAIN) {
+    return "CHANGES_REQUESTED";
+  }
+
+  // Exactly one balanced outer bold wrapper: **TOKEN**
+  // Reject ***TOKEN*** (inner would start with *), `TOKEN`, etc.
+  if (trimmed.startsWith("**") && trimmed.endsWith("**") && trimmed.length > 4) {
+    const inner = trimmed.slice(2, -2);
+    if (inner.includes("*")) {
+      return "malformed";
+    }
+    if (inner === APPROVED_PLAIN) {
+      return "APPROVED_FOR_MERGE";
+    }
+    if (inner === CHANGES_PLAIN) {
+      return "CHANGES_REQUESTED";
+    }
+  }
+
+  return "malformed";
+}
 
 /**
  * Parse only the governed LRM Verdict section.
@@ -39,14 +78,7 @@ export function parseGovernedCursorLrmVerdict(
       continue;
     }
 
-    const value = lines[cursor]!.trim();
-    if (APPROVED.test(value)) {
-      found.push("APPROVED_FOR_MERGE");
-    } else if (CHANGES.test(value)) {
-      found.push("CHANGES_REQUESTED");
-    } else {
-      found.push("malformed");
-    }
+    found.push(normalizeFormalVerdictToken(lines[cursor]!));
   }
 
   if (found.length === 0) {

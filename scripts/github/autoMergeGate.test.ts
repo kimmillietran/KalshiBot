@@ -184,6 +184,17 @@ describe("parseGovernedCursorLrmVerdict", () => {
     });
   });
 
+  it("accepts exactly one outer Markdown bold wrapper on formal verdict tokens", () => {
+    expect(parseGovernedCursorLrmVerdict("## Verdict\n\n**APPROVED FOR MERGE**\n")).toEqual({
+      verdict: "APPROVED_FOR_MERGE",
+      reason: "ok",
+    });
+    expect(parseGovernedCursorLrmVerdict("## Verdict\n\n**CHANGES REQUESTED**\n")).toEqual({
+      verdict: "CHANGES_REQUESTED",
+      reason: "ok",
+    });
+  });
+
   it("ignores a loose APPROVED FOR MERGE mention without a Verdict heading", () => {
     expect(
       parseGovernedCursorLrmVerdict("Please treat this as APPROVED FOR MERGE"),
@@ -1483,5 +1494,133 @@ describe("trusted [NON-BLOCKING] thread auto-resolution", () => {
     expect(mergeCalled).toBe(true);
     expect(threadFetchCount).toBeGreaterThanOrEqual(2);
     expect(logs.some((line) => line.includes("Auto-resolving trusted non-blocking"))).toBe(true);
+    expect(
+      logs.some((line) =>
+        line.includes(
+          "thread PRRT_nb_real_cursor: auto-resolved trusted exact-head Cursor non-blocking thread",
+        )
+      ),
+    ).toBe(true);
+  });
+
+  it("production: author=cursor + bold Non-blocking + exact-head review resolves and merges", async () => {
+    let threadFetchCount = 0;
+    let resolvedViaApi = false;
+    let mergeCalled = false;
+    const productionThread: ReviewThread = {
+      id: "PRRT_nb_prod_cursor_alias",
+      isResolved: false,
+      comments: [
+        {
+          authorLogin: "cursor",
+          body:
+            "<!-- CURSOR_AUTOMATION_ID: 88a68416-7cc4-11f1-ba66-0e7d0216e441 | RUN_ID: bc-example -->\n"
+            + "**Non-blocking:** This is an optional implementation caveat.",
+          createdAt: "2026-09-10T00:00:00.000Z",
+          pullRequestReviewDatabaseId: 1,
+          pullRequestReviewCommitOid: HEAD_B,
+          pullRequestReviewState: "COMMENTED",
+        },
+      ],
+    };
+    const result = await runAutoMergeForPullRequest(
+      baseRuntime({
+        fetchPullRequest: async () => {
+          if (mergeCalled) {
+            return pr({ merged: true, mergeCommitSha: "m".repeat(40) });
+          }
+          return pr({ merged: false });
+        },
+        fetchReviews: async () => [
+          cursorReview({
+            body: "## Verdict\n\n**APPROVED FOR MERGE**\n",
+          }),
+        ],
+        fetchReviewThreads: async () => {
+          threadFetchCount += 1;
+          if (!resolvedViaApi) {
+            return [productionThread];
+          }
+          return [{ ...productionThread, isResolved: true }];
+        },
+        resolveReviewThread: async (threadId: string) => {
+          expect(threadId).toBe("PRRT_nb_prod_cursor_alias");
+          resolvedViaApi = true;
+          return { id: threadId, isResolved: true };
+        },
+        mergePullRequest: async () => {
+          mergeCalled = true;
+          return { merged: true, sha: "m".repeat(40), message: "merged" };
+        },
+      }) as never,
+      55,
+    );
+    expect(result.kind).toBe("eligible");
+    expect(resolvedViaApi).toBe(true);
+    expect(mergeCalled).toBe(true);
+    expect(threadFetchCount).toBeGreaterThanOrEqual(2);
+    expect(result.report.unresolvedThreads).toBe(0);
+  });
+
+  it("production: same thread with stale associated review does not resolve and blocks", async () => {
+    let resolveCalled = false;
+    const staleThread: ReviewThread = {
+      id: "PRRT_nb_stale",
+      isResolved: false,
+      comments: [
+        {
+          authorLogin: "cursor",
+          body:
+            "<!-- CURSOR_AUTOMATION_ID: 88a68416-7cc4-11f1-ba66-0e7d0216e441 | RUN_ID: bc-example -->\n"
+            + "**Non-blocking:** This is an optional implementation caveat.",
+          createdAt: "2026-09-10T00:00:00.000Z",
+          pullRequestReviewDatabaseId: 1,
+          pullRequestReviewCommitOid: HEAD_A,
+          pullRequestReviewState: "COMMENTED",
+        },
+      ],
+    };
+    const logs: string[] = [];
+    const result = await runAutoMergeForPullRequest(
+      baseRuntime({
+        fetchReviewThreads: async () => [staleThread],
+        resolveReviewThread: async () => {
+          resolveCalled = true;
+          throw new Error("must not resolve");
+        },
+        mergePullRequest: async () => {
+          throw new Error("merge must not run");
+        },
+        writeLog: (text: string) => {
+          logs.push(text);
+        },
+      }) as never,
+      55,
+    );
+    expect(resolveCalled).toBe(false);
+    expect(result.kind).toBe("blocked");
+    expect(result.reason).toContain("unresolved review threads");
+    expect(logs.join("\n")).toMatch(/associated review is stale/i);
+  });
+
+  it("bold CHANGES REQUESTED never authorizes merge", async () => {
+    const result = await runAutoMergeForPullRequest(
+      baseRuntime({
+        fetchReviews: async () => [
+          cursorReview({
+            body: "## Verdict\n\n**CHANGES REQUESTED**\n",
+            state: "CHANGES_REQUESTED",
+          }),
+        ],
+        fetchReviewThreads: async () => [nonBlockingExactHeadThread()],
+        resolveReviewThread: async (threadId: string) => ({ id: threadId, isResolved: true }),
+        mergePullRequest: async () => {
+          throw new Error("merge must not run");
+        },
+      }) as never,
+      55,
+    );
+    expect(result.kind).toBe("blocked");
+    expect(result.reason).toMatch(/CHANGES REQUESTED/i);
   });
 });

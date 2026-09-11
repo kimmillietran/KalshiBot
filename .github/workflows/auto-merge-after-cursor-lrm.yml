@@ -30,23 +30,29 @@ name: Auto-merge after Cursor LRM
 #   GitHub required_review_thread_resolution remains enabled. Unresolved
 #   ordinary/blocking threads always block merge. Before evaluation, this
 #   workflow may resolve ONLY unresolved inline threads that satisfy ALL of:
-#     root author == cursor[bot]
+#     root author == cursor[bot], OR root author == cursor ONLY when the
+#       associated pull-request review is independently proven exact-head
+#       trusted cursor[bot] (GitHub thread-API representation difference)
 #     associated Cursor review is bound to the exact current PR HEAD
 #     thread has no replies
 #     after normalization, visible root body begins with an approved marker
+#   The string "cursor" alone is never sufficient authorization.
 #   Normalization (marker inspection only):
 #     trim leading whitespace → strip leading HTML comments only → trim again.
 #     Cursor injects metadata such as:
 #       <!-- CURSOR_AUTOMATION_ID: ... | RUN_ID: ... -->
 #     That stripping is parsing normalization only, not authorization.
-#   Approved explicit markers (after normalization):
+#   Approved explicit markers (after normalization, case-sensitive):
 #     Preferred canonical: [NON-BLOCKING]
 #     Legacy Cursor Automation: Non-blocking:
+#     Legacy bold: **Non-blocking:**
 #   Fuzzy words (nit/optional/minor/suggestion/FYI) never authorize resolution.
 #   Prefer placing non-blocking caveats in the top-level LRM review body.
 #   Inline review comments should be reserved for blockers where possible.
 #   Resolution uses GitHub's resolveReviewThread mutation, then refetches
 #   thread state before the normal auto-merge evaluation.
+#   Governed Verdict tokens remain APPROVED FOR MERGE / CHANGES REQUESTED
+#   (case-sensitive), optionally with exactly one outer Markdown bold wrapper.
 #
 # CI identity:
 #   Trusted path .github/workflows/quality-gates.yml → GitHub workflow id →

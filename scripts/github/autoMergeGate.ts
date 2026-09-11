@@ -1,6 +1,7 @@
 import { parseGovernedCursorLrmVerdict } from "./parseCursorLrmVerdict";
 import {
   formatIneligibleThreadLogLine,
+  formatResolvedThreadLogLine,
   selectAutoResolvableNonBlockingThreadIds,
 } from "./nonBlockingReviewThreads";
 import {
@@ -39,10 +40,12 @@ import {
  * DISMISSED and PENDING reviews never authorize merge; the latest ACTIVE
  * exact-head Cursor LRM wins. Before evaluation, this helper may resolve
  * only unresolved review threads whose normalized root body begins with
- * `[NON-BLOCKING]` or legacy `Non-blocking:` from exact-head trusted
- * cursor[bot] with no replies; it never dismisses reviews, never
- * auto-resolves unmarked/human/stale threads, and never bypasses branch
- * protection. Merge uses merge_method=merge and sha=CURRENT_HEAD.
+ * `[NON-BLOCKING]`, `Non-blocking:`, or `**Non-blocking:**` when the root
+ * author is `cursor[bot]` or the GitHub thread-API alias `cursor` backed by
+ * an exact-head trusted `cursor[bot]` review, with no replies; it never
+ * dismisses reviews, never auto-resolves unmarked/human/stale threads, and
+ * never bypasses branch protection. Merge uses merge_method=merge and
+ * sha=CURRENT_HEAD.
  *
  * Bootstrap: the first PR that adds this workflow must be merged manually.
  * Subsequent PRs that change the trusted auto-merge helper or the Quality
@@ -660,6 +663,7 @@ export async function runAutoMergeForPullRequest(
             if (!resolved.isResolved) {
               throw new Error(`resolveReviewThread returned unresolved for ${threadId}`);
             }
+            runtime.writeLog(formatResolvedThreadLogLine(threadId));
           }
         } catch (error) {
           return {
