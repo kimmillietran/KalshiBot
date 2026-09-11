@@ -171,6 +171,26 @@ export function bindAuthoritativeMomentumFamilyDefinition(input?: {
   };
   assertFamilyUniverseMatchesContract(binding);
 
+  // Neighboring 12-cell universes with the same count but different IDs fail closed.
+  const familyHypotheses = report.searchUniverse.hypotheses;
+  for (const cell of familyHypotheses) {
+    if (cell.directionConvention !== MOMENTUM_DIRECTION) {
+      throw new MomentumEvidenceContractError(
+        `Canonical hypothesis direction must be ${MOMENTUM_DIRECTION}`,
+      );
+    }
+    if (!cell.hypothesisId.endsWith(`|${MOMENTUM_DIRECTION}`)) {
+      throw new MomentumEvidenceContractError(
+        `Canonical hypothesis ID must use M14.0a continuation suffix: ${cell.hypothesisId}`,
+      );
+    }
+    if (cell.hypothesisId.startsWith("mom-w")) {
+      throw new MomentumEvidenceContractError(
+        `Prep synthetic IDs are forbidden; got ${cell.hypothesisId}`,
+      );
+    }
+  }
+
   if (
     input?.expectedIdentity
     && input.expectedIdentity !== binding.familyDefinitionIdentity

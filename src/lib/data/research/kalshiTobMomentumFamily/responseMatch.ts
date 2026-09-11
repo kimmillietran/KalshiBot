@@ -5,6 +5,7 @@ import {
   type ResponseMatchContract,
   type ResponseObservationResult,
 } from "./momentumFamilyTypes";
+import { isEligibleEventQuote } from "./eligibility";
 import { midpointFromQuote, resolveComplementExecutablePrices } from "./midpointAndComplement";
 
 export function buildResponseMatchContract(): ResponseMatchContract {
@@ -17,8 +18,29 @@ export function buildResponseMatchContract(): ResponseMatchContract {
   };
 }
 
+function isEligibleResponseQuote(quote: MomentumQuoteInput): boolean {
+  const eligibility = isEligibleEventQuote(quote);
+  if (!eligibility.eligible) {
+    return false;
+  }
+  if (midpointFromQuote(quote) == null) {
+    return false;
+  }
+  const executable = resolveComplementExecutablePrices({
+    yesBestBidCents: quote.yesBestBidCents,
+    noBestBidCents: quote.noBestBidCents,
+  });
+  return (
+    executable.executableBuyYesCents != null
+    && executable.executableSellYesCents != null
+    && Number.isFinite(executable.executableBuyYesCents)
+    && Number.isFinite(executable.executableSellYesCents)
+  );
+}
+
 /**
- * Response quote: first eligible quote in [t+H, t+H+250ms], strictly after t.
+ * Response quote: first **eligible** quote in [t+H, t+H+250ms], strictly after t.
+ * Timestamp-matching alone is insufficient — ineligible quotes are skipped.
  * Missing → response-unobservable (never zero).
  */
 export function matchResponseQuote(input: {
@@ -44,16 +66,20 @@ export function matchResponseQuote(input: {
 
   const sorted = [...input.responseQuotes].sort((a, b) => a.timestampMs - b.timestampMs);
   let matched: MomentumQuoteInput | null = null;
+  let sawTimestampMatch = false;
   for (const quote of sorted) {
     if (quote.timestampMs <= input.eventTimestampMs) continue;
     if (quote.timestampMs < targetMs) continue;
     if (quote.timestampMs > upperBound) break;
+    sawTimestampMatch = true;
+    if (!isEligibleResponseQuote(quote)) {
+      continue;
+    }
     matched = quote;
     break;
   }
 
   if (matched == null) {
-    // Quotes exist but beyond tolerance → unobservable (not zero).
     const beyond = sorted.find(
       (quote) =>
         quote.timestampMs > input.eventTimestampMs
@@ -63,7 +89,9 @@ export function matchResponseQuote(input: {
       status: "response-unobservable",
       reason: beyond
         ? `forward mismatch beyond +${toleranceMs}ms is unobservable (not zero)`
-        : `no quote at-or-after ${targetMs} within +${toleranceMs}ms (missing is not zero)`,
+        : sawTimestampMatch
+          ? `no eligible quote in [${targetMs}, ${upperBound}] (timestamp-matching ineligible quotes skipped; not zero)`
+          : `no quote at-or-after ${targetMs} within +${toleranceMs}ms (missing is not zero)`,
     };
   }
 

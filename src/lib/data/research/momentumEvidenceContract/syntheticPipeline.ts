@@ -7,6 +7,7 @@ import {
   MOMENTUM_MAX_SHORTLIST_K,
   type MomentumCandidateDefinition,
 } from "./momentumEvidenceContractTypes";
+import { buildHypothesisId } from "../kalshiTobMomentumFamily";
 import { evaluateMomentumHoldout } from "./holdoutSemantics";
 import {
   lockHoldoutCandidateFromValidationSurvivors,
@@ -22,6 +23,7 @@ import { evaluateMomentumValidationCandidate } from "./validationSemantics";
 
 /**
  * Synthetic 12-cell universe matching expected M14.0a axes.
+ * Uses canonical M14.0a hypothesis IDs — never prep-only synthetic IDs.
  * Synthetic outcomes only — no real capture reads.
  */
 export function buildSyntheticDiscoveryUniverse(): MomentumCandidateDefinition[] {
@@ -30,8 +32,11 @@ export function buildSyntheticDiscoveryUniverse(): MomentumCandidateDefinition[]
   for (const lookbackWindowMs of EXPECTED_MOMENTUM_LOOKBACK_WINDOWS_MS) {
     for (const thresholdCents of EXPECTED_MOMENTUM_THRESHOLDS_CENTS) {
       for (const responseHorizonMs of EXPECTED_MOMENTUM_RESPONSE_HORIZONS_MS) {
-        const hypothesisId =
-          `mom-w${lookbackWindowMs}|x${thresholdCents}|h${responseHorizonMs}|continuation`;
+        const hypothesisId = buildHypothesisId({
+          backwardWindowMs: lookbackWindowMs,
+          returnThresholdCents: thresholdCents,
+          forwardHorizonMs: responseHorizonMs,
+        });
         const candidate: MomentumCandidateDefinition = {
           candidateId: hypothesisId,
           hypothesisId,

@@ -106,14 +106,44 @@ export function parseMomentumEvidenceContractArgv(
     familyDefinitionIdentity = bound.familyDefinitionIdentity;
   }
 
+  const alpha = alphaRaw == null ? MOMENTUM_DEFAULT_ALPHA : Number(alphaRaw);
+  const targetPower = powerRaw == null ? MOMENTUM_DEFAULT_TARGET_POWER : Number(powerRaw);
+  const outcomeStandardDeviationCents =
+    sdRaw == null ? MOMENTUM_DEFAULT_OUTCOME_SD_CENTS : Number(sdRaw);
+  const materialEffectThresholdCents =
+    materialRaw == null ? null : Number(materialRaw);
+
+  // Scientifically fixed values: if supplied via CLI they must equal sealed defaults.
+  if (alpha !== MOMENTUM_DEFAULT_ALPHA) {
+    throw new MomentumEvidenceContractError(
+      `alpha is sealed at ${MOMENTUM_DEFAULT_ALPHA}; got ${alpha}`,
+    );
+  }
+  if (targetPower !== MOMENTUM_DEFAULT_TARGET_POWER) {
+    throw new MomentumEvidenceContractError(
+      `targetPower is sealed at ${MOMENTUM_DEFAULT_TARGET_POWER}; got ${targetPower}`,
+    );
+  }
+  if (outcomeStandardDeviationCents !== MOMENTUM_DEFAULT_OUTCOME_SD_CENTS) {
+    throw new MomentumEvidenceContractError(
+      `outcomeStandardDeviationCents is sealed at ${MOMENTUM_DEFAULT_OUTCOME_SD_CENTS}; got ${outcomeStandardDeviationCents}`,
+    );
+  }
+  if (
+    materialEffectThresholdCents != null
+    && materialEffectThresholdCents !== 2
+  ) {
+    throw new MomentumEvidenceContractError(
+      `materialEffectThresholdCents is sealed at 2 when bound; got ${materialEffectThresholdCents}`,
+    );
+  }
+
   return {
     familyDefinitionIdentity,
-    materialEffectThresholdCents:
-      materialRaw == null ? null : Number(materialRaw),
-    alpha: alphaRaw == null ? MOMENTUM_DEFAULT_ALPHA : Number(alphaRaw),
-    targetPower: powerRaw == null ? MOMENTUM_DEFAULT_TARGET_POWER : Number(powerRaw),
-    outcomeStandardDeviationCents:
-      sdRaw == null ? MOMENTUM_DEFAULT_OUTCOME_SD_CENTS : Number(sdRaw),
+    materialEffectThresholdCents,
+    alpha,
+    targetPower,
+    outcomeStandardDeviationCents,
     maxShortlistK: MOMENTUM_MAX_SHORTLIST_K,
     expectedDiscoveryHypothesisCount: EXPECTED_MOMENTUM_DISCOVERY_HYPOTHESIS_COUNT,
     stoppingRule: parseStoppingRule(argv),
