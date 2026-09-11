@@ -30,6 +30,20 @@ const REAL_CURSOR_BOLD_NON_BLOCKING_BODY =
   "<!-- CURSOR_AUTOMATION_ID: 88a68416-7cc4-11f1-ba66-0e7d0216e441 | RUN_ID: bc-example -->\n"
   + "**Non-blocking:** This is an optional implementation caveat.";
 
+/**
+ * PR #83 production root-comment shape that previously failed with
+ * "marker not recognized" after HTML metadata + author-alias fixes landed.
+ */
+const REAL_CURSOR_BRACKETED_BOLD_BODY_CONTRACT =
+  "<!-- CURSOR_AUTOMATION_ID: 88a68416-7cc4-11f1-ba66-0e7d0216e441 | RUN_ID: bc-production-fixture -->\n"
+  + "**[Non-blocking] Contract vs implementation:** "
+  + "`buildResponseMatchContract()` advertises first eligible quote but implementation differs.";
+
+const REAL_CURSOR_BRACKETED_BOLD_BODY_THRESHOLD =
+  "<!-- CURSOR_AUTOMATION_ID: 88a68416-7cc4-11f1-ba66-0e7d0216e441 | RUN_ID: bc-production-fixture -->\n"
+  + "**[Non-blocking] Threshold state on anchor failure:** "
+  + "Anchor fail-closed paths must not advance threshold state.";
+
 function cursorReview(overrides: Partial<GithubReview> = {}): GithubReview {
   return {
     id: 42,
@@ -146,6 +160,86 @@ describe("bodyBeginsWithNonBlockingMarker / matchNonBlockingMarker", () => {
     expect(bodyBeginsWithNonBlockingMarker("Non-blocking -\nnote")).toBe(false);
     expect(bodyBeginsWithNonBlockingMarker("non-blocking:\nnote")).toBe(false);
   });
+
+  it("PR #83 regression: **[Non-blocking] Contract vs implementation:** recognized", () => {
+    expect(
+      normalizeRootCommentBodyForMarker(REAL_CURSOR_BRACKETED_BOLD_BODY_CONTRACT)?.startsWith(
+        "**[Non-blocking] Contract vs implementation:**",
+      ),
+    ).toBe(true);
+    expect(matchNonBlockingMarker(REAL_CURSOR_BRACKETED_BOLD_BODY_CONTRACT)).toEqual({
+      matched: true,
+      marker: "bracketed-bold",
+    });
+    expect(bodyBeginsWithNonBlockingMarker(REAL_CURSOR_BRACKETED_BOLD_BODY_CONTRACT)).toBe(true);
+  });
+
+  it("PR #83 regression: **[Non-blocking] Threshold state on anchor failure:** recognized", () => {
+    expect(
+      normalizeRootCommentBodyForMarker(REAL_CURSOR_BRACKETED_BOLD_BODY_THRESHOLD)?.startsWith(
+        "**[Non-blocking] Threshold state on anchor failure:**",
+      ),
+    ).toBe(true);
+    expect(matchNonBlockingMarker(REAL_CURSOR_BRACKETED_BOLD_BODY_THRESHOLD)).toEqual({
+      matched: true,
+      marker: "bracketed-bold",
+    });
+  });
+
+  it("bracketed-bold accepted marker forms", () => {
+    expect(
+      matchNonBlockingMarker("**[Non-blocking] Contract vs implementation:** Small caveat"),
+    ).toEqual({ matched: true, marker: "bracketed-bold" });
+    expect(
+      matchNonBlockingMarker("**[Non-blocking] Threshold state on anchor failure:** Small caveat"),
+    ).toEqual({ matched: true, marker: "bracketed-bold" });
+    expect(matchNonBlockingMarker("[NON-BLOCKING] Small caveat")).toEqual({
+      matched: true,
+      marker: "canonical",
+    });
+    expect(matchNonBlockingMarker("Non-blocking: Small caveat")).toEqual({
+      matched: true,
+      marker: "legacy",
+    });
+    expect(matchNonBlockingMarker("**Non-blocking:** Small caveat")).toEqual({
+      matched: true,
+      marker: "legacy-bold",
+    });
+  });
+
+  it("bracketed-bold rejected malformed / fuzzy forms", () => {
+    expect(bodyBeginsWithNonBlockingMarker("[non-blocking]")).toBe(false);
+    expect(bodyBeginsWithNonBlockingMarker("[NON BLOCKING]")).toBe(false);
+    expect(bodyBeginsWithNonBlockingMarker("**[non-blocking] Something:**")).toBe(false);
+    expect(bodyBeginsWithNonBlockingMarker("***[Non-blocking] Something:***")).toBe(false);
+    expect(bodyBeginsWithNonBlockingMarker("This is **[Non-blocking] Something:**")).toBe(false);
+    expect(bodyBeginsWithNonBlockingMarker("Optional: ...")).toBe(false);
+    expect(bodyBeginsWithNonBlockingMarker("Nit: ...")).toBe(false);
+    expect(bodyBeginsWithNonBlockingMarker("Suggestion: ...")).toBe(false);
+    expect(bodyBeginsWithNonBlockingMarker("**[Non-blocking]**")).toBe(false);
+    expect(bodyBeginsWithNonBlockingMarker("**[Non-blocking] Contract:")).toBe(false);
+    expect(
+      bodyBeginsWithNonBlockingMarker("**[Non-blocking] Contract:** extra **broken"),
+    ).toBe(false);
+  });
+
+  /**
+   * Review-policy expectation (not an auto-resolver dependency):
+   * If Cursor's formal verdict is APPROVED FOR MERGE, Cursor should ideally not
+   * create new unresolved inline threads. Nonblocking caveats belong under a
+   * top-level `## Non-blocking observations` section. The resolver stays
+   * defensive for real production inline threads regardless.
+   */
+  it("documents preferred top-level Non-blocking observations policy vs inline threads", () => {
+    const preferredTopLevel =
+      "## Verdict\n\nAPPROVED FOR MERGE\n\n## Non-blocking observations\n\n- caveat";
+    expect(parseGovernedCursorLrmVerdict(preferredTopLevel)).toEqual({
+      verdict: "APPROVED_FOR_MERGE",
+      reason: "ok",
+    });
+    // Inline production threads remain independently classifiable.
+    expect(matchNonBlockingMarker(REAL_CURSOR_BRACKETED_BOLD_BODY_CONTRACT).matched).toBe(true);
+  });
 });
 
 describe("isTrustedCursorThreadAuthor", () => {
@@ -224,6 +318,119 @@ describe("classifyAutoResolvableNonBlockingThread — author identity", () => {
       marker: "legacy-bold",
       reason: expect.stringContaining("**Non-blocking:**"),
     });
+  });
+
+  it("2b. PR #83 production: cursor + bracketed-bold + exact-head review → eligible", () => {
+    const decision = classifyAutoResolvableNonBlockingThread({
+      thread: threadWithBody(REAL_CURSOR_BRACKETED_BOLD_BODY_CONTRACT, {}, "cursor"),
+      currentHeadSha: HEAD,
+      exactHeadCursorReviews: reviews,
+    });
+    expect(decision).toEqual({
+      kind: "eligible",
+      threadId: "PRRT_nb_1",
+      marker: "bracketed-bold",
+      reason: expect.stringContaining("**[Non-blocking] <title>:**"),
+    });
+  });
+
+  it("2c. same bracketed body, human author → ineligible", () => {
+    const decision = classifyAutoResolvableNonBlockingThread({
+      thread: threadWithBody(REAL_CURSOR_BRACKETED_BOLD_BODY_CONTRACT, {}, "alice"),
+      currentHeadSha: HEAD,
+      exactHeadCursorReviews: reviews,
+    });
+    expect(decision.kind).toBe("ineligible");
+    expect(decision.reason).toMatch(/not trusted cursor/i);
+  });
+
+  it("2d. same bracketed body, cursor but stale linked review → ineligible", () => {
+    const decision = classifyAutoResolvableNonBlockingThread({
+      thread: threadWithBody(REAL_CURSOR_BRACKETED_BOLD_BODY_CONTRACT, {
+        comments: [
+          {
+            authorLogin: "cursor",
+            body: REAL_CURSOR_BRACKETED_BOLD_BODY_CONTRACT,
+            createdAt: "2026-09-10T00:00:00.000Z",
+            pullRequestReviewDatabaseId: 42,
+            pullRequestReviewCommitOid: STALE,
+            pullRequestReviewState: "COMMENTED",
+          },
+        ],
+      }),
+      currentHeadSha: HEAD,
+      exactHeadCursorReviews: reviews,
+    });
+    expect(decision.kind).toBe("ineligible");
+    expect(decision.reason).toBe("associated review is stale");
+  });
+
+  it("2e. same bracketed body, cursor but no associated review identity → ineligible", () => {
+    const decision = classifyAutoResolvableNonBlockingThread({
+      thread: {
+        id: "PRRT_nb_1",
+        isResolved: false,
+        comments: [
+          {
+            authorLogin: "cursor",
+            body: REAL_CURSOR_BRACKETED_BOLD_BODY_CONTRACT,
+            createdAt: "2026-09-10T00:00:00.000Z",
+            pullRequestReviewDatabaseId: null,
+            pullRequestReviewCommitOid: null,
+            pullRequestReviewState: null,
+          },
+        ],
+      },
+      currentHeadSha: HEAD,
+      exactHeadCursorReviews: reviews,
+    });
+    expect(decision.kind).toBe("ineligible");
+    expect(decision.reason).toMatch(/missing associated pull request review/i);
+  });
+
+  it("2f. same bracketed body with reply → ineligible", () => {
+    const decision = classifyAutoResolvableNonBlockingThread({
+      thread: {
+        id: "PRRT_nb_1",
+        isResolved: false,
+        comments: [
+          {
+            authorLogin: "cursor",
+            body: REAL_CURSOR_BRACKETED_BOLD_BODY_CONTRACT,
+            createdAt: "2026-09-10T00:00:00.000Z",
+            pullRequestReviewDatabaseId: 42,
+            pullRequestReviewCommitOid: HEAD,
+            pullRequestReviewState: "COMMENTED",
+          },
+          {
+            authorLogin: "alice",
+            body: "disagree",
+            createdAt: "2026-09-10T00:05:00.000Z",
+            pullRequestReviewDatabaseId: null,
+            pullRequestReviewCommitOid: null,
+            pullRequestReviewState: null,
+          },
+        ],
+      },
+      currentHeadSha: HEAD,
+      exactHeadCursorReviews: reviews,
+    });
+    expect(decision.kind).toBe("ineligible");
+    expect(decision.reason).toMatch(/reply/i);
+  });
+
+  it("2g. malformed bracketed marker → marker not recognized", () => {
+    const decision = classifyAutoResolvableNonBlockingThread({
+      thread: threadWithBody(
+        "<!-- CURSOR_AUTOMATION_ID: x | RUN_ID: y -->\n**[non-blocking] Contract:** bad",
+        {},
+        "cursor",
+      ),
+      currentHeadSha: HEAD,
+      exactHeadCursorReviews: reviews,
+    });
+    expect(decision.kind).toBe("ineligible");
+    expect(decision.reason).toBe("marker not recognized");
   });
 
   it("3. root cursor + no review association → ineligible", () => {
