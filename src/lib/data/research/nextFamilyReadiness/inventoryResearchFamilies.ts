@@ -42,9 +42,10 @@ const MOMENTUM_MODULES = [
   "src/lib/data/strategies/plugin/builtins/simpleMomentumStrategyPlugin.ts",
 ] as const;
 
-const MOMENTUM_FAMILY_ANALYSIS_MISSING = [
-  "src/lib/data/research/momentumFamilyAnalysis/",
-  "scripts/research/buildMomentumFamilyAnalysis.ts",
+const MOMENTUM_FAMILY_DEFINITION_MODULES = [
+  "src/lib/data/research/kalshiTobMomentumFamily/index.ts",
+  "src/lib/data/research/kalshiTobMomentumFamily/buildMomentumFamilyDefinitionReport.ts",
+  "scripts/research/buildKalshiTobMomentumFamily.ts",
 ] as const;
 
 const MICROSTRUCTURE_FAMILY_DEFINITION_MODULES = [
@@ -320,56 +321,101 @@ export function inventoryMicrostructureFamily(io: NextFamilyReadinessIo): Family
 
 export function inventoryMomentumFamily(io: NextFamilyReadinessIo): FamilyInventory {
   const modules = presentPaths(io, MOMENTUM_MODULES);
-  const missingFamily = presentPaths(io, MOMENTUM_FAMILY_ANALYSIS_MISSING);
+  const familyDefinition = presentPaths(io, MOMENTUM_FAMILY_DEFINITION_MODULES);
+  const familyDefinitionAvailable = familyDefinition.missing.length === 0;
   const candleIntegrityPresent = io.fileExists(
     "src/lib/data/research/completedCandleWindowIntegrity/index.ts",
   );
-  const momentumAxisGroups = 4; // momentumBuckets + momentumTime + momentumVolatility + momentumHour
+  const momentumAxisGroups = 4; // legacy atlas: momentumBuckets + momentumTime + momentumVolatility + momentumHour
   return {
     familyId: "momentum",
     displayName: "Momentum",
-    maturity: modules.present.length >= 2 ? "needs-definition" : "not-established",
+    maturity: familyDefinitionAvailable
+      ? "partial"
+      : modules.present.length >= 2
+        ? "needs-definition"
+        : "not-established",
     independenceFromCalibrationFade: "medium",
-    conceptualThesis:
-      "Continuation/reversal from BTC (or market) returns over a lookback — distinct from probability calibration fade, "
-      + "but currently only defined as atlas dimension buckets rather than a governed family evidence contract.",
-    modulePathsPresent: modules.present,
-    modulePathsMissing: [...modules.missing, ...missingFamily.missing],
-    npmScriptsPresent: [],
-    familyDefinitionAvailable: false,
-    causalSemanticsNotes: [
-      `Research momentum lookback defaults to ${DEFAULT_RESEARCH_MOMENTUM_LOOKBACK_BARS} one-minute bars `
-        + `(strong/moderate thresholds ${MOMENTUM_STRONG_THRESHOLD_PERCENT}% / ${MOMENTUM_MODERATE_THRESHOLD_PERCENT}%).`,
-      "Live feature momentum defaults differ from research 15m lookback — family contract must freeze one definition.",
-      "No dedicated momentum family analysis CLI/report module was found.",
-    ],
-    executableInputNotes: [
-      "Baseline simpleMomentumStrategyPlugin reads yes-ask (buy side).",
-      "Atlas momentum cells feed the shared hypothesis-candidate path, not a sealed momentum confirmatory pipeline.",
-    ],
-    multiplicity: {
-      status: "needs-work",
-      returnHorizonCount: null,
-      responseWindowCount: null,
-      magnitudeBinCount: null,
-      timeRemainingBinCount: null,
-      impliedProbabilityBinCount: null,
-      atlasAxisGroupCount: momentumAxisGroups,
-      momentumBucketCount: MOMENTUM_BUCKET_DEFINITIONS.length,
-      note:
-        `${MOMENTUM_BUCKET_DEFINITIONS.length} momentum buckets across ${momentumAxisGroups} atlas axis groups `
-        + "(momentumBuckets, momentumTime, momentumVolatility, momentumHour) "
-        + "create a combinatorial search space. A prospective family must freeze a tiny pre-registered subset.",
-    },
+    conceptualThesis: familyDefinitionAvailable
+      ? "Kalshi own-price momentum: when YES midpoint has already moved ≥X¢ over backward window W, "
+        + "test same-direction continuation over forward horizon H "
+        + "(kalshi-tob-mid-return-threshold-continuation-v1). Not BTC recentMomentum, atlas BTC "
+        + "momentum buckets, or simpleMomentumStrategyPlugin."
+      : "Continuation/reversal from BTC (or market) returns over a lookback — distinct from probability calibration fade, "
+        + "but currently only defined as atlas dimension buckets rather than a governed family evidence contract.",
+    modulePathsPresent: [...modules.present, ...familyDefinition.present],
+    modulePathsMissing: [...modules.missing, ...familyDefinition.missing],
+    npmScriptsPresent: familyDefinitionAvailable
+      ? ["research:kalshi-tob-momentum-family"]
+      : [],
+    familyDefinitionAvailable,
+    causalSemanticsNotes: familyDefinitionAvailable
+      ? [
+          "M14.0a seals kalshi-tob-mid-return-threshold-continuation-v1 (Kalshi own-price momentum).",
+          "Predictor uses endogenous YES midpoint backward return only; BTC features are forbidden.",
+          "Continuation-only direction; reversal requires a separate future lineage.",
+          "Legacy recentMomentum / atlas BTC momentum buckets / simpleMomentumStrategyPlugin are not family authority.",
+          "Historical discovery/validation/holdout/promotion/freeze are not marked complete.",
+        ]
+      : [
+          `Research momentum lookback defaults to ${DEFAULT_RESEARCH_MOMENTUM_LOOKBACK_BARS} one-minute bars `
+            + `(strong/moderate thresholds ${MOMENTUM_STRONG_THRESHOLD_PERCENT}% / ${MOMENTUM_MODERATE_THRESHOLD_PERCENT}%).`,
+          "Live feature momentum defaults differ from research 15m lookback — family contract must freeze one definition.",
+          "No dedicated Kalshi-native momentum family definition module was found.",
+        ],
+    executableInputNotes: familyDefinitionAvailable
+      ? [
+          "Primary economic evidence is gross one-contract executable horizon P&L under complement-book semantics; "
+            + "midpoint continuation is diagnostic; fee-adjusted/net edge remains unbound.",
+          "Legacy simpleMomentumStrategyPlugin and atlas BTC momentum cells are not this family's confirmatory pipeline.",
+        ]
+      : [
+          "Baseline simpleMomentumStrategyPlugin reads yes-ask (buy side).",
+          "Atlas momentum cells feed the shared hypothesis-candidate path, not a sealed momentum confirmatory pipeline.",
+        ],
+    multiplicity: familyDefinitionAvailable
+      ? {
+          status: "needs-work",
+          returnHorizonCount: 2,
+          responseWindowCount: 3,
+          magnitudeBinCount: 2,
+          timeRemainingBinCount: null,
+          impliedProbabilityBinCount: null,
+          atlasAxisGroupCount: null,
+          momentumBucketCount: null,
+          note:
+            "Governed first-pass universe is hard-capped at 12 hypotheses "
+            + "(2 backward windows × 2 absolute return thresholds × 3 forward horizons × 1 continuation direction). "
+            + "Probability and time-remaining are fixed gates, not search axes. "
+            + `Legacy atlas still lists ${MOMENTUM_BUCKET_DEFINITIONS.length} BTC momentum buckets across `
+            + `${momentumAxisGroups} axis groups — not this family's search grid.`,
+        }
+      : {
+          status: "needs-work",
+          returnHorizonCount: null,
+          responseWindowCount: null,
+          magnitudeBinCount: null,
+          timeRemainingBinCount: null,
+          impliedProbabilityBinCount: null,
+          atlasAxisGroupCount: momentumAxisGroups,
+          momentumBucketCount: MOMENTUM_BUCKET_DEFINITIONS.length,
+          note:
+            `${MOMENTUM_BUCKET_DEFINITIONS.length} momentum buckets across ${momentumAxisGroups} atlas axis groups `
+            + "(momentumBuckets, momentumTime, momentumVolatility, momentumHour) "
+            + "create a combinatorial search space. A prospective family must freeze a tiny pre-registered subset.",
+        },
     overlapsWithCalibrationFade: [
-      "Shares mispricing-atlas / hypothesis-candidate machinery and completed-candle windows used by fade volatility.",
-      "Signal is return-based rather than calibration-gap based, but discovery path is coupled.",
+      "Shares forward-quote capture plumbing and TOB fidelity gates.",
+      "Signal is Kalshi own-price return continuation when defined — not calibration-gap based.",
     ],
-    volatilityContiguityDependency: candleIntegrityPresent ? "needs-work" : "not-established",
-    volatilityContiguityNote: candleIntegrityPresent
-      ? "Any future momentum family using completed 1m candles should opt into requireContiguousWindow / expectedBarIntervalMs=60000. "
-        + "Frozen calibration-fade v2 semantics must not be changed."
-      : "completedCandleWindowIntegrity module not found; candle-window integrity dependency not established.",
+    volatilityContiguityDependency: "not-established",
+    volatilityContiguityNote: familyDefinitionAvailable
+      ? "Kalshi-native TOB midpoint momentum does not require completed-candle BTC volatility windows. "
+        + "Legacy atlas BTC momentum buckets remain separate and must not be confused with this family."
+      : candleIntegrityPresent
+        ? "Any future momentum family using completed 1m candles should opt into requireContiguousWindow / expectedBarIntervalMs=60000. "
+          + "Frozen calibration-fade v2 semantics must not be changed."
+        : "completedCandleWindowIntegrity module not found; candle-window integrity dependency not established.",
   };
 }
 

@@ -139,7 +139,9 @@ export function scoreFamilyReadiness(input: {
           ? "ready"
           : "needs-definition"
         : inventory.familyId === "momentum"
-          ? "needs-work"
+          ? inventory.familyDefinitionAvailable
+            ? "ready"
+            : "needs-work"
           : "needs-definition";
   dims.push({
     dimension: "causalFeatureSemanticsEstablished",

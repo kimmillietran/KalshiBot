@@ -62,6 +62,12 @@ const MOMENTUM_FILES = {
   "src/lib/data/strategies/plugin/builtins/simpleMomentumStrategyPlugin.ts": "ok",
 } as const;
 
+const MOMENTUM_FAMILY_DEFINITION_FILES = {
+  "src/lib/data/research/kalshiTobMomentumFamily/index.ts": "ok",
+  "src/lib/data/research/kalshiTobMomentumFamily/buildMomentumFamilyDefinitionReport.ts": "ok",
+  "scripts/research/buildKalshiTobMomentumFamily.ts": "ok",
+} as const;
+
 function baseConfig(
   overrides: Partial<NextFamilyReadinessConfig> = {},
 ): NextFamilyReadinessConfig {
@@ -892,8 +898,11 @@ describe("M13.1 TOB-imbalance disposition + direction reassessment", () => {
     );
   });
 
-  it("14-19. ranking ignores effect magnitude; lead-lag unchanged; momentum needs-definition; no forced winner", () => {
-    const io = createMemoryCalibrationFadeForwardValidationIo(m131Files());
+  it("14-19. ranking ignores effect magnitude; lead-lag unchanged; momentum definition → discovery; no forced winner", () => {
+    const io = createMemoryCalibrationFadeForwardValidationIo({
+      ...m131Files(),
+      ...MOMENTUM_FAMILY_DEFINITION_FILES,
+    });
     const report = buildNextFamilyReadinessReport({
       config: {
         ...m131Config(),
@@ -920,15 +929,31 @@ describe("M13.1 TOB-imbalance disposition + direction reassessment", () => {
     expect(isEligibleForNewIndependentSubfamilyPreparation(micro)).toBe(true);
 
     const momentum = report.familyReadiness.find((f) => f.familyId === "momentum")!;
+    expect(momentum.inventory.familyDefinitionAvailable).toBe(true);
+    expect(momentum.maturity).toBe("partial");
+    expect(momentum.inventory.conceptualThesis).toMatch(/Kalshi own-price momentum/i);
+    expect(isEligibleForDiscoveryRecommendation(momentum)).toBe(true);
+    expect(report.selectionStatus).toBe("recommended-for-discovery");
+    expect(report.recommendedFamily).toBe("momentum");
+    expect(report.recommendedNextAction).toBe("start-new-family-discovery");
+    expect(report.recommendationRationale.some((line) => /historical return/i.test(line))).toBe(
+      true,
+    );
+  });
+
+  it("14b. without momentum family definition, prepare-family-definition remains after TOB stop", () => {
+    const io = createMemoryCalibrationFadeForwardValidationIo(m131Files());
+    const report = buildNextFamilyReadinessReport({
+      config: m131Config(),
+      io,
+      generatedAt: "2026-09-10T18:00:00.000Z",
+    });
+    const momentum = report.familyReadiness.find((f) => f.familyId === "momentum")!;
+    expect(momentum.inventory.familyDefinitionAvailable).toBe(false);
     expect(momentum.maturity).toBe("needs-definition");
     expect(report.selectionStatus).toBe("prepare-family-definition");
     expect(report.recommendedFamily).toBe("momentum");
     expect(report.recommendedNextAction).toBe("prepare-family-definition");
-    expect(report.recommendationRationale.some((line) => /historical return/i.test(line))).toBe(
-      true,
-    );
-    expect(report.recommendationRationale.some((line) => /PR #80|reverse-direction/i.test(line)))
-      .toBe(true);
   });
 
   it("16b. future microstructure subfamily may remain needs-definition path", () => {
