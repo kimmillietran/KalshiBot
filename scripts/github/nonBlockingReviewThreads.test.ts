@@ -8,7 +8,6 @@ import {
   isTrustedCursorThreadAuthor,
   matchNonBlockingMarker,
   NON_BLOCKING_LEGACY_BOLD_PREFIX,
-  NON_BLOCKING_LEGACY_PREFIX,
   NON_BLOCKING_MARKER,
   normalizeRootCommentBodyForMarker,
   selectAutoResolvableNonBlockingThreadIds,
