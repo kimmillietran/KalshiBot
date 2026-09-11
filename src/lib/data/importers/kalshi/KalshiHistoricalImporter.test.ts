@@ -530,10 +530,17 @@ describe("KalshiHistoricalImporter", () => {
 
   it("does not call global fetch or localStorage", async () => {
     const fetchSpy = vi.spyOn(globalThis, "fetch");
-    const storageSpy =
-      typeof Storage !== "undefined"
-        ? vi.spyOn(Storage.prototype, "setItem")
-        : undefined;
+    // Node has no Storage/localStorage by default (CI Node 20). Stub so the
+    // "no localStorage writes" invariant is still asserted under unit-node.
+    const setItemSpy = vi.fn();
+    vi.stubGlobal("localStorage", {
+      getItem: vi.fn(),
+      setItem: setItemSpy,
+      removeItem: vi.fn(),
+      clear: vi.fn(),
+      key: vi.fn(),
+      length: 0,
+    });
 
     const client = createFakeClient(() => ({
       status: 200,
@@ -547,12 +554,10 @@ describe("KalshiHistoricalImporter", () => {
     await createImporter(client).getHistoricalCutoff();
 
     expect(fetchSpy).not.toHaveBeenCalled();
-    if (storageSpy) {
-      expect(storageSpy).not.toHaveBeenCalled();
-      storageSpy.mockRestore();
-    }
+    expect(setItemSpy).not.toHaveBeenCalled();
 
     fetchSpy.mockRestore();
+    vi.unstubAllGlobals();
   });
 
   it("rejects seriesTicker-only trade scope without inventing ticker filter", async () => {
