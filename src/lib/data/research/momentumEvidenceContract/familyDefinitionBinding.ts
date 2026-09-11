@@ -1,4 +1,15 @@
 import {
+  BACKWARD_WINDOWS_MS,
+  DIRECTION_CONVENTION,
+  FAMILY_HYPOTHESIS_COUNT,
+  FORWARD_HORIZONS_MS,
+  MOMENTUM_FAMILY_ID,
+  MOMENTUM_SUBFAMILY_ID,
+  RETURN_THRESHOLDS_CENTS,
+  buildMomentumFamilyDefinitionReport,
+} from "../kalshiTobMomentumFamily";
+
+import {
   EXPECTED_MOMENTUM_DISCOVERY_HYPOTHESIS_COUNT,
   EXPECTED_MOMENTUM_FAMILY_ID,
   EXPECTED_MOMENTUM_LOOKBACK_WINDOWS_MS,
@@ -10,8 +21,8 @@ import {
 } from "./momentumEvidenceContractTypes";
 
 /**
- * Narrow adapter for the future authoritative M14.0a family definition.
- * Does not import or edit Agent 1's family-definition module.
+ * Narrow adapter for the authoritative M14.0a family definition.
+ * Imports the sealed family module for identity/axes only — no historical outcomes.
  */
 export type MomentumFamilyDefinitionBinding = {
   familyDefinitionIdentity: string;
@@ -120,4 +131,55 @@ export function rejectReversalDirectionMutation(
       `Reversal / non-continuation direction mutation fails closed (got ${direction}).`,
     );
   }
+}
+
+/**
+ * Bind the sealed M14.0a family definition by recomputing its content-addressed identity
+ * from the authoritative module (definition schema only — no capture/outcome reads).
+ */
+export function bindAuthoritativeMomentumFamilyDefinition(input?: {
+  expectedIdentity?: string | null;
+  generatedAt?: string;
+}): MomentumFamilyDefinitionBinding {
+  // Cross-check published M14.0a constants against this contract's expected axes.
+  if (MOMENTUM_FAMILY_ID !== EXPECTED_MOMENTUM_FAMILY_ID) {
+    throw new MomentumEvidenceContractError("M14.0a familyId mismatch");
+  }
+  if (MOMENTUM_SUBFAMILY_ID !== EXPECTED_MOMENTUM_SUBFAMILY_ID) {
+    throw new MomentumEvidenceContractError("M14.0a subfamilyId mismatch");
+  }
+  if (FAMILY_HYPOTHESIS_COUNT !== EXPECTED_MOMENTUM_DISCOVERY_HYPOTHESIS_COUNT) {
+    throw new MomentumEvidenceContractError("M14.0a hypothesisCount mismatch");
+  }
+  if (DIRECTION_CONVENTION !== MOMENTUM_DIRECTION) {
+    throw new MomentumEvidenceContractError("M14.0a direction convention mismatch");
+  }
+
+  const report = buildMomentumFamilyDefinitionReport({
+    generatedAt: input?.generatedAt ?? "1970-01-01T00:00:00.000Z",
+  });
+
+  const binding: MomentumFamilyDefinitionBinding = {
+    familyDefinitionIdentity: report.familyDefinitionIdentityHash,
+    familyId: EXPECTED_MOMENTUM_FAMILY_ID,
+    subfamilyId: EXPECTED_MOMENTUM_SUBFAMILY_ID,
+    hypothesisCount: EXPECTED_MOMENTUM_DISCOVERY_HYPOTHESIS_COUNT,
+    direction: MOMENTUM_DIRECTION,
+    lookbackWindowsMs: [...BACKWARD_WINDOWS_MS],
+    thresholdsCents: [...RETURN_THRESHOLDS_CENTS],
+    responseHorizonsMs: [...FORWARD_HORIZONS_MS],
+  };
+  assertFamilyUniverseMatchesContract(binding);
+
+  if (
+    input?.expectedIdentity
+    && input.expectedIdentity !== binding.familyDefinitionIdentity
+  ) {
+    throw new MomentumEvidenceContractError(
+      `M14.0a identity mismatch: expected ${input.expectedIdentity}, `
+        + `got ${binding.familyDefinitionIdentity}`,
+    );
+  }
+
+  return binding;
 }

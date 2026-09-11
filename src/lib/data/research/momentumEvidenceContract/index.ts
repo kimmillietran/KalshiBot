@@ -30,6 +30,7 @@ export type {
 
 export {
   assertFamilyUniverseMatchesContract,
+  bindAuthoritativeMomentumFamilyDefinition,
   createUnboundMomentumFamilyBindingSlot,
   rejectReversalDirectionMutation,
   requireExactFamilyDefinitionIdentityForOutcomeAccess,

@@ -8,9 +8,11 @@ import {
   type MomentumEvidenceContractConfig,
   type MomentumStoppingRule,
 } from "./momentumEvidenceContractTypes";
+import { bindAuthoritativeMomentumFamilyDefinition } from "./familyDefinitionBinding";
 
 const KNOWN_FLAGS = new Set([
   "--family-definition-identity",
+  "--bind-m14a-family",
   "--material-effect-cents",
   "--alpha",
   "--target-power",
@@ -96,8 +98,16 @@ export function parseMomentumEvidenceContractArgv(
   const powerRaw = readFlagValue(argv, "--target-power");
   const sdRaw = readFlagValue(argv, "--outcome-sd-cents");
 
+  let familyDefinitionIdentity = readFlagValue(argv, "--family-definition-identity");
+  if (argv.includes("--bind-m14a-family")) {
+    const bound = bindAuthoritativeMomentumFamilyDefinition({
+      expectedIdentity: familyDefinitionIdentity,
+    });
+    familyDefinitionIdentity = bound.familyDefinitionIdentity;
+  }
+
   return {
-    familyDefinitionIdentity: readFlagValue(argv, "--family-definition-identity"),
+    familyDefinitionIdentity,
     materialEffectThresholdCents:
       materialRaw == null ? null : Number(materialRaw),
     alpha: alphaRaw == null ? MOMENTUM_DEFAULT_ALPHA : Number(alphaRaw),

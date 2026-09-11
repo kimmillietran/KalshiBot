@@ -29,7 +29,7 @@ export const EXPECTED_MOMENTUM_SUBFAMILY_ID =
 
 export const EXPECTED_MOMENTUM_DISCOVERY_HYPOTHESIS_COUNT = 12 as const;
 export const MOMENTUM_MAX_SHORTLIST_K = 3 as const;
-export const MOMENTUM_DIRECTION = "continuation-only" as const;
+export const MOMENTUM_DIRECTION = "continuation" as const;
 
 /** Expected structural axes (identity authority remains M14.0a). */
 export const EXPECTED_MOMENTUM_LOOKBACK_WINDOWS_MS = [5_000, 15_000] as const;

@@ -11,6 +11,7 @@ import {
   assertRawCrossingsAreNotDirectEss,
   assertRawQuotesAreNotIndependentN,
   auditMomentumFeeContract,
+  bindAuthoritativeMomentumFamilyDefinition,
   buildMetadataOnlyMomentumCaptureInventory,
   buildMomentumCountLadder,
   buildMomentumEvidenceDesignReport,
@@ -71,7 +72,7 @@ function binding(overrides: Partial<MomentumFamilyDefinitionBinding> = {}): Mome
     familyId: "momentum",
     subfamilyId: "kalshi-tob-mid-return-threshold-continuation-v1",
     hypothesisCount: 12,
-    direction: "continuation-only",
+    direction: "continuation",
     lookbackWindowsMs: [5_000, 15_000],
     thresholdsCents: [2, 3],
     responseHorizonsMs: [5_000, 15_000, 30_000],
@@ -92,6 +93,12 @@ describe("M14.0b-prep momentum evidence contract", () => {
     expect(() =>
       assertFamilyUniverseMatchesContract(binding({ direction: "reversal" as never })),
     ).toThrow(/Continuation/i);
+
+    const authoritative = bindAuthoritativeMomentumFamilyDefinition();
+    expect(authoritative.familyDefinitionIdentity).toMatch(/^[a-f0-9]{64}$/);
+    expect(authoritative.hypothesisCount).toBe(12);
+    expect(authoritative.direction).toBe("continuation");
+    requireExactFamilyDefinitionIdentityForOutcomeAccess(authoritative.familyDefinitionIdentity);
   });
 
   it("5-10. alpha/power/MDE/SD fixed; required N model-derived; fixed-n; optional stopping forbidden", () => {
