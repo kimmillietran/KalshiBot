@@ -16,6 +16,14 @@ export const NON_BLOCKING_LEGACY_PREFIX = "Non-blocking:";
 export const NON_BLOCKING_LEGACY_BOLD_PREFIX = "**Non-blocking:**";
 
 /**
+ * Production Cursor Automation titled bold form (PR #83):
+ * `**[Non-blocking] <title>:**`
+ *
+ * Exact spelling/case. Not fuzzy prose. Not a global Markdown strip.
+ */
+export const NON_BLOCKING_BRACKETED_BOLD_OPEN = "**[Non-blocking]";
+
+/**
  * GitHub review-thread GraphQL surfaces Cursor root comments as `cursor`
  * while the associated pull-request review actor remains `cursor[bot]`.
  * This alias is NEVER sufficient alone — linked exact-head trusted review
@@ -23,7 +31,11 @@ export const NON_BLOCKING_LEGACY_BOLD_PREFIX = "**Non-blocking:**";
  */
 export const CURSOR_THREAD_COMMENT_AUTHOR_ALIAS = "cursor";
 
-export type NonBlockingMarkerKind = "canonical" | "legacy" | "legacy-bold";
+export type NonBlockingMarkerKind =
+  | "canonical"
+  | "legacy"
+  | "legacy-bold"
+  | "bracketed-bold";
 
 export type AutoResolvableThreadDecision =
   | { kind: "eligible"; threadId: string; reason: string; marker: NonBlockingMarkerKind }
@@ -65,13 +77,75 @@ export type NonBlockingMarkerMatch =
   | { matched: false };
 
 /**
+ * Parse production titled form after normalization:
+ * `**[Non-blocking] <title>:**`
+ *
+ * Requires:
+ * - exact open `**[Non-blocking]` at start (case/spelling exact)
+ * - a single separating space
+ * - non-empty descriptive title without embedded `**`
+ * - closing `:**` (balanced outer bold)
+ * - remainder must not leave an unpaired `**` (fail closed on ambiguous Markdown)
+ *
+ * Does not search later prose. Does not strip arbitrary Markdown globally.
+ */
+export function matchBracketedBoldNonBlockingMarker(
+  normalizedBody: string,
+): boolean {
+  if (!normalizedBody.startsWith(NON_BLOCKING_BRACKETED_BOLD_OPEN)) {
+    return false;
+  }
+  // Reject triple-or-more emphasis that somehow shares a prefix shape.
+  if (normalizedBody.startsWith("***")) {
+    return false;
+  }
+
+  const afterOpen = normalizedBody.slice(NON_BLOCKING_BRACKETED_BOLD_OPEN.length);
+  if (!afterOpen.startsWith(" ")) {
+    return false;
+  }
+
+  const afterSpace = afterOpen.slice(1);
+  const closeIndex = afterSpace.indexOf(":**");
+  if (closeIndex < 0) {
+    return false;
+  }
+
+  const title = afterSpace.slice(0, closeIndex);
+  if (title.length === 0 || title.trim().length === 0) {
+    return false;
+  }
+  // Fail closed on leading/trailing title whitespace (production titles are tight).
+  if (title !== title.trim()) {
+    return false;
+  }
+  if (title.includes("**") || title.includes("*")) {
+    return false;
+  }
+
+  const remainder = afterSpace.slice(closeIndex + ":**".length);
+  const boldMarkers = remainder.match(/\*\*/g);
+  if (boldMarkers != null && boldMarkers.length % 2 !== 0) {
+    return false;
+  }
+
+  return true;
+}
+
+/**
  * After normalization, accept only:
  * - exact prefix `[NON-BLOCKING]`
  * - exact case-sensitive prefix `Non-blocking:`
  * - exact case-sensitive prefix `**Non-blocking:**`
+ * - exact production titled form `**[Non-blocking] <title>:**`
  *
  * Fuzzy language (nit/optional/minor/suggestion/FYI) never matches.
  * Unsupported emphasis (`***Non-blocking:***`) never matches.
+ *
+ * Policy note: when Cursor's formal verdict is APPROVED FOR MERGE, Cursor should
+ * ideally not create new unresolved inline threads (prefer a top-level
+ * `## Non-blocking observations` section). This resolver remains defensive
+ * compatibility for real production Cursor Automation inline threads.
  */
 export function matchNonBlockingMarker(body: string | null | undefined): NonBlockingMarkerMatch {
   const normalized = normalizeRootCommentBodyForMarker(body);
@@ -83,6 +157,9 @@ export function matchNonBlockingMarker(body: string | null | undefined): NonBloc
   }
   if (normalized.startsWith(NON_BLOCKING_LEGACY_BOLD_PREFIX)) {
     return { matched: true, marker: "legacy-bold" };
+  }
+  if (matchBracketedBoldNonBlockingMarker(normalized)) {
+    return { matched: true, marker: "bracketed-bold" };
   }
   if (normalized.startsWith(NON_BLOCKING_LEGACY_PREFIX)) {
     return { matched: true, marker: "legacy" };
@@ -166,6 +243,9 @@ function markerEligibleReason(marker: NonBlockingMarkerKind): string {
   }
   if (marker === "legacy-bold") {
     return "trusted exact-head cursor[bot] **Non-blocking:** single-comment thread";
+  }
+  if (marker === "bracketed-bold") {
+    return "trusted exact-head cursor[bot] **[Non-blocking] <title>:** single-comment thread";
   }
   return "trusted exact-head cursor[bot] Non-blocking: single-comment thread";
 }

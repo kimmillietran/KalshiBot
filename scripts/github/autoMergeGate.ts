@@ -40,7 +40,8 @@ import {
  * DISMISSED and PENDING reviews never authorize merge; the latest ACTIVE
  * exact-head Cursor LRM wins. Before evaluation, this helper may resolve
  * only unresolved review threads whose normalized root body begins with
- * `[NON-BLOCKING]`, `Non-blocking:`, or `**Non-blocking:**` when the root
+ * `[NON-BLOCKING]`, `Non-blocking:`, `**Non-blocking:**`, or
+ * `**[Non-blocking] <title>:**` when the root
  * author is `cursor[bot]` or the GitHub thread-API alias `cursor` backed by
  * an exact-head trusted `cursor[bot]` review, with no replies; it never
  * dismisses reviews, never auto-resolves unmarked/human/stale threads, and
