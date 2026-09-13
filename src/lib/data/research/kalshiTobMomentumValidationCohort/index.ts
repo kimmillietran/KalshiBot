@@ -72,6 +72,13 @@ export {
   parseMomentumIndependentUnitKey,
 } from "./blindIncidenceCounter";
 
+export {
+  hashCaptureTopOfBookIdentity,
+  loadCloseTimeByMarketForBlindIncidence,
+  streamLockedCandidateBlindIncidence,
+} from "./streamLockedCandidateBlindIncidence";
+export type { LockedCandidateBlindIncidenceResult } from "./streamLockedCandidateBlindIncidence";
+
 export { deduplicateMomentumValidationCohortUnits } from "./cohortEssDedup";
 
 export {
