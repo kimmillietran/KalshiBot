@@ -397,6 +397,61 @@ describe("M14.0b-prep momentum evidence contract", () => {
     expect(a.feeContract.netEdgePromotionAuthorized).toBe(false);
   });
 
+  it("evidence contract identity is sensitive to authoritative fields, not generatedAt", () => {
+    const baseConfig = {
+      familyDefinitionIdentity:
+        "764fd36d67f8152077666119ddd1049bcd6940d259f21b60ec7138fa3ad4795d",
+      materialEffectThresholdCents: 2,
+      alpha: 0.05,
+      targetPower: 0.8,
+      outcomeStandardDeviationCents: 10,
+      maxShortlistK: 3,
+      expectedDiscoveryHypothesisCount: 12,
+      stoppingRule: {
+        kind: "fixed-n" as const,
+        minimumEffectiveSampleSize: 155,
+        interpretationIfNotReached: "inconclusive-underpowered" as const,
+      },
+      outputPath: null,
+      htmlOutputPath: null,
+    };
+    const a = buildMomentumEvidenceDesignReport({
+      config: baseConfig,
+      generatedAt: "2026-09-11T00:00:00.000Z",
+      sealedInventoryOnly: true,
+    });
+    const b = buildMomentumEvidenceDesignReport({
+      config: baseConfig,
+      generatedAt: "2099-01-01T00:00:00.000Z",
+      sealedInventoryOnly: true,
+    });
+    expect(a.contractIdentityHash).toBe(b.contractIdentityHash);
+
+    const mutatedAlpha = buildMomentumEvidenceDesignReport({
+      config: { ...baseConfig, alpha: 0.01 },
+      generatedAt: "2026-09-11T00:00:00.000Z",
+      sealedInventoryOnly: true,
+    });
+    expect(mutatedAlpha.contractIdentityHash).not.toBe(a.contractIdentityHash);
+
+    const mutatedMde = buildMomentumEvidenceDesignReport({
+      config: { ...baseConfig, materialEffectThresholdCents: 3 },
+      generatedAt: "2026-09-11T00:00:00.000Z",
+      sealedInventoryOnly: true,
+    });
+    expect(mutatedMde.contractIdentityHash).not.toBe(a.contractIdentityHash);
+
+    const mutatedFamilyBinding = buildMomentumEvidenceDesignReport({
+      config: {
+        ...baseConfig,
+        familyDefinitionIdentity: "0".repeat(64),
+      },
+      generatedAt: "2026-09-11T00:00:00.000Z",
+      sealedInventoryOnly: true,
+    });
+    expect(mutatedFamilyBinding.contractIdentityHash).not.toBe(a.contractIdentityHash);
+  });
+
   it("validation midpoint-only / underpowered paths", () => {
     const candidate = baseCandidate();
     expect(

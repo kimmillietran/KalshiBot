@@ -507,9 +507,9 @@ describe("M14.0a kalshiTobMomentumFamily", () => {
       eventMidCents: 42.5,
       responseMidCents: 47.5,
     });
-    // Contracts are separate functions/fields even if values can differ.
-    expect(typeof gross).toBe("number");
-    expect(typeof diagnostic).toBe("number");
+    // Exact cents (not merely typeof / non-null): buy YES@45, sell@45 → 0; mid +5.
+    expect(gross).toBe(0);
+    expect(diagnostic).toBe(5);
     expect(gross).not.toBe(diagnostic);
   });
 
