@@ -345,6 +345,76 @@ describe("M14.0a kalshiTobMomentumFamily", () => {
     expect(ok.status).toBe("observed");
   });
 
+  it("response skips ineligible timestamp-matching quote then uses next eligible", () => {
+    const eventTs = 20_000;
+    const H = 5_000;
+    const result = matchResponseQuote({
+      eventTimestampMs: eventTs,
+      forwardHorizonMs: H,
+      responseQuotes: [
+        quote({
+          timestampMs: eventTs + H + 5,
+          bookState: "gap-detected",
+          isEconomicallyValid: false,
+        }),
+        quote({
+          timestampMs: eventTs + H + 50,
+          yesBestBidCents: 52,
+          noBestBidCents: 48,
+        }),
+      ],
+    });
+    expect(result.status).toBe("observed");
+    if (result.status === "observed") {
+      expect(result.matchedQuoteTimestampMs).toBe(eventTs + H + 50);
+    }
+  });
+
+  it("anchor failure clears threshold state so later crossing can fire", () => {
+    const W = 5_000;
+    const t0 = 800_000;
+    // Valid outside baseline
+    const quotes = [
+      quote({
+        timestampMs: t0 - W,
+        yesBestBidCents: 50,
+        noBestBidCents: 50,
+      }),
+      quote({
+        timestampMs: t0,
+        yesBestBidCents: 50,
+        noBestBidCents: 50,
+      }),
+      // Would-be inside but missing eligible anchor (too far) → fail-closed clears state
+      quote({
+        timestampMs: t0 + 60_000,
+        yesBestBidCents: 55,
+        noBestBidCents: 45,
+      }),
+      // Recover with proper anchor then cross
+      quote({
+        timestampMs: t0 + 80_000 - W,
+        yesBestBidCents: 50,
+        noBestBidCents: 50,
+      }),
+      quote({
+        timestampMs: t0 + 80_000,
+        yesBestBidCents: 53,
+        noBestBidCents: 47,
+      }),
+    ];
+    const detected = detectFirstMomentumCrossings({
+      quotes,
+      backwardWindowMs: W,
+      returnThresholdCents: 2,
+      forwardHorizonMs: 5_000,
+      resolveTimeRemainingMs: () => 10 * 60_000,
+    });
+    expect(detected.events.length).toBeGreaterThanOrEqual(1);
+    expect(detected.rejectedReasons.some((row) => /anchor|tolerance|missing/i.test(row.reasons.join(" "))))
+      .toBe(true);
+  });
+
   it("19-21. probability and time gates", () => {
     expect(passesProbabilityGate(15)).toBe(true);
     expect(passesProbabilityGate(85)).toBe(true);

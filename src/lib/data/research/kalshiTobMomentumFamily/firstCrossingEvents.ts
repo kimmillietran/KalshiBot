@@ -71,6 +71,9 @@ export function detectFirstMomentumCrossings(input: {
     });
     if (anchor.status === "fail-closed") {
       rejectedReasons.push({ timestampMs: quote.timestampMs, reasons: [anchor.reason] });
+      // Fail closed: clear threshold state so a failed predictor observation cannot
+      // retain a stale "inside" arm and suppress a later valid crossing/re-arm.
+      inThresholdByMarket.set(quote.marketTicker, false);
       continue;
     }
 

@@ -24,6 +24,7 @@ export type {
   MomentumEvidenceDesignReport,
   MomentumFeeContractStatus,
   MomentumHoldoutVerdict,
+  MomentumSplitRole,
   MomentumStoppingRule,
   MomentumValidationStatus,
 } from "./momentumEvidenceContractTypes";
