@@ -10,9 +10,11 @@ import {
   assertAdmittedValidationSegmentCannotBecomeHoldout,
   assertBlindIncidenceHasNoOutcomeFields,
   assertHistoricalCannotSelfDeclareClean,
+  assertNoValidationOutcomesOpenedBeforeSegmentationAmendment,
   assertRunEligibleForMomentumValidationCohort,
   assertSealedMomentumIdentitiesMatchPreOpen,
   assertStoppingIgnoresSyntheticEffect,
+  assertValidMomentumValidationSegmentDuration,
   bindLockedMomentumValidationCandidate,
   buildBlindIncidenceFromUnitKeys,
   buildBlindIncidenceWithMarketDayCap,
@@ -23,30 +25,40 @@ import {
   deduplicateMomentumValidationCohortUnits,
   evaluateMomentumValidationStopping,
   FORBIDDEN_MOMENTUM_VALIDATION_OUTCOME_FIELD_NAMES,
+  isValidMomentumValidationSegmentDuration,
   KNOWN_M140A_EVIDENCE_CONTRACT_IDENTITY,
   KNOWN_M140A_FAMILY_DEFINITION_IDENTITY,
   KNOWN_M140B_DISCOVERY_IDENTITY,
   LOCK_MOMENTUM_VALIDATION_CANDIDATE_ID,
+  MOMENTUM_VALIDATION_COHORT_AMENDMENT_REASON,
+  MOMENTUM_VALIDATION_COHORT_AMENDMENT_VERSION,
   MOMENTUM_VALIDATION_COHORT_ANALYSIS_VERSION,
-  MOMENTUM_VALIDATION_MAX_ACCEPTED_SEGMENTS,
   MOMENTUM_VALIDATION_MAX_CAPTURE_HOURS,
-  MOMENTUM_VALIDATION_SEGMENT_DURATION_MINUTES,
+  MOMENTUM_VALIDATION_MAX_SEGMENT_DURATION_MINUTES,
+  MOMENTUM_VALIDATION_SEGMENT_1_GRANDFATHERED_DURATION_MINUTES,
+  MOMENTUM_VALIDATION_SEGMENT_COUNT_SAFETY_CAP,
+  MOMENTUM_VALIDATION_STANDARD_FUTURE_SEGMENT_DURATION_MINUTES,
   MOMENTUM_VALIDATION_TARGET_ESS,
   MomentumValidationCohortError,
+  ORIGINAL_MOMENTUM_VALIDATION_COHORT_PLAN_IDENTITY,
   registerMomentumValidationSegment,
   serializeMomentumValidationCohortPlanJson,
+  sumAcceptedCaptureHours,
 } from "./index";
 import type { MomentumValidationAcceptedSegment } from "./momentumValidationCohortTypes";
 
 const PLAN_FREEZE = "2026-09-12T00:00:00.000Z";
 const FRESH_START = Date.parse("2026-09-12T12:00:00.000Z");
+const SEGMENT_1_RUN_ID = "2026-09-13T04-05-01-822Z";
 
 function makeAcceptedSegment(input: {
   runId: string;
   unitIds: readonly string[];
   captureStartMs?: number;
   ess?: number;
+  durationMinutes?: number;
 }): MomentumValidationAcceptedSegment {
+  const durationMinutes = input.durationMinutes ?? 300;
   const capped = buildBlindIncidenceWithMarketDayCap({
     segmentRunId: input.runId,
     episodeKeys: input.unitIds.map((unitId) => ({ unitId })),
@@ -55,8 +67,8 @@ function makeAcceptedSegment(input: {
     runId: input.runId,
     captureRunDir: `data/live-capture/forward-quotes/${input.runId}`,
     captureStartMs: input.captureStartMs ?? FRESH_START,
-    captureEndMs: (input.captureStartMs ?? FRESH_START) + 300 * 60_000,
-    durationMinutes: 300,
+    captureEndMs: (input.captureStartMs ?? FRESH_START) + durationMinutes * 60_000,
+    durationMinutes,
     captureIdentityHash: `capture-${input.runId}`,
     health: {
       passed: true,
@@ -144,21 +156,37 @@ describe("kalshiTobMomentumValidationCohort", () => {
     ).toThrow(/Evidence identity required/i);
   });
 
-  it("6-9. 300m / ESS 155 / max 8 / 40h budget", () => {
+  it("6-9. flexible ≤480m / ESS 155 / 40h budget / amendment lineage", () => {
     const { plan, planIdentity } = buildMomentumValidationCohortPlan();
     expect(plan.analysisVersion).toBe(MOMENTUM_VALIDATION_COHORT_ANALYSIS_VERSION);
+    expect(plan.analysisVersion).toBe("momentum-validation-cohort-plan-v1.1");
+    expect(plan.standardFutureSegmentDurationMinutes).toBe(480);
+    expect(plan.standardFutureSegmentDurationMinutes).toBe(
+      MOMENTUM_VALIDATION_STANDARD_FUTURE_SEGMENT_DURATION_MINUTES,
+    );
+    expect(plan.maxSegmentDurationMinutes).toBe(480);
+    expect(plan.maxSegmentDurationMinutes).toBe(
+      MOMENTUM_VALIDATION_MAX_SEGMENT_DURATION_MINUTES,
+    );
+    expect(plan.segment1GrandfatheredDurationMinutes).toBe(300);
+    expect(plan.segment1GrandfatheredDurationMinutes).toBe(
+      MOMENTUM_VALIDATION_SEGMENT_1_GRANDFATHERED_DURATION_MINUTES,
+    );
     expect(plan.segmentDurationMinutes).toBe(300);
-    expect(plan.segmentDurationMinutes).toBe(MOMENTUM_VALIDATION_SEGMENT_DURATION_MINUTES);
     expect(plan.targetEss).toBe(155);
     expect(plan.targetEss).toBe(MOMENTUM_VALIDATION_TARGET_ESS);
-    expect(plan.maxAcceptedSegments).toBe(8);
-    expect(plan.maxAcceptedSegments).toBe(MOMENTUM_VALIDATION_MAX_ACCEPTED_SEGMENTS);
     expect(plan.maxAcceptedCaptureHours).toBe(40);
     expect(plan.maxAcceptedCaptureHours).toBe(MOMENTUM_VALIDATION_MAX_CAPTURE_HOURS);
-    expect(
-      (plan.segmentDurationMinutes / 60) * plan.maxAcceptedSegments,
-    ).toBe(plan.maxAcceptedCaptureHours);
+    expect(plan.segmentCountSafetyCap).toBe(MOMENTUM_VALIDATION_SEGMENT_COUNT_SAFETY_CAP);
+    expect(plan.stoppingRule.kind).toBe("fixed-n-with-max-accepted-capture-hours");
+    expect(plan.stoppingRule.maxAcceptedCaptureHours).toBe(40);
+    expect(plan.amendment.priorPlanIdentity).toBe(
+      ORIGINAL_MOMENTUM_VALIDATION_COHORT_PLAN_IDENTITY,
+    );
+    expect(plan.amendment.version).toBe(MOMENTUM_VALIDATION_COHORT_AMENDMENT_VERSION);
+    expect(plan.amendment.reason).toBe(MOMENTUM_VALIDATION_COHORT_AMENDMENT_REASON);
     expect(planIdentity).toMatch(/^[a-f0-9]{64}$/);
+    expect(planIdentity).not.toBe(ORIGINAL_MOMENTUM_VALIDATION_COHORT_PLAN_IDENTITY);
     expect(plan.lockedCandidateId).toBe(LOCK_MOMENTUM_VALIDATION_CANDIDATE_ID);
     expect(plan.discoveryIdentity).toBe(KNOWN_M140B_DISCOVERY_IDENTITY);
     expect(plan.noOutcomeAccess).toBe(true);
@@ -417,10 +445,11 @@ describe("kalshiTobMomentumValidationCohort", () => {
     expect(again.retainedUnitIds).toEqual(dedup.retainedUnitIds);
   });
 
-  it("27-30. ESS 154 continue; 155/200 ready; segment8+154 underpowered", () => {
+  it("27-30. ESS 154 continue; 155 ready; hours>=40 underpowered", () => {
     expect(
       evaluateMomentumValidationStopping({
         cumulativeBlindEss: 154,
+        cumulativeAcceptedCaptureHours: 15,
         acceptedSegmentCount: 3,
       }).status,
     ).toBe("continue-collection");
@@ -428,6 +457,7 @@ describe("kalshiTobMomentumValidationCohort", () => {
     expect(
       evaluateMomentumValidationStopping({
         cumulativeBlindEss: 155,
+        cumulativeAcceptedCaptureHours: 20,
         acceptedSegmentCount: 4,
       }).status,
     ).toBe("ready-for-outcome-open");
@@ -435,6 +465,7 @@ describe("kalshiTobMomentumValidationCohort", () => {
     expect(
       evaluateMomentumValidationStopping({
         cumulativeBlindEss: 200,
+        cumulativeAcceptedCaptureHours: 40,
         acceptedSegmentCount: 5,
       }).status,
     ).toBe("ready-for-outcome-open");
@@ -442,15 +473,26 @@ describe("kalshiTobMomentumValidationCohort", () => {
     expect(
       evaluateMomentumValidationStopping({
         cumulativeBlindEss: 154,
-        acceptedSegmentCount: 8,
+        cumulativeAcceptedCaptureHours: 40,
+        acceptedSegmentCount: 5,
       }).status,
     ).toBe("underpowered-at-fixed-capture-budget");
+
+    // Segment count alone must not stop under the 40h budget.
+    expect(
+      evaluateMomentumValidationStopping({
+        cumulativeBlindEss: 154,
+        cumulativeAcceptedCaptureHours: 39.9,
+        acceptedSegmentCount: 8,
+      }).status,
+    ).toBe("continue-collection");
   });
 
   it("31-33. synthetic favorable/unfavorable effect cannot affect stopping", () => {
     expect(() =>
       evaluateMomentumValidationStopping({
         cumulativeBlindEss: 100,
+        cumulativeAcceptedCaptureHours: 10,
         acceptedSegmentCount: 2,
         syntheticEffectCents: 99,
       })
@@ -459,6 +501,7 @@ describe("kalshiTobMomentumValidationCohort", () => {
     expect(() =>
       evaluateMomentumValidationStopping({
         cumulativeBlindEss: 100,
+        cumulativeAcceptedCaptureHours: 10,
         acceptedSegmentCount: 2,
         syntheticEffectCents: -99,
       })
@@ -467,7 +510,7 @@ describe("kalshiTobMomentumValidationCohort", () => {
     expect(() =>
       assertStoppingIgnoresSyntheticEffect({
         cumulativeBlindEss: 100,
-        acceptedSegmentCount: 2,
+        cumulativeAcceptedCaptureHours: 10,
         favorableEffectCents: 50,
         unfavorableEffectCents: -50,
       })
@@ -475,6 +518,7 @@ describe("kalshiTobMomentumValidationCohort", () => {
 
     const base = evaluateMomentumValidationStopping({
       cumulativeBlindEss: 100,
+      cumulativeAcceptedCaptureHours: 10,
       acceptedSegmentCount: 2,
     });
     expect(base.status).toBe("continue-collection");
@@ -636,5 +680,268 @@ describe("kalshiTobMomentumValidationCohort", () => {
   it("error class name is stable", () => {
     const err = new MomentumValidationCohortError("x");
     expect(err.name).toBe("MomentumValidationCohortError");
+  });
+
+  describe("v1.1 flexible segmentation amendment", () => {
+    it("1-4. Segment 1 @300m valid; 480m valid; >480 and <=0 rejected", () => {
+      expect(() => assertValidMomentumValidationSegmentDuration(300)).not.toThrow();
+      expect(() => assertValidMomentumValidationSegmentDuration(480)).not.toThrow();
+      expect(isValidMomentumValidationSegmentDuration(300)).toBe(true);
+      expect(isValidMomentumValidationSegmentDuration(480)).toBe(true);
+      expect(isValidMomentumValidationSegmentDuration(481)).toBe(false);
+      expect(isValidMomentumValidationSegmentDuration(0)).toBe(false);
+      expect(isValidMomentumValidationSegmentDuration(-1)).toBe(false);
+      expect(() => assertValidMomentumValidationSegmentDuration(481)).toThrow(/<= 480/);
+      expect(() => assertValidMomentumValidationSegmentDuration(0)).toThrow(/> 0/);
+      expect(() => assertValidMomentumValidationSegmentDuration(-5)).toThrow(/> 0/);
+
+      const { planIdentity } = buildMomentumValidationCohortPlan();
+      const registry = createEmptyMomentumValidationCohortRegistry({
+        planIdentity,
+        planFreezeTimestampIso: PLAN_FREEZE,
+      });
+      const incidence300 = buildBlindIncidenceWithMarketDayCap({
+        segmentRunId: SEGMENT_1_RUN_ID,
+        episodeKeys: [
+          {
+            unitId: buildMomentumIndependentUnitKey({
+              marketTicker: "SEG1",
+              tradingDayUtc: "2026-09-13",
+            }),
+          },
+        ],
+      });
+      const admitted300 = registerMomentumValidationSegment(registry, {
+        runId: SEGMENT_1_RUN_ID,
+        captureRunDir: `data/live-capture/forward-quotes/${SEGMENT_1_RUN_ID}`,
+        captureStartMs: FRESH_START,
+        captureEndMs: FRESH_START + 300 * 60_000,
+        durationMinutes: 300,
+        captureIdentityHash: "cap-seg1-300",
+        health: {
+          passed: true,
+          verdict: "capture-research-ready",
+          topOfBookPresent: true,
+          failureReasons: [],
+        },
+        reservedForValidationLineage: true,
+        planIdentity,
+        planFreezeTimestampIso: PLAN_FREEZE,
+        intendedCohortPosition: 1,
+        blindIncidence: incidence300.incidence,
+        independentUnitIds: incidence300.independentUnitIds,
+      });
+      expect(admitted300.accepted).toHaveLength(1);
+      expect(admitted300.accepted[0]?.durationMinutes).toBe(300);
+      expect(admitted300.accepted[0]?.runId).toBe(SEGMENT_1_RUN_ID);
+
+      const incidence480 = buildBlindIncidenceWithMarketDayCap({
+        segmentRunId: "seg-480",
+        episodeKeys: [
+          {
+            unitId: buildMomentumIndependentUnitKey({
+              marketTicker: "SEG2",
+              tradingDayUtc: "2026-09-14",
+            }),
+          },
+        ],
+      });
+      const admitted480 = registerMomentumValidationSegment(admitted300, {
+        runId: "seg-480",
+        captureRunDir: "data/live-capture/forward-quotes/seg-480",
+        captureStartMs: FRESH_START + 1,
+        captureEndMs: FRESH_START + 1 + 480 * 60_000,
+        durationMinutes: 480,
+        captureIdentityHash: "cap-seg-480",
+        health: {
+          passed: true,
+          verdict: "ok",
+          topOfBookPresent: true,
+          failureReasons: [],
+        },
+        reservedForValidationLineage: true,
+        planIdentity,
+        planFreezeTimestampIso: PLAN_FREEZE,
+        intendedCohortPosition: 2,
+        blindIncidence: incidence480.incidence,
+        independentUnitIds: incidence480.independentUnitIds,
+      });
+      expect(admitted480.accepted).toHaveLength(2);
+
+      const rejectedOver = registerMomentumValidationSegment(registry, {
+        runId: "seg-over",
+        captureRunDir: "dir-over",
+        captureStartMs: FRESH_START,
+        captureEndMs: FRESH_START + 481 * 60_000,
+        durationMinutes: 481,
+        captureIdentityHash: "cap-over",
+        health: {
+          passed: true,
+          verdict: "ok",
+          topOfBookPresent: true,
+          failureReasons: [],
+        },
+        reservedForValidationLineage: true,
+        planIdentity,
+        planFreezeTimestampIso: PLAN_FREEZE,
+        blindIncidence: incidence480.incidence,
+        independentUnitIds: incidence480.independentUnitIds,
+      });
+      expect(rejectedOver.accepted).toHaveLength(0);
+      expect(rejectedOver.excluded[0]?.exclusionReason).toMatch(/<= 480/);
+    });
+
+    it("5-9. 40h budget fixed; segmentation does not change candidate/ESS/semantics/identities", () => {
+      const { plan } = buildMomentumValidationCohortPlan();
+      expect(plan.maxAcceptedCaptureHours).toBe(40);
+      expect(plan.lockedCandidateId).toBe("W-5000|X-2|H-30000|continuation");
+      expect(plan.targetEss).toBe(155);
+      expect(plan.independentUnitPolicy.crossSegmentDedup).toMatch(/at-most-one-independent-unit/);
+      expect(plan.familyDefinitionIdentity).toBe(KNOWN_M140A_FAMILY_DEFINITION_IDENTITY);
+      expect(plan.evidenceContractIdentity).toBe(KNOWN_M140A_EVIDENCE_CONTRACT_IDENTITY);
+      expect(plan.discoveryIdentity).toBe(KNOWN_M140B_DISCOVERY_IDENTITY);
+      expect(plan.noOutcomeAccess).toBe(true);
+      expect(plan.quarantine.validationOutcomesOpened).toBe(false);
+      expect(plan.amendment.segmentationOnly).toBe(true);
+      expect(plan.amendment.reason).toBe(
+        "operational segmentation only; no validation outcomes opened",
+      );
+    });
+
+    it("10-11. multiple durations aggregate hours; failed hours excluded", () => {
+      const accepted = [
+        makeAcceptedSegment({
+          runId: "a300",
+          unitIds: [
+            buildMomentumIndependentUnitKey({
+              marketTicker: "A",
+              tradingDayUtc: "2026-09-13",
+            }),
+          ],
+          durationMinutes: 300,
+        }),
+        makeAcceptedSegment({
+          runId: "b480",
+          unitIds: [
+            buildMomentumIndependentUnitKey({
+              marketTicker: "B",
+              tradingDayUtc: "2026-09-14",
+            }),
+          ],
+          durationMinutes: 480,
+          captureStartMs: FRESH_START + 1,
+        }),
+      ];
+      expect(sumAcceptedCaptureHours(accepted)).toBe(13);
+      // Failed/excluded segments are not in accepted[]; hours must not include them.
+      expect(sumAcceptedCaptureHours([])).toBe(0);
+      expect(sumAcceptedCaptureHours([accepted[0]!])).toBe(5);
+    });
+
+    it("12. cross-segment ESS still deduplicates under mixed durations", () => {
+      const shared = buildMomentumIndependentUnitKey({
+        marketTicker: "SX",
+        tradingDayUtc: "2026-09-12",
+      });
+      const onlyA = buildMomentumIndependentUnitKey({
+        marketTicker: "SA",
+        tradingDayUtc: "2026-09-12",
+      });
+      const onlyB = buildMomentumIndependentUnitKey({
+        marketTicker: "SB",
+        tradingDayUtc: "2026-09-12",
+      });
+      const seg1 = makeAcceptedSegment({
+        runId: "dur-a",
+        unitIds: [shared, onlyA],
+        durationMinutes: 300,
+      });
+      const seg2 = makeAcceptedSegment({
+        runId: "dur-b",
+        unitIds: [shared, onlyB],
+        durationMinutes: 480,
+        captureStartMs: FRESH_START + 1,
+      });
+      const dedup = deduplicateMomentumValidationCohortUnits([seg1, seg2]);
+      expect(dedup.rawPerSegmentEssSum).toBe(4);
+      expect(dedup.deduplicatedCohortEss).toBe(3);
+      expect(dedup.duplicateOrDependentUnitsRemoved).toBe(1);
+    });
+
+    it("13-16. stopping: ESS ready / continue / underpowered; effect ignored", () => {
+      expect(
+        evaluateMomentumValidationStopping({
+          cumulativeBlindEss: 155,
+          cumulativeAcceptedCaptureHours: 5,
+        }).status,
+      ).toBe("ready-for-outcome-open");
+      expect(
+        evaluateMomentumValidationStopping({
+          cumulativeBlindEss: 100,
+          cumulativeAcceptedCaptureHours: 13,
+        }).status,
+      ).toBe("continue-collection");
+      expect(
+        evaluateMomentumValidationStopping({
+          cumulativeBlindEss: 100,
+          cumulativeAcceptedCaptureHours: 40,
+        }).status,
+      ).toBe("underpowered-at-fixed-capture-budget");
+      expect(() =>
+        evaluateMomentumValidationStopping({
+          cumulativeBlindEss: 100,
+          cumulativeAcceptedCaptureHours: 13,
+          syntheticEffectCents: 12,
+        })
+      ).toThrow(/cannot affect/);
+      expect(() =>
+        evaluateMomentumValidationStopping({
+          cumulativeBlindEss: 100,
+          cumulativeAcceptedCaptureHours: 13,
+          syntheticPValue: 0.01,
+        })
+      ).toThrow(/cannot affect/);
+    });
+
+    it("17. existing 5h Segment 1 remains immutable at 300m", () => {
+      const { plan } = buildMomentumValidationCohortPlan();
+      expect(plan.segment1GrandfatheredDurationMinutes).toBe(300);
+      expect(plan.segment1GrandfatheredDurationMinutes).not.toBe(480);
+      expect(plan.standardFutureSegmentDurationMinutes).toBe(480);
+    });
+
+    it("18-19. validation→holdout forbidden; no real outcomes read; fail-closed on peek", () => {
+      expect(() =>
+        assertAdmittedValidationSegmentCannotBecomeHoldout({
+          runId: SEGMENT_1_RUN_ID,
+          admittedToValidationCohort: true,
+          proposedRole: "holdout",
+        })
+      ).toThrow(/forever forbidden/i);
+
+      expect(() =>
+        assertNoValidationOutcomesOpenedBeforeSegmentationAmendment({
+          validationExecutablePnlComputed: false,
+          midpointContinuationComputed: false,
+          responseDirectionInspected: false,
+          validationEffectEstimateInspected: false,
+          pValueCalculated: false,
+        })
+      ).not.toThrow();
+
+      expect(() =>
+        assertNoValidationOutcomesOpenedBeforeSegmentationAmendment({
+          validationExecutablePnlComputed: true,
+        })
+      ).toThrow(/FAIL CLOSED/);
+
+      expect(() =>
+        buildMomentumValidationCohortPlan({
+          outcomeAccessAttestation: {
+            midpointContinuationComputed: true,
+          },
+        })
+      ).toThrow(/FAIL CLOSED/);
+    });
   });
 });

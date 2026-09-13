@@ -180,7 +180,11 @@ describe("kalshiTobMomentumValidation", () => {
     expect(MOMENTUM_VALIDATION_ANALYSIS_VERSION).toBe("kalshi-tob-momentum-validation-v1");
     const plan = buildMomentumValidationCohortPlan();
     expect(authorities.planIdentity).toBe(plan.planIdentity);
-    expect(plan.planIdentity).toMatch(/^a54f4a8c/);
+    expect(plan.planIdentity).toMatch(/^[a-f0-9]{64}$/);
+    expect(plan.planIdentity).toBe(
+      "1a08e13e8a4e6dcfd1363259f13c940e3e52605b7c2edf860ae716fa2dce4b71",
+    );
+    expect(plan.plan.amendment.priorPlanIdentity).toMatch(/^a54f4a8c/);
   });
 
   it("1. cohort not ready → no outcome access", () => {
