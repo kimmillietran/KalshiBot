@@ -6,8 +6,8 @@ import {
 
 import { hashMomentumValidationArtifact } from "./lockedCandidateBinding";
 import {
+  MOMENTUM_VALIDATION_MAX_SEGMENT_DURATION_MINUTES,
   MOMENTUM_VALIDATION_PRIOR_CONTAMINATED_RUN_IDS,
-  MOMENTUM_VALIDATION_SEGMENT_DURATION_MINUTES,
   MomentumValidationCohortError,
   type MomentumValidationAcceptedSegment,
   type MomentumValidationBlindIncidence,
@@ -15,6 +15,7 @@ import {
   type MomentumValidationSegmentHealth,
   type MomentumValidationSegmentReservation,
 } from "./momentumValidationCohortTypes";
+import { isValidMomentumValidationSegmentDuration } from "./segmentDurationPolicy";
 
 export type MomentumValidationReservationInput = {
   runId: string;
@@ -209,15 +210,15 @@ export function registerMomentumValidationSegment(
   if (
     input.durationMinutes != null
     && Number.isFinite(input.durationMinutes)
-    && Math.abs(input.durationMinutes - MOMENTUM_VALIDATION_SEGMENT_DURATION_MINUTES) > 1e-9
+    && !isValidMomentumValidationSegmentDuration(input.durationMinutes)
     && input.health.passed
   ) {
-    // Compatible duration is expected for accepted healthy segments; mismatch excludes.
+    // v1.1: accepted healthy segments must declare duration in (0, max] minutes.
     const excluded: MomentumValidationExcludedSegment = {
       ...reservation,
       accepted: false,
       exclusionReason:
-        `segment duration must be ${MOMENTUM_VALIDATION_SEGMENT_DURATION_MINUTES} minutes`,
+        `segment duration must be > 0 and <= ${MOMENTUM_VALIDATION_MAX_SEGMENT_DURATION_MINUTES} minutes`,
     };
     return {
       ...registry,

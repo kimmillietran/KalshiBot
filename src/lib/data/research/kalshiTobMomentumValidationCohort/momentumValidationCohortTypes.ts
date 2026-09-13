@@ -8,14 +8,31 @@ import {
  * M14.0c-prep — Prospective momentum validation cohort governance.
  * Outcome-blind: never compute validation P&L, midpoint continuation, signed
  * response, direction consistency, or p-values.
+ *
+ * Cohort plan v1.1 amends operational segmentation only (flexible segment
+ * durations up to 480 minutes; 40h accepted-time budget). No validation
+ * outcomes may be opened before or during this amendment.
  */
 
-export const MOMENTUM_VALIDATION_COHORT_ANALYSIS_VERSION =
+export const ORIGINAL_MOMENTUM_VALIDATION_COHORT_ANALYSIS_VERSION =
   "momentum-validation-cohort-plan-v1" as const;
 
+/** Content-addressed identity of the sealed v1 cohort plan (immutable lineage). */
+export const ORIGINAL_MOMENTUM_VALIDATION_COHORT_PLAN_IDENTITY =
+  "a54f4a8c6f3727ad1618c9b270d904cb236bad1c05a4d4d5f9c61359ac4eec84" as const;
+
+export const MOMENTUM_VALIDATION_COHORT_ANALYSIS_VERSION =
+  "momentum-validation-cohort-plan-v1.1" as const;
+
+export const MOMENTUM_VALIDATION_COHORT_AMENDMENT_VERSION = "1.1" as const;
+
+export const MOMENTUM_VALIDATION_COHORT_AMENDMENT_REASON =
+  "operational segmentation only; no validation outcomes opened" as const;
+
 export const MOMENTUM_VALIDATION_COHORT_DISCLAIMER =
-  "M14.0c-prep seals the prospective momentum validation cohort plan, reservation "
-  + "registry, outcome-blind incidence/ESS counter, and fixed-N stopping rule only. "
+  "M14.0c-prep seals the prospective momentum validation cohort plan (v1.1), "
+  + "reservation registry, outcome-blind incidence/ESS counter, and fixed-N "
+  + "stopping rule (ESS target + accepted capture-time budget) only. "
   + "It does not open validation outcomes, compute P&L/continuation, evaluate "
   + "candidate validation status, lock holdout, promote, freeze, or place live orders.";
 
@@ -34,10 +51,29 @@ export const KNOWN_M140A_EVIDENCE_CONTRACT_IDENTITY =
 export const LOCK_MOMENTUM_VALIDATION_CANDIDATE_ID =
   "W-5000|X-2|H-30000|continuation" as const;
 
+/** @deprecated Prefer max/standard/grandfathered duration constants (v1.1). */
 export const MOMENTUM_VALIDATION_SEGMENT_DURATION_MINUTES = 300 as const;
+
+export const MOMENTUM_VALIDATION_MAX_SEGMENT_DURATION_MINUTES = 480 as const;
+export const MOMENTUM_VALIDATION_STANDARD_FUTURE_SEGMENT_DURATION_MINUTES =
+  480 as const;
+export const MOMENTUM_VALIDATION_SEGMENT_1_GRANDFATHERED_DURATION_MINUTES =
+  300 as const;
+
 export const MOMENTUM_VALIDATION_TARGET_ESS = 155 as const;
-export const MOMENTUM_VALIDATION_MAX_ACCEPTED_SEGMENTS = 8 as const;
 export const MOMENTUM_VALIDATION_MAX_CAPTURE_HOURS = 40 as const;
+
+/**
+ * Optional segment-count safety ceiling only. Must not shorten the 40h budget
+ * under valid ≤8h segmentation: floor(40h / (300m/60)) = 8 when using the
+ * grandfathered 5h size; with 8h segments the time budget binds first.
+ * Stopping is driven by ESS and accepted capture hours, not this count.
+ */
+export const MOMENTUM_VALIDATION_SEGMENT_COUNT_SAFETY_CAP = 8 as const;
+
+/** @deprecated Alias retained for imports; stopping no longer uses segment count. */
+export const MOMENTUM_VALIDATION_MAX_ACCEPTED_SEGMENTS =
+  MOMENTUM_VALIDATION_SEGMENT_COUNT_SAFETY_CAP;
 
 export const MOMENTUM_VALIDATION_POWER_ALPHA = 0.05 as const;
 export const MOMENTUM_VALIDATION_TARGET_POWER = 0.8 as const;
@@ -167,10 +203,21 @@ export type MomentumValidationCohortPlan = {
     direction: "continuation";
     candidateId: typeof LOCK_MOMENTUM_VALIDATION_CANDIDATE_ID;
   };
-  segmentDurationMinutes: typeof MOMENTUM_VALIDATION_SEGMENT_DURATION_MINUTES;
+  /** Standard duration for newly launched segments (v1.1). */
+  standardFutureSegmentDurationMinutes: typeof MOMENTUM_VALIDATION_STANDARD_FUTURE_SEGMENT_DURATION_MINUTES;
+  maxSegmentDurationMinutes: typeof MOMENTUM_VALIDATION_MAX_SEGMENT_DURATION_MINUTES;
+  segment1GrandfatheredDurationMinutes: typeof MOMENTUM_VALIDATION_SEGMENT_1_GRANDFATHERED_DURATION_MINUTES;
+  /**
+   * @deprecated v1 field retained as alias of grandfathered Segment 1 duration
+   * for readability; not the exclusive allowed duration.
+   */
+  segmentDurationMinutes: typeof MOMENTUM_VALIDATION_SEGMENT_1_GRANDFATHERED_DURATION_MINUTES;
   targetEss: typeof MOMENTUM_VALIDATION_TARGET_ESS;
-  maxAcceptedSegments: typeof MOMENTUM_VALIDATION_MAX_ACCEPTED_SEGMENTS;
   maxAcceptedCaptureHours: typeof MOMENTUM_VALIDATION_MAX_CAPTURE_HOURS;
+  /** Safety ceiling only; stopping uses accepted capture hours. */
+  segmentCountSafetyCap: typeof MOMENTUM_VALIDATION_SEGMENT_COUNT_SAFETY_CAP;
+  /** @deprecated Prefer segmentCountSafetyCap; not used for stopping in v1.1. */
+  maxAcceptedSegments: typeof MOMENTUM_VALIDATION_SEGMENT_COUNT_SAFETY_CAP;
   powerDesign: {
     alpha: typeof MOMENTUM_VALIDATION_POWER_ALPHA;
     targetPower: typeof MOMENTUM_VALIDATION_TARGET_POWER;
@@ -192,12 +239,22 @@ export type MomentumValidationCohortPlan = {
   };
   forbiddenInterimMetrics: readonly ForbiddenMomentumValidationOutcomeFieldName[];
   stoppingRule: {
-    kind: "fixed-n-with-max-accepted-segments";
+    kind: "fixed-n-with-max-accepted-capture-hours";
     targetEss: typeof MOMENTUM_VALIDATION_TARGET_ESS;
-    maxAcceptedSegments: typeof MOMENTUM_VALIDATION_MAX_ACCEPTED_SEGMENTS;
+    maxAcceptedCaptureHours: typeof MOMENTUM_VALIDATION_MAX_CAPTURE_HOURS;
+    maxSegmentDurationMinutes: typeof MOMENTUM_VALIDATION_MAX_SEGMENT_DURATION_MINUTES;
     evaluateOnlyAfterCompletedSegment: true;
+    midSegmentOptionalStoppingForbidden: true;
     effectPeekingForbidden: true;
     pValueStoppingForbidden: true;
+  };
+  amendment: {
+    version: typeof MOMENTUM_VALIDATION_COHORT_AMENDMENT_VERSION;
+    reason: typeof MOMENTUM_VALIDATION_COHORT_AMENDMENT_REASON;
+    priorAnalysisVersion: typeof ORIGINAL_MOMENTUM_VALIDATION_COHORT_ANALYSIS_VERSION;
+    priorPlanIdentity: typeof ORIGINAL_MOMENTUM_VALIDATION_COHORT_PLAN_IDENTITY;
+    noOutcomeAccessAssertion: true;
+    segmentationOnly: true;
   };
   noOutcomeAccess: true;
   validationToHoldoutForeverForbidden: true;
@@ -227,9 +284,11 @@ export type MomentumValidationCohortDedupResult = {
 export type MomentumValidationStoppingDecision = {
   status: MomentumValidationCohortStatus;
   cumulativeBlindEss: number;
+  cumulativeAcceptedCaptureHours: number;
   acceptedSegmentCount: number;
   targetEss: typeof MOMENTUM_VALIDATION_TARGET_ESS;
-  maxAcceptedSegments: typeof MOMENTUM_VALIDATION_MAX_ACCEPTED_SEGMENTS;
+  maxAcceptedCaptureHours: typeof MOMENTUM_VALIDATION_MAX_CAPTURE_HOURS;
+  remainingAcceptedCaptureHours: number;
   effectPeekingForbidden: true;
   pValueStoppingForbidden: true;
   syntheticEffectIgnored: true;

@@ -1,17 +1,23 @@
 import {
-  MOMENTUM_VALIDATION_MAX_ACCEPTED_SEGMENTS,
+  MOMENTUM_VALIDATION_MAX_CAPTURE_HOURS,
   MOMENTUM_VALIDATION_TARGET_ESS,
   MomentumValidationCohortError,
   type MomentumValidationStoppingDecision,
 } from "./momentumValidationCohortTypes";
 
 /**
- * Fixed-N cohort stopping. Evaluated only after a completed segment.
+ * Fixed-N cohort stopping. Evaluated only after a completed accepted segment.
  * Effect / P&L / p-value inputs are forbidden and cannot change status.
+ *
+ * Rule (v1.1):
+ *   if cumulativeBlindEss >= 155 → ready-for-outcome-open
+ *   else if cumulativeAcceptedCaptureHours >= 40 → underpowered-at-fixed-capture-budget
+ *   else → continue-collection
  */
 export function evaluateMomentumValidationStopping(input: {
   cumulativeBlindEss: number;
-  acceptedSegmentCount: number;
+  cumulativeAcceptedCaptureHours: number;
+  acceptedSegmentCount?: number;
   /** Must not be provided — presence throws (synthetic effect cannot drive stopping). */
   syntheticEffectCents?: number | null;
   syntheticPValue?: number | null;
@@ -33,9 +39,19 @@ export function evaluateMomentumValidationStopping(input: {
     throw new MomentumValidationCohortError("cumulativeBlindEss must be a finite non-negative number");
   }
   if (
-    !Number.isFinite(input.acceptedSegmentCount)
-    || input.acceptedSegmentCount < 0
-    || !Number.isInteger(input.acceptedSegmentCount)
+    !Number.isFinite(input.cumulativeAcceptedCaptureHours)
+    || input.cumulativeAcceptedCaptureHours < 0
+  ) {
+    throw new MomentumValidationCohortError(
+      "cumulativeAcceptedCaptureHours must be a finite non-negative number",
+    );
+  }
+
+  const acceptedSegmentCount = input.acceptedSegmentCount ?? 0;
+  if (
+    !Number.isFinite(acceptedSegmentCount)
+    || acceptedSegmentCount < 0
+    || !Number.isInteger(acceptedSegmentCount)
   ) {
     throw new MomentumValidationCohortError(
       "acceptedSegmentCount must be a non-negative integer",
@@ -45,7 +61,9 @@ export function evaluateMomentumValidationStopping(input: {
   let status: MomentumValidationStoppingDecision["status"];
   if (input.cumulativeBlindEss >= MOMENTUM_VALIDATION_TARGET_ESS) {
     status = "ready-for-outcome-open";
-  } else if (input.acceptedSegmentCount >= MOMENTUM_VALIDATION_MAX_ACCEPTED_SEGMENTS) {
+  } else if (
+    input.cumulativeAcceptedCaptureHours >= MOMENTUM_VALIDATION_MAX_CAPTURE_HOURS
+  ) {
     status = "underpowered-at-fixed-capture-budget";
   } else {
     status = "continue-collection";
@@ -54,9 +72,14 @@ export function evaluateMomentumValidationStopping(input: {
   return {
     status,
     cumulativeBlindEss: input.cumulativeBlindEss,
-    acceptedSegmentCount: input.acceptedSegmentCount,
+    cumulativeAcceptedCaptureHours: input.cumulativeAcceptedCaptureHours,
+    acceptedSegmentCount,
     targetEss: MOMENTUM_VALIDATION_TARGET_ESS,
-    maxAcceptedSegments: MOMENTUM_VALIDATION_MAX_ACCEPTED_SEGMENTS,
+    maxAcceptedCaptureHours: MOMENTUM_VALIDATION_MAX_CAPTURE_HOURS,
+    remainingAcceptedCaptureHours: Math.max(
+      0,
+      MOMENTUM_VALIDATION_MAX_CAPTURE_HOURS - input.cumulativeAcceptedCaptureHours,
+    ),
     effectPeekingForbidden: true,
     pValueStoppingForbidden: true,
     syntheticEffectIgnored: true,
@@ -65,35 +88,37 @@ export function evaluateMomentumValidationStopping(input: {
 
 export function assertStoppingIgnoresSyntheticEffect(input: {
   cumulativeBlindEss: number;
-  acceptedSegmentCount: number;
+  cumulativeAcceptedCaptureHours: number;
   favorableEffectCents: number;
   unfavorableEffectCents: number;
 }): void {
   const base = evaluateMomentumValidationStopping({
     cumulativeBlindEss: input.cumulativeBlindEss,
-    acceptedSegmentCount: input.acceptedSegmentCount,
+    cumulativeAcceptedCaptureHours: input.cumulativeAcceptedCaptureHours,
   });
 
   expectThrow(() =>
     evaluateMomentumValidationStopping({
       cumulativeBlindEss: input.cumulativeBlindEss,
-      acceptedSegmentCount: input.acceptedSegmentCount,
+      cumulativeAcceptedCaptureHours: input.cumulativeAcceptedCaptureHours,
       syntheticEffectCents: input.favorableEffectCents,
     })
   );
   expectThrow(() =>
     evaluateMomentumValidationStopping({
       cumulativeBlindEss: input.cumulativeBlindEss,
-      acceptedSegmentCount: input.acceptedSegmentCount,
+      cumulativeAcceptedCaptureHours: input.cumulativeAcceptedCaptureHours,
       syntheticEffectCents: input.unfavorableEffectCents,
     })
   );
 
-  // Status depends only on ESS + accepted count.
-  if (base.status !== evaluateMomentumValidationStopping({
-    cumulativeBlindEss: input.cumulativeBlindEss,
-    acceptedSegmentCount: input.acceptedSegmentCount,
-  }).status) {
+  if (
+    base.status
+      !== evaluateMomentumValidationStopping({
+        cumulativeBlindEss: input.cumulativeBlindEss,
+        cumulativeAcceptedCaptureHours: input.cumulativeAcceptedCaptureHours,
+      }).status
+  ) {
     throw new MomentumValidationCohortError("stopping status must be deterministic without effect");
   }
 }

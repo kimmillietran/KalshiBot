@@ -47,10 +47,12 @@ export function serializeMomentumValidationCohortPlanHtml(
   <p>${escapeHtml(plan.disclaimer)}</p>
   <p>planIdentity: <code>${escapeHtml(artifact.planIdentity)}</code></p>
   <p>lockedCandidate: <code>${escapeHtml(plan.lockedCandidateId)}</code></p>
-  <p>segmentDurationMinutes=${plan.segmentDurationMinutes}
+  <p>standardFutureSegmentDurationMinutes=${plan.standardFutureSegmentDurationMinutes}
+  maxSegmentDurationMinutes=${plan.maxSegmentDurationMinutes}
+  segment1GrandfatheredDurationMinutes=${plan.segment1GrandfatheredDurationMinutes}
   targetEss=${plan.targetEss}
-  maxAcceptedSegments=${plan.maxAcceptedSegments}
-  maxAcceptedCaptureHours=${plan.maxAcceptedCaptureHours}</p>
+  maxAcceptedCaptureHours=${plan.maxAcceptedCaptureHours}
+  priorPlanIdentity=${escapeHtml(plan.amendment.priorPlanIdentity)}</p>
   <p>noOutcomeAccess=${String(plan.noOutcomeAccess)}
   validationToHoldoutForeverForbidden=${String(plan.validationToHoldoutForeverForbidden)}
   liveOrdersExecuted=${String(plan.quarantine.liveOrdersExecuted)}</p>
