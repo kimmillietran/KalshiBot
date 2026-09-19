@@ -84,10 +84,10 @@ as diagnostics and continues (no post-hoc millisecond tolerance).
 
 ## Outcome-open lifecycle
 
-1. `outcome-access-authorized` — governance gate passed  
-2. `outcome-execution-started` — streaming begun (cohort no longer pristine)  
-3. `outcome-execution-incident` — engine failure; **not** `validation-failed`  
-4. `validation-artifact-sealed` — successful governed report + transition  
+1. `outcome-access-authorized` — governance gate passed
+2. `outcome-execution-started` — streaming begun (cohort no longer pristine)
+3. `outcome-execution-incident` — engine failure; **not** `validation-failed`
+4. `validation-artifact-sealed` — successful governed report + transition
 
 ## Software-incident retry
 
