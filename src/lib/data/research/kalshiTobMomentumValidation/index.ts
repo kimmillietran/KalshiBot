@@ -82,3 +82,19 @@ export type {
   MomentumValidationOutcomeOpenTransition,
   GovernedRealCaptureMomentumValidationResult,
 } from "./runGovernedRealCaptureMomentumValidation";
+
+export {
+  assertSoftwareIncidentRetryLineage,
+  buildOutcomeExecutionIncident,
+  buildOutcomeExecutionStarted,
+  fingerprintCohortRegistryAuthority,
+  computeOutcomeExecutionIncidentIdentity,
+  outcomeExecutionStartedPath,
+  outcomeExecutionIncidentPath,
+} from "./outcomeOpenIncident";
+export type {
+  OutcomeOpenLifecyclePhase,
+  MomentumValidationOutcomeExecutionStarted,
+  MomentumValidationOutcomeExecutionIncident,
+  SoftwareIncidentRetryLineage,
+} from "./outcomeOpenIncident";

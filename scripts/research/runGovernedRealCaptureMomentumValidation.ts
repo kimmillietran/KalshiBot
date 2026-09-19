@@ -20,7 +20,9 @@ import {
   createValidationOnlyMomentumIo,
   runGovernedRealCaptureMomentumValidation,
   type MomentumValidationCohortAuthorityInput,
+  type MomentumValidationOutcomeExecutionIncident,
   type SealedAcceptedCaptureDescriptor,
+  type SoftwareIncidentRetryLineage,
 } from "@/lib/data/research/kalshiTobMomentumValidation";
 import type { MomentumValidationCohortRegistry } from "@/lib/data/research/kalshiTobMomentumValidationCohort";
 
@@ -34,6 +36,7 @@ type ParsedArgv = {
   outputPath: string | null;
   htmlOutputPath: string | null;
   generatedAt: string | null;
+  softwareIncidentRetryPath: string | null;
 };
 
 function usage(): string {
@@ -44,12 +47,13 @@ function usage(): string {
     "  [--holdout-quarantine <dir>]... \\",
     "  [--code-authority-sha <sha>] \\",
     "  [--verify-capture-identities] \\",
+    "  [--software-incident-retry <incident-receipt-path>] \\",
     "  [--write-artifacts|--dry-run] \\",
     "  [--output <path>] [--html-output <path>] \\",
     "  [--generated-at <iso>]",
     "",
     "Requires explicit sealed cohort authority. Refuses implicit newest/latest discovery.",
-    "Do not target accepted M14 validation captures from this development milestone.",
+    "Do not target accepted M14 validation captures without a separate authorized task.",
   ].join("\n");
 }
 
@@ -65,6 +69,7 @@ export function parseGovernedRealCaptureMomentumValidationArgv(
   let outputPath: string | null = null;
   let htmlOutputPath: string | null = null;
   let generatedAt: string | null = null;
+  let softwareIncidentRetryPath: string | null = null;
 
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i]!;
@@ -91,6 +96,9 @@ export function parseGovernedRealCaptureMomentumValidationArgv(
         break;
       case "--verify-capture-identities":
         verifyCaptureIdentities = true;
+        break;
+      case "--software-incident-retry":
+        softwareIncidentRetryPath = next();
         break;
       case "--write-artifacts":
         writeArtifacts = true;
@@ -137,6 +145,9 @@ export function parseGovernedRealCaptureMomentumValidationArgv(
     outputPath,
     htmlOutputPath,
     generatedAt,
+    softwareIncidentRetryPath: softwareIncidentRetryPath
+      ? resolve(softwareIncidentRetryPath)
+      : null,
   };
 }
 
@@ -197,6 +208,28 @@ export async function runGovernedRealCaptureMomentumValidationCommand(
     });
     const acceptedCaptures = loadAcceptedCaptures(parsed.acceptedCapturesPath);
 
+    let softwareIncidentRetry: SoftwareIncidentRetryLineage | null = null;
+    if (parsed.softwareIncidentRetryPath) {
+      if (!existsSync(parsed.softwareIncidentRetryPath)) {
+        throw new Error(
+          `software-incident retry receipt not found: ${parsed.softwareIncidentRetryPath}`,
+        );
+      }
+      const incident = JSON.parse(
+        readFileSync(parsed.softwareIncidentRetryPath, "utf8"),
+      ) as MomentumValidationOutcomeExecutionIncident;
+      if (incident.phase !== "outcome-execution-incident" || !incident.incidentIdentity) {
+        throw new Error("software-incident retry path must be an outcome-execution-incident receipt");
+      }
+      softwareIncidentRetry = {
+        priorIncidentIdentity: incident.incidentIdentity,
+        priorIncidentPath: parsed.softwareIncidentRetryPath,
+        sameCohortRequired: true,
+        sameCandidateRequired: true,
+        isScientificRevalidation: false,
+      };
+    }
+
     const baseIo = createFilesystemMomentumValidationIo(
       createFilesystemMomentumDiscoveryIo(),
     );
@@ -215,6 +248,7 @@ export async function runGovernedRealCaptureMomentumValidationCommand(
       outputPath: parsed.outputPath,
       htmlOutputPath: parsed.htmlOutputPath,
       generatedAt: parsed.generatedAt ?? undefined,
+      softwareIncidentRetry,
       log: (message) => {
         process.stderr.write(`${message}\n`);
       },

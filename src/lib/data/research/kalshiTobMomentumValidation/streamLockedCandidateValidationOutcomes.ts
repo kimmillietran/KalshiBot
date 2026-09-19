@@ -130,12 +130,24 @@ export type LockedCandidateValidationOutcomeStreamResult = {
     candidateId: typeof LOCK_MOMENTUM_VALIDATION_CANDIDATE_ID;
     responseObservableCount: number;
     executableObservableCount: number;
+    /**
+     * Count of per-market resolved Kalshi-ts regressions in file order.
+     * Capture contract guarantees JSONL append/file order, NOT exchange-ts
+     * monotonicity. Regressions are diagnostic only (fail-open) unless
+     * `requireMonotonicTimestamps` is explicitly enabled.
+     */
+    eventTimeRegressions: number;
   };
 };
 
 /**
  * Stream one capture's top-of-book.jsonl for the locked candidate and emit
  * validation outcome episodes (including signed gross executable P&L).
+ *
+ * Causal stream order = JSONL file / append order (matches blind incidence and
+ * TRAIN discovery). Resolved Kalshi event time (`exchangeTimestampMs ??
+ * receivedAtMs`) labels events but is NOT a hard monotonicity contract —
+ * small exchange-ts regressions are legal after OOO/duplicate emits.
  */
 export async function streamLockedCandidateValidationOutcomes(input: {
   io: MomentumDiscoveryIo;
@@ -144,6 +156,10 @@ export async function streamLockedCandidateValidationOutcomes(input: {
   candidateId?: typeof LOCK_MOMENTUM_VALIDATION_CANDIDATE_ID;
   responseMatchToleranceMs?: number;
   closeTimeByMarket?: Map<string, number>;
+  /**
+   * Default false: align with capture writer + blind incidence (file order).
+   * Set true only for adversarial tests of the legacy PR #93 hard-fail.
+   */
   requireMonotonicTimestamps?: boolean;
   log?: (message: string) => void;
 }): Promise<LockedCandidateValidationOutcomeStreamResult> {
@@ -160,7 +176,8 @@ export async function streamLockedCandidateValidationOutcomes(input: {
   const forwardHorizonMs = LOCKED_MOMENTUM_VALIDATION_CANDIDATE.responseHorizonMs;
   const toleranceMs = input.responseMatchToleranceMs ?? RESPONSE_MATCH_TOLERANCE_MS;
   const refractoryMs = refractoryPeriodMs(forwardHorizonMs);
-  const requireMonotonic = input.requireMonotonicTimestamps !== false;
+  // File-order is authoritative; do not fail closed on exchange-ts regressions.
+  const requireMonotonic = input.requireMonotonicTimestamps === true;
   const log = input.log ?? (() => {});
 
   const topOfBookPath = join(input.captureRunDir, "top-of-book.jsonl");
@@ -179,6 +196,7 @@ export async function streamLockedCandidateValidationOutcomes(input: {
   let refractoryEpisodes = 0;
   let responseObservableCount = 0;
   let executableObservableCount = 0;
+  let eventTimeRegressions = 0;
   const started = Date.now();
 
   function getMarketState(ticker: string): MarketValidationState {
@@ -290,13 +308,20 @@ export async function streamLockedCandidateValidationOutcomes(input: {
       const quote = recordToQuoteInput(record, timestampMs, quoteAgeMs ?? 0);
       const state = getMarketState(record.marketTicker);
 
-      if (requireMonotonic && timestampMs < state.lastTimestampMs) {
-        throw new MomentumValidationError(
-          `non-monotonic TOB timestamp for ${record.marketTicker}: `
-            + `${timestampMs} < ${state.lastTimestampMs}`,
-        );
+      if (timestampMs < state.lastTimestampMs) {
+        eventTimeRegressions += 1;
+        if (requireMonotonic) {
+          throw new MomentumValidationError(
+            `non-monotonic TOB timestamp for ${record.marketTicker}: `
+              + `${timestampMs} < ${state.lastTimestampMs}`,
+          );
+        }
+        // Capture contract: file order is causal. Keep processing; event-time
+        // labels may regress (OOO/duplicate WS emits still write TOB rows).
       }
-      state.lastTimestampMs = timestampMs;
+      if (timestampMs >= state.lastTimestampMs) {
+        state.lastTimestampMs = timestampMs;
+      }
 
       if (state.pending.length > 0) {
         const stillPending: ValidationPendingResponse[] = [];
@@ -438,7 +463,7 @@ export async function streamLockedCandidateValidationOutcomes(input: {
   log(
     `validation TOB complete [${input.segmentRunId}]: scanned=${tobRecordsScanned} `
       + `crossings=${firstCrossingEvents} refractoryEpisodes=${refractoryEpisodes} `
-      + `episodes=${episodes.length}`,
+      + `episodes=${episodes.length} eventTimeRegressions=${eventTimeRegressions}`,
   );
 
   if (episodes.length !== refractoryEpisodes) {
@@ -457,6 +482,7 @@ export async function streamLockedCandidateValidationOutcomes(input: {
       candidateId,
       responseObservableCount,
       executableObservableCount,
+      eventTimeRegressions,
     },
   };
 }

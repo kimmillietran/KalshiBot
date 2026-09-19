@@ -979,22 +979,25 @@ describe("M14.0c real-capture validation outcome streamer (synthetic only)", () 
     expect(second.report.validationIdentityHash).toBe(first.report.validationIdentityHash);
   });
 
-  it("30. input ordering violation fails closed", async () => {
+  it("30. input ordering: exchange-ts regression is legal under file-order contract", async () => {
     const marketTicker = "KXBTC15M-NONMONO";
     const t0 = Date.parse("2026-09-13T12:00:00.000Z");
     const captureRunDir = "/fixture/nonmono";
+    // Same shape as the real incident: later file line with earlier exchange ts.
     const lines = [
       tobLine({
         marketTicker,
         receivedAtLocal: new Date(t0 + 5_000).toISOString(),
         yesBestBidCents: 42,
         noBestBidCents: 58,
+        exchangeTimestampMs: t0 + 5_000,
       }),
       tobLine({
         marketTicker,
-        receivedAtLocal: new Date(t0).toISOString(),
+        receivedAtLocal: new Date(t0 + 5_004).toISOString(),
         yesBestBidCents: 40,
         noBestBidCents: 60,
+        exchangeTimestampMs: t0 + 5_000 - 17,
       }),
     ].join("\n");
     const io = createMemoryMomentumDiscoveryIo({
@@ -1006,11 +1009,19 @@ describe("M14.0c real-capture validation outcome streamer (synthetic only)", () 
         action: "subscribed",
       })}\n`,
     });
+    const result = await streamLockedCandidateValidationOutcomes({
+      io,
+      segmentRunId: "nonmono",
+      captureRunDir,
+    });
+    expect(result.diagnostics.eventTimeRegressions).toBe(1);
+    // Legacy hard-fail still available for adversarial tests only.
     await expect(
       streamLockedCandidateValidationOutcomes({
         io,
-        segmentRunId: "nonmono",
+        segmentRunId: "nonmono-strict",
         captureRunDir,
+        requireMonotonicTimestamps: true,
       }),
     ).rejects.toThrow(/non-monotonic/i);
   });
