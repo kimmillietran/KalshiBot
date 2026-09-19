@@ -199,7 +199,8 @@ export type MomentumValidationReport = {
     promotionArtifactCreated: false;
     preregistrationArtifactCreated: false;
     frozenHypothesisCreated: false;
-    realCaptureStreamed: false;
+    /** True only when episodes came from the governed real-capture streamer. */
+    realCaptureStreamed: boolean;
   };
   warnings: readonly string[];
 };

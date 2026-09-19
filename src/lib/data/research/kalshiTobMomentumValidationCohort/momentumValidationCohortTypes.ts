@@ -156,6 +156,8 @@ export type MomentumValidationSegmentHealth = {
   verdict: string | null;
   topOfBookPresent: boolean;
   failureReasons: readonly string[];
+  /** Optional content-addressed health artifact identity when sealed into the registry. */
+  artifactIdentity?: string | null;
 };
 
 export type MomentumValidationSegmentReservation = {

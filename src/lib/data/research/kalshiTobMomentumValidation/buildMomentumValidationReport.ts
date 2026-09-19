@@ -254,6 +254,8 @@ export function buildMomentumValidationReport(input: {
   cohortAuthority: MomentumValidationCohortAuthorityInput;
   injectedOutcomes?: readonly SyntheticValidationEpisode[] | null;
   requestRealCaptureStream?: boolean;
+  /** Set true when episodes were produced by the governed real-capture streamer. */
+  realCaptureStreamed?: boolean;
   captureQualityValid?: boolean;
   evidenceInvalidReason?: string | null;
   generatedAt?: string;
@@ -411,7 +413,7 @@ export function buildMomentumValidationReport(input: {
       promotionArtifactCreated: false,
       preregistrationArtifactCreated: false,
       frozenHypothesisCreated: false,
-      realCaptureStreamed: false,
+      realCaptureStreamed: input.realCaptureStreamed === true,
     },
     warnings: [
       "HOLDOUT momentum outcomes were never accessed.",

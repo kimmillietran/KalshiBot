@@ -60,3 +60,25 @@ export {
   serializeMomentumValidationJson,
   serializeMomentumValidationHtml,
 } from "./serializeMomentumValidation";
+
+export {
+  streamLockedCandidateValidationOutcomes,
+} from "./streamLockedCandidateValidationOutcomes";
+export type { LockedCandidateValidationOutcomeStreamResult } from "./streamLockedCandidateValidationOutcomes";
+
+export {
+  streamMomentumValidationOutcomesFromAcceptedCohort,
+} from "./streamMomentumValidationOutcomesFromAcceptedCohort";
+export type {
+  SealedAcceptedCaptureDescriptor,
+  SealedValidationCohortStreamInput,
+  AcceptedCohortValidationOutcomeStreamResult,
+} from "./streamMomentumValidationOutcomesFromAcceptedCohort";
+
+export {
+  runGovernedRealCaptureMomentumValidation,
+} from "./runGovernedRealCaptureMomentumValidation";
+export type {
+  MomentumValidationOutcomeOpenTransition,
+  GovernedRealCaptureMomentumValidationResult,
+} from "./runGovernedRealCaptureMomentumValidation";
