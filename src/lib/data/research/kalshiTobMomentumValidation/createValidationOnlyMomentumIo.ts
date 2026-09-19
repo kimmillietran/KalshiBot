@@ -80,8 +80,9 @@ export function createFilesystemMomentumValidationIo(
 }
 
 /**
- * Live capture outcome streaming is intentionally fail-closed in M14.0c unless
- * the cohort gate has already authorized access. Prefer synthetic injected outcomes.
+ * Live capture outcome streaming is fail-closed unless the cohort gate has
+ * already authorized outcome open. Implemented path:
+ * `runGovernedRealCaptureMomentumValidation` → stream → existing report builder.
  */
 export function assertRealValidationCaptureStreamAllowed(input: {
   authorizedForOutcomeOpen: boolean;
@@ -91,12 +92,6 @@ export function assertRealValidationCaptureStreamAllowed(input: {
     throw new MomentumValidationError(
       "Real validation capture outcome streaming refused: cohort is not "
         + "ready-for-outcome-open (fail closed).",
-    );
-  }
-  if (input.requestRealCaptureStream) {
-    throw new MomentumValidationError(
-      "Real validation capture outcome streaming is not implemented in M14.0c "
-        + "default path; use synthetic injected outcomes. Fail closed.",
     );
   }
 }
