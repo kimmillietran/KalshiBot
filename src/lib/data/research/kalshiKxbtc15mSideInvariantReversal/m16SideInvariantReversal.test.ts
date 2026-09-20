@@ -5,27 +5,34 @@
 import { describe, expect, it } from "vitest";
 
 import { createMemoryMomentumDiscoveryIo } from "../kalshiTobMomentumDiscovery";
-import { KALSHI_FEE_SCHEDULE_VARIANT } from "@/lib/data/backtesting/costModel/computeKalshiScheduleFeeCents";
 
 import {
   assertM16BlindIncidenceHasNoOutcomeFields,
   assertM16CaptureSetClean,
-  assertM16FeeContractMatches,
+  assertM16EconomicOutcomeOpenUnauthorized,
+  assertM16FeeContractUnresolvedForOutcomeOpen,
   assertNoAskDerivation,
   assertYesAskDerivation,
   bindM16FeeContract,
   buildM16FamilyDefinition,
   buildM16IncidencePlan,
-  buildM16SampleSizePlan,
   candidateMidFromYesMid,
   candidateSideExecutableAskCents,
   computeM16FeeContractIdentity,
-  computeM16OneContractTakerFeeCents,
+  computeM16ProvisionalStandardTakerFeeCentsForUtility,
   createM16MarketMachine,
+  decideM16IncidenceDisposition,
+  evaluateM16OutcomeOpenAuthorization,
   isM16StructuralStop,
   isM16TargetBid,
+  M16_CONFIRMATORY_EVIDENCE_CONTRACT_STATUS,
+  M16_DEPENDENCE_INFERENCE_PLAN_STATUS,
+  M16_ECONOMIC_OUTCOME_OPEN_AUTHORIZED,
   M16_FORBIDDEN_M14_VALIDATION_RUN_IDS,
   M16_FORBIDDEN_M15_COST_FLOOR_RUN_ID,
+  M16_OUTCOME_OPEN_BLOCKER_DEPENDENCE_PLAN,
+  M16_OUTCOME_OPEN_BLOCKER_EVIDENCE_CONTRACT,
+  M16_OUTCOME_OPEN_BLOCKER_FEE_UNRESOLVED,
   M16_SUBFAMILY_ID,
   M16ReversalError,
   stepM16MarketMachine,
@@ -88,14 +95,58 @@ describe("M16 complement economics", () => {
   });
 });
 
-describe("M16 fee contract", () => {
-  it("31–32. fee identity binding; reduced-index not bound", () => {
+describe("M16 fee contract + outcome-open gate", () => {
+  it("fee unresolved for outcome-open; provisional utility helper only", () => {
     const bound = bindM16FeeContract();
-    expect(bound.schedule).toBe(KALSHI_FEE_SCHEDULE_VARIANT.STANDARD);
-    expect(assertM16FeeContractMatches(bound.feeContractIdentity).feeContractIdentity)
+    expect(bound.feeContractStatus).toBe("fee-contract-unresolved-for-outcome-open");
+    expect(bound.authoritativeScheduleBound).toBe(false);
+    expect(bound).not.toHaveProperty("schedule");
+    expect(assertM16FeeContractUnresolvedForOutcomeOpen().feeContractIdentity)
       .toBe(computeM16FeeContractIdentity());
-    expect(() => assertM16FeeContractMatches("deadbeef")).toThrow(M16ReversalError);
-    expect(computeM16OneContractTakerFeeCents(50)).toBe(2);
+    expect(computeM16ProvisionalStandardTakerFeeCentsForUtility(50)).toBe(2);
+  });
+
+  it("outcome-open unauthorized with evidence/dependence/fee blockers", () => {
+    const auth = evaluateM16OutcomeOpenAuthorization();
+    expect(auth.authorized).toBe(false);
+    expect(auth.economicOutcomeOpenAuthorized).toBe(false);
+    expect(M16_ECONOMIC_OUTCOME_OPEN_AUTHORIZED).toBe(false);
+    expect(auth.confirmatoryEvidenceContractStatus).toBe(
+      M16_CONFIRMATORY_EVIDENCE_CONTRACT_STATUS,
+    );
+    expect(auth.dependenceInferencePlanStatus).toBe(
+      M16_DEPENDENCE_INFERENCE_PLAN_STATUS,
+    );
+    expect(auth.feeContractStatus).toBe("fee-contract-unresolved-for-outcome-open");
+    expect(auth.blockers).toContain(M16_OUTCOME_OPEN_BLOCKER_EVIDENCE_CONTRACT);
+    expect(auth.blockers).toContain(M16_OUTCOME_OPEN_BLOCKER_DEPENDENCE_PLAN);
+    expect(auth.blockers).toContain(M16_OUTCOME_OPEN_BLOCKER_FEE_UNRESOLVED);
+    expect(() => assertM16EconomicOutcomeOpenUnauthorized()).not.toThrow();
+  });
+
+  it("no N=96 confirmatory adequacy claim in sealed artifacts", () => {
+    const family = buildM16FamilyDefinition();
+    const plan = buildM16IncidencePlan();
+    const familyJson = JSON.stringify(family);
+    const planJson = JSON.stringify(plan);
+    expect(familyJson).not.toMatch(/targetIndependentTradeN/);
+    expect(familyJson).not.toMatch(/adequate-N|adequate N/i);
+    expect(familyJson).not.toMatch(/incidence-feasible/);
+    expect(familyJson).not.toMatch(/bound-standard-taker-for-m16/);
+    expect(familyJson).not.toMatch(/"clusterUnit"/);
+    expect(familyJson).not.toMatch(/M16_TARGET_INDEPENDENT_TRADE_N|targetIndependentTradeN":\s*96/);
+    expect(planJson).not.toMatch(/targetIndependentTradeN/);
+    expect(planJson).not.toMatch(/sampleSizePlanning/);
+    expect(planJson).not.toMatch(/projectedCaptureHoursForTargetN/);
+    expect(family.confirmatoryDecisionProcedureStatus).toBe(
+      "UNSEALED-M16.1-REQUIRED-BEFORE-OUTCOME-OPEN",
+    );
+    expect(family.scientificEconomicNull).toBe(
+      "mean-fee-adjusted-executable-pnl-leq-0-is-non-edge",
+    );
+    expect(family).not.toHaveProperty("falsificationRule");
+    expect(family).not.toHaveProperty("clusterUnit");
+    expect(family).not.toHaveProperty("planning");
   });
 });
 
@@ -202,7 +253,6 @@ describe("M16 state machine", () => {
     ]);
     expect(inside.events.some((e) => e.type === "left-truncated")).toBe(true);
 
-    // First observed already rising from depressed without prior >40
     const rebound = drive(createM16MarketMachine("YES"), [
       tick({ timestampMs: 1, candidateMidCents: 36 }),
     ]);
@@ -263,26 +313,37 @@ describe("M16 contamination + blindness", () => {
       assertM16BlindIncidenceHasNoOutcomeFields({ settlementDirection: "yes" })
     ).toThrow(M16ReversalError);
     assertM16BlindIncidenceHasNoOutcomeFields({
-      downCrossSetupCount: 1,
+      downCrossSetupSideEventCount: 1,
       reversalConfirmedEntryCount: 0,
       quarantine: { pnlOpened: false },
     });
   });
 });
 
-describe("M16 artifacts + planning", () => {
-  it("family + incidence plan identities stable; bind policy", () => {
+describe("M16 artifacts + incidence disposition", () => {
+  it("family + incidence plan identities stable; unsealed authority", () => {
     const a = buildM16FamilyDefinition();
     const b = buildM16FamilyDefinition();
     expect(a.subfamilyId).toBe(M16_SUBFAMILY_ID);
     expect(a.familyDefinitionIdentity).toBe(b.familyDefinitionIdentity);
     expect(a.tradePolicy.upsideTargetBidCents).toBe(55);
     expect(a.oneEntryPerMarketTicker).toBe(true);
+    expect(a.economicOutcomeOpenAuthorized).toBe(false);
+    expect(a.feeContract.feeContractStatus).toBe(
+      "fee-contract-unresolved-for-outcome-open",
+    );
     const plan = buildM16IncidencePlan();
     expect(plan.outcomesOpened).toBe(false);
+    expect(plan.economicOutcomeOpenAuthorized).toBe(false);
     expect(plan.familyDefinitionIdentity).toBe(a.familyDefinitionIdentity);
-    const sample = buildM16SampleSizePlan();
-    expect(sample.targetIndependentTradeN).toBeGreaterThan(0);
+    expect(decideM16IncidenceDisposition({
+      usableEntryCount: 33,
+      captureHours: 16,
+    }).disposition).toBe("incidence-characterized");
+    expect(decideM16IncidenceDisposition({
+      usableEntryCount: 0,
+      captureHours: 16,
+    }).disposition).toBe("insufficient-census-observability");
   });
 });
 
@@ -310,10 +371,9 @@ describe("M16 streaming blind incidence (synthetic)", () => {
     });
   }
 
-  it("19/23/37/38/40. one signal per market; PR94 regression; cluster; identity; idempotency", async () => {
+  it("19/23/37/38/40. one signal per market; PR94 regression; descriptive coverage; identity", async () => {
     const marketTicker = "KXBTC15M-26SEP200100-00";
     const t0 = Date.parse("2026-09-20T12:00:00.000Z");
-    // YES mid path: 45 → 32 → 34 → 38 → 36 → 41 with close far away
     const mids = [
       { yes: 40, no: 50 }, // mid=45
       { yes: 30, no: 66 }, // mid=32
@@ -323,9 +383,6 @@ describe("M16 streaming blind incidence (synthetic)", () => {
       { yes: 40, no: 58 }, // mid=41 confirm
       { yes: 42, no: 56 }, // post
     ];
-    // Fix mids properly: yesMid = (yesBid + (100-noBid))/2
-    // For mid=45: yesBid=40, noBid=50 → (40+50)/2=45 OK
-    // mid=32: yes=30, no=66 → (30+34)/2=32 OK
     const lines = mids.map((m, i) =>
       tobLine({
         marketTicker,
@@ -334,14 +391,12 @@ describe("M16 streaming blind incidence (synthetic)", () => {
         noBestBidCents: m.no,
       })
     );
-    // Inject exchange-ts regression (PR #94) — should not abort
     lines.splice(2, 0, tobLine({
       marketTicker,
       receivedAtLocal: new Date(t0 + 1_500).toISOString(),
       yesBestBidCents: 31,
       noBestBidCents: 65,
     }));
-    // Fix the regression line's exchange ts manually
     const regressed = JSON.parse(lines[2]!);
     regressed.exchangeTimestampMs = t0 + 1_500 - 17;
     lines[2] = JSON.stringify(regressed);
@@ -377,15 +432,67 @@ describe("M16 streaming blind incidence (synthetic)", () => {
     });
     expect(r1.reportIdentity).toBe(r2.reportIdentity);
     expect(r1.outcomesOpened).toBe(false);
+    expect(r1.economicOutcomeOpenAuthorized).toBe(false);
     expect(r1.quarantine.pnlOpened).toBe(false);
-    expect(r1.clusterCount).toBe(1);
-    expect(r1.clusterUnit).toBe("capture-session");
-    expect(r1.quarantine.pnlOpened).toBe(false);
+    expect(r1.descriptiveCaptureSessionCount).toBe(1);
+    expect(r1.descriptiveUtcDayCount).toBeGreaterThanOrEqual(1);
+    expect(r1.incidenceDisposition).toBe("incidence-characterized");
+    expect(r1).not.toHaveProperty("feasibilityDisposition");
+    expect(r1).not.toHaveProperty("projectedCaptureHoursForTargetN");
+    expect(r1).not.toHaveProperty("clusterUnit");
+    expect(r1).not.toHaveProperty("clusterCount");
     expect(r1.quarantine.targetHitInspected).toBe(false);
     expect(r1.quarantine.stopHitInspected).toBe(false);
     expect(r1).not.toHaveProperty("feeAdjustedPnlCents");
-    // At most one confirmation path claimed per market
     expect(r1.reversalConfirmedEntryCount).toBeLessThanOrEqual(1);
+    expect(r1.timeGateEligibleCount).toBeLessThanOrEqual(r1.reversalConfirmedEntryCount);
+  });
+
+  it("time-gate reject increments structural confirm but not eligible incidence", async () => {
+    const marketTicker = "KXBTC15M-TGATE";
+    const t0 = Date.parse("2026-09-20T12:00:00.000Z");
+    // Close only 30s after confirmation tick → time-gate reject
+    const closeIso = new Date(t0 + 6_000 + 30_000).toISOString();
+    const mids = [
+      { yes: 40, no: 50 },
+      { yes: 30, no: 66 },
+      { yes: 32, no: 64 },
+      { yes: 36, no: 60 },
+      { yes: 34, no: 62 },
+      { yes: 40, no: 58 },
+    ];
+    const lines = mids.map((m, i) =>
+      tobLine({
+        marketTicker,
+        receivedAtLocal: new Date(t0 + i * 1_000).toISOString(),
+        yesBestBidCents: m.yes,
+        noBestBidCents: m.no,
+      })
+    );
+    const captureRunDir = "/fixture/m16-tgate";
+    const io = createMemoryMomentumDiscoveryIo({
+      [`${captureRunDir}/top-of-book.jsonl`]: `${lines.join("\n")}\n`,
+      [`${captureRunDir}/market-metadata.jsonl`]: `${JSON.stringify({
+        marketTicker,
+        closeTime: closeIso,
+        status: "active",
+        action: "subscribed",
+      })}\n`,
+    });
+    const report = await streamM16BlindIncidenceFromCaptures({
+      io,
+      captures: [{
+        runId: "tgate",
+        captureRunDir,
+        captureIdentityHash: "ht",
+        researchRole: "m16-blind-incidence",
+      }],
+      generatedAt: "2026-09-20T18:00:00.000Z",
+    });
+    expect(report.reversalConfirmedEntryCount).toBe(1);
+    expect(report.timeGateEligibleCount).toBe(0);
+    expect(report.usableFutureAnalysisEntryCount).toBe(0);
+    expect(report.missingnessReasons).toContain("time-gate-reject");
   });
 
   it("29–30. terminal coverage vs missing close fail-closed semantics reflected in counts", async () => {
@@ -397,7 +504,6 @@ describe("M16 streaming blind incidence (synthetic)", () => {
     ];
     const io = createMemoryMomentumDiscoveryIo({
       "/fixture/m16-noclose/top-of-book.jsonl": `${lines.join("\n")}\n`,
-      // no market-metadata → missing closeTime
     });
     const report = await streamM16BlindIncidenceFromCaptures({
       io,

@@ -2,10 +2,16 @@
 
 ## Status
 
-Prospective family seal + P&L-blind incidence/coverage census.
+**M16.0** = prospective family seal + P&L-blind incidence/coverage characterization
+**only**.
 
-**Do NOT open economic outcomes** (target/stop/flatten/settlement P&L) until a
-later governed milestone.
+**M16.1** (separate milestone, required before any economic outcome-open) =
+confirmatory statistical evidence contract + dependence/inference plan +
+authoritative KXBTC15M fee binding + prospective outcome cohort.
+
+**Do NOT open economic outcomes** (target/stop/flatten/settlement P&L) from this
+milestone. Outcome-open is hard-blocked while evidence/dependence/fee remain
+unsealed.
 
 ## Program context
 
@@ -14,7 +20,8 @@ later governed milestone.
 | M13 TOB imbalance | stopped |
 | M14 continuation | validation-failed / stop-lineage / no HOLDOUT |
 | M15 cost-floor | ordinary fee-inclusive hurdle ≈5¢ → economically hostile for 1–2¢ taker effects |
-| **M16** | side-invariant exhaustion reversal (new family; not M14 widen) |
+| **M16.0** | side-invariant exhaustion reversal family seal + blind incidence |
+| **M16.1** | evidence contract / dependence / fee (not this PR) |
 
 ## Family ID
 
@@ -49,7 +56,7 @@ No synthetic last-price is fabricated. No BTC / size-imbalance predictors.
 
 One first confirmation per `marketTicker`. YES/NO are complement-deduped.
 
-## Eventual economics (frozen, not evaluated here)
+## Eventual economics (conceptual; not evaluated in M16.0)
 
 - Entry: 1-contract candidate ask
 - Target: bid `≥ 55`
@@ -57,20 +64,36 @@ One first confirmation per `marketTicker`. YES/NO are complement-deduped.
 - Flatten: last eligible bid ≤ close
 - Settlement: `forwardSettlementJoin` fallback only; else `terminal-unobservable`
 - Primary estimand: **mean** fee-adjusted executable P&L
-- Kill: mean `≤ 0` at adequate N → stop family (no rescue grid)
+- Scientific null / non-edge: mean `≤ 0`
+- Confirmatory decision procedure: **UNSEALED — M16.1 required** (no “adequate N”)
 
-## Fee contract
+## Fee contract (M16.0)
 
-Bound: `computeKalshiScheduleFeeCents` **standard taker** qty=1 ceil.
-No in-repo KXBTC15M→reduced-index map; reduced-index not auto-selected.
+Status: `fee-contract-unresolved-for-outcome-open`.
 
-## Clustering / planning
+Absence of an in-repo KXBTC15M→reduced-index map does **not** prove standard
+taker applies. Provisional standard-taker helpers exist for synthetic utility
+tests only and are **not** scientific fee authority. M16.1 must bind the schedule
+that actually applies to KXBTC15M.
 
-- Trade unit: first confirmation per marketTicker
-- Cluster unit: **capture-session**
-- Target independent N: 96 (planning; primary mean 5¢ / SD 25¢)
-- Max future capture budget: **60h**
-- Feasible iff projected hours ≤ 60
+## Dependence / sample size (M16.0)
+
+- Confirmatory evidence contract: `unsealed-for-outcome-open`
+- Dependence inference plan: `unsealed-for-outcome-open`
+- No sealed confirmatory N (including no N=96 authority)
+- Descriptive coverage may report capture-session count and UTC-day count;
+  these are **not** sealed inferential cluster units
+
+## Blind incidence disposition
+
+`incidence-characterized` when a positive time-gate-eligible rate is observed.
+This does **not** imply confirmatory adequacy or profitability-testing feasibility.
+
+Counter units:
+
+- `*SideEventCount` — YES/NO machine events (both sides stepped)
+- `reversalConfirmedEntryCount` — structural confirmations (includes time-gate rejects)
+- `timeGateEligibleCount` / `usableFutureAnalysisEntryCount` — eligible incidence
 
 ## CLI
 

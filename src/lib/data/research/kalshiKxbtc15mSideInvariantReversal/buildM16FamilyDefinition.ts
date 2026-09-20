@@ -7,20 +7,18 @@ import { buildM16SettlementFallbackSpec, buildM16TradePolicySpec } from "./m16Ec
 import { bindM16FeeContract } from "./m16Types";
 import {
   M16_ANALYSIS_VERSION,
-  M16_CLUSTER_UNIT,
+  M16_CONFIRMATORY_EVIDENCE_CONTRACT_STATUS,
+  M16_DEPENDENCE_INFERENCE_PLAN_STATUS,
   M16_DISCLAIMER,
+  M16_ECONOMIC_OUTCOME_OPEN_AUTHORIZED,
   M16_FAMILY_DEFINITION_VERSION,
   M16_FAMILY_ID,
-  M16_MAX_FUTURE_CAPTURE_BUDGET_HOURS,
   M16_MIN_REMAINING_MS_AT_CONFIRMATION,
-  M16_PRIMARY_PLANNING_MEAN_EFFECT_CENTS,
-  M16_PRIMARY_PLANNING_SD_CENTS,
   M16_SETUP_ABORT_LOW_CENTS,
   M16_SETUP_CROSS_CENTS,
   M16_STRUCTURE_TICK_CENTS,
   M16_SUBFAMILY_ID,
   M16_TARGET_BID_CENTS,
-  M16_TARGET_INDEPENDENT_TRADE_N,
 } from "./m16Types";
 
 export type M16FamilyDefinition = {
@@ -29,6 +27,7 @@ export type M16FamilyDefinition = {
   subfamilyId: typeof M16_SUBFAMILY_ID;
   definitionVersion: typeof M16_FAMILY_DEFINITION_VERSION;
   disclaimer: typeof M16_DISCLAIMER;
+  milestoneScope: "m16.0-family-seal-and-blind-incidence-only";
   historicalPriorSummary: readonly string[];
   researcherInventions: readonly string[];
   fidelityLimitation: string;
@@ -57,16 +56,17 @@ export type M16FamilyDefinition = {
   tradePolicy: ReturnType<typeof buildM16TradePolicySpec>;
   settlementFallback: ReturnType<typeof buildM16SettlementFallbackSpec>;
   feeContract: ReturnType<typeof bindM16FeeContract>;
-  clusterUnit: typeof M16_CLUSTER_UNIT;
   primaryEventualEstimand: "mean-one-contract-fee-adjusted-executable-pnl";
-  falsificationRule: "mean-fee-adjusted-executable-pnl-leq-0-at-adequate-N-stops-family";
+  scientificEconomicNull: ReturnType<
+    typeof buildM16TradePolicySpec
+  >["scientificEconomicNull"];
+  confirmatoryEvidenceContractStatus: typeof M16_CONFIRMATORY_EVIDENCE_CONTRACT_STATUS;
+  confirmatoryDecisionProcedureStatus: ReturnType<
+    typeof buildM16TradePolicySpec
+  >["confirmatoryDecisionProcedureStatus"];
+  dependenceInferencePlanStatus: typeof M16_DEPENDENCE_INFERENCE_PLAN_STATUS;
+  economicOutcomeOpenAuthorized: typeof M16_ECONOMIC_OUTCOME_OPEN_AUTHORIZED;
   contaminationExclusions: readonly string[];
-  planning: {
-    targetIndependentTradeN: typeof M16_TARGET_INDEPENDENT_TRADE_N;
-    primaryPlanningMeanEffectCents: typeof M16_PRIMARY_PLANNING_MEAN_EFFECT_CENTS;
-    primaryPlanningSdCents: typeof M16_PRIMARY_PLANNING_SD_CENTS;
-    maxFutureCaptureBudgetHours: typeof M16_MAX_FUTURE_CAPTURE_BUDGET_HOURS;
-  };
   responseMatchToleranceMs: typeof RESPONSE_MATCH_TOLERANCE_MS;
   targetBidCents: typeof M16_TARGET_BID_CENTS;
   familyDefinitionIdentity: string;
@@ -74,12 +74,14 @@ export type M16FamilyDefinition = {
 
 export function buildM16FamilyDefinition(): M16FamilyDefinition {
   const feeContract = bindM16FeeContract();
+  const tradePolicy = buildM16TradePolicySpec();
   const definition: Omit<M16FamilyDefinition, "familyDefinitionIdentity"> = {
     analysisVersion: M16_ANALYSIS_VERSION,
     familyId: M16_FAMILY_ID,
     subfamilyId: M16_SUBFAMILY_ID,
     definitionVersion: M16_FAMILY_DEFINITION_VERSION,
     disclaimer: M16_DISCLAIMER,
+    milestoneScope: "m16.0-family-seal-and-blind-incidence-only",
     historicalPriorSummary: [
       "either YES or NO could be traded (side-invariant)",
       "interest centered on depressed side around 30–40",
@@ -129,12 +131,16 @@ export function buildM16FamilyDefinition(): M16FamilyDefinition {
     remainingTimeGateMs: M16_MIN_REMAINING_MS_AT_CONFIRMATION,
     leftTruncation: "fail-closed-unless-complete-prehistory-above-cross-observed",
     gapSemantics: "structural-interval-gap-invalidates-setup-fail-closed",
-    tradePolicy: buildM16TradePolicySpec(),
+    tradePolicy,
     settlementFallback: buildM16SettlementFallbackSpec(),
     feeContract,
-    clusterUnit: M16_CLUSTER_UNIT,
     primaryEventualEstimand: "mean-one-contract-fee-adjusted-executable-pnl",
-    falsificationRule: "mean-fee-adjusted-executable-pnl-leq-0-at-adequate-N-stops-family",
+    scientificEconomicNull: tradePolicy.scientificEconomicNull,
+    confirmatoryEvidenceContractStatus: M16_CONFIRMATORY_EVIDENCE_CONTRACT_STATUS,
+    confirmatoryDecisionProcedureStatus:
+      tradePolicy.confirmatoryDecisionProcedureStatus,
+    dependenceInferencePlanStatus: M16_DEPENDENCE_INFERENCE_PLAN_STATUS,
+    economicOutcomeOpenAuthorized: M16_ECONOMIC_OUTCOME_OPEN_AUTHORIZED,
     contaminationExclusions: [
       "m14-validation-captures",
       "m14-failed-segment-6",
@@ -144,13 +150,10 @@ export function buildM16FamilyDefinition(): M16FamilyDefinition {
       "order-book-size-imbalance",
       "parameter-grid-search",
       "outcome-bearing-train-leaderboard",
+      "confirmatory-n-or-power-claim-in-m16.0",
+      "sealed-dependence-plan-in-m16.0",
+      "authoritative-fee-claim-without-series-evidence",
     ],
-    planning: {
-      targetIndependentTradeN: M16_TARGET_INDEPENDENT_TRADE_N,
-      primaryPlanningMeanEffectCents: M16_PRIMARY_PLANNING_MEAN_EFFECT_CENTS,
-      primaryPlanningSdCents: M16_PRIMARY_PLANNING_SD_CENTS,
-      maxFutureCaptureBudgetHours: M16_MAX_FUTURE_CAPTURE_BUDGET_HOURS,
-    },
     responseMatchToleranceMs: RESPONSE_MATCH_TOLERANCE_MS,
     targetBidCents: M16_TARGET_BID_CENTS,
   };

@@ -1,17 +1,16 @@
 /**
  * M16 — KXBTC15M side-invariant exhaustion-reversal family v1 (prospective).
  *
+ * M16.0 scope: PROSPECTIVE FAMILY SEAL + P&L-BLIND INCIDENCE/COVERAGE ONLY.
+ *
+ * M16.1 (separate milestone, required before any economic outcome-open):
+ * confirmatory evidence contract + dependence plan + authoritative KXBTC15M fee.
+ *
  * MARKET STRUCTURE / FEASIBILITY lineage. Not momentum continuation (M14).
- * Not a cost-floor study (M15). P&L / target-hit / stop-hit remain CLOSED
- * until a later governed outcome-open milestone.
+ * Not a cost-floor study (M15). P&L / target-hit / stop-hit remain CLOSED.
  */
 import { createHash } from "node:crypto";
 
-import {
-  KALSHI_FEE_MULTIPLIER_BY_VARIANT,
-  KALSHI_FEE_SCHEDULE_ROLE,
-  KALSHI_FEE_SCHEDULE_VARIANT,
-} from "@/lib/data/backtesting/costModel/computeKalshiScheduleFeeCents";
 import { stableStringify } from "@/lib/trading/config/hashConfig";
 
 export const M16_FAMILY_ID = "reversal" as const;
@@ -30,7 +29,9 @@ export const M16_DISCLAIMER =
   + "Setup region 30–40 is NOT an entry trigger; entry requires the frozen "
   + "causal confirmation state machine. M13/M14/M15 remain closed lineages; "
   + "M16 must not rescue them. Incidence mode MUST NOT emit P&L, target-hit, "
-  + "stop-hit, settlement direction, or signed returns.";
+  + "stop-hit, settlement direction, or signed returns. M16.0 does NOT seal a "
+  + "confirmatory sample size, dependence plan, or authoritative fee schedule; "
+  + "economic outcome-open requires M16.1.";
 
 /** Setup down-cross threshold (cents). Frozen. */
 export const M16_SETUP_CROSS_CENTS = 40 as const;
@@ -43,40 +44,34 @@ export const M16_MIN_REMAINING_MS_AT_CONFIRMATION = 60_000 as const;
 /** Eventual upside target (executable bid cents). Frozen — do not search. */
 export const M16_TARGET_BID_CENTS = 55 as const;
 
-/** Historical research effect scale from M15 (¢) — planning context only. */
+/** Historical research effect scale from M15 (¢) — context only, not confirmatory. */
 export const M16_M15_COST_FLOOR_CONTEXT_CENTS = 5 as const;
 
 /**
- * Prospective planning mean effects (¢) for sample-size sensitivity.
- * Theoretical only — not estimated from hidden outcomes.
+ * M16.0 governance: confirmatory evidence contract is NOT sealed.
+ * Do not treat any draft N / CI / power figure as authoritative.
  */
-export const M16_PLANNING_MEAN_EFFECTS_CENTS = [3, 5, 10] as const;
+export const M16_CONFIRMATORY_EVIDENCE_CONTRACT_STATUS =
+  "unsealed-for-outcome-open" as const;
 
 /**
- * Conservative theoretical trade-level SD scenarios (¢) for planning.
- * Not estimated from census economic outcomes.
+ * M16.0 governance: inferential dependence plan is NOT sealed.
+ * Descriptive capture-session / UTC-day counts are coverage only.
  */
-export const M16_PLANNING_SD_SCENARIOS_CENTS = [15, 25, 40] as const;
+export const M16_DEPENDENCE_INFERENCE_PLAN_STATUS =
+  "unsealed-for-outcome-open" as const;
 
-/** Primary planning target mean effect (¢) before outcome-open. */
-export const M16_PRIMARY_PLANNING_MEAN_EFFECT_CENTS = 5 as const;
-/** Primary planning SD scenario (¢). */
-export const M16_PRIMARY_PLANNING_SD_CENTS = 25 as const;
-/**
- * Approximate target independent trade N for detecting primary planning
- * mean under primary SD (rough z≈1.96 two-sided precision heuristic:
- * n ≈ (1.96 * sd / mean)^2). Frozen prospectively.
- */
-export const M16_TARGET_INDEPENDENT_TRADE_N = 96 as const;
+/** M16.0: economic outcome-open is never authorized. */
+export const M16_ECONOMIC_OUTCOME_OPEN_AUTHORIZED = false as const;
 
-/**
- * Maximum future capture budget (hours) before incidence-infeasible.
- * Frozen before census results; not M14's 40h by default.
- */
-export const M16_MAX_FUTURE_CAPTURE_BUDGET_HOURS = 60 as const;
-
-/** Cluster unit for uncertainty planning. */
-export const M16_CLUSTER_UNIT = "capture-session" as const;
+export const M16_OUTCOME_OPEN_BLOCKER_EVIDENCE_CONTRACT =
+  "m16-confirmatory-evidence-contract-not-sealed" as const;
+export const M16_OUTCOME_OPEN_BLOCKER_DEPENDENCE_PLAN =
+  "m16-dependence-plan-not-sealed" as const;
+export const M16_OUTCOME_OPEN_BLOCKER_FEE_UNRESOLVED =
+  "authoritative-kxbtc15m-fee-schedule-not-bound" as const;
+export const M16_OUTCOME_OPEN_BLOCKER_COHORT_UNSEALED =
+  "m16-prospective-outcome-cohort-not-sealed" as const;
 
 export const M16_FORBIDDEN_M14_VALIDATION_RUN_IDS = [
   "2026-09-13T04-05-01-822Z",
@@ -93,25 +88,24 @@ export const M16_FORBIDDEN_M15_COST_FLOOR_RUN_ID = "2026-09-20T02-52-53-859Z" as
 
 export type M16CandidateSide = "YES" | "NO";
 
-export type M16FeeContractStatus =
-  | "bound-standard-taker-for-m16"
-  | "fee-contract-unresolved-for-outcome-open";
+/**
+ * Fee status for M16.0: unresolved for economic outcome-open.
+ * Repository absence of a KXBTC15M→reduced-index map does NOT prove standard
+ * taker applies. M16.1 must bind the schedule that actually applies.
+ */
+export type M16FeeContractStatus = "fee-contract-unresolved-for-outcome-open";
 
 export type M16FeeContractBinding = {
   studyId: typeof M16_SUBFAMILY_ID;
   feeContractStatus: M16FeeContractStatus;
-  modulePath: "src/lib/data/backtesting/costModel/computeKalshiScheduleFeeCents.ts";
-  functionName: "computeKalshiScheduleFeeCents";
-  role: typeof KALSHI_FEE_SCHEDULE_ROLE.TAKER;
-  schedule: typeof KALSHI_FEE_SCHEDULE_VARIANT.STANDARD;
-  quantityContracts: 1;
   feeContractIdentity: string;
-  rounding: "ceil-to-next-cent";
-  priceDependence: "quadratic-P*(100-P)";
   seriesScopeNote: string;
+  authoritativeScheduleBound: false;
+  provisionalStandardTakerUtilityOnly: true;
   profitabilityTestingBlockedUnlessBound: true;
   inventedFlatFeeForbidden: true;
   silentZeroFeeForbidden: true;
+  outcomeOpenBlocker: typeof M16_OUTCOME_OPEN_BLOCKER_FEE_UNRESOLVED;
 };
 
 export function computeM16FeeContractIdentity(): string {
@@ -119,13 +113,11 @@ export function computeM16FeeContractIdentity(): string {
     .update(
       stableStringify({
         studyId: M16_SUBFAMILY_ID,
-        module: "src/lib/data/backtesting/costModel/computeKalshiScheduleFeeCents.ts",
-        function: "computeKalshiScheduleFeeCents",
-        role: KALSHI_FEE_SCHEDULE_ROLE.TAKER,
-        schedule: KALSHI_FEE_SCHEDULE_VARIANT.STANDARD,
-        quantity: 1,
-        multipliers: KALSHI_FEE_MULTIPLIER_BY_VARIANT,
-        rounding: "ceil-to-next-cent",
+        feeContractStatus: "fee-contract-unresolved-for-outcome-open",
+        authoritativeScheduleBound: false,
+        note:
+          "No authoritative KXBTC15M series fee schedule is bound in M16.0. "
+          + "Provisional standard-taker helpers are utility/test-only.",
       }),
     )
     .digest("hex");
@@ -134,23 +126,19 @@ export function computeM16FeeContractIdentity(): string {
 export function bindM16FeeContract(): M16FeeContractBinding {
   return {
     studyId: M16_SUBFAMILY_ID,
-    feeContractStatus: "bound-standard-taker-for-m16",
-    modulePath: "src/lib/data/backtesting/costModel/computeKalshiScheduleFeeCents.ts",
-    functionName: "computeKalshiScheduleFeeCents",
-    role: KALSHI_FEE_SCHEDULE_ROLE.TAKER,
-    schedule: KALSHI_FEE_SCHEDULE_VARIANT.STANDARD,
-    quantityContracts: 1,
+    feeContractStatus: "fee-contract-unresolved-for-outcome-open",
     feeContractIdentity: computeM16FeeContractIdentity(),
-    rounding: "ceil-to-next-cent",
-    priceDependence: "quadratic-P*(100-P)",
     seriesScopeNote:
-      "No in-repo KXBTC15M→reduced-index mapping exists; all prior KXBTC15M "
-      + "research binds standard taker. Reduced-index remains available as a "
-      + "config variant only. M16 binds standard; outcome-open must re-verify "
-      + "against any future authoritative series fee schedule.",
+      "M16.0 does not claim standard or reduced-index as the actual KXBTC15M "
+      + "schedule. Absence of an in-repo reduced-index map is not proof of "
+      + "standard-taker. Economic outcome-open is blocked until M16.1 binds "
+      + "authoritative series fee treatment from independent evidence.",
+    authoritativeScheduleBound: false,
+    provisionalStandardTakerUtilityOnly: true,
     profitabilityTestingBlockedUnlessBound: true,
     inventedFlatFeeForbidden: true,
     silentZeroFeeForbidden: true,
+    outcomeOpenBlocker: M16_OUTCOME_OPEN_BLOCKER_FEE_UNRESOLVED,
   };
 }
 
@@ -189,7 +177,17 @@ export const M16_FORBIDDEN_INCIDENCE_FIELD_PATTERNS = [
   /returnSign/i,
 ] as const;
 
-export type M16IncidenceFeasibility =
-  | "incidence-feasible"
-  | "incidence-infeasible"
+/**
+ * Blind incidence disposition — descriptive coverage only.
+ * Does NOT authorize confirmatory adequacy or profitability testing.
+ */
+export type M16IncidenceDisposition =
+  | "incidence-characterized"
   | "insufficient-census-observability";
+
+/** Conceptual scientific null (sealed). Decision procedure remains unsealed. */
+export type M16ScientificEconomicNull =
+  "mean-fee-adjusted-executable-pnl-leq-0-is-non-edge";
+
+export type M16ConfirmatoryDecisionProcedureStatus =
+  "UNSEALED-M16.1-REQUIRED-BEFORE-OUTCOME-OPEN";

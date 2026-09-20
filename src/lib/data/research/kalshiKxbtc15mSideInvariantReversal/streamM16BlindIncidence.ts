@@ -1,6 +1,11 @@
 /**
  * P&L-blind M16 incidence / coverage census streamer.
  * File-order TOB (PR #94). Never emits economic exit / P&L fields.
+ *
+ * Counter units:
+ * - *SideEventCount fields count YES/NO machine events (both sides stepped).
+ * - reversalConfirmedEntryCount = structural confirmations (includes time-gate rejects).
+ * - timeGateEligibleCount / usableFutureAnalysisEntryCount = >=60s eligible incidence.
  */
 import { createHash } from "node:crypto";
 import { join } from "node:path";
@@ -21,7 +26,7 @@ import { assertM16BlindIncidenceHasNoOutcomeFields } from "./assertM16BlindNoPnl
 import { assertM16CaptureSetClean } from "./assertM16RejectsContaminatedCaptures";
 import { buildM16FamilyDefinition } from "./buildM16FamilyDefinition";
 import { buildM16IncidencePlan } from "./buildM16IncidencePlan";
-import { decideM16IncidenceFeasibility } from "./m16SampleSizePlanning";
+import { decideM16IncidenceDisposition } from "./m16SampleSizePlanning";
 import {
   candidateMidFromYesMid,
   createM16MarketMachine,
@@ -30,14 +35,15 @@ import {
 } from "./m16StateMachine";
 import {
   M16_ANALYSIS_VERSION,
+  M16_CONFIRMATORY_EVIDENCE_CONTRACT_STATUS,
+  M16_DEPENDENCE_INFERENCE_PLAN_STATUS,
   M16_DISCLAIMER,
-  M16_MAX_FUTURE_CAPTURE_BUDGET_HOURS,
+  M16_ECONOMIC_OUTCOME_OPEN_AUTHORIZED,
   M16_SUBFAMILY_ID,
-  M16_TARGET_INDEPENDENT_TRADE_N,
   M16ReversalError,
   type M16CaptureDescriptor,
   type M16CandidateSide,
-  type M16IncidenceFeasibility,
+  type M16IncidenceDisposition,
 } from "./m16Types";
 
 export type M16BlindIncidenceReport = {
@@ -48,6 +54,9 @@ export type M16BlindIncidenceReport = {
   incidencePlanIdentity: string;
   feeContractIdentity: string;
   feeContractStatus: string;
+  confirmatoryEvidenceContractStatus: typeof M16_CONFIRMATORY_EVIDENCE_CONTRACT_STATUS;
+  dependenceInferencePlanStatus: typeof M16_DEPENDENCE_INFERENCE_PLAN_STATUS;
+  economicOutcomeOpenAuthorized: typeof M16_ECONOMIC_OUTCOME_OPEN_AUTHORIZED;
   codeAuthoritySha: string | null;
   generatedAt: string;
   outcomesOpened: false;
@@ -57,10 +66,27 @@ export type M16BlindIncidenceReport = {
   captureHours: number;
   marketsObserved: number;
   prehistoryCompleteMarkets: number;
-  leftTruncatedCount: number;
-  downCrossSetupCount: number;
-  preConfirmationWaterfallAbortCount: number;
+  /**
+   * Side-event count: YES and NO machines both emit left-truncation events.
+   * Not a market-level unique count.
+   */
+  leftTruncatedSideEventCount: number;
+  /**
+   * Side-event count: down-cross events from YES/NO machines.
+   * Not a market-level unique count.
+   */
+  downCrossSetupSideEventCount: number;
+  /** Side-event count: L<30 aborts from YES/NO machines. */
+  preConfirmationWaterfallAbortSideEventCount: number;
+  /**
+   * Structural reversal confirmations (mid > H), including time-gate rejects.
+   * Not the eligible incidence quantity — see timeGateEligibleCount.
+   */
   reversalConfirmedEntryCount: number;
+  /**
+   * Time-gate-eligible confirmations (>=60s remaining). This is the usable
+   * blind incidence quantity.
+   */
   timeGateEligibleCount: number;
   /** Structural post-entry path present through remaining quotes (no exit label). */
   structurallyCompletePostEntryPathCount: number;
@@ -71,13 +97,17 @@ export type M16BlindIncidenceReport = {
    * join *may* be attempted later. Does NOT inspect settlement direction.
    */
   settlementCoverableCount: number;
-  clusterCount: number;
-  clusterUnit: "capture-session";
+  /**
+   * Descriptive coverage only — NOT a sealed inferential cluster unit.
+   * Dependence plan remains unsealed (M16.1).
+   */
+  descriptiveCaptureSessionCount: number;
+  /** Descriptive UTC calendar-day coverage from capture span — not sealed. */
+  descriptiveUtcDayCount: number;
   usableFutureAnalysisEntryCount: number;
   incidencePerHour: number | null;
-  projectedCaptureHoursForTargetN: number | null;
-  feasibilityDisposition: M16IncidenceFeasibility;
-  feasibilityRationale: string;
+  incidenceDisposition: M16IncidenceDisposition;
+  incidenceDispositionRationale: string;
   missingnessReasons: readonly string[];
   quarantine: {
     holdoutAccessed: false;
@@ -132,6 +162,10 @@ function isStructuralGapBook(bookState: string | null): boolean {
   );
 }
 
+function utcDayKey(ms: number): string {
+  return new Date(ms).toISOString().slice(0, 10);
+}
+
 export async function streamM16BlindIncidenceFromCaptures(input: {
   io: MomentumDiscoveryIo;
   captures: readonly M16CaptureDescriptor[];
@@ -150,9 +184,9 @@ export async function streamM16BlindIncidenceFromCaptures(input: {
   const ordered = [...input.captures].sort((a, b) => a.runId.localeCompare(b.runId));
 
   let marketsObserved = 0;
-  let leftTruncatedCount = 0;
-  let downCrossSetupCount = 0;
-  let preConfirmationWaterfallAbortCount = 0;
+  let leftTruncatedSideEventCount = 0;
+  let downCrossSetupSideEventCount = 0;
+  let preConfirmationWaterfallAbortSideEventCount = 0;
   let reversalConfirmedEntryCount = 0;
   let timeGateEligibleCount = 0;
   let structurallyCompletePostEntryPathCount = 0;
@@ -161,14 +195,15 @@ export async function streamM16BlindIncidenceFromCaptures(input: {
   let prehistoryCompleteMarkets = 0;
   let captureHours = 0;
   const missingness = new Set<string>();
-  const clusterIds = new Set<string>();
+  const captureSessionIds = new Set<string>();
+  const utcDays = new Set<string>();
 
   for (const capture of ordered) {
     const tobPath = join(capture.captureRunDir, "top-of-book.jsonl");
     if (!input.io.fileExists(tobPath)) {
       throw new M16ReversalError(`top-of-book missing: ${tobPath}`);
     }
-    clusterIds.add(capture.runId); // capture-session cluster
+    captureSessionIds.add(capture.runId); // descriptive coverage only
     const closeByMarket = loadCloseTimeByMarketForBlindIncidence(
       input.io,
       capture.captureRunDir,
@@ -222,6 +257,7 @@ export async function streamM16BlindIncidenceFromCaptures(input: {
         });
         firstTs = firstTs == null ? timestampMs : Math.min(firstTs, timestampMs);
         lastTs = lastTs == null ? timestampMs : Math.max(lastTs, timestampMs);
+        utcDays.add(utcDayKey(timestampMs));
 
         const quoteAgeMs =
           record.exchangeTimestampMs != null
@@ -249,7 +285,6 @@ export async function streamM16BlindIncidenceFromCaptures(input: {
         }
 
         if (!eligible || yesMid == null || record.yesBestBidCents == null || record.noBestBidCents == null) {
-          // Still propagate gap invalidation for active setups
           if (gap) {
             for (const side of ["YES", "NO"] as const) {
               const machine = side === "YES" ? bundle.yes : bundle.no;
@@ -302,11 +337,11 @@ export async function streamM16BlindIncidenceFromCaptures(input: {
 
           for (const event of stepped.events) {
             if (event.type === "left-truncated") {
-              leftTruncatedCount += 1;
+              leftTruncatedSideEventCount += 1;
             } else if (event.type === "down-cross") {
-              downCrossSetupCount += 1;
+              downCrossSetupSideEventCount += 1;
             } else if (event.type === "abort-waterfall") {
-              preConfirmationWaterfallAbortCount += 1;
+              preConfirmationWaterfallAbortSideEventCount += 1;
             } else if (event.type === "confirmation") {
               reversalConfirmedEntryCount += 1;
               timeGateEligibleCount += 1;
@@ -362,14 +397,9 @@ export async function streamM16BlindIncidenceFromCaptures(input: {
   const usableFutureAnalysisEntryCount = timeGateEligibleCount;
   const incidencePerHour =
     captureHours > 0 ? usableFutureAnalysisEntryCount / captureHours : null;
-  const projectedCaptureHoursForTargetN =
-    incidencePerHour != null && incidencePerHour > 0
-      ? M16_TARGET_INDEPENDENT_TRADE_N / incidencePerHour
-      : null;
-  const { disposition, rationale } = decideM16IncidenceFeasibility({
-    projectedCaptureHoursForTargetN,
-    maxBudgetHours: M16_MAX_FUTURE_CAPTURE_BUDGET_HOURS,
+  const { disposition, rationale } = decideM16IncidenceDisposition({
     usableEntryCount: usableFutureAnalysisEntryCount,
+    captureHours,
   });
 
   const generatedAt = input.generatedAt ?? new Date().toISOString();
@@ -381,6 +411,9 @@ export async function streamM16BlindIncidenceFromCaptures(input: {
     incidencePlanIdentity: plan.incidencePlanIdentity,
     feeContractIdentity: family.feeContract.feeContractIdentity,
     feeContractStatus: family.feeContract.feeContractStatus,
+    confirmatoryEvidenceContractStatus: M16_CONFIRMATORY_EVIDENCE_CONTRACT_STATUS,
+    dependenceInferencePlanStatus: M16_DEPENDENCE_INFERENCE_PLAN_STATUS,
+    economicOutcomeOpenAuthorized: M16_ECONOMIC_OUTCOME_OPEN_AUTHORIZED,
     codeAuthoritySha: input.codeAuthoritySha ?? null,
     generatedAt,
     outcomesOpened: false as const,
@@ -390,21 +423,20 @@ export async function streamM16BlindIncidenceFromCaptures(input: {
     captureHours,
     marketsObserved,
     prehistoryCompleteMarkets,
-    leftTruncatedCount,
-    downCrossSetupCount,
-    preConfirmationWaterfallAbortCount,
+    leftTruncatedSideEventCount,
+    downCrossSetupSideEventCount,
+    preConfirmationWaterfallAbortSideEventCount,
     reversalConfirmedEntryCount,
     timeGateEligibleCount,
     structurallyCompletePostEntryPathCount,
     terminalCoverageCount,
     settlementCoverableCount,
-    clusterCount: clusterIds.size,
-    clusterUnit: "capture-session" as const,
+    descriptiveCaptureSessionCount: captureSessionIds.size,
+    descriptiveUtcDayCount: utcDays.size,
     usableFutureAnalysisEntryCount,
     incidencePerHour,
-    projectedCaptureHoursForTargetN,
-    feasibilityDisposition: disposition,
-    feasibilityRationale: rationale,
+    incidenceDisposition: disposition,
+    incidenceDispositionRationale: rationale,
     missingnessReasons: [...missingness].sort((a, b) => a.localeCompare(b)),
     quarantine: {
       holdoutAccessed: false as const,

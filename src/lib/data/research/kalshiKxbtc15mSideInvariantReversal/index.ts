@@ -10,9 +10,13 @@ export {
   M16_STRUCTURE_TICK_CENTS,
   M16_MIN_REMAINING_MS_AT_CONFIRMATION,
   M16_TARGET_BID_CENTS,
-  M16_CLUSTER_UNIT,
-  M16_TARGET_INDEPENDENT_TRADE_N,
-  M16_MAX_FUTURE_CAPTURE_BUDGET_HOURS,
+  M16_CONFIRMATORY_EVIDENCE_CONTRACT_STATUS,
+  M16_DEPENDENCE_INFERENCE_PLAN_STATUS,
+  M16_ECONOMIC_OUTCOME_OPEN_AUTHORIZED,
+  M16_OUTCOME_OPEN_BLOCKER_EVIDENCE_CONTRACT,
+  M16_OUTCOME_OPEN_BLOCKER_DEPENDENCE_PLAN,
+  M16_OUTCOME_OPEN_BLOCKER_FEE_UNRESOLVED,
+  M16_OUTCOME_OPEN_BLOCKER_COHORT_UNSEALED,
   M16_FORBIDDEN_M14_VALIDATION_RUN_IDS,
   M16_FORBIDDEN_M14_EXCLUDED_RUN_ID,
   M16_FORBIDDEN_M15_COST_FLOOR_RUN_ID,
@@ -22,13 +26,14 @@ export {
   type M16CandidateSide,
   type M16CaptureDescriptor,
   type M16FeeContractBinding,
-  type M16IncidenceFeasibility,
+  type M16IncidenceDisposition,
 } from "./m16Types";
 
 export {
   assertM16FeeContractMatches,
-  assertM16RejectsReducedIndexForBoundContract,
+  assertM16FeeContractUnresolvedForOutcomeOpen,
   computeM16OneContractTakerFeeCents,
+  computeM16ProvisionalStandardTakerFeeCentsForUtility,
 } from "./m16FeeApplication";
 
 export {
@@ -52,9 +57,7 @@ export {
 } from "./m16StateMachine";
 
 export {
-  approximateNForMeanDetectability,
-  buildM16SampleSizePlan,
-  decideM16IncidenceFeasibility,
+  decideM16IncidenceDisposition,
 } from "./m16SampleSizePlanning";
 
 export {
@@ -73,6 +76,12 @@ export {
 } from "./assertM16RejectsContaminatedCaptures";
 
 export { assertM16BlindIncidenceHasNoOutcomeFields } from "./assertM16BlindNoPnl";
+
+export {
+  assertM16EconomicOutcomeOpenUnauthorized,
+  evaluateM16OutcomeOpenAuthorization,
+  type M16OutcomeOpenAuthorization,
+} from "./m16OutcomeOpenGate";
 
 export {
   streamM16BlindIncidenceFromCaptures,

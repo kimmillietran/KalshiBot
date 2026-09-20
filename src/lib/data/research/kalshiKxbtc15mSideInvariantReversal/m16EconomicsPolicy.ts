@@ -1,5 +1,8 @@
 /**
  * Frozen eventual trade policy for M16 — DEFINE NOW, DO NOT EVALUATE in incidence.
+ *
+ * Scientific null (mean ≤ 0) is sealed conceptually.
+ * Confirmatory decision procedure is UNSEALED — M16.1 required before outcome-open.
  */
 import {
   deriveNoBestAskCents,
@@ -11,6 +14,8 @@ import {
   M16_TARGET_BID_CENTS,
   M16ReversalError,
   type M16CandidateSide,
+  type M16ConfirmatoryDecisionProcedureStatus,
+  type M16ScientificEconomicNull,
 } from "./m16Types";
 
 export type M16TradePolicySpec = {
@@ -21,7 +26,10 @@ export type M16TradePolicySpec = {
   settlementFallback:
     "repository-forwardSettlementJoin-only-when-terminal-flatten-unavailable";
   primaryEventualEstimand: "mean-one-contract-fee-adjusted-executable-pnl";
-  falsificationRule: "mean-fee-adjusted-executable-pnl-leq-0-at-adequate-N-stops-family";
+  /** Conceptual null / non-edge region. Not an operable confirmatory test. */
+  scientificEconomicNull: M16ScientificEconomicNull;
+  /** Decision procedure intentionally unsealed in M16.0. */
+  confirmatoryDecisionProcedureStatus: M16ConfirmatoryDecisionProcedureStatus;
   midpointNeverUsedAsFill: true;
   noSearchedStopBuffer: true;
   noAbsolute15CentStop: true;
@@ -36,7 +44,9 @@ export function buildM16TradePolicySpec(): M16TradePolicySpec {
     settlementFallback:
       "repository-forwardSettlementJoin-only-when-terminal-flatten-unavailable",
     primaryEventualEstimand: "mean-one-contract-fee-adjusted-executable-pnl",
-    falsificationRule: "mean-fee-adjusted-executable-pnl-leq-0-at-adequate-N-stops-family",
+    scientificEconomicNull: "mean-fee-adjusted-executable-pnl-leq-0-is-non-edge",
+    confirmatoryDecisionProcedureStatus:
+      "UNSEALED-M16.1-REQUIRED-BEFORE-OUTCOME-OPEN",
     midpointNeverUsedAsFill: true,
     noSearchedStopBuffer: true,
     noAbsolute15CentStop: true,

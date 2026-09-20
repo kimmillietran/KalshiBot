@@ -4,17 +4,13 @@ import { stableStringify } from "@/lib/trading/config/hashConfig";
 
 import { buildM16FamilyDefinition } from "./buildM16FamilyDefinition";
 import {
+  M16_CONFIRMATORY_EVIDENCE_CONTRACT_STATUS,
+  M16_DEPENDENCE_INFERENCE_PLAN_STATUS,
+  M16_ECONOMIC_OUTCOME_OPEN_AUTHORIZED,
   M16_FORBIDDEN_INCIDENCE_FIELD_PATTERNS,
   M16_INCIDENCE_PLAN_VERSION,
-  M16_MAX_FUTURE_CAPTURE_BUDGET_HOURS,
-  M16_PLANNING_MEAN_EFFECTS_CENTS,
-  M16_PLANNING_SD_SCENARIOS_CENTS,
-  M16_PRIMARY_PLANNING_MEAN_EFFECT_CENTS,
-  M16_PRIMARY_PLANNING_SD_CENTS,
   M16_SUBFAMILY_ID,
-  M16_TARGET_INDEPENDENT_TRADE_N,
 } from "./m16Types";
-import { buildM16SampleSizePlan } from "./m16SampleSizePlanning";
 
 export type M16IncidencePlan = {
   planVersion: typeof M16_INCIDENCE_PLAN_VERSION;
@@ -22,13 +18,15 @@ export type M16IncidencePlan = {
   familyDefinitionIdentity: string;
   feeContractIdentity: string;
   mode: "pnl-blind-incidence-coverage-census";
+  milestoneScope: "m16.0-blind-incidence-characterization-only";
   allowedCensusFields: readonly string[];
   forbiddenEconomicFieldPatterns: readonly string[];
   selectedCaptureRole: "m16-blind-incidence";
-  maxFutureCaptureBudgetHours: typeof M16_MAX_FUTURE_CAPTURE_BUDGET_HOURS;
-  sampleSizePlanning: ReturnType<typeof buildM16SampleSizePlan>;
-  feasibilityRule:
-    "incidence-feasible-iff-projected-hours-to-target-N-leq-max-budget";
+  dispositionRule:
+    "incidence-characterized-iff-positive-time-gate-eligible-rate-observed";
+  confirmatoryEvidenceContractStatus: typeof M16_CONFIRMATORY_EVIDENCE_CONTRACT_STATUS;
+  dependenceInferencePlanStatus: typeof M16_DEPENDENCE_INFERENCE_PLAN_STATUS;
+  economicOutcomeOpenAuthorized: typeof M16_ECONOMIC_OUTCOME_OPEN_AUTHORIZED;
   outcomesOpened: false;
   economicExitsInspected: false;
   incidencePlanIdentity: string;
@@ -42,39 +40,35 @@ export function buildM16IncidencePlan(): M16IncidencePlan {
     familyDefinitionIdentity: family.familyDefinitionIdentity,
     feeContractIdentity: family.feeContract.feeContractIdentity,
     mode: "pnl-blind-incidence-coverage-census",
+    milestoneScope: "m16.0-blind-incidence-characterization-only",
     allowedCensusFields: [
       "captureRunIds",
       "captureHours",
       "marketsObserved",
       "prehistoryCompleteMarkets",
-      "leftTruncatedCount",
-      "downCrossSetupCount",
-      "preConfirmationWaterfallAbortCount",
+      "leftTruncatedSideEventCount",
+      "downCrossSetupSideEventCount",
+      "preConfirmationWaterfallAbortSideEventCount",
       "reversalConfirmedEntryCount",
       "timeGateEligibleCount",
       "structurallyCompletePostEntryPathCount",
       "terminalCoverageCount",
       "settlementCoverableCount",
-      "clusterCount",
+      "descriptiveCaptureSessionCount",
+      "descriptiveUtcDayCount",
       "incidencePerHour",
-      "projectedCaptureHoursForTargetN",
-      "feasibilityDisposition",
+      "incidenceDisposition",
       "missingnessReasons",
     ],
     forbiddenEconomicFieldPatterns: M16_FORBIDDEN_INCIDENCE_FIELD_PATTERNS.map(
       (re) => re.source,
     ),
     selectedCaptureRole: "m16-blind-incidence",
-    maxFutureCaptureBudgetHours: M16_MAX_FUTURE_CAPTURE_BUDGET_HOURS,
-    sampleSizePlanning: buildM16SampleSizePlan({
-      planningMeanEffectsCents: M16_PLANNING_MEAN_EFFECTS_CENTS,
-      planningSdScenariosCents: M16_PLANNING_SD_SCENARIOS_CENTS,
-      primaryMeanEffectCents: M16_PRIMARY_PLANNING_MEAN_EFFECT_CENTS,
-      primarySdCents: M16_PRIMARY_PLANNING_SD_CENTS,
-      targetIndependentTradeN: M16_TARGET_INDEPENDENT_TRADE_N,
-    }),
-    feasibilityRule:
-      "incidence-feasible-iff-projected-hours-to-target-N-leq-max-budget",
+    dispositionRule:
+      "incidence-characterized-iff-positive-time-gate-eligible-rate-observed",
+    confirmatoryEvidenceContractStatus: M16_CONFIRMATORY_EVIDENCE_CONTRACT_STATUS,
+    dependenceInferencePlanStatus: M16_DEPENDENCE_INFERENCE_PLAN_STATUS,
+    economicOutcomeOpenAuthorized: M16_ECONOMIC_OUTCOME_OPEN_AUTHORIZED,
     outcomesOpened: false,
     economicExitsInspected: false,
   };
