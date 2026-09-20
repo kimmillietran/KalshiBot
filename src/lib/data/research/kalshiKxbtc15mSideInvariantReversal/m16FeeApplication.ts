@@ -28,12 +28,9 @@ export function assertM16FeeContractMatches(expectedIdentity: string): M16FeeCon
   return bound;
 }
 
+/** Fail closed if the bound fee contract is not standard taker (includes reduced-index). */
 export function assertM16RejectsReducedIndexForBoundContract(): void {
-  const id = computeM16FeeContractIdentity();
-  const bound = assertM16FeeContractMatches(id);
-  if (bound.schedule === KALSHI_FEE_SCHEDULE_VARIANT.REDUCED_INDEX) {
-    throw new M16ReversalError("M16 bound contract must not be reduced-index");
-  }
+  assertM16FeeContractMatches(computeM16FeeContractIdentity());
 }
 
 /**
