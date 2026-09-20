@@ -25,14 +25,9 @@ import {
   evaluateM16OutcomeOpenAuthorization,
   isM16StructuralStop,
   isM16TargetBid,
-  M16_CONFIRMATORY_EVIDENCE_CONTRACT_STATUS,
-  M16_DEPENDENCE_INFERENCE_PLAN_STATUS,
   M16_ECONOMIC_OUTCOME_OPEN_AUTHORIZED,
   M16_FORBIDDEN_M14_VALIDATION_RUN_IDS,
   M16_FORBIDDEN_M15_COST_FLOOR_RUN_ID,
-  M16_OUTCOME_OPEN_BLOCKER_DEPENDENCE_PLAN,
-  M16_OUTCOME_OPEN_BLOCKER_EVIDENCE_CONTRACT,
-  M16_OUTCOME_OPEN_BLOCKER_FEE_UNRESOLVED,
   M16_SUBFAMILY_ID,
   M16ReversalError,
   stepM16MarketMachine,
@@ -96,7 +91,7 @@ describe("M16 complement economics", () => {
 });
 
 describe("M16 fee contract + outcome-open gate", () => {
-  it("fee unresolved for outcome-open; provisional utility helper only", () => {
+  it("M16.0 family fee remains unresolved utility; provisional helper only", () => {
     const bound = bindM16FeeContract();
     expect(bound.feeContractStatus).toBe("fee-contract-unresolved-for-outcome-open");
     expect(bound.authoritativeScheduleBound).toBe(false);
@@ -106,25 +101,17 @@ describe("M16 fee contract + outcome-open gate", () => {
     expect(computeM16ProvisionalStandardTakerFeeCentsForUtility(50)).toBe(2);
   });
 
-  it("outcome-open unauthorized with evidence/dependence/fee blockers", () => {
+  it("outcome-open unauthorized without collection progress", () => {
     const auth = evaluateM16OutcomeOpenAuthorization();
     expect(auth.authorized).toBe(false);
     expect(auth.economicOutcomeOpenAuthorized).toBe(false);
     expect(M16_ECONOMIC_OUTCOME_OPEN_AUTHORIZED).toBe(false);
-    expect(auth.confirmatoryEvidenceContractStatus).toBe(
-      M16_CONFIRMATORY_EVIDENCE_CONTRACT_STATUS,
-    );
-    expect(auth.dependenceInferencePlanStatus).toBe(
-      M16_DEPENDENCE_INFERENCE_PLAN_STATUS,
-    );
-    expect(auth.feeContractStatus).toBe("fee-contract-unresolved-for-outcome-open");
-    expect(auth.blockers).toContain(M16_OUTCOME_OPEN_BLOCKER_EVIDENCE_CONTRACT);
-    expect(auth.blockers).toContain(M16_OUTCOME_OPEN_BLOCKER_DEPENDENCE_PLAN);
-    expect(auth.blockers).toContain(M16_OUTCOME_OPEN_BLOCKER_FEE_UNRESOLVED);
+    expect(auth.blockers.length).toBeGreaterThan(0);
+    expect(auth.blockers).toContain("m16-accepted-capture-registry-empty");
     expect(() => assertM16EconomicOutcomeOpenUnauthorized()).not.toThrow();
   });
 
-  it("no N=96 confirmatory adequacy claim in sealed artifacts", () => {
+  it("no N=96 confirmatory adequacy claim in sealed M16.0 family artifacts", () => {
     const family = buildM16FamilyDefinition();
     const plan = buildM16IncidencePlan();
     const familyJson = JSON.stringify(family);

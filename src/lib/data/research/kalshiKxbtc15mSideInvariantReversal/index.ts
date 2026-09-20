@@ -78,9 +78,61 @@ export {
 export { assertM16BlindIncidenceHasNoOutcomeFields } from "./assertM16BlindNoPnl";
 
 export {
+  M16_EVIDENCE_ALPHA,
+  M16_EVIDENCE_CONTRACT_VERSION,
+  M16_EVIDENCE_MDE_CENTS,
+  M16_EVIDENCE_PLANNING_SD_CENTS,
+  M16_EVIDENCE_SIDEDNESS,
+  M16_EVIDENCE_TARGET_POWER,
+  M16_H0,
+  M16_H1,
+  buildM16EvidenceContract,
+  computeM16IidBaselineTradeN,
+  type M16EvidenceContract,
+  type M16ValidationVerdictStatus,
+} from "./m16EvidenceContract";
+
+export {
+  M16_DEPENDENCE_PLAN_VERSION,
+  M16_MIN_UTC_DAY_CLUSTERS,
+  buildM16DependencePlan,
+  designEffect,
+  m16UtcDayKey,
+  type M16DependencePlan,
+} from "./m16DependencePlan";
+
+export {
+  M16_AUTHORITATIVE_FEE_CONTRACT_VERSION,
+  M16_KXBTC15M_FEE_ATTESTATION,
+  assertM16AuthoritativeFeeMatches,
+  assertM16SeriesFeeMatchesAttestation,
+  buildM16AuthoritativeFeeContract,
+  computeM16AuthoritativeOneContractTakerFeeCents,
+  type M16AuthoritativeFeeContract,
+} from "./m16AuthoritativeFeeContract";
+
+export {
+  M16_BLIND_INCIDENCE_RATE_PER_HOUR,
+  M16_COHORT_PLAN_VERSION,
+  M16_FORBIDDEN_INCIDENCE_RUN_IDS,
+  M16_MAX_ACCEPTED_CAPTURE_HOURS,
+  M16_MAX_SEGMENT_DURATION_MINUTES,
+  M16_STANDARD_SEGMENT_DURATION_MINUTES,
+  M16_VALIDATION_ROLE,
+  buildM16ProspectiveCohortPlan,
+  decideM16BlindCollectionStopping,
+  type M16BlindCollectionProgress,
+  type M16CollectionStoppingDisposition,
+  type M16ProspectiveCohortPlan,
+} from "./m16ProspectiveCohortPlan";
+
+export {
+  M16_OUTCOME_OPEN_BLOCKERS,
+  assertM16ConfirmatoryCaptureAllowed,
   assertM16EconomicOutcomeOpenUnauthorized,
   evaluateM16OutcomeOpenAuthorization,
   type M16OutcomeOpenAuthorization,
+  type M16OutcomeOpenEvaluationInput,
 } from "./m16OutcomeOpenGate";
 
 export {
@@ -89,9 +141,15 @@ export {
 } from "./streamM16BlindIncidence";
 
 export {
+  serializeM16AuthoritativeFeeContractJson,
   serializeM16BlindIncidenceReportJson,
+  serializeM16DependencePlanJson,
+  serializeM16EvidenceContractJson,
   serializeM16FamilyDefinitionJson,
   serializeM16IncidencePlanJson,
+  serializeM16OutcomeOpenStatusJson,
+  serializeM16ProspectiveCohortPlanJson,
 } from "./serializeM16Artifacts";
 
 export { parseM16Argv, type ParsedM16Argv } from "./parseM16Argv";
+export { parseM161Argv, type ParsedM161Argv } from "./parseM161Argv";
