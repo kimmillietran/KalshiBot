@@ -96,6 +96,7 @@
     "research:kalshi-tob-momentum-discovery": "tsx scripts/research/buildKalshiTobMomentumDiscovery.ts",
     "research:momentum-evidence-contract": "tsx scripts/research/buildMomentumEvidenceContract.ts",
     "research:momentum-validation-real": "tsx scripts/research/runGovernedRealCaptureMomentumValidation.ts",
+    "research:m15-taker-cost-floor": "tsx scripts/research/runM15TakerCostFloorStudy.ts",
     "research:executable-confirmation-design": "tsx scripts/research/buildExecutableConfirmationDesign.ts",
     "research:parity-near-miss-analysis": "tsx scripts/research/buildParityNearMissAnalysis.ts",
     "research:btc-kalshi-lead-lag-analysis": "tsx scripts/research/buildBtcKalshiLeadLagAnalysis.ts",

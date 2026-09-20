@@ -1,5 +1,18 @@
 # M14.0c governed real-capture validation outcome executor
 
+## M14 CLOSED
+
+```
+M14 = CLOSED — VALIDATION FAILED — NO HOLDOUT
+```
+
+Final status: `validation-failed` / `nextAction = stop-lineage`.
+
+There will be no M14 HOLDOUT, no subgroup rescue, no spread-filter rescue,
+no alternate W/X/H, no reversal, and no reuse of M14 validation events for
+strategy design. The next program step is M15 (taker cost-floor feasibility),
+not another momentum hypothesis.
+
 ## Why this exists
 
 Merged M14.0c can evaluate the locked TRAIN candidate when supplied
