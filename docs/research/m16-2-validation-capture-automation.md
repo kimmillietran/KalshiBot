@@ -114,12 +114,16 @@ Expected burden ≈ **33 calendar days** at ~8.25 trades/4h day — not guarante
 
 ## Scheduler
 
-`--enable-scheduler` writes a launchd plist template with `TZ=UTC` and
-`StartCalendarInterval` Hour=18 Minute=0, invoking
-`scripts/shell/run-m16-validation-daily.sh` (env source + caffeinate + live gate).
-No machine home paths or secrets are committed.
-`--install-scheduler` performs `launchctl bootstrap` with an absolute REPO_ROOT.
-Installation remains operator-driven on this machine after merge.
+`--enable-scheduler` writes a launchd plist with `TZ=UTC` (child runner clock
+only) and **dual local** `StartCalendarInterval` Hours **10** and **11** (Minute=0),
+invoking `scripts/shell/run-m16-validation-daily.sh` (env source + caffeinate +
+live gate). See `docs/research/m16-2b-scheduler-dst-correction.md`.
+
+Child `TZ=UTC` does **not** make calendar Hour UTC. The runner UTC gate remains
+authoritative for 18:00–22:00Z. `--install-scheduler` performs
+`launchctl bootstrap` with an absolute REPO_ROOT. `--status` reports
+`schedulerDiagnostics` (`loaded` vs `verifiedFired`, runs, last exit, wrapper
+last invocation).
 
 ## Safety
 
