@@ -45,6 +45,7 @@ import {
   createEmptyM16ValidationRegistry,
   createM16ValidationReservation,
   decideM16BlindCollectionStopping,
+  diagnoseM16ValidationScheduler,
   disableM16ValidationScheduler,
   enableM16ValidationScheduler,
   evaluateM16LaunchWindow,
@@ -55,9 +56,14 @@ import {
   healthyZeroSignalAcceptedMinutes,
   isM16LiveCaptureAllowed,
   m16GovernedWindowForUtcDay,
+  m16PdtLocalHourMapsToScientificStart,
+  m16PstLocalHourMapsToScientificStart,
+  mapCaliforniaLocalHourToUtcHour,
   nextM16GovernedCaptureStart,
   parseDfAvailableKilobytes,
+  parseM16LaunchctlPrintDiagnostics,
   parseM162Argv,
+  readM16WrapperLastInvocationIso,
   recoverM16ValidationCycle,
   registerAcceptedSegment,
   registerExcludedSegment,
@@ -594,11 +600,16 @@ describe("M16.2 lock / preflight / lifecycle", () => {
 describe("M16.2 scheduler + argv + role", () => {
   it("32–35. plist UTC 18:00; enable/disable state; argv; researchRole", () => {
     const plist = generateM16ValidationLaunchdPlist({});
-    expect(plist).toContain("<integer>18</integer>");
+    expect(plist).toContain("<integer>10</integer>");
+    expect(plist).toContain("<integer>11</integer>");
     expect(plist).toContain("<integer>0</integer>");
     expect(plist).toContain("<string>UTC</string>");
     expect(plist).toContain("REPO_ROOT");
     expect(plist).toContain("scripts/shell/run-m16-validation-daily.sh");
+    expect(plist).toMatch(/<key>StartCalendarInterval<\/key>\s*<array>/);
+    expect(plist).not.toMatch(
+      /<key>StartCalendarInterval<\/key>\s*<dict>[\s\S]*?<integer>18<\/integer>/,
+    );
     expect(plist).not.toMatch(/BEGIN (RSA |EC )?PRIVATE KEY/);
     expect(plist).not.toMatch(/\/Users\//);
 
@@ -778,9 +789,10 @@ describe("M16.1b California daytime window amendment", () => {
     );
   });
 
-  it("57. scheduler Hour=18 TZ=UTC; no live capture in tests", () => {
+  it("57. scheduler dual local Hours 10+11; TZ=UTC child-only; no live capture in tests", () => {
     const plist = generateM16ValidationLaunchdPlist({});
-    expect(plist).toMatch(/<key>Hour<\/key>\s*<integer>18<\/integer>/);
+    expect(plist).toMatch(/<key>Hour<\/key>\s*<integer>10<\/integer>/);
+    expect(plist).toMatch(/<key>Hour<\/key>\s*<integer>11<\/integer>/);
     expect(plist).toMatch(/<key>TZ<\/key>\s*<string>UTC<\/string>/);
     expect(M16_LAUNCH_TOLERANCE_BEFORE_MS).toBe(5 * 60 * 1000);
     expect(M16_LAUNCH_TOLERANCE_AFTER_MS).toBe(5 * 60 * 1000);
@@ -1056,5 +1068,156 @@ describe("M16.2a live wiring + admit + recovery", () => {
     expect(() => assertM16SchedulerPlistHasNoSecrets(plist)).not.toThrow();
     expect(plist).toContain("run-m16-validation-daily.sh");
     expect(plist).not.toContain("M16_VALIDATION_ALLOW_LIVE_CAPTURE");
+  });
+});
+
+describe("M16.2b California dual local launchd triggers", () => {
+  it("PDT/PST local hours map to 18:00Z; nonmatching hours do not", () => {
+    expect(m16PdtLocalHourMapsToScientificStart(11)).toBe(true);
+    expect(m16PdtLocalHourMapsToScientificStart(10)).toBe(false);
+    expect(m16PstLocalHourMapsToScientificStart(10)).toBe(true);
+    expect(m16PstLocalHourMapsToScientificStart(11)).toBe(false);
+    expect(mapCaliforniaLocalHourToUtcHour({
+      localHour: 11,
+      offsetHoursWestOfUtc: 7,
+    })).toBe(18);
+    expect(mapCaliforniaLocalHourToUtcHour({
+      localHour: 10,
+      offsetHoursWestOfUtc: 8,
+    })).toBe(18);
+  });
+
+  it("nonmatching UTC instants exit without launch (PDT 10:00 / PST 11:00)", async () => {
+    // PDT 10:00 local = 17:00Z → too-early (before 17:55)
+    const pdtEarly = evaluateM16LaunchWindow(
+      Date.parse("2026-07-15T17:00:00.000Z"),
+    );
+    expect(pdtEarly.status).toBe("too-early");
+
+    // PST 11:00 local = 19:00Z → missed-window
+    const pstLate = evaluateM16LaunchWindow(
+      Date.parse("2026-01-15T19:00:00.000Z"),
+    );
+    expect(pstLate.status).toBe("missed-window");
+
+    let launcherCalls = 0;
+    const earlyCycle = await runM16ValidationDailyCycle({
+      loadRegistry: () => makeRegistry(),
+      saveRegistry: () => {},
+      loadAttempts: () => [],
+      saveAttempts: () => {},
+      lockPath: "/tmp/m16-2b-early.lock",
+      lockIo: {
+        existsSync: () => false,
+        readFileSync: () => "",
+        writeFileSync: () => {},
+        unlinkSync: () => {},
+        mkdirSync: () => {},
+        pidIsAlive: () => false,
+        currentPid: () => 3,
+        nowIso: () => "2026-07-15T17:00:00.000Z",
+      },
+      nowMs: () => Date.parse("2026-07-15T17:00:00.000Z"),
+      dryRun: false,
+      captureLauncher: async () => {
+        launcherCalls += 1;
+        throw new Error("must not launch");
+      },
+    });
+    expect(earlyCycle.captureLaunched).toBe(false);
+    expect(earlyCycle.captureNotLaunchedReason).toBe("too-early");
+    expect(launcherCalls).toBe(0);
+
+    const lateCycle = await runM16ValidationDailyCycle({
+      loadRegistry: () => makeRegistry(),
+      saveRegistry: () => {},
+      loadAttempts: () => [],
+      saveAttempts: () => {},
+      lockPath: "/tmp/m16-2b-late.lock",
+      lockIo: {
+        existsSync: () => false,
+        readFileSync: () => "",
+        writeFileSync: () => {},
+        unlinkSync: () => {},
+        mkdirSync: () => {},
+        pidIsAlive: () => false,
+        currentPid: () => 4,
+        nowIso: () => "2026-01-15T19:00:00.000Z",
+      },
+      nowMs: () => Date.parse("2026-01-15T19:00:00.000Z"),
+      dryRun: false,
+      captureLauncher: async () => {
+        launcherCalls += 1;
+        throw new Error("must not launch");
+      },
+    });
+    expect(lateCycle.captureLaunched).toBe(false);
+    expect(lateCycle.captureNotLaunchedReason).toBe("missed-window");
+    expect(launcherCalls).toBe(0);
+    expect(buildM16ScientificProtocolIdentity()).toBe(
+      "1aa47e106a069dad466e2e338ba4b50000fd52eeaac482239544e20161f5a824",
+    );
+  });
+
+  it("diagnostics distinguish loaded vs verifiedFired; parse launchctl + wrapper log", () => {
+    const parsed = parseM16LaunchctlPrintDiagnostics(`
+gui/501/com.kalshibot.m16-validation-collection = {
+	runs = 0
+	last exit code = (never exited)
+}
+`);
+    expect(parsed.loaded).toBe(true);
+    expect(parsed.runs).toBe(0);
+    expect(parsed.lastExitStatus).toBe("(never exited)");
+
+    const fired = parseM16LaunchctlPrintDiagnostics(`
+com.kalshibot.m16-validation-collection = {
+	runs = 3
+	last exit code = 0
+}
+`);
+    expect(fired.runs).toBe(3);
+    expect(fired.lastExitStatus).toBe("0");
+
+    const mem = new Map<string, string>();
+    mem.set(
+      "data/research-results/m16-validation-collection/scheduler/wrapper.log",
+      "M16.2b launch 2026-09-22T17-55-01Z repo=/repo caffeinate=1 live=1\n",
+    );
+    const last = readM16WrapperLastInvocationIso({
+      registryDir: "data/research-results/m16-validation-collection",
+      io: {
+        existsSync: (p) => mem.has(p),
+        readFileSync: (p) => mem.get(p)!,
+        writeFileSync: () => {},
+        mkdirSync: () => {},
+        nowIso: () => "2026-09-22T00:00:00.000Z",
+      },
+    });
+    expect(last).toBe("2026-09-22T17:55:01.000Z");
+
+    const diag = diagnoseM16ValidationScheduler({
+      registryDir: "data/research-results/m16-validation-collection",
+      io: {
+        existsSync: (p) => mem.has(p),
+        readFileSync: (p) => mem.get(p)!,
+        writeFileSync: () => {},
+        mkdirSync: () => {},
+        nowIso: () => "2026-09-22T00:00:00.000Z",
+        spawnSync: () => ({
+          status: 0,
+          stdout:
+            "com.kalshibot.m16-validation-collection = {\n\truns = 0\n"
+            + "\tlast exit code = (never exited)\n}\n",
+          stderr: "",
+        }),
+      },
+    });
+    expect(diag.loaded).toBe(true);
+    expect(diag.verifiedFired).toBe(false);
+    expect(diag.launchctlRuns).toBe(0);
+    expect(diag.triggerHoursLocal).toEqual([10, 11]);
+    expect(diag.scientificWindowUtc).toBe("18:00-22:00Z");
+    expect(diag.calendarUsesLocalClock).toBe(true);
   });
 });

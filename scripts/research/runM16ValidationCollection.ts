@@ -31,6 +31,7 @@ import {
   runM16ValidationDailyCycle,
   statusM16ValidationCycle,
   statusM16ValidationScheduler,
+  diagnoseM16ValidationScheduler,
   uninstallM16ValidationLaunchd,
   type M16ValidationAttemptRecord,
   type M16ValidationRegistry,
@@ -147,6 +148,9 @@ export async function runM16ValidationCollectionCommand(
     if (parsed.mode === "status") {
       const status = statusM16ValidationCycle(io);
       const sched = statusM16ValidationScheduler({ registryDir: parsed.registryDir });
+      const diagnostics = diagnoseM16ValidationScheduler({
+        registryDir: parsed.registryDir,
+      });
       saveJson(progressPath, status.progress);
       process.stdout.write(
         formatOperatorProgressText(status.progress, {
@@ -158,6 +162,7 @@ export async function runM16ValidationCollectionCommand(
         nextStart: status.nextStart,
         launch: status.launch,
         scheduler: sched,
+        schedulerDiagnostics: diagnostics,
         scientificProtocolIdentity: buildM16ScientificProtocolIdentity(),
         outcomesOpened: false,
       })}\n`);
