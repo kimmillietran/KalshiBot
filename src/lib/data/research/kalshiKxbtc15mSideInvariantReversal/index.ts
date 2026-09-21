@@ -237,6 +237,7 @@ export {
 } from "./m16ValidationReservation";
 
 export {
+  appendM16ValidationReservation,
   computeM16ValidationProgress,
   createEmptyM16ValidationRegistry,
   failedSegmentAcceptedMinutes,

@@ -350,6 +350,30 @@ export function registerAcceptedSegment(
   return { ...base, registryIdentity: recomputeRegistryIdentity(base) };
 }
 
+export function appendM16ValidationReservation(
+  registry: M16ValidationRegistry,
+  reservation: M16ValidationReservation,
+): M16ValidationRegistry {
+  if (
+    registry.reservations.some(
+      (r) => r.reservationIdentity === reservation.reservationIdentity,
+    )
+  ) {
+    return registry;
+  }
+  assertAuthorityCompatible(registry, reservation.authority);
+  const base = {
+    protocolVersion: registry.protocolVersion,
+    authority: registry.authority,
+    planFreezeTimestampIso: registry.planFreezeTimestampIso,
+    accepted: registry.accepted,
+    excluded: registry.excluded,
+    reservations: [...registry.reservations, reservation],
+    attempts: registry.attempts,
+  };
+  return { ...base, registryIdentity: recomputeRegistryIdentity(base) };
+}
+
 export function registerExcludedSegment(
   registry: M16ValidationRegistry,
   input: {

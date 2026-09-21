@@ -14,6 +14,7 @@ import { dirname, join } from "node:path";
 
 import { publishResearchArtifactsAtomically } from "@/lib/data/research/calibrationFadeForwardValidation/publishResearchArtifactsAtomically";
 import {
+  appendM16ValidationReservation,
   buildM16ScientificProtocolIdentity,
   buildM16ValidationAuthorityBinding,
   createEmptyM16ValidationRegistry,
@@ -169,18 +170,9 @@ export async function runM16ValidationCollectionCommand(
     // --run-daily
     const result = await runM16ValidationDailyCycle(io, nowMs);
     if (result.reservation) {
-      const registry = loadRegistry();
-      if (
-        !registry.reservations.some(
-          (r) => r.reservationIdentity === result.reservation!.reservationIdentity,
-        )
-      ) {
-        saveRegistry({
-          ...registry,
-          reservations: [...registry.reservations, result.reservation],
-          registryIdentity: registry.registryIdentity,
-        });
-      }
+      saveRegistry(
+        appendM16ValidationReservation(loadRegistry(), result.reservation),
+      );
     }
     saveJson(progressPath, result.progress);
     process.stdout.write(`${stableStringify({

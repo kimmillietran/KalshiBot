@@ -22,6 +22,7 @@ import {
   M16_VALIDATION_ROLE,
   M16ValidationCollectionError,
   acquireM16ValidationRunnerLock,
+  appendM16ValidationReservation,
   assertM16CaptureNotContaminated,
   assertNoConflictingActiveReservation,
   buildM16ScientificProtocolIdentity,
@@ -627,5 +628,20 @@ describe("M16.2 registry identity deterministic", () => {
     expect(a.reservations[0]?.reservationIdentity).toBe(
       b.reservations[0]?.reservationIdentity,
     );
+  });
+
+  it("37. reservation-only append recomputes registryIdentity", () => {
+    const base = makeRegistry();
+    const reservation = createM16ValidationReservation({
+      plannedUtcDay: "2026-09-21",
+      createdAt: "2026-09-21T12:00:00.000Z",
+      authority: base.authority,
+    });
+    const updated = appendM16ValidationReservation(base, reservation);
+    expect(updated.reservations).toHaveLength(1);
+    expect(updated.registryIdentity).not.toBe(base.registryIdentity);
+    expect(
+      appendM16ValidationReservation(updated, reservation).registryIdentity,
+    ).toBe(updated.registryIdentity);
   });
 });
