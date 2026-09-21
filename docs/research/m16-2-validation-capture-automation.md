@@ -75,10 +75,16 @@ Live capture requires explicit env:
 `M16_VALIDATION_ALLOW_LIVE_CAPTURE=1`
 
 Without it, `--run-daily` may create a reservation / dry-run but will **not**
-launch websockets. First real capture only after merge + operator enable.
+launch websockets.
 
-On macOS, wrap long captures with `caffeinate` so sleep does not interrupt the
-4h window (operational only — not scientific).
+**M16.2a** wires the canonical KXBTC15M forward-quote launcher, automatic health
+audit + blind admit, crash recovery, and the launchd wrapper
+(`scripts/shell/run-m16-validation-daily.sh`) with `caffeinate`. See
+`docs/research/m16-2a-wire-validation-capture.md`.
+
+On macOS, the wrapper uses `caffeinate` so idle sleep does not interrupt the
+4h window (operational only — not scientific). It does **not** boot a powered-off
+machine and does **not** authorize a missed late wake.
 
 ## Zero-signal vs failed
 
@@ -109,8 +115,11 @@ Expected burden ≈ **33 calendar days** at ~8.25 trades/4h day — not guarante
 ## Scheduler
 
 `--enable-scheduler` writes a launchd plist template with `TZ=UTC` and
-`StartCalendarInterval` Hour=18 Minute=0. No machine home paths are committed.
-Installation (`launchctl load`) is explicit and operator-driven.
+`StartCalendarInterval` Hour=18 Minute=0, invoking
+`scripts/shell/run-m16-validation-daily.sh` (env source + caffeinate + live gate).
+No machine home paths or secrets are committed.
+`--install-scheduler` performs `launchctl bootstrap` with an absolute REPO_ROOT.
+Installation remains operator-driven on this machine after merge.
 
 ## Safety
 

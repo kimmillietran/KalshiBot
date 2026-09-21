@@ -146,11 +146,23 @@ export type M16ValidationExcludedSegment = {
   outcomesOpened: false;
 };
 
+export type M16ValidationCaptureLauncherResult = {
+  runId: string;
+  captureRunDir: string;
+  captureIdentityHash: string;
+  captureStartIso: string;
+  captureEndIso: string;
+};
+
 export type M16ValidationAttemptRecord = {
   attemptId: string;
   plannedUtcDay: string;
   reservationIdentity: string | null;
   runId: string | null;
+  /** Operational recovery pointers — not scientific authority. */
+  captureRunDir?: string | null;
+  captureIdentityHash?: string | null;
+  healthArtifactIdentity?: string | null;
   status:
     | "reservation-only"
     | "capture-pending"

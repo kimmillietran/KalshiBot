@@ -194,6 +194,7 @@ export {
   type M16ValidationAttemptRecord,
   type M16ValidationAuthorityBinding,
   type M16ValidationBlindIncidence,
+  type M16ValidationCaptureLauncherResult,
   type M16ValidationExcludedSegment,
   type M16ValidationProgress,
   type M16ValidationRegistry,
@@ -274,7 +275,6 @@ export {
   recoverM16ValidationCycle,
   runM16ValidationDailyCycle,
   statusM16ValidationCycle,
-  type M16ValidationCaptureLauncherResult,
   type M16ValidationDailyCycleIo,
   type M16ValidationDailyCycleResult,
   type M16ValidationRecoverResult,
@@ -283,10 +283,15 @@ export {
 export {
   M16_VALIDATION_SCHEDULER_LABEL,
   M16_VALIDATION_SCHEDULER_STATE_DIR_REL,
+  M16_VALIDATION_DAILY_WRAPPER_REL,
+  assertM16SchedulerPlistHasNoSecrets,
   disableM16ValidationScheduler,
   enableM16ValidationScheduler,
   generateM16ValidationLaunchdPlist,
+  installM16ValidationLaunchd,
+  queryM16ValidationLaunchdLoaded,
   statusM16ValidationScheduler,
+  uninstallM16ValidationLaunchd,
   type M16ValidationSchedulerIo,
   type M16ValidationSchedulerState,
 } from "./m16ValidationScheduler";
@@ -294,3 +299,23 @@ export {
 export { formatOperatorProgressText } from "./m16ValidationProgressReport";
 
 export { parseM162Argv, type ParsedM162Argv } from "./parseM162Argv";
+
+export {
+  M16_CANONICAL_CAPTURE_SERIES,
+  M16_VALIDATION_ALLOW_LIVE_CAPTURE_ENV,
+  buildM16CanonicalForwardQuoteCaptureConfig,
+  isM16LiveCaptureAllowed,
+  launchM16CanonicalForwardQuoteCapture,
+} from "./m16CanonicalCaptureLauncher";
+
+export {
+  M16_VALIDATION_HEALTH_MIN_DURATION_SECONDS,
+  auditM16ValidationCaptureHealth,
+} from "./m16ValidationHealthGate";
+
+export { admitM16ValidationCaptureAfterHealth } from "./m16ValidationAdmitPipeline";
+
+export {
+  getFreeDiskBytesForPath,
+  parseDfAvailableKilobytes,
+} from "./m16ValidationDisk";

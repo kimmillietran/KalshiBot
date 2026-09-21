@@ -1,5 +1,5 @@
 /**
- * M16.2 launchd scheduler helpers — templates + local state only.
+ * M16.2a launchd scheduler helpers — templates + local install/enable.
  * Install via launchctl is explicit/operator-driven; tests never require it.
  */
 import {
@@ -8,7 +8,8 @@ import {
   readFileSync,
   writeFileSync,
 } from "node:fs";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
+import { spawnSync } from "node:child_process";
 
 import { M16ValidationCollectionError } from "./m16ValidationCohortTypes";
 
@@ -18,11 +19,15 @@ export const M16_VALIDATION_SCHEDULER_LABEL =
 export const M16_VALIDATION_SCHEDULER_STATE_DIR_REL =
   "data/research-results/m16-validation-collection/scheduler" as const;
 
+export const M16_VALIDATION_DAILY_WRAPPER_REL =
+  "scripts/shell/run-m16-validation-daily.sh" as const;
+
 export type M16ValidationSchedulerState = {
   enabled: boolean;
   label: typeof M16_VALIDATION_SCHEDULER_LABEL;
   updatedAtIso: string;
   plistPath: string | null;
+  loaded: boolean;
   note: string;
 };
 
@@ -32,6 +37,10 @@ export type M16ValidationSchedulerIo = {
   writeFileSync: (path: string, data: string, encoding: "utf8") => void;
   mkdirSync: (path: string, opts?: { recursive?: boolean }) => void;
   nowIso: () => string;
+  spawnSync?: (
+    command: string,
+    args: readonly string[],
+  ) => { status: number | null; stdout: string; stderr: string };
 };
 
 const DEFAULT_IO: M16ValidationSchedulerIo = {
@@ -42,21 +51,29 @@ const DEFAULT_IO: M16ValidationSchedulerIo = {
     mkdirSync(path, opts);
   },
   nowIso: () => new Date().toISOString(),
+  spawnSync: (command, args) => {
+    const result = spawnSync(command, [...args], { encoding: "utf8" });
+    return {
+      status: result.status,
+      stdout: result.stdout ?? "",
+      stderr: result.stderr ?? "",
+    };
+  },
 };
 
 /**
  * Generate launchd plist content.
- * Uses REPO_ROOT placeholder — no machine-specific home paths.
- * StartCalendarInterval Hour=18 Minute=0 (UTC when TZ=UTC in the job env).
+ * Invokes the repo wrapper (sources env + caffeinate + live gate).
+ * No secrets embedded. TZ=UTC. Hour=18 Minute=0.
  */
 export function generateM16ValidationLaunchdPlist(input: {
   label?: string;
   repoRootPlaceholder?: string;
-  npmScript?: string;
+  wrapperRelPath?: string;
 }): string {
   const label = input.label ?? M16_VALIDATION_SCHEDULER_LABEL;
   const repo = input.repoRootPlaceholder ?? "REPO_ROOT";
-  const script = input.npmScript ?? "research:m16-validation-collection";
+  const wrapper = input.wrapperRelPath ?? M16_VALIDATION_DAILY_WRAPPER_REL;
   return `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -72,12 +89,8 @@ export function generateM16ValidationLaunchdPlist(input: {
   </dict>
   <key>ProgramArguments</key>
   <array>
-    <string>/usr/bin/env</string>
-    <string>npm</string>
-    <string>run</string>
-    <string>${script}</string>
-    <string>--</string>
-    <string>--run-daily</string>
+    <string>/bin/bash</string>
+    <string>${repo}/${wrapper}</string>
   </array>
   <key>StartCalendarInterval</key>
   <dict>
@@ -95,6 +108,25 @@ export function generateM16ValidationLaunchdPlist(input: {
 `;
 }
 
+/** Assert generated plist has no secret-like material. */
+export function assertM16SchedulerPlistHasNoSecrets(plist: string): void {
+  if (/KALSHI_API_KEY_ID\s*=\s*[^\s<]+/.test(plist) && !plist.includes("EnvironmentVariables")) {
+    // Allow TZ only; reject embedded key material patterns.
+  }
+  if (/BEGIN (RSA |EC )?PRIVATE KEY/.test(plist)) {
+    throw new M16ValidationCollectionError("plist must not embed private keys");
+  }
+  if (/api[_-]?key[_-]?id\s*[:=]\s*['\"]?[a-zA-Z0-9_-]{8,}/i.test(plist)) {
+    throw new M16ValidationCollectionError("plist must not embed API key ids");
+  }
+  if (!plist.includes("<string>UTC</string>")) {
+    throw new M16ValidationCollectionError("plist must set TZ=UTC");
+  }
+  if (!plist.includes("<integer>18</integer>")) {
+    throw new M16ValidationCollectionError("plist must trigger Hour=18");
+  }
+}
+
 function statePath(registryDir: string): string {
   return join(registryDir, "scheduler", "state.json");
 }
@@ -103,14 +135,31 @@ function plistPath(registryDir: string): string {
   return join(registryDir, "scheduler", `${M16_VALIDATION_SCHEDULER_LABEL}.plist`);
 }
 
+function writeState(
+  registryDir: string,
+  state: M16ValidationSchedulerState,
+  io: M16ValidationSchedulerIo,
+): void {
+  io.mkdirSync(dirname(statePath(registryDir)), { recursive: true });
+  io.writeFileSync(
+    statePath(registryDir),
+    `${JSON.stringify(state, null, 2)}\n`,
+    "utf8",
+  );
+}
+
 export function enableM16ValidationScheduler(input: {
   registryDir: string;
   io?: M16ValidationSchedulerIo;
-  /** Optional absolute Label / plist install path hint (not required for tests). */
+  repoRoot?: string;
   labelInstallPath?: string | null;
 }): M16ValidationSchedulerState {
   const io = input.io ?? DEFAULT_IO;
-  const plistContent = generateM16ValidationLaunchdPlist({});
+  const repo = input.repoRoot ?? "REPO_ROOT";
+  const plistContent = generateM16ValidationLaunchdPlist({
+    repoRootPlaceholder: repo,
+  });
+  assertM16SchedulerPlistHasNoSecrets(plistContent);
   const outPlist = plistPath(input.registryDir);
   io.mkdirSync(dirname(outPlist), { recursive: true });
   io.writeFileSync(outPlist, plistContent, "utf8");
@@ -119,11 +168,12 @@ export function enableM16ValidationScheduler(input: {
     label: M16_VALIDATION_SCHEDULER_LABEL,
     updatedAtIso: io.nowIso(),
     plistPath: input.labelInstallPath ?? outPlist,
+    loaded: false,
     note:
-      "Local state only. Install is explicit: copy plist and run launchctl load. "
-      + "Replace REPO_ROOT before install. Do not commit machine home paths.",
+      "Local state enabled. Use installM16ValidationLaunchd for launchctl load. "
+      + "Wrapper sources load-kalshi-env.sh + caffeinate; no secrets in plist.",
   };
-  io.writeFileSync(statePath(input.registryDir), `${JSON.stringify(state, null, 2)}\n`, "utf8");
+  writeState(input.registryDir, state, io);
   return state;
 }
 
@@ -138,10 +188,9 @@ export function disableM16ValidationScheduler(input: {
     enabled: false,
     updatedAtIso: io.nowIso(),
     note:
-      "Disabled in local state. Explicit launchctl unload is operator-driven.",
+      "Disabled in local state. Explicit launchctl bootout/unload is operator-driven.",
   };
-  io.mkdirSync(dirname(statePath(input.registryDir)), { recursive: true });
-  io.writeFileSync(statePath(input.registryDir), `${JSON.stringify(state, null, 2)}\n`, "utf8");
+  writeState(input.registryDir, state, io);
   return state;
 }
 
@@ -157,14 +206,103 @@ export function statusM16ValidationScheduler(input: {
       label: M16_VALIDATION_SCHEDULER_LABEL,
       updatedAtIso: io.nowIso(),
       plistPath: null,
+      loaded: false,
       note: "scheduler never enabled in this registry dir",
     };
   }
   try {
-    return JSON.parse(io.readFileSync(path, "utf8")) as M16ValidationSchedulerState;
+    const parsed = JSON.parse(io.readFileSync(path, "utf8")) as M16ValidationSchedulerState;
+    return {
+      ...parsed,
+      loaded: parsed.loaded ?? false,
+    };
   } catch {
     throw new M16ValidationCollectionError(
       `corrupt scheduler state at ${path}`,
     );
   }
+}
+
+/**
+ * Materialize absolute-path plist and launchctl bootstrap/load.
+ * Idempotent: bootout then bootstrap.
+ */
+export function installM16ValidationLaunchd(input: {
+  registryDir: string;
+  repoRoot: string;
+  io?: M16ValidationSchedulerIo;
+  uid?: number;
+}): M16ValidationSchedulerState {
+  const io = input.io ?? DEFAULT_IO;
+  const repoRoot = resolve(input.repoRoot);
+  const uid = input.uid ?? (typeof process.getuid === "function" ? process.getuid() : 501);
+  const domain = `gui/${uid}`;
+  const service = `${domain}/${M16_VALIDATION_SCHEDULER_LABEL}`;
+
+  const absPlist = resolve(plistPath(input.registryDir));
+  const plistContent = generateM16ValidationLaunchdPlist({
+    repoRootPlaceholder: repoRoot,
+  });
+  assertM16SchedulerPlistHasNoSecrets(plistContent);
+  io.mkdirSync(dirname(absPlist), { recursive: true });
+  io.writeFileSync(absPlist, plistContent, "utf8");
+
+  const spawn = io.spawnSync ?? DEFAULT_IO.spawnSync!;
+  // Best-effort unload of any prior instance.
+  spawn("launchctl", ["bootout", service]);
+  spawn("launchctl", ["unload", absPlist]);
+
+  const load = spawn("launchctl", ["bootstrap", domain, absPlist]);
+  if (load.status !== 0) {
+    // Fallback for older macOS.
+    const legacy = spawn("launchctl", ["load", "-w", absPlist]);
+    if (legacy.status !== 0) {
+      throw new M16ValidationCollectionError(
+        `launchctl install failed: ${load.stderr || legacy.stderr}`,
+      );
+    }
+  }
+  spawn("launchctl", ["enable", service]);
+
+  const state: M16ValidationSchedulerState = {
+    enabled: true,
+    label: M16_VALIDATION_SCHEDULER_LABEL,
+    updatedAtIso: io.nowIso(),
+    plistPath: absPlist,
+    loaded: true,
+    note:
+      `Installed via launchctl (${service}). UTC Hour=18. Wrapper uses caffeinate.`,
+  };
+  writeState(input.registryDir, state, io);
+  return state;
+}
+
+export function uninstallM16ValidationLaunchd(input: {
+  registryDir: string;
+  io?: M16ValidationSchedulerIo;
+  uid?: number;
+}): M16ValidationSchedulerState {
+  const io = input.io ?? DEFAULT_IO;
+  const uid = input.uid ?? (typeof process.getuid === "function" ? process.getuid() : 501);
+  const domain = `gui/${uid}`;
+  const service = `${domain}/${M16_VALIDATION_SCHEDULER_LABEL}`;
+  const absPlist = resolve(plistPath(input.registryDir));
+  const spawn = io.spawnSync ?? DEFAULT_IO.spawnSync!;
+  spawn("launchctl", ["bootout", service]);
+  spawn("launchctl", ["unload", absPlist]);
+  return disableM16ValidationScheduler(input);
+}
+
+export function queryM16ValidationLaunchdLoaded(input: {
+  io?: M16ValidationSchedulerIo;
+  uid?: number;
+}): boolean {
+  const io = input.io ?? DEFAULT_IO;
+  const uid = input.uid ?? (typeof process.getuid === "function" ? process.getuid() : 501);
+  const spawn = io.spawnSync ?? DEFAULT_IO.spawnSync!;
+  const result = spawn("launchctl", [
+    "print",
+    `gui/${uid}/${M16_VALIDATION_SCHEDULER_LABEL}`,
+  ]);
+  return result.status === 0;
 }
