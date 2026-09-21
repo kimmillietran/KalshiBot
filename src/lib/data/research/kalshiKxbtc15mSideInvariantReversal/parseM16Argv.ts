@@ -48,6 +48,7 @@ export function parseM16Argv(argv: readonly string[]): ParsedM16Argv {
     const researchRoleRaw = parts[3] ?? "m16-blind-incidence";
     if (
       researchRoleRaw !== "m16-blind-incidence"
+      && researchRoleRaw !== "m16-prospective-validation"
       && researchRoleRaw !== "untouched-candidate"
       && researchRoleRaw !== "other"
     ) {

@@ -153,7 +153,11 @@ export type M16CaptureDescriptor = {
   runId: string;
   captureRunDir: string;
   captureIdentityHash: string;
-  researchRole: "m16-blind-incidence" | "untouched-candidate" | "other";
+  researchRole:
+    | "m16-blind-incidence"
+    | "m16-prospective-validation"
+    | "untouched-candidate"
+    | "other";
   priorResearchRole?: string | null;
 };
 

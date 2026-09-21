@@ -179,3 +179,114 @@ export {
 
 export { parseM16Argv, type ParsedM16Argv } from "./parseM16Argv";
 export { parseM161Argv, type ParsedM161Argv } from "./parseM161Argv";
+
+export {
+  M16_COLLECTION_COMPLETE_SEALED_MESSAGE,
+  M16_VALIDATION_FORBIDDEN_RUN_IDS,
+  M16_VALIDATION_PROTOCOL_VERSION,
+  M16_VALIDATION_RESERVATION_VERSION,
+  M16ValidationCollectionError,
+  type M16EligibleConfirmationUnit,
+  type M16ValidationAcceptedSegment,
+  type M16ValidationAttemptRecord,
+  type M16ValidationAuthorityBinding,
+  type M16ValidationBlindIncidence,
+  type M16ValidationExcludedSegment,
+  type M16ValidationProgress,
+  type M16ValidationRegistry,
+  type M16ValidationReservation,
+  type M16ValidationSegmentHealth,
+} from "./m16ValidationCohortTypes";
+
+export {
+  M16_EXPECTED_CODE_AUTHORITY_SHA,
+  M16_EXPECTED_COHORT_PLAN_IDENTITY,
+  M16_EXPECTED_DEPENDENCE_PLAN_IDENTITY,
+  M16_EXPECTED_EVIDENCE_CONTRACT_IDENTITY,
+  M16_EXPECTED_FAMILY_DEFINITION_IDENTITY,
+  M16_EXPECTED_FEE_CONTRACT_IDENTITY,
+  assertM16ValidationAuthorityMatches,
+  assertM16ValidationAuthorityMatchesSealed,
+  buildM16ScientificProtocolIdentity,
+  buildM16ValidationAuthorityBinding,
+  hashM16ValidationArtifact,
+} from "./m16ValidationAuthority";
+
+export {
+  M16_GOVERNED_WINDOW_END_HH,
+  M16_GOVERNED_WINDOW_END_MM,
+  M16_GOVERNED_WINDOW_START_HH,
+  M16_GOVERNED_WINDOW_START_MM,
+  M16_LAUNCH_TOLERANCE_AFTER_MS,
+  M16_LAUNCH_TOLERANCE_BEFORE_MS,
+  evaluateM16LaunchWindow,
+  m16GovernedWindowForUtcDay,
+  m16UtcDayFromMs,
+  m16UtcMidnightMs,
+  nextM16GovernedCaptureStart,
+  type M16GovernedWindow,
+  type M16LaunchWindowEvaluation,
+} from "./m16ValidationSchedule";
+
+export {
+  assertNoConflictingActiveReservation,
+  assertReservationAuthorityCurrent,
+  assertReservationPredatesCapture,
+  assertReservationUsesFixedWindow,
+  createM16ValidationReservation,
+} from "./m16ValidationReservation";
+
+export {
+  appendM16ValidationReservation,
+  computeM16ValidationProgress,
+  createEmptyM16ValidationRegistry,
+  failedSegmentAcceptedMinutes,
+  healthyZeroSignalAcceptedMinutes,
+  registerAcceptedSegment,
+  registerExcludedSegment,
+} from "./m16ValidationRegistry";
+
+export {
+  buildSyntheticM16ValidationBlindIncidence,
+  streamM16ValidationBlindIncidence,
+} from "./m16ValidationBlindIncidence";
+
+export {
+  acquireM16ValidationRunnerLock,
+  releaseM16ValidationRunnerLock,
+  type M16ValidationLockHandle,
+  type M16ValidationLockIo,
+} from "./m16ValidationLock";
+
+export {
+  M16_VALIDATION_MIN_FREE_DISK_BYTES,
+  runM16ValidationPreflight,
+  type M16ValidationPreflightInput,
+  type M16ValidationPreflightResult,
+} from "./m16ValidationPreflight";
+
+export {
+  preflightM16ValidationCycle,
+  recoverM16ValidationCycle,
+  runM16ValidationDailyCycle,
+  statusM16ValidationCycle,
+  type M16ValidationCaptureLauncherResult,
+  type M16ValidationDailyCycleIo,
+  type M16ValidationDailyCycleResult,
+  type M16ValidationRecoverResult,
+} from "./m16ValidationLifecycle";
+
+export {
+  M16_VALIDATION_SCHEDULER_LABEL,
+  M16_VALIDATION_SCHEDULER_STATE_DIR_REL,
+  disableM16ValidationScheduler,
+  enableM16ValidationScheduler,
+  generateM16ValidationLaunchdPlist,
+  statusM16ValidationScheduler,
+  type M16ValidationSchedulerIo,
+  type M16ValidationSchedulerState,
+} from "./m16ValidationScheduler";
+
+export { formatOperatorProgressText } from "./m16ValidationProgressReport";
+
+export { parseM162Argv, type ParsedM162Argv } from "./parseM162Argv";
