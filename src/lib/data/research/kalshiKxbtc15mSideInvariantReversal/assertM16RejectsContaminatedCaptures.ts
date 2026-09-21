@@ -32,6 +32,7 @@ export function assertM16CaptureNotContaminated(
   }
   if (
     capture.researchRole !== "m16-blind-incidence"
+    && capture.researchRole !== "m16-prospective-validation"
     && capture.researchRole !== "untouched-candidate"
     && capture.researchRole !== "other"
   ) {
