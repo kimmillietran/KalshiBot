@@ -1,5 +1,5 @@
 /**
- * M16.2 CLI — prospective validation collection automation.
+ * M16.2a CLI — prospective validation collection automation.
  * Never opens P&L. Live capture only with M16_VALIDATION_ALLOW_LIVE_CAPTURE=1.
  */
 import {
@@ -10,23 +10,28 @@ import {
   unlinkSync,
   writeFileSync,
 } from "node:fs";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 
 import { publishResearchArtifactsAtomically } from "@/lib/data/research/calibrationFadeForwardValidation/publishResearchArtifactsAtomically";
 import {
-  appendM16ValidationReservation,
   buildM16ScientificProtocolIdentity,
   buildM16ValidationAuthorityBinding,
   createEmptyM16ValidationRegistry,
   disableM16ValidationScheduler,
   enableM16ValidationScheduler,
   formatOperatorProgressText,
+  getFreeDiskBytesForPath,
+  installM16ValidationLaunchd,
+  isM16LiveCaptureAllowed,
+  launchM16CanonicalForwardQuoteCapture,
   parseM162Argv,
   preflightM16ValidationCycle,
+  queryM16ValidationLaunchdLoaded,
   recoverM16ValidationCycle,
   runM16ValidationDailyCycle,
   statusM16ValidationCycle,
   statusM16ValidationScheduler,
+  uninstallM16ValidationLaunchd,
   type M16ValidationAttemptRecord,
   type M16ValidationRegistry,
 } from "@/lib/data/research/kalshiKxbtc15mSideInvariantReversal";
@@ -50,6 +55,14 @@ function saveJson(path: string, value: unknown): void {
   publishResearchArtifactsAtomically(publishIo, [
     { outputPath: path, data: `${stableStringify(value)}\n` },
   ]);
+}
+
+function appendSchedulerLog(registryDir: string, line: string): void {
+  const logPath = join(registryDir, "scheduler", "ops.log");
+  mkdirSync(dirname(logPath), { recursive: true });
+  // Never log secrets / P&L.
+  if (/PRIVATE KEY|api[_-]?key|secret/i.test(line)) return;
+  writeFileSync(logPath, `${new Date().toISOString()} ${line}\n`, { flag: "a" });
 }
 
 export async function runM16ValidationCollectionCommand(
@@ -92,6 +105,7 @@ export async function runM16ValidationCollectionCommand(
       throw new Error(`invalid --now-iso ${parsed.nowIso}`);
     }
 
+    const liveAllowed = isM16LiveCaptureAllowed();
     const io = {
       loadRegistry,
       saveRegistry,
@@ -99,18 +113,20 @@ export async function runM16ValidationCollectionCommand(
       saveAttempts,
       lockPath,
       nowMs: () => nowMs,
-      dryRun: parsed.dryRun || process.env.M16_VALIDATION_ALLOW_LIVE_CAPTURE !== "1",
+      dryRun: parsed.dryRun || !liveAllowed,
+      registryDir: parsed.registryDir,
+      captureLauncher: liveAllowed && !parsed.dryRun
+        ? launchM16CanonicalForwardQuoteCapture
+        : undefined,
       preflightExtras: {
-        getFreeDiskBytes: () => {
-          // Best-effort: report a large number when df unavailable in tests.
-          return 50 * 1024 * 1024 * 1024;
-        },
+        getFreeDiskBytes: () => getFreeDiskBytesForPath(parsed.registryDir),
         credentialsPresent: () =>
           Boolean(process.env.KALSHI_API_KEY_ID)
           && Boolean(process.env.KALSHI_API_PRIVATE_KEY_PATH),
       },
       log: (message: string) => {
         process.stderr.write(`${message}\n`);
+        appendSchedulerLog(parsed.registryDir, message);
       },
     };
 
@@ -122,6 +138,7 @@ export async function runM16ValidationCollectionCommand(
         blockers: result.blockers,
         warnings: result.warnings,
         scientificProtocolIdentity: result.scientificProtocolIdentity,
+        liveCaptureAllowed: liveAllowed,
         outcomesOpened: false,
       })}\n`);
       return result.ok ? 0 : 1;
@@ -131,7 +148,11 @@ export async function runM16ValidationCollectionCommand(
       const status = statusM16ValidationCycle(io);
       const sched = statusM16ValidationScheduler({ registryDir: parsed.registryDir });
       saveJson(progressPath, status.progress);
-      process.stdout.write(formatOperatorProgressText(status.progress));
+      process.stdout.write(
+        formatOperatorProgressText(status.progress, {
+          schedulerEnabled: sched.enabled,
+        }),
+      );
       process.stdout.write(`${stableStringify({
         mode: "status",
         nextStart: status.nextStart,
@@ -144,19 +165,23 @@ export async function runM16ValidationCollectionCommand(
     }
 
     if (parsed.mode === "recover") {
-      const result = recoverM16ValidationCycle(io);
+      const result = await recoverM16ValidationCycle({
+        ...io,
+        lockPath,
+      });
+      saveJson(progressPath, result.progress);
       process.stdout.write(`${stableStringify(result)}\n`);
       return 0;
     }
 
     if (parsed.mode === "enable-scheduler") {
-      const state = enableM16ValidationScheduler({ registryDir: parsed.registryDir });
+      const state = enableM16ValidationScheduler({
+        registryDir: parsed.registryDir,
+        repoRoot: resolve("."),
+      });
       process.stdout.write(`${stableStringify({
         mode: "enable-scheduler",
         ...state,
-        note:
-          state.note
-          + " Set TZ=UTC. Wrap capture with caffeinate on macOS for 4h runs.",
       })}\n`);
       return 0;
     }
@@ -167,18 +192,52 @@ export async function runM16ValidationCollectionCommand(
       return 0;
     }
 
-    // --run-daily
-    const result = await runM16ValidationDailyCycle(io, nowMs);
-    if (result.reservation) {
-      saveRegistry(
-        appendM16ValidationReservation(loadRegistry(), result.reservation),
-      );
+    if (parsed.mode === "install-scheduler") {
+      const state = installM16ValidationLaunchd({
+        registryDir: parsed.registryDir,
+        repoRoot: resolve("."),
+      });
+      const loaded = queryM16ValidationLaunchdLoaded({});
+      process.stdout.write(`${stableStringify({
+        mode: "install-scheduler",
+        ...state,
+        launchctlLoaded: loaded,
+      })}\n`);
+      return 0;
     }
+
+    if (parsed.mode === "uninstall-scheduler") {
+      const state = uninstallM16ValidationLaunchd({
+        registryDir: parsed.registryDir,
+      });
+      process.stdout.write(`${stableStringify({
+        mode: "uninstall-scheduler",
+        ...state,
+      })}\n`);
+      return 0;
+    }
+
+    // --run-daily
+    appendSchedulerLog(
+      parsed.registryDir,
+      `run-daily start live=${liveAllowed} dryRun=${io.dryRun}`,
+    );
+    const result = await runM16ValidationDailyCycle(io, nowMs);
+    // Reservation already persisted inside lifecycle before capture.
+    // Keep progress snapshot deterministic.
     saveJson(progressPath, result.progress);
+    appendSchedulerLog(
+      parsed.registryDir,
+      `run-daily done launched=${result.captureLaunched} `
+        + `admitted=${result.admitted} excluded=${result.excluded} `
+        + `disposition=${result.progress.disposition} `
+        + `hours=${result.progress.acceptedHours} `
+        + `trades=${result.progress.eligibleTradeCount}`,
+    );
     process.stdout.write(`${stableStringify({
       ...result,
       scientificProtocolIdentity: buildM16ScientificProtocolIdentity(),
-      liveCaptureAllowed: process.env.M16_VALIDATION_ALLOW_LIVE_CAPTURE === "1",
+      liveCaptureAllowed: liveAllowed,
     })}\n`);
     return 0;
   } catch (error) {

@@ -10,11 +10,12 @@ export type ParsedM162Argv = {
     | "recover"
     | "status"
     | "enable-scheduler"
-    | "disable-scheduler";
+    | "disable-scheduler"
+    | "install-scheduler"
+    | "uninstall-scheduler";
   dryRun: boolean;
   nowIso: string | null;
   registryDir: string;
-  fixtureAdmit: boolean;
 };
 
 function optionalFlag(argv: readonly string[], name: string): string | null {
@@ -29,9 +30,17 @@ function optionalFlag(argv: readonly string[], name: string): string | null {
 /**
  * Modes: --preflight | --run-daily | --recover | --status
  *        | --enable-scheduler | --disable-scheduler
- * Optional: --dry-run, --now-iso, --registry-dir, --fixture-admit
+ *        | --install-scheduler | --uninstall-scheduler
+ * Optional: --dry-run, --now-iso, --registry-dir
+ * --fixture-admit is rejected (no arbitrary admit of unrelated captures).
  */
 export function parseM162Argv(argv: readonly string[]): ParsedM162Argv {
+  if (argv.includes("--fixture-admit")) {
+    throw new M16ValidationCollectionError(
+      "--fixture-admit is not supported; use governed --run-daily / --recover only",
+    );
+  }
+
   const modes = [
     ["--preflight", "preflight"],
     ["--run-daily", "run-daily"],
@@ -39,13 +48,16 @@ export function parseM162Argv(argv: readonly string[]): ParsedM162Argv {
     ["--status", "status"],
     ["--enable-scheduler", "enable-scheduler"],
     ["--disable-scheduler", "disable-scheduler"],
+    ["--install-scheduler", "install-scheduler"],
+    ["--uninstall-scheduler", "uninstall-scheduler"],
   ] as const;
 
   const selected = modes.filter(([flag]) => argv.includes(flag));
   if (selected.length !== 1) {
     throw new M16ValidationCollectionError(
       "Specify exactly one of --preflight | --run-daily | --recover | --status "
-        + "| --enable-scheduler | --disable-scheduler",
+        + "| --enable-scheduler | --disable-scheduler "
+        + "| --install-scheduler | --uninstall-scheduler",
     );
   }
 
@@ -63,6 +75,5 @@ export function parseM162Argv(argv: readonly string[]): ParsedM162Argv {
     dryRun: argv.includes("--dry-run"),
     nowIso: optionalFlag(argv, "--now-iso"),
     registryDir,
-    fixtureAdmit: argv.includes("--fixture-admit"),
   };
 }
