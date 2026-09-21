@@ -1,5 +1,5 @@
 /**
- * M16.2 authority binding — seals M16.0/M16.1a identities into collection protocol.
+ * M16.2 authority binding — seals M16.1a/M16.1b identities into collection protocol.
  */
 import { createHash } from "node:crypto";
 
@@ -10,6 +10,12 @@ import { buildM16FamilyDefinition } from "./buildM16FamilyDefinition";
 import { M16_CR2_INFERENCE_METHOD } from "./m16Cr2ClusterMean";
 import { buildM16DependencePlan } from "./m16DependencePlan";
 import { buildM16EvidenceContract } from "./m16EvidenceContract";
+import {
+  M16_1A_PRIOR_COHORT_PLAN_IDENTITY,
+  M16_1A_PRIOR_SCIENTIFIC_PROTOCOL_IDENTITY,
+  M16_AUTHORITATIVE_FEE_CONTRACT_IDENTITY,
+  M16_FAMILY_DEFINITION_IDENTITY,
+} from "./m16PriorContractIdentities";
 import {
   buildM16ProspectiveCohortPlan,
   M16_FIXED_UTC_WINDOW,
@@ -25,17 +31,27 @@ import {
 } from "./m16ValidationCohortTypes";
 
 export const M16_EXPECTED_FAMILY_DEFINITION_IDENTITY =
-  "e98e6180b1edc468d544cbc41a624b8201535b2e9e58121d7669079fcf5cbce0" as const;
+  M16_FAMILY_DEFINITION_IDENTITY;
 export const M16_EXPECTED_EVIDENCE_CONTRACT_IDENTITY =
   "2a06820dab24aea4a253d886460bfc1267d7bd438d0bce817cbb999fd934beb7" as const;
 export const M16_EXPECTED_DEPENDENCE_PLAN_IDENTITY =
   "df947284e5ee7678280dafd6ba5c4456281ca894b10b793a5a05f584d7d2630d" as const;
 export const M16_EXPECTED_FEE_CONTRACT_IDENTITY =
-  "86f5f152308096fb365bb4ef41dca8beb488a302f038a915c8b228c0b645b44d" as const;
-export const M16_EXPECTED_COHORT_PLAN_IDENTITY =
-  "294aa283c8b99269e7c5fd36282b826ffc6a601ee9d1b7b88af62b8bfc2e71f8" as const;
-export const M16_EXPECTED_CODE_AUTHORITY_SHA =
-  "94a3bcfb628c30938127216f7ac9a24a9318a656" as const;
+  M16_AUTHORITATIVE_FEE_CONTRACT_IDENTITY;
+
+/**
+ * Authoritative cohort identity after M16.1b window reseal.
+ * Computed at module load from buildM16ProspectiveCohortPlan().
+ */
+export const M16_EXPECTED_COHORT_PLAN_IDENTITY: string =
+  buildM16ProspectiveCohortPlan().cohortPlanIdentity;
+
+/** Prior M16.1a / early-M16.2 protocol under 14:00–18:00Z — must not authorize. */
+export const M16_SUPERSEDED_SCIENTIFIC_PROTOCOL_IDENTITY =
+  M16_1A_PRIOR_SCIENTIFIC_PROTOCOL_IDENTITY;
+
+export const M16_SUPERSEDED_COHORT_PLAN_IDENTITY =
+  M16_1A_PRIOR_COHORT_PLAN_IDENTITY;
 
 /**
  * Scientific protocol identity — hashes the sealed scientific surface only.
@@ -76,6 +92,7 @@ export function buildM16ScientificProtocolIdentity(input?: {
         minimumUtcDayClusters: evidence.collectionTargets.minimumUtcDayClusters,
         maxAcceptedCaptureHours: M16_MAX_ACCEPTED_CAPTURE_HOURS,
         primaryInferenceMethod: M16_CR2_INFERENCE_METHOD,
+        windowAmendment: "m16.1b-18:00-22:00Z-california-daytime-prior",
       }),
     )
     .digest("hex");
@@ -171,6 +188,19 @@ export function assertM16ValidationAuthorityMatchesSealed(
   if (observed.cohortPlanIdentity !== M16_EXPECTED_COHORT_PLAN_IDENTITY) {
     throw new M16ValidationCollectionError(
       `cohort identity != sealed ${M16_EXPECTED_COHORT_PLAN_IDENTITY}`,
+    );
+  }
+  if (
+    observed.scientificProtocolIdentity
+    === M16_SUPERSEDED_SCIENTIFIC_PROTOCOL_IDENTITY
+  ) {
+    throw new M16ValidationCollectionError(
+      "superseded 14:00–18:00Z scientific protocol identity cannot authorize",
+    );
+  }
+  if (observed.cohortPlanIdentity === M16_SUPERSEDED_COHORT_PLAN_IDENTITY) {
+    throw new M16ValidationCollectionError(
+      "superseded 14:00–18:00Z cohort plan identity cannot authorize",
     );
   }
 }

@@ -1,6 +1,6 @@
 /**
  * M16.2 prospective reservation — MUST be created before capture begins.
- * Fixed 14:00–18:00Z / 240m. Outcomes remain sealed.
+ * Fixed 18:00–22:00Z / 240m (M16.1b). Outcomes remain sealed.
  */
 import {
   assertM16FixedUtcWindowInsideSingleDay,
@@ -31,7 +31,7 @@ function assertUtcDayKey(day: string): void {
 
 /**
  * Create an immutable content-addressed reservation for one UTC day.
- * Default start = dayT14:00:00.000Z. Window must not cross midnight.
+ * Default start = dayT18:00:00.000Z. Window must not cross midnight.
  */
 export function createM16ValidationReservation(input: {
   plannedUtcDay: string;
@@ -79,7 +79,7 @@ export function createM16ValidationReservation(input: {
     plannedStartIso,
     plannedEndIso: window.endIso,
     requestedDurationMinutes: M16_STANDARD_SEGMENT_DURATION_MINUTES,
-    fixedUtcWindow: "14:00-18:00Z" as const,
+    fixedUtcWindow: "18:00-22:00Z" as const,
     createdAt,
     replacesReservationIdentity: input.replacesReservationIdentity ?? null,
     outcomesOpened: false as const,
@@ -141,9 +141,9 @@ export function assertReservationAuthorityCurrent(
 export function assertReservationUsesFixedWindow(
   reservation: M16ValidationReservation,
 ): void {
-  if (reservation.fixedUtcWindow !== "14:00-18:00Z") {
+  if (reservation.fixedUtcWindow !== "18:00-22:00Z") {
     throw new M16ValidationCollectionError(
-      `reservation fixedUtcWindow must be 14:00-18:00Z; got ${reservation.fixedUtcWindow}`,
+      `reservation fixedUtcWindow must be 18:00-22:00Z; got ${reservation.fixedUtcWindow}`,
     );
   }
   if (reservation.requestedDurationMinutes !== M16_STANDARD_SEGMENT_DURATION_MINUTES) {
@@ -151,7 +151,7 @@ export function assertReservationUsesFixedWindow(
       `reservation duration must be ${M16_STANDARD_SEGMENT_DURATION_MINUTES}m`,
     );
   }
-  if (!M16_FIXED_UTC_WINDOW.includes("14:00-18:00Z")) {
+  if (!M16_FIXED_UTC_WINDOW.includes("18:00-22:00Z")) {
     throw new M16ValidationCollectionError("sealed cohort window mismatch");
   }
 }

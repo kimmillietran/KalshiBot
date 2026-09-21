@@ -61,7 +61,7 @@ export type M16ValidationReservation = {
   plannedStartIso: string;
   plannedEndIso: string;
   requestedDurationMinutes: typeof M16_STANDARD_SEGMENT_DURATION_MINUTES;
-  fixedUtcWindow: "14:00-18:00Z";
+  fixedUtcWindow: "18:00-22:00Z";
   createdAt: string;
   replacesReservationIdentity: string | null;
   outcomesOpened: false;

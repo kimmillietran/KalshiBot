@@ -1,6 +1,6 @@
 /**
  * M16.2 fixed UTC launch window helpers — DST-independent.
- * Governed capture window: 14:00–18:00Z daily (240m).
+ * Governed capture window: 18:00–22:00Z daily (240m). M16.1b.
  */
 import {
   M16_FIXED_UTC_WINDOW_END_HHMM,
@@ -9,14 +9,14 @@ import {
 } from "./m16ProspectiveCohortPlan";
 import { M16ValidationCollectionError } from "./m16ValidationCohortTypes";
 
-/** Invoke from 13:55Z (5 minutes before window). */
+/** Invoke from 17:55Z (5 minutes before window). */
 export const M16_LAUNCH_TOLERANCE_BEFORE_MS = 5 * 60 * 1000;
-/** Must begin by 14:05Z else missed-window. */
+/** Must begin by 18:05Z else missed-window. */
 export const M16_LAUNCH_TOLERANCE_AFTER_MS = 5 * 60 * 1000;
 
-export const M16_GOVERNED_WINDOW_START_HH = 14 as const;
+export const M16_GOVERNED_WINDOW_START_HH = 18 as const;
 export const M16_GOVERNED_WINDOW_START_MM = 0 as const;
-export const M16_GOVERNED_WINDOW_END_HH = 18 as const;
+export const M16_GOVERNED_WINDOW_END_HH = 22 as const;
 export const M16_GOVERNED_WINDOW_END_MM = 0 as const;
 
 export type M16GovernedWindow = {
@@ -98,11 +98,11 @@ export function m16GovernedWindowForUtcDay(utcDay: string): M16GovernedWindow {
     );
   }
   if (
-    M16_FIXED_UTC_WINDOW_START_HHMM !== "14:00"
-    || M16_FIXED_UTC_WINDOW_END_HHMM !== "18:00"
+    M16_FIXED_UTC_WINDOW_START_HHMM !== "18:00"
+    || M16_FIXED_UTC_WINDOW_END_HHMM !== "22:00"
   ) {
     throw new M16ValidationCollectionError(
-      "M16.2 schedule expects sealed 14:00–18:00Z window constants",
+      "M16.2 schedule expects sealed 18:00–22:00Z window constants",
     );
   }
   return {
@@ -171,8 +171,8 @@ export function evaluateM16LaunchWindow(
 
 /**
  * Next governed capture start ≥ nowMs.
- * If still before today's latest launch, returns today's 14:00Z;
- * otherwise tomorrow 14:00Z. Never returns a past missed day's start.
+ * If still before today's latest launch, returns today's 18:00Z;
+ * otherwise tomorrow 18:00Z. Never returns a past missed day's start.
  */
 export function nextM16GovernedCaptureStart(nowMs: number): {
   utcDay: string;

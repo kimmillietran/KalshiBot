@@ -9,6 +9,7 @@ import { M16_CR2_INFERENCE_METHOD } from "./m16Cr2ClusterMean";
 import { buildM16DependencePlan } from "./m16DependencePlan";
 import { buildM16EvidenceContract } from "./m16EvidenceContract";
 import {
+  M16_1A_PRIOR_COHORT_PLAN_IDENTITY,
   M16_1_PRIOR_COHORT_PLAN_IDENTITY,
   M16_1_PRIOR_DEPENDENCE_PLAN_IDENTITY,
   M16_1_PRIOR_EVIDENCE_CONTRACT_IDENTITY,
@@ -39,6 +40,8 @@ export const M16_OUTCOME_OPEN_BLOCKERS = {
   SUPERSEDED_EVIDENCE_IDENTITY: "m16-1-evidence-contract-superseded-by-m16-1a",
   SUPERSEDED_DEPENDENCE_IDENTITY: "m16-1-dependence-plan-superseded-by-m16-1a",
   SUPERSEDED_COHORT_IDENTITY: "m16-1-cohort-plan-superseded-by-m16-1a",
+  SUPERSEDED_COHORT_IDENTITY_M16_1A:
+    "m16-1a-cohort-plan-superseded-by-m16-1b",
   FEE_SCHEDULE_DIVERGED: "m16-series-fee-attestation-diverged",
   REGISTRY_EMPTY: "m16-accepted-capture-registry-empty",
   TRADE_N_SHORT: "m16-validation-trade-n-below-target",
@@ -163,6 +166,10 @@ export function evaluateM16OutcomeOpenAuthorization(
     input.expectedCohortPlanIdentity === M16_1_PRIOR_COHORT_PLAN_IDENTITY
   ) {
     blockers.push(M16_OUTCOME_OPEN_BLOCKERS.SUPERSEDED_COHORT_IDENTITY);
+  } else if (
+    input.expectedCohortPlanIdentity === M16_1A_PRIOR_COHORT_PLAN_IDENTITY
+  ) {
+    blockers.push(M16_OUTCOME_OPEN_BLOCKERS.SUPERSEDED_COHORT_IDENTITY_M16_1A);
   } else if (
     input.expectedCohortPlanIdentity != null
     && input.expectedCohortPlanIdentity !== cohort.cohortPlanIdentity

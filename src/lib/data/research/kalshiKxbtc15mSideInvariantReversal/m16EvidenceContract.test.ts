@@ -129,20 +129,20 @@ describe("M16.1a collection policy", () => {
   it("13–16. 240m segment, no cross-midnight, max 1/day, fixed window", () => {
     expect(M16_STANDARD_SEGMENT_DURATION_MINUTES).toBe(240);
     expect(M16_MAX_ACCEPTED_SEGMENTS_PER_UTC_DAY).toBe(1);
-    expect(M16_FIXED_UTC_WINDOW).toContain("14:00-18:00");
+    expect(M16_FIXED_UTC_WINDOW).toContain("18:00-22:00");
     const plan = buildM16ProspectiveCohortPlan();
     expect(plan.segment.acceptedSegmentMustRemainWithinSingleUtcDay).toBe(true);
     expect(() =>
       assertM16FixedUtcWindowInsideSingleDay({
         plannedUtcDay: "2026-10-01",
-        plannedStartIso: "2026-10-01T14:00:00.000Z",
+        plannedStartIso: "2026-10-01T18:00:00.000Z",
         durationMinutes: 240,
       })
     ).not.toThrow();
     expect(() =>
       assertM16FixedUtcWindowInsideSingleDay({
         plannedUtcDay: "2026-10-01",
-        plannedStartIso: "2026-10-01T22:00:00.000Z",
+        plannedStartIso: "2026-10-01T12:00:00.000Z",
         durationMinutes: 240,
       })
     ).toThrow(/fixed window/);
