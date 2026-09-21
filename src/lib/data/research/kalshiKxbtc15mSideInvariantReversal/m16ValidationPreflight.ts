@@ -9,6 +9,8 @@ import {
   M16_1_PRIOR_COHORT_PLAN_IDENTITY,
   M16_1_PRIOR_DEPENDENCE_PLAN_IDENTITY,
   M16_1_PRIOR_EVIDENCE_CONTRACT_IDENTITY,
+  M16_1A_PRIOR_COHORT_PLAN_IDENTITY,
+  M16_1A_PRIOR_SCIENTIFIC_PROTOCOL_IDENTITY,
 } from "./m16PriorContractIdentities";
 import {
   buildM16ProspectiveCohortPlan,
@@ -90,6 +92,19 @@ export function runM16ValidationPreflight(
   }
   if (authority.cohortPlanIdentity === M16_1_PRIOR_COHORT_PLAN_IDENTITY) {
     blockers.push("old M16.1 cohort plan rejected (superseded by M16.1a)");
+  }
+  if (authority.cohortPlanIdentity === M16_1A_PRIOR_COHORT_PLAN_IDENTITY) {
+    blockers.push(
+      "old M16.1a 14:00–18:00Z cohort plan rejected (superseded by M16.1b)",
+    );
+  }
+  if (
+    authority.scientificProtocolIdentity
+    === M16_1A_PRIOR_SCIENTIFIC_PROTOCOL_IDENTITY
+  ) {
+    blockers.push(
+      "old 14:00–18:00Z scientific protocol rejected (superseded by M16.1b)",
+    );
   }
 
   let feeAttestationOk = false;

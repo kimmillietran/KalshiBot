@@ -11,6 +11,8 @@ import { buildM16DependencePlan } from "./m16DependencePlan";
 import { buildM16EvidenceContract } from "./m16EvidenceContract";
 import {
   M16_1A_AMENDMENT_REASON,
+  M16_1A_PRIOR_COHORT_PLAN_IDENTITY,
+  M16_1B_WINDOW_AMENDMENT_REASON,
   M16_1_PRIOR_COHORT_PLAN_IDENTITY,
 } from "./m16PriorContractIdentities";
 import {
@@ -21,7 +23,7 @@ import {
 } from "./m16Types";
 
 export const M16_COHORT_PLAN_VERSION =
-  "kalshi-kxbtc15m-side-invariant-exhaustion-reversal-cohort-plan-v2" as const;
+  "kalshi-kxbtc15m-side-invariant-exhaustion-reversal-cohort-plan-v3" as const;
 
 export const M16_VALIDATION_ROLE = "m16-prospective-validation" as const;
 
@@ -30,13 +32,14 @@ export const M16_STANDARD_SEGMENT_DURATION_MINUTES = 240 as const;
 export const M16_MAX_SEGMENT_DURATION_MINUTES = 240 as const;
 
 /**
- * Fixed daily UTC window (operational regularity — not profitability).
+ * Fixed daily UTC window — M16.1b California daytime sampling population.
  * Entire 240m interval lies inside one UTC calendar date.
+ * Selected prospectively before validation; not from P&L or hourly incidence.
  */
-export const M16_FIXED_UTC_WINDOW_START_HHMM = "14:00" as const;
-export const M16_FIXED_UTC_WINDOW_END_HHMM = "18:00" as const;
+export const M16_FIXED_UTC_WINDOW_START_HHMM = "18:00" as const;
+export const M16_FIXED_UTC_WINDOW_END_HHMM = "22:00" as const;
 export const M16_FIXED_UTC_WINDOW =
-  "14:00-18:00Z-daily-fixed-operational-regularity" as const;
+  "18:00-22:00Z-daily-fixed-california-daytime-prior" as const;
 
 export const M16_MAX_ACCEPTED_SEGMENTS_PER_UTC_DAY = 1 as const;
 export const M16_ACCEPTED_SEGMENT_MUST_REMAIN_WITHIN_SINGLE_UTC_DAY = true as const;
@@ -57,11 +60,17 @@ export const M16_FORBIDDEN_INCIDENCE_RUN_IDS = [
 export type M16ProspectiveCohortPlan = {
   planVersion: typeof M16_COHORT_PLAN_VERSION;
   subfamilyId: typeof M16_SUBFAMILY_ID;
-  milestone: "m16.1a-prospective-validation-cohort-plan";
-  supersedesCohortPlanIdentity: typeof M16_1_PRIOR_COHORT_PLAN_IDENTITY;
-  amendmentReason: typeof M16_1A_AMENDMENT_REASON;
+  milestone: "m16.1b-prospective-validation-cohort-plan";
+  supersedesCohortPlanIdentity: typeof M16_1A_PRIOR_COHORT_PLAN_IDENTITY;
+  alsoSupersedesCohortPlanIdentity: typeof M16_1_PRIOR_COHORT_PLAN_IDENTITY;
+  amendmentReason: typeof M16_1B_WINDOW_AMENDMENT_REASON;
+  priorAmendmentReason: typeof M16_1A_AMENDMENT_REASON;
   economicOutcomesOpenedBeforeAmendment: false;
   validationRole: typeof M16_VALIDATION_ROLE;
+  targetPopulation:
+    "kxbtc15m-during-sealed-18:00-22:00Z-california-late-morning-afternoon-discretionary-context";
+  claimScopeNote:
+    "Supports/fails only under the sealed 18:00–22:00 UTC window; not 24/7, Asia, Europe, or all US hours.";
   terminology: {
     thisCohort: "M16 prospective validation";
     ifSupported: "eligible-for-fresh-holdout";
@@ -145,11 +154,17 @@ export function buildM16ProspectiveCohortPlan(): M16ProspectiveCohortPlan {
   const plan: Omit<M16ProspectiveCohortPlan, "cohortPlanIdentity"> = {
     planVersion: M16_COHORT_PLAN_VERSION,
     subfamilyId: M16_SUBFAMILY_ID,
-    milestone: "m16.1a-prospective-validation-cohort-plan",
-    supersedesCohortPlanIdentity: M16_1_PRIOR_COHORT_PLAN_IDENTITY,
-    amendmentReason: M16_1A_AMENDMENT_REASON,
+    milestone: "m16.1b-prospective-validation-cohort-plan",
+    supersedesCohortPlanIdentity: M16_1A_PRIOR_COHORT_PLAN_IDENTITY,
+    alsoSupersedesCohortPlanIdentity: M16_1_PRIOR_COHORT_PLAN_IDENTITY,
+    amendmentReason: M16_1B_WINDOW_AMENDMENT_REASON,
+    priorAmendmentReason: M16_1A_AMENDMENT_REASON,
     economicOutcomesOpenedBeforeAmendment: false,
     validationRole: M16_VALIDATION_ROLE,
+    targetPopulation:
+      "kxbtc15m-during-sealed-18:00-22:00Z-california-late-morning-afternoon-discretionary-context",
+    claimScopeNote:
+      "Supports/fails only under the sealed 18:00–22:00 UTC window; not 24/7, Asia, Europe, or all US hours.",
     terminology: {
       thisCohort: "M16 prospective validation",
       ifSupported: "eligible-for-fresh-holdout",
@@ -175,10 +190,14 @@ export function buildM16ProspectiveCohortPlan(): M16ProspectiveCohortPlan {
         "consecutive-operator-eligible-calendar-days-no-volatility-cherry-picking",
       preferDistinctUtcDays: true,
       note:
-        "Fixed 14:00–18:00 UTC daily window chosen for operational regularity "
-        + "(full 4h inside one UTC day). Not selected from P&L or volatility. "
-        + "At most one accepted normal segment per UTC day. Zero-signal healthy "
-        + "days consume hours but do not increment G.",
+        "Fixed 18:00–22:00 UTC daily window selected prospectively before any "
+        + "validation capture to align with California daytime historical "
+        + "discretionary trading context (approx. 11:00–15:00 PDT / 10:00–14:00 PST). "
+        + "Not selected from observed M16 P&L, hourly incidence, or volatility "
+        + "cherry-picking. Full 4h remains inside one UTC date. At most one "
+        + "accepted normal segment per UTC day. Zero-signal healthy days "
+        + "consume hours but do not increment G. Supersedes unused 14:00–18:00Z "
+        + "M16.1a window (never accepted a prospective validation capture).",
     },
     budget: {
       maxAcceptedCaptureHours: M16_MAX_ACCEPTED_CAPTURE_HOURS,

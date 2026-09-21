@@ -28,7 +28,7 @@ inferential requirement; it was only operational packing.
 | Estimator | vague “CRVE” | **CR2 + one-sided t_(G−1)** |
 | Min UTC-day clusters G | 24 | **24** (diversity floor, not theorem) |
 | Segment | 480m | **240m** fixed UTC window |
-| Window | prefer distinct days | **14:00–18:00 UTC** fixed |
+| Window | prefer distinct days | **14:00–18:00 UTC** fixed *(superseded by M16.1b → **18:00–22:00 UTC** before first capture; see `m16-1b-time-of-day-window-amendment.md`)* |
 | Max accepted segments/day | informal | **1** |
 | Accepted-hour budget | 200h | **140h** |
 
@@ -59,10 +59,15 @@ CR0 + normal z.
 
 ## Why 4h/day and 14:00–18:00 UTC
 
-Temporal diversification with lower within-day packing. Fixed clock chosen for
-**operational regularity** (full 4h inside one UTC day), not profitability or
-volatility cherry-picking. Segments must not cross UTC midnight. At most one
-accepted normal segment per UTC day.
+Temporal diversification with lower within-day packing. Fixed clock initially
+chosen for **operational regularity** (full 4h inside one UTC day), not
+profitability or volatility cherry-picking. Segments must not cross UTC midnight.
+At most one accepted normal segment per UTC day.
+
+**M16.1b (before first capture):** the fixed UTC clock was resealed to
+**18:00–22:00 UTC** to align with California daytime historical discretionary
+context. Duration, N, G, ρ, and CR2 remain unchanged. See
+`docs/research/m16-1b-time-of-day-window-amendment.md`.
 
 ## Why 140h
 

@@ -47,7 +47,7 @@ const DEFAULT_IO: M16ValidationSchedulerIo = {
 /**
  * Generate launchd plist content.
  * Uses REPO_ROOT placeholder — no machine-specific home paths.
- * StartCalendarInterval Hour=14 Minute=0 (UTC when TZ=UTC in the job env).
+ * StartCalendarInterval Hour=18 Minute=0 (UTC when TZ=UTC in the job env).
  */
 export function generateM16ValidationLaunchdPlist(input: {
   label?: string;
@@ -82,7 +82,7 @@ export function generateM16ValidationLaunchdPlist(input: {
   <key>StartCalendarInterval</key>
   <dict>
     <key>Hour</key>
-    <integer>14</integer>
+    <integer>18</integer>
     <key>Minute</key>
     <integer>0</integer>
   </dict>

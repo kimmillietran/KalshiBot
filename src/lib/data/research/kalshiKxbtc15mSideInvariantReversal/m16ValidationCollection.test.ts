@@ -6,6 +6,8 @@ import { describe, expect, it } from "vitest";
 import { stableStringify } from "@/lib/trading/config/hashConfig";
 
 import {
+  M16_1A_PRIOR_COHORT_PLAN_IDENTITY,
+  M16_1A_PRIOR_SCIENTIFIC_PROTOCOL_IDENTITY,
   M16_1_PRIOR_COHORT_PLAN_IDENTITY,
   M16_1_PRIOR_EVIDENCE_CONTRACT_IDENTITY,
   M16_COLLECTION_COMPLETE_SEALED_MESSAGE,
@@ -14,9 +16,13 @@ import {
   M16_EXPECTED_FAMILY_DEFINITION_IDENTITY,
   M16_EXPECTED_FEE_CONTRACT_IDENTITY,
   M16_EXPECTED_DEPENDENCE_PLAN_IDENTITY,
+  M16_FIXED_UTC_WINDOW_END_HHMM,
+  M16_FIXED_UTC_WINDOW_START_HHMM,
   M16_LAUNCH_TOLERANCE_AFTER_MS,
   M16_LAUNCH_TOLERANCE_BEFORE_MS,
   M16_MAX_ACCEPTED_CAPTURE_HOURS,
+  M16_STANDARD_SEGMENT_DURATION_MINUTES,
+  M16_SUPERSEDED_SCIENTIFIC_PROTOCOL_IDENTITY,
   M16_VALIDATION_MIN_FREE_DISK_BYTES,
   M16_VALIDATION_PROTOCOL_VERSION,
   M16_VALIDATION_ROLE,
@@ -25,6 +31,7 @@ import {
   appendM16ValidationReservation,
   assertM16CaptureNotContaminated,
   assertNoConflictingActiveReservation,
+  assertReservationUsesFixedWindow,
   buildM16ScientificProtocolIdentity,
   buildM16ValidationAuthorityBinding,
   buildSyntheticM16ValidationBlindIncidence,
@@ -109,8 +116,8 @@ function acceptDay(
     captureRunDir: `/tmp/m16-val/${day}`,
     captureIdentityHash: blind.captureIdentityHash,
     health: makeHealth(),
-    captureStartIso: `${day}T14:00:00.000Z`,
-    captureEndIso: `${day}T18:00:00.000Z`,
+    captureStartIso: `${day}T18:00:00.000Z`,
+    captureEndIso: `${day}T22:00:00.000Z`,
     acceptedMinutes: opts?.acceptedMinutes ?? healthyZeroSignalAcceptedMinutes(),
     utcDaysPhysicallyCovered: [day],
     blindIncidence: blind,
@@ -141,39 +148,39 @@ describe("M16.2 authority + protocol identity", () => {
 });
 
 describe("M16.2 schedule window", () => {
-  it("7–10. 14:00–18:00Z, tolerances, no cross-midnight, no backfill", () => {
+  it("7–10. 18:00–22:00Z, tolerances, no cross-midnight, no backfill", () => {
     const w = m16GovernedWindowForUtcDay("2026-09-21");
-    expect(w.startIso).toBe("2026-09-21T14:00:00.000Z");
-    expect(w.endIso).toBe("2026-09-21T18:00:00.000Z");
+    expect(w.startIso).toBe("2026-09-21T18:00:00.000Z");
+    expect(w.endIso).toBe("2026-09-21T22:00:00.000Z");
     expect(w.durationMinutes).toBe(240);
 
     const early = evaluateM16LaunchWindow(
-      Date.parse("2026-09-21T13:50:00.000Z"),
+      Date.parse("2026-09-21T17:54:00.000Z"),
     );
     expect(early.status).toBe("too-early");
 
     const wait = evaluateM16LaunchWindow(
-      Date.parse("2026-09-21T13:57:00.000Z"),
+      Date.parse("2026-09-21T17:57:00.000Z"),
     );
     expect(wait.status).toBe("in-tolerance-wait-for-start");
     expect(M16_LAUNCH_TOLERANCE_BEFORE_MS).toBe(5 * 60 * 1000);
 
     const now = evaluateM16LaunchWindow(
-      Date.parse("2026-09-21T14:02:00.000Z"),
+      Date.parse("2026-09-21T18:02:00.000Z"),
     );
     expect(now.status).toBe("launch-now");
     expect(M16_LAUNCH_TOLERANCE_AFTER_MS).toBe(5 * 60 * 1000);
 
     const missed = evaluateM16LaunchWindow(
-      Date.parse("2026-09-21T14:06:00.000Z"),
+      Date.parse("2026-09-21T18:06:00.000Z"),
     );
     expect(missed.status).toBe("missed-window");
 
     const next = nextM16GovernedCaptureStart(
-      Date.parse("2026-09-21T14:06:00.000Z"),
+      Date.parse("2026-09-21T18:06:00.000Z"),
     );
     expect(next.utcDay).toBe("2026-09-22");
-    expect(next.startIso).toBe("2026-09-22T14:00:00.000Z");
+    expect(next.startIso).toBe("2026-09-22T18:00:00.000Z");
   });
 });
 
@@ -184,7 +191,7 @@ describe("M16.2 reservation", () => {
       createdAt: "2026-09-21T12:00:00.000Z",
       codeAuthoritySha: "abc",
     });
-    expect(r.plannedStartIso).toBe("2026-09-21T14:00:00.000Z");
+    expect(r.plannedStartIso).toBe("2026-09-21T18:00:00.000Z");
     expect(r.requestedDurationMinutes).toBe(240);
     expect(r.role).toBe(M16_VALIDATION_ROLE);
     expect(r.outcomesOpened).toBe(false);
@@ -227,7 +234,7 @@ describe("M16.2 reservation", () => {
         plannedUtcDay: "2026-09-21",
         plannedStartIso: "2026-09-21T15:00:00.000Z",
       }),
-    ).toThrow(/fixed window|14:00/);
+    ).toThrow(/fixed window|18:00/);
   });
 });
 
@@ -273,8 +280,8 @@ describe("M16.2 registry accounting", () => {
       captureRunDir: "/tmp/a",
       captureIdentityHash: "cap-a",
       health: makeHealth(),
-      captureStartIso: "2026-09-22T14:00:00.000Z",
-      captureEndIso: "2026-09-22T18:00:00.000Z",
+      captureStartIso: "2026-09-22T18:00:00.000Z",
+      captureEndIso: "2026-09-22T22:00:00.000Z",
       acceptedMinutes: 240,
       utcDaysPhysicallyCovered: ["2026-09-22"],
       blindIncidence: blindA,
@@ -302,8 +309,8 @@ describe("M16.2 registry accounting", () => {
         captureRunDir: "/tmp/b",
         captureIdentityHash: "cap-b",
         health: makeHealth(),
-        captureStartIso: "2026-09-23T14:00:00.000Z",
-        captureEndIso: "2026-09-23T18:00:00.000Z",
+        captureStartIso: "2026-09-23T18:00:00.000Z",
+        captureEndIso: "2026-09-23T22:00:00.000Z",
         acceptedMinutes: 240,
         utcDaysPhysicallyCovered: ["2026-09-23"],
         blindIncidence: blindB,
@@ -386,8 +393,8 @@ describe("M16.2 registry accounting", () => {
         captureRunDir: "/tmp/x",
         captureIdentityHash: "other-cap",
         health: makeHealth(),
-        captureStartIso: "2026-09-22T14:00:00.000Z",
-        captureEndIso: "2026-09-22T18:00:00.000Z",
+        captureStartIso: "2026-09-22T18:00:00.000Z",
+        captureEndIso: "2026-09-22T22:00:00.000Z",
         acceptedMinutes: 240,
         utcDaysPhysicallyCovered: ["2026-09-22"],
         blindIncidence: blind,
@@ -491,7 +498,7 @@ describe("M16.2 lock / preflight / lifecycle", () => {
           pidIsAlive: () => false,
           currentPid: () => 1,
         },
-        nowMs: () => Date.parse("2026-09-21T14:10:00.000Z"),
+        nowMs: () => Date.parse("2026-09-21T18:10:00.000Z"),
         dryRun: true,
         preflightExtras: {
           getFreeDiskBytes: () => M16_VALIDATION_MIN_FREE_DISK_BYTES,
@@ -515,7 +522,7 @@ describe("M16.2 lock / preflight / lifecycle", () => {
         pidIsAlive: () => false,
         currentPid: () => 2,
       },
-      nowMs: () => Date.parse("2026-09-21T14:01:00.000Z"),
+      nowMs: () => Date.parse("2026-09-21T18:01:00.000Z"),
       dryRun: true,
       preflightExtras: {
         getFreeDiskBytes: () => M16_VALIDATION_MIN_FREE_DISK_BYTES,
@@ -529,7 +536,7 @@ describe("M16.2 lock / preflight / lifecycle", () => {
     const recovered = recoverM16ValidationCycle({
       loadRegistry: () => reg,
       loadAttempts: () => attempts,
-      nowMs: () => Date.parse("2026-09-21T15:00:00.000Z"),
+      nowMs: () => Date.parse("2026-09-21T19:00:00.000Z"),
     });
     expect(recovered.outcomesOpened).toBe(false);
     expect(recovered.pending.length).toBeGreaterThan(0);
@@ -566,9 +573,9 @@ describe("M16.2 lock / preflight / lifecycle", () => {
         mkdirSync: () => {},
         pidIsAlive: () => false,
         currentPid: () => 9,
-        nowIso: () => "2026-09-21T14:00:00.000Z",
+        nowIso: () => "2026-09-21T18:00:00.000Z",
       },
-      nowMs: () => Date.parse("2026-09-21T14:00:00.000Z"),
+      nowMs: () => Date.parse("2026-09-21T18:00:00.000Z"),
     });
     expect(cycle.message).toContain(M16_COLLECTION_COMPLETE_SEALED_MESSAGE);
     expect(cycle.captureLaunched).toBe(false);
@@ -576,10 +583,11 @@ describe("M16.2 lock / preflight / lifecycle", () => {
 });
 
 describe("M16.2 scheduler + argv + role", () => {
-  it("32–35. plist UTC 14:00; enable/disable state; argv; researchRole", () => {
+  it("32–35. plist UTC 18:00; enable/disable state; argv; researchRole", () => {
     const plist = generateM16ValidationLaunchdPlist({});
-    expect(plist).toContain("<integer>14</integer>");
+    expect(plist).toContain("<integer>18</integer>");
     expect(plist).toContain("<integer>0</integer>");
+    expect(plist).toContain("<string>UTC</string>");
     expect(plist).toContain("REPO_ROOT");
     expect(plist).not.toMatch(/\/Users\//);
 
@@ -643,5 +651,129 @@ describe("M16.2 registry identity deterministic", () => {
     expect(
       appendM16ValidationReservation(updated, reservation).registryIdentity,
     ).toBe(updated.registryIdentity);
+  });
+});
+
+describe("M16.1b California daytime window amendment", () => {
+  it("38–45. window, tolerance edges, no shift, no cross-midnight", () => {
+    expect(M16_FIXED_UTC_WINDOW_START_HHMM).toBe("18:00");
+    expect(M16_FIXED_UTC_WINDOW_END_HHMM).toBe("22:00");
+    expect(M16_STANDARD_SEGMENT_DURATION_MINUTES).toBe(240);
+
+    const tooEarly = evaluateM16LaunchWindow(
+      Date.parse("2026-09-21T17:54:00.000Z"),
+    );
+    expect(tooEarly.status).toBe("too-early");
+
+    const wait = evaluateM16LaunchWindow(
+      Date.parse("2026-09-21T17:55:00.000Z"),
+    );
+    expect(wait.status).toBe("in-tolerance-wait-for-start");
+
+    const launch = evaluateM16LaunchWindow(
+      Date.parse("2026-09-21T18:05:00.000Z"),
+    );
+    expect(launch.status).toBe("launch-now");
+
+    const late = evaluateM16LaunchWindow(
+      Date.parse("2026-09-21T18:06:00.000Z"),
+    );
+    expect(late.status).toBe("missed-window");
+
+    // Missed day must NOT silently become 19:00–23:00Z
+    const next = nextM16GovernedCaptureStart(
+      Date.parse("2026-09-21T18:06:00.000Z"),
+    );
+    expect(next.startIso).toBe("2026-09-22T18:00:00.000Z");
+    expect(next.startIso).not.toBe("2026-09-21T19:00:00.000Z");
+
+    expect(() =>
+      createM16ValidationReservation({
+        plannedUtcDay: "2026-09-21",
+        plannedStartIso: "2026-09-21T19:00:00.000Z",
+      }),
+    ).toThrow(/fixed window|18:00/);
+
+    const w = m16GovernedWindowForUtcDay("2026-09-21");
+    expect(new Date(w.endMs - 1).toISOString().slice(0, 10)).toBe("2026-09-21");
+  });
+
+  it("46–52. identities: family/evidence/dependence/fee unchanged; cohort+protocol change", () => {
+    const a = buildM16ValidationAuthorityBinding(null);
+    const plan = buildM16ProspectiveCohortPlan();
+    expect(a.familyDefinitionIdentity).toBe(M16_EXPECTED_FAMILY_DEFINITION_IDENTITY);
+    expect(a.evidenceContractIdentity).toBe(M16_EXPECTED_EVIDENCE_CONTRACT_IDENTITY);
+    expect(a.dependencePlanIdentity).toBe(M16_EXPECTED_DEPENDENCE_PLAN_IDENTITY);
+    expect(a.feeContractIdentity).toBe(M16_EXPECTED_FEE_CONTRACT_IDENTITY);
+    expect(a.cohortPlanIdentity).toBe(M16_EXPECTED_COHORT_PLAN_IDENTITY);
+    expect(a.cohortPlanIdentity).not.toBe(M16_1A_PRIOR_COHORT_PLAN_IDENTITY);
+    expect(a.scientificProtocolIdentity).not.toBe(
+      M16_1A_PRIOR_SCIENTIFIC_PROTOCOL_IDENTITY,
+    );
+    expect(a.scientificProtocolIdentity).not.toBe(
+      M16_SUPERSEDED_SCIENTIFIC_PROTOCOL_IDENTITY,
+    );
+    expect(plan.milestone).toBe("m16.1b-prospective-validation-cohort-plan");
+    expect(plan.supersedesCohortPlanIdentity).toBe(M16_1A_PRIOR_COHORT_PLAN_IDENTITY);
+    expect(plan.evidenceThresholds.requiredTradeN).toBe(268);
+    expect(plan.evidenceThresholds.minimumUtcDayClusters).toBe(24);
+    expect(plan.budget.maxAcceptedCaptureHours).toBe(140);
+    expect(M16_MAX_ACCEPTED_CAPTURE_HOURS).toBe(140);
+    expect(plan.segment.standardDurationMinutes).toBe(240);
+    expect(plan.stopping.outcomePeekingForbidden).toBe(true);
+    expect(plan.stopping.pnlPeekingForbidden).toBe(true);
+  });
+
+  it("53–56. old protocol/cohort rejected; reservation binds 18–22Z", () => {
+    const reg = makeRegistry();
+    expect(reg.authority.cohortPlanIdentity).toBe(M16_EXPECTED_COHORT_PLAN_IDENTITY);
+
+    const oldAuth = {
+      ...reg.authority,
+      cohortPlanIdentity: M16_1A_PRIOR_COHORT_PLAN_IDENTITY,
+      scientificProtocolIdentity: M16_1A_PRIOR_SCIENTIFIC_PROTOCOL_IDENTITY,
+    };
+    const blocked = runM16ValidationPreflight({
+      registry: { ...reg, authority: oldAuth },
+      plannedUtcDay: "2026-09-21",
+      authority: oldAuth,
+      observeSeriesFee: () => ({ feeType: "quadratic", feeMultiplier: 1 }),
+      getFreeDiskBytes: () => M16_VALIDATION_MIN_FREE_DISK_BYTES,
+      credentialsPresent: () => true,
+    });
+    expect(blocked.ok).toBe(false);
+    expect(blocked.blockers.some((b) => /14:00|18:00–22:00|superseded/i.test(b)))
+      .toBe(true);
+
+    const r = createM16ValidationReservation({
+      plannedUtcDay: "2026-09-21",
+      createdAt: "2026-09-21T12:00:00.000Z",
+      authority: reg.authority,
+    });
+    expect(r.fixedUtcWindow).toBe("18:00-22:00Z");
+    expect(r.plannedStartIso).toBe("2026-09-21T18:00:00.000Z");
+    expect(r.plannedEndIso).toBe("2026-09-21T22:00:00.000Z");
+    expect(() => assertReservationUsesFixedWindow(r)).not.toThrow();
+
+    // Synthetic old-window reservation shape must fail fixed-window assert
+    const oldWindowReservation = {
+      ...r,
+      fixedUtcWindow: "14:00-18:00Z" as "18:00-22:00Z",
+      plannedStartIso: "2026-09-21T14:00:00.000Z",
+      plannedEndIso: "2026-09-21T18:00:00.000Z",
+    };
+    expect(() => assertReservationUsesFixedWindow(oldWindowReservation)).toThrow(
+      /18:00-22:00Z/,
+    );
+  });
+
+  it("57. scheduler Hour=18 TZ=UTC; no live capture in tests", () => {
+    const plist = generateM16ValidationLaunchdPlist({});
+    expect(plist).toMatch(/<key>Hour<\/key>\s*<integer>18<\/integer>/);
+    expect(plist).toMatch(/<key>TZ<\/key>\s*<string>UTC<\/string>/);
+    expect(M16_LAUNCH_TOLERANCE_BEFORE_MS).toBe(5 * 60 * 1000);
+    expect(M16_LAUNCH_TOLERANCE_AFTER_MS).toBe(5 * 60 * 1000);
+    // Tests never set M16_VALIDATION_ALLOW_LIVE_CAPTURE or open sockets
+    expect(process.env.M16_VALIDATION_ALLOW_LIVE_CAPTURE).toBeUndefined();
   });
 });

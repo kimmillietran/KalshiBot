@@ -3,20 +3,28 @@
 ## Purpose
 
 Automate **outcome-blind** collection of the M16 prospective validation cohort
-under the sealed M16.1a contract. This milestone does **not** open P&L, evaluate
-CR2, or produce a validation verdict.
+under the sealed M16.1a + **M16.1b** contract. This milestone does **not** open
+P&L, evaluate CR2, or produce a validation verdict.
 
-## Authority (M16.1a)
+## Authority (post M16.1b window amendment)
 
 | Artifact | Identity |
 | --- | --- |
-| main / PR #98 | `94a3bcfb628c30938127216f7ac9a24a9318a656` |
 | Family | `e98e6180b1edc468d544cbc41a624b8201535b2e9e58121d7669079fcf5cbce0` |
 | Evidence v2 | `2a06820dab24aea4a253d886460bfc1267d7bd438d0bce817cbb999fd934beb7` |
 | Dependence v2 | `df947284e5ee7678280dafd6ba5c4456281ca894b10b793a5a05f584d7d2630d` |
 | Fee | `86f5f152308096fb365bb4ef41dca8beb488a302f038a915c8b228c0b645b44d` |
-| Cohort v2 | `294aa283c8b99269e7c5fd36282b826ffc6a601ee9d1b7b88af62b8bfc2e71f8` |
-| Scientific protocol | `453d5f2469642cdfc0d66989fe6fc40d6d9d59852266aaf2f9473cf4bd93bc59` |
+| Cohort v3 (M16.1b) | `a2b86dd7c7fc3864ce48c860b10cfea053bdde04e09723a4f6ae87adca31dd63` |
+| Scientific protocol (M16.1b) | `1aa47e106a069dad466e2e338ba4b50000fd52eeaac482239544e20161f5a824` |
+
+Superseded before first capture (must not authorize):
+
+| Artifact | Prior identity |
+| --- | --- |
+| Cohort v2 (14:00–18:00Z) | `294aa283c8b99269e7c5fd36282b826ffc6a601ee9d1b7b88af62b8bfc2e71f8` |
+| Scientific protocol (14:00–18:00Z) | `453d5f2469642cdfc0d66989fe6fc40d6d9d59852266aaf2f9473cf4bd93bc59` |
+
+See `docs/research/m16-1b-time-of-day-window-amendment.md`.
 
 `scientificProtocolIdentity` hashes family/evidence/dependence/fee/cohort
 identities + fixed window + thresholds + CR2 method label + segment minutes —
@@ -32,15 +40,17 @@ Collection readiness (joint):
 
 Every collection day:
 
-**14:00:00Z → 18:00:00Z** (exactly **240 minutes**)
+**18:00:00Z → 22:00:00Z** (exactly **240 minutes**)
 
 - Derived from UTC only (DST/local time cannot shift the window).
-- Launch tolerance: invoke from **13:55Z**; must begin by **14:05Z** else
+- Launch tolerance: invoke from **17:55Z**; must begin by **18:05Z** else
   `missed-window`.
-- Capture data interval remains 14:00–18:00Z — never silently shorten/shift.
+- Capture data interval remains 18:00–22:00Z — never silently shorten/shift.
 - Max **one** normal accepted segment per UTC day.
 - No cross-midnight accepted segments.
-- **No backfill** of missed days. **No** shifting to 15:00–19:00Z.
+- **No backfill** of missed days. **No** shifting to 19:00–23:00Z.
+- Population rationale: California daytime historical context (descriptive local
+  ≈ 11:00–15:00 PDT / 10:00–14:00 PST). Not selected from P&L or hourly incidence.
 
 ## Lifecycle
 
@@ -99,7 +109,7 @@ Expected burden ≈ **33 calendar days** at ~8.25 trades/4h day — not guarante
 ## Scheduler
 
 `--enable-scheduler` writes a launchd plist template with `TZ=UTC` and
-`StartCalendarInterval` Hour=14 Minute=0. No machine home paths are committed.
+`StartCalendarInterval` Hour=18 Minute=0. No machine home paths are committed.
 Installation (`launchctl load`) is explicit and operator-driven.
 
 ## Safety
