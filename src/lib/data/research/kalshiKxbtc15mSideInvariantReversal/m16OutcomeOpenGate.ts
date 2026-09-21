@@ -1,11 +1,20 @@
 /**
- * M16.1 economic outcome-open governance gate.
+ * M16.1a economic outcome-open governance gate.
  * Never computes P&L — only structural/governance authorization.
+ * Old M16.1 identities alone MUST NOT authorize.
  */
 import { buildM16FamilyDefinition } from "./buildM16FamilyDefinition";
 import { buildM16AuthoritativeFeeContract } from "./m16AuthoritativeFeeContract";
+import { M16_CR2_INFERENCE_METHOD } from "./m16Cr2ClusterMean";
 import { buildM16DependencePlan } from "./m16DependencePlan";
 import { buildM16EvidenceContract } from "./m16EvidenceContract";
+import {
+  M16_1_PRIOR_COHORT_PLAN_IDENTITY,
+  M16_1_PRIOR_DEPENDENCE_PLAN_IDENTITY,
+  M16_1_PRIOR_EVIDENCE_CONTRACT_IDENTITY,
+  M16_AUTHORITATIVE_FEE_CONTRACT_IDENTITY,
+  M16_FAMILY_DEFINITION_IDENTITY,
+} from "./m16PriorContractIdentities";
 import {
   buildM16ProspectiveCohortPlan,
   decideM16BlindCollectionStopping,
@@ -27,6 +36,9 @@ export const M16_OUTCOME_OPEN_BLOCKERS = {
   DEPENDENCE_IDENTITY_MISMATCH: "m16-dependence-plan-identity-mismatch",
   FEE_IDENTITY_MISMATCH: "m16-fee-contract-identity-mismatch",
   COHORT_IDENTITY_MISMATCH: "m16-cohort-plan-identity-mismatch",
+  SUPERSEDED_EVIDENCE_IDENTITY: "m16-1-evidence-contract-superseded-by-m16-1a",
+  SUPERSEDED_DEPENDENCE_IDENTITY: "m16-1-dependence-plan-superseded-by-m16-1a",
+  SUPERSEDED_COHORT_IDENTITY: "m16-1-cohort-plan-superseded-by-m16-1a",
   FEE_SCHEDULE_DIVERGED: "m16-series-fee-attestation-diverged",
   REGISTRY_EMPTY: "m16-accepted-capture-registry-empty",
   TRADE_N_SHORT: "m16-validation-trade-n-below-target",
@@ -34,6 +46,7 @@ export const M16_OUTCOME_OPEN_BLOCKERS = {
   CONTAMINATION: "m16-confirmatory-cohort-contamination",
   PNL_ALREADY_OPENED: "m16-pnl-previously-opened",
   STOPPING_NOT_READY: "m16-blind-stopping-not-ready-for-outcome-open",
+  OLD_N155_THRESHOLD: "m16-old-n155-threshold-does-not-authorize",
 } as const;
 
 export type M16OutcomeOpenEvaluationInput = {
@@ -42,7 +55,6 @@ export type M16OutcomeOpenEvaluationInput = {
   expectedDependencePlanIdentity?: string;
   expectedFeeContractIdentity?: string;
   expectedCohortPlanIdentity?: string;
-  /** Live series fee check; omit to skip (status-only paths). */
   observedSeriesFee?: { feeType: string; feeMultiplier: number };
   progress?: M16BlindCollectionProgress;
   pnlPreviouslyOpened?: boolean;
@@ -53,6 +65,7 @@ export type M16OutcomeOpenAuthorization = {
   authorized: boolean;
   economicOutcomeOpenAuthorized: boolean;
   subfamilyId: typeof M16_SUBFAMILY_ID;
+  primaryInferenceMethod: typeof M16_CR2_INFERENCE_METHOD;
   sealedIdentities: {
     familyDefinitionIdentity: string;
     evidenceContractIdentity: string;
@@ -94,11 +107,6 @@ function detectContamination(
   return null;
 }
 
-/**
- * Evaluate whether economic outcome-open is authorized.
- * M16.1 seals contracts, but authorization remains false until joint
- * blind collection thresholds + registry integrity are satisfied.
- */
 export function evaluateM16OutcomeOpenAuthorization(
   input: M16OutcomeOpenEvaluationInput = {},
 ): M16OutcomeOpenAuthorization {
@@ -110,6 +118,13 @@ export function evaluateM16OutcomeOpenAuthorization(
   const progress = input.progress ?? EMPTY_PROGRESS;
   const blockers: string[] = [];
 
+  if (family.familyDefinitionIdentity !== M16_FAMILY_DEFINITION_IDENTITY) {
+    blockers.push(M16_OUTCOME_OPEN_BLOCKERS.FAMILY_IDENTITY_MISMATCH);
+  }
+  if (fee.feeContractIdentity !== M16_AUTHORITATIVE_FEE_CONTRACT_IDENTITY) {
+    blockers.push(M16_OUTCOME_OPEN_BLOCKERS.FEE_IDENTITY_MISMATCH);
+  }
+
   if (
     input.expectedFamilyDefinitionIdentity != null
     && input.expectedFamilyDefinitionIdentity !== family.familyDefinitionIdentity
@@ -117,12 +132,22 @@ export function evaluateM16OutcomeOpenAuthorization(
     blockers.push(M16_OUTCOME_OPEN_BLOCKERS.FAMILY_IDENTITY_MISMATCH);
   }
   if (
+    input.expectedEvidenceContractIdentity
+    === M16_1_PRIOR_EVIDENCE_CONTRACT_IDENTITY
+  ) {
+    blockers.push(M16_OUTCOME_OPEN_BLOCKERS.SUPERSEDED_EVIDENCE_IDENTITY);
+  } else if (
     input.expectedEvidenceContractIdentity != null
     && input.expectedEvidenceContractIdentity !== evidence.evidenceContractIdentity
   ) {
     blockers.push(M16_OUTCOME_OPEN_BLOCKERS.EVIDENCE_IDENTITY_MISMATCH);
   }
   if (
+    input.expectedDependencePlanIdentity
+    === M16_1_PRIOR_DEPENDENCE_PLAN_IDENTITY
+  ) {
+    blockers.push(M16_OUTCOME_OPEN_BLOCKERS.SUPERSEDED_DEPENDENCE_IDENTITY);
+  } else if (
     input.expectedDependencePlanIdentity != null
     && input.expectedDependencePlanIdentity !== dependence.dependencePlanIdentity
   ) {
@@ -135,6 +160,10 @@ export function evaluateM16OutcomeOpenAuthorization(
     blockers.push(M16_OUTCOME_OPEN_BLOCKERS.FEE_IDENTITY_MISMATCH);
   }
   if (
+    input.expectedCohortPlanIdentity === M16_1_PRIOR_COHORT_PLAN_IDENTITY
+  ) {
+    blockers.push(M16_OUTCOME_OPEN_BLOCKERS.SUPERSEDED_COHORT_IDENTITY);
+  } else if (
     input.expectedCohortPlanIdentity != null
     && input.expectedCohortPlanIdentity !== cohort.cohortPlanIdentity
   ) {
@@ -166,6 +195,15 @@ export function evaluateM16OutcomeOpenAuthorization(
     blockers.push(M16_OUTCOME_OPEN_BLOCKERS.CONTAMINATION);
   }
 
+  // Old N=155 alone never authorizes under M16.1a
+  if (
+    progress.eligibleTradeCount >= 155
+    && progress.eligibleTradeCount < cohort.evidenceThresholds.requiredTradeN
+    && progress.utcDayClusterCount >= cohort.evidenceThresholds.minimumUtcDayClusters
+  ) {
+    blockers.push(M16_OUTCOME_OPEN_BLOCKERS.OLD_N155_THRESHOLD);
+  }
+
   if (progress.eligibleTradeCount < cohort.evidenceThresholds.requiredTradeN) {
     blockers.push(M16_OUTCOME_OPEN_BLOCKERS.TRADE_N_SHORT);
   }
@@ -180,7 +218,6 @@ export function evaluateM16OutcomeOpenAuthorization(
     blockers.push(M16_OUTCOME_OPEN_BLOCKERS.STOPPING_NOT_READY);
   }
 
-  // Deduplicate while preserving order
   const uniqueBlockers = [...new Set(blockers)];
   const authorized = uniqueBlockers.length === 0;
 
@@ -188,6 +225,7 @@ export function evaluateM16OutcomeOpenAuthorization(
     authorized,
     economicOutcomeOpenAuthorized: authorized,
     subfamilyId: M16_SUBFAMILY_ID,
+    primaryInferenceMethod: M16_CR2_INFERENCE_METHOD,
     sealedIdentities: {
       familyDefinitionIdentity: family.familyDefinitionIdentity,
       evidenceContractIdentity: evidence.evidenceContractIdentity,
@@ -198,9 +236,9 @@ export function evaluateM16OutcomeOpenAuthorization(
     progress,
     blockers: uniqueBlockers,
     note: authorized
-      ? "All sealed M16.1 governance criteria satisfied for outcome-open."
-      : "Economic outcome-open blocked. M16.1 contracts may be sealed while "
-        + "collection / integrity criteria remain unmet. Blockers: "
+      ? "All sealed M16.1a governance criteria satisfied for outcome-open."
+      : "Economic outcome-open blocked. M16.1a contracts required; old M16.1 "
+        + "identities / N=155 threshold do not authorize. Blockers: "
         + uniqueBlockers.join(", "),
   };
 }
@@ -216,7 +254,6 @@ export function assertM16EconomicOutcomeOpenUnauthorized(
   }
 }
 
-/** Assert a confirmatory capture runId is allowed into the validation registry. */
 export function assertM16ConfirmatoryCaptureAllowed(runId: string): void {
   const forbidden = new Set<string>([
     ...M16_FORBIDDEN_INCIDENCE_RUN_IDS,

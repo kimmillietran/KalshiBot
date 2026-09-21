@@ -93,9 +93,29 @@ export {
 } from "./m16EvidenceContract";
 
 export {
+  M16_CR2_INFERENCE_METHOD,
+  computeM16Cr2ClusterMeanInference,
+  m16StudentTSurvival,
+  type M16ClusteredObservation,
+  type M16Cr2MeanInferenceResult,
+} from "./m16Cr2ClusterMean";
+
+export {
+  M16_AUTHORITATIVE_FEE_CONTRACT_IDENTITY,
+  M16_FAMILY_DEFINITION_IDENTITY,
+  M16_1A_AMENDMENT_REASON,
+  M16_1_PRIOR_COHORT_PLAN_IDENTITY,
+  M16_1_PRIOR_DEPENDENCE_PLAN_IDENTITY,
+  M16_1_PRIOR_EVIDENCE_CONTRACT_IDENTITY,
+} from "./m16PriorContractIdentities";
+
+export {
   M16_DEPENDENCE_PLAN_VERSION,
   M16_MIN_UTC_DAY_CLUSTERS,
+  M16_PLANNING_AVG_TRADES_PER_UTC_DAY,
+  M16_PLANNING_WITHIN_UTC_DAY_ICC,
   buildM16DependencePlan,
+  computeM16ClusteredPlanningTradeN,
   designEffect,
   m16UtcDayKey,
   type M16DependencePlan,
@@ -112,13 +132,19 @@ export {
 } from "./m16AuthoritativeFeeContract";
 
 export {
+  M16_ACCEPTED_SEGMENT_MUST_REMAIN_WITHIN_SINGLE_UTC_DAY,
   M16_BLIND_INCIDENCE_RATE_PER_HOUR,
   M16_COHORT_PLAN_VERSION,
+  M16_FIXED_UTC_WINDOW,
+  M16_FIXED_UTC_WINDOW_END_HHMM,
+  M16_FIXED_UTC_WINDOW_START_HHMM,
   M16_FORBIDDEN_INCIDENCE_RUN_IDS,
   M16_MAX_ACCEPTED_CAPTURE_HOURS,
+  M16_MAX_ACCEPTED_SEGMENTS_PER_UTC_DAY,
   M16_MAX_SEGMENT_DURATION_MINUTES,
   M16_STANDARD_SEGMENT_DURATION_MINUTES,
   M16_VALIDATION_ROLE,
+  assertM16FixedUtcWindowInsideSingleDay,
   buildM16ProspectiveCohortPlan,
   decideM16BlindCollectionStopping,
   type M16BlindCollectionProgress,

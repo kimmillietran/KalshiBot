@@ -1,5 +1,10 @@
 # M16.1 — Confirmatory evidence contract + dependence + fee + cohort
 
+> **SUPERSEDED for validation collection / outcome-open by M16.1a.**
+> See [`m16-1a-dependence-power-amendment.md`](./m16-1a-dependence-power-amendment.md).
+> M16.1 identities alone must not authorize economic outcome-open.
+> Retained here as historical seal record (family + fee authority unchanged).
+
 ## Why M16.0 did not authorize P&L
 
 M16.0 sealed the mechanical family and characterized blind incidence

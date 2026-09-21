@@ -1,5 +1,5 @@
 /**
- * M16.1 prospective validation cohort plan — sealed prospectively.
+ * M16.1a prospective validation cohort plan (v2) — supersedes M16.1 v1.
  * Fresh captures only. Outcome-blind stopping. No capture launch here.
  */
 import { createHash } from "node:crypto";
@@ -10,6 +10,10 @@ import { buildM16AuthoritativeFeeContract } from "./m16AuthoritativeFeeContract"
 import { buildM16DependencePlan } from "./m16DependencePlan";
 import { buildM16EvidenceContract } from "./m16EvidenceContract";
 import {
+  M16_1A_AMENDMENT_REASON,
+  M16_1_PRIOR_COHORT_PLAN_IDENTITY,
+} from "./m16PriorContractIdentities";
+import {
   M16_FORBIDDEN_M14_EXCLUDED_RUN_ID,
   M16_FORBIDDEN_M14_VALIDATION_RUN_IDS,
   M16_FORBIDDEN_M15_COST_FLOOR_RUN_ID,
@@ -17,24 +21,34 @@ import {
 } from "./m16Types";
 
 export const M16_COHORT_PLAN_VERSION =
-  "kalshi-kxbtc15m-side-invariant-exhaustion-reversal-cohort-plan-v1" as const;
+  "kalshi-kxbtc15m-side-invariant-exhaustion-reversal-cohort-plan-v2" as const;
 
 export const M16_VALIDATION_ROLE = "m16-prospective-validation" as const;
 
-/** Standard / max segment duration (minutes) — M14-style 8h. */
-export const M16_STANDARD_SEGMENT_DURATION_MINUTES = 480 as const;
-export const M16_MAX_SEGMENT_DURATION_MINUTES = 480 as const;
+/** Standard / max segment duration (minutes) — M16.1a 4h. */
+export const M16_STANDARD_SEGMENT_DURATION_MINUTES = 240 as const;
+export const M16_MAX_SEGMENT_DURATION_MINUTES = 240 as const;
 
 /**
- * Max accepted capture hours. Binding constraint is ≥24 distinct UTC-day
- * clusters at one 8h segment/day ⇒ 192h; seal 200h with operational slack.
- * Blind incidence ~2.06/h ⇒ 155 trades ≈ 75h (not binding vs day floor).
+ * Fixed daily UTC window (operational regularity — not profitability).
+ * Entire 240m interval lies inside one UTC calendar date.
  */
-export const M16_MAX_ACCEPTED_CAPTURE_HOURS = 200 as const;
+export const M16_FIXED_UTC_WINDOW_START_HHMM = "14:00" as const;
+export const M16_FIXED_UTC_WINDOW_END_HHMM = "18:00" as const;
+export const M16_FIXED_UTC_WINDOW =
+  "14:00-18:00Z-daily-fixed-operational-regularity" as const;
+
+export const M16_MAX_ACCEPTED_SEGMENTS_PER_UTC_DAY = 1 as const;
+export const M16_ACCEPTED_SEGMENT_MUST_REMAIN_WITHIN_SINGLE_UTC_DAY = true as const;
+
+/**
+ * Max accepted capture hours. ~268/2.06 ≈ 130h expected; seal 140h slack.
+ * Do not expand after seeing P&L.
+ */
+export const M16_MAX_ACCEPTED_CAPTURE_HOURS = 140 as const;
 
 export const M16_BLIND_INCIDENCE_RATE_PER_HOUR = 2.0625339816796635 as const;
 
-/** August M16.0 blind-incidence captures — structurally seen; excluded from P&L. */
 export const M16_FORBIDDEN_INCIDENCE_RUN_IDS = [
   "2026-08-03T03-21-26-351Z",
   "2026-08-04T10-33-33-601Z",
@@ -43,7 +57,10 @@ export const M16_FORBIDDEN_INCIDENCE_RUN_IDS = [
 export type M16ProspectiveCohortPlan = {
   planVersion: typeof M16_COHORT_PLAN_VERSION;
   subfamilyId: typeof M16_SUBFAMILY_ID;
-  milestone: "m16.1-prospective-validation-cohort-plan";
+  milestone: "m16.1a-prospective-validation-cohort-plan";
+  supersedesCohortPlanIdentity: typeof M16_1_PRIOR_COHORT_PLAN_IDENTITY;
+  amendmentReason: typeof M16_1A_AMENDMENT_REASON;
+  economicOutcomesOpenedBeforeAmendment: false;
   validationRole: typeof M16_VALIDATION_ROLE;
   terminology: {
     thisCohort: "M16 prospective validation";
@@ -60,6 +77,14 @@ export type M16ProspectiveCohortPlan = {
   segment: {
     standardDurationMinutes: typeof M16_STANDARD_SEGMENT_DURATION_MINUTES;
     maxDurationMinutes: typeof M16_MAX_SEGMENT_DURATION_MINUTES;
+    fixedUtcWindow: typeof M16_FIXED_UTC_WINDOW;
+    fixedUtcWindowStartHhmm: typeof M16_FIXED_UTC_WINDOW_START_HHMM;
+    fixedUtcWindowEndHhmm: typeof M16_FIXED_UTC_WINDOW_END_HHMM;
+    maximumAcceptedSegmentsPerUtcDay: typeof M16_MAX_ACCEPTED_SEGMENTS_PER_UTC_DAY;
+    acceptedSegmentMustRemainWithinSingleUtcDay:
+      typeof M16_ACCEPTED_SEGMENT_MUST_REMAIN_WITHIN_SINGLE_UTC_DAY;
+    calendarDaySelection:
+      "consecutive-operator-eligible-calendar-days-no-volatility-cherry-picking";
     preferDistinctUtcDays: true;
     note: string;
   };
@@ -69,10 +94,18 @@ export type M16ProspectiveCohortPlan = {
     estimatedHoursForTradeN: number;
     estimatedHoursForUtcDayClusters: number;
     bindingEstimatedHours: number;
+    expectedCalendarDaysApproximate: number;
   };
   evidenceThresholds: {
     requiredTradeN: number;
     minimumUtcDayClusters: number;
+    iidBaselineTradeN: number;
+  };
+  zeroSignalHealthyDay: {
+    consumesAcceptedHours: true;
+    incrementsEligibleTradeN: false;
+    incrementsEligibleUtcDayClusterN: false;
+    mayNotBeDiscardedToRecaptureForSignals: true;
   };
   stopping: {
     mode: "outcome-blind-counts-and-hours-only";
@@ -112,7 +145,10 @@ export function buildM16ProspectiveCohortPlan(): M16ProspectiveCohortPlan {
   const plan: Omit<M16ProspectiveCohortPlan, "cohortPlanIdentity"> = {
     planVersion: M16_COHORT_PLAN_VERSION,
     subfamilyId: M16_SUBFAMILY_ID,
-    milestone: "m16.1-prospective-validation-cohort-plan",
+    milestone: "m16.1a-prospective-validation-cohort-plan",
+    supersedesCohortPlanIdentity: M16_1_PRIOR_COHORT_PLAN_IDENTITY,
+    amendmentReason: M16_1A_AMENDMENT_REASON,
+    economicOutcomesOpenedBeforeAmendment: false,
     validationRole: M16_VALIDATION_ROLE,
     terminology: {
       thisCohort: "M16 prospective validation",
@@ -129,11 +165,20 @@ export function buildM16ProspectiveCohortPlan(): M16ProspectiveCohortPlan {
     segment: {
       standardDurationMinutes: M16_STANDARD_SEGMENT_DURATION_MINUTES,
       maxDurationMinutes: M16_MAX_SEGMENT_DURATION_MINUTES,
+      fixedUtcWindow: M16_FIXED_UTC_WINDOW,
+      fixedUtcWindowStartHhmm: M16_FIXED_UTC_WINDOW_START_HHMM,
+      fixedUtcWindowEndHhmm: M16_FIXED_UTC_WINDOW_END_HHMM,
+      maximumAcceptedSegmentsPerUtcDay: M16_MAX_ACCEPTED_SEGMENTS_PER_UTC_DAY,
+      acceptedSegmentMustRemainWithinSingleUtcDay:
+        M16_ACCEPTED_SEGMENT_MUST_REMAIN_WITHIN_SINGLE_UTC_DAY,
+      calendarDaySelection:
+        "consecutive-operator-eligible-calendar-days-no-volatility-cherry-picking",
       preferDistinctUtcDays: true,
       note:
-        "Prefer one ≤8h accepted segment per UTC day to accumulate distinct "
-        + "UTC-day clusters. Do not solve diversity with one giant multi-day "
-        + "logical session.",
+        "Fixed 14:00–18:00 UTC daily window chosen for operational regularity "
+        + "(full 4h inside one UTC day). Not selected from P&L or volatility. "
+        + "At most one accepted normal segment per UTC day. Zero-signal healthy "
+        + "days consume hours but do not increment G.",
     },
     budget: {
       maxAcceptedCaptureHours: M16_MAX_ACCEPTED_CAPTURE_HOURS,
@@ -141,10 +186,19 @@ export function buildM16ProspectiveCohortPlan(): M16ProspectiveCohortPlan {
       estimatedHoursForTradeN,
       estimatedHoursForUtcDayClusters,
       bindingEstimatedHours,
+      expectedCalendarDaysApproximate:
+        requiredTradeN / (M16_BLIND_INCIDENCE_RATE_PER_HOUR * 4),
     },
     evidenceThresholds: {
       requiredTradeN,
       minimumUtcDayClusters,
+      iidBaselineTradeN: evidence.collectionTargets.iidBaselineTradeN,
+    },
+    zeroSignalHealthyDay: {
+      consumesAcceptedHours: true,
+      incrementsEligibleTradeN: false,
+      incrementsEligibleUtcDayClusterN: false,
+      mayNotBeDiscardedToRecaptureForSignals: true,
     },
     stopping: {
       mode: "outcome-blind-counts-and-hours-only",
@@ -203,7 +257,8 @@ export function decideM16BlindCollectionStopping(
         `Blind counts met: trades=${progress.eligibleTradeCount}/`
         + `${plan.evidenceThresholds.requiredTradeN}, utcDays=`
         + `${progress.utcDayClusterCount}/`
-        + `${plan.evidenceThresholds.minimumUtcDayClusters}.`,
+        + `${plan.evidenceThresholds.minimumUtcDayClusters}. `
+        + "Economic outcomes remain sealed until a separate M16.3 executor.",
     };
   }
   if (progress.acceptedCaptureHours >= plan.budget.maxAcceptedCaptureHours) {
@@ -228,4 +283,29 @@ export function decideM16BlindCollectionStopping(
       + `${progress.acceptedCaptureHours}/`
       + `${plan.budget.maxAcceptedCaptureHours}.`,
   };
+}
+
+/** Assert a planned 240m window lies entirely inside one UTC day at the fixed clock. */
+export function assertM16FixedUtcWindowInsideSingleDay(input: {
+  plannedUtcDay: string;
+  plannedStartIso: string;
+  durationMinutes: number;
+}): void {
+  if (input.durationMinutes !== M16_STANDARD_SEGMENT_DURATION_MINUTES) {
+    throw new Error(
+      `M16.1a segment duration must be ${M16_STANDARD_SEGMENT_DURATION_MINUTES}m`,
+    );
+  }
+  const expectedStart = `${input.plannedUtcDay}T${M16_FIXED_UTC_WINDOW_START_HHMM}:00.000Z`;
+  if (input.plannedStartIso !== expectedStart) {
+    throw new Error(
+      `M16.1a fixed window start must be ${expectedStart}; got ${input.plannedStartIso}`,
+    );
+  }
+  const endMs =
+    Date.parse(input.plannedStartIso) + input.durationMinutes * 60_000;
+  const endDay = new Date(endMs - 1).toISOString().slice(0, 10);
+  if (endDay !== input.plannedUtcDay) {
+    throw new Error("M16.1a accepted segment must not cross UTC midnight");
+  }
 }

@@ -1,5 +1,5 @@
 /**
- * M16.1 CLI — evidence contract / cohort plan / outcome-open status.
+ * M16.1a CLI — evidence / dependence / fee / cohort / outcome-open status.
  * Never reads P&L, target-hit, stop-hit, or settlement direction.
  */
 import { dirname } from "node:path";
@@ -113,7 +113,7 @@ export async function runM16EvidenceContractCommand(
     return 0;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    process.stderr.write(`M16.1 failed: ${message}\n`);
+    process.stderr.write(`M16.1a failed: ${message}\n`);
     return 1;
   }
 }
