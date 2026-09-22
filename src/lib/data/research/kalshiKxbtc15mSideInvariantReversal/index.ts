@@ -328,3 +328,10 @@ export {
   getFreeDiskBytesForPath,
   parseDfAvailableKilobytes,
 } from "./m16ValidationDisk";
+
+export {
+  M16_LEGACY_DESKTOP_KALSHI_ENV_LOADER,
+  m16EnvLoaderAvoidsDesktop,
+  resolveM16KalshiEnvLoaderPath,
+  type M16KalshiEnvLoaderSelection,
+} from "./m16KalshiEnvLoader";
