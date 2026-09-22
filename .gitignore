@@ -29,7 +29,9 @@
 data/live-capture/
 
 # generated research/report artifacts (never commit)
-data/research-results/
+data/research-results/*
+!data/research-results/external-kalshi-data-audit/
+!data/research-results/external-kalshi-data-audit/**
 data/reports/
 
 *.log
@@ -61,3 +63,6 @@ yarn-error.log*
 /kalshi-api.key.txt
 /load-kalshi-env.sh
 /load-kalshi-env.ps1
+
+# External vendor samples (large; audit artifacts only in git)
+data/external-samples/

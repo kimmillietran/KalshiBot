@@ -1,0 +1,227 @@
+{
+  "accessDateUtc": "2026-09-22",
+  "sources": {
+    "cryptostruct": {
+      "provider": "CryptoStruct GmbH",
+      "exactUrl": "https://cryptostruct.com/prediction-markets/kalshi-btc-15m",
+      "accessDate": "2026-09-22",
+      "license": {
+        "status": "PROVIDER CLAIM + page text",
+        "url": "https://cryptostruct.com/license",
+        "summary": "Internal use only; no redistribution of raw data; free samples under same terms; Derived Data (non-reconstructable) owned by licensee."
+      },
+      "claimedCaptureMethod": {
+        "status": "PROVIDER CLAIM",
+        "text": "Co-located venue capture; every trade print and complete L2; exchange + receive timestamps in integer nanoseconds; event-id chain; same schema as crypto venues; nothing sampled, no top-N cut."
+      },
+      "earliestKXBTC15MCoverage": {
+        "status": "PROVIDER CLAIM",
+        "value": "February 2026 \u2013 present (~208 trading days)"
+      },
+      "sampleDate": {
+        "status": "VERIFIED FROM FILE",
+        "value": "2026-09-16"
+      },
+      "sampleTickers": {
+        "status": "VERIFIED FROM FILE",
+        "value": [
+          "KXBTC15M-26SEP161415-15"
+        ]
+      },
+      "nativeFormat": {
+        "status": "VERIFIED FROM FILE",
+        "value": "JSON lines (header object + protocol arrays), zstd-compressed (.txt.zst)"
+      },
+      "compression": {
+        "status": "VERIFIED FROM FILE",
+        "value": "zstd"
+      },
+      "fileSizeBytes": {
+        "status": "VERIFIED FROM FILE",
+        "value": 32521007
+      },
+      "byteIdenticalToPaidClaim": {
+        "status": "PROVIDER CLAIM",
+        "verified": false
+      },
+      "venueTimestampAvailable": {
+        "status": "VERIFIED FROM FILE",
+        "value": true,
+        "precisionObserved": "microseconds-as-ns"
+      },
+      "receiveTimestampAvailable": {
+        "status": "VERIFIED FROM FILE",
+        "value": true,
+        "precisionObserved": "nanoseconds"
+      },
+      "sequenceOrEventIdAvailable": {
+        "status": "VERIFIED FROM FILE",
+        "value": true,
+        "form": "prevEventId+eventId chain per topic (non-monotonic opaque ids)"
+      },
+      "tradesAvailable": {
+        "status": "VERIFIED FROM FILE",
+        "value": true
+      },
+      "aggressorSideAvailable": {
+        "status": "VERIFIED FROM FILE",
+        "value": true
+      },
+      "L2Available": {
+        "status": "VERIFIED FROM FILE",
+        "value": true
+      },
+      "fullDepthOrTopN": {
+        "status": "VERIFIED FROM FILE",
+        "value": "full visible ladder in snapshots/deltas (not top-N truncated in sample)"
+      },
+      "snapshotPlusDeltaOrFullEachRow": {
+        "status": "VERIFIED FROM FILE",
+        "value": "initial snapshot + level deltas"
+      },
+      "btcReferenceIncluded": {
+        "status": "VERIFIED FROM FILE",
+        "value": false
+      },
+      "officialSettlementIncluded": {
+        "status": "VERIFIED FROM FILE",
+        "value": false
+      },
+      "documentedGapsOutages": {
+        "status": "PROVIDER CLAIM",
+        "text": "License/docs acknowledge gaps/venue outages possible; exchange status page referenced."
+      },
+      "historicalFromLiveForwardCaptureOrReconstructed": {
+        "status": "PROVIDER CLAIM",
+        "value": "forward live capture (co-located recording)"
+      }
+    },
+    "pmxt": {
+      "provider": "PMXT",
+      "exactUrl": "https://archive.pmxt.dev/Kalshi",
+      "marketingUrl": "https://www.pmxt.dev/",
+      "accessDate": "2026-09-22",
+      "accessResult": "UNAVAILABLE",
+      "failureModes": [
+        "curl: connection refused / could not connect to archive.pmxt.dev:443",
+        "WebFetch HTTP 500",
+        "DNS resolves but service not accepting connections at audit time"
+      ],
+      "license": {
+        "status": "NOT OBTAINED \u2014 archive unreachable"
+      },
+      "claimedCaptureMethod": {
+        "status": "NOT VERIFIED \u2014 no file"
+      },
+      "sampleDownloaded": false,
+      "note": "Homepage advertises Archive / historical market data linking to archive.pmxt.dev, but the archive host was down during this audit. No free Parquet could be obtained without fabricating access."
+    },
+    "depthfeed": {
+      "provider": "DepthFeed (kalshipricedata.com)",
+      "exactUrls": [
+        "https://depthfeed.com/docs",
+        "https://kalshipricedata.com/pricing",
+        "https://api.depthfeed.com/v3/demo"
+      ],
+      "accessDate": "2026-09-22",
+      "license": {
+        "status": "PROVIDER CLAIM (terms referenced on site; not independently legal-reviewed)"
+      },
+      "anonymousAccess": {
+        "status": "VERIFIED",
+        "endpointsWithoutKey": [
+          "/v3/health",
+          "/v3/overview",
+          "/v3/demo"
+        ],
+        "demoContents": "Single latest archived BTC 15m book per venue; Kalshi YES/NO top 8 levels; capture ts in ms string."
+      },
+      "registrationRequiredForHistory": {
+        "status": "PROVIDER CLAIM + VERIFIED AUTH_MISSING on /v3/kalshi/markets and /v3/btc/markets",
+        "value": true,
+        "stoppedAt": "registration required \u2014 no API key fabricated; Explorer $0 still requires account/key minting"
+      },
+      "claimedCaptureMethod": {
+        "status": "PROVIDER CLAIM",
+        "kalshiSnapshots": "Forward-captured Kalshi books from paced REST polling loop; cadence varies with active market set and API limits.",
+        "kalshiTicks": "Desk-only; from authenticated orderbook_delta WebSocket; Kalshi tick capture began 2026-08-07; seq from Kalshi session."
+      },
+      "earliestKXBTC15MCoverage": {
+        "status": "PROVIDER CLAIM",
+        "ticksFrom": "2026-08-07",
+        "snapshots": "plan history window (Explorer 7d capped)"
+      },
+      "sampleDate": {
+        "status": "VERIFIED FROM DEMO FILE",
+        "value": "live latest at download time (not a historical day archive)"
+      },
+      "sampleTickers": {
+        "status": "NOT PRESENT IN DEMO",
+        "value": null,
+        "note": "Demo does not include Kalshi market ticker identity"
+      },
+      "nativeFormat": {
+        "status": "VERIFIED",
+        "value": "JSON REST envelope"
+      },
+      "compression": {
+        "status": "N/A (small JSON over HTTPS)"
+      },
+      "fileSizeBytes": {
+        "status": "VERIFIED",
+        "value": 1186
+      },
+      "byteIdenticalToPaidClaim": {
+        "status": "N/A",
+        "note": "Demo is trimmed to 8 levels; docs state keyless demo is the only trimmed book"
+      },
+      "venueTimestampAvailable": {
+        "status": "DEMO VERIFIED",
+        "value": "capture ts ms on demo book; docs claim receive-time ordering for snapshots"
+      },
+      "receiveTimestampAvailable": {
+        "status": "PROVIDER CLAIM for paid snapshots"
+      },
+      "timestampPrecision": {
+        "status": "DEMO VERIFIED ms; docs accept ms epoch or ISO-8601"
+      },
+      "sequenceOrEventIdAvailable": {
+        "status": "PROVIDER CLAIM for Desk ticks (Kalshi seq); not in demo"
+      },
+      "tradesAvailable": {
+        "status": "PROVIDER CLAIM on paid routes; not in keyless demo"
+      },
+      "aggressorSideAvailable": {
+        "status": "UNKNOWN from free surface"
+      },
+      "L2Available": {
+        "status": "DEMO VERIFIED top-8; PROVIDER CLAIM full ladder with key"
+      },
+      "fullDepthOrTopN": {
+        "status": "DEMO = top-8; paid = full ladder (claim)"
+      },
+      "snapshotPlusDeltaOrFullEachRow": {
+        "status": "PROVIDER CLAIM: snapshots are stored book observations; ticks are snapshot+delta tape (Desk)"
+      },
+      "btcReferenceIncluded": {
+        "status": "PROVIDER CLAIM (ASOF underlying / bars)"
+      },
+      "officialSettlementIncluded": {
+        "status": "PROVIDER CLAIM price_to_beat on some overview routes"
+      },
+      "documentedGapsOutages": {
+        "status": "PROVIDER CLAIM (polling cadence variability; HISTORY_* errors)"
+      },
+      "historicalFromLiveForwardCaptureOrReconstructed": {
+        "status": "PROVIDER CLAIM forward capture"
+      },
+      "pricingStructure": {
+        "Explorer": "$0, 7 days capped, no raw ticks, 60s min snapshot interval on pricing table for Explorer sample context",
+        "Quant": "$29/mo, 30d, no ticks",
+        "Research": "$99/mo, 90d, no ticks",
+        "Desk": "$249/mo, full archive + raw tick tape",
+        "note": "Pricing table says Explorer snapshot interval 60s minimum; docs separately say omit interval for full stored resolution on keyed plans \u2014 treat as PROVIDER CLAIM conflict to verify after registration."
+      }
+    }
+  }
+}

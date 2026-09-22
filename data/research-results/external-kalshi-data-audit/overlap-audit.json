@@ -1,0 +1,51 @@
+{
+  "cryptostructSample": {
+    "ticker": "KXBTC15M-26SEP161415-15",
+    "dateUtc": "2026-09-16",
+    "window": "18:00\u201318:15 UTC"
+  },
+  "kalshiBotCaptureInventoryChecked": {
+    "builder2": [
+      "2026-09-22T18-00-05-364Z"
+    ],
+    "desktopKalshiBotForwardQuotes": [
+      "2026-08-03*",
+      "2026-08-04*",
+      "2026-09-07*",
+      "2026-09-08*",
+      "2026-09-09*",
+      "2026-09-13*",
+      "2026-09-14*",
+      "2026-09-18*",
+      "2026-09-19*",
+      "2026-09-20*",
+      "2026-09-22*"
+    ],
+    "exactOverlapWithCryptostructSample": false,
+    "nearestOwnCaptures": [
+      "2026-09-14T07-33-30-421Z",
+      "2026-09-18T07-59-28-489Z"
+    ]
+  },
+  "comparisonsPerformed": [],
+  "result": "NO_EXACT_OVERLAP \u2014 cannot validate third-party vs KalshiBot known-good capture for this sample day/ticker without purchasing an overlapping CryptoStruct day or capturing the sample contract ourselves.",
+  "m16Note": "M16 prospective validation capture (2026-09-22) was not used for economic outcomes and does not overlap the CryptoStruct sample date.",
+  "plannedIfOverlapExisted": {
+    "strictTimestampCompare": true,
+    "causalAsofTolerancesMs": [
+      100,
+      500,
+      1000,
+      2000,
+      5000
+    ],
+    "joinRule": "nearest-preceding only; never nearest-future",
+    "fields": [
+      "bestBid",
+      "bestAsk",
+      "spread",
+      "touchDepth",
+      "lifecycleOpenClose"
+    ]
+  }
+}

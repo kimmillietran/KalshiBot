@@ -1,0 +1,47 @@
+{
+  "verdict": "B",
+  "verdictLabel": "PURCHASE LIKELY HIGH VALUE AFTER SAMPLE PASSES",
+  "buyAnythingNow": true,
+  "provider": "cryptostruct",
+  "minimumPurchase": "3\u20135 series-days at \u20ac1/day that overlap existing KalshiBot forward-capture dates (e.g. near 2026-09-14, 2026-09-18, 2026-09-19, 2026-09-20, 2026-09-22) before any large archive buy",
+  "why": [
+    "Free CryptoStruct sample is genuinely event-level and supports causal YES/NO BBO reconstruction with dense receive-time updates (p50 ~0.033ms; max gap ~370ms).",
+    "However absolute fidelity vs KalshiBot is unproven because sample date has no overlap with our captures.",
+    "\u20ac1/day is low-cost enough to buy a few overlap days for Phase-4 validation before committing to 30/90/full archive."
+  ],
+  "majorRemainingUncertainty": "Whether CryptoStruct books/trades match KalshiBot known-good captures on overlapping timestamps (offset distribution, missing events, BBO agreement). Also unresolved ~6% trade-count marketing discrepancy and unverified byte-identical-to-paid claim.",
+  "doNotBuyYet": [
+    "depthfeed subscription",
+    "pmxt (unreachable)",
+    "large CryptoStruct archive without overlap validation"
+  ],
+  "comparisons": {
+    "cryptostruct": {
+      "archiveCoverageClaim": "Feb 2026\u2013present; ~208 days; ~72.9 GB compressed",
+      "eventLevelFidelityInSample": "HIGH (verified)",
+      "priceStructure": "\u20ac1 per series-day; credit packs; no subscription required",
+      "estimatedStorageCompressedGB": {
+        "7_days": 2.45,
+        "30_days": 10.51,
+        "90_days": 31.54,
+        "full_available_archive": 72.9,
+        "basis": "PROVIDER CLAIM total 72.9 GB / 208 days"
+      }
+    },
+    "depthfeed": {
+      "freeSampleResolution": "single top-8 snapshot \u2014 not research-grade history",
+      "paidSnapshotResolution": "PROVIDER CLAIM full stored series; Explorer pricing table says 60s minimum (docs conflict)",
+      "rawTickAvailability": "Desk only ($249/mo)",
+      "archiveRange": "plan-windowed (7/30/90/full)",
+      "tierActuallyNeededIfAny": "Unknown until Explorer key exists; for <=1\u20132s M17-style work Desk ticks likely required; REST-polled snapshots may never suffice for microstructure",
+      "purchaseNow": false,
+      "reason": "registration required; free surface insufficient; research value unproven without keyed density measurement"
+    },
+    "pmxt": {
+      "freeCoverage": "archive advertised but unreachable",
+      "observedResolution": "N/A",
+      "completeness": "N/A",
+      "couldReplacePurchase": "Unknown \u2014 re-audit when archive.pmxt.dev is back"
+    }
+  }
+}
