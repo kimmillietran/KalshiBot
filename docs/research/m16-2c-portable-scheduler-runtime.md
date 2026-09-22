@@ -23,3 +23,9 @@ Scientific identities unchanged. No real validation capture in this PR.
 
 Relocate unattended checkout to `/Users/builder/Developer/kalshi-builder2`,
 credentials to `~/.kalshi`, reinstall launchd, smoke-test outside 17:55–18:05Z.
+
+## launchd PATH (same milestone)
+
+launchd's default PATH is `/usr/bin:/bin:/usr/sbin:/sbin` (no Homebrew).
+Wrapper and generated plist both prepend `/opt/homebrew/bin:/usr/local/bin`
+so unattended `npm`/`node` resolve after relocation.
