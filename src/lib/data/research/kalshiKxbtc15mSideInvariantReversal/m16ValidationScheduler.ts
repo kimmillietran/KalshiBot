@@ -149,6 +149,8 @@ export function generateM16ValidationLaunchdPlist(input: {
   <dict>
     <key>TZ</key>
     <string>UTC</string>
+    <key>PATH</key>
+    <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
   </dict>
   <key>ProgramArguments</key>
   <array>

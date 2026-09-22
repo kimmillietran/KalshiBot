@@ -606,6 +606,8 @@ describe("M16.2 scheduler + argv + role", () => {
     expect(plist).toContain("<integer>11</integer>");
     expect(plist).toContain("<integer>0</integer>");
     expect(plist).toContain("<string>UTC</string>");
+    expect(plist).toContain("/opt/homebrew/bin");
+    expect(plist).toMatch(/<key>PATH<\/key>\s*<string>\/opt\/homebrew\/bin:/);
     expect(plist).toContain("REPO_ROOT");
     expect(plist).toContain("scripts/shell/run-m16-validation-daily.sh");
     expect(plist).toMatch(/<key>StartCalendarInterval<\/key>\s*<array>/);

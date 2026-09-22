@@ -50,6 +50,8 @@ fi
 export M16_VALIDATION_ALLOW_LIVE_CAPTURE=1
 export TZ=UTC
 export M16_VALIDATION_CAFFEINATE=1
+# launchd default PATH lacks Homebrew; ensure npm/node resolve unattended.
+export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin${PATH:+:$PATH}"
 
 LOG_DIR="${REPO_ROOT}/data/research-results/m16-validation-collection/scheduler"
 mkdir -p "${LOG_DIR}"
