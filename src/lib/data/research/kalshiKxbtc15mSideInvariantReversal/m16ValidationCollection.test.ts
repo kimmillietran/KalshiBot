@@ -55,6 +55,7 @@ import {
   hashM16ValidationArtifact,
   healthyZeroSignalAcceptedMinutes,
   isM16LiveCaptureAllowed,
+  m16EnvLoaderAvoidsDesktop,
   m16GovernedWindowForUtcDay,
   m16PdtLocalHourMapsToScientificStart,
   m16PstLocalHourMapsToScientificStart,
@@ -68,6 +69,7 @@ import {
   registerAcceptedSegment,
   registerExcludedSegment,
   releaseM16ValidationRunnerLock,
+  resolveM16KalshiEnvLoaderPath,
   runM16ValidationDailyCycle,
   runM16ValidationPreflight,
   statusM16ValidationScheduler,
@@ -1219,5 +1221,70 @@ com.kalshibot.m16-validation-collection = {
     expect(diag.triggerHoursLocal).toEqual([10, 11]);
     expect(diag.scientificWindowUtc).toBe("18:00-22:00Z");
     expect(diag.calendarUsesLocalClock).toBe(true);
+  });
+});
+
+describe("M16.2c portable env loader selection", () => {
+  it("repo-local wins over Desktop; override wins over both", () => {
+    const files = new Set([
+      "/Users/builder/Developer/kalshi-builder2/load-kalshi-env.sh",
+      "/Users/builder/Desktop/KalshiBot/load-kalshi-env.sh",
+      "/custom/loader.sh",
+    ]);
+    const exists = (p: string) => files.has(p);
+
+    const relocated = resolveM16KalshiEnvLoaderPath({
+      repoRoot: "/Users/builder/Developer/kalshi-builder2",
+      fileExists: exists,
+    });
+    expect(relocated.source).toBe("repo-local");
+    expect(relocated.selectedPath).toBe(
+      "/Users/builder/Developer/kalshi-builder2/load-kalshi-env.sh",
+    );
+    expect(m16EnvLoaderAvoidsDesktop(relocated)).toBe(true);
+
+    const override = resolveM16KalshiEnvLoaderPath({
+      repoRoot: "/Users/builder/Developer/kalshi-builder2",
+      env: { KALSHI_ENV_LOADER: "/custom/loader.sh" },
+      fileExists: exists,
+    });
+    expect(override.source).toBe("KALSHI_ENV_LOADER");
+    expect(override.selectedPath).toBe("/custom/loader.sh");
+    expect(m16EnvLoaderAvoidsDesktop(override)).toBe(true);
+
+    const legacyOnly = resolveM16KalshiEnvLoaderPath({
+      repoRoot: "/tmp/empty-repo",
+      fileExists: (p) => p === "/Users/builder/Desktop/KalshiBot/load-kalshi-env.sh",
+    });
+    expect(legacyOnly.source).toBe("legacy-desktop");
+    expect(m16EnvLoaderAvoidsDesktop(legacyOnly)).toBe(false);
+
+    const none = resolveM16KalshiEnvLoaderPath({
+      repoRoot: "/tmp/empty-repo",
+      fileExists: () => false,
+    });
+    expect(none.source).toBe("none");
+    expect(none.selectedPath).toBeNull();
+  });
+
+  it("wrapper script prefers REPO_ROOT loader before Desktop fallback", async () => {
+    const { readFileSync } = await import("node:fs");
+    const wrapper = readFileSync(
+      "scripts/shell/run-m16-validation-daily.sh",
+      "utf8",
+    );
+    const repoIdx = wrapper.indexOf('REPO_ROOT}/load-kalshi-env.sh');
+    const desktopIdx = wrapper.indexOf(
+      "/Users/builder/Desktop/KalshiBot/load-kalshi-env.sh",
+    );
+    const overrideIdx = wrapper.indexOf("KALSHI_ENV_LOADER");
+    expect(overrideIdx).toBeGreaterThan(-1);
+    expect(repoIdx).toBeGreaterThan(-1);
+    expect(desktopIdx).toBeGreaterThan(-1);
+    expect(overrideIdx).toBeLessThan(repoIdx);
+    expect(repoIdx).toBeLessThan(desktopIdx);
+    expect(buildM16ScientificProtocolIdentity()).toBe(
+      "1aa47e106a069dad466e2e338ba4b50000fd52eeaac482239544e20161f5a824",
+    );
   });
 });
