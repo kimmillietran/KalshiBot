@@ -1,0 +1,75 @@
+{
+  "universeVersion": "cryptostruct-kxbtc15m-m16-er-universe-v1",
+  "provider": "CryptoStruct",
+  "series": "KXBTC15M",
+  "catalogFreeze": {
+    "frozenAtUtc": "2026-09-23T02:30:00.000Z",
+    "providerClaim": "CryptoStruct continuous KXBTC15M series-day bundles Feb 2026–present; complete recording from contract-window open on/after 2026-08-14",
+    "completeRecordingFromUtc": "2026-08-14",
+    "catalogEndUtcInclusive": "2026-09-21",
+    "creditsPerSeriesDay": 1,
+    "premiumMonthlyCredits": 50,
+    "listPriceEurPerSeriesDay": 1,
+    "sourcePages": [
+      "https://cryptostruct.com/prediction-markets/kalshi-btc-15m",
+      "https://cryptostruct.com/pricing"
+    ]
+  },
+  "qualityAuditOnlyDates": [
+    "2026-09-08",
+    "2026-09-09",
+    "2026-09-14",
+    "2026-09-18",
+    "2026-09-20"
+  ],
+  "excludedBecauseQualityAuditOnly": [
+    "2026-09-08",
+    "2026-09-09",
+    "2026-09-14",
+    "2026-09-18",
+    "2026-09-20"
+  ],
+  "excludedBecauseBeforeCompleteRecording": [],
+  "excludedBecauseProspectiveM16Calendar": [
+    "dates >= 2026-09-22 excluded from this freeze"
+  ],
+  "thursdayMaintenanceOverlapsGoverned18_22Z": false,
+  "candidateUntouchedUtcDates": [
+    "2026-08-14",
+    "2026-08-15",
+    "2026-08-16",
+    "2026-08-17",
+    "2026-08-18",
+    "2026-08-19",
+    "2026-08-20",
+    "2026-08-21",
+    "2026-08-22",
+    "2026-08-23",
+    "2026-08-24",
+    "2026-08-25",
+    "2026-08-26",
+    "2026-08-27",
+    "2026-08-28",
+    "2026-08-29",
+    "2026-08-30",
+    "2026-08-31",
+    "2026-09-01",
+    "2026-09-02",
+    "2026-09-03",
+    "2026-09-04",
+    "2026-09-05",
+    "2026-09-06",
+    "2026-09-07",
+    "2026-09-10",
+    "2026-09-11",
+    "2026-09-12",
+    "2026-09-13",
+    "2026-09-15",
+    "2026-09-16",
+    "2026-09-17",
+    "2026-09-19",
+    "2026-09-21"
+  ],
+  "candidateCount": 34,
+  "universeDefinitionIdentity": "dd5bbc3f873f6b3988eff84af8247b2f8d0a6a372a8b538280a6f5b086e86aeb"
+}
