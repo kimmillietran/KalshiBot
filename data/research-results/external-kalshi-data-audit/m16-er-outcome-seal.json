@@ -1,0 +1,27 @@
+{
+  "authorized": false,
+  "economicOutcomeOpenAuthorized": false,
+  "sealed": true,
+  "scientificProtocolIdentity": "3f4fdf157b3eb6eb775c8e2f4bab4272e23cfa22a7179fed29fb135012207c65",
+  "adapterIdentity": "3f37ecb76644ee0749c50f33cfdaf8921e8dcb1cf208abdc55719a461e27dc7d",
+  "cohortReservationIdentity": "afdacb697216ba385e8d4d9627deec6610d90fafeb52c83b474bace7d9ae15c0",
+  "blockers": [
+    "m16-er-purchased-zip-sha256-unverified",
+    "m16-er-quality-audit-incomplete",
+    "m16-er-fixed-cohort-admission-incomplete",
+    "m16-er-sample-cluster-adequacy-not-met"
+  ],
+  "forbiddenWhileSealed": [
+    "pnl",
+    "targetHit",
+    "stopHit",
+    "settlement",
+    "winner",
+    "loser",
+    "meanReturn",
+    "winRate",
+    "cr2Result",
+    "pValue"
+  ],
+  "note": "M16-ER economics sealed — protocol freeze only"
+}
