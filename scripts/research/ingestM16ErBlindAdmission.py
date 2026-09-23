@@ -17,8 +17,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-import zstandard as zstd
-
 ROOT = Path(__file__).resolve().parents[2]
 RAW = ROOT / "data/external-samples/cryptostruct/m16-er/raw"
 WORK = ROOT / "data/external-samples/cryptostruct/m16-er/work"
@@ -314,6 +312,13 @@ def process_member(z: zipfile.ZipFile, member: str, day: str) -> dict:
     malformed = 0
     skipped_no_overlap = False
 
+    try:
+        import zstandard as zstd
+    except ImportError as e:
+        raise ImportError(
+            "ingestM16ErBlindAdmission requires the zstandard package "
+            "(pip install zstandard) to stream .zst members"
+        ) from e
     dctx = zstd.ZstdDecompressor()
     with z.open(member) as raw, dctx.stream_reader(raw) as reader:
         buf = b""
