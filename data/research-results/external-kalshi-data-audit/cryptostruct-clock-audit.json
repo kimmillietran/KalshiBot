@@ -1,0 +1,1720 @@
+{
+  "days": {
+    "2026-09-08": {
+      "runs": {
+        "2026-09-08T05-12-34-856Z": {
+          "tickers": {
+            "KXBTC15M-26SEP080115-15": {
+              "cryptostruct": {
+                "firstRecvNs": 1788843600771419455,
+                "lastRecvNs": 1788844500013657789,
+                "latencyMs": {
+                  "n": 634664,
+                  "p50": 6.021843,
+                  "p90": 7.500928300000001,
+                  "p99": 9.01708592,
+                  "max": 46.543886
+                },
+                "tsRegressRecv": 0,
+                "tsDupRecv": 0,
+                "bboPoints": 3764,
+                "chainBreaks": 0
+              },
+              "kalshiBot": {
+                "firstRecvNs": 1788844355783000064,
+                "lastRecvNs": 1788844501008000000,
+                "points": 11747,
+                "econValidRate": 0.4522856899633949,
+                "parityUsableRate": 0.4522856899633949,
+                "crossedRate": 0.0,
+                "lockedRate": 0.39014216395675494
+              }
+            },
+            "KXBTC15M-26SEP080130-30": {
+              "cryptostruct": {
+                "firstRecvNs": 1788844501312672349,
+                "lastRecvNs": 1788845400014672090,
+                "latencyMs": {
+                  "n": 382432,
+                  "p50": 5.946161,
+                  "p90": 7.4584091,
+                  "p99": 9.0061962,
+                  "max": 44.462905
+                },
+                "tsRegressRecv": 0,
+                "tsDupRecv": 0,
+                "bboPoints": 16216,
+                "chainBreaks": 0
+              },
+              "kalshiBot": {
+                "firstRecvNs": 1788844536170000128,
+                "lastRecvNs": 1788845400471000064,
+                "points": 50783,
+                "econValidRate": 0.6220782545339976,
+                "parityUsableRate": 0.6220782545339976,
+                "crossedRate": 0.0,
+                "lockedRate": 0.3175669023098281
+              }
+            },
+            "KXBTC15M-26SEP080145-45": {
+              "cryptostruct": {
+                "firstRecvNs": 1788845401295328727,
+                "lastRecvNs": 1788846300015775086,
+                "latencyMs": {
+                  "n": 374134,
+                  "p50": 6.0314505,
+                  "p90": 7.5317297000000005,
+                  "p99": 9.24288047,
+                  "max": 61.039241
+                },
+                "tsRegressRecv": 0,
+                "tsDupRecv": 0,
+                "bboPoints": 15829,
+                "chainBreaks": 0
+              },
+              "kalshiBot": {
+                "firstRecvNs": 1788845436301000192,
+                "lastRecvNs": 1788846301214999808,
+                "points": 50837,
+                "econValidRate": 0.6161260499242678,
+                "parityUsableRate": 0.6161260499242678,
+                "crossedRate": 0.0,
+                "lockedRate": 0.2817632826484647
+              }
+            },
+            "KXBTC15M-26SEP080200-00": {
+              "cryptostruct": {
+                "firstRecvNs": 1788846301252061661,
+                "lastRecvNs": 1788847200249317904,
+                "latencyMs": {
+                  "n": 460007,
+                  "p50": 5.208976,
+                  "p90": 6.6300078000000005,
+                  "p99": 8.061793920000001,
+                  "max": 53.816047
+                },
+                "tsRegressRecv": 0,
+                "tsDupRecv": 1,
+                "bboPoints": 17146,
+                "chainBreaks": 0
+              },
+              "kalshiBot": {
+                "firstRecvNs": 1788846367572999936,
+                "lastRecvNs": 1788847200407000064,
+                "points": 52765,
+                "econValidRate": 0.8205818250734388,
+                "parityUsableRate": 0.8205818250734388,
+                "crossedRate": 0.0,
+                "lockedRate": 0.10861366436084526
+              }
+            },
+            "KXBTC15M-26SEP080215-15": {
+              "cryptostruct": {
+                "firstRecvNs": 1788847201363826068,
+                "lastRecvNs": 1788848349787000000,
+                "latencyMs": {
+                  "n": 609602,
+                  "p50": 5.3319255000000005,
+                  "p90": 6.753199800000001,
+                  "p99": 8.33179345,
+                  "max": 152.725373
+                },
+                "tsRegressRecv": 0,
+                "tsDupRecv": 0,
+                "bboPoints": 20495,
+                "chainBreaks": 0
+              },
+              "kalshiBot": {
+                "firstRecvNs": 1788847207325999872,
+                "lastRecvNs": 1788848101292000000,
+                "points": 62929,
+                "econValidRate": 0.9175737736178868,
+                "parityUsableRate": 0.9175737736178868,
+                "crossedRate": 0.0,
+                "lockedRate": 0.05995645886634143
+              }
+            },
+            "KXBTC15M-26SEP080230-30": {
+              "cryptostruct": {
+                "firstRecvNs": 1788848101305531379,
+                "lastRecvNs": 1788849000209028061,
+                "latencyMs": {
+                  "n": 424612,
+                  "p50": 5.5404585,
+                  "p90": 7.0033756,
+                  "p99": 8.590228250000004,
+                  "max": 36.066889
+                },
+                "tsRegressRecv": 0,
+                "tsDupRecv": 0,
+                "bboPoints": 16013,
+                "chainBreaks": 0
+              },
+              "kalshiBot": {
+                "firstRecvNs": 1788848136436000000,
+                "lastRecvNs": 1788849003624000000,
+                "points": 53712,
+                "econValidRate": 0.5780272564789991,
+                "parityUsableRate": 0.5780272564789991,
+                "crossedRate": 0.0,
+                "lockedRate": 0.2991882633303545
+              }
+            },
+            "KXBTC15M-26SEP080245-45": {
+              "cryptostruct": {
+                "firstRecvNs": 1788849000915893043,
+                "lastRecvNs": 1788849900014042997,
+                "latencyMs": {
+                  "n": 551506,
+                  "p50": 5.6659665,
+                  "p90": 7.0564795,
+                  "p99": 8.552819099999988,
+                  "max": 35.416636
+                },
+                "tsRegressRecv": 0,
+                "tsDupRecv": 0,
+                "bboPoints": 19526,
+                "chainBreaks": 0
+              },
+              "kalshiBot": {
+                "firstRecvNs": 1788849036368000000,
+                "lastRecvNs": 1788849901040000000,
+                "points": 60035,
+                "econValidRate": 0.9327059215457649,
+                "parityUsableRate": 0.9326892645956525,
+                "crossedRate": 0.0,
+                "lockedRate": 0.03219788456733572
+              }
+            },
+            "KXBTC15M-26SEP080300-00": {
+              "cryptostruct": {
+                "firstRecvNs": 1788849900943457660,
+                "lastRecvNs": 1788850800080933858,
+                "latencyMs": {
+                  "n": 479564,
+                  "p50": 5.3069345,
+                  "p90": 6.7570258,
+                  "p99": 8.34291483,
+                  "max": 40.19994
+                },
+                "tsRegressRecv": 0,
+                "tsDupRecv": 0,
+                "bboPoints": 16794,
+                "chainBreaks": 0
+              },
+              "kalshiBot": {
+                "firstRecvNs": 1788849906561000192,
+                "lastRecvNs": 1788850801228000000,
+                "points": 56483,
+                "econValidRate": 0.6052086468494945,
+                "parityUsableRate": 0.6052086468494945,
+                "crossedRate": 0.0,
+                "lockedRate": 0.33634898996158136
+              }
+            }
+          }
+        },
+        "2026-09-08T07-46-44-416Z": {
+          "tickers": {
+            "KXBTC15M-26SEP080400-00": {
+              "cryptostruct": {
+                "firstRecvNs": 1788853500976144137,
+                "lastRecvNs": 1788854400711024710,
+                "latencyMs": {
+                  "n": 503231,
+                  "p50": 5.614211,
+                  "p90": 7.041071,
+                  "p99": 8.5021298,
+                  "max": 92.362974
+                },
+                "tsRegressRecv": 0,
+                "tsDupRecv": 0,
+                "bboPoints": 16686,
+                "chainBreaks": 0
+              },
+              "kalshiBot": {
+                "firstRecvNs": 1788853605476999936,
+                "lastRecvNs": 1788854401032999936,
+                "points": 52495,
+                "econValidRate": 0.5428136012953615,
+                "parityUsableRate": 0.5428136012953615,
+                "crossedRate": 0.0,
+                "lockedRate": 0.4279645680541004
+              }
+            },
+            "KXBTC15M-26SEP080500-00": {
+              "cryptostruct": {
+                "firstRecvNs": 1788857101206210601,
+                "lastRecvNs": 1788858000013705894,
+                "latencyMs": {
+                  "n": 391228,
+                  "p50": 5.268330499999999,
+                  "p90": 6.719517499999999,
+                  "p99": 8.278104949999998,
+                  "max": 50.58373
+                },
+                "tsRegressRecv": 0,
+                "tsDupRecv": 0,
+                "bboPoints": 15897,
+                "chainBreaks": 0
+              },
+              "kalshiBot": {
+                "firstRecvNs": 1788857145934000128,
+                "lastRecvNs": 1788858000673000192,
+                "points": 51051,
+                "econValidRate": 0.49809014514896865,
+                "parityUsableRate": 0.49809014514896865,
+                "crossedRate": 0.0,
+                "lockedRate": 0.4266126030831913
+              }
+            },
+            "KXBTC15M-26SEP080600-00": {
+              "cryptostruct": {
+                "firstRecvNs": 1788860700775759582,
+                "lastRecvNs": 1788861600373099382,
+                "latencyMs": {
+                  "n": 404045,
+                  "p50": 5.546877,
+                  "p90": 7.042229600000001,
+                  "p99": 8.740435439999999,
+                  "max": 21.413519
+                },
+                "tsRegressRecv": 0,
+                "tsDupRecv": 0,
+                "bboPoints": 17629,
+                "chainBreaks": 0
+              },
+              "kalshiBot": {
+                "firstRecvNs": 1788860716075000064,
+                "lastRecvNs": 1788861600756999936,
+                "points": 50945,
+                "econValidRate": 0.9535970163902248,
+                "parityUsableRate": 0.9535773873785455,
+                "crossedRate": 0.0,
+                "lockedRate": 0.028246147806457945
+              }
+            },
+            "KXBTC15M-26SEP080700-00": {
+              "cryptostruct": {
+                "firstRecvNs": 1788864301087219151,
+                "lastRecvNs": 1788865200314098467,
+                "latencyMs": {
+                  "n": 224235,
+                  "p50": 5.223929,
+                  "p90": 6.7167802000000005,
+                  "p99": 8.44212832,
+                  "max": 46.683592
+                },
+                "tsRegressRecv": 0,
+                "tsDupRecv": 0,
+                "bboPoints": 13957,
+                "chainBreaks": 0
+              },
+              "kalshiBot": {
+                "firstRecvNs": 1788864346264000000,
+                "lastRecvNs": 1788865202234999808,
+                "points": 38774,
+                "econValidRate": 0.7228813122195286,
+                "parityUsableRate": 0.7228813122195286,
+                "crossedRate": 0.0,
+                "lockedRate": 0.19399597668540774
+              }
+            },
+            "KXBTC15M-26SEP080800-00": {
+              "cryptostruct": {
+                "firstRecvNs": 1788867900781105342,
+                "lastRecvNs": 1788868800015803807,
+                "latencyMs": {
+                  "n": 426734,
+                  "p50": 6.1150445,
+                  "p90": 7.669296200000001,
+                  "p99": 9.22353970999999,
+                  "max": 27.186758
+                },
+                "tsRegressRecv": 0,
+                "tsDupRecv": 0,
+                "bboPoints": 19595,
+                "chainBreaks": 0
+              },
+              "kalshiBot": {
+                "firstRecvNs": 1788867916854000128,
+                "lastRecvNs": 1788868801076000000,
+                "points": 53475,
+                "econValidRate": 0.95369798971482,
+                "parityUsableRate": 0.9536792893875643,
+                "crossedRate": 0.0,
+                "lockedRate": 0.02616175783076204
+              }
+            },
+            "KXBTC15M-26SEP080900-00": {
+              "cryptostruct": {
+                "firstRecvNs": 1788871500980546445,
+                "lastRecvNs": 1788872400021379720,
+                "latencyMs": {
+                  "n": 346256,
+                  "p50": 6.0883140000000004,
+                  "p90": 7.548011499999999,
+                  "p99": 9.126245550000002,
+                  "max": 26.409674
+                },
+                "tsRegressRecv": 0,
+                "tsDupRecv": 0,
+                "bboPoints": 15839,
+                "chainBreaks": 0
+              },
+              "kalshiBot": {
+                "firstRecvNs": 1788871516392000000,
+                "lastRecvNs": 1788872405523000064,
+                "points": 47470,
+                "econValidRate": 0.6577417316199705,
+                "parityUsableRate": 0.6577417316199705,
+                "crossedRate": 0.0,
+                "lockedRate": 0.2829365915314936
+              }
+            },
+            "KXBTC15M-26SEP081000-00": {
+              "cryptostruct": {
+                "firstRecvNs": 1788875100785106143,
+                "lastRecvNs": 1788876000190762167,
+                "latencyMs": {
+                  "n": 691326,
+                  "p50": 5.6093720000000005,
+                  "p90": 7.0946185,
+                  "p99": 8.628842,
+                  "max": 72.27079
+                },
+                "tsRegressRecv": 0,
+                "tsDupRecv": 0,
+                "bboPoints": 17797,
+                "chainBreaks": 0
+              },
+              "kalshiBot": {
+                "firstRecvNs": 1788875116930000128,
+                "lastRecvNs": 1788876000744000000,
+                "points": 62663,
+                "econValidRate": 0.7481448382618132,
+                "parityUsableRate": 0.7481448382618132,
+                "crossedRate": 0.0,
+                "lockedRate": 0.18072865965561816
+              }
+            },
+            "KXBTC15M-26SEP081100-00": {
+              "cryptostruct": {
+                "firstRecvNs": 1788878700875181054,
+                "lastRecvNs": 1788879600019691557,
+                "latencyMs": {
+                  "n": 476530,
+                  "p50": 5.4664625000000004,
+                  "p90": 6.952708200000001,
+                  "p99": 8.57268997,
+                  "max": 47.1478
+                },
+                "tsRegressRecv": 0,
+                "tsDupRecv": 0,
+                "bboPoints": 15996,
+                "chainBreaks": 0
+              },
+              "kalshiBot": {
+                "firstRecvNs": 1788878746898999808,
+                "lastRecvNs": 1788879601192000000,
+                "points": 51894,
+                "econValidRate": 0.6294754692257294,
+                "parityUsableRate": 0.6294754692257294,
+                "crossedRate": 0.0,
+                "lockedRate": 0.2616294754692257
+              }
+            }
+          }
+        }
+      }
+    },
+    "2026-09-09": {
+      "runs": {
+        "2026-09-09T06-39-04-259Z": {
+          "tickers": {
+            "KXBTC15M-26SEP090245-45": {
+              "cryptostruct": {
+                "firstRecvNs": 1788935401247721836,
+                "lastRecvNs": 1788936300017777173,
+                "latencyMs": {
+                  "n": 420124,
+                  "p50": 5.2311005,
+                  "p90": 6.653042500000001,
+                  "p99": 8.123788070000005,
+                  "max": 39.886017
+                },
+                "tsRegressRecv": 0,
+                "tsDupRecv": 0,
+                "bboPoints": 7586,
+                "chainBreaks": 0
+              },
+              "kalshiBot": {
+                "firstRecvNs": 1788935945664000000,
+                "lastRecvNs": 1788936300868000000,
+                "points": 21950,
+                "econValidRate": 0.8354897494305239,
+                "parityUsableRate": 0.8354897494305239,
+                "crossedRate": 0.0,
+                "lockedRate": 0.07840546697038725
+              }
+            },
+            "KXBTC15M-26SEP090345-45": {
+              "cryptostruct": {
+                "firstRecvNs": 1788939000773282184,
+                "lastRecvNs": 1788939900014324405,
+                "latencyMs": {
+                  "n": 357167,
+                  "p50": 5.387371,
+                  "p90": 7.0391586,
+                  "p99": 8.72959774000001,
+                  "max": 401.564163
+                },
+                "tsRegressRecv": 0,
+                "tsDupRecv": 0,
+                "bboPoints": 15886,
+                "chainBreaks": 0
+              },
+              "kalshiBot": {
+                "firstRecvNs": 1788939036464999936,
+                "lastRecvNs": 1788939900905999872,
+                "points": 47780,
+                "econValidRate": 0.8584763499372122,
+                "parityUsableRate": 0.8584763499372122,
+                "crossedRate": 0.0,
+                "lockedRate": 0.07519882796149016
+              }
+            },
+            "KXBTC15M-26SEP090445-45": {
+              "cryptostruct": {
+                "firstRecvNs": 1788942600971002733,
+                "lastRecvNs": 1788943500016846853,
+                "latencyMs": {
+                  "n": 470748,
+                  "p50": 5.424381,
+                  "p90": 6.8236775,
+                  "p99": 8.346567169999995,
+                  "max": 23.985377
+                },
+                "tsRegressRecv": 0,
+                "tsDupRecv": 0,
+                "bboPoints": 18300,
+                "chainBreaks": 0
+              },
+              "kalshiBot": {
+                "firstRecvNs": 1788942636459000064,
+                "lastRecvNs": 1788943501112999936,
+                "points": 52778,
+                "econValidRate": 0.9223350638523627,
+                "parityUsableRate": 0.9223350638523627,
+                "crossedRate": 0.0,
+                "lockedRate": 0.04930084504907348
+              }
+            },
+            "KXBTC15M-26SEP090545-45": {
+              "cryptostruct": {
+                "firstRecvNs": 1788946200772278233,
+                "lastRecvNs": 1788947100017126145,
+                "latencyMs": {
+                  "n": 272865,
+                  "p50": 5.474821,
+                  "p90": 6.959096,
+                  "p99": 8.55672751999999,
+                  "max": 44.17037
+                },
+                "tsRegressRecv": 0,
+                "tsDupRecv": 0,
+                "bboPoints": 14510,
+                "chainBreaks": 0
+              },
+              "kalshiBot": {
+                "firstRecvNs": 1788946236596000000,
+                "lastRecvNs": 1788947101036999936,
+                "points": 41817,
+                "econValidRate": 0.4895138340866155,
+                "parityUsableRate": 0.4895138340866155,
+                "crossedRate": 0.0,
+                "lockedRate": 0.42910777913288856
+              }
+            },
+            "KXBTC15M-26SEP090645-45": {
+              "cryptostruct": {
+                "firstRecvNs": 1788949801062773843,
+                "lastRecvNs": 1788950700012392221,
+                "latencyMs": {
+                  "n": 432981,
+                  "p50": 5.666992,
+                  "p90": 7.105138,
+                  "p99": 8.632140600000001,
+                  "max": 44.494275
+                },
+                "tsRegressRecv": 0,
+                "tsDupRecv": 0,
+                "bboPoints": 17472,
+                "chainBreaks": 0
+              },
+              "kalshiBot": {
+                "firstRecvNs": 1788949836757999872,
+                "lastRecvNs": 1788950701165999872,
+                "points": 52019,
+                "econValidRate": 0.9104365712528115,
+                "parityUsableRate": 0.9104365712528115,
+                "crossedRate": 0.0,
+                "lockedRate": 0.05405717141813568
+              }
+            },
+            "KXBTC15M-26SEP090745-45": {
+              "cryptostruct": {
+                "firstRecvNs": 1788953400774366150,
+                "lastRecvNs": 1788954300015996966,
+                "latencyMs": {
+                  "n": 414120,
+                  "p50": 5.7019865,
+                  "p90": 7.1139815,
+                  "p99": 8.660937169999999,
+                  "max": 56.024844
+                },
+                "tsRegressRecv": 0,
+                "tsDupRecv": 0,
+                "bboPoints": 16962,
+                "chainBreaks": 0
+              },
+              "kalshiBot": {
+                "firstRecvNs": 1788953406968000000,
+                "lastRecvNs": 1788954300947000064,
+                "points": 53082,
+                "econValidRate": 0.8932971628800723,
+                "parityUsableRate": 0.8932971628800723,
+                "crossedRate": 0.0,
+                "lockedRate": 0.03483290004144531
+              }
+            },
+            "KXBTC15M-26SEP090845-45": {
+              "cryptostruct": {
+                "firstRecvNs": 1788957000952048305,
+                "lastRecvNs": 1788957900015535035,
+                "latencyMs": {
+                  "n": 328262,
+                  "p50": 5.8842985,
+                  "p90": 7.387894400000001,
+                  "p99": 9.04429359,
+                  "max": 29.039439
+                },
+                "tsRegressRecv": 0,
+                "tsDupRecv": 0,
+                "bboPoints": 15207,
+                "chainBreaks": 0
+              },
+              "kalshiBot": {
+                "firstRecvNs": 1788957036938999808,
+                "lastRecvNs": 1788957901233999872,
+                "points": 44736,
+                "econValidRate": 0.49233279685264664,
+                "parityUsableRate": 0.49233279685264664,
+                "crossedRate": 0.0,
+                "lockedRate": 0.4539073676680973
+              }
+            },
+            "KXBTC15M-26SEP090945-45": {
+              "cryptostruct": {
+                "firstRecvNs": 1788960600969139969,
+                "lastRecvNs": 1788961500018598074,
+                "latencyMs": {
+                  "n": 616743,
+                  "p50": 5.394649,
+                  "p90": 6.792599000000001,
+                  "p99": 8.288092799999998,
+                  "max": 34.071933
+                },
+                "tsRegressRecv": 0,
+                "tsDupRecv": 0,
+                "bboPoints": 17492,
+                "chainBreaks": 0
+              },
+              "kalshiBot": {
+                "firstRecvNs": 1788960607120000000,
+                "lastRecvNs": 1788961500829999872,
+                "points": 60156,
+                "econValidRate": 0.4975563534809495,
+                "parityUsableRate": 0.4975563534809495,
+                "crossedRate": 0.0,
+                "lockedRate": 0.38310392978256536
+              }
+            }
+          }
+        },
+        "2026-09-09T20-37-36-719Z": {
+          "tickers": {
+            "KXBTC15M-26SEP091645-45": {
+              "cryptostruct": {
+                "firstRecvNs": 1788985800841268342,
+                "lastRecvNs": 1788986700018490217,
+                "latencyMs": {
+                  "n": 273174,
+                  "p50": 5.7395665000000005,
+                  "p90": 7.324980200000001,
+                  "p99": 8.894514400000014,
+                  "max": 29.408834
+                },
+                "tsRegressRecv": 0,
+                "tsDupRecv": 0,
+                "bboPoints": 6008,
+                "chainBreaks": 0
+              },
+              "kalshiBot": {
+                "firstRecvNs": 1788986257624000000,
+                "lastRecvNs": 1788986700877000192,
+                "points": 18621,
+                "econValidRate": 0.013103485312281832,
+                "parityUsableRate": 0.013103485312281832,
+                "crossedRate": 0.0,
+                "lockedRate": 0.6666666666666666
+              }
+            },
+            "KXBTC15M-26SEP091700-00": {
+              "cryptostruct": {
+                "firstRecvNs": 1788986700849541849,
+                "lastRecvNs": 1788987601129497738,
+                "latencyMs": {
+                  "n": 460102,
+                  "p50": 5.8199190000000005,
+                  "p90": 7.4261425,
+                  "p99": 9.11575851,
+                  "max": 59.667463
+                },
+                "tsRegressRecv": 0,
+                "tsDupRecv": 0,
+                "bboPoints": 17418,
+                "chainBreaks": 0
+              },
+              "kalshiBot": {
+                "firstRecvNs": 1788986738069999872,
+                "lastRecvNs": 1788987602214999808,
+                "points": 51760,
+                "econValidRate": 0.8162673879443586,
+                "parityUsableRate": 0.8162480680061823,
+                "crossedRate": 0.0,
+                "lockedRate": 0.12134853168469861
+              }
+            },
+            "KXBTC15M-26SEP091715-15": {
+              "cryptostruct": {
+                "firstRecvNs": 1788987600970582063,
+                "lastRecvNs": 1788988500064571297,
+                "latencyMs": {
+                  "n": 335642,
+                  "p50": 6.245646499999999,
+                  "p90": 7.9153725,
+                  "p99": 9.706782470000004,
+                  "max": 135.677188
+                },
+                "tsRegressRecv": 0,
+                "tsDupRecv": 0,
+                "bboPoints": 15837,
+                "chainBreaks": 0
+              },
+              "kalshiBot": {
+                "firstRecvNs": 1788987638224000000,
+                "lastRecvNs": 1788988500972999936,
+                "points": 46099,
+                "econValidRate": 0.6859150957721426,
+                "parityUsableRate": 0.6859150957721426,
+                "crossedRate": 0.0,
+                "lockedRate": 0.2646912080522354
+              }
+            },
+            "KXBTC15M-26SEP091730-30": {
+              "cryptostruct": {
+                "firstRecvNs": 1788988500877932108,
+                "lastRecvNs": 1788989400015733356,
+                "latencyMs": {
+                  "n": 386678,
+                  "p50": 5.8165,
+                  "p90": 7.5006913,
+                  "p99": 9.242565249999998,
+                  "max": 18.63489
+                },
+                "tsRegressRecv": 0,
+                "tsDupRecv": 0,
+                "bboPoints": 16882,
+                "chainBreaks": 0
+              },
+              "kalshiBot": {
+                "firstRecvNs": 1788988538138000128,
+                "lastRecvNs": 1788989401161999872,
+                "points": 49716,
+                "econValidRate": 0.7593732400032183,
+                "parityUsableRate": 0.7593732400032183,
+                "crossedRate": 0.0,
+                "lockedRate": 0.1860769168879234
+              }
+            },
+            "KXBTC15M-26SEP091745-45": {
+              "cryptostruct": {
+                "firstRecvNs": 1788989400942349414,
+                "lastRecvNs": 1788990300012823375,
+                "latencyMs": {
+                  "n": 350679,
+                  "p50": 6.098491,
+                  "p90": 7.7868,
+                  "p99": 9.643881439999996,
+                  "max": 36.026521
+                },
+                "tsRegressRecv": 0,
+                "tsDupRecv": 0,
+                "bboPoints": 17935,
+                "chainBreaks": 0
+              },
+              "kalshiBot": {
+                "firstRecvNs": 1788989408188999936,
+                "lastRecvNs": 1788990300916000000,
+                "points": 46978,
+                "econValidRate": 0.8837115245434033,
+                "parityUsableRate": 0.8836689514240709,
+                "crossedRate": 0.0,
+                "lockedRate": 0.06630763336029631
+              }
+            },
+            "KXBTC15M-26SEP091800-00": {
+              "cryptostruct": {
+                "firstRecvNs": 1788990300925866861,
+                "lastRecvNs": 1788991200014984441,
+                "latencyMs": {
+                  "n": 329257,
+                  "p50": 5.791474,
+                  "p90": 7.412342400000001,
+                  "p99": 9.118921760000001,
+                  "max": 47.984754
+                },
+                "tsRegressRecv": 0,
+                "tsDupRecv": 0,
+                "bboPoints": 15176,
+                "chainBreaks": 0
+              },
+              "kalshiBot": {
+                "firstRecvNs": 1788990308519000064,
+                "lastRecvNs": 1788991201023000064,
+                "points": 47525,
+                "econValidRate": 0.4693950552340873,
+                "parityUsableRate": 0.4693950552340873,
+                "crossedRate": 0.0,
+                "lockedRate": 0.438211467648606
+              }
+            },
+            "KXBTC15M-26SEP091815-15": {
+              "cryptostruct": {
+                "firstRecvNs": 1788991201321709931,
+                "lastRecvNs": 1788992100015646695,
+                "latencyMs": {
+                  "n": 446798,
+                  "p50": 5.545582,
+                  "p90": 7.057099099999999,
+                  "p99": 8.876414319999995,
+                  "max": 77.184855
+                },
+                "tsRegressRecv": 0,
+                "tsDupRecv": 0,
+                "bboPoints": 16135,
+                "chainBreaks": 0
+              },
+              "kalshiBot": {
+                "firstRecvNs": 1788991238372999936,
+                "lastRecvNs": 1788992100944999936,
+                "points": 51226,
+                "econValidRate": 0.4710108148205989,
+                "parityUsableRate": 0.4710108148205989,
+                "crossedRate": 0.0,
+                "lockedRate": 0.43456447897552025
+              }
+            },
+            "KXBTC15M-26SEP091830-30": {
+              "cryptostruct": {
+                "firstRecvNs": 1788992101298399649,
+                "lastRecvNs": 1788993000015768747,
+                "latencyMs": {
+                  "n": 419867,
+                  "p50": 5.740691,
+                  "p90": 7.323909800000001,
+                  "p99": 9.070806239999998,
+                  "max": 73.976368
+                },
+                "tsRegressRecv": 0,
+                "tsDupRecv": 0,
+                "bboPoints": 15735,
+                "chainBreaks": 0
+              },
+              "kalshiBot": {
+                "firstRecvNs": 1788992138454999808,
+                "lastRecvNs": 1788993000921999872,
+                "points": 48940,
+                "econValidRate": 0.45594605639558644,
+                "parityUsableRate": 0.45594605639558644,
+                "crossedRate": 0.0,
+                "lockedRate": 0.44820187985288107
+              }
+            }
+          }
+        }
+      }
+    },
+    "2026-09-14": {
+      "runs": {
+        "2026-09-14T07-33-30-421Z": {
+          "tickers": {
+            "KXBTC15M-26SEP140345-45": {
+              "cryptostruct": {
+                "firstRecvNs": 1789371002278066479,
+                "lastRecvNs": 1789371900016911963,
+                "latencyMs": {
+                  "n": 337723,
+                  "p50": 5.339301,
+                  "p90": 6.7388924,
+                  "p99": 8.775191839999998,
+                  "max": 19.556899
+                },
+                "tsRegressRecv": 0,
+                "tsDupRecv": 0,
+                "bboPoints": 12194,
+                "chainBreaks": 0
+              },
+              "kalshiBot": {
+                "firstRecvNs": 1789371211469000192,
+                "lastRecvNs": 1789371901079000064,
+                "points": 39330,
+                "econValidRate": 0.6618357487922706,
+                "parityUsableRate": 0.6618357487922706,
+                "crossedRate": 0.0,
+                "lockedRate": 0.20422069666920925
+              }
+            },
+            "KXBTC15M-26SEP140445-45": {
+              "cryptostruct": {
+                "firstRecvNs": 1789374600825868757,
+                "lastRecvNs": 1789375500013040212,
+                "latencyMs": {
+                  "n": 411041,
+                  "p50": 5.286214,
+                  "p90": 6.629508,
+                  "p99": 8.609654599999992,
+                  "max": 28.471492
+                },
+                "tsRegressRecv": 0,
+                "tsDupRecv": 0,
+                "bboPoints": 18452,
+                "chainBreaks": 0
+              },
+              "kalshiBot": {
+                "firstRecvNs": 1789374663785000192,
+                "lastRecvNs": 1789375500992999936,
+                "points": 49522,
+                "econValidRate": 0.926739630871128,
+                "parityUsableRate": 0.926739630871128,
+                "crossedRate": 0.0,
+                "lockedRate": 0.04864504664593514
+              }
+            },
+            "KXBTC15M-26SEP140545-45": {
+              "cryptostruct": {
+                "firstRecvNs": 1789378200415980604,
+                "lastRecvNs": 1789379100013013413,
+                "latencyMs": {
+                  "n": 297069,
+                  "p50": 5.641037,
+                  "p90": 7.0546238,
+                  "p99": 9.381672280000018,
+                  "max": 26.106007
+                },
+                "tsRegressRecv": 0,
+                "tsDupRecv": 0,
+                "bboPoints": 15629,
+                "chainBreaks": 0
+              },
+              "kalshiBot": {
+                "firstRecvNs": 1789378232331000064,
+                "lastRecvNs": 1789379101158999808,
+                "points": 45358,
+                "econValidRate": 0.7510913179593457,
+                "parityUsableRate": 0.7510913179593457,
+                "crossedRate": 0.0,
+                "lockedRate": 0.2008465981745227
+              }
+            },
+            "KXBTC15M-26SEP140645-45": {
+              "cryptostruct": {
+                "firstRecvNs": 1789381800968744387,
+                "lastRecvNs": 1789382700015785481,
+                "latencyMs": {
+                  "n": 440414,
+                  "p50": 5.2388015,
+                  "p90": 6.6297891,
+                  "p99": 8.6684963,
+                  "max": 25.718561
+                },
+                "tsRegressRecv": 0,
+                "tsDupRecv": 0,
+                "bboPoints": 18842,
+                "chainBreaks": 0
+              },
+              "kalshiBot": {
+                "firstRecvNs": 1789381832438999808,
+                "lastRecvNs": 1789382701148000000,
+                "points": 53961,
+                "econValidRate": 0.9197753933396342,
+                "parityUsableRate": 0.919682733826282,
+                "crossedRate": 0.0,
+                "lockedRate": 0.07362724930968663
+              }
+            },
+            "KXBTC15M-26SEP140745-45": {
+              "cryptostruct": {
+                "firstRecvNs": 1789385401087372707,
+                "lastRecvNs": 1789386300014846262,
+                "latencyMs": {
+                  "n": 350536,
+                  "p50": 5.739993,
+                  "p90": 7.101701,
+                  "p99": 8.990741800000002,
+                  "max": 46.797257
+                },
+                "tsRegressRecv": 0,
+                "tsDupRecv": 0,
+                "bboPoints": 15898,
+                "chainBreaks": 0
+              },
+              "kalshiBot": {
+                "firstRecvNs": 1789385432431000064,
+                "lastRecvNs": 1789386300828000000,
+                "points": 47994,
+                "econValidRate": 0.5362336958786516,
+                "parityUsableRate": 0.5362336958786516,
+                "crossedRate": 0.0,
+                "lockedRate": 0.3844230528816102
+              }
+            },
+            "KXBTC15M-26SEP140845-45": {
+              "cryptostruct": {
+                "firstRecvNs": 1789389000828195450,
+                "lastRecvNs": 1789389900012712651,
+                "latencyMs": {
+                  "n": 544049,
+                  "p50": 5.928639,
+                  "p90": 7.270734,
+                  "p99": 9.454627360000005,
+                  "max": 30.353755
+                },
+                "tsRegressRecv": 0,
+                "tsDupRecv": 0,
+                "bboPoints": 18731,
+                "chainBreaks": 0
+              },
+              "kalshiBot": {
+                "firstRecvNs": 1789389032384999936,
+                "lastRecvNs": 1789389901440999936,
+                "points": 59213,
+                "econValidRate": 0.7294850792900208,
+                "parityUsableRate": 0.7294850792900208,
+                "crossedRate": 0.0,
+                "lockedRate": 0.23422221471636295
+              }
+            },
+            "KXBTC15M-26SEP140945-45": {
+              "cryptostruct": {
+                "firstRecvNs": 1789392600939200206,
+                "lastRecvNs": 1789393500016134179,
+                "latencyMs": {
+                  "n": 753604,
+                  "p50": 5.660511,
+                  "p90": 6.928265,
+                  "p99": 8.903518749999998,
+                  "max": 30.162149
+                },
+                "tsRegressRecv": 0,
+                "tsDupRecv": 0,
+                "bboPoints": 18959,
+                "chainBreaks": 0
+              },
+              "kalshiBot": {
+                "firstRecvNs": 1789392662701999872,
+                "lastRecvNs": 1789393501043000064,
+                "points": 63105,
+                "econValidRate": 0.4327707788606291,
+                "parityUsableRate": 0.4327707788606291,
+                "crossedRate": 0.0,
+                "lockedRate": 0.49053165359321765
+              }
+            },
+            "KXBTC15M-26SEP141045-45": {
+              "cryptostruct": {
+                "firstRecvNs": 1789396201181045802,
+                "lastRecvNs": 1789397100014739737,
+                "latencyMs": {
+                  "n": 865843,
+                  "p50": 5.685585,
+                  "p90": 6.92844,
+                  "p99": 8.923668079999999,
+                  "max": 45.577944
+                },
+                "tsRegressRecv": 0,
+                "tsDupRecv": 0,
+                "bboPoints": 20923,
+                "chainBreaks": 0
+              },
+              "kalshiBot": {
+                "firstRecvNs": 1789396232921999872,
+                "lastRecvNs": 1789397101528000000,
+                "points": 69101,
+                "econValidRate": 0.9242123847701191,
+                "parityUsableRate": 0.9242123847701191,
+                "crossedRate": 0.0,
+                "lockedRate": 0.02777094398055021
+              }
+            }
+          }
+        }
+      }
+    },
+    "2026-09-18": {
+      "runs": {
+        "2026-09-18T07-59-28-489Z": {
+          "tickers": {
+            "KXBTC15M-26SEP180400-00": {
+              "cryptostruct": {
+                "firstRecvNs": 1789717500787979621,
+                "lastRecvNs": 1789718400012207963,
+                "latencyMs": {
+                  "n": 433818,
+                  "p50": 5.6102495,
+                  "p90": 6.9426025,
+                  "p99": 9.172911860000031,
+                  "max": 1404.428679
+                },
+                "tsRegressRecv": 0,
+                "tsDupRecv": 0,
+                "bboPoints": 368,
+                "chainBreaks": 0
+              },
+              "kalshiBot": {
+                "firstRecvNs": 1789718369767000064,
+                "lastRecvNs": 1789718400943000064,
+                "points": 1720,
+                "econValidRate": 0.009302325581395349,
+                "parityUsableRate": 0.009302325581395349,
+                "crossedRate": 0.0,
+                "lockedRate": 0.11802325581395348
+              }
+            },
+            "KXBTC15M-26SEP180500-00": {
+              "cryptostruct": {
+                "firstRecvNs": 1789721100508828419,
+                "lastRecvNs": 1789722001006838545,
+                "latencyMs": {
+                  "n": 367287,
+                  "p50": 5.586051,
+                  "p90": 6.9102556,
+                  "p99": 8.668879680000005,
+                  "max": 30.012439
+                },
+                "tsRegressRecv": 0,
+                "tsDupRecv": 0,
+                "bboPoints": 15923,
+                "chainBreaks": 0
+              },
+              "kalshiBot": {
+                "firstRecvNs": 1789721130196999936,
+                "lastRecvNs": 1789722001360000000,
+                "points": 48403,
+                "econValidRate": 0.5873809474619341,
+                "parityUsableRate": 0.5873809474619341,
+                "crossedRate": 0.0,
+                "lockedRate": 0.3411565398838915
+              }
+            },
+            "KXBTC15M-26SEP180600-00": {
+              "cryptostruct": {
+                "firstRecvNs": 1789724700952916866,
+                "lastRecvNs": 1789725601005899884,
+                "latencyMs": {
+                  "n": 342731,
+                  "p50": 5.361067,
+                  "p90": 6.698774,
+                  "p99": 8.735973900000001,
+                  "max": 41.808833
+                },
+                "tsRegressRecv": 0,
+                "tsDupRecv": 0,
+                "bboPoints": 15075,
+                "chainBreaks": 0
+              },
+              "kalshiBot": {
+                "firstRecvNs": 1789724730304000000,
+                "lastRecvNs": 1789725601029999872,
+                "points": 46986,
+                "econValidRate": 0.4982973651726046,
+                "parityUsableRate": 0.4982973651726046,
+                "crossedRate": 0.0,
+                "lockedRate": 0.3961818413995658
+              }
+            },
+            "KXBTC15M-26SEP180700-00": {
+              "cryptostruct": {
+                "firstRecvNs": 1789728301314669952,
+                "lastRecvNs": 1789729200181788375,
+                "latencyMs": {
+                  "n": 399057,
+                  "p50": 5.240094,
+                  "p90": 6.575437000000001,
+                  "p99": 8.45413632,
+                  "max": 75.922813
+                },
+                "tsRegressRecv": 0,
+                "tsDupRecv": 0,
+                "bboPoints": 15527,
+                "chainBreaks": 0
+              },
+              "kalshiBot": {
+                "firstRecvNs": 1789728330576999936,
+                "lastRecvNs": 1789729201444000000,
+                "points": 48457,
+                "econValidRate": 0.4201044224776606,
+                "parityUsableRate": 0.4201044224776606,
+                "crossedRate": 0.0,
+                "lockedRate": 0.5150958581835442
+              }
+            },
+            "KXBTC15M-26SEP180800-00": {
+              "cryptostruct": {
+                "firstRecvNs": 1789731901086802830,
+                "lastRecvNs": 1789732800194929785,
+                "latencyMs": {
+                  "n": 428552,
+                  "p50": 5.2136569999999995,
+                  "p90": 6.5188785000000005,
+                  "p99": 8.810778159999993,
+                  "max": 55.125182
+                },
+                "tsRegressRecv": 0,
+                "tsDupRecv": 0,
+                "bboPoints": 16950,
+                "chainBreaks": 0
+              },
+              "kalshiBot": {
+                "firstRecvNs": 1789731930670000128,
+                "lastRecvNs": 1789732800239000064,
+                "points": 50713,
+                "econValidRate": 0.8196517658194151,
+                "parityUsableRate": 0.8196517658194151,
+                "crossedRate": 0.0,
+                "lockedRate": 0.12418906394810009
+              }
+            },
+            "KXBTC15M-26SEP180900-00": {
+              "cryptostruct": {
+                "firstRecvNs": 1789735500670234446,
+                "lastRecvNs": 1789736400017513511,
+                "latencyMs": {
+                  "n": 398223,
+                  "p50": 5.493384,
+                  "p90": 6.7991982,
+                  "p99": 9.072621919999971,
+                  "max": 83.143564
+                },
+                "tsRegressRecv": 0,
+                "tsDupRecv": 0,
+                "bboPoints": 15584,
+                "chainBreaks": 0
+              },
+              "kalshiBot": {
+                "firstRecvNs": 1789735530757999872,
+                "lastRecvNs": 1789736400611000064,
+                "points": 48310,
+                "econValidRate": 0.6048437176567998,
+                "parityUsableRate": 0.6048437176567998,
+                "crossedRate": 0.0,
+                "lockedRate": 0.331422065824881
+              }
+            },
+            "KXBTC15M-26SEP181000-00": {
+              "cryptostruct": {
+                "firstRecvNs": 1789739101382165366,
+                "lastRecvNs": 1789740001131715743,
+                "latencyMs": {
+                  "n": 640124,
+                  "p50": 5.320415,
+                  "p90": 6.5562074,
+                  "p99": 8.362404550000003,
+                  "max": 81.677399
+                },
+                "tsRegressRecv": 0,
+                "tsDupRecv": 0,
+                "bboPoints": 17108,
+                "chainBreaks": 0
+              },
+              "kalshiBot": {
+                "firstRecvNs": 1789739130836999936,
+                "lastRecvNs": 1789740000168000000,
+                "points": 61530,
+                "econValidRate": 0.145587518283764,
+                "parityUsableRate": 0.145587518283764,
+                "crossedRate": 0.0,
+                "lockedRate": 0.7539249146757679
+              }
+            },
+            "KXBTC15M-26SEP181100-00": {
+              "cryptostruct": {
+                "firstRecvNs": 1789742700754964210,
+                "lastRecvNs": 1789743601132268034,
+                "latencyMs": {
+                  "n": 850327,
+                  "p50": 5.312251,
+                  "p90": 6.5479552,
+                  "p99": 8.43095232,
+                  "max": 44.500316
+                },
+                "tsRegressRecv": 0,
+                "tsDupRecv": 0,
+                "bboPoints": 18509,
+                "chainBreaks": 0
+              },
+              "kalshiBot": {
+                "firstRecvNs": 1789742731561000192,
+                "lastRecvNs": 1789743600062000128,
+                "points": 65287,
+                "econValidRate": 0.7499808537687441,
+                "parityUsableRate": 0.7499808537687441,
+                "crossedRate": 0.0,
+                "lockedRate": 0.17488933478334126
+              }
+            }
+          }
+        },
+        "2026-09-18T16-25-35-978Z": {
+          "tickers": {
+            "KXBTC15M-26SEP181230-30": {
+              "cryptostruct": {
+                "firstRecvNs": 1789748101143317434,
+                "lastRecvNs": 1789749000016227500,
+                "latencyMs": {
+                  "n": 871380,
+                  "p50": 5.7823595,
+                  "p90": 7.1226977,
+                  "p99": 8.970436339999994,
+                  "max": 41.853123
+                },
+                "tsRegressRecv": 0,
+                "tsDupRecv": 0,
+                "bboPoints": 6538,
+                "chainBreaks": 0
+              },
+              "kalshiBot": {
+                "firstRecvNs": 1789748737044000000,
+                "lastRecvNs": 1789749001474999808,
+                "points": 21865,
+                "econValidRate": 0.6121198262062657,
+                "parityUsableRate": 0.6120740910130346,
+                "crossedRate": 0.0,
+                "lockedRate": 0.20777498284930254
+              }
+            },
+            "KXBTC15M-26SEP181330-30": {
+              "cryptostruct": {
+                "firstRecvNs": 1789751700569063484,
+                "lastRecvNs": 1789752600011628748,
+                "latencyMs": {
+                  "n": 676794,
+                  "p50": 5.4062845,
+                  "p90": 6.7312691000000004,
+                  "p99": 8.800702129999998,
+                  "max": 144.330876
+                },
+                "tsRegressRecv": 0,
+                "tsDupRecv": 0,
+                "bboPoints": 17811,
+                "chainBreaks": 0
+              },
+              "kalshiBot": {
+                "firstRecvNs": 1789751737565999872,
+                "lastRecvNs": 1789752601356000000,
+                "points": 58943,
+                "econValidRate": 0.6180547308416606,
+                "parityUsableRate": 0.6180547308416606,
+                "crossedRate": 0.0,
+                "lockedRate": 0.3160341346724802
+              }
+            },
+            "KXBTC15M-26SEP181430-30": {
+              "cryptostruct": {
+                "firstRecvNs": 1789755301585701932,
+                "lastRecvNs": 1789756200011304838,
+                "latencyMs": {
+                  "n": 623051,
+                  "p50": 5.800942,
+                  "p90": 7.151446,
+                  "p99": 9.107109,
+                  "max": 50.552127
+                },
+                "tsRegressRecv": 0,
+                "tsDupRecv": 0,
+                "bboPoints": 17717,
+                "chainBreaks": 0
+              },
+              "kalshiBot": {
+                "firstRecvNs": 1789749937720000000,
+                "lastRecvNs": 1789755307672000000,
+                "points": 1930,
+                "econValidRate": 0.20621761658031088,
+                "parityUsableRate": 0.20621761658031088,
+                "crossedRate": 0.0,
+                "lockedRate": 0.0
+              }
+            },
+            "KXBTC15M-26SEP181530-30": {
+              "cryptostruct": {
+                "firstRecvNs": 1789758901381951852,
+                "lastRecvNs": 1789759800013102525,
+                "latencyMs": {
+                  "n": 833053,
+                  "p50": 6.051673,
+                  "p90": 7.3867544,
+                  "p99": 9.550563199999996,
+                  "max": 51.64203
+                },
+                "tsRegressRecv": 0,
+                "tsDupRecv": 0,
+                "bboPoints": 19366,
+                "chainBreaks": 0
+              },
+              "kalshiBot": {
+                "firstRecvNs": 1789758937740999936,
+                "lastRecvNs": 1789759801109999872,
+                "points": 65787,
+                "econValidRate": 0.8876677763083892,
+                "parityUsableRate": 0.8876677763083892,
+                "crossedRate": 0.0,
+                "lockedRate": 0.04151276087980908
+              }
+            },
+            "KXBTC15M-26SEP181630-30": {
+              "cryptostruct": {
+                "firstRecvNs": 1789762500833356677,
+                "lastRecvNs": 1789763400026610412,
+                "latencyMs": {
+                  "n": 591341,
+                  "p50": 5.813005,
+                  "p90": 7.500567,
+                  "p99": 10.290475999999993,
+                  "max": 152.604659
+                },
+                "tsRegressRecv": 0,
+                "tsDupRecv": 0,
+                "bboPoints": 17666,
+                "chainBreaks": 0
+              },
+              "kalshiBot": {
+                "firstRecvNs": 1789762565776999936,
+                "lastRecvNs": 1789763400976999936,
+                "points": 53822,
+                "econValidRate": 0.8176582066812828,
+                "parityUsableRate": 0.8176582066812828,
+                "crossedRate": 0.0,
+                "lockedRate": 0.15045892014417897
+              }
+            },
+            "KXBTC15M-26SEP181730-30": {
+              "cryptostruct": {
+                "firstRecvNs": 1789766100898127062,
+                "lastRecvNs": 1789767000014409398,
+                "latencyMs": {
+                  "n": 350767,
+                  "p50": 5.17335,
+                  "p90": 6.7084766,
+                  "p99": 8.949941700000002,
+                  "max": 46.233736
+                },
+                "tsRegressRecv": 0,
+                "tsDupRecv": 0,
+                "bboPoints": 15824,
+                "chainBreaks": 0
+              },
+              "kalshiBot": {
+                "firstRecvNs": 1789766137947000064,
+                "lastRecvNs": 1789767001224000000,
+                "points": 48355,
+                "econValidRate": 0.7886464688243201,
+                "parityUsableRate": 0.7886464688243201,
+                "crossedRate": 0.0,
+                "lockedRate": 0.1310102367904043
+              }
+            },
+            "KXBTC15M-26SEP181830-30": {
+              "cryptostruct": {
+                "firstRecvNs": 1789769700713904607,
+                "lastRecvNs": 1789770600009627741,
+                "latencyMs": {
+                  "n": 516714,
+                  "p50": 5.954841,
+                  "p90": 7.3825599,
+                  "p99": 9.40279762,
+                  "max": 115.837408
+                },
+                "tsRegressRecv": 0,
+                "tsDupRecv": 0,
+                "bboPoints": 19272,
+                "chainBreaks": 0
+              },
+              "kalshiBot": {
+                "firstRecvNs": 1789769738247000064,
+                "lastRecvNs": 1789770601296000000,
+                "points": 56800,
+                "econValidRate": 0.8989260563380281,
+                "parityUsableRate": 0.8989260563380281,
+                "crossedRate": 0.0,
+                "lockedRate": 0.06315140845070423
+              }
+            },
+            "KXBTC15M-26SEP181930-30": {
+              "cryptostruct": {
+                "firstRecvNs": 1789773300788044370,
+                "lastRecvNs": 1789774200013380253,
+                "latencyMs": {
+                  "n": 360219,
+                  "p50": 5.747729,
+                  "p90": 7.2692538,
+                  "p99": 9.451489900000004,
+                  "max": 66.433773
+                },
+                "tsRegressRecv": 0,
+                "tsDupRecv": 0,
+                "bboPoints": 15534,
+                "chainBreaks": 0
+              },
+              "kalshiBot": {
+                "firstRecvNs": 1789773338069999872,
+                "lastRecvNs": 1789774200969000192,
+                "points": 48918,
+                "econValidRate": 0.5946890715074206,
+                "parityUsableRate": 0.5946890715074206,
+                "crossedRate": 0.0,
+                "lockedRate": 0.3302260926448342
+              }
+            }
+          }
+        }
+      }
+    },
+    "2026-09-20": {
+      "runs": {
+        "2026-09-20T02-52-53-859Z": {
+          "tickers": {
+            "KXBTC15M-26SEP192300-00": {
+              "cryptostruct": {
+                "firstRecvNs": 1789872300998578358,
+                "lastRecvNs": 1789873200240306983,
+                "latencyMs": {
+                  "n": 564963,
+                  "p50": 6.136281,
+                  "p90": 7.5054289999999995,
+                  "p99": 9.37329996,
+                  "max": 42.897288
+                },
+                "tsRegressRecv": 0,
+                "tsDupRecv": 0,
+                "bboPoints": 8273,
+                "chainBreaks": 0
+              },
+              "kalshiBot": {
+                "firstRecvNs": 1789872774947000064,
+                "lastRecvNs": 1789873201260999936,
+                "points": 29570,
+                "econValidRate": 0.2859316875211363,
+                "parityUsableRate": 0.2859316875211363,
+                "crossedRate": 0.0,
+                "lockedRate": 0.5454176530267163
+              }
+            },
+            "KXBTC15M-26SEP200000-00": {
+              "cryptostruct": {
+                "firstRecvNs": 1789875901037174340,
+                "lastRecvNs": 1789876800014261690,
+                "latencyMs": {
+                  "n": 331214,
+                  "p50": 5.8504845,
+                  "p90": 7.3428268,
+                  "p99": 9.23856531,
+                  "max": 63.069984
+                },
+                "tsRegressRecv": 0,
+                "tsDupRecv": 0,
+                "bboPoints": 15717,
+                "chainBreaks": 0
+              },
+              "kalshiBot": {
+                "firstRecvNs": 1789875955484000000,
+                "lastRecvNs": 1789876800982000128,
+                "points": 46851,
+                "econValidRate": 0.5757614565324113,
+                "parityUsableRate": 0.575740112270816,
+                "crossedRate": 0.0,
+                "lockedRate": 0.3391389724872468
+              }
+            },
+            "KXBTC15M-26SEP200100-00": {
+              "cryptostruct": {
+                "firstRecvNs": 1789879500837020392,
+                "lastRecvNs": 1789880400010684376,
+                "latencyMs": {
+                  "n": 522785,
+                  "p50": 5.39679,
+                  "p90": 6.838148000000001,
+                  "p99": 8.66603176,
+                  "max": 34.449597
+                },
+                "tsRegressRecv": 0,
+                "tsDupRecv": 0,
+                "bboPoints": 18690,
+                "chainBreaks": 0
+              },
+              "kalshiBot": {
+                "firstRecvNs": 1789879525760999936,
+                "lastRecvNs": 1789880400821000192,
+                "points": 57929,
+                "econValidRate": 0.7919176923475288,
+                "parityUsableRate": 0.7919176923475288,
+                "crossedRate": 0.0,
+                "lockedRate": 0.14961418287904157
+              }
+            },
+            "KXBTC15M-26SEP200200-00": {
+              "cryptostruct": {
+                "firstRecvNs": 1789883101404338078,
+                "lastRecvNs": 1789884001009139594,
+                "latencyMs": {
+                  "n": 426503,
+                  "p50": 5.840432,
+                  "p90": 7.2540124,
+                  "p99": 9.479497079999998,
+                  "max": 103.054944
+                },
+                "tsRegressRecv": 0,
+                "tsDupRecv": 0,
+                "bboPoints": 17324,
+                "chainBreaks": 0
+              },
+              "kalshiBot": {
+                "firstRecvNs": 1789883125983000064,
+                "lastRecvNs": 1789884001134000128,
+                "points": 53312,
+                "econValidRate": 0.7617234393757503,
+                "parityUsableRate": 0.7617234393757503,
+                "crossedRate": 0.0,
+                "lockedRate": 0.1561374549819928
+              }
+            },
+            "KXBTC15M-26SEP200300-00": {
+              "cryptostruct": {
+                "firstRecvNs": 1789886701214489312,
+                "lastRecvNs": 1789887601010226948,
+                "latencyMs": {
+                  "n": 452468,
+                  "p50": 6.046548,
+                  "p90": 7.433674,
+                  "p99": 9.332143610000003,
+                  "max": 35.008681
+                },
+                "tsRegressRecv": 0,
+                "tsDupRecv": 0,
+                "bboPoints": 17017,
+                "chainBreaks": 0
+              },
+              "kalshiBot": {
+                "firstRecvNs": 1789886755824999936,
+                "lastRecvNs": 1789887601413000192,
+                "points": 50235,
+                "econValidRate": 0.7209913406987161,
+                "parityUsableRate": 0.7209913406987161,
+                "crossedRate": 0.0,
+                "lockedRate": 0.2498855379715338
+              }
+            },
+            "KXBTC15M-26SEP200400-00": {
+              "cryptostruct": {
+                "firstRecvNs": 1789890301024468188,
+                "lastRecvNs": 1789891201009635433,
+                "latencyMs": {
+                  "n": 353974,
+                  "p50": 5.430453999999999,
+                  "p90": 6.8945217,
+                  "p99": 8.674843120000014,
+                  "max": 33.31274
+                },
+                "tsRegressRecv": 0,
+                "tsDupRecv": 0,
+                "bboPoints": 16597,
+                "chainBreaks": 0
+              },
+              "kalshiBot": {
+                "firstRecvNs": 1789890325904000000,
+                "lastRecvNs": 1789891201154000128,
+                "points": 50397,
+                "econValidRate": 0.8769768041748517,
+                "parityUsableRate": 0.8769569617239121,
+                "crossedRate": 0.0,
+                "lockedRate": 0.034744131595134634
+              }
+            },
+            "KXBTC15M-26SEP200500-00": {
+              "cryptostruct": {
+                "firstRecvNs": 1789893901250881740,
+                "lastRecvNs": 1789894800209165195,
+                "latencyMs": {
+                  "n": 489753,
+                  "p50": 5.143478,
+                  "p90": 6.5243996,
+                  "p99": 8.277408839999998,
+                  "max": 36.689634
+                },
+                "tsRegressRecv": 0,
+                "tsDupRecv": 0,
+                "bboPoints": 18618,
+                "chainBreaks": 0
+              },
+              "kalshiBot": {
+                "firstRecvNs": 1789893925984999936,
+                "lastRecvNs": 1789894801512999936,
+                "points": 56634,
+                "econValidRate": 0.9458805664441855,
+                "parityUsableRate": 0.9458805664441855,
+                "crossedRate": 0.0,
+                "lockedRate": 0.044337323869053924
+              }
+            },
+            "KXBTC15M-26SEP200600-00": {
+              "cryptostruct": {
+                "firstRecvNs": 1789897501266075028,
+                "lastRecvNs": 1789898401006988985,
+                "latencyMs": {
+                  "n": 246663,
+                  "p50": 5.116998,
+                  "p90": 6.5550636,
+                  "p99": 8.472761120000005,
+                  "max": 27.160128
+                },
+                "tsRegressRecv": 0,
+                "tsDupRecv": 0,
+                "bboPoints": 13878,
+                "chainBreaks": 0
+              },
+              "kalshiBot": {
+                "firstRecvNs": 1789897526467000064,
+                "lastRecvNs": 1789898401876000000,
+                "points": 41453,
+                "econValidRate": 0.48643041516898655,
+                "parityUsableRate": 0.48643041516898655,
+                "crossedRate": 0.0,
+                "lockedRate": 0.393940124960799
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

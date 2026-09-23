@@ -1,0 +1,83 @@
+{
+  "provider": "cryptostruct",
+  "purpose": "overlap-fidelity-pilot-downloads",
+  "guestTokenAbsent": true,
+  "orderUrlAbsent": true,
+  "files": [
+    {
+      "utcPurchaseDay": "2026-09-08",
+      "originalFilename": "kalshi-btc-15m_2026-09-08.zip",
+      "storedAt": "data/external-samples/cryptostruct/overlap/raw/kalshi-btc-15m_2026-09-08.zip",
+      "byteSize": 1190648632,
+      "sha256": "91d890acc77db122b4dbaf5dbf1cae4c8151506dfe52ae37639235c88001e27d",
+      "downloadStartedAtUtc": "2026-09-22T23:59:58Z",
+      "downloadFinishedAtUtc": "2026-09-23T00:00:38Z",
+      "contentType": "application/zip",
+      "contentDisposition": "attachment; filename=\"kalshi-btc-15m_2026-09-08.zip\"",
+      "curlExitCode": 0,
+      "nonempty": true,
+      "vendorListedUncompressedBytes": 1190623691,
+      "success": true
+    },
+    {
+      "utcPurchaseDay": "2026-09-09",
+      "originalFilename": "kalshi-btc-15m_2026-09-09.zip",
+      "storedAt": "data/external-samples/cryptostruct/overlap/raw/kalshi-btc-15m_2026-09-09.zip",
+      "byteSize": 1197691318,
+      "sha256": "f468b653c740a8c55058e8558cfceb61f1d4ffad5be3aff634fddd21d31b1e91",
+      "downloadStartedAtUtc": "2026-09-23T00:00:38Z",
+      "downloadFinishedAtUtc": "2026-09-23T00:01:29Z",
+      "contentType": "application/zip",
+      "contentDisposition": "attachment; filename=\"kalshi-btc-15m_2026-09-09.zip\"",
+      "curlExitCode": 0,
+      "nonempty": true,
+      "vendorListedUncompressedBytes": 1197666623,
+      "success": true
+    },
+    {
+      "utcPurchaseDay": "2026-09-14",
+      "originalFilename": "kalshi-btc-15m_2026-09-14.zip",
+      "storedAt": "data/external-samples/cryptostruct/overlap/raw/kalshi-btc-15m_2026-09-14.zip",
+      "byteSize": 1350578112,
+      "sha256": "fb65ac61071b2ec0a757701634a411e03fe7040ea939438a97afd62117d09d54",
+      "downloadStartedAtUtc": "2026-09-23T00:01:29Z",
+      "downloadFinishedAtUtc": "2026-09-23T00:02:19Z",
+      "contentType": "application/zip",
+      "contentDisposition": "attachment; filename=\"kalshi-btc-15m_2026-09-14.zip\"",
+      "curlExitCode": 0,
+      "nonempty": true,
+      "vendorListedUncompressedBytes": 1350553165,
+      "success": true
+    },
+    {
+      "utcPurchaseDay": "2026-09-18",
+      "originalFilename": "kalshi-btc-15m_2026-09-18.zip",
+      "storedAt": "data/external-samples/cryptostruct/overlap/raw/kalshi-btc-15m_2026-09-18.zip",
+      "byteSize": 1526744808,
+      "sha256": "4c713ef0d33dd892ddc9de0eb2a37372fd91990af67380b91cbb53f1ad0742dc",
+      "downloadStartedAtUtc": "2026-09-23T00:02:20Z",
+      "downloadFinishedAtUtc": "2026-09-23T00:03:07Z",
+      "contentType": "application/zip",
+      "contentDisposition": "attachment; filename=\"kalshi-btc-15m_2026-09-18.zip\"",
+      "curlExitCode": 0,
+      "nonempty": true,
+      "vendorListedUncompressedBytes": 1526720096,
+      "success": true
+    },
+    {
+      "utcPurchaseDay": "2026-09-20",
+      "originalFilename": "kalshi-btc-15m_2026-09-20.zip",
+      "storedAt": "data/external-samples/cryptostruct/overlap/raw/kalshi-btc-15m_2026-09-20.zip",
+      "byteSize": 1172418621,
+      "sha256": "52836856281fbc78e8c9593fbc0a35e5eb166792746924a28becde6c97baf2e4",
+      "downloadStartedAtUtc": "2026-09-23T00:03:08Z",
+      "downloadFinishedAtUtc": "2026-09-23T00:03:45Z",
+      "contentType": "application/zip",
+      "contentDisposition": "attachment; filename=\"kalshi-btc-15m_2026-09-20.zip\"",
+      "curlExitCode": 0,
+      "nonempty": true,
+      "vendorListedUncompressedBytes": 1172393685,
+      "success": true
+    }
+  ]
+}

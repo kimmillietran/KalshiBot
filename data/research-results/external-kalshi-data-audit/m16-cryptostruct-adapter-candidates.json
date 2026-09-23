@@ -1,0 +1,22 @@
+{
+  "selectionCriterion": "best mechanistic reproduction of KalshiBot observation contract + frozen M16 pre-entry process; NOT economics",
+  "variants": [
+    {
+      "id": "RAW-BBO-CHANGE",
+      "rationale": "Emit when causal (yesBid,noBid,eligibility,gap) changes after CryptoStruct snapshot+delta reconstruction"
+    },
+    {
+      "id": "KALSHIBOT-MIRROR",
+      "rationale": "Same as RAW-BBO-CHANGE plus same-timestamp collapse to last causal state (receive ms), mimicking coalesced TOB states"
+    }
+  ],
+  "degreesOfFreedom": [
+    "same-timestamp collapse (mirror only)",
+    "locked/crossed treated as not bookEligible (mirrors economic invalid / non-executable)"
+  ],
+  "notTested": [
+    "smoothing",
+    "fixed cadence resampling",
+    "arbitrary lag offsets"
+  ]
+}

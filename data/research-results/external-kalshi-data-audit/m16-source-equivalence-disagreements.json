@@ -1,0 +1,770 @@
+{
+  "total": 242,
+  "byType": {
+    "unmatchedKalshiBot": 94,
+    "unmatchedCryptostruct": 148
+  },
+  "sample": [
+    {
+      "adapter": "RAW-BBO-CHANGE",
+      "type": "unmatchedKalshiBot",
+      "event": {
+        "source": "kalshiBot",
+        "day": "2026-09-08",
+        "runId": "2026-09-08T05-12-34-856Z",
+        "marketTicker": "KXBTC15M-26SEP080130-30",
+        "side": "YES",
+        "timestampMs": 1788844594704,
+        "governed1800to2200": false,
+        "kind": "confirmation",
+        "confirmationMidCents": 48,
+        "setupLowL": 39.5,
+        "reboundHighH": 47.5,
+        "passedTimeGate": true
+      },
+      "likelyClass": "unknown-or-cs-missed-path"
+    },
+    {
+      "adapter": "RAW-BBO-CHANGE",
+      "type": "unmatchedKalshiBot",
+      "event": {
+        "source": "kalshiBot",
+        "day": "2026-09-08",
+        "runId": "2026-09-08T05-12-34-856Z",
+        "marketTicker": "KXBTC15M-26SEP080215-15",
+        "side": "YES",
+        "timestampMs": 1788847302507,
+        "governed1800to2200": false,
+        "kind": "confirmation",
+        "confirmationMidCents": 46,
+        "setupLowL": 39.5,
+        "reboundHighH": 45.5,
+        "passedTimeGate": true
+      },
+      "likelyClass": "unknown-or-cs-missed-path"
+    },
+    {
+      "adapter": "RAW-BBO-CHANGE",
+      "type": "unmatchedKalshiBot",
+      "event": {
+        "source": "kalshiBot",
+        "day": "2026-09-08",
+        "runId": "2026-09-08T05-12-34-856Z",
+        "marketTicker": "KXBTC15M-26SEP080230-30",
+        "side": "YES",
+        "timestampMs": 1788848238242,
+        "governed1800to2200": false,
+        "kind": "confirmation",
+        "confirmationMidCents": 39,
+        "setupLowL": 37.5,
+        "reboundHighH": 38.5,
+        "passedTimeGate": true
+      },
+      "likelyClass": "unknown-or-cs-missed-path"
+    },
+    {
+      "adapter": "RAW-BBO-CHANGE",
+      "type": "unmatchedKalshiBot",
+      "event": {
+        "source": "kalshiBot",
+        "day": "2026-09-08",
+        "runId": "2026-09-08T07-46-44-416Z",
+        "marketTicker": "KXBTC15M-26SEP080430-30",
+        "side": "YES",
+        "timestampMs": 1788855475025,
+        "governed1800to2200": false,
+        "kind": "confirmation",
+        "confirmationMidCents": 33,
+        "setupLowL": 31,
+        "reboundHighH": 32.5,
+        "passedTimeGate": true
+      },
+      "likelyClass": "unknown-or-cs-missed-path"
+    },
+    {
+      "adapter": "RAW-BBO-CHANGE",
+      "type": "unmatchedKalshiBot",
+      "event": {
+        "source": "kalshiBot",
+        "day": "2026-09-08",
+        "runId": "2026-09-08T07-46-44-416Z",
+        "marketTicker": "KXBTC15M-26SEP080445-45",
+        "side": "NO",
+        "timestampMs": 1788856460875,
+        "governed1800to2200": false,
+        "kind": "confirmation",
+        "confirmationMidCents": 40,
+        "setupLowL": 34.5,
+        "reboundHighH": 39.5,
+        "passedTimeGate": true
+      },
+      "likelyClass": "unknown-or-cs-missed-path"
+    },
+    {
+      "adapter": "RAW-BBO-CHANGE",
+      "type": "unmatchedKalshiBot",
+      "event": {
+        "source": "kalshiBot",
+        "day": "2026-09-08",
+        "runId": "2026-09-08T07-46-44-416Z",
+        "marketTicker": "KXBTC15M-26SEP080515-15",
+        "side": "NO",
+        "timestampMs": 1788858227818,
+        "governed1800to2200": false,
+        "kind": "confirmation",
+        "confirmationMidCents": 38,
+        "setupLowL": 33,
+        "reboundHighH": 37.5,
+        "passedTimeGate": true
+      },
+      "likelyClass": "unknown-or-cs-missed-path"
+    },
+    {
+      "adapter": "RAW-BBO-CHANGE",
+      "type": "unmatchedKalshiBot",
+      "event": {
+        "source": "kalshiBot",
+        "day": "2026-09-08",
+        "runId": "2026-09-08T07-46-44-416Z",
+        "marketTicker": "KXBTC15M-26SEP080730-30",
+        "side": "NO",
+        "timestampMs": 1788866135341,
+        "governed1800to2200": false,
+        "kind": "confirmation",
+        "confirmationMidCents": 43.5,
+        "setupLowL": 35,
+        "reboundHighH": 39,
+        "passedTimeGate": true
+      },
+      "likelyClass": "unknown-or-cs-missed-path"
+    },
+    {
+      "adapter": "RAW-BBO-CHANGE",
+      "type": "unmatchedKalshiBot",
+      "event": {
+        "source": "kalshiBot",
+        "day": "2026-09-08",
+        "runId": "2026-09-08T07-46-44-416Z",
+        "marketTicker": "KXBTC15M-26SEP080745-45",
+        "side": "NO",
+        "timestampMs": 1788867176759,
+        "governed1800to2200": false,
+        "kind": "confirmation",
+        "confirmationMidCents": 35,
+        "setupLowL": 32.5,
+        "reboundHighH": 34.5,
+        "passedTimeGate": true
+      },
+      "likelyClass": "unknown-or-cs-missed-path"
+    },
+    {
+      "adapter": "RAW-BBO-CHANGE",
+      "type": "unmatchedKalshiBot",
+      "event": {
+        "source": "kalshiBot",
+        "day": "2026-09-08",
+        "runId": "2026-09-08T07-46-44-416Z",
+        "marketTicker": "KXBTC15M-26SEP080845-45",
+        "side": "YES",
+        "timestampMs": 1788871235395,
+        "governed1800to2200": false,
+        "kind": "confirmation",
+        "confirmationMidCents": 41,
+        "setupLowL": 30.5,
+        "reboundHighH": 40.5,
+        "passedTimeGate": true
+      },
+      "likelyClass": "unknown-or-cs-missed-path"
+    },
+    {
+      "adapter": "RAW-BBO-CHANGE",
+      "type": "unmatchedKalshiBot",
+      "event": {
+        "source": "kalshiBot",
+        "day": "2026-09-08",
+        "runId": "2026-09-08T07-46-44-416Z",
+        "marketTicker": "KXBTC15M-26SEP081015-15",
+        "side": "NO",
+        "timestampMs": 1788876082745,
+        "governed1800to2200": false,
+        "kind": "confirmation",
+        "confirmationMidCents": 42,
+        "setupLowL": 35.5,
+        "reboundHighH": 41.5,
+        "passedTimeGate": true
+      },
+      "likelyClass": "unknown-or-cs-missed-path"
+    },
+    {
+      "adapter": "RAW-BBO-CHANGE",
+      "type": "unmatchedKalshiBot",
+      "event": {
+        "source": "kalshiBot",
+        "day": "2026-09-09",
+        "runId": "2026-09-09T06-39-04-259Z",
+        "marketTicker": "KXBTC15M-26SEP090330-30",
+        "side": "YES",
+        "timestampMs": 1788938246786,
+        "governed1800to2200": false,
+        "kind": "confirmation",
+        "confirmationMidCents": 37,
+        "setupLowL": 32.5,
+        "reboundHighH": 36.5,
+        "passedTimeGate": true
+      },
+      "likelyClass": "unknown-or-cs-missed-path"
+    },
+    {
+      "adapter": "RAW-BBO-CHANGE",
+      "type": "unmatchedKalshiBot",
+      "event": {
+        "source": "kalshiBot",
+        "day": "2026-09-09",
+        "runId": "2026-09-09T06-39-04-259Z",
+        "marketTicker": "KXBTC15M-26SEP090345-45",
+        "side": "NO",
+        "timestampMs": 1788939099330,
+        "governed1800to2200": false,
+        "kind": "confirmation",
+        "confirmationMidCents": 47,
+        "setupLowL": 40,
+        "reboundHighH": 46.5,
+        "passedTimeGate": true
+      },
+      "likelyClass": "unknown-or-cs-missed-path"
+    },
+    {
+      "adapter": "RAW-BBO-CHANGE",
+      "type": "unmatchedKalshiBot",
+      "event": {
+        "source": "kalshiBot",
+        "day": "2026-09-09",
+        "runId": "2026-09-09T06-39-04-259Z",
+        "marketTicker": "KXBTC15M-26SEP090645-45",
+        "side": "NO",
+        "timestampMs": 1788950117502,
+        "governed1800to2200": false,
+        "kind": "confirmation",
+        "confirmationMidCents": 35,
+        "setupLowL": 32.5,
+        "reboundHighH": 34.5,
+        "passedTimeGate": true
+      },
+      "likelyClass": "unknown-or-cs-missed-path"
+    },
+    {
+      "adapter": "RAW-BBO-CHANGE",
+      "type": "unmatchedKalshiBot",
+      "event": {
+        "source": "kalshiBot",
+        "day": "2026-09-09",
+        "runId": "2026-09-09T06-39-04-259Z",
+        "marketTicker": "KXBTC15M-26SEP090800-00",
+        "side": "NO",
+        "timestampMs": 1788954386584,
+        "governed1800to2200": false,
+        "kind": "confirmation",
+        "confirmationMidCents": 36,
+        "setupLowL": 31.5,
+        "reboundHighH": 35.5,
+        "passedTimeGate": true
+      },
+      "likelyClass": "unknown-or-cs-missed-path"
+    },
+    {
+      "adapter": "RAW-BBO-CHANGE",
+      "type": "unmatchedKalshiBot",
+      "event": {
+        "source": "kalshiBot",
+        "day": "2026-09-09",
+        "runId": "2026-09-09T06-39-04-259Z",
+        "marketTicker": "KXBTC15M-26SEP090945-45",
+        "side": "NO",
+        "timestampMs": 1788960759032,
+        "governed1800to2200": false,
+        "kind": "confirmation",
+        "confirmationMidCents": 44,
+        "setupLowL": 38.5,
+        "reboundHighH": 43.5,
+        "passedTimeGate": true
+      },
+      "likelyClass": "unknown-or-cs-missed-path"
+    },
+    {
+      "adapter": "RAW-BBO-CHANGE",
+      "type": "unmatchedKalshiBot",
+      "event": {
+        "source": "kalshiBot",
+        "day": "2026-09-09",
+        "runId": "2026-09-09T06-39-04-259Z",
+        "marketTicker": "KXBTC15M-26SEP091000-00",
+        "side": "NO",
+        "timestampMs": 1788961602348,
+        "governed1800to2200": false,
+        "kind": "confirmation",
+        "confirmationMidCents": 34,
+        "setupLowL": 32.5,
+        "reboundHighH": 33.5,
+        "passedTimeGate": true
+      },
+      "likelyClass": "unknown-or-cs-missed-path"
+    },
+    {
+      "adapter": "RAW-BBO-CHANGE",
+      "type": "unmatchedKalshiBot",
+      "event": {
+        "source": "kalshiBot",
+        "day": "2026-09-09",
+        "runId": "2026-09-09T06-39-04-259Z",
+        "marketTicker": "KXBTC15M-26SEP091015-15",
+        "side": "NO",
+        "timestampMs": 1788962721088,
+        "governed1800to2200": false,
+        "kind": "confirmation",
+        "confirmationMidCents": 41,
+        "setupLowL": 39.5,
+        "reboundHighH": 40.5,
+        "passedTimeGate": true
+      },
+      "likelyClass": "unknown-or-cs-missed-path"
+    },
+    {
+      "adapter": "RAW-BBO-CHANGE",
+      "type": "unmatchedKalshiBot",
+      "event": {
+        "source": "kalshiBot",
+        "day": "2026-09-09",
+        "runId": "2026-09-09T20-37-36-719Z",
+        "marketTicker": "KXBTC15M-26SEP091715-15",
+        "side": "YES",
+        "timestampMs": 1788987755556,
+        "governed1800to2200": true,
+        "kind": "confirmation",
+        "confirmationMidCents": 42,
+        "setupLowL": 38,
+        "reboundHighH": 41.5,
+        "passedTimeGate": true
+      },
+      "likelyClass": "unknown-or-cs-missed-path"
+    },
+    {
+      "adapter": "RAW-BBO-CHANGE",
+      "type": "unmatchedKalshiBot",
+      "event": {
+        "source": "kalshiBot",
+        "day": "2026-09-09",
+        "runId": "2026-09-09T20-37-36-719Z",
+        "marketTicker": "KXBTC15M-26SEP091730-30",
+        "side": "NO",
+        "timestampMs": 1788989115903,
+        "governed1800to2200": true,
+        "kind": "confirmation",
+        "confirmationMidCents": 32,
+        "setupLowL": 30.5,
+        "reboundHighH": 31.5,
+        "passedTimeGate": true
+      },
+      "likelyClass": "unknown-or-cs-missed-path"
+    },
+    {
+      "adapter": "RAW-BBO-CHANGE",
+      "type": "unmatchedKalshiBot",
+      "event": {
+        "source": "kalshiBot",
+        "day": "2026-09-09",
+        "runId": "2026-09-09T20-37-36-719Z",
+        "marketTicker": "KXBTC15M-26SEP091900-00",
+        "side": "YES",
+        "timestampMs": 1788994347639,
+        "governed1800to2200": false,
+        "kind": "confirmation",
+        "confirmationMidCents": 38,
+        "setupLowL": 36.5,
+        "reboundHighH": 37.5,
+        "passedTimeGate": true
+      },
+      "likelyClass": "unknown-or-cs-missed-path"
+    },
+    {
+      "adapter": "RAW-BBO-CHANGE",
+      "type": "unmatchedKalshiBot",
+      "event": {
+        "source": "kalshiBot",
+        "day": "2026-09-09",
+        "runId": "2026-09-09T20-37-36-719Z",
+        "marketTicker": "KXBTC15M-26SEP092015-15",
+        "side": "NO",
+        "timestampMs": 1788998501442,
+        "governed1800to2200": false,
+        "kind": "confirmation",
+        "confirmationMidCents": 41,
+        "setupLowL": 39.5,
+        "reboundHighH": 40.5,
+        "passedTimeGate": true
+      },
+      "likelyClass": "unknown-or-cs-missed-path"
+    },
+    {
+      "adapter": "RAW-BBO-CHANGE",
+      "type": "unmatchedKalshiBot",
+      "event": {
+        "source": "kalshiBot",
+        "day": "2026-09-09",
+        "runId": "2026-09-09T20-37-36-719Z",
+        "marketTicker": "KXBTC15M-26SEP092030-30",
+        "side": "YES",
+        "timestampMs": 1788999362103,
+        "governed1800to2200": false,
+        "kind": "confirmation",
+        "confirmationMidCents": 41,
+        "setupLowL": 39.5,
+        "reboundHighH": 40.5,
+        "passedTimeGate": true
+      },
+      "likelyClass": "unknown-or-cs-missed-path"
+    },
+    {
+      "adapter": "RAW-BBO-CHANGE",
+      "type": "unmatchedKalshiBot",
+      "event": {
+        "source": "kalshiBot",
+        "day": "2026-09-14",
+        "runId": "2026-09-14T07-33-30-421Z",
+        "marketTicker": "KXBTC15M-26SEP140445-45",
+        "side": "YES",
+        "timestampMs": 1789374760858,
+        "governed1800to2200": false,
+        "kind": "confirmation",
+        "confirmationMidCents": 52,
+        "setupLowL": 37.5,
+        "reboundHighH": 51.5,
+        "passedTimeGate": true
+      },
+      "likelyClass": "unknown-or-cs-missed-path"
+    },
+    {
+      "adapter": "RAW-BBO-CHANGE",
+      "type": "unmatchedKalshiBot",
+      "event": {
+        "source": "kalshiBot",
+        "day": "2026-09-14",
+        "runId": "2026-09-14T07-33-30-421Z",
+        "marketTicker": "KXBTC15M-26SEP140915-15",
+        "side": "NO",
+        "timestampMs": 1789391026264,
+        "governed1800to2200": false,
+        "kind": "confirmation",
+        "confirmationMidCents": 40,
+        "setupLowL": 36.5,
+        "reboundHighH": 39.5,
+        "passedTimeGate": true
+      },
+      "likelyClass": "unknown-or-cs-missed-path"
+    },
+    {
+      "adapter": "RAW-BBO-CHANGE",
+      "type": "unmatchedKalshiBot",
+      "event": {
+        "source": "kalshiBot",
+        "day": "2026-09-14",
+        "runId": "2026-09-14T07-33-30-421Z",
+        "marketTicker": "KXBTC15M-26SEP141000-00",
+        "side": "YES",
+        "timestampMs": 1789394271684,
+        "governed1800to2200": false,
+        "kind": "confirmation",
+        "confirmationMidCents": 34,
+        "setupLowL": 30.5,
+        "reboundHighH": 33.5,
+        "passedTimeGate": true
+      },
+      "likelyClass": "unknown-or-cs-missed-path"
+    },
+    {
+      "adapter": "RAW-BBO-CHANGE",
+      "type": "unmatchedKalshiBot",
+      "event": {
+        "source": "kalshiBot",
+        "day": "2026-09-14",
+        "runId": "2026-09-14T07-33-30-421Z",
+        "marketTicker": "KXBTC15M-26SEP141145-45",
+        "side": "YES",
+        "timestampMs": 1789399947922,
+        "governed1800to2200": false,
+        "kind": "confirmation",
+        "confirmationMidCents": 42,
+        "setupLowL": 39.5,
+        "reboundHighH": 41.5,
+        "passedTimeGate": true
+      },
+      "likelyClass": "unknown-or-cs-missed-path"
+    },
+    {
+      "adapter": "RAW-BBO-CHANGE",
+      "type": "unmatchedKalshiBot",
+      "event": {
+        "source": "kalshiBot",
+        "day": "2026-09-18",
+        "runId": "2026-09-18T07-59-28-489Z",
+        "marketTicker": "KXBTC15M-26SEP180445-45",
+        "side": "YES",
+        "timestampMs": 1789720319844,
+        "governed1800to2200": false,
+        "kind": "confirmation",
+        "confirmationMidCents": 45,
+        "setupLowL": 39.5,
+        "reboundHighH": 44.5,
+        "passedTimeGate": true
+      },
+      "likelyClass": "unknown-or-cs-missed-path"
+    },
+    {
+      "adapter": "RAW-BBO-CHANGE",
+      "type": "unmatchedKalshiBot",
+      "event": {
+        "source": "kalshiBot",
+        "day": "2026-09-18",
+        "runId": "2026-09-18T07-59-28-489Z",
+        "marketTicker": "KXBTC15M-26SEP180545-45",
+        "side": "YES",
+        "timestampMs": 1789723865179,
+        "governed1800to2200": false,
+        "kind": "confirmation",
+        "confirmationMidCents": 44,
+        "setupLowL": 38.5,
+        "reboundHighH": 43.5,
+        "passedTimeGate": true
+      },
+      "likelyClass": "unknown-or-cs-missed-path"
+    },
+    {
+      "adapter": "RAW-BBO-CHANGE",
+      "type": "unmatchedKalshiBot",
+      "event": {
+        "source": "kalshiBot",
+        "day": "2026-09-18",
+        "runId": "2026-09-18T07-59-28-489Z",
+        "marketTicker": "KXBTC15M-26SEP180900-00",
+        "side": "YES",
+        "timestampMs": 1789735745314,
+        "governed1800to2200": false,
+        "kind": "confirmation",
+        "confirmationMidCents": 33,
+        "setupLowL": 30.5,
+        "reboundHighH": 32.5,
+        "passedTimeGate": true
+      },
+      "likelyClass": "unknown-or-cs-missed-path"
+    },
+    {
+      "adapter": "RAW-BBO-CHANGE",
+      "type": "unmatchedKalshiBot",
+      "event": {
+        "source": "kalshiBot",
+        "day": "2026-09-18",
+        "runId": "2026-09-18T07-59-28-489Z",
+        "marketTicker": "KXBTC15M-26SEP181115-15",
+        "side": "NO",
+        "timestampMs": 1789743644262,
+        "governed1800to2200": false,
+        "kind": "confirmation",
+        "confirmationMidCents": 35,
+        "setupLowL": 33.5,
+        "reboundHighH": 34.5,
+        "passedTimeGate": true
+      },
+      "likelyClass": "unknown-or-cs-missed-path"
+    },
+    {
+      "adapter": "RAW-BBO-CHANGE",
+      "type": "unmatchedKalshiBot",
+      "event": {
+        "source": "kalshiBot",
+        "day": "2026-09-18",
+        "runId": "2026-09-18T16-25-35-978Z",
+        "marketTicker": "KXBTC15M-26SEP181600-00",
+        "side": "YES",
+        "timestampMs": 1789761283176,
+        "governed1800to2200": true,
+        "kind": "confirmation",
+        "confirmationMidCents": 33,
+        "setupLowL": 31.5,
+        "reboundHighH": 32.5,
+        "passedTimeGate": true
+      },
+      "likelyClass": "unknown-or-cs-missed-path"
+    },
+    {
+      "adapter": "RAW-BBO-CHANGE",
+      "type": "unmatchedKalshiBot",
+      "event": {
+        "source": "kalshiBot",
+        "day": "2026-09-18",
+        "runId": "2026-09-18T16-25-35-978Z",
+        "marketTicker": "KXBTC15M-26SEP181630-30",
+        "side": "YES",
+        "timestampMs": 1789763115156,
+        "governed1800to2200": true,
+        "kind": "confirmation",
+        "confirmationMidCents": 41,
+        "setupLowL": 36.5,
+        "reboundHighH": 40.5,
+        "passedTimeGate": true
+      },
+      "likelyClass": "unknown-or-cs-missed-path"
+    },
+    {
+      "adapter": "RAW-BBO-CHANGE",
+      "type": "unmatchedKalshiBot",
+      "event": {
+        "source": "kalshiBot",
+        "day": "2026-09-18",
+        "runId": "2026-09-18T16-25-35-978Z",
+        "marketTicker": "KXBTC15M-26SEP181745-45",
+        "side": "YES",
+        "timestampMs": 1789767088607,
+        "governed1800to2200": true,
+        "kind": "confirmation",
+        "confirmationMidCents": 40,
+        "setupLowL": 36.5,
+        "reboundHighH": 39.5,
+        "passedTimeGate": true
+      },
+      "likelyClass": "unknown-or-cs-missed-path"
+    },
+    {
+      "adapter": "RAW-BBO-CHANGE",
+      "type": "unmatchedKalshiBot",
+      "event": {
+        "source": "kalshiBot",
+        "day": "2026-09-18",
+        "runId": "2026-09-18T16-25-35-978Z",
+        "marketTicker": "KXBTC15M-26SEP181815-15",
+        "side": "YES",
+        "timestampMs": 1789768938267,
+        "governed1800to2200": false,
+        "kind": "confirmation",
+        "confirmationMidCents": 42,
+        "setupLowL": 34.5,
+        "reboundHighH": 41.5,
+        "passedTimeGate": true
+      },
+      "likelyClass": "unknown-or-cs-missed-path"
+    },
+    {
+      "adapter": "RAW-BBO-CHANGE",
+      "type": "unmatchedKalshiBot",
+      "event": {
+        "source": "kalshiBot",
+        "day": "2026-09-18",
+        "runId": "2026-09-18T16-25-35-978Z",
+        "marketTicker": "KXBTC15M-26SEP181945-45",
+        "side": "NO",
+        "timestampMs": 1789774486385,
+        "governed1800to2200": false,
+        "kind": "confirmation",
+        "confirmationMidCents": 41,
+        "setupLowL": 38,
+        "reboundHighH": 40.5,
+        "passedTimeGate": true
+      },
+      "likelyClass": "unknown-or-cs-missed-path"
+    },
+    {
+      "adapter": "RAW-BBO-CHANGE",
+      "type": "unmatchedKalshiBot",
+      "event": {
+        "source": "kalshiBot",
+        "day": "2026-09-18",
+        "runId": "2026-09-18T16-25-35-978Z",
+        "marketTicker": "KXBTC15M-26SEP182030-30",
+        "side": "NO",
+        "timestampMs": 1789777018028,
+        "governed1800to2200": false,
+        "kind": "confirmation",
+        "confirmationMidCents": 38,
+        "setupLowL": 33.5,
+        "reboundHighH": 37.5,
+        "passedTimeGate": true
+      },
+      "likelyClass": "unknown-or-cs-missed-path"
+    },
+    {
+      "adapter": "RAW-BBO-CHANGE",
+      "type": "unmatchedKalshiBot",
+      "event": {
+        "source": "kalshiBot",
+        "day": "2026-09-20",
+        "runId": "2026-09-20T02-52-53-859Z",
+        "marketTicker": "KXBTC15M-26SEP192345-45",
+        "side": "YES",
+        "timestampMs": 1789875316002,
+        "governed1800to2200": false,
+        "kind": "confirmation",
+        "confirmationMidCents": 41,
+        "setupLowL": 36.5,
+        "reboundHighH": 40.5,
+        "passedTimeGate": true
+      },
+      "likelyClass": "unknown-or-cs-missed-path"
+    },
+    {
+      "adapter": "RAW-BBO-CHANGE",
+      "type": "unmatchedKalshiBot",
+      "event": {
+        "source": "kalshiBot",
+        "day": "2026-09-20",
+        "runId": "2026-09-20T02-52-53-859Z",
+        "marketTicker": "KXBTC15M-26SEP200030-30",
+        "side": "YES",
+        "timestampMs": 1789877940581,
+        "governed1800to2200": false,
+        "kind": "confirmation",
+        "confirmationMidCents": 38,
+        "setupLowL": 36.5,
+        "reboundHighH": 37.5,
+        "passedTimeGate": true
+      },
+      "likelyClass": "unknown-or-cs-missed-path"
+    },
+    {
+      "adapter": "RAW-BBO-CHANGE",
+      "type": "unmatchedKalshiBot",
+      "event": {
+        "source": "kalshiBot",
+        "day": "2026-09-20",
+        "runId": "2026-09-20T02-52-53-859Z",
+        "marketTicker": "KXBTC15M-26SEP200045-45",
+        "side": "NO",
+        "timestampMs": 1789878720088,
+        "governed1800to2200": false,
+        "kind": "confirmation",
+        "confirmationMidCents": 40,
+        "setupLowL": 33.5,
+        "reboundHighH": 39.5,
+        "passedTimeGate": true
+      },
+      "likelyClass": "unknown-or-cs-missed-path"
+    },
+    {
+      "adapter": "RAW-BBO-CHANGE",
+      "type": "unmatchedKalshiBot",
+      "event": {
+        "source": "kalshiBot",
+        "day": "2026-09-20",
+        "runId": "2026-09-20T02-52-53-859Z",
+        "marketTicker": "KXBTC15M-26SEP200300-00",
+        "side": "NO",
+        "timestampMs": 1789886838146,
+        "governed1800to2200": false,
+        "kind": "confirmation",
+        "confirmationMidCents": 35,
+        "setupLowL": 33.5,
+        "reboundHighH": 34.5,
+        "passedTimeGate": true
+      },
+      "likelyClass": "unknown-or-cs-missed-path"
+    }
+  ],
+  "note": "Classifications are structural hypotheses only; no post-confirmation economics inspected"
+}

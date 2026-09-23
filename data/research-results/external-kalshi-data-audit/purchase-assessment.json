@@ -1,19 +1,20 @@
 {
-  "verdict": "B",
-  "verdictLabel": "PURCHASE LIKELY HIGH VALUE AFTER SAMPLE PASSES",
-  "buyAnythingNow": true,
+  "verdict": "A",
+  "verdictLabel": "YES \u2014 SUITABLE FOR SUBSTANTIAL EXTERNAL HISTORICAL RESERVOIR (DO NOT BUY IN THIS STEP)",
+  "buyAnythingNow": false,
   "provider": "cryptostruct",
-  "minimumPurchase": "3\u20135 series-days at \u20ac1/day that overlap existing KalshiBot forward-capture dates (e.g. near 2026-09-14, 2026-09-18, 2026-09-19, 2026-09-20, 2026-09-22) before any large archive buy",
+  "minimumPurchase": "Deferred \u2014 recommend 30\u201390 post-2026-08-14 series-days next, with UNOPENED/HOLDOUT reservation before opening",
   "why": [
-    "Free CryptoStruct sample is genuinely event-level and supports causal YES/NO BBO reconstruction with dense receive-time updates (p50 ~0.033ms; max gap ~370ms).",
-    "However absolute fidelity vs KalshiBot is unproven because sample date has no overlap with our captures.",
-    "\u20ac1/day is low-cost enough to buy a few overlap days for Phase-4 validation before committing to 30/90/full archive."
+    "Overlap ASOF fidelity vs pre-M16 KalshiBot captures: ~94.7% exact and ~99.0% within-1c YES bid at 100ms\u20135s (64 ticker-samples across 5 UTC days).",
+    "Zero CryptoStruct prevEventId chain breaks on reconstructed books; receive\u2212venue latency p50 ~5.6ms.",
+    "Larger archive justified for TRAIN/design/historical reservoir AFTER reservation governance; do not purchase in this audit step."
   ],
-  "majorRemainingUncertainty": "Whether CryptoStruct books/trades match KalshiBot known-good captures on overlapping timestamps (offset distribution, missing events, BBO agreement). Also unresolved ~6% trade-count marketing discrepancy and unverified byte-identical-to-paid claim.",
+  "majorRemainingUncertainty": "Whether CryptoStruct books/trades match KalshiBot known-good captures on overlapping timestamps. PMXT is no longer \"unknown\" \u2014 it is audited and unsuitable as a CryptoStruct substitute for executable-quote research.",
   "doNotBuyYet": [
     "depthfeed subscription",
-    "pmxt (unreachable)",
-    "large CryptoStruct archive without overlap validation"
+    "pmxt",
+    "any purchase executed by the agent",
+    "pre-2026-08-14 days for opening-window-dependent studies without caveats"
   ],
   "comparisons": {
     "cryptostruct": {
@@ -38,10 +39,26 @@
       "reason": "registration required; free surface insufficient; research value unproven without keyed density measurement"
     },
     "pmxt": {
-      "freeCoverage": "archive advertised but unreachable",
-      "observedResolution": "N/A",
-      "completeness": "N/A",
-      "couldReplacePurchase": "Unknown \u2014 re-audit when archive.pmxt.dev is back"
+      "cost": "Free public archive (CC BY 4.0 claim) via r2kalshi.pmxt.dev",
+      "archiveCoverage": "VERIFIED ~2026-05-14T23 \u2192 2026-06-11T03 only; advertised hourly/current cadence NOT met",
+      "kxbtc15mAvailability": "YES in sampled hours (16\u201328 concurrent tickers) but snapshots empty",
+      "eventDensity": "HIGH deltas (focus ticker mean ~156 events/sec) \u2014 density without book seed is useless for BBO",
+      "depth": "Schema supports multi-level yes_bids/no_bids; KXBTC content empty in samples",
+      "trades": "NONE in schema",
+      "timestamps": "receive ms + venue us; many duplicate receive-ms; no seq IDs",
+      "sequenceGapDetectability": "NONE",
+      "executableReplayQuality": "FAIL for KXBTC15M (empty snaps; crossed books on empty-start recon)",
+      "overlapValidationAvailability": "NONE vs KalshiBot inventory",
+      "couldReplacePurchase": {
+        "exploratoryTRAIN": "NO for executable-quote / lag TRAIN",
+        "designMechanics": "PARTIAL only",
+        "historicalValidation": "NO",
+        "untouchedHOLDOUT": "NO"
+      },
+      "vsCryptoStruct": "CryptoStruct remains materially better for event fidelity, trades, seq/gap detection, and causal BBO. PMXT free archive does not remove the need for a CryptoStruct overlap pilot."
     }
-  }
+  },
+  "pmxtSufficientForExploratoryButNotExactEventValidation": "PMXT is NOT sufficient even for exploratory executable-quote work on KXBTC15M. It may still illustrate packing/schema/event-rate mechanics, but that is not a substitute for CryptoStruct TRAIN or validation.",
+  "fidelityAuditComplete": true,
+  "fidelityOverall": "PASS"
 }

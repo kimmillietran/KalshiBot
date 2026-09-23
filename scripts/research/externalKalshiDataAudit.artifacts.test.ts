@@ -26,33 +26,64 @@ describe("external Kalshi data audit artifacts", () => {
     expect(boundaries.noLiveOrders).toBe(true);
   });
 
-  it("marks CryptoStruct sample verified and PMXT unavailable", () => {
+  it("marks CryptoStruct sample verified and PMXT retried via object store", () => {
     const source = readJson("source-audit.json");
     const sources = source.sources as Record<string, Record<string, unknown>>;
     expect(sources.cryptostruct.sampleTickers).toMatchObject({
       status: "VERIFIED FROM FILE",
     });
-    expect(sources.pmxt.accessResult).toBe("UNAVAILABLE");
+    expect(String(sources.pmxt.accessResult)).toMatch(/PARTIAL/);
+    expect(sources.pmxt.sampleDownloaded).toBe(true);
+    const freshness = sources.pmxt.archiveFreshness as Record<string, unknown>;
+    const newest = freshness.newestHourFileObserved as Record<string, unknown>;
+    expect(String(newest.value)).toContain("2026-06-11T03");
     expect(sources.depthfeed.registrationRequiredForHistory).toMatchObject({
       value: true,
     });
+
+    const pmxt = readJson("pmxt-raw-audit.json");
+    expect(pmxt.hourlyStructureClassification).toMatchObject({ code: "B" });
+    expect(pmxt.causalBBO).toMatchObject({ possibleForKXBTC15M: false });
   });
 
-  it("reports no exact KalshiBot overlap for the free sample day", () => {
+  it("reports no exact KalshiBot overlap for free samples", () => {
     const overlap = readJson("overlap-audit.json");
     const inventory = overlap.kalshiBotCaptureInventoryChecked as Record<
       string,
       unknown
     >;
     expect(inventory.exactOverlapWithCryptostructSample).toBe(false);
+    expect(inventory.exactOverlapWithPmxtArchive).toBe(false);
     expect(overlap.comparisonsPerformed).toEqual([]);
+    expect(overlap.pmxtComparisonsPerformed).toEqual([]);
   });
 
-  it("recommends a small CryptoStruct pilot rather than bulk purchase", () => {
+  it("records CryptoStruct overlap fidelity PASS and defers further purchase", () => {
     const purchase = readJson("purchase-assessment.json");
-    expect(purchase.verdict).toBe("B");
     expect(purchase.provider).toBe("cryptostruct");
-    expect(purchase.buyAnythingNow).toBe(true);
-    expect(String(purchase.minimumPurchase)).toMatch(/3–5|3-5/);
+    expect(purchase.fidelityOverall).toBe("PASS");
+    expect(purchase.buyAnythingNow).toBe(false);
+    expect(["A", "B"]).toContain(purchase.verdict);
+
+    const fidelity = readJson("cryptostruct-fidelity-verdict.json");
+    expect(fidelity.overall).toBe("PASS");
+    expect(fidelity.purchaseRecommendation).toBe("A");
+    expect(fidelity.hashMatchAll).toBe(true);
+    const governance = fidelity.governance as Record<string, Record<string, string>>;
+    expect(governance.purchasedOverlapDaysStatus["2026-09-18"]).toBe(
+      "QUALITY_AUDIT_ONLY",
+    );
+
+    const provenance = readJson("cryptostruct-overlap-provenance.json");
+    const hashes = provenance.zipHashes as Record<string, { match: boolean }>;
+    for (const day of [
+      "2026-09-08",
+      "2026-09-09",
+      "2026-09-14",
+      "2026-09-18",
+      "2026-09-20",
+    ]) {
+      expect(hashes[day].match).toBe(true);
+    }
   });
 });

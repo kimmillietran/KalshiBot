@@ -25,7 +25,9 @@
     "nearestOwnCaptures": [
       "2026-09-14T07-33-30-421Z",
       "2026-09-18T07-59-28-489Z"
-    ]
+    ],
+    "exactOverlapWithPmxtArchive": false,
+    "pmxtNote": "No May\u2013June 2026 forward-quote captures in Desktop KalshiBot or builder2 inventory; all listed captures are Aug/Sep 2026, after PMXT hard-stop."
   },
   "comparisonsPerformed": [],
   "result": "NO_EXACT_OVERLAP \u2014 cannot validate third-party vs KalshiBot known-good capture for this sample day/ticker without purchasing an overlapping CryptoStruct day or capturing the sample contract ourselves.",
@@ -47,5 +49,20 @@
       "touchDepth",
       "lifecycleOpenClose"
     ]
-  }
+  },
+  "pmxtSample": {
+    "hoursUtc": [
+      "2026-06-06T09",
+      "2026-06-06T10"
+    ],
+    "archiveRangeObserved": {
+      "oldest": "2026-05-14T23",
+      "newest": "2026-06-11T03"
+    },
+    "exampleTickers": [
+      "KXBTC15M-26JUN060630-30"
+    ]
+  },
+  "pmxtComparisonsPerformed": [],
+  "pmxtResult": "NO_OVERLAP \u2014 PMXT Kalshi archive ends 2026-06-11T03; KalshiBot captures begin Aug 2026. No nearest-preceding BBO joins performed."
 }

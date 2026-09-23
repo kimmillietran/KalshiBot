@@ -1,0 +1,632 @@
+{
+  "days": {
+    "2026-09-08": {
+      "runs": {
+        "2026-09-08T05-12-34-856Z": {
+          "tickers": {
+            "KXBTC15M-26SEP080115-15": {
+              "kbFirst": 1788844355783000064,
+              "kbLast": 1788844501008000000,
+              "csFirst": 1788844354856310890,
+              "csLast": 1788844499986355352,
+              "kbCoverageMs": 145224.999936,
+              "csCoverageMs": 145130.044462,
+              "csTradeCountInFileWindow": 47017
+            },
+            "KXBTC15M-26SEP080130-30": {
+              "kbFirst": 1788844536170000128,
+              "kbLast": 1788845400471000064,
+              "csFirst": 1788844501312672349,
+              "csLast": 1788845399984111007,
+              "kbCoverageMs": 864300.999936,
+              "csCoverageMs": 898671.438658,
+              "csTradeCountInFileWindow": 30256
+            },
+            "KXBTC15M-26SEP080145-45": {
+              "kbFirst": 1788845436301000192,
+              "kbLast": 1788846301214999808,
+              "csFirst": 1788845401295328727,
+              "csLast": 1788846300008200157,
+              "kbCoverageMs": 864913.999616,
+              "csCoverageMs": 898712.87143,
+              "csTradeCountInFileWindow": 25490
+            },
+            "KXBTC15M-26SEP080200-00": {
+              "kbFirst": 1788846367572999936,
+              "kbLast": 1788847200407000064,
+              "csFirst": 1788846301252061661,
+              "csLast": 1788847200249317904,
+              "kbCoverageMs": 832834.000128,
+              "csCoverageMs": 898997.256243,
+              "csTradeCountInFileWindow": 26707
+            },
+            "KXBTC15M-26SEP080215-15": {
+              "kbFirst": 1788847207325999872,
+              "kbLast": 1788848101292000000,
+              "csFirst": 1788847201363826068,
+              "csLast": 1788848100240244300,
+              "kbCoverageMs": 893966.000128,
+              "csCoverageMs": 898876.418232,
+              "csTradeCountInFileWindow": 38738
+            },
+            "KXBTC15M-26SEP080230-30": {
+              "kbFirst": 1788848136436000000,
+              "kbLast": 1788849003624000000,
+              "csFirst": 1788848101305531379,
+              "csLast": 1788849000209028061,
+              "kbCoverageMs": 867188.0,
+              "csCoverageMs": 898903.496682,
+              "csTradeCountInFileWindow": 24772
+            },
+            "KXBTC15M-26SEP080245-45": {
+              "kbFirst": 1788849036368000000,
+              "kbLast": 1788849901040000000,
+              "csFirst": 1788849000915893043,
+              "csLast": 1788849899986073509,
+              "kbCoverageMs": 864672.0,
+              "csCoverageMs": 899070.180466,
+              "csTradeCountInFileWindow": 28115
+            },
+            "KXBTC15M-26SEP080300-00": {
+              "kbFirst": 1788849906561000192,
+              "kbLast": 1788850801228000000,
+              "csFirst": 1788849900943457660,
+              "csLast": 1788850800080933858,
+              "kbCoverageMs": 894666.999808,
+              "csCoverageMs": 899137.476198,
+              "csTradeCountInFileWindow": 26376
+            }
+          }
+        },
+        "2026-09-08T07-46-44-416Z": {
+          "tickers": {
+            "KXBTC15M-26SEP080400-00": {
+              "kbFirst": 1788853605476999936,
+              "kbLast": 1788854401032999936,
+              "csFirst": 1788853604434998106,
+              "csLast": 1788854400711024710,
+              "kbCoverageMs": 795556.0,
+              "csCoverageMs": 796276.026604,
+              "csTradeCountInFileWindow": 27609
+            },
+            "KXBTC15M-26SEP080500-00": {
+              "kbFirst": 1788857145934000128,
+              "kbLast": 1788858000673000192,
+              "csFirst": 1788857101206210601,
+              "csLast": 1788857999976779263,
+              "kbCoverageMs": 854739.000064,
+              "csCoverageMs": 898770.568662,
+              "csTradeCountInFileWindow": 17682
+            },
+            "KXBTC15M-26SEP080600-00": {
+              "kbFirst": 1788860716075000064,
+              "kbLast": 1788861600756999936,
+              "csFirst": 1788860700775759582,
+              "csLast": 1788861600373099382,
+              "kbCoverageMs": 884681.999872,
+              "csCoverageMs": 899597.3398,
+              "csTradeCountInFileWindow": 17973
+            },
+            "KXBTC15M-26SEP080700-00": {
+              "kbFirst": 1788864346264000000,
+              "kbLast": 1788865202234999808,
+              "csFirst": 1788864301087219151,
+              "csLast": 1788865200314098467,
+              "kbCoverageMs": 855970.999808,
+              "csCoverageMs": 899226.879316,
+              "csTradeCountInFileWindow": 11183
+            },
+            "KXBTC15M-26SEP080800-00": {
+              "kbFirst": 1788867916854000128,
+              "kbLast": 1788868801076000000,
+              "csFirst": 1788867900781105342,
+              "csLast": 1788868800008737463,
+              "kbCoverageMs": 884221.999872,
+              "csCoverageMs": 899227.632121,
+              "csTradeCountInFileWindow": 25882
+            },
+            "KXBTC15M-26SEP080900-00": {
+              "kbFirst": 1788871516392000000,
+              "kbLast": 1788872405523000064,
+              "csFirst": 1788871500980546445,
+              "csLast": 1788872400009398896,
+              "kbCoverageMs": 889131.000064,
+              "csCoverageMs": 899028.852451,
+              "csTradeCountInFileWindow": 21257
+            },
+            "KXBTC15M-26SEP081000-00": {
+              "kbFirst": 1788875116930000128,
+              "kbLast": 1788876000744000000,
+              "csFirst": 1788875100785106143,
+              "csLast": 1788876000190527375,
+              "kbCoverageMs": 883813.999872,
+              "csCoverageMs": 899405.421232,
+              "csTradeCountInFileWindow": 23905
+            },
+            "KXBTC15M-26SEP081100-00": {
+              "kbFirst": 1788878746898999808,
+              "kbLast": 1788879601192000000,
+              "csFirst": 1788878700875181054,
+              "csLast": 1788879600007711581,
+              "kbCoverageMs": 854293.000192,
+              "csCoverageMs": 899132.530527,
+              "csTradeCountInFileWindow": 22213
+            }
+          }
+        }
+      }
+    },
+    "2026-09-09": {
+      "runs": {
+        "2026-09-09T06-39-04-259Z": {
+          "tickers": {
+            "KXBTC15M-26SEP090245-45": {
+              "kbFirst": 1788935945664000000,
+              "kbLast": 1788936300868000000,
+              "csFirst": 1788935944270144174,
+              "csLast": 1788936300009645194,
+              "kbCoverageMs": 355204.0,
+              "csCoverageMs": 355739.50102,
+              "csTradeCountInFileWindow": 25755
+            },
+            "KXBTC15M-26SEP090345-45": {
+              "kbFirst": 1788939036464999936,
+              "kbLast": 1788939900905999872,
+              "csFirst": 1788939000773282184,
+              "csLast": 1788939900009534304,
+              "kbCoverageMs": 864440.999936,
+              "csCoverageMs": 899236.25212,
+              "csTradeCountInFileWindow": 18843
+            },
+            "KXBTC15M-26SEP090445-45": {
+              "kbFirst": 1788942636459000064,
+              "kbLast": 1788943501112999936,
+              "csFirst": 1788942600971002733,
+              "csLast": 1788943500009851974,
+              "kbCoverageMs": 864653.999872,
+              "csCoverageMs": 899038.849241,
+              "csTradeCountInFileWindow": 23589
+            },
+            "KXBTC15M-26SEP090545-45": {
+              "kbFirst": 1788946236596000000,
+              "kbLast": 1788947101036999936,
+              "csFirst": 1788946200772278233,
+              "csLast": 1788947100011435698,
+              "kbCoverageMs": 864440.999936,
+              "csCoverageMs": 899239.157465,
+              "csTradeCountInFileWindow": 12439
+            },
+            "KXBTC15M-26SEP090645-45": {
+              "kbFirst": 1788949836757999872,
+              "kbLast": 1788950701165999872,
+              "csFirst": 1788949801062773843,
+              "csLast": 1788950700007056684,
+              "kbCoverageMs": 864408.0,
+              "csCoverageMs": 898944.282841,
+              "csTradeCountInFileWindow": 21156
+            },
+            "KXBTC15M-26SEP090745-45": {
+              "kbFirst": 1788953406968000000,
+              "kbLast": 1788954300947000064,
+              "csFirst": 1788953400774366150,
+              "csLast": 1788954300008388752,
+              "kbCoverageMs": 893979.000064,
+              "csCoverageMs": 899234.022602,
+              "csTradeCountInFileWindow": 19902
+            },
+            "KXBTC15M-26SEP090845-45": {
+              "kbFirst": 1788957036938999808,
+              "kbLast": 1788957901233999872,
+              "csFirst": 1788957000952048305,
+              "csLast": 1788957900009958345,
+              "kbCoverageMs": 864295.000064,
+              "csCoverageMs": 899057.91004,
+              "csTradeCountInFileWindow": 19568
+            },
+            "KXBTC15M-26SEP090945-45": {
+              "kbFirst": 1788960607120000000,
+              "kbLast": 1788961500829999872,
+              "csFirst": 1788960600969139969,
+              "csLast": 1788961500010272381,
+              "kbCoverageMs": 893709.999872,
+              "csCoverageMs": 899041.132412,
+              "csTradeCountInFileWindow": 26916
+            }
+          }
+        },
+        "2026-09-09T20-37-36-719Z": {
+          "tickers": {
+            "KXBTC15M-26SEP091645-45": {
+              "kbFirst": 1788986257624000000,
+              "kbLast": 1788986700877000192,
+              "csFirst": 1788986256726636999,
+              "csLast": 1788986700010127905,
+              "kbCoverageMs": 443253.000192,
+              "csCoverageMs": 443283.490906,
+              "csTradeCountInFileWindow": 19530
+            },
+            "KXBTC15M-26SEP091700-00": {
+              "kbFirst": 1788986738069999872,
+              "kbLast": 1788987602214999808,
+              "csFirst": 1788986700849541849,
+              "csLast": 1788987601129344215,
+              "kbCoverageMs": 864144.999936,
+              "csCoverageMs": 900279.802366,
+              "csTradeCountInFileWindow": 34459
+            },
+            "KXBTC15M-26SEP091715-15": {
+              "kbFirst": 1788987638224000000,
+              "kbLast": 1788988500972999936,
+              "csFirst": 1788987600970582063,
+              "csLast": 1788988500064571297,
+              "kbCoverageMs": 862748.999936,
+              "csCoverageMs": 899093.989234,
+              "csTradeCountInFileWindow": 31028
+            },
+            "KXBTC15M-26SEP091730-30": {
+              "kbFirst": 1788988538138000128,
+              "kbLast": 1788989401161999872,
+              "csFirst": 1788988500877932108,
+              "csLast": 1788989400010918828,
+              "kbCoverageMs": 863023.999744,
+              "csCoverageMs": 899132.98672,
+              "csTradeCountInFileWindow": 36962
+            },
+            "KXBTC15M-26SEP091745-45": {
+              "kbFirst": 1788989408188999936,
+              "kbLast": 1788990300916000000,
+              "csFirst": 1788989400942349414,
+              "csLast": 1788990300008366514,
+              "kbCoverageMs": 892727.000064,
+              "csCoverageMs": 899066.0171,
+              "csTradeCountInFileWindow": 37113
+            },
+            "KXBTC15M-26SEP091800-00": {
+              "kbFirst": 1788990308519000064,
+              "kbLast": 1788991201023000064,
+              "csFirst": 1788990300925866861,
+              "csLast": 1788991200009066523,
+              "kbCoverageMs": 892504.0,
+              "csCoverageMs": 899083.199662,
+              "csTradeCountInFileWindow": 31074
+            },
+            "KXBTC15M-26SEP091815-15": {
+              "kbFirst": 1788991238372999936,
+              "kbLast": 1788992100944999936,
+              "csFirst": 1788991201321709931,
+              "csLast": 1788992100009026091,
+              "kbCoverageMs": 862572.0,
+              "csCoverageMs": 898687.31616,
+              "csTradeCountInFileWindow": 31228
+            },
+            "KXBTC15M-26SEP091830-30": {
+              "kbFirst": 1788992138454999808,
+              "kbLast": 1788993000921999872,
+              "csFirst": 1788992101298399649,
+              "csLast": 1788993000009407706,
+              "kbCoverageMs": 862467.000064,
+              "csCoverageMs": 898711.008057,
+              "csTradeCountInFileWindow": 27528
+            }
+          }
+        }
+      }
+    },
+    "2026-09-14": {
+      "runs": {
+        "2026-09-14T07-33-30-421Z": {
+          "tickers": {
+            "KXBTC15M-26SEP140345-45": {
+              "kbFirst": 1789371211469000192,
+              "kbLast": 1789371901079000064,
+              "csFirst": 1789371210421067887,
+              "csLast": 1789371900010761510,
+              "kbCoverageMs": 689609.999872,
+              "csCoverageMs": 689589.693623,
+              "csTradeCountInFileWindow": 22589
+            },
+            "KXBTC15M-26SEP140445-45": {
+              "kbFirst": 1789374663785000192,
+              "kbLast": 1789375500992999936,
+              "csFirst": 1789374600825868757,
+              "csLast": 1789375500008598083,
+              "kbCoverageMs": 837207.999744,
+              "csCoverageMs": 899182.729326,
+              "csTradeCountInFileWindow": 25608
+            },
+            "KXBTC15M-26SEP140545-45": {
+              "kbFirst": 1789378232331000064,
+              "kbLast": 1789379101158999808,
+              "csFirst": 1789378200415980604,
+              "csLast": 1789379100009504996,
+              "kbCoverageMs": 868827.999744,
+              "csCoverageMs": 899593.524392,
+              "csTradeCountInFileWindow": 19569
+            },
+            "KXBTC15M-26SEP140645-45": {
+              "kbFirst": 1789381832438999808,
+              "kbLast": 1789382701148000000,
+              "csFirst": 1789381800968744387,
+              "csLast": 1789382700010549452,
+              "kbCoverageMs": 868709.000192,
+              "csCoverageMs": 899041.805065,
+              "csTradeCountInFileWindow": 26481
+            },
+            "KXBTC15M-26SEP140745-45": {
+              "kbFirst": 1789385432431000064,
+              "kbLast": 1789386300828000000,
+              "csFirst": 1789385401087372707,
+              "csLast": 1789386300010296181,
+              "kbCoverageMs": 868396.999936,
+              "csCoverageMs": 898922.923474,
+              "csTradeCountInFileWindow": 22310
+            },
+            "KXBTC15M-26SEP140845-45": {
+              "kbFirst": 1789389032384999936,
+              "kbLast": 1789389901440999936,
+              "csFirst": 1789389000828195450,
+              "csLast": 1789389900008509541,
+              "kbCoverageMs": 869056.0,
+              "csCoverageMs": 899180.314091,
+              "csTradeCountInFileWindow": 35101
+            },
+            "KXBTC15M-26SEP140945-45": {
+              "kbFirst": 1789392662701999872,
+              "kbLast": 1789393501043000064,
+              "csFirst": 1789392600939200206,
+              "csLast": 1789393500008062062,
+              "kbCoverageMs": 838341.000192,
+              "csCoverageMs": 899068.861856,
+              "csTradeCountInFileWindow": 35189
+            },
+            "KXBTC15M-26SEP141045-45": {
+              "kbFirst": 1789396232921999872,
+              "kbLast": 1789397101528000000,
+              "csFirst": 1789396201181045802,
+              "csLast": 1789397099993615007,
+              "kbCoverageMs": 868606.000128,
+              "csCoverageMs": 898812.569205,
+              "csTradeCountInFileWindow": 40572
+            }
+          }
+        }
+      }
+    },
+    "2026-09-18": {
+      "runs": {
+        "2026-09-18T07-59-28-489Z": {
+          "tickers": {
+            "KXBTC15M-26SEP180400-00": {
+              "kbFirst": 1789718369767000064,
+              "kbLast": 1789718400943000064,
+              "csFirst": 1789718368529891036,
+              "csLast": 1789718399997112502,
+              "kbCoverageMs": 31176.0,
+              "csCoverageMs": 31467.221466,
+              "csTradeCountInFileWindow": 29289
+            },
+            "KXBTC15M-26SEP180500-00": {
+              "kbFirst": 1789721130196999936,
+              "kbLast": 1789722001360000000,
+              "csFirst": 1789721100508828419,
+              "csLast": 1789722001006544464,
+              "kbCoverageMs": 871163.000064,
+              "csCoverageMs": 900497.716045,
+              "csTradeCountInFileWindow": 21911
+            },
+            "KXBTC15M-26SEP180600-00": {
+              "kbFirst": 1789724730304000000,
+              "kbLast": 1789725601029999872,
+              "csFirst": 1789724700952916866,
+              "csLast": 1789725601005546371,
+              "kbCoverageMs": 870725.999872,
+              "csCoverageMs": 900052.629505,
+              "csTradeCountInFileWindow": 19486
+            },
+            "KXBTC15M-26SEP180700-00": {
+              "kbFirst": 1789728330576999936,
+              "kbLast": 1789729201444000000,
+              "csFirst": 1789728301314669952,
+              "csLast": 1789729200181762582,
+              "kbCoverageMs": 870867.000064,
+              "csCoverageMs": 898867.09263,
+              "csTradeCountInFileWindow": 20622
+            },
+            "KXBTC15M-26SEP180800-00": {
+              "kbFirst": 1789731930670000128,
+              "kbLast": 1789732800239000064,
+              "csFirst": 1789731901086802830,
+              "csLast": 1789732800194898064,
+              "kbCoverageMs": 869568.999936,
+              "csCoverageMs": 899108.095234,
+              "csTradeCountInFileWindow": 22640
+            },
+            "KXBTC15M-26SEP180900-00": {
+              "kbFirst": 1789735530757999872,
+              "kbLast": 1789736400611000064,
+              "csFirst": 1789735500670234446,
+              "csLast": 1789736400010084328,
+              "kbCoverageMs": 869853.000192,
+              "csCoverageMs": 899339.849882,
+              "csTradeCountInFileWindow": 22148
+            },
+            "KXBTC15M-26SEP181000-00": {
+              "kbFirst": 1789739130836999936,
+              "kbLast": 1789740000168000000,
+              "csFirst": 1789739101382165366,
+              "csLast": 1789740001124597650,
+              "kbCoverageMs": 869331.000064,
+              "csCoverageMs": 899742.432284,
+              "csTradeCountInFileWindow": 29259
+            },
+            "KXBTC15M-26SEP181100-00": {
+              "kbFirst": 1789742731561000192,
+              "kbLast": 1789743600062000128,
+              "csFirst": 1789742700754964210,
+              "csLast": 1789743601132032663,
+              "kbCoverageMs": 868500.999936,
+              "csCoverageMs": 900377.068453,
+              "csTradeCountInFileWindow": 33661
+            }
+          }
+        },
+        "2026-09-18T16-25-35-978Z": {
+          "tickers": {
+            "KXBTC15M-26SEP181230-30": {
+              "kbFirst": 1789748737044000000,
+              "kbLast": 1789749001474999808,
+              "csFirst": 1789748735981258454,
+              "csLast": 1789749000009726654,
+              "kbCoverageMs": 264430.999808,
+              "csCoverageMs": 264028.4682,
+              "csTradeCountInFileWindow": 45596
+            },
+            "KXBTC15M-26SEP181330-30": {
+              "kbFirst": 1789751737565999872,
+              "kbLast": 1789752601356000000,
+              "csFirst": 1789751700569063484,
+              "csLast": 1789752600008325067,
+              "kbCoverageMs": 863790.000128,
+              "csCoverageMs": 899439.261583,
+              "csTradeCountInFileWindow": 40602
+            },
+            "KXBTC15M-26SEP181430-30": {
+              "kbFirst": 1789749937720000000,
+              "kbLast": 1789755307672000000,
+              "csFirst": 1789755301585701932,
+              "csLast": 1789756200006790721,
+              "kbCoverageMs": 5369952.0,
+              "csCoverageMs": 898421.088789,
+              "csTradeCountInFileWindow": 37522
+            },
+            "KXBTC15M-26SEP181530-30": {
+              "kbFirst": 1789758937740999936,
+              "kbLast": 1789759801109999872,
+              "csFirst": 1789758901381951852,
+              "csLast": 1789759799976568711,
+              "kbCoverageMs": 863368.999936,
+              "csCoverageMs": 898594.616859,
+              "csTradeCountInFileWindow": 48066
+            },
+            "KXBTC15M-26SEP181630-30": {
+              "kbFirst": 1789762565776999936,
+              "kbLast": 1789763400976999936,
+              "csFirst": 1789762500833356677,
+              "csLast": 1789763400006712600,
+              "kbCoverageMs": 835200.0,
+              "csCoverageMs": 899173.355923,
+              "csTradeCountInFileWindow": 44567
+            },
+            "KXBTC15M-26SEP181730-30": {
+              "kbFirst": 1789766137947000064,
+              "kbLast": 1789767001224000000,
+              "csFirst": 1789766100898127062,
+              "csLast": 1789766999981950910,
+              "kbCoverageMs": 863276.999936,
+              "csCoverageMs": 899083.823848,
+              "csTradeCountInFileWindow": 35651
+            },
+            "KXBTC15M-26SEP181830-30": {
+              "kbFirst": 1789769738247000064,
+              "kbLast": 1789770601296000000,
+              "csFirst": 1789769700713904607,
+              "csLast": 1789770600008616150,
+              "kbCoverageMs": 863048.999936,
+              "csCoverageMs": 899294.711543,
+              "csTradeCountInFileWindow": 43403
+            },
+            "KXBTC15M-26SEP181930-30": {
+              "kbFirst": 1789773338069999872,
+              "kbLast": 1789774200969000192,
+              "csFirst": 1789773300788044370,
+              "csLast": 1789774200009291656,
+              "kbCoverageMs": 862899.00032,
+              "csCoverageMs": 899221.247286,
+              "csTradeCountInFileWindow": 38092
+            }
+          }
+        }
+      }
+    },
+    "2026-09-20": {
+      "runs": {
+        "2026-09-20T02-52-53-859Z": {
+          "tickers": {
+            "KXBTC15M-26SEP192300-00": {
+              "kbFirst": 1789872774947000064,
+              "kbLast": 1789873201260999936,
+              "csFirst": 1789872773862133149,
+              "csLast": 1789873200240306983,
+              "kbCoverageMs": 426313.999872,
+              "csCoverageMs": 426378.173834,
+              "csTradeCountInFileWindow": 39864
+            },
+            "KXBTC15M-26SEP200000-00": {
+              "kbFirst": 1789875955484000000,
+              "kbLast": 1789876800982000128,
+              "csFirst": 1789875901037174340,
+              "csLast": 1789876800008132972,
+              "kbCoverageMs": 845498.000128,
+              "csCoverageMs": 898970.958632,
+              "csTradeCountInFileWindow": 32192
+            },
+            "KXBTC15M-26SEP200100-00": {
+              "kbFirst": 1789879525760999936,
+              "kbLast": 1789880400821000192,
+              "csFirst": 1789879500837020392,
+              "csLast": 1789880399987039914,
+              "kbCoverageMs": 875060.000256,
+              "csCoverageMs": 899150.019522,
+              "csTradeCountInFileWindow": 41271
+            },
+            "KXBTC15M-26SEP200200-00": {
+              "kbFirst": 1789883125983000064,
+              "kbLast": 1789884001134000128,
+              "csFirst": 1789883101404338078,
+              "csLast": 1789884001008714095,
+              "kbCoverageMs": 875151.000064,
+              "csCoverageMs": 899604.376017,
+              "csTradeCountInFileWindow": 33279
+            },
+            "KXBTC15M-26SEP200300-00": {
+              "kbFirst": 1789886755824999936,
+              "kbLast": 1789887601413000192,
+              "csFirst": 1789886701214489312,
+              "csLast": 1789887601009295371,
+              "kbCoverageMs": 845588.000256,
+              "csCoverageMs": 899794.806059,
+              "csTradeCountInFileWindow": 34104
+            },
+            "KXBTC15M-26SEP200400-00": {
+              "kbFirst": 1789890325904000000,
+              "kbLast": 1789891201154000128,
+              "csFirst": 1789890301024468188,
+              "csLast": 1789891201009296513,
+              "kbCoverageMs": 875250.000128,
+              "csCoverageMs": 899984.828325,
+              "csTradeCountInFileWindow": 22591
+            },
+            "KXBTC15M-26SEP200500-00": {
+              "kbFirst": 1789893925984999936,
+              "kbLast": 1789894801512999936,
+              "csFirst": 1789893901250881740,
+              "csLast": 1789894800209165195,
+              "kbCoverageMs": 875528.0,
+              "csCoverageMs": 898958.283455,
+              "csTradeCountInFileWindow": 25013
+            },
+            "KXBTC15M-26SEP200600-00": {
+              "kbFirst": 1789897526467000064,
+              "kbLast": 1789898401876000000,
+              "csFirst": 1789897501266075028,
+              "csLast": 1789898401006191514,
+              "kbCoverageMs": 875408.999936,
+              "csCoverageMs": 899740.116486,
+              "csTradeCountInFileWindow": 15362
+            }
+          }
+        }
+      }
+    }
+  }
+}

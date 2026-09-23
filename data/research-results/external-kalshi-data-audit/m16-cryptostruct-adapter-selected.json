@@ -1,0 +1,36 @@
+{
+  "selectedAdapter": "RAW-BBO-CHANGE",
+  "adapterIdentity": "3f37ecb76644ee0749c50f33cfdaf8921e8dcb1cf208abdc55719a461e27dc7d",
+  "adapterIdentityPayload": {
+    "source": "cryptostruct-kalshi-btc-15m-series-day-zip",
+    "adapterId": "RAW-BBO-CHANGE",
+    "timestampRule": "adapter_receive_ms = vendor timestamp_received ns / 1e6",
+    "snapshotDelta": "causal YES book; fail-closed on prevEventId break until snapshot",
+    "sameTimestampOrdering": "emit each BBO-change in file order",
+    "bboDerivation": "yesBid=max(bids), yesAsk=min(asks), noBid=100-yesAsk (cents)",
+    "midpointRule": "yesMid=50+(yesBid-noBid)/2",
+    "emissionRule": "emit when (yesBid,noBid,bookEligible,structuralGap) changes",
+    "bookEligibleRule": "not crossed and not locked and not fail-closed",
+    "continuity": "fail-closed after unexplained prevEventId break",
+    "lifecycle": "closeTime from vendor instrument.expiry or KB market-metadata when available",
+    "m16StateMachine": "canonical stepM16MarketMachine unchanged"
+  },
+  "scores": {
+    "RAW-BBO-CHANGE": {
+      "recall": 0.7162162162162162,
+      "precision": 0.5988700564971752,
+      "matched": 106,
+      "kb": 148,
+      "cs": 177
+    },
+    "KALSHIBOT-MIRROR": {
+      "recall": 0.6486486486486487,
+      "precision": 0.5549132947976878,
+      "matched": 96,
+      "kb": 148,
+      "cs": 173
+    }
+  },
+  "selectionCriterion": "best mechanistic reproduction of KalshiBot observation contract + frozen M16 pre-entry process; NOT economics",
+  "economicCriterionUsed": false
+}

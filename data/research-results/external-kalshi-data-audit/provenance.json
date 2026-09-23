@@ -52,11 +52,32 @@
     },
     {
       "provider": "pmxt",
-      "sourceUrl": "https://archive.pmxt.dev/Kalshi",
-      "downloadAttempted": true,
-      "downloadSucceeded": false,
-      "failure": "TCP connect failure to archive.pmxt.dev:443 (and HTTP 500 via WebFetch earlier). No free Parquet obtained.",
-      "freeSample": null
+      "sourceUrl": "https://r2kalshi.pmxt.dev/kalshi_orderbook_2026-06-06T09.parquet",
+      "listingUrl": "https://archive.pmxt.dev/Kalshi",
+      "homepageUrl": "https://archive.pmxt.dev/",
+      "objectStoreHost": "https://r2kalshi.pmxt.dev",
+      "downloadTimeUtc": "2026-09-22T23:30:34Z",
+      "sha256": "3069ab961b0a437eb08c5804fc2ff04f0aaceb86ff96803dc68f42b70c6c9968",
+      "byteSize": 60732334,
+      "originalFilename": "kalshi_orderbook_2026-06-06T09.parquet",
+      "storedAt": "data/external-samples/pmxt/raw/kalshi_orderbook_2026-06-06T09.parquet",
+      "freeSample": true,
+      "licenseClaim": "CC BY 4.0 (PROVIDER CLAIM from archive page / Wayback)",
+      "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+      "listingHostAtRetry": "TCP refused / WebFetch 500; objects served via R2"
+    },
+    {
+      "provider": "pmxt",
+      "sourceUrl": "https://r2kalshi.pmxt.dev/kalshi_orderbook_2026-06-06T10.parquet",
+      "downloadTimeUtc": "2026-09-22T23:30:34Z",
+      "sha256": "9e5be152ff27ae343804f1ca687207fb6d4b22de19888238c44be0d5ddbce1ec",
+      "byteSize": 55941494,
+      "originalFilename": "kalshi_orderbook_2026-06-06T10.parquet",
+      "storedAt": "data/external-samples/pmxt/raw/kalshi_orderbook_2026-06-06T10.parquet",
+      "freeSample": true,
+      "licenseClaim": "CC BY 4.0 (PROVIDER CLAIM)",
+      "licenseUrl": "https://creativecommons.org/licenses/by/4.0/"
     }
-  ]
+  ],
+  "pmxtRetryAccessTimeUtc": "2026-09-22T23:30:34Z"
 }

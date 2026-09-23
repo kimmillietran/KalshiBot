@@ -32,6 +32,10 @@ data/live-capture/
 data/research-results/*
 !data/research-results/external-kalshi-data-audit/
 !data/research-results/external-kalshi-data-audit/**
+# row-level fidelity dumps stay local (summaries/verdicts are committed)
+data/research-results/external-kalshi-data-audit/cryptostruct-bbo-fidelity.json
+data/research-results/external-kalshi-data-audit/cryptostruct-transition-latency.json
+data/research-results/external-kalshi-data-audit/cryptostruct-overlap-inventory.json
 data/reports/
 
 *.log
