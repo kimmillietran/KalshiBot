@@ -9,6 +9,7 @@ import {
 } from "@/lib/data/research/kalshiKxbtc15mSideInvariantReversal/m16StateMachine";
 import { yesMidCents } from "@/lib/data/research/kalshiTobMomentumFamily/midpointAndComplement";
 import {
+  M16_EXPECTED_COHORT_PLAN_IDENTITY,
   M16_EXPECTED_DEPENDENCE_PLAN_IDENTITY,
   M16_EXPECTED_EVIDENCE_CONTRACT_IDENTITY,
   M16_EXPECTED_FAMILY_DEFINITION_IDENTITY,
@@ -63,6 +64,7 @@ describe("m16 cryptostruct source equivalence artifacts", () => {
     expect(ids.evidenceContract).toBe(M16_EXPECTED_EVIDENCE_CONTRACT_IDENTITY);
     expect(ids.dependencePlan).toBe(M16_EXPECTED_DEPENDENCE_PLAN_IDENTITY);
     expect(ids.feeContract).toBe(M16_EXPECTED_FEE_CONTRACT_IDENTITY);
+    expect(ids.prospectiveCohort).toBe(M16_EXPECTED_COHORT_PLAN_IDENTITY);
     expect(ids.prospectiveCohort).toBe(
       "a2b86dd7c7fc3864ce48c860b10cfea053bdde04e09723a4f6ae87adca31dd63",
     );

@@ -607,41 +607,33 @@ function pct(xs: number[], p: number): number | null {
   return a[i]!;
 }
 
+function normalizeOutcomeKey(key: string): string {
+  return key.toLowerCase().replace(/[^a-z0-9_&]/g, "");
+}
+
 function assertNoOutcomeFields(obj: unknown, path = "$"): void {
   if (obj == null || typeof obj !== "object") return;
   if (Array.isArray(obj)) {
     obj.forEach((v, i) => assertNoOutcomeFields(v, `${path}[${i}]`));
     return;
   }
+  // Exact forbidden economic outcome keys only (avoid matching noPnlInspected etc.)
+  const exactForbidden = new Set<string>([
+    ...FORBIDDEN_OUTCOME_KEYS.map(normalizeOutcomeKey),
+    "p&l",
+    "pandl",
+    "realized_return",
+    "target_hit",
+    "stop_hit",
+    "settlementresult",
+    "win_rate",
+    "exit_price",
+    "fee_adjusted",
+    "t_statistic",
+    "p_value",
+  ]);
   for (const [k, v] of Object.entries(obj as Record<string, unknown>)) {
-    const lower = k.toLowerCase();
-    // Exact forbidden economic outcome keys only (avoid matching noPnlInspected etc.)
-    const exactForbidden = new Set([
-      "pnl",
-      "p&l",
-      "pandl",
-      "realizedreturn",
-      "realized_return",
-      "targethit",
-      "target_hit",
-      "stophit",
-      "stop_hit",
-      "settlement",
-      "settlementresult",
-      "winrate",
-      "win_rate",
-      "mfe",
-      "mae",
-      "exitprice",
-      "exit_price",
-      "feeadjusted",
-      "fee_adjusted",
-      "tstatistic",
-      "t_statistic",
-      "pvalue",
-      "p_value",
-    ]);
-    if (exactForbidden.has(lower.replace(/[^a-z0-9_&]/g, ""))) {
+    if (exactForbidden.has(normalizeOutcomeKey(k))) {
       throw new Error(`Forbidden outcome field ${k} at ${path}`);
     }
     assertNoOutcomeFields(v, `${path}.${k}`);
