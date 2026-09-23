@@ -82,9 +82,9 @@
       "byteSize": 1020075603,
       "acquisitionTimestampUtc": "2026-09-23T03:16:33.196067Z",
       "vendorCaptureQuality": "complete-recording-post-2026-08-14",
-      "status": "VALIDATION_RESERVED",
+      "status": "OPENED_VALIDATION",
       "hypothesisReservationIdentity": "afdacb697216ba385e8d4d9627deec6610d90fafeb52c83b474bace7d9ae15c0",
-      "openedTimestampUtc": null,
+      "openedTimestampUtc": "2026-09-23T05:10:41.471Z",
       "notes": "governed:data/external-samples/cryptostruct/m16-er/raw/kalshi-btc-15m_2026-08-14.zip; blind-admitted"
     },
     "2026-08-15": {
@@ -96,9 +96,9 @@
       "byteSize": 850861314,
       "acquisitionTimestampUtc": "2026-09-23T03:16:34.044221Z",
       "vendorCaptureQuality": "complete-recording-post-2026-08-14",
-      "status": "VALIDATION_RESERVED",
+      "status": "OPENED_VALIDATION",
       "hypothesisReservationIdentity": "afdacb697216ba385e8d4d9627deec6610d90fafeb52c83b474bace7d9ae15c0",
-      "openedTimestampUtc": null,
+      "openedTimestampUtc": "2026-09-23T05:10:41.471Z",
       "notes": "governed:data/external-samples/cryptostruct/m16-er/raw/kalshi-btc-15m_2026-08-15.zip; blind-admitted"
     },
     "2026-08-16": {
@@ -110,9 +110,9 @@
       "byteSize": 931407761,
       "acquisitionTimestampUtc": "2026-09-23T03:16:34.958977Z",
       "vendorCaptureQuality": "complete-recording-post-2026-08-14",
-      "status": "VALIDATION_RESERVED",
+      "status": "OPENED_VALIDATION",
       "hypothesisReservationIdentity": "afdacb697216ba385e8d4d9627deec6610d90fafeb52c83b474bace7d9ae15c0",
-      "openedTimestampUtc": null,
+      "openedTimestampUtc": "2026-09-23T05:10:41.471Z",
       "notes": "governed:data/external-samples/cryptostruct/m16-er/raw/kalshi-btc-15m_2026-08-16.zip; blind-admitted"
     },
     "2026-08-17": {
@@ -124,9 +124,9 @@
       "byteSize": 917798426,
       "acquisitionTimestampUtc": "2026-09-23T03:16:35.867483Z",
       "vendorCaptureQuality": "complete-recording-post-2026-08-14",
-      "status": "VALIDATION_RESERVED",
+      "status": "OPENED_VALIDATION",
       "hypothesisReservationIdentity": "afdacb697216ba385e8d4d9627deec6610d90fafeb52c83b474bace7d9ae15c0",
-      "openedTimestampUtc": null,
+      "openedTimestampUtc": "2026-09-23T05:10:41.471Z",
       "notes": "governed:data/external-samples/cryptostruct/m16-er/raw/kalshi-btc-15m_2026-08-17.zip; blind-admitted"
     },
     "2026-08-18": {
@@ -138,9 +138,9 @@
       "byteSize": 940343948,
       "acquisitionTimestampUtc": "2026-09-23T03:16:36.802879Z",
       "vendorCaptureQuality": "complete-recording-post-2026-08-14",
-      "status": "VALIDATION_RESERVED",
+      "status": "OPENED_VALIDATION",
       "hypothesisReservationIdentity": "afdacb697216ba385e8d4d9627deec6610d90fafeb52c83b474bace7d9ae15c0",
-      "openedTimestampUtc": null,
+      "openedTimestampUtc": "2026-09-23T05:10:41.471Z",
       "notes": "governed:data/external-samples/cryptostruct/m16-er/raw/kalshi-btc-15m_2026-08-18.zip; blind-admitted"
     },
     "2026-08-19": {
@@ -152,9 +152,9 @@
       "byteSize": 1134566233,
       "acquisitionTimestampUtc": "2026-09-23T03:16:37.934787Z",
       "vendorCaptureQuality": "complete-recording-post-2026-08-14",
-      "status": "VALIDATION_RESERVED",
+      "status": "OPENED_VALIDATION",
       "hypothesisReservationIdentity": "afdacb697216ba385e8d4d9627deec6610d90fafeb52c83b474bace7d9ae15c0",
-      "openedTimestampUtc": null,
+      "openedTimestampUtc": "2026-09-23T05:10:41.471Z",
       "notes": "governed:data/external-samples/cryptostruct/m16-er/raw/kalshi-btc-15m_2026-08-19.zip; blind-admitted"
     },
     "2026-08-20": {
@@ -166,9 +166,9 @@
       "byteSize": 1142696257,
       "acquisitionTimestampUtc": "2026-09-23T03:16:39.072492Z",
       "vendorCaptureQuality": "complete-recording-post-2026-08-14",
-      "status": "VALIDATION_RESERVED",
+      "status": "OPENED_VALIDATION",
       "hypothesisReservationIdentity": "afdacb697216ba385e8d4d9627deec6610d90fafeb52c83b474bace7d9ae15c0",
-      "openedTimestampUtc": null,
+      "openedTimestampUtc": "2026-09-23T05:10:41.471Z",
       "notes": "governed:data/external-samples/cryptostruct/m16-er/raw/kalshi-btc-15m_2026-08-20.zip; blind-admitted"
     },
     "2026-08-21": {
@@ -180,9 +180,9 @@
       "byteSize": 1542280706,
       "acquisitionTimestampUtc": "2026-09-23T03:16:40.753668Z",
       "vendorCaptureQuality": "complete-recording-post-2026-08-14",
-      "status": "VALIDATION_RESERVED",
+      "status": "OPENED_VALIDATION",
       "hypothesisReservationIdentity": "afdacb697216ba385e8d4d9627deec6610d90fafeb52c83b474bace7d9ae15c0",
-      "openedTimestampUtc": null,
+      "openedTimestampUtc": "2026-09-23T05:10:41.471Z",
       "notes": "governed:data/external-samples/cryptostruct/m16-er/raw/kalshi-btc-15m_2026-08-21.zip; blind-admitted"
     },
     "2026-08-22": {
@@ -194,9 +194,9 @@
       "byteSize": 1217666650,
       "acquisitionTimestampUtc": "2026-09-23T03:16:42.016264Z",
       "vendorCaptureQuality": "complete-recording-post-2026-08-14",
-      "status": "VALIDATION_RESERVED",
+      "status": "OPENED_VALIDATION",
       "hypothesisReservationIdentity": "afdacb697216ba385e8d4d9627deec6610d90fafeb52c83b474bace7d9ae15c0",
-      "openedTimestampUtc": null,
+      "openedTimestampUtc": "2026-09-23T05:10:41.471Z",
       "notes": "governed:data/external-samples/cryptostruct/m16-er/raw/kalshi-btc-15m_2026-08-22.zip; blind-admitted"
     },
     "2026-08-23": {
@@ -208,9 +208,9 @@
       "byteSize": 1141808606,
       "acquisitionTimestampUtc": "2026-09-23T03:16:43.262949Z",
       "vendorCaptureQuality": "complete-recording-post-2026-08-14",
-      "status": "VALIDATION_RESERVED",
+      "status": "OPENED_VALIDATION",
       "hypothesisReservationIdentity": "afdacb697216ba385e8d4d9627deec6610d90fafeb52c83b474bace7d9ae15c0",
-      "openedTimestampUtc": null,
+      "openedTimestampUtc": "2026-09-23T05:10:41.471Z",
       "notes": "governed:data/external-samples/cryptostruct/m16-er/raw/kalshi-btc-15m_2026-08-23.zip; blind-admitted"
     },
     "2026-08-24": {
@@ -222,9 +222,9 @@
       "byteSize": 1350962506,
       "acquisitionTimestampUtc": "2026-09-23T03:16:44.706084Z",
       "vendorCaptureQuality": "complete-recording-post-2026-08-14",
-      "status": "VALIDATION_RESERVED",
+      "status": "OPENED_VALIDATION",
       "hypothesisReservationIdentity": "afdacb697216ba385e8d4d9627deec6610d90fafeb52c83b474bace7d9ae15c0",
-      "openedTimestampUtc": null,
+      "openedTimestampUtc": "2026-09-23T05:10:41.471Z",
       "notes": "governed:data/external-samples/cryptostruct/m16-er/raw/kalshi-btc-15m_2026-08-24.zip; blind-admitted"
     },
     "2026-08-25": {
@@ -236,9 +236,9 @@
       "byteSize": 1126546907,
       "acquisitionTimestampUtc": "2026-09-23T03:16:45.870264Z",
       "vendorCaptureQuality": "complete-recording-post-2026-08-14",
-      "status": "VALIDATION_RESERVED",
+      "status": "OPENED_VALIDATION",
       "hypothesisReservationIdentity": "afdacb697216ba385e8d4d9627deec6610d90fafeb52c83b474bace7d9ae15c0",
-      "openedTimestampUtc": null,
+      "openedTimestampUtc": "2026-09-23T05:10:41.471Z",
       "notes": "governed:data/external-samples/cryptostruct/m16-er/raw/kalshi-btc-15m_2026-08-25.zip; blind-admitted"
     },
     "2026-08-26": {
@@ -250,9 +250,9 @@
       "byteSize": 1176050355,
       "acquisitionTimestampUtc": "2026-09-23T03:16:47.161061Z",
       "vendorCaptureQuality": "complete-recording-post-2026-08-14",
-      "status": "VALIDATION_RESERVED",
+      "status": "OPENED_VALIDATION",
       "hypothesisReservationIdentity": "afdacb697216ba385e8d4d9627deec6610d90fafeb52c83b474bace7d9ae15c0",
-      "openedTimestampUtc": null,
+      "openedTimestampUtc": "2026-09-23T05:10:41.471Z",
       "notes": "governed:data/external-samples/cryptostruct/m16-er/raw/kalshi-btc-15m_2026-08-26.zip; blind-admitted"
     },
     "2026-08-27": {
@@ -264,9 +264,9 @@
       "byteSize": 1043436496,
       "acquisitionTimestampUtc": "2026-09-23T03:16:48.280397Z",
       "vendorCaptureQuality": "complete-recording-post-2026-08-14",
-      "status": "VALIDATION_RESERVED",
+      "status": "OPENED_VALIDATION",
       "hypothesisReservationIdentity": "afdacb697216ba385e8d4d9627deec6610d90fafeb52c83b474bace7d9ae15c0",
-      "openedTimestampUtc": null,
+      "openedTimestampUtc": "2026-09-23T05:10:41.471Z",
       "notes": "governed:data/external-samples/cryptostruct/m16-er/raw/kalshi-btc-15m_2026-08-27.zip; blind-admitted"
     },
     "2026-08-28": {
@@ -278,9 +278,9 @@
       "byteSize": 1065838706,
       "acquisitionTimestampUtc": "2026-09-23T03:16:49.376847Z",
       "vendorCaptureQuality": "complete-recording-post-2026-08-14",
-      "status": "VALIDATION_RESERVED",
+      "status": "OPENED_VALIDATION",
       "hypothesisReservationIdentity": "afdacb697216ba385e8d4d9627deec6610d90fafeb52c83b474bace7d9ae15c0",
-      "openedTimestampUtc": null,
+      "openedTimestampUtc": "2026-09-23T05:10:41.471Z",
       "notes": "governed:data/external-samples/cryptostruct/m16-er/raw/kalshi-btc-15m_2026-08-28.zip; blind-admitted"
     },
     "2026-08-29": {
@@ -292,9 +292,9 @@
       "byteSize": 764472865,
       "acquisitionTimestampUtc": "2026-09-23T03:16:50.180225Z",
       "vendorCaptureQuality": "complete-recording-post-2026-08-14",
-      "status": "VALIDATION_RESERVED",
+      "status": "OPENED_VALIDATION",
       "hypothesisReservationIdentity": "afdacb697216ba385e8d4d9627deec6610d90fafeb52c83b474bace7d9ae15c0",
-      "openedTimestampUtc": null,
+      "openedTimestampUtc": "2026-09-23T05:10:41.471Z",
       "notes": "governed:data/external-samples/cryptostruct/m16-er/raw/kalshi-btc-15m_2026-08-29.zip; blind-admitted"
     },
     "2026-08-30": {
@@ -306,9 +306,9 @@
       "byteSize": 839532216,
       "acquisitionTimestampUtc": "2026-09-23T03:16:51.058816Z",
       "vendorCaptureQuality": "complete-recording-post-2026-08-14",
-      "status": "VALIDATION_RESERVED",
+      "status": "OPENED_VALIDATION",
       "hypothesisReservationIdentity": "afdacb697216ba385e8d4d9627deec6610d90fafeb52c83b474bace7d9ae15c0",
-      "openedTimestampUtc": null,
+      "openedTimestampUtc": "2026-09-23T05:10:41.471Z",
       "notes": "governed:data/external-samples/cryptostruct/m16-er/raw/kalshi-btc-15m_2026-08-30.zip; blind-admitted"
     },
     "2026-08-31": {
@@ -320,9 +320,9 @@
       "byteSize": 1217784162,
       "acquisitionTimestampUtc": "2026-09-23T03:16:52.370756Z",
       "vendorCaptureQuality": "complete-recording-post-2026-08-14",
-      "status": "VALIDATION_RESERVED",
+      "status": "OPENED_VALIDATION",
       "hypothesisReservationIdentity": "afdacb697216ba385e8d4d9627deec6610d90fafeb52c83b474bace7d9ae15c0",
-      "openedTimestampUtc": null,
+      "openedTimestampUtc": "2026-09-23T05:10:41.471Z",
       "notes": "governed:data/external-samples/cryptostruct/m16-er/raw/kalshi-btc-15m_2026-08-31.zip; blind-admitted"
     },
     "2026-09-01": {
@@ -334,9 +334,9 @@
       "byteSize": 1160343079,
       "acquisitionTimestampUtc": "2026-09-23T03:16:53.549627Z",
       "vendorCaptureQuality": "complete-recording-post-2026-08-14",
-      "status": "VALIDATION_RESERVED",
+      "status": "OPENED_VALIDATION",
       "hypothesisReservationIdentity": "afdacb697216ba385e8d4d9627deec6610d90fafeb52c83b474bace7d9ae15c0",
-      "openedTimestampUtc": null,
+      "openedTimestampUtc": "2026-09-23T05:10:41.471Z",
       "notes": "governed:data/external-samples/cryptostruct/m16-er/raw/kalshi-btc-15m_2026-09-01.zip; blind-admitted"
     },
     "2026-09-02": {
@@ -348,9 +348,9 @@
       "byteSize": 1108293808,
       "acquisitionTimestampUtc": "2026-09-23T03:16:54.722909Z",
       "vendorCaptureQuality": "complete-recording-post-2026-08-14",
-      "status": "VALIDATION_RESERVED",
+      "status": "OPENED_VALIDATION",
       "hypothesisReservationIdentity": "afdacb697216ba385e8d4d9627deec6610d90fafeb52c83b474bace7d9ae15c0",
-      "openedTimestampUtc": null,
+      "openedTimestampUtc": "2026-09-23T05:10:41.471Z",
       "notes": "governed:data/external-samples/cryptostruct/m16-er/raw/kalshi-btc-15m_2026-09-02.zip; blind-admitted"
     },
     "2026-09-03": {
@@ -362,9 +362,9 @@
       "byteSize": 1191829592,
       "acquisitionTimestampUtc": "2026-09-23T03:16:55.988247Z",
       "vendorCaptureQuality": "complete-recording-post-2026-08-14",
-      "status": "VALIDATION_RESERVED",
+      "status": "OPENED_VALIDATION",
       "hypothesisReservationIdentity": "afdacb697216ba385e8d4d9627deec6610d90fafeb52c83b474bace7d9ae15c0",
-      "openedTimestampUtc": null,
+      "openedTimestampUtc": "2026-09-23T05:10:41.471Z",
       "notes": "governed:data/external-samples/cryptostruct/m16-er/raw/kalshi-btc-15m_2026-09-03.zip; blind-admitted"
     },
     "2026-09-04": {
@@ -376,9 +376,9 @@
       "byteSize": 1243498585,
       "acquisitionTimestampUtc": "2026-09-23T03:16:57.327494Z",
       "vendorCaptureQuality": "complete-recording-post-2026-08-14",
-      "status": "VALIDATION_RESERVED",
+      "status": "OPENED_VALIDATION",
       "hypothesisReservationIdentity": "afdacb697216ba385e8d4d9627deec6610d90fafeb52c83b474bace7d9ae15c0",
-      "openedTimestampUtc": null,
+      "openedTimestampUtc": "2026-09-23T05:10:41.471Z",
       "notes": "governed:data/external-samples/cryptostruct/m16-er/raw/kalshi-btc-15m_2026-09-04.zip; blind-admitted"
     },
     "2026-09-05": {
@@ -390,9 +390,9 @@
       "byteSize": 838913948,
       "acquisitionTimestampUtc": "2026-09-23T03:16:58.172502Z",
       "vendorCaptureQuality": "complete-recording-post-2026-08-14",
-      "status": "VALIDATION_RESERVED",
+      "status": "OPENED_VALIDATION",
       "hypothesisReservationIdentity": "afdacb697216ba385e8d4d9627deec6610d90fafeb52c83b474bace7d9ae15c0",
-      "openedTimestampUtc": null,
+      "openedTimestampUtc": "2026-09-23T05:10:41.471Z",
       "notes": "governed:data/external-samples/cryptostruct/m16-er/raw/kalshi-btc-15m_2026-09-05.zip; blind-admitted"
     },
     "2026-09-06": {
@@ -404,9 +404,9 @@
       "byteSize": 886552109,
       "acquisitionTimestampUtc": "2026-09-23T03:16:59.102906Z",
       "vendorCaptureQuality": "complete-recording-post-2026-08-14",
-      "status": "VALIDATION_RESERVED",
+      "status": "OPENED_VALIDATION",
       "hypothesisReservationIdentity": "afdacb697216ba385e8d4d9627deec6610d90fafeb52c83b474bace7d9ae15c0",
-      "openedTimestampUtc": null,
+      "openedTimestampUtc": "2026-09-23T05:10:41.471Z",
       "notes": "governed:data/external-samples/cryptostruct/m16-er/raw/kalshi-btc-15m_2026-09-06.zip; blind-admitted"
     },
     "2026-09-07": {
@@ -418,9 +418,9 @@
       "byteSize": 992701410,
       "acquisitionTimestampUtc": "2026-09-23T03:17:00.171252Z",
       "vendorCaptureQuality": "complete-recording-post-2026-08-14",
-      "status": "VALIDATION_RESERVED",
+      "status": "OPENED_VALIDATION",
       "hypothesisReservationIdentity": "afdacb697216ba385e8d4d9627deec6610d90fafeb52c83b474bace7d9ae15c0",
-      "openedTimestampUtc": null,
+      "openedTimestampUtc": "2026-09-23T05:10:41.471Z",
       "notes": "governed:data/external-samples/cryptostruct/m16-er/raw/kalshi-btc-15m_2026-09-07.zip; blind-admitted"
     },
     "2026-09-10": {
@@ -432,9 +432,9 @@
       "byteSize": 1204375858,
       "acquisitionTimestampUtc": "2026-09-23T03:17:01.461261Z",
       "vendorCaptureQuality": "complete-recording-post-2026-08-14",
-      "status": "VALIDATION_RESERVED",
+      "status": "OPENED_VALIDATION",
       "hypothesisReservationIdentity": "afdacb697216ba385e8d4d9627deec6610d90fafeb52c83b474bace7d9ae15c0",
-      "openedTimestampUtc": null,
+      "openedTimestampUtc": "2026-09-23T05:10:41.471Z",
       "notes": "governed:data/external-samples/cryptostruct/m16-er/raw/kalshi-btc-15m_2026-09-10.zip; blind-admitted"
     },
     "2026-09-11": {
@@ -446,9 +446,9 @@
       "byteSize": 1327632604,
       "acquisitionTimestampUtc": "2026-09-23T03:17:02.846846Z",
       "vendorCaptureQuality": "complete-recording-post-2026-08-14",
-      "status": "VALIDATION_RESERVED",
+      "status": "OPENED_VALIDATION",
       "hypothesisReservationIdentity": "afdacb697216ba385e8d4d9627deec6610d90fafeb52c83b474bace7d9ae15c0",
-      "openedTimestampUtc": null,
+      "openedTimestampUtc": "2026-09-23T05:10:41.471Z",
       "notes": "governed:data/external-samples/cryptostruct/m16-er/raw/kalshi-btc-15m_2026-09-11.zip; blind-admitted"
     },
     "2026-09-12": {
@@ -460,9 +460,9 @@
       "byteSize": 891889192,
       "acquisitionTimestampUtc": "2026-09-23T03:17:03.796316Z",
       "vendorCaptureQuality": "complete-recording-post-2026-08-14",
-      "status": "VALIDATION_RESERVED",
+      "status": "OPENED_VALIDATION",
       "hypothesisReservationIdentity": "afdacb697216ba385e8d4d9627deec6610d90fafeb52c83b474bace7d9ae15c0",
-      "openedTimestampUtc": null,
+      "openedTimestampUtc": "2026-09-23T05:10:41.471Z",
       "notes": "governed:data/external-samples/cryptostruct/m16-er/raw/kalshi-btc-15m_2026-09-12.zip; blind-admitted"
     },
     "2026-09-13": {
@@ -474,9 +474,9 @@
       "byteSize": 895196394,
       "acquisitionTimestampUtc": "2026-09-23T03:17:04.731615Z",
       "vendorCaptureQuality": "complete-recording-post-2026-08-14",
-      "status": "VALIDATION_RESERVED",
+      "status": "OPENED_VALIDATION",
       "hypothesisReservationIdentity": "afdacb697216ba385e8d4d9627deec6610d90fafeb52c83b474bace7d9ae15c0",
-      "openedTimestampUtc": null,
+      "openedTimestampUtc": "2026-09-23T05:10:41.471Z",
       "notes": "governed:data/external-samples/cryptostruct/m16-er/raw/kalshi-btc-15m_2026-09-13.zip; blind-admitted"
     },
     "2026-09-15": {
@@ -488,9 +488,9 @@
       "byteSize": 1416956284,
       "acquisitionTimestampUtc": "2026-09-23T03:17:06.167606Z",
       "vendorCaptureQuality": "complete-recording-post-2026-08-14",
-      "status": "VALIDATION_RESERVED",
+      "status": "OPENED_VALIDATION",
       "hypothesisReservationIdentity": "afdacb697216ba385e8d4d9627deec6610d90fafeb52c83b474bace7d9ae15c0",
-      "openedTimestampUtc": null,
+      "openedTimestampUtc": "2026-09-23T05:10:41.471Z",
       "notes": "governed:data/external-samples/cryptostruct/m16-er/raw/kalshi-btc-15m_2026-09-15.zip; blind-admitted"
     },
     "2026-09-16": {
@@ -502,9 +502,9 @@
       "byteSize": 1339391148,
       "acquisitionTimestampUtc": "2026-09-23T03:17:07.600726Z",
       "vendorCaptureQuality": "complete-recording-post-2026-08-14",
-      "status": "VALIDATION_RESERVED",
+      "status": "OPENED_VALIDATION",
       "hypothesisReservationIdentity": "afdacb697216ba385e8d4d9627deec6610d90fafeb52c83b474bace7d9ae15c0",
-      "openedTimestampUtc": null,
+      "openedTimestampUtc": "2026-09-23T05:10:41.471Z",
       "notes": "governed:data/external-samples/cryptostruct/m16-er/raw/kalshi-btc-15m_2026-09-16.zip; blind-admitted"
     },
     "2026-09-17": {
@@ -516,9 +516,9 @@
       "byteSize": 1204543312,
       "acquisitionTimestampUtc": "2026-09-23T03:17:08.876761Z",
       "vendorCaptureQuality": "complete-recording-post-2026-08-14",
-      "status": "VALIDATION_RESERVED",
+      "status": "OPENED_VALIDATION",
       "hypothesisReservationIdentity": "afdacb697216ba385e8d4d9627deec6610d90fafeb52c83b474bace7d9ae15c0",
-      "openedTimestampUtc": null,
+      "openedTimestampUtc": "2026-09-23T05:10:41.471Z",
       "notes": "governed:data/external-samples/cryptostruct/m16-er/raw/kalshi-btc-15m_2026-09-17.zip; blind-admitted"
     },
     "2026-09-19": {
@@ -530,9 +530,9 @@
       "byteSize": 1084116889,
       "acquisitionTimestampUtc": "2026-09-23T03:17:09.985515Z",
       "vendorCaptureQuality": "complete-recording-post-2026-08-14",
-      "status": "VALIDATION_RESERVED",
+      "status": "OPENED_VALIDATION",
       "hypothesisReservationIdentity": "afdacb697216ba385e8d4d9627deec6610d90fafeb52c83b474bace7d9ae15c0",
-      "openedTimestampUtc": null,
+      "openedTimestampUtc": "2026-09-23T05:10:41.471Z",
       "notes": "governed:data/external-samples/cryptostruct/m16-er/raw/kalshi-btc-15m_2026-09-19.zip; blind-admitted"
     },
     "2026-09-21": {
@@ -544,9 +544,9 @@
       "byteSize": 1544693971,
       "acquisitionTimestampUtc": "2026-09-23T03:17:11.660537Z",
       "vendorCaptureQuality": "complete-recording-post-2026-08-14",
-      "status": "VALIDATION_RESERVED",
+      "status": "OPENED_VALIDATION",
       "hypothesisReservationIdentity": "afdacb697216ba385e8d4d9627deec6610d90fafeb52c83b474bace7d9ae15c0",
-      "openedTimestampUtc": null,
+      "openedTimestampUtc": "2026-09-23T05:10:41.471Z",
       "notes": "governed:data/external-samples/cryptostruct/m16-er/raw/kalshi-btc-15m_2026-09-21.zip; blind-admitted"
     }
   },
@@ -1445,6 +1445,278 @@
       "toStatus": "VALIDATION_RESERVED",
       "atUtc": "2026-09-23T03:17:11.660537Z",
       "reason": "m16-er-quality-admitted-validation-reserved",
+      "actor": "cryptostruct-dataset-governance"
+    },
+    {
+      "utcDate": "2026-08-14",
+      "fromStatus": "VALIDATION_RESERVED",
+      "toStatus": "OPENED_VALIDATION",
+      "atUtc": "2026-09-23T05:10:41.471Z",
+      "reason": "m16-er-human-authorized-economic-outcome-open",
+      "actor": "cryptostruct-dataset-governance"
+    },
+    {
+      "utcDate": "2026-08-15",
+      "fromStatus": "VALIDATION_RESERVED",
+      "toStatus": "OPENED_VALIDATION",
+      "atUtc": "2026-09-23T05:10:41.471Z",
+      "reason": "m16-er-human-authorized-economic-outcome-open",
+      "actor": "cryptostruct-dataset-governance"
+    },
+    {
+      "utcDate": "2026-08-16",
+      "fromStatus": "VALIDATION_RESERVED",
+      "toStatus": "OPENED_VALIDATION",
+      "atUtc": "2026-09-23T05:10:41.471Z",
+      "reason": "m16-er-human-authorized-economic-outcome-open",
+      "actor": "cryptostruct-dataset-governance"
+    },
+    {
+      "utcDate": "2026-08-17",
+      "fromStatus": "VALIDATION_RESERVED",
+      "toStatus": "OPENED_VALIDATION",
+      "atUtc": "2026-09-23T05:10:41.471Z",
+      "reason": "m16-er-human-authorized-economic-outcome-open",
+      "actor": "cryptostruct-dataset-governance"
+    },
+    {
+      "utcDate": "2026-08-18",
+      "fromStatus": "VALIDATION_RESERVED",
+      "toStatus": "OPENED_VALIDATION",
+      "atUtc": "2026-09-23T05:10:41.471Z",
+      "reason": "m16-er-human-authorized-economic-outcome-open",
+      "actor": "cryptostruct-dataset-governance"
+    },
+    {
+      "utcDate": "2026-08-19",
+      "fromStatus": "VALIDATION_RESERVED",
+      "toStatus": "OPENED_VALIDATION",
+      "atUtc": "2026-09-23T05:10:41.471Z",
+      "reason": "m16-er-human-authorized-economic-outcome-open",
+      "actor": "cryptostruct-dataset-governance"
+    },
+    {
+      "utcDate": "2026-08-20",
+      "fromStatus": "VALIDATION_RESERVED",
+      "toStatus": "OPENED_VALIDATION",
+      "atUtc": "2026-09-23T05:10:41.471Z",
+      "reason": "m16-er-human-authorized-economic-outcome-open",
+      "actor": "cryptostruct-dataset-governance"
+    },
+    {
+      "utcDate": "2026-08-21",
+      "fromStatus": "VALIDATION_RESERVED",
+      "toStatus": "OPENED_VALIDATION",
+      "atUtc": "2026-09-23T05:10:41.471Z",
+      "reason": "m16-er-human-authorized-economic-outcome-open",
+      "actor": "cryptostruct-dataset-governance"
+    },
+    {
+      "utcDate": "2026-08-22",
+      "fromStatus": "VALIDATION_RESERVED",
+      "toStatus": "OPENED_VALIDATION",
+      "atUtc": "2026-09-23T05:10:41.471Z",
+      "reason": "m16-er-human-authorized-economic-outcome-open",
+      "actor": "cryptostruct-dataset-governance"
+    },
+    {
+      "utcDate": "2026-08-23",
+      "fromStatus": "VALIDATION_RESERVED",
+      "toStatus": "OPENED_VALIDATION",
+      "atUtc": "2026-09-23T05:10:41.471Z",
+      "reason": "m16-er-human-authorized-economic-outcome-open",
+      "actor": "cryptostruct-dataset-governance"
+    },
+    {
+      "utcDate": "2026-08-24",
+      "fromStatus": "VALIDATION_RESERVED",
+      "toStatus": "OPENED_VALIDATION",
+      "atUtc": "2026-09-23T05:10:41.471Z",
+      "reason": "m16-er-human-authorized-economic-outcome-open",
+      "actor": "cryptostruct-dataset-governance"
+    },
+    {
+      "utcDate": "2026-08-25",
+      "fromStatus": "VALIDATION_RESERVED",
+      "toStatus": "OPENED_VALIDATION",
+      "atUtc": "2026-09-23T05:10:41.471Z",
+      "reason": "m16-er-human-authorized-economic-outcome-open",
+      "actor": "cryptostruct-dataset-governance"
+    },
+    {
+      "utcDate": "2026-08-26",
+      "fromStatus": "VALIDATION_RESERVED",
+      "toStatus": "OPENED_VALIDATION",
+      "atUtc": "2026-09-23T05:10:41.471Z",
+      "reason": "m16-er-human-authorized-economic-outcome-open",
+      "actor": "cryptostruct-dataset-governance"
+    },
+    {
+      "utcDate": "2026-08-27",
+      "fromStatus": "VALIDATION_RESERVED",
+      "toStatus": "OPENED_VALIDATION",
+      "atUtc": "2026-09-23T05:10:41.471Z",
+      "reason": "m16-er-human-authorized-economic-outcome-open",
+      "actor": "cryptostruct-dataset-governance"
+    },
+    {
+      "utcDate": "2026-08-28",
+      "fromStatus": "VALIDATION_RESERVED",
+      "toStatus": "OPENED_VALIDATION",
+      "atUtc": "2026-09-23T05:10:41.471Z",
+      "reason": "m16-er-human-authorized-economic-outcome-open",
+      "actor": "cryptostruct-dataset-governance"
+    },
+    {
+      "utcDate": "2026-08-29",
+      "fromStatus": "VALIDATION_RESERVED",
+      "toStatus": "OPENED_VALIDATION",
+      "atUtc": "2026-09-23T05:10:41.471Z",
+      "reason": "m16-er-human-authorized-economic-outcome-open",
+      "actor": "cryptostruct-dataset-governance"
+    },
+    {
+      "utcDate": "2026-08-30",
+      "fromStatus": "VALIDATION_RESERVED",
+      "toStatus": "OPENED_VALIDATION",
+      "atUtc": "2026-09-23T05:10:41.471Z",
+      "reason": "m16-er-human-authorized-economic-outcome-open",
+      "actor": "cryptostruct-dataset-governance"
+    },
+    {
+      "utcDate": "2026-08-31",
+      "fromStatus": "VALIDATION_RESERVED",
+      "toStatus": "OPENED_VALIDATION",
+      "atUtc": "2026-09-23T05:10:41.471Z",
+      "reason": "m16-er-human-authorized-economic-outcome-open",
+      "actor": "cryptostruct-dataset-governance"
+    },
+    {
+      "utcDate": "2026-09-01",
+      "fromStatus": "VALIDATION_RESERVED",
+      "toStatus": "OPENED_VALIDATION",
+      "atUtc": "2026-09-23T05:10:41.471Z",
+      "reason": "m16-er-human-authorized-economic-outcome-open",
+      "actor": "cryptostruct-dataset-governance"
+    },
+    {
+      "utcDate": "2026-09-02",
+      "fromStatus": "VALIDATION_RESERVED",
+      "toStatus": "OPENED_VALIDATION",
+      "atUtc": "2026-09-23T05:10:41.471Z",
+      "reason": "m16-er-human-authorized-economic-outcome-open",
+      "actor": "cryptostruct-dataset-governance"
+    },
+    {
+      "utcDate": "2026-09-03",
+      "fromStatus": "VALIDATION_RESERVED",
+      "toStatus": "OPENED_VALIDATION",
+      "atUtc": "2026-09-23T05:10:41.471Z",
+      "reason": "m16-er-human-authorized-economic-outcome-open",
+      "actor": "cryptostruct-dataset-governance"
+    },
+    {
+      "utcDate": "2026-09-04",
+      "fromStatus": "VALIDATION_RESERVED",
+      "toStatus": "OPENED_VALIDATION",
+      "atUtc": "2026-09-23T05:10:41.471Z",
+      "reason": "m16-er-human-authorized-economic-outcome-open",
+      "actor": "cryptostruct-dataset-governance"
+    },
+    {
+      "utcDate": "2026-09-05",
+      "fromStatus": "VALIDATION_RESERVED",
+      "toStatus": "OPENED_VALIDATION",
+      "atUtc": "2026-09-23T05:10:41.471Z",
+      "reason": "m16-er-human-authorized-economic-outcome-open",
+      "actor": "cryptostruct-dataset-governance"
+    },
+    {
+      "utcDate": "2026-09-06",
+      "fromStatus": "VALIDATION_RESERVED",
+      "toStatus": "OPENED_VALIDATION",
+      "atUtc": "2026-09-23T05:10:41.471Z",
+      "reason": "m16-er-human-authorized-economic-outcome-open",
+      "actor": "cryptostruct-dataset-governance"
+    },
+    {
+      "utcDate": "2026-09-07",
+      "fromStatus": "VALIDATION_RESERVED",
+      "toStatus": "OPENED_VALIDATION",
+      "atUtc": "2026-09-23T05:10:41.471Z",
+      "reason": "m16-er-human-authorized-economic-outcome-open",
+      "actor": "cryptostruct-dataset-governance"
+    },
+    {
+      "utcDate": "2026-09-10",
+      "fromStatus": "VALIDATION_RESERVED",
+      "toStatus": "OPENED_VALIDATION",
+      "atUtc": "2026-09-23T05:10:41.471Z",
+      "reason": "m16-er-human-authorized-economic-outcome-open",
+      "actor": "cryptostruct-dataset-governance"
+    },
+    {
+      "utcDate": "2026-09-11",
+      "fromStatus": "VALIDATION_RESERVED",
+      "toStatus": "OPENED_VALIDATION",
+      "atUtc": "2026-09-23T05:10:41.471Z",
+      "reason": "m16-er-human-authorized-economic-outcome-open",
+      "actor": "cryptostruct-dataset-governance"
+    },
+    {
+      "utcDate": "2026-09-12",
+      "fromStatus": "VALIDATION_RESERVED",
+      "toStatus": "OPENED_VALIDATION",
+      "atUtc": "2026-09-23T05:10:41.471Z",
+      "reason": "m16-er-human-authorized-economic-outcome-open",
+      "actor": "cryptostruct-dataset-governance"
+    },
+    {
+      "utcDate": "2026-09-13",
+      "fromStatus": "VALIDATION_RESERVED",
+      "toStatus": "OPENED_VALIDATION",
+      "atUtc": "2026-09-23T05:10:41.471Z",
+      "reason": "m16-er-human-authorized-economic-outcome-open",
+      "actor": "cryptostruct-dataset-governance"
+    },
+    {
+      "utcDate": "2026-09-15",
+      "fromStatus": "VALIDATION_RESERVED",
+      "toStatus": "OPENED_VALIDATION",
+      "atUtc": "2026-09-23T05:10:41.471Z",
+      "reason": "m16-er-human-authorized-economic-outcome-open",
+      "actor": "cryptostruct-dataset-governance"
+    },
+    {
+      "utcDate": "2026-09-16",
+      "fromStatus": "VALIDATION_RESERVED",
+      "toStatus": "OPENED_VALIDATION",
+      "atUtc": "2026-09-23T05:10:41.471Z",
+      "reason": "m16-er-human-authorized-economic-outcome-open",
+      "actor": "cryptostruct-dataset-governance"
+    },
+    {
+      "utcDate": "2026-09-17",
+      "fromStatus": "VALIDATION_RESERVED",
+      "toStatus": "OPENED_VALIDATION",
+      "atUtc": "2026-09-23T05:10:41.471Z",
+      "reason": "m16-er-human-authorized-economic-outcome-open",
+      "actor": "cryptostruct-dataset-governance"
+    },
+    {
+      "utcDate": "2026-09-19",
+      "fromStatus": "VALIDATION_RESERVED",
+      "toStatus": "OPENED_VALIDATION",
+      "atUtc": "2026-09-23T05:10:41.471Z",
+      "reason": "m16-er-human-authorized-economic-outcome-open",
+      "actor": "cryptostruct-dataset-governance"
+    },
+    {
+      "utcDate": "2026-09-21",
+      "fromStatus": "VALIDATION_RESERVED",
+      "toStatus": "OPENED_VALIDATION",
+      "atUtc": "2026-09-23T05:10:41.471Z",
+      "reason": "m16-er-human-authorized-economic-outcome-open",
       "actor": "cryptostruct-dataset-governance"
     }
   ]
