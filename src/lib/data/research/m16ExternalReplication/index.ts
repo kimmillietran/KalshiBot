@@ -13,6 +13,7 @@ export {
   computeM16ErClusteredPlanningTradeN,
   computeM16ErMinUtcDayClusters,
   evaluateM16ErOutcomeOpenAuthorization,
+  requireExactFrozenIdentity,
   M16_ER_ADAPTER_ID,
   M16_ER_ADAPTER_IDENTITY,
   M16_ER_BLIND_INCIDENCE_PER_4H_DAY,

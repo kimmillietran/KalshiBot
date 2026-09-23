@@ -368,10 +368,23 @@ export function buildM16ErScientificProtocol() {
   return { ...body, scientificProtocolIdentity };
 }
 
+/**
+ * Authorization input for M16-ER outcome open.
+ *
+ * Mandatory identity fields must be affirmatively supplied by the caller and
+ * equal the canonical frozen identities. Absence must NOT silently default to
+ * canonical values (fail closed).
+ *
+ * Evidence contract identity is NOT a separate outcome-open input: it is bound
+ * inside scientificProtocolIdentity (hashed into the frozen protocol body).
+ */
 export type M16ErOutcomeOpenInput = {
-  protocolIdentity?: string;
-  adapterIdentity?: string;
-  cohortReservationIdentity?: string;
+  protocolIdentity?: string | null;
+  cohortReservationIdentity?: string | null;
+  adapterIdentity?: string | null;
+  sourceContractIdentity?: string | null;
+  dependencePlanIdentity?: string | null;
+  feeContractIdentity?: string | null;
   purchasedZipSha256Verified?: boolean;
   qualityAuditComplete?: boolean;
   fixedCohortAdmissionComplete?: boolean;
@@ -380,9 +393,18 @@ export type M16ErOutcomeOpenInput = {
 };
 
 export const M16_ER_OUTCOME_OPEN_BLOCKERS = {
+  PROTOCOL_MISSING: "m16-er-scientific-protocol-identity-missing",
   PROTOCOL_MISMATCH: "m16-er-scientific-protocol-identity-mismatch",
-  ADAPTER_MISMATCH: "m16-er-adapter-identity-mismatch",
+  COHORT_MISSING: "m16-er-cohort-reservation-identity-missing",
   COHORT_MISMATCH: "m16-er-cohort-reservation-identity-mismatch",
+  ADAPTER_MISSING: "m16-er-adapter-identity-missing",
+  ADAPTER_MISMATCH: "m16-er-adapter-identity-mismatch",
+  SOURCE_MISSING: "m16-er-source-contract-identity-missing",
+  SOURCE_MISMATCH: "m16-er-source-contract-identity-mismatch",
+  DEPENDENCE_MISSING: "m16-er-dependence-plan-identity-missing",
+  DEPENDENCE_MISMATCH: "m16-er-dependence-plan-identity-mismatch",
+  FEE_MISSING: "m16-er-fee-contract-identity-missing",
+  FEE_MISMATCH: "m16-er-fee-contract-identity-mismatch",
   SHA_UNVERIFIED: "m16-er-purchased-zip-sha256-unverified",
   QUALITY_INCOMPLETE: "m16-er-quality-audit-incomplete",
   COHORT_NOT_ADMITTED: "m16-er-fixed-cohort-admission-incomplete",
@@ -390,31 +412,87 @@ export const M16_ER_OUTCOME_OPEN_BLOCKERS = {
   PNL_ALREADY_OPENED: "m16-er-pnl-previously-opened",
 } as const;
 
+/**
+ * Fail-closed mandatory identity comparison.
+ * Does NOT substitute canonical identities when the caller omits them.
+ */
+export function requireExactFrozenIdentity(input: {
+  provided: unknown;
+  expected: string;
+  missingBlocker: string;
+  mismatchBlocker: string;
+}): string | null {
+  const { provided, expected, missingBlocker, mismatchBlocker } = input;
+  if (typeof provided !== "string" || provided.length === 0) {
+    return missingBlocker;
+  }
+  if (provided !== expected) {
+    return mismatchBlocker;
+  }
+  return null;
+}
+
 export function evaluateM16ErOutcomeOpenAuthorization(
   input: M16ErOutcomeOpenInput = {},
 ) {
   const protocol = buildM16ErScientificProtocol();
   const cohort = buildM16ErFixedCohortPlan();
+  const source = buildM16ErSourceContract();
+  const dependence = buildM16ErDependencePlan();
+  const fee = buildM16ErFeeContract();
   const blockers: string[] = [];
 
-  if (
-    input.protocolIdentity != null
-    && input.protocolIdentity !== protocol.scientificProtocolIdentity
-  ) {
-    blockers.push(M16_ER_OUTCOME_OPEN_BLOCKERS.PROTOCOL_MISMATCH);
+  const identityChecks: Array<{
+    provided: unknown;
+    expected: string;
+    missingBlocker: string;
+    mismatchBlocker: string;
+  }> = [
+    {
+      provided: input.protocolIdentity,
+      expected: protocol.scientificProtocolIdentity,
+      missingBlocker: M16_ER_OUTCOME_OPEN_BLOCKERS.PROTOCOL_MISSING,
+      mismatchBlocker: M16_ER_OUTCOME_OPEN_BLOCKERS.PROTOCOL_MISMATCH,
+    },
+    {
+      provided: input.cohortReservationIdentity,
+      expected: cohort.cohortReservationIdentity,
+      missingBlocker: M16_ER_OUTCOME_OPEN_BLOCKERS.COHORT_MISSING,
+      mismatchBlocker: M16_ER_OUTCOME_OPEN_BLOCKERS.COHORT_MISMATCH,
+    },
+    {
+      provided: input.adapterIdentity,
+      expected: M16_ER_ADAPTER_IDENTITY,
+      missingBlocker: M16_ER_OUTCOME_OPEN_BLOCKERS.ADAPTER_MISSING,
+      mismatchBlocker: M16_ER_OUTCOME_OPEN_BLOCKERS.ADAPTER_MISMATCH,
+    },
+    {
+      provided: input.sourceContractIdentity,
+      expected: source.sourceContractIdentity,
+      missingBlocker: M16_ER_OUTCOME_OPEN_BLOCKERS.SOURCE_MISSING,
+      mismatchBlocker: M16_ER_OUTCOME_OPEN_BLOCKERS.SOURCE_MISMATCH,
+    },
+    {
+      provided: input.dependencePlanIdentity,
+      expected: dependence.dependencePlanIdentity,
+      missingBlocker: M16_ER_OUTCOME_OPEN_BLOCKERS.DEPENDENCE_MISSING,
+      mismatchBlocker: M16_ER_OUTCOME_OPEN_BLOCKERS.DEPENDENCE_MISMATCH,
+    },
+    {
+      provided: input.feeContractIdentity,
+      expected: fee.feeContractIdentity,
+      missingBlocker: M16_ER_OUTCOME_OPEN_BLOCKERS.FEE_MISSING,
+      mismatchBlocker: M16_ER_OUTCOME_OPEN_BLOCKERS.FEE_MISMATCH,
+    },
+  ];
+
+  for (const check of identityChecks) {
+    const blocker = requireExactFrozenIdentity(check);
+    if (blocker != null) {
+      blockers.push(blocker);
+    }
   }
-  if (
-    input.adapterIdentity != null
-    && input.adapterIdentity !== M16_ER_ADAPTER_IDENTITY
-  ) {
-    blockers.push(M16_ER_OUTCOME_OPEN_BLOCKERS.ADAPTER_MISMATCH);
-  }
-  if (
-    input.cohortReservationIdentity != null
-    && input.cohortReservationIdentity !== cohort.cohortReservationIdentity
-  ) {
-    blockers.push(M16_ER_OUTCOME_OPEN_BLOCKERS.COHORT_MISMATCH);
-  }
+
   if (input.purchasedZipSha256Verified !== true) {
     blockers.push(M16_ER_OUTCOME_OPEN_BLOCKERS.SHA_UNVERIFIED);
   }
@@ -441,6 +519,11 @@ export function evaluateM16ErOutcomeOpenAuthorization(
     scientificProtocolIdentity: protocol.scientificProtocolIdentity,
     adapterIdentity: M16_ER_ADAPTER_IDENTITY,
     cohortReservationIdentity: cohort.cohortReservationIdentity,
+    sourceContractIdentity: source.sourceContractIdentity,
+    dependencePlanIdentity: dependence.dependencePlanIdentity,
+    feeContractIdentity: fee.feeContractIdentity,
+    /** Evidence is bound via scientificProtocolIdentity; not a separate gate input. */
+    evidenceBoundViaScientificProtocol: true as const,
     blockers,
     forbiddenWhileSealed: [
       "pnl",
