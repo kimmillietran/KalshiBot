@@ -41,7 +41,7 @@ function nthWeekdayOfMonth(
   // weekday: 0=Sun ... 6=Sat
   const first = new Date(Date.UTC(year, month1to12 - 1, 1));
   const firstWd = first.getUTCDay();
-  let day = 1 + ((weekday - firstWd + 7) % 7) + (n - 1) * 7;
+  const day = 1 + ((weekday - firstWd + 7) % 7) + (n - 1) * 7;
   return day;
 }
 
