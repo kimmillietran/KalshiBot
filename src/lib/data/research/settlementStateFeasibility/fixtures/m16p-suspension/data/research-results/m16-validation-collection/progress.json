@@ -1,0 +1,11 @@
+{
+  "acceptedHours": 4,
+  "acceptedSegments": 1,
+  "eligibleTradeCount": 9,
+  "distinctEligibleUtcDayClusters": 1,
+  "outcomesOpened": false,
+  "disposition": "continue-collection",
+  "pnlInspected": false,
+  "stopHitInspected": false,
+  "targetHitInspected": false
+}

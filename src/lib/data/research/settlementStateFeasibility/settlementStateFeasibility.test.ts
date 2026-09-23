@@ -1,10 +1,17 @@
 import { describe, expect, it } from "vitest";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import {
   RemainingAverageThresholdError,
   computeRemainingAverageThreshold,
   verifyM16pSuspensionClaims,
 } from "./index";
+
+const M16P_SUSPENSION_FIXTURE_ROOT = join(
+  fileURLToPath(new URL(".", import.meta.url)),
+  "fixtures/m16p-suspension",
+);
 
 describe("computeRemainingAverageThreshold", () => {
   it("computes the 60-sample remaining-average threshold", () => {
@@ -59,6 +66,7 @@ describe("computeRemainingAverageThreshold", () => {
 describe("verifyM16pSuspensionClaims", () => {
   it("verifies M16-ER claims and reports M16-P registry discrepancy without opening outcomes", () => {
     const v = verifyM16pSuspensionClaims({
+      repoRoot: M16P_SUSPENSION_FIXTURE_ROOT,
       nowIso: "2026-09-23T23:20:45.028Z",
     });
     expect(v.outcomesOpened).toBe(false);
