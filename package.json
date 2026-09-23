@@ -143,6 +143,7 @@
     "discovery:import-configs": "tsx scripts/discovery/generateImportConfigs.ts",
     "datasets:build": "tsx scripts/datasets/buildDatasetManifest.ts",
     "discover:markets": "tsx scripts/discovery/runMarketDiscovery.ts",
+    "research:cryptostruct-reservoir": "tsx scripts/research/runCryptostructReservoir.ts",
     "worktree:assign": "bash scripts/git/assign-worktree-branch.sh"
   },
   "dependencies": {

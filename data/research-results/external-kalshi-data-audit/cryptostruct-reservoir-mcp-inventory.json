@@ -1,0 +1,417 @@
+{
+  "schemaVersion": "cryptostruct-kxbtc15m-sanitized-inventory-v1",
+  "provider": "CryptoStruct",
+  "series": "KXBTC15M",
+  "queriedAtUtc": "2026-09-23T07:00:00.000Z",
+  "mcp": {
+    "discoveredNamespaces": [
+      "cursor",
+      "cursor-app-control",
+      "cursor-ide-browser"
+    ],
+    "cryptostructMcpConnected": false,
+    "readOnlyToolsExpected": [
+      "search_bundles",
+      "get_bundle_coverage",
+      "get_my_files",
+      "get_my_subscription",
+      "get_price_quote"
+    ],
+    "mutatingToolsProhibited": [
+      "preview_checkout",
+      "create_checkout",
+      "request_file_restore",
+      "get_order_files",
+      "autonomous_purchase"
+    ],
+    "readOnlyToolsCalled": [],
+    "mutatingToolsCalled": [],
+    "note": "CryptoStruct MCP was not present in the connected Cursor MCP catalog for this session (namespaces: cursor, cursor-app-control, cursor-ide-browser). Ownership/coverage reconstructed from repository acquisition + catalog-freeze authority. No vendor mutating tools were callable or called."
+  },
+  "product": {
+    "bundleOrProductId": "kalshi-btc-15m-series-day-zip",
+    "series": "KXBTC15M",
+    "dataFormat": "kalshi-btc-15m_YYYY-MM-DD.zip (.txt.zst members)",
+    "availableDateRange": {
+      "startInclusive": "2026-08-14",
+      "endInclusive": "2026-09-21"
+    },
+    "sourcePages": [
+      "https://cryptostruct.com/prediction-markets/kalshi-btc-15m",
+      "https://cryptostruct.com/pricing"
+    ]
+  },
+  "vendorCoveredUtcDates": [
+    "2026-08-14",
+    "2026-08-15",
+    "2026-08-16",
+    "2026-08-17",
+    "2026-08-18",
+    "2026-08-19",
+    "2026-08-20",
+    "2026-08-21",
+    "2026-08-22",
+    "2026-08-23",
+    "2026-08-24",
+    "2026-08-25",
+    "2026-08-26",
+    "2026-08-27",
+    "2026-08-28",
+    "2026-08-29",
+    "2026-08-30",
+    "2026-08-31",
+    "2026-09-01",
+    "2026-09-02",
+    "2026-09-03",
+    "2026-09-04",
+    "2026-09-05",
+    "2026-09-06",
+    "2026-09-07",
+    "2026-09-08",
+    "2026-09-09",
+    "2026-09-10",
+    "2026-09-11",
+    "2026-09-12",
+    "2026-09-13",
+    "2026-09-14",
+    "2026-09-15",
+    "2026-09-16",
+    "2026-09-17",
+    "2026-09-18",
+    "2026-09-19",
+    "2026-09-20",
+    "2026-09-21"
+  ],
+  "ownedDates": [
+    {
+      "utcDate": "2026-08-14",
+      "ownershipStatus": "owned",
+      "byteSize": 1020075603,
+      "vendorChecksumSha256": "8baad55dcfa82101266c5f4419fe68a8bba7bd4204ef4dc3bf2d926dc420ee56",
+      "formatVersion": "kalshi-btc-15m-day-zip-v1",
+      "availabilityStatus": "local-governed-raw"
+    },
+    {
+      "utcDate": "2026-08-15",
+      "ownershipStatus": "owned",
+      "byteSize": 850861314,
+      "vendorChecksumSha256": "5b3da54ee8116f0896330d7f6d85affeb81d3b9803a9b9a77cce56a5f90eda97",
+      "formatVersion": "kalshi-btc-15m-day-zip-v1",
+      "availabilityStatus": "local-governed-raw"
+    },
+    {
+      "utcDate": "2026-08-16",
+      "ownershipStatus": "owned",
+      "byteSize": 931407761,
+      "vendorChecksumSha256": "b6113229d61cbdeefe07d5b8235034250db58ca5433568b15ed1345a8e1d254b",
+      "formatVersion": "kalshi-btc-15m-day-zip-v1",
+      "availabilityStatus": "local-governed-raw"
+    },
+    {
+      "utcDate": "2026-08-17",
+      "ownershipStatus": "owned",
+      "byteSize": 917798426,
+      "vendorChecksumSha256": "ced0da07b9a44b4566b7ec8005489f77b1ec1614a19b77b7e6850db55fbc7137",
+      "formatVersion": "kalshi-btc-15m-day-zip-v1",
+      "availabilityStatus": "local-governed-raw"
+    },
+    {
+      "utcDate": "2026-08-18",
+      "ownershipStatus": "owned",
+      "byteSize": 940343948,
+      "vendorChecksumSha256": "b4888abfb8443fcd6b6e2481ce651556c1e1f9ebe3851076e3702f225dad4b21",
+      "formatVersion": "kalshi-btc-15m-day-zip-v1",
+      "availabilityStatus": "local-governed-raw"
+    },
+    {
+      "utcDate": "2026-08-19",
+      "ownershipStatus": "owned",
+      "byteSize": 1134566233,
+      "vendorChecksumSha256": "424126bae8fdc74981e654163274240a7f2ef7e2291abd38c15d2c7c6db22c81",
+      "formatVersion": "kalshi-btc-15m-day-zip-v1",
+      "availabilityStatus": "local-governed-raw"
+    },
+    {
+      "utcDate": "2026-08-20",
+      "ownershipStatus": "owned",
+      "byteSize": 1142696257,
+      "vendorChecksumSha256": "bd3056b63a50745a0a5d01ab391e12ec0d1ae2bb03625f9416e13e8bde4bcfe9",
+      "formatVersion": "kalshi-btc-15m-day-zip-v1",
+      "availabilityStatus": "local-governed-raw"
+    },
+    {
+      "utcDate": "2026-08-21",
+      "ownershipStatus": "owned",
+      "byteSize": 1542280706,
+      "vendorChecksumSha256": "656c76db4bd11e8fc0e6fe09c16a59146d97919b0d6d6f28c2ba9201219f353c",
+      "formatVersion": "kalshi-btc-15m-day-zip-v1",
+      "availabilityStatus": "local-governed-raw"
+    },
+    {
+      "utcDate": "2026-08-22",
+      "ownershipStatus": "owned",
+      "byteSize": 1217666650,
+      "vendorChecksumSha256": "f1ccccc5481f0ea38fec9cc5456cd72366e6e0f29861558d30ca78850f767226",
+      "formatVersion": "kalshi-btc-15m-day-zip-v1",
+      "availabilityStatus": "local-governed-raw"
+    },
+    {
+      "utcDate": "2026-08-23",
+      "ownershipStatus": "owned",
+      "byteSize": 1141808606,
+      "vendorChecksumSha256": "a11f6c28bf28696f9dd741f8cc74e2bb38fa9baee7913d2848f2b957c93ae79d",
+      "formatVersion": "kalshi-btc-15m-day-zip-v1",
+      "availabilityStatus": "local-governed-raw"
+    },
+    {
+      "utcDate": "2026-08-24",
+      "ownershipStatus": "owned",
+      "byteSize": 1350962506,
+      "vendorChecksumSha256": "3db0d651bd3b5543f04d813358727f08a9f52c8ad6525557d1aa87d50eaa6459",
+      "formatVersion": "kalshi-btc-15m-day-zip-v1",
+      "availabilityStatus": "local-governed-raw"
+    },
+    {
+      "utcDate": "2026-08-25",
+      "ownershipStatus": "owned",
+      "byteSize": 1126546907,
+      "vendorChecksumSha256": "2f47d19de531f011b017639883400603e079b3eddb0170f28b62a299bc214668",
+      "formatVersion": "kalshi-btc-15m-day-zip-v1",
+      "availabilityStatus": "local-governed-raw"
+    },
+    {
+      "utcDate": "2026-08-26",
+      "ownershipStatus": "owned",
+      "byteSize": 1176050355,
+      "vendorChecksumSha256": "faaaa6076c5fdaa9b62528033ecdd9126d1bfe95afa3281ae0e8732c92515f61",
+      "formatVersion": "kalshi-btc-15m-day-zip-v1",
+      "availabilityStatus": "local-governed-raw"
+    },
+    {
+      "utcDate": "2026-08-27",
+      "ownershipStatus": "owned",
+      "byteSize": 1043436496,
+      "vendorChecksumSha256": "9ee2bdcf4393224ecba231af99599b471b95e4020a1a6d3426f037083c3713e6",
+      "formatVersion": "kalshi-btc-15m-day-zip-v1",
+      "availabilityStatus": "local-governed-raw"
+    },
+    {
+      "utcDate": "2026-08-28",
+      "ownershipStatus": "owned",
+      "byteSize": 1065838706,
+      "vendorChecksumSha256": "3f05a5e711743e03df0f5c385a32a431120402d74d47cb3f33b43240010d4b49",
+      "formatVersion": "kalshi-btc-15m-day-zip-v1",
+      "availabilityStatus": "local-governed-raw"
+    },
+    {
+      "utcDate": "2026-08-29",
+      "ownershipStatus": "owned",
+      "byteSize": 764472865,
+      "vendorChecksumSha256": "403ad6627578a19fd23af1794991b1f3c00d7f49041bb7767542579ce2c00550",
+      "formatVersion": "kalshi-btc-15m-day-zip-v1",
+      "availabilityStatus": "local-governed-raw"
+    },
+    {
+      "utcDate": "2026-08-30",
+      "ownershipStatus": "owned",
+      "byteSize": 839532216,
+      "vendorChecksumSha256": "af13edad15f1d941548bda65c725b950c232472ee0395b38f78bba4706667573",
+      "formatVersion": "kalshi-btc-15m-day-zip-v1",
+      "availabilityStatus": "local-governed-raw"
+    },
+    {
+      "utcDate": "2026-08-31",
+      "ownershipStatus": "owned",
+      "byteSize": 1217784162,
+      "vendorChecksumSha256": "bd78456bdaa26a7f6a0ebd8051bc7c10f0eb79f3765c8264dd7fccf2a109dbd5",
+      "formatVersion": "kalshi-btc-15m-day-zip-v1",
+      "availabilityStatus": "local-governed-raw"
+    },
+    {
+      "utcDate": "2026-09-01",
+      "ownershipStatus": "owned",
+      "byteSize": 1160343079,
+      "vendorChecksumSha256": "7530034bdb23dd13c1b097ba66c49c9c8f5de663044c02622304ec5ba3d927ac",
+      "formatVersion": "kalshi-btc-15m-day-zip-v1",
+      "availabilityStatus": "local-governed-raw"
+    },
+    {
+      "utcDate": "2026-09-02",
+      "ownershipStatus": "owned",
+      "byteSize": 1108293808,
+      "vendorChecksumSha256": "db08f13892c67047b45e40df9500c9609cb85ffc34c7ba346490981a3e9965af",
+      "formatVersion": "kalshi-btc-15m-day-zip-v1",
+      "availabilityStatus": "local-governed-raw"
+    },
+    {
+      "utcDate": "2026-09-03",
+      "ownershipStatus": "owned",
+      "byteSize": 1191829592,
+      "vendorChecksumSha256": "9d1c51ac849243ef67ca2fa20bc103a0ca249c065d1aaa2165c743899d0bd203",
+      "formatVersion": "kalshi-btc-15m-day-zip-v1",
+      "availabilityStatus": "local-governed-raw"
+    },
+    {
+      "utcDate": "2026-09-04",
+      "ownershipStatus": "owned",
+      "byteSize": 1243498585,
+      "vendorChecksumSha256": "1a2c18e3a121ac7dfc7fb21d711acd6232e980ae0f6704ad4800864867c86875",
+      "formatVersion": "kalshi-btc-15m-day-zip-v1",
+      "availabilityStatus": "local-governed-raw"
+    },
+    {
+      "utcDate": "2026-09-05",
+      "ownershipStatus": "owned",
+      "byteSize": 838913948,
+      "vendorChecksumSha256": "ca4868c56e5f60b318289f8a7a3262ecf8eff945f3c4be7e517b3624ef0e0fd5",
+      "formatVersion": "kalshi-btc-15m-day-zip-v1",
+      "availabilityStatus": "local-governed-raw"
+    },
+    {
+      "utcDate": "2026-09-06",
+      "ownershipStatus": "owned",
+      "byteSize": 886552109,
+      "vendorChecksumSha256": "2c9afdec4620bfaa6dd806b9c30d4ba5d8d528b80e55557583ce9fafb523c3b9",
+      "formatVersion": "kalshi-btc-15m-day-zip-v1",
+      "availabilityStatus": "local-governed-raw"
+    },
+    {
+      "utcDate": "2026-09-07",
+      "ownershipStatus": "owned",
+      "byteSize": 992701410,
+      "vendorChecksumSha256": "1735736143bfd335adeb3a3a8c882f40a4e88db997d453a9e3b7b7fb30d8ef4d",
+      "formatVersion": "kalshi-btc-15m-day-zip-v1",
+      "availabilityStatus": "local-governed-raw"
+    },
+    {
+      "utcDate": "2026-09-08",
+      "vendorFileId": "kalshi-btc-15m_2026-09-08.zip",
+      "ownershipStatus": "owned",
+      "byteSize": 1190648632,
+      "vendorChecksumSha256": "91d890acc77db122b4dbaf5dbf1cae4c8151506dfe52ae37639235c88001e27d",
+      "formatVersion": "kalshi-btc-15m-day-zip-v1",
+      "availabilityStatus": "quality-audit-owned"
+    },
+    {
+      "utcDate": "2026-09-09",
+      "vendorFileId": "kalshi-btc-15m_2026-09-09.zip",
+      "ownershipStatus": "owned",
+      "byteSize": 1197691318,
+      "vendorChecksumSha256": "f468b653c740a8c55058e8558cfceb61f1d4ffad5be3aff634fddd21d31b1e91",
+      "formatVersion": "kalshi-btc-15m-day-zip-v1",
+      "availabilityStatus": "quality-audit-owned"
+    },
+    {
+      "utcDate": "2026-09-10",
+      "ownershipStatus": "owned",
+      "byteSize": 1204375858,
+      "vendorChecksumSha256": "64443cf32d279a7686b18b5085839d36d923fc4662e19c4323bbd71cab94dd6d",
+      "formatVersion": "kalshi-btc-15m-day-zip-v1",
+      "availabilityStatus": "local-governed-raw"
+    },
+    {
+      "utcDate": "2026-09-11",
+      "ownershipStatus": "owned",
+      "byteSize": 1327632604,
+      "vendorChecksumSha256": "fa1039f7d6212b362c62679ed396ba4901a23802a50d447b1b66d5db88b2b113",
+      "formatVersion": "kalshi-btc-15m-day-zip-v1",
+      "availabilityStatus": "local-governed-raw"
+    },
+    {
+      "utcDate": "2026-09-12",
+      "ownershipStatus": "owned",
+      "byteSize": 891889192,
+      "vendorChecksumSha256": "322313d471145d98eae88d2f1f01d1ac3a456cae8fe3904e8254e64e61c46aae",
+      "formatVersion": "kalshi-btc-15m-day-zip-v1",
+      "availabilityStatus": "local-governed-raw"
+    },
+    {
+      "utcDate": "2026-09-13",
+      "ownershipStatus": "owned",
+      "byteSize": 895196394,
+      "vendorChecksumSha256": "e395a474cf9a54e1d3248eb097583c7e7a6808504981cb341e90337343fb7798",
+      "formatVersion": "kalshi-btc-15m-day-zip-v1",
+      "availabilityStatus": "local-governed-raw"
+    },
+    {
+      "utcDate": "2026-09-14",
+      "vendorFileId": "kalshi-btc-15m_2026-09-14.zip",
+      "ownershipStatus": "owned",
+      "byteSize": 1350578112,
+      "vendorChecksumSha256": "fb65ac61071b2ec0a757701634a411e03fe7040ea939438a97afd62117d09d54",
+      "formatVersion": "kalshi-btc-15m-day-zip-v1",
+      "availabilityStatus": "quality-audit-owned"
+    },
+    {
+      "utcDate": "2026-09-15",
+      "ownershipStatus": "owned",
+      "byteSize": 1416956284,
+      "vendorChecksumSha256": "351ba9db02fe02bd3af7f4e5f390a377b9fa588e8fe1c17ff4c70ac3b293d20c",
+      "formatVersion": "kalshi-btc-15m-day-zip-v1",
+      "availabilityStatus": "local-governed-raw"
+    },
+    {
+      "utcDate": "2026-09-16",
+      "ownershipStatus": "owned",
+      "byteSize": 1339391148,
+      "vendorChecksumSha256": "e9a6acd322e4d0762c95d373693712168e03b5dd68a0b64b784f5dd8f7acd46d",
+      "formatVersion": "kalshi-btc-15m-day-zip-v1",
+      "availabilityStatus": "local-governed-raw"
+    },
+    {
+      "utcDate": "2026-09-17",
+      "ownershipStatus": "owned",
+      "byteSize": 1204543312,
+      "vendorChecksumSha256": "b05e6effd3445172815ccf0dcf06464509a4b7074b2643b9c26158053ae57f89",
+      "formatVersion": "kalshi-btc-15m-day-zip-v1",
+      "availabilityStatus": "local-governed-raw"
+    },
+    {
+      "utcDate": "2026-09-18",
+      "vendorFileId": "kalshi-btc-15m_2026-09-18.zip",
+      "ownershipStatus": "owned",
+      "byteSize": 1526744808,
+      "vendorChecksumSha256": "4c713ef0d33dd892ddc9de0eb2a37372fd91990af67380b91cbb53f1ad0742dc",
+      "formatVersion": "kalshi-btc-15m-day-zip-v1",
+      "availabilityStatus": "quality-audit-owned"
+    },
+    {
+      "utcDate": "2026-09-19",
+      "ownershipStatus": "owned",
+      "byteSize": 1084116889,
+      "vendorChecksumSha256": "6d2e7deb47fc8825a675fbbe4cb2358b9d6e10ddc727b966eb32473d24a42d58",
+      "formatVersion": "kalshi-btc-15m-day-zip-v1",
+      "availabilityStatus": "local-governed-raw"
+    },
+    {
+      "utcDate": "2026-09-20",
+      "vendorFileId": "kalshi-btc-15m_2026-09-20.zip",
+      "ownershipStatus": "owned",
+      "byteSize": 1172418621,
+      "vendorChecksumSha256": "52836856281fbc78e8c9593fbc0a35e5eb166792746924a28becde6c97baf2e4",
+      "formatVersion": "kalshi-btc-15m-day-zip-v1",
+      "availabilityStatus": "quality-audit-owned"
+    },
+    {
+      "utcDate": "2026-09-21",
+      "ownershipStatus": "owned",
+      "byteSize": 1544693971,
+      "vendorChecksumSha256": "19de93dd26b6ba3d08688defde1176df92bae8868023945d1d65d9bc2c5f7f8f",
+      "formatVersion": "kalshi-btc-15m-day-zip-v1",
+      "availabilityStatus": "local-governed-raw"
+    }
+  ],
+  "availableUnownedUtcDates": [],
+  "subscription": {
+    "readable": false,
+    "tier": null,
+    "availableCredits": null,
+    "autonomousPurchasePolicy": null,
+    "note": "Subscription/credits not readable without CryptoStruct MCP connection"
+  },
+  "creditsSpentThisTask": 0,
+  "filesPurchasedThisTask": 0,
+  "filesDownloadedThisTask": 0,
+  "filesRestoredThisTask": 0,
+  "inventoryContentSha256": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718"
+}

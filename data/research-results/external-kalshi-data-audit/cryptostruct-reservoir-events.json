@@ -1,0 +1,2541 @@
+{
+  "ledgerVersion": "cryptostruct-kxbtc15m-research-reservoir-events-v1",
+  "provider": "CryptoStruct",
+  "series": "KXBTC15M",
+  "events": [
+    {
+      "eventType": "inventory-imported",
+      "utcDate": null,
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": null,
+      "newState": null,
+      "reason": "m17-prep-offline-repo-authority-inventory",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": null,
+      "researchLineage": null,
+      "primaryResultIdentity": null,
+      "sourceArtifactIdentities": [
+        "data/research-results/external-kalshi-data-audit/m16-er-acquisition-manifest.json",
+        "data/research-results/external-kalshi-data-audit/m16-er-primary-economic-result.json",
+        "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": null,
+      "eventId": "83b7dae7f24cf2a7c4fab601f2c5660a"
+    },
+    {
+      "eventType": "vendor-availability-observed",
+      "utcDate": "2026-08-14",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": null,
+      "newState": null,
+      "reason": "catalog-freeze-complete-recording-coverage",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": null,
+      "researchLineage": null,
+      "primaryResultIdentity": null,
+      "sourceArtifactIdentities": [
+        "src/lib/data/research/cryptostructDatasetGovernance/universe.ts"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "vendorAvailable": true,
+        "owned": false
+      },
+      "eventId": "1beb369c9b5f27552edf8d1a3d22a958"
+    },
+    {
+      "eventType": "vendor-availability-observed",
+      "utcDate": "2026-08-15",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": null,
+      "newState": null,
+      "reason": "catalog-freeze-complete-recording-coverage",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": null,
+      "researchLineage": null,
+      "primaryResultIdentity": null,
+      "sourceArtifactIdentities": [
+        "src/lib/data/research/cryptostructDatasetGovernance/universe.ts"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "vendorAvailable": true,
+        "owned": false
+      },
+      "eventId": "07c22f9a21339294d57aae0b11d2aa3e"
+    },
+    {
+      "eventType": "vendor-availability-observed",
+      "utcDate": "2026-08-16",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": null,
+      "newState": null,
+      "reason": "catalog-freeze-complete-recording-coverage",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": null,
+      "researchLineage": null,
+      "primaryResultIdentity": null,
+      "sourceArtifactIdentities": [
+        "src/lib/data/research/cryptostructDatasetGovernance/universe.ts"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "vendorAvailable": true,
+        "owned": false
+      },
+      "eventId": "c552e1bdb79e1276e0f9665d6b0c0905"
+    },
+    {
+      "eventType": "vendor-availability-observed",
+      "utcDate": "2026-08-17",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": null,
+      "newState": null,
+      "reason": "catalog-freeze-complete-recording-coverage",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": null,
+      "researchLineage": null,
+      "primaryResultIdentity": null,
+      "sourceArtifactIdentities": [
+        "src/lib/data/research/cryptostructDatasetGovernance/universe.ts"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "vendorAvailable": true,
+        "owned": false
+      },
+      "eventId": "c67e6dcddd745c52de6e5cd7150b91cd"
+    },
+    {
+      "eventType": "vendor-availability-observed",
+      "utcDate": "2026-08-18",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": null,
+      "newState": null,
+      "reason": "catalog-freeze-complete-recording-coverage",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": null,
+      "researchLineage": null,
+      "primaryResultIdentity": null,
+      "sourceArtifactIdentities": [
+        "src/lib/data/research/cryptostructDatasetGovernance/universe.ts"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "vendorAvailable": true,
+        "owned": false
+      },
+      "eventId": "d42dde378fb6b104908bd29b2edfbee0"
+    },
+    {
+      "eventType": "vendor-availability-observed",
+      "utcDate": "2026-08-19",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": null,
+      "newState": null,
+      "reason": "catalog-freeze-complete-recording-coverage",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": null,
+      "researchLineage": null,
+      "primaryResultIdentity": null,
+      "sourceArtifactIdentities": [
+        "src/lib/data/research/cryptostructDatasetGovernance/universe.ts"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "vendorAvailable": true,
+        "owned": false
+      },
+      "eventId": "053cd4702b66e385b4280245722d6192"
+    },
+    {
+      "eventType": "vendor-availability-observed",
+      "utcDate": "2026-08-20",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": null,
+      "newState": null,
+      "reason": "catalog-freeze-complete-recording-coverage",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": null,
+      "researchLineage": null,
+      "primaryResultIdentity": null,
+      "sourceArtifactIdentities": [
+        "src/lib/data/research/cryptostructDatasetGovernance/universe.ts"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "vendorAvailable": true,
+        "owned": false
+      },
+      "eventId": "bf0569433a40a382a2788c45a84ae145"
+    },
+    {
+      "eventType": "vendor-availability-observed",
+      "utcDate": "2026-08-21",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": null,
+      "newState": null,
+      "reason": "catalog-freeze-complete-recording-coverage",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": null,
+      "researchLineage": null,
+      "primaryResultIdentity": null,
+      "sourceArtifactIdentities": [
+        "src/lib/data/research/cryptostructDatasetGovernance/universe.ts"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "vendorAvailable": true,
+        "owned": false
+      },
+      "eventId": "11fda5a70f90836cff58350081023a12"
+    },
+    {
+      "eventType": "vendor-availability-observed",
+      "utcDate": "2026-08-22",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": null,
+      "newState": null,
+      "reason": "catalog-freeze-complete-recording-coverage",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": null,
+      "researchLineage": null,
+      "primaryResultIdentity": null,
+      "sourceArtifactIdentities": [
+        "src/lib/data/research/cryptostructDatasetGovernance/universe.ts"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "vendorAvailable": true,
+        "owned": false
+      },
+      "eventId": "4812ca725d8bf50602cb79b88a310af2"
+    },
+    {
+      "eventType": "vendor-availability-observed",
+      "utcDate": "2026-08-23",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": null,
+      "newState": null,
+      "reason": "catalog-freeze-complete-recording-coverage",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": null,
+      "researchLineage": null,
+      "primaryResultIdentity": null,
+      "sourceArtifactIdentities": [
+        "src/lib/data/research/cryptostructDatasetGovernance/universe.ts"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "vendorAvailable": true,
+        "owned": false
+      },
+      "eventId": "7f41b2d944843579201e1c16ca9562fd"
+    },
+    {
+      "eventType": "vendor-availability-observed",
+      "utcDate": "2026-08-24",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": null,
+      "newState": null,
+      "reason": "catalog-freeze-complete-recording-coverage",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": null,
+      "researchLineage": null,
+      "primaryResultIdentity": null,
+      "sourceArtifactIdentities": [
+        "src/lib/data/research/cryptostructDatasetGovernance/universe.ts"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "vendorAvailable": true,
+        "owned": false
+      },
+      "eventId": "132b2d86e1a95e65ede249c5707efe97"
+    },
+    {
+      "eventType": "vendor-availability-observed",
+      "utcDate": "2026-08-25",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": null,
+      "newState": null,
+      "reason": "catalog-freeze-complete-recording-coverage",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": null,
+      "researchLineage": null,
+      "primaryResultIdentity": null,
+      "sourceArtifactIdentities": [
+        "src/lib/data/research/cryptostructDatasetGovernance/universe.ts"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "vendorAvailable": true,
+        "owned": false
+      },
+      "eventId": "3196f23d4f60e0841fde2205d5096ec8"
+    },
+    {
+      "eventType": "vendor-availability-observed",
+      "utcDate": "2026-08-26",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": null,
+      "newState": null,
+      "reason": "catalog-freeze-complete-recording-coverage",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": null,
+      "researchLineage": null,
+      "primaryResultIdentity": null,
+      "sourceArtifactIdentities": [
+        "src/lib/data/research/cryptostructDatasetGovernance/universe.ts"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "vendorAvailable": true,
+        "owned": false
+      },
+      "eventId": "05e8a19e14b004a7d4af3ad0b0c6418d"
+    },
+    {
+      "eventType": "vendor-availability-observed",
+      "utcDate": "2026-08-27",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": null,
+      "newState": null,
+      "reason": "catalog-freeze-complete-recording-coverage",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": null,
+      "researchLineage": null,
+      "primaryResultIdentity": null,
+      "sourceArtifactIdentities": [
+        "src/lib/data/research/cryptostructDatasetGovernance/universe.ts"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "vendorAvailable": true,
+        "owned": false
+      },
+      "eventId": "67abad05cb7f2283cda8bd79dfb9132c"
+    },
+    {
+      "eventType": "vendor-availability-observed",
+      "utcDate": "2026-08-28",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": null,
+      "newState": null,
+      "reason": "catalog-freeze-complete-recording-coverage",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": null,
+      "researchLineage": null,
+      "primaryResultIdentity": null,
+      "sourceArtifactIdentities": [
+        "src/lib/data/research/cryptostructDatasetGovernance/universe.ts"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "vendorAvailable": true,
+        "owned": false
+      },
+      "eventId": "ad2a7fd412e860ea796387d838e68ddf"
+    },
+    {
+      "eventType": "vendor-availability-observed",
+      "utcDate": "2026-08-29",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": null,
+      "newState": null,
+      "reason": "catalog-freeze-complete-recording-coverage",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": null,
+      "researchLineage": null,
+      "primaryResultIdentity": null,
+      "sourceArtifactIdentities": [
+        "src/lib/data/research/cryptostructDatasetGovernance/universe.ts"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "vendorAvailable": true,
+        "owned": false
+      },
+      "eventId": "78548afc6cd9f7dee918fd8d4c288b2d"
+    },
+    {
+      "eventType": "vendor-availability-observed",
+      "utcDate": "2026-08-30",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": null,
+      "newState": null,
+      "reason": "catalog-freeze-complete-recording-coverage",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": null,
+      "researchLineage": null,
+      "primaryResultIdentity": null,
+      "sourceArtifactIdentities": [
+        "src/lib/data/research/cryptostructDatasetGovernance/universe.ts"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "vendorAvailable": true,
+        "owned": false
+      },
+      "eventId": "b60c6adbf077e27f9cfa9e02796f1418"
+    },
+    {
+      "eventType": "vendor-availability-observed",
+      "utcDate": "2026-08-31",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": null,
+      "newState": null,
+      "reason": "catalog-freeze-complete-recording-coverage",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": null,
+      "researchLineage": null,
+      "primaryResultIdentity": null,
+      "sourceArtifactIdentities": [
+        "src/lib/data/research/cryptostructDatasetGovernance/universe.ts"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "vendorAvailable": true,
+        "owned": false
+      },
+      "eventId": "7bef4596f3b9482210a8eaff8da77541"
+    },
+    {
+      "eventType": "vendor-availability-observed",
+      "utcDate": "2026-09-01",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": null,
+      "newState": null,
+      "reason": "catalog-freeze-complete-recording-coverage",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": null,
+      "researchLineage": null,
+      "primaryResultIdentity": null,
+      "sourceArtifactIdentities": [
+        "src/lib/data/research/cryptostructDatasetGovernance/universe.ts"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "vendorAvailable": true,
+        "owned": false
+      },
+      "eventId": "7ec170bbf6cee70386cabfe9b342689d"
+    },
+    {
+      "eventType": "vendor-availability-observed",
+      "utcDate": "2026-09-02",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": null,
+      "newState": null,
+      "reason": "catalog-freeze-complete-recording-coverage",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": null,
+      "researchLineage": null,
+      "primaryResultIdentity": null,
+      "sourceArtifactIdentities": [
+        "src/lib/data/research/cryptostructDatasetGovernance/universe.ts"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "vendorAvailable": true,
+        "owned": false
+      },
+      "eventId": "0c27781a7e7e44494093a03488238447"
+    },
+    {
+      "eventType": "vendor-availability-observed",
+      "utcDate": "2026-09-03",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": null,
+      "newState": null,
+      "reason": "catalog-freeze-complete-recording-coverage",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": null,
+      "researchLineage": null,
+      "primaryResultIdentity": null,
+      "sourceArtifactIdentities": [
+        "src/lib/data/research/cryptostructDatasetGovernance/universe.ts"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "vendorAvailable": true,
+        "owned": false
+      },
+      "eventId": "2d86b889f58d87b6a6b7d9ba27b8e2a3"
+    },
+    {
+      "eventType": "vendor-availability-observed",
+      "utcDate": "2026-09-04",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": null,
+      "newState": null,
+      "reason": "catalog-freeze-complete-recording-coverage",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": null,
+      "researchLineage": null,
+      "primaryResultIdentity": null,
+      "sourceArtifactIdentities": [
+        "src/lib/data/research/cryptostructDatasetGovernance/universe.ts"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "vendorAvailable": true,
+        "owned": false
+      },
+      "eventId": "452363dc224e2db0f190ada538565ada"
+    },
+    {
+      "eventType": "vendor-availability-observed",
+      "utcDate": "2026-09-05",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": null,
+      "newState": null,
+      "reason": "catalog-freeze-complete-recording-coverage",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": null,
+      "researchLineage": null,
+      "primaryResultIdentity": null,
+      "sourceArtifactIdentities": [
+        "src/lib/data/research/cryptostructDatasetGovernance/universe.ts"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "vendorAvailable": true,
+        "owned": false
+      },
+      "eventId": "28f325379d7b5f4e0b76b284b260501b"
+    },
+    {
+      "eventType": "vendor-availability-observed",
+      "utcDate": "2026-09-06",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": null,
+      "newState": null,
+      "reason": "catalog-freeze-complete-recording-coverage",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": null,
+      "researchLineage": null,
+      "primaryResultIdentity": null,
+      "sourceArtifactIdentities": [
+        "src/lib/data/research/cryptostructDatasetGovernance/universe.ts"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "vendorAvailable": true,
+        "owned": false
+      },
+      "eventId": "7bbd07199b9ece7667f417e85b1f6d65"
+    },
+    {
+      "eventType": "vendor-availability-observed",
+      "utcDate": "2026-09-07",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": null,
+      "newState": null,
+      "reason": "catalog-freeze-complete-recording-coverage",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": null,
+      "researchLineage": null,
+      "primaryResultIdentity": null,
+      "sourceArtifactIdentities": [
+        "src/lib/data/research/cryptostructDatasetGovernance/universe.ts"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "vendorAvailable": true,
+        "owned": false
+      },
+      "eventId": "415bb4023cd3f2462b4fa646718076cf"
+    },
+    {
+      "eventType": "vendor-availability-observed",
+      "utcDate": "2026-09-08",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": null,
+      "newState": null,
+      "reason": "catalog-freeze-complete-recording-coverage",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": null,
+      "researchLineage": null,
+      "primaryResultIdentity": null,
+      "sourceArtifactIdentities": [
+        "src/lib/data/research/cryptostructDatasetGovernance/universe.ts"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "vendorAvailable": true,
+        "owned": false
+      },
+      "eventId": "b3b2b4a53224327001470adb21873521"
+    },
+    {
+      "eventType": "vendor-availability-observed",
+      "utcDate": "2026-09-09",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": null,
+      "newState": null,
+      "reason": "catalog-freeze-complete-recording-coverage",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": null,
+      "researchLineage": null,
+      "primaryResultIdentity": null,
+      "sourceArtifactIdentities": [
+        "src/lib/data/research/cryptostructDatasetGovernance/universe.ts"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "vendorAvailable": true,
+        "owned": false
+      },
+      "eventId": "b71c501cde176d9e6b8f2cf1c1a7316d"
+    },
+    {
+      "eventType": "vendor-availability-observed",
+      "utcDate": "2026-09-10",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": null,
+      "newState": null,
+      "reason": "catalog-freeze-complete-recording-coverage",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": null,
+      "researchLineage": null,
+      "primaryResultIdentity": null,
+      "sourceArtifactIdentities": [
+        "src/lib/data/research/cryptostructDatasetGovernance/universe.ts"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "vendorAvailable": true,
+        "owned": false
+      },
+      "eventId": "17ff7d8359df94d479dd0ba13426510b"
+    },
+    {
+      "eventType": "vendor-availability-observed",
+      "utcDate": "2026-09-11",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": null,
+      "newState": null,
+      "reason": "catalog-freeze-complete-recording-coverage",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": null,
+      "researchLineage": null,
+      "primaryResultIdentity": null,
+      "sourceArtifactIdentities": [
+        "src/lib/data/research/cryptostructDatasetGovernance/universe.ts"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "vendorAvailable": true,
+        "owned": false
+      },
+      "eventId": "bf1b57889664b4e5464a5cecb30aa8a9"
+    },
+    {
+      "eventType": "vendor-availability-observed",
+      "utcDate": "2026-09-12",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": null,
+      "newState": null,
+      "reason": "catalog-freeze-complete-recording-coverage",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": null,
+      "researchLineage": null,
+      "primaryResultIdentity": null,
+      "sourceArtifactIdentities": [
+        "src/lib/data/research/cryptostructDatasetGovernance/universe.ts"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "vendorAvailable": true,
+        "owned": false
+      },
+      "eventId": "2b1db67fbc71a89063f821f08203ca91"
+    },
+    {
+      "eventType": "vendor-availability-observed",
+      "utcDate": "2026-09-13",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": null,
+      "newState": null,
+      "reason": "catalog-freeze-complete-recording-coverage",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": null,
+      "researchLineage": null,
+      "primaryResultIdentity": null,
+      "sourceArtifactIdentities": [
+        "src/lib/data/research/cryptostructDatasetGovernance/universe.ts"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "vendorAvailable": true,
+        "owned": false
+      },
+      "eventId": "594b32d4466f08fdf1432ff50db20f85"
+    },
+    {
+      "eventType": "vendor-availability-observed",
+      "utcDate": "2026-09-14",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": null,
+      "newState": null,
+      "reason": "catalog-freeze-complete-recording-coverage",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": null,
+      "researchLineage": null,
+      "primaryResultIdentity": null,
+      "sourceArtifactIdentities": [
+        "src/lib/data/research/cryptostructDatasetGovernance/universe.ts"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "vendorAvailable": true,
+        "owned": false
+      },
+      "eventId": "af1d358f23daa6a875ed451793854925"
+    },
+    {
+      "eventType": "vendor-availability-observed",
+      "utcDate": "2026-09-15",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": null,
+      "newState": null,
+      "reason": "catalog-freeze-complete-recording-coverage",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": null,
+      "researchLineage": null,
+      "primaryResultIdentity": null,
+      "sourceArtifactIdentities": [
+        "src/lib/data/research/cryptostructDatasetGovernance/universe.ts"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "vendorAvailable": true,
+        "owned": false
+      },
+      "eventId": "b47f10f6829735ad07de42ee3c074f9f"
+    },
+    {
+      "eventType": "vendor-availability-observed",
+      "utcDate": "2026-09-16",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": null,
+      "newState": null,
+      "reason": "catalog-freeze-complete-recording-coverage",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": null,
+      "researchLineage": null,
+      "primaryResultIdentity": null,
+      "sourceArtifactIdentities": [
+        "src/lib/data/research/cryptostructDatasetGovernance/universe.ts"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "vendorAvailable": true,
+        "owned": false
+      },
+      "eventId": "888ef6f43ff47caecce80a7782fc4bc6"
+    },
+    {
+      "eventType": "vendor-availability-observed",
+      "utcDate": "2026-09-17",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": null,
+      "newState": null,
+      "reason": "catalog-freeze-complete-recording-coverage",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": null,
+      "researchLineage": null,
+      "primaryResultIdentity": null,
+      "sourceArtifactIdentities": [
+        "src/lib/data/research/cryptostructDatasetGovernance/universe.ts"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "vendorAvailable": true,
+        "owned": false
+      },
+      "eventId": "a962e32d5c060497eccd93285a00ac32"
+    },
+    {
+      "eventType": "vendor-availability-observed",
+      "utcDate": "2026-09-18",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": null,
+      "newState": null,
+      "reason": "catalog-freeze-complete-recording-coverage",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": null,
+      "researchLineage": null,
+      "primaryResultIdentity": null,
+      "sourceArtifactIdentities": [
+        "src/lib/data/research/cryptostructDatasetGovernance/universe.ts"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "vendorAvailable": true,
+        "owned": false
+      },
+      "eventId": "4b26fd45e4c937f2ebe48ab3856f74f0"
+    },
+    {
+      "eventType": "vendor-availability-observed",
+      "utcDate": "2026-09-19",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": null,
+      "newState": null,
+      "reason": "catalog-freeze-complete-recording-coverage",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": null,
+      "researchLineage": null,
+      "primaryResultIdentity": null,
+      "sourceArtifactIdentities": [
+        "src/lib/data/research/cryptostructDatasetGovernance/universe.ts"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "vendorAvailable": true,
+        "owned": false
+      },
+      "eventId": "31fe1b190fad802598f4141ca4e589c7"
+    },
+    {
+      "eventType": "vendor-availability-observed",
+      "utcDate": "2026-09-20",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": null,
+      "newState": null,
+      "reason": "catalog-freeze-complete-recording-coverage",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": null,
+      "researchLineage": null,
+      "primaryResultIdentity": null,
+      "sourceArtifactIdentities": [
+        "src/lib/data/research/cryptostructDatasetGovernance/universe.ts"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "vendorAvailable": true,
+        "owned": false
+      },
+      "eventId": "95e6dc0267ed2167b2c8069d3582f378"
+    },
+    {
+      "eventType": "vendor-availability-observed",
+      "utcDate": "2026-09-21",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": null,
+      "newState": null,
+      "reason": "catalog-freeze-complete-recording-coverage",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": null,
+      "researchLineage": null,
+      "primaryResultIdentity": null,
+      "sourceArtifactIdentities": [
+        "src/lib/data/research/cryptostructDatasetGovernance/universe.ts"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "vendorAvailable": true,
+        "owned": false
+      },
+      "eventId": "f82c33c60527bfe75a7687d06b3652fe"
+    },
+    {
+      "eventType": "quality-audit-burned",
+      "utcDate": "2026-09-08",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": "AVAILABLE_UNOWNED",
+      "newState": "QUALITY_AUDIT_ONLY",
+      "reason": "Permanently QUALITY_AUDIT_ONLY from CryptoStruct source-equivalence / fidelity audit",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": null,
+      "researchLineage": "cryptostruct-source-equivalence",
+      "primaryResultIdentity": null,
+      "sourceArtifactIdentities": [
+        "src/lib/data/research/cryptostructDatasetGovernance/ledger.ts",
+        "data/research-results/external-kalshi-data-audit/m16-source-equivalence-audit.md"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "owned": true,
+        "vendorAvailable": true,
+        "byteSize": 1190648632,
+        "rawZipSha256": "91d890acc77db122b4dbaf5dbf1cae4c8151506dfe52ae37639235c88001e27d",
+        "vendorFileId": "kalshi-btc-15m_2026-09-08.zip",
+        "notes": "Never validation/HOLDOUT"
+      },
+      "eventId": "430c621f29c13cb401772061cf6b90f8"
+    },
+    {
+      "eventType": "quality-audit-burned",
+      "utcDate": "2026-09-09",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": "AVAILABLE_UNOWNED",
+      "newState": "QUALITY_AUDIT_ONLY",
+      "reason": "Permanently QUALITY_AUDIT_ONLY from CryptoStruct source-equivalence / fidelity audit",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": null,
+      "researchLineage": "cryptostruct-source-equivalence",
+      "primaryResultIdentity": null,
+      "sourceArtifactIdentities": [
+        "src/lib/data/research/cryptostructDatasetGovernance/ledger.ts",
+        "data/research-results/external-kalshi-data-audit/m16-source-equivalence-audit.md"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "owned": true,
+        "vendorAvailable": true,
+        "byteSize": 1197691318,
+        "rawZipSha256": "f468b653c740a8c55058e8558cfceb61f1d4ffad5be3aff634fddd21d31b1e91",
+        "vendorFileId": "kalshi-btc-15m_2026-09-09.zip",
+        "notes": "Never validation/HOLDOUT"
+      },
+      "eventId": "bceda6d41d0d3961fda670ed5f3ce2ca"
+    },
+    {
+      "eventType": "quality-audit-burned",
+      "utcDate": "2026-09-14",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": "AVAILABLE_UNOWNED",
+      "newState": "QUALITY_AUDIT_ONLY",
+      "reason": "Permanently QUALITY_AUDIT_ONLY from CryptoStruct source-equivalence / fidelity audit",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": null,
+      "researchLineage": "cryptostruct-source-equivalence",
+      "primaryResultIdentity": null,
+      "sourceArtifactIdentities": [
+        "src/lib/data/research/cryptostructDatasetGovernance/ledger.ts",
+        "data/research-results/external-kalshi-data-audit/m16-source-equivalence-audit.md"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "owned": true,
+        "vendorAvailable": true,
+        "byteSize": 1350578112,
+        "rawZipSha256": "fb65ac61071b2ec0a757701634a411e03fe7040ea939438a97afd62117d09d54",
+        "vendorFileId": "kalshi-btc-15m_2026-09-14.zip",
+        "notes": "Never validation/HOLDOUT"
+      },
+      "eventId": "efcbb26d5477b52d5da1b92173538144"
+    },
+    {
+      "eventType": "quality-audit-burned",
+      "utcDate": "2026-09-18",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": "AVAILABLE_UNOWNED",
+      "newState": "QUALITY_AUDIT_ONLY",
+      "reason": "Permanently QUALITY_AUDIT_ONLY from CryptoStruct source-equivalence / fidelity audit",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": null,
+      "researchLineage": "cryptostruct-source-equivalence",
+      "primaryResultIdentity": null,
+      "sourceArtifactIdentities": [
+        "src/lib/data/research/cryptostructDatasetGovernance/ledger.ts",
+        "data/research-results/external-kalshi-data-audit/m16-source-equivalence-audit.md"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "owned": true,
+        "vendorAvailable": true,
+        "byteSize": 1526744808,
+        "rawZipSha256": "4c713ef0d33dd892ddc9de0eb2a37372fd91990af67380b91cbb53f1ad0742dc",
+        "vendorFileId": "kalshi-btc-15m_2026-09-18.zip",
+        "notes": "Never validation/HOLDOUT"
+      },
+      "eventId": "a5b283288f298ab83989978b3c8f0083"
+    },
+    {
+      "eventType": "quality-audit-burned",
+      "utcDate": "2026-09-20",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": "AVAILABLE_UNOWNED",
+      "newState": "QUALITY_AUDIT_ONLY",
+      "reason": "Permanently QUALITY_AUDIT_ONLY from CryptoStruct source-equivalence / fidelity audit",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": null,
+      "researchLineage": "cryptostruct-source-equivalence",
+      "primaryResultIdentity": null,
+      "sourceArtifactIdentities": [
+        "src/lib/data/research/cryptostructDatasetGovernance/ledger.ts",
+        "data/research-results/external-kalshi-data-audit/m16-source-equivalence-audit.md"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "owned": true,
+        "vendorAvailable": true,
+        "byteSize": 1172418621,
+        "rawZipSha256": "52836856281fbc78e8c9593fbc0a35e5eb166792746924a28becde6c97baf2e4",
+        "vendorFileId": "kalshi-btc-15m_2026-09-20.zip",
+        "notes": "Never validation/HOLDOUT"
+      },
+      "eventId": "856a02fd9926c8e94c0f563e2cfa9685"
+    },
+    {
+      "eventType": "validation-opened",
+      "utcDate": "2026-08-14",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": "AVAILABLE_UNOWNED",
+      "newState": "SPENT_VALIDATION",
+      "reason": "M16-ER economic outcomes opened under human authorization (PR #110); not pristine for future confirmatory use",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": "3f4fdf157b3eb6eb775c8e2f4bab4272e23cfa22a7179fed29fb135012207c65",
+      "researchLineage": "M16-ER",
+      "primaryResultIdentity": "e6aba34ee5352c38254894babf1e7f7b2c668945dd95c9b92a370550b81b2fea",
+      "sourceArtifactIdentities": [
+        "data/research-results/external-kalshi-data-audit/m16-er-primary-economic-result.json",
+        "data/research-results/external-kalshi-data-audit/m16-er-acquisition-manifest.json",
+        "data/research-results/external-kalshi-data-audit/m16-er-outcome-open-authorization.json"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "owned": true,
+        "vendorAvailable": true,
+        "byteSize": 1020075603,
+        "rawZipSha256": "8baad55dcfa82101266c5f4419fe68a8bba7bd4204ef4dc3bf2d926dc420ee56",
+        "notes": "Also usable as OPEN_DISCOVERY for exploratory work; never resealable"
+      },
+      "eventId": "ae90335c406bc3339dff8bb71bdb67bf"
+    },
+    {
+      "eventType": "opened-for-discovery",
+      "utcDate": "2026-08-14",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": "SPENT_VALIDATION",
+      "newState": "SPENT_VALIDATION",
+      "reason": "M16-ER spent dates remain available for exploratory/discovery research",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": "3f4fdf157b3eb6eb775c8e2f4bab4272e23cfa22a7179fed29fb135012207c65",
+      "researchLineage": "M16-ER",
+      "primaryResultIdentity": "e6aba34ee5352c38254894babf1e7f7b2c668945dd95c9b92a370550b81b2fea",
+      "sourceArtifactIdentities": [
+        "data/research-results/external-kalshi-data-audit/m16-er-primary-economic-result.json"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "notes": "SPENT_VALIDATION with discovery reuse allowed; confirmatory reuse forbidden by default"
+      },
+      "eventId": "0594146280012930df4a7cedce86e532"
+    },
+    {
+      "eventType": "validation-opened",
+      "utcDate": "2026-08-15",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": "AVAILABLE_UNOWNED",
+      "newState": "SPENT_VALIDATION",
+      "reason": "M16-ER economic outcomes opened under human authorization (PR #110); not pristine for future confirmatory use",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": "3f4fdf157b3eb6eb775c8e2f4bab4272e23cfa22a7179fed29fb135012207c65",
+      "researchLineage": "M16-ER",
+      "primaryResultIdentity": "e6aba34ee5352c38254894babf1e7f7b2c668945dd95c9b92a370550b81b2fea",
+      "sourceArtifactIdentities": [
+        "data/research-results/external-kalshi-data-audit/m16-er-primary-economic-result.json",
+        "data/research-results/external-kalshi-data-audit/m16-er-acquisition-manifest.json",
+        "data/research-results/external-kalshi-data-audit/m16-er-outcome-open-authorization.json"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "owned": true,
+        "vendorAvailable": true,
+        "byteSize": 850861314,
+        "rawZipSha256": "5b3da54ee8116f0896330d7f6d85affeb81d3b9803a9b9a77cce56a5f90eda97",
+        "notes": "Also usable as OPEN_DISCOVERY for exploratory work; never resealable"
+      },
+      "eventId": "c6657ca911d0cf4876386f5009c07aa6"
+    },
+    {
+      "eventType": "opened-for-discovery",
+      "utcDate": "2026-08-15",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": "SPENT_VALIDATION",
+      "newState": "SPENT_VALIDATION",
+      "reason": "M16-ER spent dates remain available for exploratory/discovery research",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": "3f4fdf157b3eb6eb775c8e2f4bab4272e23cfa22a7179fed29fb135012207c65",
+      "researchLineage": "M16-ER",
+      "primaryResultIdentity": "e6aba34ee5352c38254894babf1e7f7b2c668945dd95c9b92a370550b81b2fea",
+      "sourceArtifactIdentities": [
+        "data/research-results/external-kalshi-data-audit/m16-er-primary-economic-result.json"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "notes": "SPENT_VALIDATION with discovery reuse allowed; confirmatory reuse forbidden by default"
+      },
+      "eventId": "98f5d67b81243dc8c6dbfdebfa937c35"
+    },
+    {
+      "eventType": "validation-opened",
+      "utcDate": "2026-08-16",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": "AVAILABLE_UNOWNED",
+      "newState": "SPENT_VALIDATION",
+      "reason": "M16-ER economic outcomes opened under human authorization (PR #110); not pristine for future confirmatory use",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": "3f4fdf157b3eb6eb775c8e2f4bab4272e23cfa22a7179fed29fb135012207c65",
+      "researchLineage": "M16-ER",
+      "primaryResultIdentity": "e6aba34ee5352c38254894babf1e7f7b2c668945dd95c9b92a370550b81b2fea",
+      "sourceArtifactIdentities": [
+        "data/research-results/external-kalshi-data-audit/m16-er-primary-economic-result.json",
+        "data/research-results/external-kalshi-data-audit/m16-er-acquisition-manifest.json",
+        "data/research-results/external-kalshi-data-audit/m16-er-outcome-open-authorization.json"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "owned": true,
+        "vendorAvailable": true,
+        "byteSize": 931407761,
+        "rawZipSha256": "b6113229d61cbdeefe07d5b8235034250db58ca5433568b15ed1345a8e1d254b",
+        "notes": "Also usable as OPEN_DISCOVERY for exploratory work; never resealable"
+      },
+      "eventId": "078051c4c828df3b94ed44dd89af0bf5"
+    },
+    {
+      "eventType": "opened-for-discovery",
+      "utcDate": "2026-08-16",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": "SPENT_VALIDATION",
+      "newState": "SPENT_VALIDATION",
+      "reason": "M16-ER spent dates remain available for exploratory/discovery research",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": "3f4fdf157b3eb6eb775c8e2f4bab4272e23cfa22a7179fed29fb135012207c65",
+      "researchLineage": "M16-ER",
+      "primaryResultIdentity": "e6aba34ee5352c38254894babf1e7f7b2c668945dd95c9b92a370550b81b2fea",
+      "sourceArtifactIdentities": [
+        "data/research-results/external-kalshi-data-audit/m16-er-primary-economic-result.json"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "notes": "SPENT_VALIDATION with discovery reuse allowed; confirmatory reuse forbidden by default"
+      },
+      "eventId": "0f2835357b3bda4c8d0ac3431dc23647"
+    },
+    {
+      "eventType": "validation-opened",
+      "utcDate": "2026-08-17",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": "AVAILABLE_UNOWNED",
+      "newState": "SPENT_VALIDATION",
+      "reason": "M16-ER economic outcomes opened under human authorization (PR #110); not pristine for future confirmatory use",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": "3f4fdf157b3eb6eb775c8e2f4bab4272e23cfa22a7179fed29fb135012207c65",
+      "researchLineage": "M16-ER",
+      "primaryResultIdentity": "e6aba34ee5352c38254894babf1e7f7b2c668945dd95c9b92a370550b81b2fea",
+      "sourceArtifactIdentities": [
+        "data/research-results/external-kalshi-data-audit/m16-er-primary-economic-result.json",
+        "data/research-results/external-kalshi-data-audit/m16-er-acquisition-manifest.json",
+        "data/research-results/external-kalshi-data-audit/m16-er-outcome-open-authorization.json"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "owned": true,
+        "vendorAvailable": true,
+        "byteSize": 917798426,
+        "rawZipSha256": "ced0da07b9a44b4566b7ec8005489f77b1ec1614a19b77b7e6850db55fbc7137",
+        "notes": "Also usable as OPEN_DISCOVERY for exploratory work; never resealable"
+      },
+      "eventId": "ffbd6956b0dc9ca6a1cfe4e60a890bb4"
+    },
+    {
+      "eventType": "opened-for-discovery",
+      "utcDate": "2026-08-17",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": "SPENT_VALIDATION",
+      "newState": "SPENT_VALIDATION",
+      "reason": "M16-ER spent dates remain available for exploratory/discovery research",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": "3f4fdf157b3eb6eb775c8e2f4bab4272e23cfa22a7179fed29fb135012207c65",
+      "researchLineage": "M16-ER",
+      "primaryResultIdentity": "e6aba34ee5352c38254894babf1e7f7b2c668945dd95c9b92a370550b81b2fea",
+      "sourceArtifactIdentities": [
+        "data/research-results/external-kalshi-data-audit/m16-er-primary-economic-result.json"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "notes": "SPENT_VALIDATION with discovery reuse allowed; confirmatory reuse forbidden by default"
+      },
+      "eventId": "83bad5f6d1797d2daead06fe6872dfb4"
+    },
+    {
+      "eventType": "validation-opened",
+      "utcDate": "2026-08-18",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": "AVAILABLE_UNOWNED",
+      "newState": "SPENT_VALIDATION",
+      "reason": "M16-ER economic outcomes opened under human authorization (PR #110); not pristine for future confirmatory use",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": "3f4fdf157b3eb6eb775c8e2f4bab4272e23cfa22a7179fed29fb135012207c65",
+      "researchLineage": "M16-ER",
+      "primaryResultIdentity": "e6aba34ee5352c38254894babf1e7f7b2c668945dd95c9b92a370550b81b2fea",
+      "sourceArtifactIdentities": [
+        "data/research-results/external-kalshi-data-audit/m16-er-primary-economic-result.json",
+        "data/research-results/external-kalshi-data-audit/m16-er-acquisition-manifest.json",
+        "data/research-results/external-kalshi-data-audit/m16-er-outcome-open-authorization.json"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "owned": true,
+        "vendorAvailable": true,
+        "byteSize": 940343948,
+        "rawZipSha256": "b4888abfb8443fcd6b6e2481ce651556c1e1f9ebe3851076e3702f225dad4b21",
+        "notes": "Also usable as OPEN_DISCOVERY for exploratory work; never resealable"
+      },
+      "eventId": "306309464999f5e88fd63cb3913c6a0b"
+    },
+    {
+      "eventType": "opened-for-discovery",
+      "utcDate": "2026-08-18",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": "SPENT_VALIDATION",
+      "newState": "SPENT_VALIDATION",
+      "reason": "M16-ER spent dates remain available for exploratory/discovery research",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": "3f4fdf157b3eb6eb775c8e2f4bab4272e23cfa22a7179fed29fb135012207c65",
+      "researchLineage": "M16-ER",
+      "primaryResultIdentity": "e6aba34ee5352c38254894babf1e7f7b2c668945dd95c9b92a370550b81b2fea",
+      "sourceArtifactIdentities": [
+        "data/research-results/external-kalshi-data-audit/m16-er-primary-economic-result.json"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "notes": "SPENT_VALIDATION with discovery reuse allowed; confirmatory reuse forbidden by default"
+      },
+      "eventId": "8a39b49198ffcef7f6a24473a761240b"
+    },
+    {
+      "eventType": "validation-opened",
+      "utcDate": "2026-08-19",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": "AVAILABLE_UNOWNED",
+      "newState": "SPENT_VALIDATION",
+      "reason": "M16-ER economic outcomes opened under human authorization (PR #110); not pristine for future confirmatory use",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": "3f4fdf157b3eb6eb775c8e2f4bab4272e23cfa22a7179fed29fb135012207c65",
+      "researchLineage": "M16-ER",
+      "primaryResultIdentity": "e6aba34ee5352c38254894babf1e7f7b2c668945dd95c9b92a370550b81b2fea",
+      "sourceArtifactIdentities": [
+        "data/research-results/external-kalshi-data-audit/m16-er-primary-economic-result.json",
+        "data/research-results/external-kalshi-data-audit/m16-er-acquisition-manifest.json",
+        "data/research-results/external-kalshi-data-audit/m16-er-outcome-open-authorization.json"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "owned": true,
+        "vendorAvailable": true,
+        "byteSize": 1134566233,
+        "rawZipSha256": "424126bae8fdc74981e654163274240a7f2ef7e2291abd38c15d2c7c6db22c81",
+        "notes": "Also usable as OPEN_DISCOVERY for exploratory work; never resealable"
+      },
+      "eventId": "e1c4633ab9f4a7247b23a6ed645e413f"
+    },
+    {
+      "eventType": "opened-for-discovery",
+      "utcDate": "2026-08-19",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": "SPENT_VALIDATION",
+      "newState": "SPENT_VALIDATION",
+      "reason": "M16-ER spent dates remain available for exploratory/discovery research",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": "3f4fdf157b3eb6eb775c8e2f4bab4272e23cfa22a7179fed29fb135012207c65",
+      "researchLineage": "M16-ER",
+      "primaryResultIdentity": "e6aba34ee5352c38254894babf1e7f7b2c668945dd95c9b92a370550b81b2fea",
+      "sourceArtifactIdentities": [
+        "data/research-results/external-kalshi-data-audit/m16-er-primary-economic-result.json"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "notes": "SPENT_VALIDATION with discovery reuse allowed; confirmatory reuse forbidden by default"
+      },
+      "eventId": "8c08a89f463980a57975cc346e365039"
+    },
+    {
+      "eventType": "validation-opened",
+      "utcDate": "2026-08-20",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": "AVAILABLE_UNOWNED",
+      "newState": "SPENT_VALIDATION",
+      "reason": "M16-ER economic outcomes opened under human authorization (PR #110); not pristine for future confirmatory use",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": "3f4fdf157b3eb6eb775c8e2f4bab4272e23cfa22a7179fed29fb135012207c65",
+      "researchLineage": "M16-ER",
+      "primaryResultIdentity": "e6aba34ee5352c38254894babf1e7f7b2c668945dd95c9b92a370550b81b2fea",
+      "sourceArtifactIdentities": [
+        "data/research-results/external-kalshi-data-audit/m16-er-primary-economic-result.json",
+        "data/research-results/external-kalshi-data-audit/m16-er-acquisition-manifest.json",
+        "data/research-results/external-kalshi-data-audit/m16-er-outcome-open-authorization.json"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "owned": true,
+        "vendorAvailable": true,
+        "byteSize": 1142696257,
+        "rawZipSha256": "bd3056b63a50745a0a5d01ab391e12ec0d1ae2bb03625f9416e13e8bde4bcfe9",
+        "notes": "Also usable as OPEN_DISCOVERY for exploratory work; never resealable"
+      },
+      "eventId": "05b888a2deaada5e9063129ebda625a7"
+    },
+    {
+      "eventType": "opened-for-discovery",
+      "utcDate": "2026-08-20",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": "SPENT_VALIDATION",
+      "newState": "SPENT_VALIDATION",
+      "reason": "M16-ER spent dates remain available for exploratory/discovery research",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": "3f4fdf157b3eb6eb775c8e2f4bab4272e23cfa22a7179fed29fb135012207c65",
+      "researchLineage": "M16-ER",
+      "primaryResultIdentity": "e6aba34ee5352c38254894babf1e7f7b2c668945dd95c9b92a370550b81b2fea",
+      "sourceArtifactIdentities": [
+        "data/research-results/external-kalshi-data-audit/m16-er-primary-economic-result.json"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "notes": "SPENT_VALIDATION with discovery reuse allowed; confirmatory reuse forbidden by default"
+      },
+      "eventId": "63af9092756dc221b7704d636dd61695"
+    },
+    {
+      "eventType": "validation-opened",
+      "utcDate": "2026-08-21",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": "AVAILABLE_UNOWNED",
+      "newState": "SPENT_VALIDATION",
+      "reason": "M16-ER economic outcomes opened under human authorization (PR #110); not pristine for future confirmatory use",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": "3f4fdf157b3eb6eb775c8e2f4bab4272e23cfa22a7179fed29fb135012207c65",
+      "researchLineage": "M16-ER",
+      "primaryResultIdentity": "e6aba34ee5352c38254894babf1e7f7b2c668945dd95c9b92a370550b81b2fea",
+      "sourceArtifactIdentities": [
+        "data/research-results/external-kalshi-data-audit/m16-er-primary-economic-result.json",
+        "data/research-results/external-kalshi-data-audit/m16-er-acquisition-manifest.json",
+        "data/research-results/external-kalshi-data-audit/m16-er-outcome-open-authorization.json"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "owned": true,
+        "vendorAvailable": true,
+        "byteSize": 1542280706,
+        "rawZipSha256": "656c76db4bd11e8fc0e6fe09c16a59146d97919b0d6d6f28c2ba9201219f353c",
+        "notes": "Also usable as OPEN_DISCOVERY for exploratory work; never resealable"
+      },
+      "eventId": "cef3d0dc1dde463503895b7dcdf3c4c4"
+    },
+    {
+      "eventType": "opened-for-discovery",
+      "utcDate": "2026-08-21",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": "SPENT_VALIDATION",
+      "newState": "SPENT_VALIDATION",
+      "reason": "M16-ER spent dates remain available for exploratory/discovery research",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": "3f4fdf157b3eb6eb775c8e2f4bab4272e23cfa22a7179fed29fb135012207c65",
+      "researchLineage": "M16-ER",
+      "primaryResultIdentity": "e6aba34ee5352c38254894babf1e7f7b2c668945dd95c9b92a370550b81b2fea",
+      "sourceArtifactIdentities": [
+        "data/research-results/external-kalshi-data-audit/m16-er-primary-economic-result.json"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "notes": "SPENT_VALIDATION with discovery reuse allowed; confirmatory reuse forbidden by default"
+      },
+      "eventId": "d4a40921c6b3e7083a8b3b2fe0721314"
+    },
+    {
+      "eventType": "validation-opened",
+      "utcDate": "2026-08-22",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": "AVAILABLE_UNOWNED",
+      "newState": "SPENT_VALIDATION",
+      "reason": "M16-ER economic outcomes opened under human authorization (PR #110); not pristine for future confirmatory use",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": "3f4fdf157b3eb6eb775c8e2f4bab4272e23cfa22a7179fed29fb135012207c65",
+      "researchLineage": "M16-ER",
+      "primaryResultIdentity": "e6aba34ee5352c38254894babf1e7f7b2c668945dd95c9b92a370550b81b2fea",
+      "sourceArtifactIdentities": [
+        "data/research-results/external-kalshi-data-audit/m16-er-primary-economic-result.json",
+        "data/research-results/external-kalshi-data-audit/m16-er-acquisition-manifest.json",
+        "data/research-results/external-kalshi-data-audit/m16-er-outcome-open-authorization.json"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "owned": true,
+        "vendorAvailable": true,
+        "byteSize": 1217666650,
+        "rawZipSha256": "f1ccccc5481f0ea38fec9cc5456cd72366e6e0f29861558d30ca78850f767226",
+        "notes": "Also usable as OPEN_DISCOVERY for exploratory work; never resealable"
+      },
+      "eventId": "5953d85c5d76f0855967acd1cc488621"
+    },
+    {
+      "eventType": "opened-for-discovery",
+      "utcDate": "2026-08-22",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": "SPENT_VALIDATION",
+      "newState": "SPENT_VALIDATION",
+      "reason": "M16-ER spent dates remain available for exploratory/discovery research",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": "3f4fdf157b3eb6eb775c8e2f4bab4272e23cfa22a7179fed29fb135012207c65",
+      "researchLineage": "M16-ER",
+      "primaryResultIdentity": "e6aba34ee5352c38254894babf1e7f7b2c668945dd95c9b92a370550b81b2fea",
+      "sourceArtifactIdentities": [
+        "data/research-results/external-kalshi-data-audit/m16-er-primary-economic-result.json"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "notes": "SPENT_VALIDATION with discovery reuse allowed; confirmatory reuse forbidden by default"
+      },
+      "eventId": "cd6f96576b9744f03d4dfc9131e90218"
+    },
+    {
+      "eventType": "validation-opened",
+      "utcDate": "2026-08-23",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": "AVAILABLE_UNOWNED",
+      "newState": "SPENT_VALIDATION",
+      "reason": "M16-ER economic outcomes opened under human authorization (PR #110); not pristine for future confirmatory use",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": "3f4fdf157b3eb6eb775c8e2f4bab4272e23cfa22a7179fed29fb135012207c65",
+      "researchLineage": "M16-ER",
+      "primaryResultIdentity": "e6aba34ee5352c38254894babf1e7f7b2c668945dd95c9b92a370550b81b2fea",
+      "sourceArtifactIdentities": [
+        "data/research-results/external-kalshi-data-audit/m16-er-primary-economic-result.json",
+        "data/research-results/external-kalshi-data-audit/m16-er-acquisition-manifest.json",
+        "data/research-results/external-kalshi-data-audit/m16-er-outcome-open-authorization.json"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "owned": true,
+        "vendorAvailable": true,
+        "byteSize": 1141808606,
+        "rawZipSha256": "a11f6c28bf28696f9dd741f8cc74e2bb38fa9baee7913d2848f2b957c93ae79d",
+        "notes": "Also usable as OPEN_DISCOVERY for exploratory work; never resealable"
+      },
+      "eventId": "a2bf2455bde4069e393c9d1bae344993"
+    },
+    {
+      "eventType": "opened-for-discovery",
+      "utcDate": "2026-08-23",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": "SPENT_VALIDATION",
+      "newState": "SPENT_VALIDATION",
+      "reason": "M16-ER spent dates remain available for exploratory/discovery research",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": "3f4fdf157b3eb6eb775c8e2f4bab4272e23cfa22a7179fed29fb135012207c65",
+      "researchLineage": "M16-ER",
+      "primaryResultIdentity": "e6aba34ee5352c38254894babf1e7f7b2c668945dd95c9b92a370550b81b2fea",
+      "sourceArtifactIdentities": [
+        "data/research-results/external-kalshi-data-audit/m16-er-primary-economic-result.json"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "notes": "SPENT_VALIDATION with discovery reuse allowed; confirmatory reuse forbidden by default"
+      },
+      "eventId": "51194207e05268fbb40539ca12bd6696"
+    },
+    {
+      "eventType": "validation-opened",
+      "utcDate": "2026-08-24",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": "AVAILABLE_UNOWNED",
+      "newState": "SPENT_VALIDATION",
+      "reason": "M16-ER economic outcomes opened under human authorization (PR #110); not pristine for future confirmatory use",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": "3f4fdf157b3eb6eb775c8e2f4bab4272e23cfa22a7179fed29fb135012207c65",
+      "researchLineage": "M16-ER",
+      "primaryResultIdentity": "e6aba34ee5352c38254894babf1e7f7b2c668945dd95c9b92a370550b81b2fea",
+      "sourceArtifactIdentities": [
+        "data/research-results/external-kalshi-data-audit/m16-er-primary-economic-result.json",
+        "data/research-results/external-kalshi-data-audit/m16-er-acquisition-manifest.json",
+        "data/research-results/external-kalshi-data-audit/m16-er-outcome-open-authorization.json"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "owned": true,
+        "vendorAvailable": true,
+        "byteSize": 1350962506,
+        "rawZipSha256": "3db0d651bd3b5543f04d813358727f08a9f52c8ad6525557d1aa87d50eaa6459",
+        "notes": "Also usable as OPEN_DISCOVERY for exploratory work; never resealable"
+      },
+      "eventId": "b47ca781b3c7e003340b277321c64048"
+    },
+    {
+      "eventType": "opened-for-discovery",
+      "utcDate": "2026-08-24",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": "SPENT_VALIDATION",
+      "newState": "SPENT_VALIDATION",
+      "reason": "M16-ER spent dates remain available for exploratory/discovery research",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": "3f4fdf157b3eb6eb775c8e2f4bab4272e23cfa22a7179fed29fb135012207c65",
+      "researchLineage": "M16-ER",
+      "primaryResultIdentity": "e6aba34ee5352c38254894babf1e7f7b2c668945dd95c9b92a370550b81b2fea",
+      "sourceArtifactIdentities": [
+        "data/research-results/external-kalshi-data-audit/m16-er-primary-economic-result.json"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "notes": "SPENT_VALIDATION with discovery reuse allowed; confirmatory reuse forbidden by default"
+      },
+      "eventId": "ffb2714850e2628f387957a3a1e0d025"
+    },
+    {
+      "eventType": "validation-opened",
+      "utcDate": "2026-08-25",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": "AVAILABLE_UNOWNED",
+      "newState": "SPENT_VALIDATION",
+      "reason": "M16-ER economic outcomes opened under human authorization (PR #110); not pristine for future confirmatory use",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": "3f4fdf157b3eb6eb775c8e2f4bab4272e23cfa22a7179fed29fb135012207c65",
+      "researchLineage": "M16-ER",
+      "primaryResultIdentity": "e6aba34ee5352c38254894babf1e7f7b2c668945dd95c9b92a370550b81b2fea",
+      "sourceArtifactIdentities": [
+        "data/research-results/external-kalshi-data-audit/m16-er-primary-economic-result.json",
+        "data/research-results/external-kalshi-data-audit/m16-er-acquisition-manifest.json",
+        "data/research-results/external-kalshi-data-audit/m16-er-outcome-open-authorization.json"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "owned": true,
+        "vendorAvailable": true,
+        "byteSize": 1126546907,
+        "rawZipSha256": "2f47d19de531f011b017639883400603e079b3eddb0170f28b62a299bc214668",
+        "notes": "Also usable as OPEN_DISCOVERY for exploratory work; never resealable"
+      },
+      "eventId": "89c7c933e138678a688c10da264ea3d0"
+    },
+    {
+      "eventType": "opened-for-discovery",
+      "utcDate": "2026-08-25",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": "SPENT_VALIDATION",
+      "newState": "SPENT_VALIDATION",
+      "reason": "M16-ER spent dates remain available for exploratory/discovery research",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": "3f4fdf157b3eb6eb775c8e2f4bab4272e23cfa22a7179fed29fb135012207c65",
+      "researchLineage": "M16-ER",
+      "primaryResultIdentity": "e6aba34ee5352c38254894babf1e7f7b2c668945dd95c9b92a370550b81b2fea",
+      "sourceArtifactIdentities": [
+        "data/research-results/external-kalshi-data-audit/m16-er-primary-economic-result.json"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "notes": "SPENT_VALIDATION with discovery reuse allowed; confirmatory reuse forbidden by default"
+      },
+      "eventId": "8f03a5f7c8ce158858edb66d0cbe0c0c"
+    },
+    {
+      "eventType": "validation-opened",
+      "utcDate": "2026-08-26",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": "AVAILABLE_UNOWNED",
+      "newState": "SPENT_VALIDATION",
+      "reason": "M16-ER economic outcomes opened under human authorization (PR #110); not pristine for future confirmatory use",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": "3f4fdf157b3eb6eb775c8e2f4bab4272e23cfa22a7179fed29fb135012207c65",
+      "researchLineage": "M16-ER",
+      "primaryResultIdentity": "e6aba34ee5352c38254894babf1e7f7b2c668945dd95c9b92a370550b81b2fea",
+      "sourceArtifactIdentities": [
+        "data/research-results/external-kalshi-data-audit/m16-er-primary-economic-result.json",
+        "data/research-results/external-kalshi-data-audit/m16-er-acquisition-manifest.json",
+        "data/research-results/external-kalshi-data-audit/m16-er-outcome-open-authorization.json"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "owned": true,
+        "vendorAvailable": true,
+        "byteSize": 1176050355,
+        "rawZipSha256": "faaaa6076c5fdaa9b62528033ecdd9126d1bfe95afa3281ae0e8732c92515f61",
+        "notes": "Also usable as OPEN_DISCOVERY for exploratory work; never resealable"
+      },
+      "eventId": "3102052758e0d6f8db931b7c4ccb26d5"
+    },
+    {
+      "eventType": "opened-for-discovery",
+      "utcDate": "2026-08-26",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": "SPENT_VALIDATION",
+      "newState": "SPENT_VALIDATION",
+      "reason": "M16-ER spent dates remain available for exploratory/discovery research",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": "3f4fdf157b3eb6eb775c8e2f4bab4272e23cfa22a7179fed29fb135012207c65",
+      "researchLineage": "M16-ER",
+      "primaryResultIdentity": "e6aba34ee5352c38254894babf1e7f7b2c668945dd95c9b92a370550b81b2fea",
+      "sourceArtifactIdentities": [
+        "data/research-results/external-kalshi-data-audit/m16-er-primary-economic-result.json"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "notes": "SPENT_VALIDATION with discovery reuse allowed; confirmatory reuse forbidden by default"
+      },
+      "eventId": "5dbe40fd574ad23837dfe30da8756b8d"
+    },
+    {
+      "eventType": "validation-opened",
+      "utcDate": "2026-08-27",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": "AVAILABLE_UNOWNED",
+      "newState": "SPENT_VALIDATION",
+      "reason": "M16-ER economic outcomes opened under human authorization (PR #110); not pristine for future confirmatory use",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": "3f4fdf157b3eb6eb775c8e2f4bab4272e23cfa22a7179fed29fb135012207c65",
+      "researchLineage": "M16-ER",
+      "primaryResultIdentity": "e6aba34ee5352c38254894babf1e7f7b2c668945dd95c9b92a370550b81b2fea",
+      "sourceArtifactIdentities": [
+        "data/research-results/external-kalshi-data-audit/m16-er-primary-economic-result.json",
+        "data/research-results/external-kalshi-data-audit/m16-er-acquisition-manifest.json",
+        "data/research-results/external-kalshi-data-audit/m16-er-outcome-open-authorization.json"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "owned": true,
+        "vendorAvailable": true,
+        "byteSize": 1043436496,
+        "rawZipSha256": "9ee2bdcf4393224ecba231af99599b471b95e4020a1a6d3426f037083c3713e6",
+        "notes": "Also usable as OPEN_DISCOVERY for exploratory work; never resealable"
+      },
+      "eventId": "7e1063d1394ec6fa8ed5f20e0a433c82"
+    },
+    {
+      "eventType": "opened-for-discovery",
+      "utcDate": "2026-08-27",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": "SPENT_VALIDATION",
+      "newState": "SPENT_VALIDATION",
+      "reason": "M16-ER spent dates remain available for exploratory/discovery research",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": "3f4fdf157b3eb6eb775c8e2f4bab4272e23cfa22a7179fed29fb135012207c65",
+      "researchLineage": "M16-ER",
+      "primaryResultIdentity": "e6aba34ee5352c38254894babf1e7f7b2c668945dd95c9b92a370550b81b2fea",
+      "sourceArtifactIdentities": [
+        "data/research-results/external-kalshi-data-audit/m16-er-primary-economic-result.json"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "notes": "SPENT_VALIDATION with discovery reuse allowed; confirmatory reuse forbidden by default"
+      },
+      "eventId": "be6821166660a480c72f6c9cc3faf951"
+    },
+    {
+      "eventType": "validation-opened",
+      "utcDate": "2026-08-28",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": "AVAILABLE_UNOWNED",
+      "newState": "SPENT_VALIDATION",
+      "reason": "M16-ER economic outcomes opened under human authorization (PR #110); not pristine for future confirmatory use",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": "3f4fdf157b3eb6eb775c8e2f4bab4272e23cfa22a7179fed29fb135012207c65",
+      "researchLineage": "M16-ER",
+      "primaryResultIdentity": "e6aba34ee5352c38254894babf1e7f7b2c668945dd95c9b92a370550b81b2fea",
+      "sourceArtifactIdentities": [
+        "data/research-results/external-kalshi-data-audit/m16-er-primary-economic-result.json",
+        "data/research-results/external-kalshi-data-audit/m16-er-acquisition-manifest.json",
+        "data/research-results/external-kalshi-data-audit/m16-er-outcome-open-authorization.json"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "owned": true,
+        "vendorAvailable": true,
+        "byteSize": 1065838706,
+        "rawZipSha256": "3f05a5e711743e03df0f5c385a32a431120402d74d47cb3f33b43240010d4b49",
+        "notes": "Also usable as OPEN_DISCOVERY for exploratory work; never resealable"
+      },
+      "eventId": "3e6f8128c9e8392b8e6577300ef04265"
+    },
+    {
+      "eventType": "opened-for-discovery",
+      "utcDate": "2026-08-28",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": "SPENT_VALIDATION",
+      "newState": "SPENT_VALIDATION",
+      "reason": "M16-ER spent dates remain available for exploratory/discovery research",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": "3f4fdf157b3eb6eb775c8e2f4bab4272e23cfa22a7179fed29fb135012207c65",
+      "researchLineage": "M16-ER",
+      "primaryResultIdentity": "e6aba34ee5352c38254894babf1e7f7b2c668945dd95c9b92a370550b81b2fea",
+      "sourceArtifactIdentities": [
+        "data/research-results/external-kalshi-data-audit/m16-er-primary-economic-result.json"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "notes": "SPENT_VALIDATION with discovery reuse allowed; confirmatory reuse forbidden by default"
+      },
+      "eventId": "f0a02711fa9afadd61a3cf189efc8012"
+    },
+    {
+      "eventType": "validation-opened",
+      "utcDate": "2026-08-29",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": "AVAILABLE_UNOWNED",
+      "newState": "SPENT_VALIDATION",
+      "reason": "M16-ER economic outcomes opened under human authorization (PR #110); not pristine for future confirmatory use",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": "3f4fdf157b3eb6eb775c8e2f4bab4272e23cfa22a7179fed29fb135012207c65",
+      "researchLineage": "M16-ER",
+      "primaryResultIdentity": "e6aba34ee5352c38254894babf1e7f7b2c668945dd95c9b92a370550b81b2fea",
+      "sourceArtifactIdentities": [
+        "data/research-results/external-kalshi-data-audit/m16-er-primary-economic-result.json",
+        "data/research-results/external-kalshi-data-audit/m16-er-acquisition-manifest.json",
+        "data/research-results/external-kalshi-data-audit/m16-er-outcome-open-authorization.json"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "owned": true,
+        "vendorAvailable": true,
+        "byteSize": 764472865,
+        "rawZipSha256": "403ad6627578a19fd23af1794991b1f3c00d7f49041bb7767542579ce2c00550",
+        "notes": "Also usable as OPEN_DISCOVERY for exploratory work; never resealable"
+      },
+      "eventId": "f546bed3bfbf57bc9ecc623dbf6e19c9"
+    },
+    {
+      "eventType": "opened-for-discovery",
+      "utcDate": "2026-08-29",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": "SPENT_VALIDATION",
+      "newState": "SPENT_VALIDATION",
+      "reason": "M16-ER spent dates remain available for exploratory/discovery research",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": "3f4fdf157b3eb6eb775c8e2f4bab4272e23cfa22a7179fed29fb135012207c65",
+      "researchLineage": "M16-ER",
+      "primaryResultIdentity": "e6aba34ee5352c38254894babf1e7f7b2c668945dd95c9b92a370550b81b2fea",
+      "sourceArtifactIdentities": [
+        "data/research-results/external-kalshi-data-audit/m16-er-primary-economic-result.json"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "notes": "SPENT_VALIDATION with discovery reuse allowed; confirmatory reuse forbidden by default"
+      },
+      "eventId": "5ac7feb2e7610dad3d3434e8a0e1186a"
+    },
+    {
+      "eventType": "validation-opened",
+      "utcDate": "2026-08-30",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": "AVAILABLE_UNOWNED",
+      "newState": "SPENT_VALIDATION",
+      "reason": "M16-ER economic outcomes opened under human authorization (PR #110); not pristine for future confirmatory use",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": "3f4fdf157b3eb6eb775c8e2f4bab4272e23cfa22a7179fed29fb135012207c65",
+      "researchLineage": "M16-ER",
+      "primaryResultIdentity": "e6aba34ee5352c38254894babf1e7f7b2c668945dd95c9b92a370550b81b2fea",
+      "sourceArtifactIdentities": [
+        "data/research-results/external-kalshi-data-audit/m16-er-primary-economic-result.json",
+        "data/research-results/external-kalshi-data-audit/m16-er-acquisition-manifest.json",
+        "data/research-results/external-kalshi-data-audit/m16-er-outcome-open-authorization.json"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "owned": true,
+        "vendorAvailable": true,
+        "byteSize": 839532216,
+        "rawZipSha256": "af13edad15f1d941548bda65c725b950c232472ee0395b38f78bba4706667573",
+        "notes": "Also usable as OPEN_DISCOVERY for exploratory work; never resealable"
+      },
+      "eventId": "59b821c35ddc113c9cf35d7425f2edac"
+    },
+    {
+      "eventType": "opened-for-discovery",
+      "utcDate": "2026-08-30",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": "SPENT_VALIDATION",
+      "newState": "SPENT_VALIDATION",
+      "reason": "M16-ER spent dates remain available for exploratory/discovery research",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": "3f4fdf157b3eb6eb775c8e2f4bab4272e23cfa22a7179fed29fb135012207c65",
+      "researchLineage": "M16-ER",
+      "primaryResultIdentity": "e6aba34ee5352c38254894babf1e7f7b2c668945dd95c9b92a370550b81b2fea",
+      "sourceArtifactIdentities": [
+        "data/research-results/external-kalshi-data-audit/m16-er-primary-economic-result.json"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "notes": "SPENT_VALIDATION with discovery reuse allowed; confirmatory reuse forbidden by default"
+      },
+      "eventId": "b01ea166a17d297d58707496e9c2bd16"
+    },
+    {
+      "eventType": "validation-opened",
+      "utcDate": "2026-08-31",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": "AVAILABLE_UNOWNED",
+      "newState": "SPENT_VALIDATION",
+      "reason": "M16-ER economic outcomes opened under human authorization (PR #110); not pristine for future confirmatory use",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": "3f4fdf157b3eb6eb775c8e2f4bab4272e23cfa22a7179fed29fb135012207c65",
+      "researchLineage": "M16-ER",
+      "primaryResultIdentity": "e6aba34ee5352c38254894babf1e7f7b2c668945dd95c9b92a370550b81b2fea",
+      "sourceArtifactIdentities": [
+        "data/research-results/external-kalshi-data-audit/m16-er-primary-economic-result.json",
+        "data/research-results/external-kalshi-data-audit/m16-er-acquisition-manifest.json",
+        "data/research-results/external-kalshi-data-audit/m16-er-outcome-open-authorization.json"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "owned": true,
+        "vendorAvailable": true,
+        "byteSize": 1217784162,
+        "rawZipSha256": "bd78456bdaa26a7f6a0ebd8051bc7c10f0eb79f3765c8264dd7fccf2a109dbd5",
+        "notes": "Also usable as OPEN_DISCOVERY for exploratory work; never resealable"
+      },
+      "eventId": "96e2b6ee388a278b8361ba90e7570d6b"
+    },
+    {
+      "eventType": "opened-for-discovery",
+      "utcDate": "2026-08-31",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": "SPENT_VALIDATION",
+      "newState": "SPENT_VALIDATION",
+      "reason": "M16-ER spent dates remain available for exploratory/discovery research",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": "3f4fdf157b3eb6eb775c8e2f4bab4272e23cfa22a7179fed29fb135012207c65",
+      "researchLineage": "M16-ER",
+      "primaryResultIdentity": "e6aba34ee5352c38254894babf1e7f7b2c668945dd95c9b92a370550b81b2fea",
+      "sourceArtifactIdentities": [
+        "data/research-results/external-kalshi-data-audit/m16-er-primary-economic-result.json"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "notes": "SPENT_VALIDATION with discovery reuse allowed; confirmatory reuse forbidden by default"
+      },
+      "eventId": "e4fcd485df7d5165ed7efc28f5c7e41e"
+    },
+    {
+      "eventType": "validation-opened",
+      "utcDate": "2026-09-01",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": "AVAILABLE_UNOWNED",
+      "newState": "SPENT_VALIDATION",
+      "reason": "M16-ER economic outcomes opened under human authorization (PR #110); not pristine for future confirmatory use",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": "3f4fdf157b3eb6eb775c8e2f4bab4272e23cfa22a7179fed29fb135012207c65",
+      "researchLineage": "M16-ER",
+      "primaryResultIdentity": "e6aba34ee5352c38254894babf1e7f7b2c668945dd95c9b92a370550b81b2fea",
+      "sourceArtifactIdentities": [
+        "data/research-results/external-kalshi-data-audit/m16-er-primary-economic-result.json",
+        "data/research-results/external-kalshi-data-audit/m16-er-acquisition-manifest.json",
+        "data/research-results/external-kalshi-data-audit/m16-er-outcome-open-authorization.json"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "owned": true,
+        "vendorAvailable": true,
+        "byteSize": 1160343079,
+        "rawZipSha256": "7530034bdb23dd13c1b097ba66c49c9c8f5de663044c02622304ec5ba3d927ac",
+        "notes": "Also usable as OPEN_DISCOVERY for exploratory work; never resealable"
+      },
+      "eventId": "d268ae4dc99f9e2ca10dd217101a46bf"
+    },
+    {
+      "eventType": "opened-for-discovery",
+      "utcDate": "2026-09-01",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": "SPENT_VALIDATION",
+      "newState": "SPENT_VALIDATION",
+      "reason": "M16-ER spent dates remain available for exploratory/discovery research",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": "3f4fdf157b3eb6eb775c8e2f4bab4272e23cfa22a7179fed29fb135012207c65",
+      "researchLineage": "M16-ER",
+      "primaryResultIdentity": "e6aba34ee5352c38254894babf1e7f7b2c668945dd95c9b92a370550b81b2fea",
+      "sourceArtifactIdentities": [
+        "data/research-results/external-kalshi-data-audit/m16-er-primary-economic-result.json"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "notes": "SPENT_VALIDATION with discovery reuse allowed; confirmatory reuse forbidden by default"
+      },
+      "eventId": "28b94f6b2b9de05da2d19c493da92913"
+    },
+    {
+      "eventType": "validation-opened",
+      "utcDate": "2026-09-02",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": "AVAILABLE_UNOWNED",
+      "newState": "SPENT_VALIDATION",
+      "reason": "M16-ER economic outcomes opened under human authorization (PR #110); not pristine for future confirmatory use",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": "3f4fdf157b3eb6eb775c8e2f4bab4272e23cfa22a7179fed29fb135012207c65",
+      "researchLineage": "M16-ER",
+      "primaryResultIdentity": "e6aba34ee5352c38254894babf1e7f7b2c668945dd95c9b92a370550b81b2fea",
+      "sourceArtifactIdentities": [
+        "data/research-results/external-kalshi-data-audit/m16-er-primary-economic-result.json",
+        "data/research-results/external-kalshi-data-audit/m16-er-acquisition-manifest.json",
+        "data/research-results/external-kalshi-data-audit/m16-er-outcome-open-authorization.json"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "owned": true,
+        "vendorAvailable": true,
+        "byteSize": 1108293808,
+        "rawZipSha256": "db08f13892c67047b45e40df9500c9609cb85ffc34c7ba346490981a3e9965af",
+        "notes": "Also usable as OPEN_DISCOVERY for exploratory work; never resealable"
+      },
+      "eventId": "cc0b4c101c0e7f3c96efc55e2697ca7b"
+    },
+    {
+      "eventType": "opened-for-discovery",
+      "utcDate": "2026-09-02",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": "SPENT_VALIDATION",
+      "newState": "SPENT_VALIDATION",
+      "reason": "M16-ER spent dates remain available for exploratory/discovery research",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": "3f4fdf157b3eb6eb775c8e2f4bab4272e23cfa22a7179fed29fb135012207c65",
+      "researchLineage": "M16-ER",
+      "primaryResultIdentity": "e6aba34ee5352c38254894babf1e7f7b2c668945dd95c9b92a370550b81b2fea",
+      "sourceArtifactIdentities": [
+        "data/research-results/external-kalshi-data-audit/m16-er-primary-economic-result.json"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "notes": "SPENT_VALIDATION with discovery reuse allowed; confirmatory reuse forbidden by default"
+      },
+      "eventId": "b3834e39fab33c2a1ac43da518a1a481"
+    },
+    {
+      "eventType": "validation-opened",
+      "utcDate": "2026-09-03",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": "AVAILABLE_UNOWNED",
+      "newState": "SPENT_VALIDATION",
+      "reason": "M16-ER economic outcomes opened under human authorization (PR #110); not pristine for future confirmatory use",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": "3f4fdf157b3eb6eb775c8e2f4bab4272e23cfa22a7179fed29fb135012207c65",
+      "researchLineage": "M16-ER",
+      "primaryResultIdentity": "e6aba34ee5352c38254894babf1e7f7b2c668945dd95c9b92a370550b81b2fea",
+      "sourceArtifactIdentities": [
+        "data/research-results/external-kalshi-data-audit/m16-er-primary-economic-result.json",
+        "data/research-results/external-kalshi-data-audit/m16-er-acquisition-manifest.json",
+        "data/research-results/external-kalshi-data-audit/m16-er-outcome-open-authorization.json"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "owned": true,
+        "vendorAvailable": true,
+        "byteSize": 1191829592,
+        "rawZipSha256": "9d1c51ac849243ef67ca2fa20bc103a0ca249c065d1aaa2165c743899d0bd203",
+        "notes": "Also usable as OPEN_DISCOVERY for exploratory work; never resealable"
+      },
+      "eventId": "f5da8ed64e941cbb4f5f952226b4d7ec"
+    },
+    {
+      "eventType": "opened-for-discovery",
+      "utcDate": "2026-09-03",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": "SPENT_VALIDATION",
+      "newState": "SPENT_VALIDATION",
+      "reason": "M16-ER spent dates remain available for exploratory/discovery research",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": "3f4fdf157b3eb6eb775c8e2f4bab4272e23cfa22a7179fed29fb135012207c65",
+      "researchLineage": "M16-ER",
+      "primaryResultIdentity": "e6aba34ee5352c38254894babf1e7f7b2c668945dd95c9b92a370550b81b2fea",
+      "sourceArtifactIdentities": [
+        "data/research-results/external-kalshi-data-audit/m16-er-primary-economic-result.json"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "notes": "SPENT_VALIDATION with discovery reuse allowed; confirmatory reuse forbidden by default"
+      },
+      "eventId": "47fa0137978f56811c50a6d25cfa0de9"
+    },
+    {
+      "eventType": "validation-opened",
+      "utcDate": "2026-09-04",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": "AVAILABLE_UNOWNED",
+      "newState": "SPENT_VALIDATION",
+      "reason": "M16-ER economic outcomes opened under human authorization (PR #110); not pristine for future confirmatory use",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": "3f4fdf157b3eb6eb775c8e2f4bab4272e23cfa22a7179fed29fb135012207c65",
+      "researchLineage": "M16-ER",
+      "primaryResultIdentity": "e6aba34ee5352c38254894babf1e7f7b2c668945dd95c9b92a370550b81b2fea",
+      "sourceArtifactIdentities": [
+        "data/research-results/external-kalshi-data-audit/m16-er-primary-economic-result.json",
+        "data/research-results/external-kalshi-data-audit/m16-er-acquisition-manifest.json",
+        "data/research-results/external-kalshi-data-audit/m16-er-outcome-open-authorization.json"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "owned": true,
+        "vendorAvailable": true,
+        "byteSize": 1243498585,
+        "rawZipSha256": "1a2c18e3a121ac7dfc7fb21d711acd6232e980ae0f6704ad4800864867c86875",
+        "notes": "Also usable as OPEN_DISCOVERY for exploratory work; never resealable"
+      },
+      "eventId": "cd137ebf20a1a2bf7c79df9a8bfa286f"
+    },
+    {
+      "eventType": "opened-for-discovery",
+      "utcDate": "2026-09-04",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": "SPENT_VALIDATION",
+      "newState": "SPENT_VALIDATION",
+      "reason": "M16-ER spent dates remain available for exploratory/discovery research",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": "3f4fdf157b3eb6eb775c8e2f4bab4272e23cfa22a7179fed29fb135012207c65",
+      "researchLineage": "M16-ER",
+      "primaryResultIdentity": "e6aba34ee5352c38254894babf1e7f7b2c668945dd95c9b92a370550b81b2fea",
+      "sourceArtifactIdentities": [
+        "data/research-results/external-kalshi-data-audit/m16-er-primary-economic-result.json"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "notes": "SPENT_VALIDATION with discovery reuse allowed; confirmatory reuse forbidden by default"
+      },
+      "eventId": "d6c2b91c08837deb900c987d4bfe9436"
+    },
+    {
+      "eventType": "validation-opened",
+      "utcDate": "2026-09-05",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": "AVAILABLE_UNOWNED",
+      "newState": "SPENT_VALIDATION",
+      "reason": "M16-ER economic outcomes opened under human authorization (PR #110); not pristine for future confirmatory use",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": "3f4fdf157b3eb6eb775c8e2f4bab4272e23cfa22a7179fed29fb135012207c65",
+      "researchLineage": "M16-ER",
+      "primaryResultIdentity": "e6aba34ee5352c38254894babf1e7f7b2c668945dd95c9b92a370550b81b2fea",
+      "sourceArtifactIdentities": [
+        "data/research-results/external-kalshi-data-audit/m16-er-primary-economic-result.json",
+        "data/research-results/external-kalshi-data-audit/m16-er-acquisition-manifest.json",
+        "data/research-results/external-kalshi-data-audit/m16-er-outcome-open-authorization.json"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "owned": true,
+        "vendorAvailable": true,
+        "byteSize": 838913948,
+        "rawZipSha256": "ca4868c56e5f60b318289f8a7a3262ecf8eff945f3c4be7e517b3624ef0e0fd5",
+        "notes": "Also usable as OPEN_DISCOVERY for exploratory work; never resealable"
+      },
+      "eventId": "02f9f9ea67720250e17f704c95f3eedc"
+    },
+    {
+      "eventType": "opened-for-discovery",
+      "utcDate": "2026-09-05",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": "SPENT_VALIDATION",
+      "newState": "SPENT_VALIDATION",
+      "reason": "M16-ER spent dates remain available for exploratory/discovery research",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": "3f4fdf157b3eb6eb775c8e2f4bab4272e23cfa22a7179fed29fb135012207c65",
+      "researchLineage": "M16-ER",
+      "primaryResultIdentity": "e6aba34ee5352c38254894babf1e7f7b2c668945dd95c9b92a370550b81b2fea",
+      "sourceArtifactIdentities": [
+        "data/research-results/external-kalshi-data-audit/m16-er-primary-economic-result.json"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "notes": "SPENT_VALIDATION with discovery reuse allowed; confirmatory reuse forbidden by default"
+      },
+      "eventId": "fbdd566a820a4e9b38974e21fb53125a"
+    },
+    {
+      "eventType": "validation-opened",
+      "utcDate": "2026-09-06",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": "AVAILABLE_UNOWNED",
+      "newState": "SPENT_VALIDATION",
+      "reason": "M16-ER economic outcomes opened under human authorization (PR #110); not pristine for future confirmatory use",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": "3f4fdf157b3eb6eb775c8e2f4bab4272e23cfa22a7179fed29fb135012207c65",
+      "researchLineage": "M16-ER",
+      "primaryResultIdentity": "e6aba34ee5352c38254894babf1e7f7b2c668945dd95c9b92a370550b81b2fea",
+      "sourceArtifactIdentities": [
+        "data/research-results/external-kalshi-data-audit/m16-er-primary-economic-result.json",
+        "data/research-results/external-kalshi-data-audit/m16-er-acquisition-manifest.json",
+        "data/research-results/external-kalshi-data-audit/m16-er-outcome-open-authorization.json"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "owned": true,
+        "vendorAvailable": true,
+        "byteSize": 886552109,
+        "rawZipSha256": "2c9afdec4620bfaa6dd806b9c30d4ba5d8d528b80e55557583ce9fafb523c3b9",
+        "notes": "Also usable as OPEN_DISCOVERY for exploratory work; never resealable"
+      },
+      "eventId": "39dd82ab53c5ef13462609e4a77d9cf3"
+    },
+    {
+      "eventType": "opened-for-discovery",
+      "utcDate": "2026-09-06",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": "SPENT_VALIDATION",
+      "newState": "SPENT_VALIDATION",
+      "reason": "M16-ER spent dates remain available for exploratory/discovery research",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": "3f4fdf157b3eb6eb775c8e2f4bab4272e23cfa22a7179fed29fb135012207c65",
+      "researchLineage": "M16-ER",
+      "primaryResultIdentity": "e6aba34ee5352c38254894babf1e7f7b2c668945dd95c9b92a370550b81b2fea",
+      "sourceArtifactIdentities": [
+        "data/research-results/external-kalshi-data-audit/m16-er-primary-economic-result.json"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "notes": "SPENT_VALIDATION with discovery reuse allowed; confirmatory reuse forbidden by default"
+      },
+      "eventId": "30e67ca00143312cccbc42382505c4d7"
+    },
+    {
+      "eventType": "validation-opened",
+      "utcDate": "2026-09-07",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": "AVAILABLE_UNOWNED",
+      "newState": "SPENT_VALIDATION",
+      "reason": "M16-ER economic outcomes opened under human authorization (PR #110); not pristine for future confirmatory use",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": "3f4fdf157b3eb6eb775c8e2f4bab4272e23cfa22a7179fed29fb135012207c65",
+      "researchLineage": "M16-ER",
+      "primaryResultIdentity": "e6aba34ee5352c38254894babf1e7f7b2c668945dd95c9b92a370550b81b2fea",
+      "sourceArtifactIdentities": [
+        "data/research-results/external-kalshi-data-audit/m16-er-primary-economic-result.json",
+        "data/research-results/external-kalshi-data-audit/m16-er-acquisition-manifest.json",
+        "data/research-results/external-kalshi-data-audit/m16-er-outcome-open-authorization.json"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "owned": true,
+        "vendorAvailable": true,
+        "byteSize": 992701410,
+        "rawZipSha256": "1735736143bfd335adeb3a3a8c882f40a4e88db997d453a9e3b7b7fb30d8ef4d",
+        "notes": "Also usable as OPEN_DISCOVERY for exploratory work; never resealable"
+      },
+      "eventId": "7b057e073c4f9f8363473902bf95c381"
+    },
+    {
+      "eventType": "opened-for-discovery",
+      "utcDate": "2026-09-07",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": "SPENT_VALIDATION",
+      "newState": "SPENT_VALIDATION",
+      "reason": "M16-ER spent dates remain available for exploratory/discovery research",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": "3f4fdf157b3eb6eb775c8e2f4bab4272e23cfa22a7179fed29fb135012207c65",
+      "researchLineage": "M16-ER",
+      "primaryResultIdentity": "e6aba34ee5352c38254894babf1e7f7b2c668945dd95c9b92a370550b81b2fea",
+      "sourceArtifactIdentities": [
+        "data/research-results/external-kalshi-data-audit/m16-er-primary-economic-result.json"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "notes": "SPENT_VALIDATION with discovery reuse allowed; confirmatory reuse forbidden by default"
+      },
+      "eventId": "7af16845537a43263f77cd1f69d49062"
+    },
+    {
+      "eventType": "validation-opened",
+      "utcDate": "2026-09-10",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": "AVAILABLE_UNOWNED",
+      "newState": "SPENT_VALIDATION",
+      "reason": "M16-ER economic outcomes opened under human authorization (PR #110); not pristine for future confirmatory use",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": "3f4fdf157b3eb6eb775c8e2f4bab4272e23cfa22a7179fed29fb135012207c65",
+      "researchLineage": "M16-ER",
+      "primaryResultIdentity": "e6aba34ee5352c38254894babf1e7f7b2c668945dd95c9b92a370550b81b2fea",
+      "sourceArtifactIdentities": [
+        "data/research-results/external-kalshi-data-audit/m16-er-primary-economic-result.json",
+        "data/research-results/external-kalshi-data-audit/m16-er-acquisition-manifest.json",
+        "data/research-results/external-kalshi-data-audit/m16-er-outcome-open-authorization.json"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "owned": true,
+        "vendorAvailable": true,
+        "byteSize": 1204375858,
+        "rawZipSha256": "64443cf32d279a7686b18b5085839d36d923fc4662e19c4323bbd71cab94dd6d",
+        "notes": "Also usable as OPEN_DISCOVERY for exploratory work; never resealable"
+      },
+      "eventId": "b54c6bf5ed5fbedd12b1f30446acdb61"
+    },
+    {
+      "eventType": "opened-for-discovery",
+      "utcDate": "2026-09-10",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": "SPENT_VALIDATION",
+      "newState": "SPENT_VALIDATION",
+      "reason": "M16-ER spent dates remain available for exploratory/discovery research",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": "3f4fdf157b3eb6eb775c8e2f4bab4272e23cfa22a7179fed29fb135012207c65",
+      "researchLineage": "M16-ER",
+      "primaryResultIdentity": "e6aba34ee5352c38254894babf1e7f7b2c668945dd95c9b92a370550b81b2fea",
+      "sourceArtifactIdentities": [
+        "data/research-results/external-kalshi-data-audit/m16-er-primary-economic-result.json"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "notes": "SPENT_VALIDATION with discovery reuse allowed; confirmatory reuse forbidden by default"
+      },
+      "eventId": "6a3232065dcc64516e152073ce7822c3"
+    },
+    {
+      "eventType": "validation-opened",
+      "utcDate": "2026-09-11",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": "AVAILABLE_UNOWNED",
+      "newState": "SPENT_VALIDATION",
+      "reason": "M16-ER economic outcomes opened under human authorization (PR #110); not pristine for future confirmatory use",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": "3f4fdf157b3eb6eb775c8e2f4bab4272e23cfa22a7179fed29fb135012207c65",
+      "researchLineage": "M16-ER",
+      "primaryResultIdentity": "e6aba34ee5352c38254894babf1e7f7b2c668945dd95c9b92a370550b81b2fea",
+      "sourceArtifactIdentities": [
+        "data/research-results/external-kalshi-data-audit/m16-er-primary-economic-result.json",
+        "data/research-results/external-kalshi-data-audit/m16-er-acquisition-manifest.json",
+        "data/research-results/external-kalshi-data-audit/m16-er-outcome-open-authorization.json"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "owned": true,
+        "vendorAvailable": true,
+        "byteSize": 1327632604,
+        "rawZipSha256": "fa1039f7d6212b362c62679ed396ba4901a23802a50d447b1b66d5db88b2b113",
+        "notes": "Also usable as OPEN_DISCOVERY for exploratory work; never resealable"
+      },
+      "eventId": "1ad90d6c09d378b9fd9d8a1d1cff13fd"
+    },
+    {
+      "eventType": "opened-for-discovery",
+      "utcDate": "2026-09-11",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": "SPENT_VALIDATION",
+      "newState": "SPENT_VALIDATION",
+      "reason": "M16-ER spent dates remain available for exploratory/discovery research",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": "3f4fdf157b3eb6eb775c8e2f4bab4272e23cfa22a7179fed29fb135012207c65",
+      "researchLineage": "M16-ER",
+      "primaryResultIdentity": "e6aba34ee5352c38254894babf1e7f7b2c668945dd95c9b92a370550b81b2fea",
+      "sourceArtifactIdentities": [
+        "data/research-results/external-kalshi-data-audit/m16-er-primary-economic-result.json"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "notes": "SPENT_VALIDATION with discovery reuse allowed; confirmatory reuse forbidden by default"
+      },
+      "eventId": "badef87526b54da6dfd7ba839edaa3e3"
+    },
+    {
+      "eventType": "validation-opened",
+      "utcDate": "2026-09-12",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": "AVAILABLE_UNOWNED",
+      "newState": "SPENT_VALIDATION",
+      "reason": "M16-ER economic outcomes opened under human authorization (PR #110); not pristine for future confirmatory use",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": "3f4fdf157b3eb6eb775c8e2f4bab4272e23cfa22a7179fed29fb135012207c65",
+      "researchLineage": "M16-ER",
+      "primaryResultIdentity": "e6aba34ee5352c38254894babf1e7f7b2c668945dd95c9b92a370550b81b2fea",
+      "sourceArtifactIdentities": [
+        "data/research-results/external-kalshi-data-audit/m16-er-primary-economic-result.json",
+        "data/research-results/external-kalshi-data-audit/m16-er-acquisition-manifest.json",
+        "data/research-results/external-kalshi-data-audit/m16-er-outcome-open-authorization.json"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "owned": true,
+        "vendorAvailable": true,
+        "byteSize": 891889192,
+        "rawZipSha256": "322313d471145d98eae88d2f1f01d1ac3a456cae8fe3904e8254e64e61c46aae",
+        "notes": "Also usable as OPEN_DISCOVERY for exploratory work; never resealable"
+      },
+      "eventId": "a469f23011000400b6b99432453f36ab"
+    },
+    {
+      "eventType": "opened-for-discovery",
+      "utcDate": "2026-09-12",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": "SPENT_VALIDATION",
+      "newState": "SPENT_VALIDATION",
+      "reason": "M16-ER spent dates remain available for exploratory/discovery research",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": "3f4fdf157b3eb6eb775c8e2f4bab4272e23cfa22a7179fed29fb135012207c65",
+      "researchLineage": "M16-ER",
+      "primaryResultIdentity": "e6aba34ee5352c38254894babf1e7f7b2c668945dd95c9b92a370550b81b2fea",
+      "sourceArtifactIdentities": [
+        "data/research-results/external-kalshi-data-audit/m16-er-primary-economic-result.json"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "notes": "SPENT_VALIDATION with discovery reuse allowed; confirmatory reuse forbidden by default"
+      },
+      "eventId": "8b852acc049b091f85d9c4991590269b"
+    },
+    {
+      "eventType": "validation-opened",
+      "utcDate": "2026-09-13",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": "AVAILABLE_UNOWNED",
+      "newState": "SPENT_VALIDATION",
+      "reason": "M16-ER economic outcomes opened under human authorization (PR #110); not pristine for future confirmatory use",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": "3f4fdf157b3eb6eb775c8e2f4bab4272e23cfa22a7179fed29fb135012207c65",
+      "researchLineage": "M16-ER",
+      "primaryResultIdentity": "e6aba34ee5352c38254894babf1e7f7b2c668945dd95c9b92a370550b81b2fea",
+      "sourceArtifactIdentities": [
+        "data/research-results/external-kalshi-data-audit/m16-er-primary-economic-result.json",
+        "data/research-results/external-kalshi-data-audit/m16-er-acquisition-manifest.json",
+        "data/research-results/external-kalshi-data-audit/m16-er-outcome-open-authorization.json"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "owned": true,
+        "vendorAvailable": true,
+        "byteSize": 895196394,
+        "rawZipSha256": "e395a474cf9a54e1d3248eb097583c7e7a6808504981cb341e90337343fb7798",
+        "notes": "Also usable as OPEN_DISCOVERY for exploratory work; never resealable"
+      },
+      "eventId": "173dbede5b3b421fbb45b3e51eb16c2a"
+    },
+    {
+      "eventType": "opened-for-discovery",
+      "utcDate": "2026-09-13",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": "SPENT_VALIDATION",
+      "newState": "SPENT_VALIDATION",
+      "reason": "M16-ER spent dates remain available for exploratory/discovery research",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": "3f4fdf157b3eb6eb775c8e2f4bab4272e23cfa22a7179fed29fb135012207c65",
+      "researchLineage": "M16-ER",
+      "primaryResultIdentity": "e6aba34ee5352c38254894babf1e7f7b2c668945dd95c9b92a370550b81b2fea",
+      "sourceArtifactIdentities": [
+        "data/research-results/external-kalshi-data-audit/m16-er-primary-economic-result.json"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "notes": "SPENT_VALIDATION with discovery reuse allowed; confirmatory reuse forbidden by default"
+      },
+      "eventId": "df0472587de98925bab1a74af2c5ef1a"
+    },
+    {
+      "eventType": "validation-opened",
+      "utcDate": "2026-09-15",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": "AVAILABLE_UNOWNED",
+      "newState": "SPENT_VALIDATION",
+      "reason": "M16-ER economic outcomes opened under human authorization (PR #110); not pristine for future confirmatory use",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": "3f4fdf157b3eb6eb775c8e2f4bab4272e23cfa22a7179fed29fb135012207c65",
+      "researchLineage": "M16-ER",
+      "primaryResultIdentity": "e6aba34ee5352c38254894babf1e7f7b2c668945dd95c9b92a370550b81b2fea",
+      "sourceArtifactIdentities": [
+        "data/research-results/external-kalshi-data-audit/m16-er-primary-economic-result.json",
+        "data/research-results/external-kalshi-data-audit/m16-er-acquisition-manifest.json",
+        "data/research-results/external-kalshi-data-audit/m16-er-outcome-open-authorization.json"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "owned": true,
+        "vendorAvailable": true,
+        "byteSize": 1416956284,
+        "rawZipSha256": "351ba9db02fe02bd3af7f4e5f390a377b9fa588e8fe1c17ff4c70ac3b293d20c",
+        "notes": "Also usable as OPEN_DISCOVERY for exploratory work; never resealable"
+      },
+      "eventId": "e480485986bfeabe032cebd7d9dfe60c"
+    },
+    {
+      "eventType": "opened-for-discovery",
+      "utcDate": "2026-09-15",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": "SPENT_VALIDATION",
+      "newState": "SPENT_VALIDATION",
+      "reason": "M16-ER spent dates remain available for exploratory/discovery research",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": "3f4fdf157b3eb6eb775c8e2f4bab4272e23cfa22a7179fed29fb135012207c65",
+      "researchLineage": "M16-ER",
+      "primaryResultIdentity": "e6aba34ee5352c38254894babf1e7f7b2c668945dd95c9b92a370550b81b2fea",
+      "sourceArtifactIdentities": [
+        "data/research-results/external-kalshi-data-audit/m16-er-primary-economic-result.json"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "notes": "SPENT_VALIDATION with discovery reuse allowed; confirmatory reuse forbidden by default"
+      },
+      "eventId": "3dfa0556551c17f0b6addbe73779d76b"
+    },
+    {
+      "eventType": "validation-opened",
+      "utcDate": "2026-09-16",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": "AVAILABLE_UNOWNED",
+      "newState": "SPENT_VALIDATION",
+      "reason": "M16-ER economic outcomes opened under human authorization (PR #110); not pristine for future confirmatory use",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": "3f4fdf157b3eb6eb775c8e2f4bab4272e23cfa22a7179fed29fb135012207c65",
+      "researchLineage": "M16-ER",
+      "primaryResultIdentity": "e6aba34ee5352c38254894babf1e7f7b2c668945dd95c9b92a370550b81b2fea",
+      "sourceArtifactIdentities": [
+        "data/research-results/external-kalshi-data-audit/m16-er-primary-economic-result.json",
+        "data/research-results/external-kalshi-data-audit/m16-er-acquisition-manifest.json",
+        "data/research-results/external-kalshi-data-audit/m16-er-outcome-open-authorization.json"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "owned": true,
+        "vendorAvailable": true,
+        "byteSize": 1339391148,
+        "rawZipSha256": "e9a6acd322e4d0762c95d373693712168e03b5dd68a0b64b784f5dd8f7acd46d",
+        "notes": "Also usable as OPEN_DISCOVERY for exploratory work; never resealable"
+      },
+      "eventId": "76b3bef00126651681e49e0785278ba6"
+    },
+    {
+      "eventType": "opened-for-discovery",
+      "utcDate": "2026-09-16",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": "SPENT_VALIDATION",
+      "newState": "SPENT_VALIDATION",
+      "reason": "M16-ER spent dates remain available for exploratory/discovery research",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": "3f4fdf157b3eb6eb775c8e2f4bab4272e23cfa22a7179fed29fb135012207c65",
+      "researchLineage": "M16-ER",
+      "primaryResultIdentity": "e6aba34ee5352c38254894babf1e7f7b2c668945dd95c9b92a370550b81b2fea",
+      "sourceArtifactIdentities": [
+        "data/research-results/external-kalshi-data-audit/m16-er-primary-economic-result.json"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "notes": "SPENT_VALIDATION with discovery reuse allowed; confirmatory reuse forbidden by default"
+      },
+      "eventId": "195be96b0a442b7c2b3adf7941e1e73b"
+    },
+    {
+      "eventType": "validation-opened",
+      "utcDate": "2026-09-17",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": "AVAILABLE_UNOWNED",
+      "newState": "SPENT_VALIDATION",
+      "reason": "M16-ER economic outcomes opened under human authorization (PR #110); not pristine for future confirmatory use",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": "3f4fdf157b3eb6eb775c8e2f4bab4272e23cfa22a7179fed29fb135012207c65",
+      "researchLineage": "M16-ER",
+      "primaryResultIdentity": "e6aba34ee5352c38254894babf1e7f7b2c668945dd95c9b92a370550b81b2fea",
+      "sourceArtifactIdentities": [
+        "data/research-results/external-kalshi-data-audit/m16-er-primary-economic-result.json",
+        "data/research-results/external-kalshi-data-audit/m16-er-acquisition-manifest.json",
+        "data/research-results/external-kalshi-data-audit/m16-er-outcome-open-authorization.json"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "owned": true,
+        "vendorAvailable": true,
+        "byteSize": 1204543312,
+        "rawZipSha256": "b05e6effd3445172815ccf0dcf06464509a4b7074b2643b9c26158053ae57f89",
+        "notes": "Also usable as OPEN_DISCOVERY for exploratory work; never resealable"
+      },
+      "eventId": "d2782b4fb2e28ede6f30c32ecced85a8"
+    },
+    {
+      "eventType": "opened-for-discovery",
+      "utcDate": "2026-09-17",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": "SPENT_VALIDATION",
+      "newState": "SPENT_VALIDATION",
+      "reason": "M16-ER spent dates remain available for exploratory/discovery research",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": "3f4fdf157b3eb6eb775c8e2f4bab4272e23cfa22a7179fed29fb135012207c65",
+      "researchLineage": "M16-ER",
+      "primaryResultIdentity": "e6aba34ee5352c38254894babf1e7f7b2c668945dd95c9b92a370550b81b2fea",
+      "sourceArtifactIdentities": [
+        "data/research-results/external-kalshi-data-audit/m16-er-primary-economic-result.json"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "notes": "SPENT_VALIDATION with discovery reuse allowed; confirmatory reuse forbidden by default"
+      },
+      "eventId": "f7cf3146acdd137133401080c2c09817"
+    },
+    {
+      "eventType": "validation-opened",
+      "utcDate": "2026-09-19",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": "AVAILABLE_UNOWNED",
+      "newState": "SPENT_VALIDATION",
+      "reason": "M16-ER economic outcomes opened under human authorization (PR #110); not pristine for future confirmatory use",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": "3f4fdf157b3eb6eb775c8e2f4bab4272e23cfa22a7179fed29fb135012207c65",
+      "researchLineage": "M16-ER",
+      "primaryResultIdentity": "e6aba34ee5352c38254894babf1e7f7b2c668945dd95c9b92a370550b81b2fea",
+      "sourceArtifactIdentities": [
+        "data/research-results/external-kalshi-data-audit/m16-er-primary-economic-result.json",
+        "data/research-results/external-kalshi-data-audit/m16-er-acquisition-manifest.json",
+        "data/research-results/external-kalshi-data-audit/m16-er-outcome-open-authorization.json"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "owned": true,
+        "vendorAvailable": true,
+        "byteSize": 1084116889,
+        "rawZipSha256": "6d2e7deb47fc8825a675fbbe4cb2358b9d6e10ddc727b966eb32473d24a42d58",
+        "notes": "Also usable as OPEN_DISCOVERY for exploratory work; never resealable"
+      },
+      "eventId": "20843536c82d2796420b2d4009f8e21c"
+    },
+    {
+      "eventType": "opened-for-discovery",
+      "utcDate": "2026-09-19",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": "SPENT_VALIDATION",
+      "newState": "SPENT_VALIDATION",
+      "reason": "M16-ER spent dates remain available for exploratory/discovery research",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": "3f4fdf157b3eb6eb775c8e2f4bab4272e23cfa22a7179fed29fb135012207c65",
+      "researchLineage": "M16-ER",
+      "primaryResultIdentity": "e6aba34ee5352c38254894babf1e7f7b2c668945dd95c9b92a370550b81b2fea",
+      "sourceArtifactIdentities": [
+        "data/research-results/external-kalshi-data-audit/m16-er-primary-economic-result.json"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "notes": "SPENT_VALIDATION with discovery reuse allowed; confirmatory reuse forbidden by default"
+      },
+      "eventId": "fcad89ade240a9b809578c05699598f2"
+    },
+    {
+      "eventType": "validation-opened",
+      "utcDate": "2026-09-21",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": "AVAILABLE_UNOWNED",
+      "newState": "SPENT_VALIDATION",
+      "reason": "M16-ER economic outcomes opened under human authorization (PR #110); not pristine for future confirmatory use",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": "3f4fdf157b3eb6eb775c8e2f4bab4272e23cfa22a7179fed29fb135012207c65",
+      "researchLineage": "M16-ER",
+      "primaryResultIdentity": "e6aba34ee5352c38254894babf1e7f7b2c668945dd95c9b92a370550b81b2fea",
+      "sourceArtifactIdentities": [
+        "data/research-results/external-kalshi-data-audit/m16-er-primary-economic-result.json",
+        "data/research-results/external-kalshi-data-audit/m16-er-acquisition-manifest.json",
+        "data/research-results/external-kalshi-data-audit/m16-er-outcome-open-authorization.json"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "owned": true,
+        "vendorAvailable": true,
+        "byteSize": 1544693971,
+        "rawZipSha256": "19de93dd26b6ba3d08688defde1176df92bae8868023945d1d65d9bc2c5f7f8f",
+        "notes": "Also usable as OPEN_DISCOVERY for exploratory work; never resealable"
+      },
+      "eventId": "8363c9083cb2693676a1e091909c7e44"
+    },
+    {
+      "eventType": "opened-for-discovery",
+      "utcDate": "2026-09-21",
+      "atUtc": "2026-09-23T07:00:00.000Z",
+      "priorState": "SPENT_VALIDATION",
+      "newState": "SPENT_VALIDATION",
+      "reason": "M16-ER spent dates remain available for exploratory/discovery research",
+      "actor": "cryptostruct-research-reservoir",
+      "scientificProtocolIdentity": "3f4fdf157b3eb6eb775c8e2f4bab4272e23cfa22a7179fed29fb135012207c65",
+      "researchLineage": "M16-ER",
+      "primaryResultIdentity": "e6aba34ee5352c38254894babf1e7f7b2c668945dd95c9b92a370550b81b2fea",
+      "sourceArtifactIdentities": [
+        "data/research-results/external-kalshi-data-audit/m16-er-primary-economic-result.json"
+      ],
+      "inventorySnapshotIdentity": "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
+      "patch": {
+        "notes": "SPENT_VALIDATION with discovery reuse allowed; confirmatory reuse forbidden by default"
+      },
+      "eventId": "9638423ce41e8d5971ffcc6ffa330de2"
+    }
+  ],
+  "eventLedgerIdentity": "e5f558b64b24ce4fe37835b486aa7d9caca604848e1525b68d482f5fadbbe5b7"
+}
