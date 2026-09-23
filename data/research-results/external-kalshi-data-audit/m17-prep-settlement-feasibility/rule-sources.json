@@ -1,0 +1,56 @@
+{
+  "retrievedAtUtc": "2026-09-23",
+  "sources": [
+    {
+      "id": "kalshi-help-crypto-markets",
+      "url": "https://help.kalshi.com/en/articles/13823838-crypto-markets",
+      "accessed": "2026-09-23",
+      "versionNote": "Help Center article; updated over a month ago per page"
+    },
+    {
+      "id": "kalshi-crypto15m-terms-pdf",
+      "url": "https://assets.kalshi.com/contract_terms/CRYPTO15M.pdf",
+      "accessed": "2026-09-23",
+      "versionNote": "Fill-in contract terms template"
+    },
+    {
+      "id": "kalshi-btc-terms-pdf",
+      "url": "https://assets.kalshi.com/contract_terms/BTC.pdf",
+      "accessed": "2026-09-23",
+      "versionNote": "BRTI minute-average underlying"
+    },
+    {
+      "id": "kalshi-ws-cfbenchmarks-value",
+      "url": "https://docs.kalshi.com/websockets/cfbenchmarks-value",
+      "accessed": "2026-09-23",
+      "versionNote": "last_60s_windowed_average_15min semantics"
+    },
+    {
+      "id": "kalshi-cfb-rest-passthrough",
+      "url": "https://docs.kalshi.com/cfbenchmarks/rest-passthrough",
+      "accessed": "2026-09-23",
+      "versionNote": "history/values passthrough; entitlement-gated"
+    },
+    {
+      "id": "cme-brti-200ms-2026-05-18",
+      "url": "https://www.cmegroup.com/notices/electronic-trading/2026/05/20260518.html",
+      "accessed": "2026-09-23",
+      "versionNote": "BRTI publication frequency 1s\u2192200ms"
+    },
+    {
+      "id": "repo-kxbtc15m-fixture",
+      "path": "src/lib/data/importers/kalshi/fixtures/KXBTC15M-25DEC311900-00-market-responses.json",
+      "accessed": "2026-09-23"
+    },
+    {
+      "id": "m16-er-primary",
+      "path": "data/research-results/external-kalshi-data-audit/m16-er-primary-economic-result.json",
+      "accessed": "2026-09-23"
+    },
+    {
+      "id": "m16p-registry",
+      "path": "data/research-results/m16-validation-collection/registry.json",
+      "accessed": "2026-09-23"
+    }
+  ]
+}

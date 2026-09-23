@@ -1,0 +1,17 @@
+{
+  "accepted": [
+    {
+      "outcomesOpened": false,
+      "pnlInspected": false,
+      "blindIncidence": {
+        "outcomesOpened": false,
+        "quarantine": {
+          "pnlOpened": false,
+          "settlementDirectionInspected": false,
+          "stopHitInspected": false,
+          "targetHitInspected": false
+        }
+      }
+    }
+  ]
+}

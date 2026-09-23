@@ -1,0 +1,42 @@
+{
+  "eventType": "m16p-collection-suspended",
+  "eventVersion": "m17-prep-m16p-suspension-v1",
+  "atUtc": "2026-09-23T23:20:45.028Z",
+  "basis": {
+    "kind": "m16-er-fail-to-reject-H0",
+    "notBasedOnProspectiveM16pPnl": true,
+    "m16ErPrimaryN": 461,
+    "m16ErPrimaryG": 34,
+    "m16ErMeanGrossPnlCents": -0.42733188720173537,
+    "m16ErMeanFeeAdjustedPnlCents": -4.427331887201736,
+    "m16ErHypothesisDecision": "fail-to-reject-H0",
+    "m16ErProtocolDisposition": "NO_STATISTICALLY_SIGNIFICANT_POSITIVE_MEAN_FEE_ADJUSTED_EXECUTABLE_PNL",
+    "m16ErPrimaryResultContentSha256": "e6aba34ee5352c38254894babf1e7f7b2c668945dd95c9b92a370550b81b2fea"
+  },
+  "collectionDisable": {
+    "mechanism": "npm run research:m16-validation-collection -- --disable-scheduler",
+    "schedulerEnabled": false,
+    "schedulerLoadedStill": true,
+    "operatorBootoutStillRequired": true,
+    "schedulerStatePath": "data/research-results/m16-validation-collection/scheduler/state.json"
+  },
+  "m16pMetadataInspected": {
+    "outcomesOpened": false,
+    "acceptedHours": 4,
+    "acceptedSegments": 1,
+    "eligibleTradeCount": 9,
+    "distinctEligibleUtcDayClusters": 1,
+    "disposition": "continue-collection",
+    "registryAcceptedCount": 1,
+    "registryIdentity": "7642c2bffab97fb4356213b89e25f633a838fcb36c5a990c3f1a1f73c69118af",
+    "priorReportClaimedZeroAccepted": true,
+    "registryDiscrepancyFromPriorZeroClaim": true,
+    "sealedMaterialPreserved": true,
+    "sealedOutcomesOpened": false
+  },
+  "contamination": {
+    "registryRewritten": false,
+    "reservoirStatesAltered": false,
+    "unrelatedCaptureInfrastructureAltered": false
+  }
+}

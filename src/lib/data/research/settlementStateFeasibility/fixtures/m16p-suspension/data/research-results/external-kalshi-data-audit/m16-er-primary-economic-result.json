@@ -1,0 +1,9 @@
+{
+  "primaryN": 461,
+  "primaryG": 34,
+  "meanGrossPnlCents": -0.42733188720173537,
+  "meanFeeAdjustedPnlCents": -4.427331887201736,
+  "hypothesisDecision": "fail-to-reject-H0",
+  "protocolDisposition": "NO_STATISTICALLY_SIGNIFICANT_POSITIVE_MEAN_FEE_ADJUSTED_EXECUTABLE_PNL",
+  "primaryResultContentSha256": "e6aba34ee5352c38254894babf1e7f7b2c668945dd95c9b92a370550b81b2fea"
+}
