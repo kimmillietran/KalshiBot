@@ -1,0 +1,183 @@
+{
+  "note": "Descriptive day-cluster means — no day deletion or retesting",
+  "primaryResultContentSha256": "e6aba34ee5352c38254894babf1e7f7b2c668945dd95c9b92a370550b81b2fea",
+  "dayCount": 34,
+  "positiveMeanDays": 1,
+  "negativeMeanDays": 33,
+  "zeroMeanDays": 0,
+  "medianDailyMeanCents": -4.211904761904762,
+  "minDailyMeanCents": -8.916666666666666,
+  "maxDailyMeanCents": 0.25,
+  "days": [
+    {
+      "utcDayKey": "2026-08-14",
+      "n": 13,
+      "meanNetPnlCents": -6.615384615384615
+    },
+    {
+      "utcDayKey": "2026-08-15",
+      "n": 12,
+      "meanNetPnlCents": -8.666666666666666
+    },
+    {
+      "utcDayKey": "2026-08-16",
+      "n": 15,
+      "meanNetPnlCents": -5.866666666666666
+    },
+    {
+      "utcDayKey": "2026-08-17",
+      "n": 12,
+      "meanNetPnlCents": -2.8333333333333335
+    },
+    {
+      "utcDayKey": "2026-08-18",
+      "n": 16,
+      "meanNetPnlCents": -3.8125
+    },
+    {
+      "utcDayKey": "2026-08-19",
+      "n": 15,
+      "meanNetPnlCents": -4.066666666666666
+    },
+    {
+      "utcDayKey": "2026-08-20",
+      "n": 10,
+      "meanNetPnlCents": -7.5
+    },
+    {
+      "utcDayKey": "2026-08-21",
+      "n": 16,
+      "meanNetPnlCents": -4.875
+    },
+    {
+      "utcDayKey": "2026-08-22",
+      "n": 12,
+      "meanNetPnlCents": -0.25
+    },
+    {
+      "utcDayKey": "2026-08-23",
+      "n": 12,
+      "meanNetPnlCents": -8.916666666666666
+    },
+    {
+      "utcDayKey": "2026-08-24",
+      "n": 13,
+      "meanNetPnlCents": -3.6153846153846154
+    },
+    {
+      "utcDayKey": "2026-08-25",
+      "n": 14,
+      "meanNetPnlCents": -2.9285714285714284
+    },
+    {
+      "utcDayKey": "2026-08-26",
+      "n": 15,
+      "meanNetPnlCents": -1.6
+    },
+    {
+      "utcDayKey": "2026-08-27",
+      "n": 15,
+      "meanNetPnlCents": -6.6
+    },
+    {
+      "utcDayKey": "2026-08-28",
+      "n": 12,
+      "meanNetPnlCents": -0.8333333333333334
+    },
+    {
+      "utcDayKey": "2026-08-29",
+      "n": 12,
+      "meanNetPnlCents": 0.25
+    },
+    {
+      "utcDayKey": "2026-08-30",
+      "n": 14,
+      "meanNetPnlCents": -4.357142857142857
+    },
+    {
+      "utcDayKey": "2026-08-31",
+      "n": 15,
+      "meanNetPnlCents": -2.8666666666666667
+    },
+    {
+      "utcDayKey": "2026-09-01",
+      "n": 15,
+      "meanNetPnlCents": -1.4666666666666666
+    },
+    {
+      "utcDayKey": "2026-09-02",
+      "n": 12,
+      "meanNetPnlCents": -5.333333333333333
+    },
+    {
+      "utcDayKey": "2026-09-03",
+      "n": 15,
+      "meanNetPnlCents": -5.666666666666667
+    },
+    {
+      "utcDayKey": "2026-09-04",
+      "n": 12,
+      "meanNetPnlCents": -8.25
+    },
+    {
+      "utcDayKey": "2026-09-05",
+      "n": 16,
+      "meanNetPnlCents": -4.6875
+    },
+    {
+      "utcDayKey": "2026-09-06",
+      "n": 14,
+      "meanNetPnlCents": -8.571428571428571
+    },
+    {
+      "utcDayKey": "2026-09-07",
+      "n": 13,
+      "meanNetPnlCents": -2.4615384615384617
+    },
+    {
+      "utcDayKey": "2026-09-10",
+      "n": 15,
+      "meanNetPnlCents": -5.733333333333333
+    },
+    {
+      "utcDayKey": "2026-09-11",
+      "n": 9,
+      "meanNetPnlCents": -2.111111111111111
+    },
+    {
+      "utcDayKey": "2026-09-12",
+      "n": 14,
+      "meanNetPnlCents": -4
+    },
+    {
+      "utcDayKey": "2026-09-13",
+      "n": 12,
+      "meanNetPnlCents": -6.166666666666667
+    },
+    {
+      "utcDayKey": "2026-09-15",
+      "n": 14,
+      "meanNetPnlCents": -5.142857142857143
+    },
+    {
+      "utcDayKey": "2026-09-16",
+      "n": 15,
+      "meanNetPnlCents": -3
+    },
+    {
+      "utcDayKey": "2026-09-17",
+      "n": 16,
+      "meanNetPnlCents": -3.5
+    },
+    {
+      "utcDayKey": "2026-09-19",
+      "n": 13,
+      "meanNetPnlCents": -6.3076923076923075
+    },
+    {
+      "utcDayKey": "2026-09-21",
+      "n": 13,
+      "meanNetPnlCents": -2.6923076923076925
+    }
+  ]
+}

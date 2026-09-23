@@ -1,0 +1,44 @@
+{
+  "note": "Descriptive only — does not alter primary verdict",
+  "primaryResultContentSha256": "e6aba34ee5352c38254894babf1e7f7b2c668945dd95c9b92a370550b81b2fea",
+  "medianNetPnlCents": -8,
+  "sdNetPnlCents": 8.07637666528818,
+  "percentiles": {
+    "p10": -12,
+    "p25": -9,
+    "p50": -8,
+    "p75": 2,
+    "p90": 9
+  },
+  "minNetPnlCents": -20,
+  "maxNetPnlCents": 17,
+  "netPositiveFraction": 0.25813449023861174,
+  "netZeroFraction": 0.0021691973969631237,
+  "meanGrossPnlCents": -0.42733188720173537,
+  "meanFeeCents": 4,
+  "meanEntryAskCents": 41.297180043383946,
+  "meanExitBidCents": 40.869848156182215,
+  "meanHoldingTimeMs": 39971.7874186551,
+  "medianHoldingTimeMs": 19115,
+  "exitRouteCounts": {
+    "structural-stop": 332,
+    "target": 129
+  },
+  "exitRouteRates": {
+    "structural-stop": 0.720173535791757,
+    "target": 0.279826464208243
+  },
+  "meanNetByExitRoute": {
+    "target": 7.496124031007752,
+    "structural-stop": -9.060240963855422,
+    "terminal-flatten": null
+  },
+  "yesSide": {
+    "count": 226,
+    "meanNetPnlCents": -4.747787610619469
+  },
+  "noSide": {
+    "count": 235,
+    "meanNetPnlCents": -4.1191489361702125
+  }
+}

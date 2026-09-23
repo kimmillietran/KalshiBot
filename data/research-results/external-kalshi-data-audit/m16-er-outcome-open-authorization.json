@@ -1,0 +1,23 @@
+{
+  "role": "m16-external-historical-replication",
+  "outcomeOpenTimestampUtc": "2026-09-23T05:10:41.471Z",
+  "mainSha": "25e24eb4b19ae24adfab1736dc1d16180550ab5b",
+  "scientificProtocolIdentity": "3f4fdf157b3eb6eb775c8e2f4bab4272e23cfa22a7179fed29fb135012207c65",
+  "cohortReservationIdentity": "afdacb697216ba385e8d4d9627deec6610d90fafeb52c83b474bace7d9ae15c0",
+  "adapterIdentity": "3f37ecb76644ee0749c50f33cfdaf8921e8dcb1cf208abdc55719a461e27dc7d",
+  "sourceContractIdentity": "63049f060df62092aee62e07fad1691ee5318424d09ebf97c6953cd9dd7149f4",
+  "dependencePlanIdentity": "b81c49e9fe574f900c22099c0071cb4607ea1c059952757ef8c95cbc88928603",
+  "evidenceContractIdentity": "d7697bea40d9c3997aad67bf677dcc4ad3e7a0a09c71fc114e16e4952ed0f699",
+  "feeContractIdentity": "2c1059ecc142dd6ca9b82375e03fd84b42f55ce6d6f1435a667111eea2d0548f",
+  "rawCohortIdentityFingerprint": "0780a6fc4165ce023f6c264a2cec390a4c1a524d34767a6f7dad279c9edd943f",
+  "blindConfirmationsN": 461,
+  "utcDayClustersG": 34,
+  "governedHoursH": 136,
+  "humanOutcomeOpenApproval": true,
+  "economicOutcomesPreviouslyOpened": false,
+  "gateAuthorized": true,
+  "gateSealed": false,
+  "note": "First authorized M16-ER economic outcome open (human checkpoint).",
+  "gateAuthorizedAtOpen": true,
+  "gateSealedAtOpen": false
+}
