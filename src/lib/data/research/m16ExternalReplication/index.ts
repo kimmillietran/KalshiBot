@@ -34,3 +34,18 @@ export {
   runM16ErSyntheticEvaluatorFixture,
   type M16ErSyntheticTradeFixture,
 } from "./m16ErSyntheticEvaluator";
+
+export {
+  buildM16ErDayClusterDiagnostics,
+  buildM16ErEconomicDiagnostics,
+  buildM16ErPrimaryEconomicResult,
+  evaluateM16ErPostConfirmationPath,
+  M16_ER_EXIT_ROUTES,
+  type M16ErConfirmationContext,
+  type M16ErEconomicDiagnostics,
+  type M16ErDayClusterDiagnostics,
+  type M16ErExitRoute,
+  type M16ErPostConfirmationTick,
+  type M16ErPrimaryEconomicResult,
+  type M16ErTradeOutcome,
+} from "./m16ErOutcomeEvaluator";
