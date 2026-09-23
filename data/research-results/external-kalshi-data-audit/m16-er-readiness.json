@@ -1,0 +1,20 @@
+{
+  "disposition": "READY_FOR_HUMAN_OUTCOME_OPEN_APPROVAL",
+  "mechanicalReady": true,
+  "requiredN": 329,
+  "requiredG": 27,
+  "totalN": 461,
+  "totalG": 34,
+  "totalGovernedHours": 136,
+  "all34DatesAccounted": true,
+  "shaIdentitiesFrozen": true,
+  "qualityAuditComplete": true,
+  "identitiesExact": true,
+  "hardenedGateMerged": true,
+  "gateDefaultSealed": true,
+  "gateProbeWouldAuthorizeIfInvoked": true,
+  "economicEvaluatorInvoked": false,
+  "humanCheckpointRequired": true,
+  "note": "READY_FOR_HUMAN_OUTCOME_OPEN_APPROVAL does NOT open economics. Do not feed gateProbe authorization into the evaluator in this task.",
+  "blockers": []
+}

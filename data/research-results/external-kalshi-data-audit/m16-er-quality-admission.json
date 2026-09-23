@@ -1,0 +1,251 @@
+{
+  "qualityAuditOnlyExcluded": [
+    "2026-09-08",
+    "2026-09-09",
+    "2026-09-14",
+    "2026-09-18",
+    "2026-09-20"
+  ],
+  "days": [
+    {
+      "utcDate": "2026-08-14",
+      "admitted": true,
+      "exclusionReason": null,
+      "zeroSignal": false,
+      "governedHoursIfAdmitted": 4
+    },
+    {
+      "utcDate": "2026-08-15",
+      "admitted": true,
+      "exclusionReason": null,
+      "zeroSignal": false,
+      "governedHoursIfAdmitted": 4
+    },
+    {
+      "utcDate": "2026-08-16",
+      "admitted": true,
+      "exclusionReason": null,
+      "zeroSignal": false,
+      "governedHoursIfAdmitted": 4
+    },
+    {
+      "utcDate": "2026-08-17",
+      "admitted": true,
+      "exclusionReason": null,
+      "zeroSignal": false,
+      "governedHoursIfAdmitted": 4
+    },
+    {
+      "utcDate": "2026-08-18",
+      "admitted": true,
+      "exclusionReason": null,
+      "zeroSignal": false,
+      "governedHoursIfAdmitted": 4
+    },
+    {
+      "utcDate": "2026-08-19",
+      "admitted": true,
+      "exclusionReason": null,
+      "zeroSignal": false,
+      "governedHoursIfAdmitted": 4
+    },
+    {
+      "utcDate": "2026-08-20",
+      "admitted": true,
+      "exclusionReason": null,
+      "zeroSignal": false,
+      "governedHoursIfAdmitted": 4
+    },
+    {
+      "utcDate": "2026-08-21",
+      "admitted": true,
+      "exclusionReason": null,
+      "zeroSignal": false,
+      "governedHoursIfAdmitted": 4
+    },
+    {
+      "utcDate": "2026-08-22",
+      "admitted": true,
+      "exclusionReason": null,
+      "zeroSignal": false,
+      "governedHoursIfAdmitted": 4
+    },
+    {
+      "utcDate": "2026-08-23",
+      "admitted": true,
+      "exclusionReason": null,
+      "zeroSignal": false,
+      "governedHoursIfAdmitted": 4
+    },
+    {
+      "utcDate": "2026-08-24",
+      "admitted": true,
+      "exclusionReason": null,
+      "zeroSignal": false,
+      "governedHoursIfAdmitted": 4
+    },
+    {
+      "utcDate": "2026-08-25",
+      "admitted": true,
+      "exclusionReason": null,
+      "zeroSignal": false,
+      "governedHoursIfAdmitted": 4
+    },
+    {
+      "utcDate": "2026-08-26",
+      "admitted": true,
+      "exclusionReason": null,
+      "zeroSignal": false,
+      "governedHoursIfAdmitted": 4
+    },
+    {
+      "utcDate": "2026-08-27",
+      "admitted": true,
+      "exclusionReason": null,
+      "zeroSignal": false,
+      "governedHoursIfAdmitted": 4
+    },
+    {
+      "utcDate": "2026-08-28",
+      "admitted": true,
+      "exclusionReason": null,
+      "zeroSignal": false,
+      "governedHoursIfAdmitted": 4
+    },
+    {
+      "utcDate": "2026-08-29",
+      "admitted": true,
+      "exclusionReason": null,
+      "zeroSignal": false,
+      "governedHoursIfAdmitted": 4
+    },
+    {
+      "utcDate": "2026-08-30",
+      "admitted": true,
+      "exclusionReason": null,
+      "zeroSignal": false,
+      "governedHoursIfAdmitted": 4
+    },
+    {
+      "utcDate": "2026-08-31",
+      "admitted": true,
+      "exclusionReason": null,
+      "zeroSignal": false,
+      "governedHoursIfAdmitted": 4
+    },
+    {
+      "utcDate": "2026-09-01",
+      "admitted": true,
+      "exclusionReason": null,
+      "zeroSignal": false,
+      "governedHoursIfAdmitted": 4
+    },
+    {
+      "utcDate": "2026-09-02",
+      "admitted": true,
+      "exclusionReason": null,
+      "zeroSignal": false,
+      "governedHoursIfAdmitted": 4
+    },
+    {
+      "utcDate": "2026-09-03",
+      "admitted": true,
+      "exclusionReason": null,
+      "zeroSignal": false,
+      "governedHoursIfAdmitted": 4
+    },
+    {
+      "utcDate": "2026-09-04",
+      "admitted": true,
+      "exclusionReason": null,
+      "zeroSignal": false,
+      "governedHoursIfAdmitted": 4
+    },
+    {
+      "utcDate": "2026-09-05",
+      "admitted": true,
+      "exclusionReason": null,
+      "zeroSignal": false,
+      "governedHoursIfAdmitted": 4
+    },
+    {
+      "utcDate": "2026-09-06",
+      "admitted": true,
+      "exclusionReason": null,
+      "zeroSignal": false,
+      "governedHoursIfAdmitted": 4
+    },
+    {
+      "utcDate": "2026-09-07",
+      "admitted": true,
+      "exclusionReason": null,
+      "zeroSignal": false,
+      "governedHoursIfAdmitted": 4
+    },
+    {
+      "utcDate": "2026-09-10",
+      "admitted": true,
+      "exclusionReason": null,
+      "zeroSignal": false,
+      "governedHoursIfAdmitted": 4
+    },
+    {
+      "utcDate": "2026-09-11",
+      "admitted": true,
+      "exclusionReason": null,
+      "zeroSignal": false,
+      "governedHoursIfAdmitted": 4
+    },
+    {
+      "utcDate": "2026-09-12",
+      "admitted": true,
+      "exclusionReason": null,
+      "zeroSignal": false,
+      "governedHoursIfAdmitted": 4
+    },
+    {
+      "utcDate": "2026-09-13",
+      "admitted": true,
+      "exclusionReason": null,
+      "zeroSignal": false,
+      "governedHoursIfAdmitted": 4
+    },
+    {
+      "utcDate": "2026-09-15",
+      "admitted": true,
+      "exclusionReason": null,
+      "zeroSignal": false,
+      "governedHoursIfAdmitted": 4
+    },
+    {
+      "utcDate": "2026-09-16",
+      "admitted": true,
+      "exclusionReason": null,
+      "zeroSignal": false,
+      "governedHoursIfAdmitted": 4
+    },
+    {
+      "utcDate": "2026-09-17",
+      "admitted": true,
+      "exclusionReason": null,
+      "zeroSignal": false,
+      "governedHoursIfAdmitted": 4
+    },
+    {
+      "utcDate": "2026-09-19",
+      "admitted": true,
+      "exclusionReason": null,
+      "zeroSignal": false,
+      "governedHoursIfAdmitted": 4
+    },
+    {
+      "utcDate": "2026-09-21",
+      "admitted": true,
+      "exclusionReason": null,
+      "zeroSignal": false,
+      "governedHoursIfAdmitted": 4
+    }
+  ],
+  "admittedCount": 34,
+  "excludedCount": 0
+}

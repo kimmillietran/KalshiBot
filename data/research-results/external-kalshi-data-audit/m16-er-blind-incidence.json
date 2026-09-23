@@ -1,0 +1,3154 @@
+{
+  "label": "M16-ER BLIND INCIDENCE — no economics",
+  "adapterIdentity": "3f37ecb76644ee0749c50f33cfdaf8921e8dcb1cf208abdc55719a461e27dc7d",
+  "cohortReservationIdentity": "afdacb697216ba385e8d4d9627deec6610d90fafeb52c83b474bace7d9ae15c0",
+  "requiredN": 329,
+  "requiredG": 27,
+  "totalN": 461,
+  "totalG": 34,
+  "totalGovernedHours": 136,
+  "earlyStoppingUsed": false,
+  "replacementDatesUsed": false,
+  "days": [
+    {
+      "utcDate": "2026-08-14",
+      "admitted": true,
+      "exclusionReason": null,
+      "eligibleConfirmations": 13,
+      "zeroSignal": false,
+      "clusterEligible": true,
+      "confirmationCount": 13,
+      "confirmations": [
+        {
+          "ticker": "KXBTC15M-26AUG141430-30",
+          "side": "NO",
+          "confirmationTimestampMs": 1786731456916,
+          "utcDayKey": "2026-08-14"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG141445-45",
+          "side": "YES",
+          "confirmationTimestampMs": 1786732216971,
+          "utcDayKey": "2026-08-14"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG141515-15",
+          "side": "YES",
+          "confirmationTimestampMs": 1786734041977,
+          "utcDayKey": "2026-08-14"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG141530-30",
+          "side": "YES",
+          "confirmationTimestampMs": 1786734994206,
+          "utcDayKey": "2026-08-14"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG141545-45",
+          "side": "NO",
+          "confirmationTimestampMs": 1786736242238,
+          "utcDayKey": "2026-08-14"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG141600-00",
+          "side": "NO",
+          "confirmationTimestampMs": 1786736709240,
+          "utcDayKey": "2026-08-14"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG141615-15",
+          "side": "NO",
+          "confirmationTimestampMs": 1786737605972,
+          "utcDayKey": "2026-08-14"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG141630-30",
+          "side": "YES",
+          "confirmationTimestampMs": 1786738530202,
+          "utcDayKey": "2026-08-14"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG141645-45",
+          "side": "YES",
+          "confirmationTimestampMs": 1786739608628,
+          "utcDayKey": "2026-08-14"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG141700-00",
+          "side": "NO",
+          "confirmationTimestampMs": 1786740322720,
+          "utcDayKey": "2026-08-14"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG141730-30",
+          "side": "NO",
+          "confirmationTimestampMs": 1786742157893,
+          "utcDayKey": "2026-08-14"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG141745-45",
+          "side": "YES",
+          "confirmationTimestampMs": 1786743282250,
+          "utcDayKey": "2026-08-14"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG141800-00",
+          "side": "NO",
+          "confirmationTimestampMs": 1786743910702,
+          "utcDayKey": "2026-08-14"
+        }
+      ]
+    },
+    {
+      "utcDate": "2026-08-15",
+      "admitted": true,
+      "exclusionReason": null,
+      "eligibleConfirmations": 12,
+      "zeroSignal": false,
+      "clusterEligible": true,
+      "confirmationCount": 12,
+      "confirmations": [
+        {
+          "ticker": "KXBTC15M-26AUG151430-30",
+          "side": "YES",
+          "confirmationTimestampMs": 1786817705048,
+          "utcDayKey": "2026-08-15"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG151445-45",
+          "side": "NO",
+          "confirmationTimestampMs": 1786818981598,
+          "utcDayKey": "2026-08-15"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG151500-00",
+          "side": "NO",
+          "confirmationTimestampMs": 1786819602352,
+          "utcDayKey": "2026-08-15"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG151515-15",
+          "side": "NO",
+          "confirmationTimestampMs": 1786820516138,
+          "utcDayKey": "2026-08-15"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG151530-30",
+          "side": "NO",
+          "confirmationTimestampMs": 1786821381111,
+          "utcDayKey": "2026-08-15"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG151615-15",
+          "side": "YES",
+          "confirmationTimestampMs": 1786824007571,
+          "utcDayKey": "2026-08-15"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG151630-30",
+          "side": "YES",
+          "confirmationTimestampMs": 1786824952358,
+          "utcDayKey": "2026-08-15"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG151645-45",
+          "side": "YES",
+          "confirmationTimestampMs": 1786826047290,
+          "utcDayKey": "2026-08-15"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG151715-15",
+          "side": "YES",
+          "confirmationTimestampMs": 1786827697677,
+          "utcDayKey": "2026-08-15"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG151730-30",
+          "side": "NO",
+          "confirmationTimestampMs": 1786828586277,
+          "utcDayKey": "2026-08-15"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG151745-45",
+          "side": "YES",
+          "confirmationTimestampMs": 1786829426540,
+          "utcDayKey": "2026-08-15"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG151800-00",
+          "side": "YES",
+          "confirmationTimestampMs": 1786830307827,
+          "utcDayKey": "2026-08-15"
+        }
+      ]
+    },
+    {
+      "utcDate": "2026-08-16",
+      "admitted": true,
+      "exclusionReason": null,
+      "eligibleConfirmations": 15,
+      "zeroSignal": false,
+      "clusterEligible": true,
+      "confirmationCount": 15,
+      "confirmations": [
+        {
+          "ticker": "KXBTC15M-26AUG161415-15",
+          "side": "YES",
+          "confirmationTimestampMs": 1786903281696,
+          "utcDayKey": "2026-08-16"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG161430-30",
+          "side": "NO",
+          "confirmationTimestampMs": 1786904224907,
+          "utcDayKey": "2026-08-16"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG161500-00",
+          "side": "NO",
+          "confirmationTimestampMs": 1786906027096,
+          "utcDayKey": "2026-08-16"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG161515-15",
+          "side": "NO",
+          "confirmationTimestampMs": 1786906929906,
+          "utcDayKey": "2026-08-16"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG161530-30",
+          "side": "NO",
+          "confirmationTimestampMs": 1786907727546,
+          "utcDayKey": "2026-08-16"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG161545-45",
+          "side": "YES",
+          "confirmationTimestampMs": 1786908621004,
+          "utcDayKey": "2026-08-16"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG161600-00",
+          "side": "YES",
+          "confirmationTimestampMs": 1786909594790,
+          "utcDayKey": "2026-08-16"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG161615-15",
+          "side": "NO",
+          "confirmationTimestampMs": 1786910425768,
+          "utcDayKey": "2026-08-16"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG161630-30",
+          "side": "YES",
+          "confirmationTimestampMs": 1786911498067,
+          "utcDayKey": "2026-08-16"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG161645-45",
+          "side": "YES",
+          "confirmationTimestampMs": 1786912282409,
+          "utcDayKey": "2026-08-16"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG161700-00",
+          "side": "YES",
+          "confirmationTimestampMs": 1786913188381,
+          "utcDayKey": "2026-08-16"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG161715-15",
+          "side": "YES",
+          "confirmationTimestampMs": 1786914049143,
+          "utcDayKey": "2026-08-16"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG161730-30",
+          "side": "NO",
+          "confirmationTimestampMs": 1786915007291,
+          "utcDayKey": "2026-08-16"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG161745-45",
+          "side": "YES",
+          "confirmationTimestampMs": 1786915859661,
+          "utcDayKey": "2026-08-16"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG161800-00",
+          "side": "YES",
+          "confirmationTimestampMs": 1786916768089,
+          "utcDayKey": "2026-08-16"
+        }
+      ]
+    },
+    {
+      "utcDate": "2026-08-17",
+      "admitted": true,
+      "exclusionReason": null,
+      "eligibleConfirmations": 12,
+      "zeroSignal": false,
+      "clusterEligible": true,
+      "confirmationCount": 12,
+      "confirmations": [
+        {
+          "ticker": "KXBTC15M-26AUG171415-15",
+          "side": "YES",
+          "confirmationTimestampMs": 1786989667917,
+          "utcDayKey": "2026-08-17"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG171445-45",
+          "side": "YES",
+          "confirmationTimestampMs": 1786991477736,
+          "utcDayKey": "2026-08-17"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG171500-00",
+          "side": "YES",
+          "confirmationTimestampMs": 1786992336383,
+          "utcDayKey": "2026-08-17"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG171530-30",
+          "side": "NO",
+          "confirmationTimestampMs": 1786994156641,
+          "utcDayKey": "2026-08-17"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG171545-45",
+          "side": "NO",
+          "confirmationTimestampMs": 1786995655780,
+          "utcDayKey": "2026-08-17"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG171600-00",
+          "side": "YES",
+          "confirmationTimestampMs": 1786995999103,
+          "utcDayKey": "2026-08-17"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG171615-15",
+          "side": "YES",
+          "confirmationTimestampMs": 1786996808129,
+          "utcDayKey": "2026-08-17"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG171630-30",
+          "side": "YES",
+          "confirmationTimestampMs": 1786997855376,
+          "utcDayKey": "2026-08-17"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG171700-00",
+          "side": "YES",
+          "confirmationTimestampMs": 1786999541354,
+          "utcDayKey": "2026-08-17"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG171715-15",
+          "side": "NO",
+          "confirmationTimestampMs": 1787000507463,
+          "utcDayKey": "2026-08-17"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG171730-30",
+          "side": "YES",
+          "confirmationTimestampMs": 1787001507076,
+          "utcDayKey": "2026-08-17"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG171745-45",
+          "side": "NO",
+          "confirmationTimestampMs": 1787002249162,
+          "utcDayKey": "2026-08-17"
+        }
+      ]
+    },
+    {
+      "utcDate": "2026-08-18",
+      "admitted": true,
+      "exclusionReason": null,
+      "eligibleConfirmations": 16,
+      "zeroSignal": false,
+      "clusterEligible": true,
+      "confirmationCount": 16,
+      "confirmations": [
+        {
+          "ticker": "KXBTC15M-26AUG181415-15",
+          "side": "YES",
+          "confirmationTimestampMs": 1787076003837,
+          "utcDayKey": "2026-08-18"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG181430-30",
+          "side": "YES",
+          "confirmationTimestampMs": 1787077028487,
+          "utcDayKey": "2026-08-18"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG181445-45",
+          "side": "NO",
+          "confirmationTimestampMs": 1787078227850,
+          "utcDayKey": "2026-08-18"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG181500-00",
+          "side": "YES",
+          "confirmationTimestampMs": 1787078730301,
+          "utcDayKey": "2026-08-18"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG181515-15",
+          "side": "YES",
+          "confirmationTimestampMs": 1787079709661,
+          "utcDayKey": "2026-08-18"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG181530-30",
+          "side": "YES",
+          "confirmationTimestampMs": 1787080516377,
+          "utcDayKey": "2026-08-18"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG181545-45",
+          "side": "YES",
+          "confirmationTimestampMs": 1787081407778,
+          "utcDayKey": "2026-08-18"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG181600-00",
+          "side": "NO",
+          "confirmationTimestampMs": 1787082336628,
+          "utcDayKey": "2026-08-18"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG181615-15",
+          "side": "NO",
+          "confirmationTimestampMs": 1787083221059,
+          "utcDayKey": "2026-08-18"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG181630-30",
+          "side": "YES",
+          "confirmationTimestampMs": 1787084140256,
+          "utcDayKey": "2026-08-18"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG181645-45",
+          "side": "YES",
+          "confirmationTimestampMs": 1787085053730,
+          "utcDayKey": "2026-08-18"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG181700-00",
+          "side": "NO",
+          "confirmationTimestampMs": 1787085964054,
+          "utcDayKey": "2026-08-18"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG181715-15",
+          "side": "NO",
+          "confirmationTimestampMs": 1787086865505,
+          "utcDayKey": "2026-08-18"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG181730-30",
+          "side": "YES",
+          "confirmationTimestampMs": 1787087719088,
+          "utcDayKey": "2026-08-18"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG181745-45",
+          "side": "YES",
+          "confirmationTimestampMs": 1787088683281,
+          "utcDayKey": "2026-08-18"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG181800-00",
+          "side": "YES",
+          "confirmationTimestampMs": 1787089505737,
+          "utcDayKey": "2026-08-18"
+        }
+      ]
+    },
+    {
+      "utcDate": "2026-08-19",
+      "admitted": true,
+      "exclusionReason": null,
+      "eligibleConfirmations": 15,
+      "zeroSignal": false,
+      "clusterEligible": true,
+      "confirmationCount": 15,
+      "confirmations": [
+        {
+          "ticker": "KXBTC15M-26AUG191415-15",
+          "side": "NO",
+          "confirmationTimestampMs": 1787162449798,
+          "utcDayKey": "2026-08-19"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG191445-45",
+          "side": "YES",
+          "confirmationTimestampMs": 1787164228763,
+          "utcDayKey": "2026-08-19"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG191500-00",
+          "side": "NO",
+          "confirmationTimestampMs": 1787165144808,
+          "utcDayKey": "2026-08-19"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG191515-15",
+          "side": "YES",
+          "confirmationTimestampMs": 1787166025384,
+          "utcDayKey": "2026-08-19"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG191530-30",
+          "side": "NO",
+          "confirmationTimestampMs": 1787166977155,
+          "utcDayKey": "2026-08-19"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG191545-45",
+          "side": "YES",
+          "confirmationTimestampMs": 1787167852630,
+          "utcDayKey": "2026-08-19"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG191600-00",
+          "side": "NO",
+          "confirmationTimestampMs": 1787169046005,
+          "utcDayKey": "2026-08-19"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG191615-15",
+          "side": "NO",
+          "confirmationTimestampMs": 1787169656227,
+          "utcDayKey": "2026-08-19"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG191630-30",
+          "side": "YES",
+          "confirmationTimestampMs": 1787170572855,
+          "utcDayKey": "2026-08-19"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG191645-45",
+          "side": "NO",
+          "confirmationTimestampMs": 1787171426761,
+          "utcDayKey": "2026-08-19"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG191700-00",
+          "side": "YES",
+          "confirmationTimestampMs": 1787172387244,
+          "utcDayKey": "2026-08-19"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG191715-15",
+          "side": "YES",
+          "confirmationTimestampMs": 1787173227794,
+          "utcDayKey": "2026-08-19"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG191730-30",
+          "side": "NO",
+          "confirmationTimestampMs": 1787174127468,
+          "utcDayKey": "2026-08-19"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG191745-45",
+          "side": "NO",
+          "confirmationTimestampMs": 1787175041921,
+          "utcDayKey": "2026-08-19"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG191800-00",
+          "side": "NO",
+          "confirmationTimestampMs": 1787175927846,
+          "utcDayKey": "2026-08-19"
+        }
+      ]
+    },
+    {
+      "utcDate": "2026-08-20",
+      "admitted": true,
+      "exclusionReason": null,
+      "eligibleConfirmations": 10,
+      "zeroSignal": false,
+      "clusterEligible": true,
+      "confirmationCount": 10,
+      "confirmations": [
+        {
+          "ticker": "KXBTC15M-26AUG201415-15",
+          "side": "YES",
+          "confirmationTimestampMs": 1787248810772,
+          "utcDayKey": "2026-08-20"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG201430-30",
+          "side": "YES",
+          "confirmationTimestampMs": 1787249797004,
+          "utcDayKey": "2026-08-20"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG201600-00",
+          "side": "YES",
+          "confirmationTimestampMs": 1787255147958,
+          "utcDayKey": "2026-08-20"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG201615-15",
+          "side": "NO",
+          "confirmationTimestampMs": 1787256123182,
+          "utcDayKey": "2026-08-20"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG201630-30",
+          "side": "YES",
+          "confirmationTimestampMs": 1787256962134,
+          "utcDayKey": "2026-08-20"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG201645-45",
+          "side": "NO",
+          "confirmationTimestampMs": 1787257903005,
+          "utcDayKey": "2026-08-20"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG201700-00",
+          "side": "YES",
+          "confirmationTimestampMs": 1787258727090,
+          "utcDayKey": "2026-08-20"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG201715-15",
+          "side": "YES",
+          "confirmationTimestampMs": 1787259703743,
+          "utcDayKey": "2026-08-20"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG201730-30",
+          "side": "NO",
+          "confirmationTimestampMs": 1787260532226,
+          "utcDayKey": "2026-08-20"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG201800-00",
+          "side": "YES",
+          "confirmationTimestampMs": 1787262619494,
+          "utcDayKey": "2026-08-20"
+        }
+      ]
+    },
+    {
+      "utcDate": "2026-08-21",
+      "admitted": true,
+      "exclusionReason": null,
+      "eligibleConfirmations": 16,
+      "zeroSignal": false,
+      "clusterEligible": true,
+      "confirmationCount": 16,
+      "confirmations": [
+        {
+          "ticker": "KXBTC15M-26AUG211415-15",
+          "side": "NO",
+          "confirmationTimestampMs": 1787335347843,
+          "utcDayKey": "2026-08-21"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG211430-30",
+          "side": "NO",
+          "confirmationTimestampMs": 1787336196608,
+          "utcDayKey": "2026-08-21"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG211445-45",
+          "side": "YES",
+          "confirmationTimestampMs": 1787337024868,
+          "utcDayKey": "2026-08-21"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG211500-00",
+          "side": "NO",
+          "confirmationTimestampMs": 1787338629755,
+          "utcDayKey": "2026-08-21"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG211515-15",
+          "side": "NO",
+          "confirmationTimestampMs": 1787338808990,
+          "utcDayKey": "2026-08-21"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG211530-30",
+          "side": "YES",
+          "confirmationTimestampMs": 1787339741746,
+          "utcDayKey": "2026-08-21"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG211545-45",
+          "side": "NO",
+          "confirmationTimestampMs": 1787340618989,
+          "utcDayKey": "2026-08-21"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG211600-00",
+          "side": "YES",
+          "confirmationTimestampMs": 1787341599400,
+          "utcDayKey": "2026-08-21"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG211615-15",
+          "side": "NO",
+          "confirmationTimestampMs": 1787342610420,
+          "utcDayKey": "2026-08-21"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG211630-30",
+          "side": "NO",
+          "confirmationTimestampMs": 1787343321153,
+          "utcDayKey": "2026-08-21"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG211645-45",
+          "side": "NO",
+          "confirmationTimestampMs": 1787344292591,
+          "utcDayKey": "2026-08-21"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG211700-00",
+          "side": "YES",
+          "confirmationTimestampMs": 1787345150565,
+          "utcDayKey": "2026-08-21"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG211715-15",
+          "side": "YES",
+          "confirmationTimestampMs": 1787346058311,
+          "utcDayKey": "2026-08-21"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG211730-30",
+          "side": "NO",
+          "confirmationTimestampMs": 1787347392478,
+          "utcDayKey": "2026-08-21"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG211745-45",
+          "side": "NO",
+          "confirmationTimestampMs": 1787347824791,
+          "utcDayKey": "2026-08-21"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG211800-00",
+          "side": "NO",
+          "confirmationTimestampMs": 1787348733553,
+          "utcDayKey": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "utcDate": "2026-08-22",
+      "admitted": true,
+      "exclusionReason": null,
+      "eligibleConfirmations": 12,
+      "zeroSignal": false,
+      "clusterEligible": true,
+      "confirmationCount": 12,
+      "confirmations": [
+        {
+          "ticker": "KXBTC15M-26AUG221415-15",
+          "side": "NO",
+          "confirmationTimestampMs": 1787421785580,
+          "utcDayKey": "2026-08-22"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG221430-30",
+          "side": "NO",
+          "confirmationTimestampMs": 1787422577050,
+          "utcDayKey": "2026-08-22"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG221445-45",
+          "side": "YES",
+          "confirmationTimestampMs": 1787423475584,
+          "utcDayKey": "2026-08-22"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG221500-00",
+          "side": "NO",
+          "confirmationTimestampMs": 1787425106104,
+          "utcDayKey": "2026-08-22"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG221515-15",
+          "side": "NO",
+          "confirmationTimestampMs": 1787425258692,
+          "utcDayKey": "2026-08-22"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG221530-30",
+          "side": "YES",
+          "confirmationTimestampMs": 1787426216373,
+          "utcDayKey": "2026-08-22"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG221600-00",
+          "side": "NO",
+          "confirmationTimestampMs": 1787427908529,
+          "utcDayKey": "2026-08-22"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG221615-15",
+          "side": "NO",
+          "confirmationTimestampMs": 1787429377136,
+          "utcDayKey": "2026-08-22"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG221630-30",
+          "side": "NO",
+          "confirmationTimestampMs": 1787429822551,
+          "utcDayKey": "2026-08-22"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG221645-45",
+          "side": "NO",
+          "confirmationTimestampMs": 1787430683635,
+          "utcDayKey": "2026-08-22"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG221700-00",
+          "side": "YES",
+          "confirmationTimestampMs": 1787431830977,
+          "utcDayKey": "2026-08-22"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG221800-00",
+          "side": "NO",
+          "confirmationTimestampMs": 1787435124261,
+          "utcDayKey": "2026-08-22"
+        }
+      ]
+    },
+    {
+      "utcDate": "2026-08-23",
+      "admitted": true,
+      "exclusionReason": null,
+      "eligibleConfirmations": 12,
+      "zeroSignal": false,
+      "clusterEligible": true,
+      "confirmationCount": 12,
+      "confirmations": [
+        {
+          "ticker": "KXBTC15M-26AUG231415-15",
+          "side": "YES",
+          "confirmationTimestampMs": 1787508052462,
+          "utcDayKey": "2026-08-23"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG231430-30",
+          "side": "NO",
+          "confirmationTimestampMs": 1787508926669,
+          "utcDayKey": "2026-08-23"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG231445-45",
+          "side": "YES",
+          "confirmationTimestampMs": 1787509811156,
+          "utcDayKey": "2026-08-23"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG231500-00",
+          "side": "YES",
+          "confirmationTimestampMs": 1787510801539,
+          "utcDayKey": "2026-08-23"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG231515-15",
+          "side": "NO",
+          "confirmationTimestampMs": 1787511612798,
+          "utcDayKey": "2026-08-23"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG231530-30",
+          "side": "NO",
+          "confirmationTimestampMs": 1787512571345,
+          "utcDayKey": "2026-08-23"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG231545-45",
+          "side": "YES",
+          "confirmationTimestampMs": 1787513534764,
+          "utcDayKey": "2026-08-23"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG231600-00",
+          "side": "YES",
+          "confirmationTimestampMs": 1787514344799,
+          "utcDayKey": "2026-08-23"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG231615-15",
+          "side": "YES",
+          "confirmationTimestampMs": 1787515250372,
+          "utcDayKey": "2026-08-23"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG231630-30",
+          "side": "NO",
+          "confirmationTimestampMs": 1787516206382,
+          "utcDayKey": "2026-08-23"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG231645-45",
+          "side": "YES",
+          "confirmationTimestampMs": 1787517017427,
+          "utcDayKey": "2026-08-23"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG231745-45",
+          "side": "YES",
+          "confirmationTimestampMs": 1787520647454,
+          "utcDayKey": "2026-08-23"
+        }
+      ]
+    },
+    {
+      "utcDate": "2026-08-24",
+      "admitted": true,
+      "exclusionReason": null,
+      "eligibleConfirmations": 13,
+      "zeroSignal": false,
+      "clusterEligible": true,
+      "confirmationCount": 13,
+      "confirmations": [
+        {
+          "ticker": "KXBTC15M-26AUG241415-15",
+          "side": "NO",
+          "confirmationTimestampMs": 1787594416642,
+          "utcDayKey": "2026-08-24"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG241430-30",
+          "side": "YES",
+          "confirmationTimestampMs": 1787595441750,
+          "utcDayKey": "2026-08-24"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG241445-45",
+          "side": "NO",
+          "confirmationTimestampMs": 1787596244181,
+          "utcDayKey": "2026-08-24"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG241500-00",
+          "side": "NO",
+          "confirmationTimestampMs": 1787597115019,
+          "utcDayKey": "2026-08-24"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG241515-15",
+          "side": "NO",
+          "confirmationTimestampMs": 1787598061553,
+          "utcDayKey": "2026-08-24"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG241545-45",
+          "side": "YES",
+          "confirmationTimestampMs": 1787599906386,
+          "utcDayKey": "2026-08-24"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG241600-00",
+          "side": "YES",
+          "confirmationTimestampMs": 1787600756552,
+          "utcDayKey": "2026-08-24"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG241630-30",
+          "side": "YES",
+          "confirmationTimestampMs": 1787602567081,
+          "utcDayKey": "2026-08-24"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG241645-45",
+          "side": "YES",
+          "confirmationTimestampMs": 1787603510469,
+          "utcDayKey": "2026-08-24"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG241700-00",
+          "side": "YES",
+          "confirmationTimestampMs": 1787604432143,
+          "utcDayKey": "2026-08-24"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG241715-15",
+          "side": "NO",
+          "confirmationTimestampMs": 1787605287093,
+          "utcDayKey": "2026-08-24"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG241730-30",
+          "side": "YES",
+          "confirmationTimestampMs": 1787606167578,
+          "utcDayKey": "2026-08-24"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG241800-00",
+          "side": "NO",
+          "confirmationTimestampMs": 1787607942403,
+          "utcDayKey": "2026-08-24"
+        }
+      ]
+    },
+    {
+      "utcDate": "2026-08-25",
+      "admitted": true,
+      "exclusionReason": null,
+      "eligibleConfirmations": 14,
+      "zeroSignal": false,
+      "clusterEligible": true,
+      "confirmationCount": 14,
+      "confirmations": [
+        {
+          "ticker": "KXBTC15M-26AUG251415-15",
+          "side": "YES",
+          "confirmationTimestampMs": 1787680858696,
+          "utcDayKey": "2026-08-25"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG251430-30",
+          "side": "YES",
+          "confirmationTimestampMs": 1787681835545,
+          "utcDayKey": "2026-08-25"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG251445-45",
+          "side": "YES",
+          "confirmationTimestampMs": 1787682622556,
+          "utcDayKey": "2026-08-25"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG251500-00",
+          "side": "YES",
+          "confirmationTimestampMs": 1787683990964,
+          "utcDayKey": "2026-08-25"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG251515-15",
+          "side": "NO",
+          "confirmationTimestampMs": 1787684446058,
+          "utcDayKey": "2026-08-25"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG251530-30",
+          "side": "NO",
+          "confirmationTimestampMs": 1787685368636,
+          "utcDayKey": "2026-08-25"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG251545-45",
+          "side": "YES",
+          "confirmationTimestampMs": 1787686247986,
+          "utcDayKey": "2026-08-25"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG251615-15",
+          "side": "YES",
+          "confirmationTimestampMs": 1787688003689,
+          "utcDayKey": "2026-08-25"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG251630-30",
+          "side": "NO",
+          "confirmationTimestampMs": 1787688977805,
+          "utcDayKey": "2026-08-25"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG251700-00",
+          "side": "NO",
+          "confirmationTimestampMs": 1787690745016,
+          "utcDayKey": "2026-08-25"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG251715-15",
+          "side": "YES",
+          "confirmationTimestampMs": 1787691607159,
+          "utcDayKey": "2026-08-25"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG251730-30",
+          "side": "YES",
+          "confirmationTimestampMs": 1787692540131,
+          "utcDayKey": "2026-08-25"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG251745-45",
+          "side": "YES",
+          "confirmationTimestampMs": 1787693615261,
+          "utcDayKey": "2026-08-25"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG251800-00",
+          "side": "NO",
+          "confirmationTimestampMs": 1787694395694,
+          "utcDayKey": "2026-08-25"
+        }
+      ]
+    },
+    {
+      "utcDate": "2026-08-26",
+      "admitted": true,
+      "exclusionReason": null,
+      "eligibleConfirmations": 15,
+      "zeroSignal": false,
+      "clusterEligible": true,
+      "confirmationCount": 15,
+      "confirmations": [
+        {
+          "ticker": "KXBTC15M-26AUG261430-30",
+          "side": "NO",
+          "confirmationTimestampMs": 1787768516947,
+          "utcDayKey": "2026-08-26"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG261445-45",
+          "side": "NO",
+          "confirmationTimestampMs": 1787769039225,
+          "utcDayKey": "2026-08-26"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG261500-00",
+          "side": "NO",
+          "confirmationTimestampMs": 1787769946426,
+          "utcDayKey": "2026-08-26"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG261515-15",
+          "side": "NO",
+          "confirmationTimestampMs": 1787770845075,
+          "utcDayKey": "2026-08-26"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG261530-30",
+          "side": "NO",
+          "confirmationTimestampMs": 1787771749619,
+          "utcDayKey": "2026-08-26"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG261545-45",
+          "side": "YES",
+          "confirmationTimestampMs": 1787772668322,
+          "utcDayKey": "2026-08-26"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG261600-00",
+          "side": "NO",
+          "confirmationTimestampMs": 1787773559672,
+          "utcDayKey": "2026-08-26"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG261615-15",
+          "side": "YES",
+          "confirmationTimestampMs": 1787774446404,
+          "utcDayKey": "2026-08-26"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG261630-30",
+          "side": "NO",
+          "confirmationTimestampMs": 1787775368212,
+          "utcDayKey": "2026-08-26"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG261645-45",
+          "side": "YES",
+          "confirmationTimestampMs": 1787776346263,
+          "utcDayKey": "2026-08-26"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG261700-00",
+          "side": "YES",
+          "confirmationTimestampMs": 1787777387474,
+          "utcDayKey": "2026-08-26"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG261715-15",
+          "side": "YES",
+          "confirmationTimestampMs": 1787778117341,
+          "utcDayKey": "2026-08-26"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG261730-30",
+          "side": "YES",
+          "confirmationTimestampMs": 1787778930395,
+          "utcDayKey": "2026-08-26"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG261745-45",
+          "side": "YES",
+          "confirmationTimestampMs": 1787779855081,
+          "utcDayKey": "2026-08-26"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG261800-00",
+          "side": "YES",
+          "confirmationTimestampMs": 1787780955231,
+          "utcDayKey": "2026-08-26"
+        }
+      ]
+    },
+    {
+      "utcDate": "2026-08-27",
+      "admitted": true,
+      "exclusionReason": null,
+      "eligibleConfirmations": 15,
+      "zeroSignal": false,
+      "clusterEligible": true,
+      "confirmationCount": 15,
+      "confirmations": [
+        {
+          "ticker": "KXBTC15M-26AUG271430-30",
+          "side": "NO",
+          "confirmationTimestampMs": 1787854520068,
+          "utcDayKey": "2026-08-27"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG271445-45",
+          "side": "NO",
+          "confirmationTimestampMs": 1787855469507,
+          "utcDayKey": "2026-08-27"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG271500-00",
+          "side": "NO",
+          "confirmationTimestampMs": 1787856380072,
+          "utcDayKey": "2026-08-27"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG271515-15",
+          "side": "NO",
+          "confirmationTimestampMs": 1787857436622,
+          "utcDayKey": "2026-08-27"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG271530-30",
+          "side": "NO",
+          "confirmationTimestampMs": 1787858342294,
+          "utcDayKey": "2026-08-27"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG271545-45",
+          "side": "NO",
+          "confirmationTimestampMs": 1787859009413,
+          "utcDayKey": "2026-08-27"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG271600-00",
+          "side": "NO",
+          "confirmationTimestampMs": 1787859991387,
+          "utcDayKey": "2026-08-27"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG271615-15",
+          "side": "YES",
+          "confirmationTimestampMs": 1787860974105,
+          "utcDayKey": "2026-08-27"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG271630-30",
+          "side": "YES",
+          "confirmationTimestampMs": 1787861812957,
+          "utcDayKey": "2026-08-27"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG271645-45",
+          "side": "YES",
+          "confirmationTimestampMs": 1787863033839,
+          "utcDayKey": "2026-08-27"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG271700-00",
+          "side": "NO",
+          "confirmationTimestampMs": 1787863580750,
+          "utcDayKey": "2026-08-27"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG271715-15",
+          "side": "NO",
+          "confirmationTimestampMs": 1787864422518,
+          "utcDayKey": "2026-08-27"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG271730-30",
+          "side": "NO",
+          "confirmationTimestampMs": 1787865350613,
+          "utcDayKey": "2026-08-27"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG271745-45",
+          "side": "NO",
+          "confirmationTimestampMs": 1787866234893,
+          "utcDayKey": "2026-08-27"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG271800-00",
+          "side": "NO",
+          "confirmationTimestampMs": 1787867203584,
+          "utcDayKey": "2026-08-27"
+        }
+      ]
+    },
+    {
+      "utcDate": "2026-08-28",
+      "admitted": true,
+      "exclusionReason": null,
+      "eligibleConfirmations": 12,
+      "zeroSignal": false,
+      "clusterEligible": true,
+      "confirmationCount": 12,
+      "confirmations": [
+        {
+          "ticker": "KXBTC15M-26AUG281415-15",
+          "side": "NO",
+          "confirmationTimestampMs": 1787940050750,
+          "utcDayKey": "2026-08-28"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG281430-30",
+          "side": "NO",
+          "confirmationTimestampMs": 1787941146850,
+          "utcDayKey": "2026-08-28"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG281445-45",
+          "side": "YES",
+          "confirmationTimestampMs": 1787941885335,
+          "utcDayKey": "2026-08-28"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG281500-00",
+          "side": "NO",
+          "confirmationTimestampMs": 1787943123705,
+          "utcDayKey": "2026-08-28"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG281530-30",
+          "side": "YES",
+          "confirmationTimestampMs": 1787944612826,
+          "utcDayKey": "2026-08-28"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG281545-45",
+          "side": "YES",
+          "confirmationTimestampMs": 1787945446968,
+          "utcDayKey": "2026-08-28"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG281600-00",
+          "side": "NO",
+          "confirmationTimestampMs": 1787947085195,
+          "utcDayKey": "2026-08-28"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG281615-15",
+          "side": "NO",
+          "confirmationTimestampMs": 1787947270213,
+          "utcDayKey": "2026-08-28"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG281700-00",
+          "side": "NO",
+          "confirmationTimestampMs": 1787950112941,
+          "utcDayKey": "2026-08-28"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG281715-15",
+          "side": "NO",
+          "confirmationTimestampMs": 1787950851143,
+          "utcDayKey": "2026-08-28"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG281730-30",
+          "side": "NO",
+          "confirmationTimestampMs": 1787951746473,
+          "utcDayKey": "2026-08-28"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG281800-00",
+          "side": "YES",
+          "confirmationTimestampMs": 1787953631671,
+          "utcDayKey": "2026-08-28"
+        }
+      ]
+    },
+    {
+      "utcDate": "2026-08-29",
+      "admitted": true,
+      "exclusionReason": null,
+      "eligibleConfirmations": 12,
+      "zeroSignal": false,
+      "clusterEligible": true,
+      "confirmationCount": 12,
+      "confirmations": [
+        {
+          "ticker": "KXBTC15M-26AUG291430-30",
+          "side": "NO",
+          "confirmationTimestampMs": 1788027349154,
+          "utcDayKey": "2026-08-29"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG291515-15",
+          "side": "NO",
+          "confirmationTimestampMs": 1788030199791,
+          "utcDayKey": "2026-08-29"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG291530-30",
+          "side": "NO",
+          "confirmationTimestampMs": 1788030932064,
+          "utcDayKey": "2026-08-29"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG291545-45",
+          "side": "NO",
+          "confirmationTimestampMs": 1788031875180,
+          "utcDayKey": "2026-08-29"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG291600-00",
+          "side": "YES",
+          "confirmationTimestampMs": 1788032770504,
+          "utcDayKey": "2026-08-29"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG291615-15",
+          "side": "YES",
+          "confirmationTimestampMs": 1788033761993,
+          "utcDayKey": "2026-08-29"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG291630-30",
+          "side": "NO",
+          "confirmationTimestampMs": 1788034524864,
+          "utcDayKey": "2026-08-29"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG291700-00",
+          "side": "YES",
+          "confirmationTimestampMs": 1788036500061,
+          "utcDayKey": "2026-08-29"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG291715-15",
+          "side": "YES",
+          "confirmationTimestampMs": 1788037266144,
+          "utcDayKey": "2026-08-29"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG291730-30",
+          "side": "NO",
+          "confirmationTimestampMs": 1788038368983,
+          "utcDayKey": "2026-08-29"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG291745-45",
+          "side": "NO",
+          "confirmationTimestampMs": 1788039104966,
+          "utcDayKey": "2026-08-29"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG291800-00",
+          "side": "NO",
+          "confirmationTimestampMs": 1788039911143,
+          "utcDayKey": "2026-08-29"
+        }
+      ]
+    },
+    {
+      "utcDate": "2026-08-30",
+      "admitted": true,
+      "exclusionReason": null,
+      "eligibleConfirmations": 14,
+      "zeroSignal": false,
+      "clusterEligible": true,
+      "confirmationCount": 14,
+      "confirmations": [
+        {
+          "ticker": "KXBTC15M-26AUG301415-15",
+          "side": "NO",
+          "confirmationTimestampMs": 1788112820061,
+          "utcDayKey": "2026-08-30"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG301430-30",
+          "side": "NO",
+          "confirmationTimestampMs": 1788113738509,
+          "utcDayKey": "2026-08-30"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG301500-00",
+          "side": "YES",
+          "confirmationTimestampMs": 1788115525551,
+          "utcDayKey": "2026-08-30"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG301515-15",
+          "side": "YES",
+          "confirmationTimestampMs": 1788116477736,
+          "utcDayKey": "2026-08-30"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG301530-30",
+          "side": "NO",
+          "confirmationTimestampMs": 1788117353166,
+          "utcDayKey": "2026-08-30"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG301545-45",
+          "side": "YES",
+          "confirmationTimestampMs": 1788118218237,
+          "utcDayKey": "2026-08-30"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG301600-00",
+          "side": "YES",
+          "confirmationTimestampMs": 1788119133320,
+          "utcDayKey": "2026-08-30"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG301615-15",
+          "side": "NO",
+          "confirmationTimestampMs": 1788120014297,
+          "utcDayKey": "2026-08-30"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG301630-30",
+          "side": "NO",
+          "confirmationTimestampMs": 1788120971669,
+          "utcDayKey": "2026-08-30"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG301645-45",
+          "side": "NO",
+          "confirmationTimestampMs": 1788122240597,
+          "utcDayKey": "2026-08-30"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG301700-00",
+          "side": "NO",
+          "confirmationTimestampMs": 1788122849189,
+          "utcDayKey": "2026-08-30"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG301730-30",
+          "side": "NO",
+          "confirmationTimestampMs": 1788124538295,
+          "utcDayKey": "2026-08-30"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG301745-45",
+          "side": "NO",
+          "confirmationTimestampMs": 1788125453076,
+          "utcDayKey": "2026-08-30"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG301800-00",
+          "side": "YES",
+          "confirmationTimestampMs": 1788126375918,
+          "utcDayKey": "2026-08-30"
+        }
+      ]
+    },
+    {
+      "utcDate": "2026-08-31",
+      "admitted": true,
+      "exclusionReason": null,
+      "eligibleConfirmations": 15,
+      "zeroSignal": false,
+      "clusterEligible": true,
+      "confirmationCount": 15,
+      "confirmations": [
+        {
+          "ticker": "KXBTC15M-26AUG311415-15",
+          "side": "YES",
+          "confirmationTimestampMs": 1788199240247,
+          "utcDayKey": "2026-08-31"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG311430-30",
+          "side": "NO",
+          "confirmationTimestampMs": 1788200107959,
+          "utcDayKey": "2026-08-31"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG311445-45",
+          "side": "NO",
+          "confirmationTimestampMs": 1788201033109,
+          "utcDayKey": "2026-08-31"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG311500-00",
+          "side": "YES",
+          "confirmationTimestampMs": 1788201922369,
+          "utcDayKey": "2026-08-31"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG311515-15",
+          "side": "NO",
+          "confirmationTimestampMs": 1788202824262,
+          "utcDayKey": "2026-08-31"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG311545-45",
+          "side": "NO",
+          "confirmationTimestampMs": 1788204679337,
+          "utcDayKey": "2026-08-31"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG311600-00",
+          "side": "YES",
+          "confirmationTimestampMs": 1788205539730,
+          "utcDayKey": "2026-08-31"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG311615-15",
+          "side": "YES",
+          "confirmationTimestampMs": 1788206421922,
+          "utcDayKey": "2026-08-31"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG311630-30",
+          "side": "YES",
+          "confirmationTimestampMs": 1788208118757,
+          "utcDayKey": "2026-08-31"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG311645-45",
+          "side": "NO",
+          "confirmationTimestampMs": 1788208302770,
+          "utcDayKey": "2026-08-31"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG311700-00",
+          "side": "NO",
+          "confirmationTimestampMs": 1788209647149,
+          "utcDayKey": "2026-08-31"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG311715-15",
+          "side": "YES",
+          "confirmationTimestampMs": 1788210161966,
+          "utcDayKey": "2026-08-31"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG311730-30",
+          "side": "NO",
+          "confirmationTimestampMs": 1788210907188,
+          "utcDayKey": "2026-08-31"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG311745-45",
+          "side": "NO",
+          "confirmationTimestampMs": 1788211815146,
+          "utcDayKey": "2026-08-31"
+        },
+        {
+          "ticker": "KXBTC15M-26AUG311800-00",
+          "side": "YES",
+          "confirmationTimestampMs": 1788212804970,
+          "utcDayKey": "2026-08-31"
+        }
+      ]
+    },
+    {
+      "utcDate": "2026-09-01",
+      "admitted": true,
+      "exclusionReason": null,
+      "eligibleConfirmations": 15,
+      "zeroSignal": false,
+      "clusterEligible": true,
+      "confirmationCount": 15,
+      "confirmations": [
+        {
+          "ticker": "KXBTC15M-26SEP011415-15",
+          "side": "NO",
+          "confirmationTimestampMs": 1788285615617,
+          "utcDayKey": "2026-09-01"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP011430-30",
+          "side": "NO",
+          "confirmationTimestampMs": 1788286512219,
+          "utcDayKey": "2026-09-01"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP011445-45",
+          "side": "YES",
+          "confirmationTimestampMs": 1788287752602,
+          "utcDayKey": "2026-09-01"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP011500-00",
+          "side": "YES",
+          "confirmationTimestampMs": 1788288327127,
+          "utcDayKey": "2026-09-01"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP011530-30",
+          "side": "YES",
+          "confirmationTimestampMs": 1788290143789,
+          "utcDayKey": "2026-09-01"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP011545-45",
+          "side": "YES",
+          "confirmationTimestampMs": 1788291109546,
+          "utcDayKey": "2026-09-01"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP011600-00",
+          "side": "YES",
+          "confirmationTimestampMs": 1788292128572,
+          "utcDayKey": "2026-09-01"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP011615-15",
+          "side": "NO",
+          "confirmationTimestampMs": 1788292817002,
+          "utcDayKey": "2026-09-01"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP011630-30",
+          "side": "YES",
+          "confirmationTimestampMs": 1788293871706,
+          "utcDayKey": "2026-09-01"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP011645-45",
+          "side": "NO",
+          "confirmationTimestampMs": 1788294695043,
+          "utcDayKey": "2026-09-01"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP011700-00",
+          "side": "YES",
+          "confirmationTimestampMs": 1788295626268,
+          "utcDayKey": "2026-09-01"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP011715-15",
+          "side": "YES",
+          "confirmationTimestampMs": 1788296412480,
+          "utcDayKey": "2026-09-01"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP011730-30",
+          "side": "NO",
+          "confirmationTimestampMs": 1788297330236,
+          "utcDayKey": "2026-09-01"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP011745-45",
+          "side": "NO",
+          "confirmationTimestampMs": 1788298849996,
+          "utcDayKey": "2026-09-01"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP011800-00",
+          "side": "NO",
+          "confirmationTimestampMs": 1788299237300,
+          "utcDayKey": "2026-09-01"
+        }
+      ]
+    },
+    {
+      "utcDate": "2026-09-02",
+      "admitted": true,
+      "exclusionReason": null,
+      "eligibleConfirmations": 12,
+      "zeroSignal": false,
+      "clusterEligible": true,
+      "confirmationCount": 12,
+      "confirmations": [
+        {
+          "ticker": "KXBTC15M-26SEP021415-15",
+          "side": "NO",
+          "confirmationTimestampMs": 1788372563196,
+          "utcDayKey": "2026-09-02"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP021430-30",
+          "side": "NO",
+          "confirmationTimestampMs": 1788372917774,
+          "utcDayKey": "2026-09-02"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP021500-00",
+          "side": "YES",
+          "confirmationTimestampMs": 1788374801849,
+          "utcDayKey": "2026-09-02"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP021515-15",
+          "side": "YES",
+          "confirmationTimestampMs": 1788375657287,
+          "utcDayKey": "2026-09-02"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP021530-30",
+          "side": "NO",
+          "confirmationTimestampMs": 1788376542455,
+          "utcDayKey": "2026-09-02"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP021600-00",
+          "side": "NO",
+          "confirmationTimestampMs": 1788378434490,
+          "utcDayKey": "2026-09-02"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP021615-15",
+          "side": "YES",
+          "confirmationTimestampMs": 1788380011570,
+          "utcDayKey": "2026-09-02"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP021630-30",
+          "side": "YES",
+          "confirmationTimestampMs": 1788380124547,
+          "utcDayKey": "2026-09-02"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP021645-45",
+          "side": "NO",
+          "confirmationTimestampMs": 1788381194853,
+          "utcDayKey": "2026-09-02"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP021700-00",
+          "side": "YES",
+          "confirmationTimestampMs": 1788381991844,
+          "utcDayKey": "2026-09-02"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP021730-30",
+          "side": "YES",
+          "confirmationTimestampMs": 1788383806722,
+          "utcDayKey": "2026-09-02"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP021745-45",
+          "side": "YES",
+          "confirmationTimestampMs": 1788384614443,
+          "utcDayKey": "2026-09-02"
+        }
+      ]
+    },
+    {
+      "utcDate": "2026-09-03",
+      "admitted": true,
+      "exclusionReason": null,
+      "eligibleConfirmations": 15,
+      "zeroSignal": false,
+      "clusterEligible": true,
+      "confirmationCount": 15,
+      "confirmations": [
+        {
+          "ticker": "KXBTC15M-26SEP031415-15",
+          "side": "NO",
+          "confirmationTimestampMs": 1788458413079,
+          "utcDayKey": "2026-09-03"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP031430-30",
+          "side": "YES",
+          "confirmationTimestampMs": 1788459389064,
+          "utcDayKey": "2026-09-03"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP031445-45",
+          "side": "YES",
+          "confirmationTimestampMs": 1788460225546,
+          "utcDayKey": "2026-09-03"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP031500-00",
+          "side": "NO",
+          "confirmationTimestampMs": 1788461163421,
+          "utcDayKey": "2026-09-03"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP031515-15",
+          "side": "YES",
+          "confirmationTimestampMs": 1788462081977,
+          "utcDayKey": "2026-09-03"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP031530-30",
+          "side": "NO",
+          "confirmationTimestampMs": 1788462999938,
+          "utcDayKey": "2026-09-03"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP031545-45",
+          "side": "YES",
+          "confirmationTimestampMs": 1788463887511,
+          "utcDayKey": "2026-09-03"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP031600-00",
+          "side": "NO",
+          "confirmationTimestampMs": 1788464711410,
+          "utcDayKey": "2026-09-03"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP031630-30",
+          "side": "NO",
+          "confirmationTimestampMs": 1788466671746,
+          "utcDayKey": "2026-09-03"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP031645-45",
+          "side": "YES",
+          "confirmationTimestampMs": 1788467418208,
+          "utcDayKey": "2026-09-03"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP031700-00",
+          "side": "YES",
+          "confirmationTimestampMs": 1788468362355,
+          "utcDayKey": "2026-09-03"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP031715-15",
+          "side": "NO",
+          "confirmationTimestampMs": 1788469335754,
+          "utcDayKey": "2026-09-03"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP031730-30",
+          "side": "YES",
+          "confirmationTimestampMs": 1788470145009,
+          "utcDayKey": "2026-09-03"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP031745-45",
+          "side": "YES",
+          "confirmationTimestampMs": 1788471573215,
+          "utcDayKey": "2026-09-03"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP031800-00",
+          "side": "YES",
+          "confirmationTimestampMs": 1788471958683,
+          "utcDayKey": "2026-09-03"
+        }
+      ]
+    },
+    {
+      "utcDate": "2026-09-04",
+      "admitted": true,
+      "exclusionReason": null,
+      "eligibleConfirmations": 12,
+      "zeroSignal": false,
+      "clusterEligible": true,
+      "confirmationCount": 12,
+      "confirmations": [
+        {
+          "ticker": "KXBTC15M-26SEP041430-30",
+          "side": "NO",
+          "confirmationTimestampMs": 1788545736523,
+          "utcDayKey": "2026-09-04"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP041445-45",
+          "side": "NO",
+          "confirmationTimestampMs": 1788546662356,
+          "utcDayKey": "2026-09-04"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP041500-00",
+          "side": "YES",
+          "confirmationTimestampMs": 1788547622119,
+          "utcDayKey": "2026-09-04"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP041530-30",
+          "side": "NO",
+          "confirmationTimestampMs": 1788549378073,
+          "utcDayKey": "2026-09-04"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP041600-00",
+          "side": "NO",
+          "confirmationTimestampMs": 1788551125004,
+          "utcDayKey": "2026-09-04"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP041615-15",
+          "side": "NO",
+          "confirmationTimestampMs": 1788552065558,
+          "utcDayKey": "2026-09-04"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP041630-30",
+          "side": "NO",
+          "confirmationTimestampMs": 1788553030822,
+          "utcDayKey": "2026-09-04"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP041645-45",
+          "side": "NO",
+          "confirmationTimestampMs": 1788553929303,
+          "utcDayKey": "2026-09-04"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP041700-00",
+          "side": "YES",
+          "confirmationTimestampMs": 1788555071517,
+          "utcDayKey": "2026-09-04"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP041715-15",
+          "side": "NO",
+          "confirmationTimestampMs": 1788555663427,
+          "utcDayKey": "2026-09-04"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP041745-45",
+          "side": "NO",
+          "confirmationTimestampMs": 1788557488668,
+          "utcDayKey": "2026-09-04"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP041800-00",
+          "side": "NO",
+          "confirmationTimestampMs": 1788558402100,
+          "utcDayKey": "2026-09-04"
+        }
+      ]
+    },
+    {
+      "utcDate": "2026-09-05",
+      "admitted": true,
+      "exclusionReason": null,
+      "eligibleConfirmations": 16,
+      "zeroSignal": false,
+      "clusterEligible": true,
+      "confirmationCount": 16,
+      "confirmations": [
+        {
+          "ticker": "KXBTC15M-26SEP051415-15",
+          "side": "YES",
+          "confirmationTimestampMs": 1788631218797,
+          "utcDayKey": "2026-09-05"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP051430-30",
+          "side": "YES",
+          "confirmationTimestampMs": 1788632136695,
+          "utcDayKey": "2026-09-05"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP051445-45",
+          "side": "NO",
+          "confirmationTimestampMs": 1788633030689,
+          "utcDayKey": "2026-09-05"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP051500-00",
+          "side": "YES",
+          "confirmationTimestampMs": 1788634013409,
+          "utcDayKey": "2026-09-05"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP051515-15",
+          "side": "YES",
+          "confirmationTimestampMs": 1788634813268,
+          "utcDayKey": "2026-09-05"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP051530-30",
+          "side": "NO",
+          "confirmationTimestampMs": 1788635784934,
+          "utcDayKey": "2026-09-05"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP051545-45",
+          "side": "YES",
+          "confirmationTimestampMs": 1788636775369,
+          "utcDayKey": "2026-09-05"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP051600-00",
+          "side": "YES",
+          "confirmationTimestampMs": 1788637620024,
+          "utcDayKey": "2026-09-05"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP051615-15",
+          "side": "NO",
+          "confirmationTimestampMs": 1788638422155,
+          "utcDayKey": "2026-09-05"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP051630-30",
+          "side": "NO",
+          "confirmationTimestampMs": 1788639403312,
+          "utcDayKey": "2026-09-05"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP051645-45",
+          "side": "NO",
+          "confirmationTimestampMs": 1788640284204,
+          "utcDayKey": "2026-09-05"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP051700-00",
+          "side": "NO",
+          "confirmationTimestampMs": 1788641433277,
+          "utcDayKey": "2026-09-05"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP051715-15",
+          "side": "YES",
+          "confirmationTimestampMs": 1788642374756,
+          "utcDayKey": "2026-09-05"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP051730-30",
+          "side": "NO",
+          "confirmationTimestampMs": 1788643103258,
+          "utcDayKey": "2026-09-05"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP051745-45",
+          "side": "NO",
+          "confirmationTimestampMs": 1788643908874,
+          "utcDayKey": "2026-09-05"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP051800-00",
+          "side": "YES",
+          "confirmationTimestampMs": 1788644811805,
+          "utcDayKey": "2026-09-05"
+        }
+      ]
+    },
+    {
+      "utcDate": "2026-09-06",
+      "admitted": true,
+      "exclusionReason": null,
+      "eligibleConfirmations": 14,
+      "zeroSignal": false,
+      "clusterEligible": true,
+      "confirmationCount": 14,
+      "confirmations": [
+        {
+          "ticker": "KXBTC15M-26SEP061415-15",
+          "side": "NO",
+          "confirmationTimestampMs": 1788717619748,
+          "utcDayKey": "2026-09-06"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP061430-30",
+          "side": "YES",
+          "confirmationTimestampMs": 1788718515505,
+          "utcDayKey": "2026-09-06"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP061445-45",
+          "side": "NO",
+          "confirmationTimestampMs": 1788719509448,
+          "utcDayKey": "2026-09-06"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP061500-00",
+          "side": "YES",
+          "confirmationTimestampMs": 1788720363858,
+          "utcDayKey": "2026-09-06"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP061515-15",
+          "side": "YES",
+          "confirmationTimestampMs": 1788721218916,
+          "utcDayKey": "2026-09-06"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP061530-30",
+          "side": "YES",
+          "confirmationTimestampMs": 1788722358503,
+          "utcDayKey": "2026-09-06"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP061545-45",
+          "side": "YES",
+          "confirmationTimestampMs": 1788723028098,
+          "utcDayKey": "2026-09-06"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP061600-00",
+          "side": "NO",
+          "confirmationTimestampMs": 1788723973263,
+          "utcDayKey": "2026-09-06"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP061615-15",
+          "side": "YES",
+          "confirmationTimestampMs": 1788724920327,
+          "utcDayKey": "2026-09-06"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP061630-30",
+          "side": "YES",
+          "confirmationTimestampMs": 1788725906772,
+          "utcDayKey": "2026-09-06"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP061645-45",
+          "side": "NO",
+          "confirmationTimestampMs": 1788726739127,
+          "utcDayKey": "2026-09-06"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP061700-00",
+          "side": "NO",
+          "confirmationTimestampMs": 1788727546062,
+          "utcDayKey": "2026-09-06"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP061730-30",
+          "side": "NO",
+          "confirmationTimestampMs": 1788729398810,
+          "utcDayKey": "2026-09-06"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP061745-45",
+          "side": "NO",
+          "confirmationTimestampMs": 1788730555605,
+          "utcDayKey": "2026-09-06"
+        }
+      ]
+    },
+    {
+      "utcDate": "2026-09-07",
+      "admitted": true,
+      "exclusionReason": null,
+      "eligibleConfirmations": 13,
+      "zeroSignal": false,
+      "clusterEligible": true,
+      "confirmationCount": 13,
+      "confirmations": [
+        {
+          "ticker": "KXBTC15M-26SEP071415-15",
+          "side": "NO",
+          "confirmationTimestampMs": 1788804014414,
+          "utcDayKey": "2026-09-07"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP071430-30",
+          "side": "NO",
+          "confirmationTimestampMs": 1788805056507,
+          "utcDayKey": "2026-09-07"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP071445-45",
+          "side": "YES",
+          "confirmationTimestampMs": 1788805878246,
+          "utcDayKey": "2026-09-07"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP071500-00",
+          "side": "YES",
+          "confirmationTimestampMs": 1788806925407,
+          "utcDayKey": "2026-09-07"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP071530-30",
+          "side": "NO",
+          "confirmationTimestampMs": 1788808576253,
+          "utcDayKey": "2026-09-07"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP071600-00",
+          "side": "NO",
+          "confirmationTimestampMs": 1788810579049,
+          "utcDayKey": "2026-09-07"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP071615-15",
+          "side": "NO",
+          "confirmationTimestampMs": 1788811224240,
+          "utcDayKey": "2026-09-07"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP071630-30",
+          "side": "NO",
+          "confirmationTimestampMs": 1788812405117,
+          "utcDayKey": "2026-09-07"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP071645-45",
+          "side": "NO",
+          "confirmationTimestampMs": 1788813068985,
+          "utcDayKey": "2026-09-07"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP071700-00",
+          "side": "YES",
+          "confirmationTimestampMs": 1788813920454,
+          "utcDayKey": "2026-09-07"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP071715-15",
+          "side": "NO",
+          "confirmationTimestampMs": 1788814829783,
+          "utcDayKey": "2026-09-07"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP071730-30",
+          "side": "NO",
+          "confirmationTimestampMs": 1788815707297,
+          "utcDayKey": "2026-09-07"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP071800-00",
+          "side": "NO",
+          "confirmationTimestampMs": 1788817611108,
+          "utcDayKey": "2026-09-07"
+        }
+      ]
+    },
+    {
+      "utcDate": "2026-09-10",
+      "admitted": true,
+      "exclusionReason": null,
+      "eligibleConfirmations": 15,
+      "zeroSignal": false,
+      "clusterEligible": true,
+      "confirmationCount": 15,
+      "confirmations": [
+        {
+          "ticker": "KXBTC15M-26SEP101415-15",
+          "side": "YES",
+          "confirmationTimestampMs": 1789063254960,
+          "utcDayKey": "2026-09-10"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP101445-45",
+          "side": "YES",
+          "confirmationTimestampMs": 1789065239061,
+          "utcDayKey": "2026-09-10"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP101500-00",
+          "side": "YES",
+          "confirmationTimestampMs": 1789066010027,
+          "utcDayKey": "2026-09-10"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP101515-15",
+          "side": "YES",
+          "confirmationTimestampMs": 1789066864340,
+          "utcDayKey": "2026-09-10"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP101530-30",
+          "side": "NO",
+          "confirmationTimestampMs": 1789067722379,
+          "utcDayKey": "2026-09-10"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP101545-45",
+          "side": "NO",
+          "confirmationTimestampMs": 1789069251778,
+          "utcDayKey": "2026-09-10"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP101600-00",
+          "side": "YES",
+          "confirmationTimestampMs": 1789069547366,
+          "utcDayKey": "2026-09-10"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP101615-15",
+          "side": "NO",
+          "confirmationTimestampMs": 1789070408253,
+          "utcDayKey": "2026-09-10"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP101630-30",
+          "side": "YES",
+          "confirmationTimestampMs": 1789071342194,
+          "utcDayKey": "2026-09-10"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP101645-45",
+          "side": "NO",
+          "confirmationTimestampMs": 1789072805501,
+          "utcDayKey": "2026-09-10"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP101700-00",
+          "side": "YES",
+          "confirmationTimestampMs": 1789073192503,
+          "utcDayKey": "2026-09-10"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP101715-15",
+          "side": "NO",
+          "confirmationTimestampMs": 1789074047902,
+          "utcDayKey": "2026-09-10"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP101730-30",
+          "side": "YES",
+          "confirmationTimestampMs": 1789074919865,
+          "utcDayKey": "2026-09-10"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP101745-45",
+          "side": "NO",
+          "confirmationTimestampMs": 1789075855158,
+          "utcDayKey": "2026-09-10"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP101800-00",
+          "side": "NO",
+          "confirmationTimestampMs": 1789076790587,
+          "utcDayKey": "2026-09-10"
+        }
+      ]
+    },
+    {
+      "utcDate": "2026-09-11",
+      "admitted": true,
+      "exclusionReason": null,
+      "eligibleConfirmations": 9,
+      "zeroSignal": false,
+      "clusterEligible": true,
+      "confirmationCount": 9,
+      "confirmations": [
+        {
+          "ticker": "KXBTC15M-26SEP111445-45",
+          "side": "NO",
+          "confirmationTimestampMs": 1789151706412,
+          "utcDayKey": "2026-09-11"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP111515-15",
+          "side": "YES",
+          "confirmationTimestampMs": 1789153357096,
+          "utcDayKey": "2026-09-11"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP111530-30",
+          "side": "NO",
+          "confirmationTimestampMs": 1789154641727,
+          "utcDayKey": "2026-09-11"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP111600-00",
+          "side": "YES",
+          "confirmationTimestampMs": 1789156016300,
+          "utcDayKey": "2026-09-11"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP111630-30",
+          "side": "YES",
+          "confirmationTimestampMs": 1789157733196,
+          "utcDayKey": "2026-09-11"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP111645-45",
+          "side": "YES",
+          "confirmationTimestampMs": 1789158676232,
+          "utcDayKey": "2026-09-11"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP111700-00",
+          "side": "YES",
+          "confirmationTimestampMs": 1789159676144,
+          "utcDayKey": "2026-09-11"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP111715-15",
+          "side": "NO",
+          "confirmationTimestampMs": 1789160849217,
+          "utcDayKey": "2026-09-11"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP111745-45",
+          "side": "YES",
+          "confirmationTimestampMs": 1789162228786,
+          "utcDayKey": "2026-09-11"
+        }
+      ]
+    },
+    {
+      "utcDate": "2026-09-12",
+      "admitted": true,
+      "exclusionReason": null,
+      "eligibleConfirmations": 14,
+      "zeroSignal": false,
+      "clusterEligible": true,
+      "confirmationCount": 14,
+      "confirmations": [
+        {
+          "ticker": "KXBTC15M-26SEP121415-15",
+          "side": "YES",
+          "confirmationTimestampMs": 1789236173373,
+          "utcDayKey": "2026-09-12"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP121430-30",
+          "side": "NO",
+          "confirmationTimestampMs": 1789237007872,
+          "utcDayKey": "2026-09-12"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP121445-45",
+          "side": "YES",
+          "confirmationTimestampMs": 1789237853346,
+          "utcDayKey": "2026-09-12"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP121500-00",
+          "side": "YES",
+          "confirmationTimestampMs": 1789238972020,
+          "utcDayKey": "2026-09-12"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP121515-15",
+          "side": "NO",
+          "confirmationTimestampMs": 1789239748300,
+          "utcDayKey": "2026-09-12"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP121530-30",
+          "side": "YES",
+          "confirmationTimestampMs": 1789240656189,
+          "utcDayKey": "2026-09-12"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP121545-45",
+          "side": "YES",
+          "confirmationTimestampMs": 1789241577470,
+          "utcDayKey": "2026-09-12"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP121600-00",
+          "side": "NO",
+          "confirmationTimestampMs": 1789242324382,
+          "utcDayKey": "2026-09-12"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP121630-30",
+          "side": "NO",
+          "confirmationTimestampMs": 1789244155194,
+          "utcDayKey": "2026-09-12"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP121645-45",
+          "side": "NO",
+          "confirmationTimestampMs": 1789245176825,
+          "utcDayKey": "2026-09-12"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP121700-00",
+          "side": "NO",
+          "confirmationTimestampMs": 1789246200025,
+          "utcDayKey": "2026-09-12"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP121715-15",
+          "side": "YES",
+          "confirmationTimestampMs": 1789247619665,
+          "utcDayKey": "2026-09-12"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP121730-30",
+          "side": "NO",
+          "confirmationTimestampMs": 1789248002653,
+          "utcDayKey": "2026-09-12"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP121745-45",
+          "side": "NO",
+          "confirmationTimestampMs": 1789248727423,
+          "utcDayKey": "2026-09-12"
+        }
+      ]
+    },
+    {
+      "utcDate": "2026-09-13",
+      "admitted": true,
+      "exclusionReason": null,
+      "eligibleConfirmations": 12,
+      "zeroSignal": false,
+      "clusterEligible": true,
+      "confirmationCount": 12,
+      "confirmations": [
+        {
+          "ticker": "KXBTC15M-26SEP131415-15",
+          "side": "YES",
+          "confirmationTimestampMs": 1789322405907,
+          "utcDayKey": "2026-09-13"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP131430-30",
+          "side": "YES",
+          "confirmationTimestampMs": 1789323998059,
+          "utcDayKey": "2026-09-13"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP131445-45",
+          "side": "NO",
+          "confirmationTimestampMs": 1789324240935,
+          "utcDayKey": "2026-09-13"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP131515-15",
+          "side": "YES",
+          "confirmationTimestampMs": 1789326520705,
+          "utcDayKey": "2026-09-13"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP131530-30",
+          "side": "YES",
+          "confirmationTimestampMs": 1789327096704,
+          "utcDayKey": "2026-09-13"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP131545-45",
+          "side": "YES",
+          "confirmationTimestampMs": 1789327870660,
+          "utcDayKey": "2026-09-13"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP131600-00",
+          "side": "NO",
+          "confirmationTimestampMs": 1789328988373,
+          "utcDayKey": "2026-09-13"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP131615-15",
+          "side": "NO",
+          "confirmationTimestampMs": 1789329641049,
+          "utcDayKey": "2026-09-13"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP131715-15",
+          "side": "YES",
+          "confirmationTimestampMs": 1789333323783,
+          "utcDayKey": "2026-09-13"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP131730-30",
+          "side": "NO",
+          "confirmationTimestampMs": 1789334201798,
+          "utcDayKey": "2026-09-13"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP131745-45",
+          "side": "YES",
+          "confirmationTimestampMs": 1789335038059,
+          "utcDayKey": "2026-09-13"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP131800-00",
+          "side": "YES",
+          "confirmationTimestampMs": 1789336071552,
+          "utcDayKey": "2026-09-13"
+        }
+      ]
+    },
+    {
+      "utcDate": "2026-09-15",
+      "admitted": true,
+      "exclusionReason": null,
+      "eligibleConfirmations": 14,
+      "zeroSignal": false,
+      "clusterEligible": true,
+      "confirmationCount": 14,
+      "confirmations": [
+        {
+          "ticker": "KXBTC15M-26SEP151415-15",
+          "side": "YES",
+          "confirmationTimestampMs": 1789495215235,
+          "utcDayKey": "2026-09-15"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP151430-30",
+          "side": "NO",
+          "confirmationTimestampMs": 1789496131271,
+          "utcDayKey": "2026-09-15"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP151500-00",
+          "side": "YES",
+          "confirmationTimestampMs": 1789497915575,
+          "utcDayKey": "2026-09-15"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP151515-15",
+          "side": "YES",
+          "confirmationTimestampMs": 1789498829868,
+          "utcDayKey": "2026-09-15"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP151530-30",
+          "side": "NO",
+          "confirmationTimestampMs": 1789499747975,
+          "utcDayKey": "2026-09-15"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP151545-45",
+          "side": "NO",
+          "confirmationTimestampMs": 1789500652626,
+          "utcDayKey": "2026-09-15"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP151600-00",
+          "side": "YES",
+          "confirmationTimestampMs": 1789501635170,
+          "utcDayKey": "2026-09-15"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP151615-15",
+          "side": "NO",
+          "confirmationTimestampMs": 1789502413301,
+          "utcDayKey": "2026-09-15"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP151630-30",
+          "side": "YES",
+          "confirmationTimestampMs": 1789503386455,
+          "utcDayKey": "2026-09-15"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP151645-45",
+          "side": "NO",
+          "confirmationTimestampMs": 1789504856747,
+          "utcDayKey": "2026-09-15"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP151700-00",
+          "side": "NO",
+          "confirmationTimestampMs": 1789505143617,
+          "utcDayKey": "2026-09-15"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP151715-15",
+          "side": "YES",
+          "confirmationTimestampMs": 1789506069033,
+          "utcDayKey": "2026-09-15"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP151745-45",
+          "side": "YES",
+          "confirmationTimestampMs": 1789507925989,
+          "utcDayKey": "2026-09-15"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP151800-00",
+          "side": "YES",
+          "confirmationTimestampMs": 1789508859073,
+          "utcDayKey": "2026-09-15"
+        }
+      ]
+    },
+    {
+      "utcDate": "2026-09-16",
+      "admitted": true,
+      "exclusionReason": null,
+      "eligibleConfirmations": 15,
+      "zeroSignal": false,
+      "clusterEligible": true,
+      "confirmationCount": 15,
+      "confirmations": [
+        {
+          "ticker": "KXBTC15M-26SEP161415-15",
+          "side": "NO",
+          "confirmationTimestampMs": 1789581601242,
+          "utcDayKey": "2026-09-16"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP161430-30",
+          "side": "NO",
+          "confirmationTimestampMs": 1789582714464,
+          "utcDayKey": "2026-09-16"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP161445-45",
+          "side": "YES",
+          "confirmationTimestampMs": 1789583470786,
+          "utcDayKey": "2026-09-16"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP161515-15",
+          "side": "NO",
+          "confirmationTimestampMs": 1789585240996,
+          "utcDayKey": "2026-09-16"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP161530-30",
+          "side": "YES",
+          "confirmationTimestampMs": 1789586296853,
+          "utcDayKey": "2026-09-16"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP161545-45",
+          "side": "NO",
+          "confirmationTimestampMs": 1789587010155,
+          "utcDayKey": "2026-09-16"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP161600-00",
+          "side": "NO",
+          "confirmationTimestampMs": 1789587961257,
+          "utcDayKey": "2026-09-16"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP161615-15",
+          "side": "YES",
+          "confirmationTimestampMs": 1789588920291,
+          "utcDayKey": "2026-09-16"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP161630-30",
+          "side": "YES",
+          "confirmationTimestampMs": 1789589794727,
+          "utcDayKey": "2026-09-16"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP161645-45",
+          "side": "NO",
+          "confirmationTimestampMs": 1789590639463,
+          "utcDayKey": "2026-09-16"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP161700-00",
+          "side": "YES",
+          "confirmationTimestampMs": 1789591508567,
+          "utcDayKey": "2026-09-16"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP161715-15",
+          "side": "YES",
+          "confirmationTimestampMs": 1789592600544,
+          "utcDayKey": "2026-09-16"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP161730-30",
+          "side": "NO",
+          "confirmationTimestampMs": 1789593412139,
+          "utcDayKey": "2026-09-16"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP161745-45",
+          "side": "NO",
+          "confirmationTimestampMs": 1789594284166,
+          "utcDayKey": "2026-09-16"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP161800-00",
+          "side": "NO",
+          "confirmationTimestampMs": 1789595339466,
+          "utcDayKey": "2026-09-16"
+        }
+      ]
+    },
+    {
+      "utcDate": "2026-09-17",
+      "admitted": true,
+      "exclusionReason": null,
+      "eligibleConfirmations": 16,
+      "zeroSignal": false,
+      "clusterEligible": true,
+      "confirmationCount": 16,
+      "confirmations": [
+        {
+          "ticker": "KXBTC15M-26SEP171415-15",
+          "side": "YES",
+          "confirmationTimestampMs": 1789668343048,
+          "utcDayKey": "2026-09-17"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP171430-30",
+          "side": "NO",
+          "confirmationTimestampMs": 1789669002107,
+          "utcDayKey": "2026-09-17"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP171445-45",
+          "side": "YES",
+          "confirmationTimestampMs": 1789670020588,
+          "utcDayKey": "2026-09-17"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP171500-00",
+          "side": "NO",
+          "confirmationTimestampMs": 1789670767161,
+          "utcDayKey": "2026-09-17"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP171515-15",
+          "side": "YES",
+          "confirmationTimestampMs": 1789671709673,
+          "utcDayKey": "2026-09-17"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP171530-30",
+          "side": "YES",
+          "confirmationTimestampMs": 1789672574291,
+          "utcDayKey": "2026-09-17"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP171545-45",
+          "side": "NO",
+          "confirmationTimestampMs": 1789673425882,
+          "utcDayKey": "2026-09-17"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP171600-00",
+          "side": "NO",
+          "confirmationTimestampMs": 1789674637490,
+          "utcDayKey": "2026-09-17"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP171615-15",
+          "side": "YES",
+          "confirmationTimestampMs": 1789675293326,
+          "utcDayKey": "2026-09-17"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP171630-30",
+          "side": "YES",
+          "confirmationTimestampMs": 1789676205127,
+          "utcDayKey": "2026-09-17"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP171645-45",
+          "side": "YES",
+          "confirmationTimestampMs": 1789677042368,
+          "utcDayKey": "2026-09-17"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP171700-00",
+          "side": "NO",
+          "confirmationTimestampMs": 1789678060367,
+          "utcDayKey": "2026-09-17"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP171715-15",
+          "side": "NO",
+          "confirmationTimestampMs": 1789678852883,
+          "utcDayKey": "2026-09-17"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP171730-30",
+          "side": "NO",
+          "confirmationTimestampMs": 1789679822861,
+          "utcDayKey": "2026-09-17"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP171745-45",
+          "side": "YES",
+          "confirmationTimestampMs": 1789680628498,
+          "utcDayKey": "2026-09-17"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP171800-00",
+          "side": "YES",
+          "confirmationTimestampMs": 1789681594206,
+          "utcDayKey": "2026-09-17"
+        }
+      ]
+    },
+    {
+      "utcDate": "2026-09-19",
+      "admitted": true,
+      "exclusionReason": null,
+      "eligibleConfirmations": 13,
+      "zeroSignal": false,
+      "clusterEligible": true,
+      "confirmationCount": 13,
+      "confirmations": [
+        {
+          "ticker": "KXBTC15M-26SEP191415-15",
+          "side": "NO",
+          "confirmationTimestampMs": 1789840863306,
+          "utcDayKey": "2026-09-19"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP191445-45",
+          "side": "YES",
+          "confirmationTimestampMs": 1789842634275,
+          "utcDayKey": "2026-09-19"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP191500-00",
+          "side": "YES",
+          "confirmationTimestampMs": 1789843605684,
+          "utcDayKey": "2026-09-19"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP191515-15",
+          "side": "NO",
+          "confirmationTimestampMs": 1789844413554,
+          "utcDayKey": "2026-09-19"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP191530-30",
+          "side": "NO",
+          "confirmationTimestampMs": 1789845351793,
+          "utcDayKey": "2026-09-19"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP191545-45",
+          "side": "YES",
+          "confirmationTimestampMs": 1789846263379,
+          "utcDayKey": "2026-09-19"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP191600-00",
+          "side": "NO",
+          "confirmationTimestampMs": 1789847179911,
+          "utcDayKey": "2026-09-19"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP191630-30",
+          "side": "YES",
+          "confirmationTimestampMs": 1789848927812,
+          "utcDayKey": "2026-09-19"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP191645-45",
+          "side": "YES",
+          "confirmationTimestampMs": 1789849983789,
+          "utcDayKey": "2026-09-19"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP191700-00",
+          "side": "YES",
+          "confirmationTimestampMs": 1789850791568,
+          "utcDayKey": "2026-09-19"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP191715-15",
+          "side": "NO",
+          "confirmationTimestampMs": 1789851645111,
+          "utcDayKey": "2026-09-19"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP191730-30",
+          "side": "YES",
+          "confirmationTimestampMs": 1789852506660,
+          "utcDayKey": "2026-09-19"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP191745-45",
+          "side": "YES",
+          "confirmationTimestampMs": 1789853464009,
+          "utcDayKey": "2026-09-19"
+        }
+      ]
+    },
+    {
+      "utcDate": "2026-09-21",
+      "admitted": true,
+      "exclusionReason": null,
+      "eligibleConfirmations": 13,
+      "zeroSignal": false,
+      "clusterEligible": true,
+      "confirmationCount": 13,
+      "confirmations": [
+        {
+          "ticker": "KXBTC15M-26SEP211415-15",
+          "side": "NO",
+          "confirmationTimestampMs": 1790013612545,
+          "utcDayKey": "2026-09-21"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP211445-45",
+          "side": "NO",
+          "confirmationTimestampMs": 1790015485168,
+          "utcDayKey": "2026-09-21"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP211500-00",
+          "side": "YES",
+          "confirmationTimestampMs": 1790016421627,
+          "utcDayKey": "2026-09-21"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP211515-15",
+          "side": "YES",
+          "confirmationTimestampMs": 1790017358845,
+          "utcDayKey": "2026-09-21"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP211530-30",
+          "side": "NO",
+          "confirmationTimestampMs": 1790018221070,
+          "utcDayKey": "2026-09-21"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP211545-45",
+          "side": "NO",
+          "confirmationTimestampMs": 1790019094216,
+          "utcDayKey": "2026-09-21"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP211600-00",
+          "side": "NO",
+          "confirmationTimestampMs": 1790019989569,
+          "utcDayKey": "2026-09-21"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP211630-30",
+          "side": "YES",
+          "confirmationTimestampMs": 1790021745774,
+          "utcDayKey": "2026-09-21"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP211645-45",
+          "side": "YES",
+          "confirmationTimestampMs": 1790022614016,
+          "utcDayKey": "2026-09-21"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP211700-00",
+          "side": "YES",
+          "confirmationTimestampMs": 1790023704549,
+          "utcDayKey": "2026-09-21"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP211715-15",
+          "side": "YES",
+          "confirmationTimestampMs": 1790024440413,
+          "utcDayKey": "2026-09-21"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP211730-30",
+          "side": "NO",
+          "confirmationTimestampMs": 1790025361249,
+          "utcDayKey": "2026-09-21"
+        },
+        {
+          "ticker": "KXBTC15M-26SEP211745-45",
+          "side": "NO",
+          "confirmationTimestampMs": 1790026274818,
+          "utcDayKey": "2026-09-21"
+        }
+      ]
+    }
+  ]
+}
