@@ -1,9 +1,11 @@
 export {
   CRYPTOSTRUCT_MCP_EXPECTED_MUTATING,
   CRYPTOSTRUCT_MCP_EXPECTED_READ_ONLY,
+  buildLiveMcpInventory,
   buildOfflineRepoAuthorityInventory,
   buildSanitizedInventory,
   hashSanitizedInventory,
+  type CryptostructMcpLiveCapture,
   type CryptostructMcpToolBoundary,
   type CryptostructOwnedDateMeta,
   type CryptostructSanitizedInventory,
@@ -42,8 +44,11 @@ export {
 } from "./acquisitionPlan";
 
 export {
+  bootstrapReservoirFromLiveMcpCapture,
   bootstrapReservoirFromRepoAuthority,
   groupDatesByState,
+  loadMcpLiveCapture,
+  CRYPTOSTRUCT_MCP_LIVE_CAPTURE_ARTIFACT,
   M16_ER_ACQUISITION_ARTIFACT,
   M16_ER_PRIMARY_RESULT_ARTIFACT,
   type ReservoirBootstrapResult,

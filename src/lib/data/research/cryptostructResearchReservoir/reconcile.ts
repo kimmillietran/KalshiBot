@@ -23,7 +23,9 @@ import {
   type CryptostructReservoirSnapshot,
 } from "./ledger";
 import {
+  buildLiveMcpInventory,
   buildOfflineRepoAuthorityInventory,
+  type CryptostructMcpLiveCapture,
   type CryptostructOwnedDateMeta,
   type CryptostructSanitizedInventory,
 } from "./inventory";
@@ -38,6 +40,9 @@ export const M16_ER_PRIMARY_RESULT_ARTIFACT =
 
 export const M16_ER_ACQUISITION_ARTIFACT =
   "data/research-results/external-kalshi-data-audit/m16-er-acquisition-manifest.json";
+
+export const CRYPTOSTRUCT_MCP_LIVE_CAPTURE_ARTIFACT =
+  "data/research-results/external-kalshi-data-audit/cryptostruct-reservoir-mcp-live-capture.json";
 
 export type ReservoirBootstrapResult = {
   inventory: CryptostructSanitizedInventory;
@@ -80,6 +85,149 @@ function loadPrimaryIdentity(repoRoot: string): string {
   return primary.primaryResultContentSha256;
 }
 
+export function loadMcpLiveCapture(repoRoot: string): CryptostructMcpLiveCapture {
+  const path = join(repoRoot, CRYPTOSTRUCT_MCP_LIVE_CAPTURE_ARTIFACT);
+  if (!existsSync(path)) {
+    throw new Error(`missing live MCP capture ${path}`);
+  }
+  const capture = JSON.parse(
+    readFileSync(path, "utf8"),
+  ) as CryptostructMcpLiveCapture;
+  if (capture.schemaVersion !== "cryptostruct-kxbtc15m-mcp-live-capture-v1") {
+    throw new Error(
+      `unexpected live MCP capture schema ${String(capture.schemaVersion)}`,
+    );
+  }
+  return capture;
+}
+
+function applyQualityAuditBurns(input: {
+  ledger: CryptostructReservoirEventLedger;
+  atUtc: string;
+  inventoryIdentity: string;
+  vendorCoveredSet: ReadonlySet<string>;
+}): CryptostructReservoirEventLedger {
+  let ledger = input.ledger;
+  for (const utcDate of CRYPTOSTRUCT_QUALITY_AUDIT_ONLY_DATES) {
+    if (!input.vendorCoveredSet.has(utcDate)) {
+      throw new Error(
+        `quality-audit date ${utcDate} missing from vendor coverage`,
+      );
+    }
+    assertAllowedStateTransition({
+      utcDate,
+      from: "AVAILABLE_UNOWNED",
+      to: "QUALITY_AUDIT_ONLY",
+    });
+    ledger = appendReservoirEvent(ledger, {
+      eventType: "quality-audit-burned",
+      utcDate,
+      atUtc: input.atUtc,
+      priorState: "AVAILABLE_UNOWNED",
+      newState: "QUALITY_AUDIT_ONLY",
+      reason:
+        "Permanently QUALITY_AUDIT_ONLY from CryptoStruct source-equivalence / fidelity audit",
+      actor: "cryptostruct-research-reservoir",
+      scientificProtocolIdentity: null,
+      researchLineage: "cryptostruct-source-equivalence",
+      primaryResultIdentity: null,
+      sourceArtifactIdentities: [
+        "src/lib/data/research/cryptostructDatasetGovernance/ledger.ts",
+        "data/research-results/external-kalshi-data-audit/m16-source-equivalence-audit.md",
+      ],
+      inventorySnapshotIdentity: input.inventoryIdentity,
+      patch: {
+        owned: true,
+        vendorAvailable: true,
+        byteSize: CRYPTOSTRUCT_QUALITY_AUDIT_BYTE_SIZE[utcDate],
+        rawZipSha256: CRYPTOSTRUCT_QUALITY_AUDIT_ZIP_SHA256[utcDate],
+        vendorFileId: `kalshi-btc-15m_${utcDate}.zip`,
+        notes:
+          "Never validation/HOLDOUT. Local research-store provenance; "
+          + "may be absent from current get_my_files.",
+      },
+    });
+  }
+  return ledger;
+}
+
+function applyM16ErSpentValidation(input: {
+  ledger: CryptostructReservoirEventLedger;
+  atUtc: string;
+  inventoryIdentity: string;
+  primaryId: string;
+  acqDays: readonly AcqDay[];
+  cohortDates: readonly string[];
+  auditSet: ReadonlySet<string>;
+}): CryptostructReservoirEventLedger {
+  let ledger = input.ledger;
+  for (const utcDate of input.cohortDates) {
+    if (input.auditSet.has(utcDate)) {
+      throw new Error(`cohort date overlaps quality-audit: ${utcDate}`);
+    }
+    const acq = input.acqDays.find((d) => d.utcDate === utcDate);
+    if (!acq) {
+      throw new Error(`missing acquisition for cohort date ${utcDate}`);
+    }
+    assertAllowedStateTransition({
+      utcDate,
+      from: "AVAILABLE_UNOWNED",
+      to: "SPENT_VALIDATION",
+    });
+    ledger = appendReservoirEvent(ledger, {
+      eventType: "validation-opened",
+      utcDate,
+      atUtc: input.atUtc,
+      priorState: "AVAILABLE_UNOWNED",
+      newState: "SPENT_VALIDATION",
+      reason:
+        "M16-ER economic outcomes opened under human authorization (PR #110); "
+        + "not pristine for future confirmatory use",
+      actor: "cryptostruct-research-reservoir",
+      scientificProtocolIdentity:
+        "3f4fdf157b3eb6eb775c8e2f4bab4272e23cfa22a7179fed29fb135012207c65",
+      researchLineage: M16_ER_LINEAGE,
+      primaryResultIdentity: input.primaryId,
+      sourceArtifactIdentities: [
+        M16_ER_PRIMARY_RESULT_ARTIFACT,
+        M16_ER_ACQUISITION_ARTIFACT,
+        "data/research-results/external-kalshi-data-audit/m16-er-outcome-open-authorization.json",
+      ],
+      inventorySnapshotIdentity: input.inventoryIdentity,
+      patch: {
+        owned: true,
+        vendorAvailable: true,
+        byteSize: acq.byteSize,
+        rawZipSha256: acq.sha256,
+        vendorFileId: acq.sourceFilename,
+        notes:
+          "Also usable as OPEN_DISCOVERY for exploratory work; never resealable",
+      },
+    });
+    ledger = appendReservoirEvent(ledger, {
+      eventType: "opened-for-discovery",
+      utcDate,
+      atUtc: input.atUtc,
+      priorState: "SPENT_VALIDATION",
+      newState: "SPENT_VALIDATION",
+      reason:
+        "M16-ER spent dates remain available for exploratory/discovery research",
+      actor: "cryptostruct-research-reservoir",
+      scientificProtocolIdentity:
+        "3f4fdf157b3eb6eb775c8e2f4bab4272e23cfa22a7179fed29fb135012207c65",
+      researchLineage: M16_ER_LINEAGE,
+      primaryResultIdentity: input.primaryId,
+      sourceArtifactIdentities: [M16_ER_PRIMARY_RESULT_ARTIFACT],
+      inventorySnapshotIdentity: input.inventoryIdentity,
+      patch: {
+        notes:
+          "SPENT_VALIDATION with discovery reuse allowed; confirmatory reuse forbidden by default",
+      },
+    });
+  }
+  return ledger;
+}
+
 /**
  * Build initial reservoir from repo authority (MCP-offline path).
  */
@@ -91,7 +239,6 @@ export function bootstrapReservoirFromRepoAuthority(input: {
   const primaryId = loadPrimaryIdentity(input.repoRoot);
   const acqDays = loadAcquisitionDays(input.repoRoot);
   const cohort = buildM16ErFixedCohortPlan();
-  const cohortSet = new Set(cohort.fixedUtcDates);
   const auditSet = new Set<string>(CRYPTOSTRUCT_QUALITY_AUDIT_ONLY_DATES);
 
   const vendorCovered = enumerateUtcDatesInclusive(
@@ -186,105 +333,188 @@ export function bootstrapReservoirFromRepoAuthority(input: {
     });
   }
 
-  // Quality-audit burns
-  for (const utcDate of CRYPTOSTRUCT_QUALITY_AUDIT_ONLY_DATES) {
-    assertAllowedStateTransition({
-      utcDate,
-      from: "AVAILABLE_UNOWNED",
-      to: "QUALITY_AUDIT_ONLY",
-    });
+  ledger = applyQualityAuditBurns({
+    ledger,
+    atUtc: input.atUtc,
+    inventoryIdentity: inventory.inventoryContentSha256,
+    vendorCoveredSet: new Set(vendorCovered),
+  });
+
+  ledger = applyM16ErSpentValidation({
+    ledger,
+    atUtc: input.atUtc,
+    inventoryIdentity: inventory.inventoryContentSha256,
+    primaryId,
+    acqDays,
+    cohortDates: cohort.fixedUtcDates,
+    auditSet,
+  });
+
+  const snapshot = materializeReservoirSnapshot({
+    ledger,
+    materializedAtUtc: input.atUtc,
+    inventorySnapshotIdentity: inventory.inventoryContentSha256,
+  });
+
+  return { inventory, eventLedger: ledger, snapshot };
+}
+
+/**
+ * Reconcile authenticated CryptoStruct MCP live capture with repo research history.
+ *
+ * Preserves:
+ * - 34 M16-ER dates → SPENT_VALIDATION
+ * - 5 source-equivalence dates → QUALITY_AUDIT_ONLY
+ *
+ * Additional MCP-owned dates:
+ * - clearly untouched → OWNED_SEALED_UNASSIGNED
+ * - clearly opened/used → OPEN_DISCOVERY / SPENT_* as applicable
+ * - uncertain → UNKNOWN_QUARANTINED
+ *
+ * Never infers sealed merely from ownership.
+ */
+export function bootstrapReservoirFromLiveMcpCapture(input: {
+  repoRoot: string;
+  atUtc: string;
+  capture?: CryptostructMcpLiveCapture;
+  discoveredNamespaces?: readonly string[];
+}): ReservoirBootstrapResult {
+  const primaryId = loadPrimaryIdentity(input.repoRoot);
+  const acqDays = loadAcquisitionDays(input.repoRoot);
+  const cohort = buildM16ErFixedCohortPlan();
+  const cohortSet = new Set(cohort.fixedUtcDates);
+  const auditSet = new Set<string>(CRYPTOSTRUCT_QUALITY_AUDIT_ONLY_DATES);
+  const capture = input.capture ?? loadMcpLiveCapture(input.repoRoot);
+
+  const inventory = buildLiveMcpInventory({
+    queriedAtUtc: input.atUtc,
+    capture,
+    discoveredNamespaces: input.discoveredNamespaces ?? [
+      "cursor",
+      "cryptostruct",
+    ],
+    readOnlyToolsCalled: capture.toolsCalled,
+  });
+
+  const vendorCovered = [...inventory.vendorCoveredUtcDates].sort();
+  const vendorCoveredSet = new Set(vendorCovered);
+  const mcpOwnedByDate = new Map(
+    inventory.ownedDates.map((d) => [d.utcDate, d] as const),
+  );
+  const mcpOwnedSet = new Set(mcpOwnedByDate.keys());
+
+  // Fail closed: every MCP-owned date must be classifiable.
+  for (const utcDate of mcpOwnedSet) {
+    if (!vendorCoveredSet.has(utcDate)) {
+      throw new Error(
+        `MCP-owned date ${utcDate} not in live vendor coverage — quarantine required`,
+      );
+    }
+  }
+
+  let ledger = createEmptyEventLedger();
+  ledger = appendReservoirEvent(ledger, {
+    eventType: "inventory-imported",
+    utcDate: null,
+    atUtc: input.atUtc,
+    priorState: null,
+    newState: null,
+    reason: "m17-prep-authenticated-mcp-live-inventory",
+    actor: "cryptostruct-research-reservoir",
+    scientificProtocolIdentity: null,
+    researchLineage: null,
+    primaryResultIdentity: null,
+    sourceArtifactIdentities: [
+      CRYPTOSTRUCT_MCP_LIVE_CAPTURE_ARTIFACT,
+      M16_ER_ACQUISITION_ARTIFACT,
+      M16_ER_PRIMARY_RESULT_ARTIFACT,
+      inventory.inventoryContentSha256,
+    ],
+    inventorySnapshotIdentity: inventory.inventoryContentSha256,
+    patch: null,
+  });
+
+  for (const d of vendorCovered) {
     ledger = appendReservoirEvent(ledger, {
-      eventType: "quality-audit-burned",
-      utcDate,
+      eventType: "vendor-availability-observed",
+      utcDate: d,
       atUtc: input.atUtc,
-      priorState: "AVAILABLE_UNOWNED",
-      newState: "QUALITY_AUDIT_ONLY",
-      reason:
-        "Permanently QUALITY_AUDIT_ONLY from CryptoStruct source-equivalence / fidelity audit",
+      priorState: null,
+      newState: "AVAILABLE_UNOWNED",
+      reason: "cryptostruct-mcp-get_bundle_coverage",
       actor: "cryptostruct-research-reservoir",
       scientificProtocolIdentity: null,
-      researchLineage: "cryptostruct-source-equivalence",
+      researchLineage: null,
       primaryResultIdentity: null,
-      sourceArtifactIdentities: [
-        "src/lib/data/research/cryptostructDatasetGovernance/ledger.ts",
-        "data/research-results/external-kalshi-data-audit/m16-source-equivalence-audit.md",
-      ],
+      sourceArtifactIdentities: [CRYPTOSTRUCT_MCP_LIVE_CAPTURE_ARTIFACT],
       inventorySnapshotIdentity: inventory.inventoryContentSha256,
       patch: {
-        owned: true,
         vendorAvailable: true,
-        byteSize: CRYPTOSTRUCT_QUALITY_AUDIT_BYTE_SIZE[utcDate],
-        rawZipSha256: CRYPTOSTRUCT_QUALITY_AUDIT_ZIP_SHA256[utcDate],
-        vendorFileId: `kalshi-btc-15m_${utcDate}.zip`,
-        notes: "Never validation/HOLDOUT",
+        owned: false,
       },
     });
   }
 
-  // M16-ER spent validation (economic outcomes opened PR #110)
-  for (const utcDate of cohort.fixedUtcDates) {
-    if (!cohortSet.has(utcDate)) continue;
-    if (auditSet.has(utcDate)) {
-      throw new Error(`cohort date overlaps quality-audit: ${utcDate}`);
-    }
-    const acq = acqDays.find((d) => d.utcDate === utcDate);
-    if (!acq) {
-      throw new Error(`missing acquisition for cohort date ${utcDate}`);
-    }
+  // Quality-audit burns first (may not be listed in get_my_files).
+  ledger = applyQualityAuditBurns({
+    ledger,
+    atUtc: input.atUtc,
+    inventoryIdentity: inventory.inventoryContentSha256,
+    vendorCoveredSet,
+  });
+
+  // M16-ER spent on the intersection of MCP ownership + fixed cohort.
+  const spentDates = cohort.fixedUtcDates.filter((d) => mcpOwnedSet.has(d));
+  if (spentDates.length !== cohort.fixedUtcDates.length) {
+    const missing = cohort.fixedUtcDates.filter((d) => !mcpOwnedSet.has(d));
+    throw new Error(
+      `M16-ER cohort dates missing from MCP ownership: ${missing.join(",")}`,
+    );
+  }
+  ledger = applyM16ErSpentValidation({
+    ledger,
+    atUtc: input.atUtc,
+    inventoryIdentity: inventory.inventoryContentSha256,
+    primaryId,
+    acqDays,
+    cohortDates: spentDates,
+    auditSet,
+  });
+
+  // Additional MCP-owned dates beyond M16-ER / quality-audit authority.
+  for (const utcDate of [...mcpOwnedSet].sort()) {
+    if (cohortSet.has(utcDate) || auditSet.has(utcDate)) continue;
+    const meta = mcpOwnedByDate.get(utcDate);
+    if (!meta) continue;
+
+    // No clear untouched provenance in repo → fail closed to quarantine.
+    // (Never infer sealed merely because a file is owned.)
     assertAllowedStateTransition({
       utcDate,
       from: "AVAILABLE_UNOWNED",
-      to: "SPENT_VALIDATION",
+      to: "UNKNOWN_QUARANTINED",
     });
     ledger = appendReservoirEvent(ledger, {
-      eventType: "validation-opened",
+      eventType: "quarantine",
       utcDate,
       atUtc: input.atUtc,
       priorState: "AVAILABLE_UNOWNED",
-      newState: "SPENT_VALIDATION",
+      newState: "UNKNOWN_QUARANTINED",
       reason:
-        "M16-ER economic outcomes opened under human authorization (PR #110); "
-        + "not pristine for future confirmatory use",
+        "MCP-owned KXBTC15M date lacks clear untouched sealed provenance in repo",
       actor: "cryptostruct-research-reservoir",
-      scientificProtocolIdentity:
-        "3f4fdf157b3eb6eb775c8e2f4bab4272e23cfa22a7179fed29fb135012207c65",
-      researchLineage: M16_ER_LINEAGE,
-      primaryResultIdentity: primaryId,
-      sourceArtifactIdentities: [
-        M16_ER_PRIMARY_RESULT_ARTIFACT,
-        M16_ER_ACQUISITION_ARTIFACT,
-        "data/research-results/external-kalshi-data-audit/m16-er-outcome-open-authorization.json",
-      ],
+      scientificProtocolIdentity: null,
+      researchLineage: null,
+      primaryResultIdentity: null,
+      sourceArtifactIdentities: [CRYPTOSTRUCT_MCP_LIVE_CAPTURE_ARTIFACT],
       inventorySnapshotIdentity: inventory.inventoryContentSha256,
       patch: {
         owned: true,
         vendorAvailable: true,
-        byteSize: acq.byteSize,
-        rawZipSha256: acq.sha256,
-        vendorFileId: acq.sourceFilename,
-        notes:
-          "Also usable as OPEN_DISCOVERY for exploratory work; never resealable",
-      },
-    });
-    // Also mark opened-for-discovery lineage availability without changing away from SPENT
-    ledger = appendReservoirEvent(ledger, {
-      eventType: "opened-for-discovery",
-      utcDate,
-      atUtc: input.atUtc,
-      priorState: "SPENT_VALIDATION",
-      newState: "SPENT_VALIDATION",
-      reason:
-        "M16-ER spent dates remain available for exploratory/discovery research",
-      actor: "cryptostruct-research-reservoir",
-      scientificProtocolIdentity:
-        "3f4fdf157b3eb6eb775c8e2f4bab4272e23cfa22a7179fed29fb135012207c65",
-      researchLineage: M16_ER_LINEAGE,
-      primaryResultIdentity: primaryId,
-      sourceArtifactIdentities: [M16_ER_PRIMARY_RESULT_ARTIFACT],
-      inventorySnapshotIdentity: inventory.inventoryContentSha256,
-      patch: {
-        notes:
-          "SPENT_VALIDATION with discovery reuse allowed; confirmatory reuse forbidden by default",
+        byteSize: meta.byteSize,
+        rawZipSha256: meta.vendorChecksumSha256,
+        vendorFileId: meta.vendorFileId,
+        notes: "UNKNOWN_QUARANTINED until human provenance review",
       },
     });
   }

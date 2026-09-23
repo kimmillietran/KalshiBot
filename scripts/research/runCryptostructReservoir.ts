@@ -5,6 +5,7 @@
  * npm run research:cryptostruct-reservoir -- --status
  * npm run research:cryptostruct-reservoir -- --audit
  * npm run research:cryptostruct-reservoir -- --write-artifacts
+ * npm run research:cryptostruct-reservoir -- --write-artifacts --offline
  * npm run research:cryptostruct-reservoir -- --plan-allocation --validation 5 --holdout 5 --protocol <id>
  * npm run research:cryptostruct-reservoir -- --plan-acquisition --days 10
  */
@@ -13,6 +14,7 @@ import { join } from "node:path";
 
 import {
   auditReservoirInvariants,
+  bootstrapReservoirFromLiveMcpCapture,
   bootstrapReservoirFromRepoAuthority,
   groupDatesByState,
   planAcquisition,
@@ -35,15 +37,29 @@ function hasFlag(flag: string): boolean {
   return process.argv.includes(flag);
 }
 
-function main(): void {
+function bootstrap() {
+  const useOffline = hasFlag("--offline");
   // Fixed timestamp for deterministic artifact hashes when writing; live status may use now.
   const atUtc = hasFlag("--write-artifacts")
-    ? "2026-09-23T07:00:00.000Z"
+    ? useOffline
+      ? "2026-09-23T07:00:00.000Z"
+      : "2026-09-23T21:50:00.000Z"
     : new Date().toISOString();
-  const boot = bootstrapReservoirFromRepoAuthority({
+
+  if (useOffline) {
+    return bootstrapReservoirFromRepoAuthority({
+      repoRoot: ROOT,
+      atUtc,
+    });
+  }
+  return bootstrapReservoirFromLiveMcpCapture({
     repoRoot: ROOT,
     atUtc,
   });
+}
+
+function main(): void {
+  const boot = bootstrap();
 
   if (hasFlag("--write-artifacts")) {
     mkdirSync(OUT, { recursive: true });
@@ -60,16 +76,55 @@ function main(): void {
       JSON.stringify(boot.snapshot, null, 2) + "\n",
     );
     const byState = groupDatesByState(boot.snapshot);
+    const acquisitionPlans = [10, 30, 60].map((days) =>
+      planAcquisition({
+        snapshot: boot.snapshot,
+        inventory: boot.inventory,
+        desiredNewSealedDays: days,
+      }),
+    );
     const report = {
-      generatedAtUtc: atUtc,
+      generatedAtUtc: boot.inventory.queriedAtUtc,
       counts: boot.snapshot.counts,
       datesByState: byState,
       inventoryContentSha256: boot.inventory.inventoryContentSha256,
       eventLedgerIdentity: boot.eventLedger.eventLedgerIdentity,
       snapshotIdentity: boot.snapshot.snapshotIdentity,
       mcpConnected: boot.inventory.mcp.cryptostructMcpConnected,
+      mcpReadOnlyToolsCalled: boot.inventory.mcp.readOnlyToolsCalled,
+      mcpMutatingToolsCalled: boot.inventory.mcp.mutatingToolsCalled,
+      subscription: {
+        tier: boot.inventory.subscription.tier,
+        availableCredits: boot.inventory.subscription.availableCredits,
+        autonomousPurchasePolicy:
+          boot.inventory.subscription.autonomousPurchasePolicy,
+        note: boot.inventory.subscription.note,
+      },
+      catalogDateRange: boot.inventory.product.availableDateRange,
+      vendorCoveredDateCount: boot.inventory.vendorCoveredUtcDates.length,
+      ownedDateCount: boot.inventory.ownedDates.length,
+      availableUnownedDateCount: boot.inventory.availableUnownedUtcDates.length,
+      untouchedOwnedSealedCount: boot.snapshot.counts.OWNED_SEALED_UNASSIGNED,
+      informationalAcquisitionPlans: acquisitionPlans.map((p) => ({
+        desiredNewSealedDays: p.desiredNewSealedDays,
+        proposedPurchaseUtcDates: p.proposedPurchaseUtcDates,
+        estimatedCreditsIfOnePerDay: p.estimatedCreditsIfOnePerDay,
+        estimatedListPriceEurIfNoCredits: p.estimatedListPriceEurIfNoCredits,
+        shortfallAfterAvailableUnowned: p.shortfallAfterAvailableUnowned,
+        planContentSha256: p.planContentSha256,
+        purchaseExecuted: p.purchaseExecuted,
+        disposition: p.disposition,
+      })),
+      informationalPriceQuotes: {
+        note:
+          "Optional get_price_quote results (read-only; no checkout created). "
+          + "Recorded separately in cryptostruct-reservoir-report.md when obtained.",
+        quotes: null as null | unknown,
+      },
       creditsSpentThisTask: 0,
       purchaseExecuted: false,
+      filesDownloadedThisTask: 0,
+      filesRestoredThisTask: 0,
       futureAcquisitionWorkflow: [
         "MCP coverage discovery",
         "reconcile ownership",
@@ -94,34 +149,55 @@ function main(): void {
 
 ## MCP
 - Connected: **${boot.inventory.mcp.cryptostructMcpConnected}**
+- Read-only tools called: ${(boot.inventory.mcp.readOnlyToolsCalled as readonly string[]).join(", ") || "(none)"}
 - Mutating tools called: none
-- Credits spent: 0
+- Credits spent this task: 0
+- Purchases / downloads / restores this task: 0
 
-## Counts
+## Subscription (sanitized)
+- Tier: ${boot.inventory.subscription.tier ?? "n/a"}
+- Available credits: ${boot.inventory.subscription.availableCredits ?? "n/a"}
+- Autonomous purchase policy: ${boot.inventory.subscription.autonomousPurchasePolicy ?? "n/a"}
+- Detail: ${boot.inventory.subscription.note}
+
+## Catalog
+- Bundle/product: \`${boot.inventory.product.bundleOrProductId}\`
+- Range: ${boot.inventory.product.availableDateRange.startInclusive} … ${boot.inventory.product.availableDateRange.endInclusive}
+- Vendor-covered dates: ${boot.inventory.vendorCoveredUtcDates.length}
+- MCP-owned dates: ${boot.inventory.ownedDates.length}
+- AVAILABLE_UNOWNED (inventory): ${boot.inventory.availableUnownedUtcDates.length}
+
+## Reservoir counts
 ${Object.entries(boot.snapshot.counts)
   .map(([k, v]) => `- ${k}: ${v}`)
   .join("\n")}
+
+## Untouched capacity
+- OWNED_SEALED_UNASSIGNED: ${boot.snapshot.counts.OWNED_SEALED_UNASSIGNED}
+- AVAILABLE_UNOWNED (reservoir): ${boot.snapshot.counts.AVAILABLE_UNOWNED}
 
 ## Identities
 - inventory: \`${boot.inventory.inventoryContentSha256}\`
 - event ledger: \`${boot.eventLedger.eventLedgerIdentity}\`
 - snapshot: \`${boot.snapshot.snapshotIdentity}\`
 
-## Untouched capacity
-- OWNED_SEALED_UNASSIGNED: ${boot.snapshot.counts.OWNED_SEALED_UNASSIGNED}
-- AVAILABLE_UNOWNED (within catalog freeze): ${boot.snapshot.counts.AVAILABLE_UNOWNED}
-
 ## Safety
-No sealed outcomes opened. No purchase. No M16-P changes.
+No sealed outcomes opened. No purchase. No M16-P changes. No credits spent.
 `;
     writeFileSync(join(OUT, "cryptostruct-reservoir-report.md"), md);
     console.log(
       JSON.stringify(
         {
           wrote: true,
+          mcpConnected: boot.inventory.mcp.cryptostructMcpConnected,
           inventoryContentSha256: boot.inventory.inventoryContentSha256,
           snapshotIdentity: boot.snapshot.snapshotIdentity,
+          eventLedgerIdentity: boot.eventLedger.eventLedgerIdentity,
           counts: boot.snapshot.counts,
+          vendorCovered: boot.inventory.vendorCoveredUtcDates.length,
+          owned: boot.inventory.ownedDates.length,
+          availableUnownedInventory:
+            boot.inventory.availableUnownedUtcDates.length,
         },
         null,
         2,
@@ -176,8 +252,11 @@ No sealed outcomes opened. No purchase. No M16-P changes.
         eventLedgerIdentity: boot.eventLedger.eventLedgerIdentity,
         snapshotIdentity: boot.snapshot.snapshotIdentity,
         mcp: boot.inventory.mcp,
+        subscription: boot.inventory.subscription,
         untouchedOwnedSealed: boot.snapshot.counts.OWNED_SEALED_UNASSIGNED,
         availableUnowned: boot.inventory.availableUnownedUtcDates.length,
+        vendorCovered: boot.inventory.vendorCoveredUtcDates.length,
+        owned: boot.inventory.ownedDates.length,
       },
       null,
       2,

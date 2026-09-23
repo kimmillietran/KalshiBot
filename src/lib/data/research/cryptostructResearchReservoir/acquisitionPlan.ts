@@ -49,7 +49,16 @@ export function planAcquisition(input: {
     .map((d) => d.utcDate)
     .sort();
 
-  const available = [...input.inventory.availableUnownedUtcDates].sort();
+  // Exclude dates already scientifically burned/spent in the reservoir even if
+  // the vendor still lists them as purchasable (e.g. QUALITY_AUDIT_ONLY).
+  const contaminated = new Set(
+    Object.values(input.snapshot.days)
+      .filter((d) => d.state !== "AVAILABLE_UNOWNED")
+      .map((d) => d.utcDate),
+  );
+  const available = [...input.inventory.availableUnownedUtcDates]
+    .filter((d) => !contaminated.has(d))
+    .sort();
   const proposed = available.slice(0, Math.max(0, input.desiredNewSealedDays));
   const shortfall = Math.max(0, input.desiredNewSealedDays - proposed.length);
 

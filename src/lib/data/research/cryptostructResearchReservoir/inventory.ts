@@ -200,3 +200,116 @@ export function buildOfflineRepoAuthorityInventory(input: {
     filesRestoredThisTask: 0,
   });
 }
+
+/** Sanitized live MCP capture (no tokens, cookies, signed URLs, order IDs). */
+export type CryptostructMcpLiveCapture = {
+  schemaVersion: "cryptostruct-kxbtc15m-mcp-live-capture-v1";
+  capturedAtUtc: string;
+  toolsCalled: readonly string[];
+  toolsIntentionallyNotCalled: readonly string[];
+  product: {
+    bundleId: number;
+    seriesKey: string;
+    label: string;
+    priceEurPerDay: number;
+    delivery: string;
+    days: number;
+    firstDay: string;
+    lastDay: string;
+    infoUrl: string;
+    shopUrl: string;
+  };
+  vendorCoveredUtcDates: readonly string[];
+  ownedDates: readonly CryptostructOwnedDateMeta[];
+  subscription: {
+    premium: boolean;
+    status: string;
+    tier: string;
+    creditBalanceCents: number;
+    availableCredits: number;
+    autonomousPurchasePolicy: string;
+    cancelAtPeriodEnd: boolean;
+    currentPeriodEnd: string;
+    dailySpentCentsAtCapture: number;
+  };
+  notes?: readonly string[];
+};
+
+/**
+ * Inventory from authenticated CryptoStruct MCP read-only capture.
+ * Mutating tools must remain empty; credits/purchases/downloads/restores stay zero.
+ */
+export function buildLiveMcpInventory(input: {
+  queriedAtUtc: string;
+  capture: CryptostructMcpLiveCapture;
+  discoveredNamespaces: readonly string[];
+  readOnlyToolsCalled: readonly string[];
+}): CryptostructSanitizedInventory {
+  const ownedSet = new Set(input.capture.ownedDates.map((d) => d.utcDate));
+  const vendorCoveredUtcDates = [...input.capture.vendorCoveredUtcDates].sort();
+  const availableUnownedUtcDates = vendorCoveredUtcDates.filter(
+    (d) => !ownedSet.has(d),
+  );
+  const mutatingCalled = input.capture.toolsCalled.filter((t) =>
+    (CRYPTOSTRUCT_MCP_EXPECTED_MUTATING as readonly string[]).includes(t),
+  );
+  if (mutatingCalled.length > 0) {
+    throw new CryptostructReservoirError(
+      `live MCP capture recorded mutating tools: ${mutatingCalled.join(",")}`,
+    );
+  }
+
+  return buildSanitizedInventory({
+    schemaVersion: "cryptostruct-kxbtc15m-sanitized-inventory-v1",
+    provider: CRYPTOSTRUCT_RESERVOIR_PROVIDER,
+    series: CRYPTOSTRUCT_RESERVOIR_SERIES,
+    queriedAtUtc: input.queriedAtUtc,
+    mcp: {
+      discoveredNamespaces: [...input.discoveredNamespaces],
+      cryptostructMcpConnected: true,
+      readOnlyToolsExpected: [...CRYPTOSTRUCT_MCP_EXPECTED_READ_ONLY],
+      mutatingToolsProhibited: [...CRYPTOSTRUCT_MCP_EXPECTED_MUTATING],
+      readOnlyToolsCalled: [...input.readOnlyToolsCalled],
+      mutatingToolsCalled: [],
+      note:
+        "Authenticated CryptoStruct MCP read-only inventory. "
+        + "No create_checkout / preview_checkout / get_order_files / "
+        + "request_file_restore. Snapshot strips tokens, cookies, signed URLs, "
+        + "download tokens, and order identifiers.",
+    },
+    product: {
+      bundleOrProductId: `${input.capture.product.seriesKey}:${input.capture.product.bundleId}`,
+      series: CRYPTOSTRUCT_RESERVOIR_SERIES,
+      dataFormat: "kalshi-btc-15m_YYYY-MM-DD.zip (.txt.zst members)",
+      availableDateRange: {
+        startInclusive: input.capture.product.firstDay,
+        endInclusive: input.capture.product.lastDay,
+      },
+      sourcePages: [
+        input.capture.product.infoUrl,
+        input.capture.product.shopUrl,
+        "https://cryptostruct.com/pricing",
+      ],
+    },
+    vendorCoveredUtcDates,
+    ownedDates: input.capture.ownedDates,
+    availableUnownedUtcDates,
+    subscription: {
+      readable: true,
+      tier: input.capture.subscription.tier,
+      availableCredits: input.capture.subscription.availableCredits,
+      autonomousPurchasePolicy:
+        input.capture.subscription.autonomousPurchasePolicy,
+      note:
+        `Premium=${input.capture.subscription.premium}; `
+        + `status=${input.capture.subscription.status}; `
+        + `credit_balance_cents=${input.capture.subscription.creditBalanceCents}; `
+        + `daily_spent_cents_at_capture=${input.capture.subscription.dailySpentCentsAtCapture}; `
+        + `period_end=${input.capture.subscription.currentPeriodEnd}`,
+    },
+    creditsSpentThisTask: 0,
+    filesPurchasedThisTask: 0,
+    filesDownloadedThisTask: 0,
+    filesRestoredThisTask: 0,
+  });
+}

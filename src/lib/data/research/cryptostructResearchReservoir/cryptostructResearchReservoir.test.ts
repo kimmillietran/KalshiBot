@@ -14,6 +14,7 @@ import {
   assertDateAllocatable,
   assertNoForbiddenReservoirFields,
   auditReservoirInvariants,
+  bootstrapReservoirFromLiveMcpCapture,
   bootstrapReservoirFromRepoAuthority,
   buildSanitizedInventory,
   createEmptyEventLedger,
@@ -31,6 +32,11 @@ describe("cryptostructResearchReservoir", () => {
   const boot = bootstrapReservoirFromRepoAuthority({
     repoRoot: process.cwd(),
     atUtc: "2026-09-23T07:00:00.000Z",
+  });
+
+  const live = bootstrapReservoirFromLiveMcpCapture({
+    repoRoot: process.cwd(),
+    atUtc: "2026-09-23T21:50:00.000Z",
   });
 
   it("bootstraps M16-ER spent + QUALITY_AUDIT_ONLY from repo authority", () => {
@@ -56,6 +62,57 @@ describe("cryptostructResearchReservoir", () => {
       expect(day.primaryResultIdentity).toBe(M16_ER_PRIMARY_RESULT_CONTENT_SHA256);
       expect(day.researchLineage).toBe("M16-ER");
     }
+  });
+
+  it("bootstraps from authenticated live MCP capture without sealed owned dates", () => {
+    expect(live.inventory.mcp.cryptostructMcpConnected).toBe(true);
+    expect(live.inventory.mcp.mutatingToolsCalled).toEqual([]);
+    expect(live.inventory.creditsSpentThisTask).toBe(0);
+    expect(live.inventory.filesPurchasedThisTask).toBe(0);
+    expect(live.inventory.filesDownloadedThisTask).toBe(0);
+    expect(live.inventory.filesRestoredThisTask).toBe(0);
+    expect(live.inventory.vendorCoveredUtcDates).toHaveLength(209);
+    expect(live.inventory.ownedDates).toHaveLength(34);
+    expect(live.inventory.availableUnownedUtcDates).toHaveLength(175);
+    expect(live.inventory.product.availableDateRange).toEqual({
+      startInclusive: "2026-02-26",
+      endInclusive: "2026-09-22",
+    });
+    expect(live.inventory.subscription.tier).toBe("Premium");
+    expect(live.inventory.subscription.availableCredits).toBe(16);
+    expect(live.inventory.subscription.autonomousPurchasePolicy).toBe("approve");
+
+    expect(live.snapshot.counts.SPENT_VALIDATION).toBe(34);
+    expect(live.snapshot.counts.QUALITY_AUDIT_ONLY).toBe(5);
+    expect(live.snapshot.counts.OWNED_SEALED_UNASSIGNED).toBe(0);
+    expect(live.snapshot.counts.UNKNOWN_QUARANTINED).toBe(0);
+    expect(live.snapshot.counts.AVAILABLE_UNOWNED).toBe(170);
+
+    const byState = groupDatesByState(live.snapshot);
+    expect(byState.QUALITY_AUDIT_ONLY).toEqual([
+      "2026-09-08",
+      "2026-09-09",
+      "2026-09-14",
+      "2026-09-18",
+      "2026-09-20",
+    ]);
+    expect(byState.SPENT_VALIDATION).toHaveLength(34);
+
+    // Sanitized inventory must not embed secret-bearing fields/values
+    const raw = JSON.stringify(live.inventory);
+    for (const needle of [
+      "zip_url",
+      "restore_url",
+      "status_url",
+      "manifest_url",
+      "range_url_template",
+      "Bearer ",
+      '"authorization"',
+      "order_id",
+    ]) {
+      expect(raw).not.toContain(needle);
+    }
+    expect(raw).not.toMatch(/https?:\/\/[^\s"]+\?(?:[^\s"]*(?:token|Signature|X-Amz))/i);
   });
 
   it("binds PR #110 primary identity exactly", () => {
@@ -212,6 +269,35 @@ describe("cryptostructResearchReservoir", () => {
     expect(plan.shortfallAfterAvailableUnowned).toBe(10);
   });
 
+  it("live MCP acquisition plan proposes purchasable sealed dates without spending", () => {
+    expect(() =>
+      planDeterministicAllocation({
+        snapshot: live.snapshot,
+        scientificProtocolIdentity: "proto",
+        researchLineage: "x",
+        requiredValidationDays: 1,
+        requiredHoldoutDays: 0,
+      }),
+    ).toThrow(/insufficient/);
+
+    const plan10 = planAcquisition({
+      snapshot: live.snapshot,
+      inventory: live.inventory,
+      desiredNewSealedDays: 10,
+    });
+    expect(plan10.purchaseExecuted).toBe(false);
+    expect(plan10.disposition).toBe("PURCHASE_PLAN_ONLY");
+    expect(plan10.proposedPurchaseUtcDates).toHaveLength(10);
+    expect(plan10.proposedPurchaseUtcDates[0]).toBe("2026-02-26");
+    expect(plan10.shortfallAfterAvailableUnowned).toBe(0);
+    expect(plan10.estimatedCreditsIfOnePerDay).toBe(10);
+
+    // Quality-audit dates remain purchasable at vendor level but are excluded
+    // from sealed acquisition proposals.
+    expect(plan10.proposedPurchaseUtcDates).not.toContain("2026-09-08");
+    expect(live.inventory.availableUnownedUtcDates).toContain("2026-09-08");
+  });
+
   it("rejects forbidden economic fields and duplicate owned dates", () => {
     expect(() =>
       assertNoForbiddenReservoirFields({ pnl: 1 }),
@@ -280,12 +366,12 @@ describe("cryptostructResearchReservoir", () => {
     ).toThrow(CryptostructReservoirError);
   });
 
-  it("invariant audit passes on boot snapshot", () => {
-    const audit = auditReservoirInvariants(boot.snapshot);
-    expect(audit.ok).toBe(true);
+  it("invariant audit passes on boot and live snapshots", () => {
+    expect(auditReservoirInvariants(boot.snapshot).ok).toBe(true);
+    expect(auditReservoirInvariants(live.snapshot).ok).toBe(true);
   });
 
-  it("inventory content hash is stable", () => {
+  it("offline inventory content hash is stable", () => {
     const again = bootstrapReservoirFromRepoAuthority({
       repoRoot: process.cwd(),
       atUtc: "2026-09-23T07:00:00.000Z",
@@ -296,5 +382,16 @@ describe("cryptostructResearchReservoir", () => {
     expect(again.inventory.inventoryContentSha256).toBe(
       "3bd4caddd04fe3700dc5ed7c28d2b243a1e29d710197490b570e27f6935da718",
     );
+  });
+
+  it("live inventory content hash is stable for fixed capture timestamp", () => {
+    const again = bootstrapReservoirFromLiveMcpCapture({
+      repoRoot: process.cwd(),
+      atUtc: "2026-09-23T21:50:00.000Z",
+    });
+    expect(again.inventory.inventoryContentSha256).toBe(
+      live.inventory.inventoryContentSha256,
+    );
+    expect(again.snapshot.snapshotIdentity).toBe(live.snapshot.snapshotIdentity);
   });
 });
