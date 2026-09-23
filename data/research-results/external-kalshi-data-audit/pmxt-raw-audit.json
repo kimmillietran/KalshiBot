@@ -1,0 +1,156 @@
+{
+  "provider": "pmxt",
+  "retryAccessTimeUtc": "2026-09-22T23:30:13Z",
+  "access": {
+    "homepageLoadsFromThisMachine": false,
+    "kalshiDirectoryLoadsFromThisMachine": false,
+    "workaround": "Direct object GETs on r2kalshi.pmxt.dev succeed",
+    "newestVisibleKalshiFile": "kalshi_orderbook_2026-06-11T03.parquet",
+    "oldestVisibleKalshiFile": "kalshi_orderbook_2026-05-14T23.parquet",
+    "continuousThrough": "2026-06-11T03",
+    "coverageGaps": "Hard stop after 2026-06-11T03; no Sep 2026 files",
+    "advertisedVsActual": {
+      "advertised": "hourly updates (PROVIDER CLAIM)",
+      "actualNewest": "2026-06-11T03",
+      "staleDaysApprox": 103
+    }
+  },
+  "hourlyStructureClassification": {
+    "code": "B",
+    "label": "many_orderbook_events_within_hourly_parquet",
+    "evidence": {
+      "T10_total_rows": 10145391,
+      "T10_event_types": {
+        "orderbook_delta": 9956706,
+        "orderbook_snapshot": 188685
+      },
+      "not_A": "far more than one row per market per hour"
+    }
+  },
+  "schema": {
+    "columns": [
+      "timestamp_received",
+      "timestamp",
+      "market_ticker",
+      "market_id",
+      "event_type",
+      "yes_bids",
+      "no_bids",
+      "price",
+      "delta",
+      "side"
+    ],
+    "timestamp_received": "receive, ms",
+    "timestamp": "venue/event, us (often NaT on empty snapshots)",
+    "yesNoRepresentation": "yes_bids/no_bids arrays on snapshots; deltas use side+price+delta",
+    "depth": "intended multi-level on snapshots",
+    "snapshotVsDelta": "explicit event_type",
+    "sequenceOrEventId": null,
+    "tradeFields": null
+  },
+  "kxbtc15m": {
+    "present": true,
+    "T10_rows": 372189,
+    "T10_tickers": [
+      "KXBTC15M-26JUN060600-00",
+      "KXBTC15M-26JUN060615-15",
+      "KXBTC15M-26JUN060630-30",
+      "KXBTC15M-26JUN060645-45",
+      "KXBTC15M-26JUN061030-30",
+      "KXBTC15M-26JUN061130-30",
+      "KXBTC15M-26JUN061230-30",
+      "KXBTC15M-26JUN061345-45",
+      "KXBTC15M-26JUN061515-15",
+      "KXBTC15M-26JUN061900-00",
+      "KXBTC15M-26JUN062000-00",
+      "KXBTC15M-26JUN062145-45",
+      "KXBTC15M-26JUN062215-15",
+      "KXBTC15M-26JUN062245-45",
+      "KXBTC15M-26JUN062300-00",
+      "KXBTC15M-26JUN062330-30"
+    ],
+    "tickerCount": 16,
+    "simultaneousNeighborsObserved": true,
+    "note": "Ticker HHMM is Eastern Time (0630 ET = 1030 UTC)",
+    "T09_rows": 469696,
+    "T09_tickerCount": 28,
+    "emptySnapshotsVerified": {
+      "T09_snapshot_rows": 36,
+      "T09_yes_empty": 36,
+      "T09_no_empty": 36,
+      "T10_note": "all KXBTC15M orderbook_snapshot rows empty yes_bids/no_bids"
+    }
+  },
+  "resolution": {
+    "allKxReceiveInterarrival_T10": {
+      "count": 6516,
+      "min_ms": 9.0,
+      "p50_ms": 502.0,
+      "p90_ms": 520.0,
+      "p99_ms": 1502.0,
+      "max_ms": 7500.0
+    },
+    "allKxDuplicateTimestamps_T10": 365672,
+    "focusTicker": "KXBTC15M-26JUN060630-30",
+    "focusInterarrival": {
+      "count": 2006,
+      "min_ms": 22.0,
+      "p50_ms": 501.0,
+      "p90_ms": 515.0,
+      "p99_ms": 1489.0,
+      "max_ms": 5021.0
+    },
+    "focusEventsPerSec": {
+      "seconds": 1051,
+      "min": 1,
+      "p50": 114,
+      "max": 1004,
+      "mean": 155.75642245480495
+    }
+  },
+  "causalBBO": {
+    "possibleForKXBTC15M": false,
+    "reason": [
+      "All KXBTC15M orderbook_snapshot rows in sampled hours have EMPTY yes_bids/no_bids",
+      "Dense streams are orderbook_delta only; without a nonempty seed snapshot, fail-closed",
+      "Empty-start accumulation of signed deltas yields ~99.9% crossed YES books \u2014 mechanically invalid",
+      "Non-KXBTC markets sometimes have nonempty snapshots, so schema can carry ladders \u2014 but not for KXBTC in these samples"
+    ],
+    "horizons": {
+      "A_le_1s_microstructure": "UNSUITABLE",
+      "B_1_to_5s_response": "UNSUITABLE",
+      "C_5_to_30s_response": "UNSUITABLE",
+      "D_minute_scale": "UNSUITABLE",
+      "E_contract_lifecycle_15m": "UNSUITABLE",
+      "note": "Event arrival density is high, but executable BBO cannot be causally reconstructed for KXBTC15M from these files."
+    }
+  },
+  "downloads": [
+    {
+      "sourceUrl": "https://r2kalshi.pmxt.dev/kalshi_orderbook_2026-06-06T09.parquet",
+      "originalFilename": "kalshi_orderbook_2026-06-06T09.parquet",
+      "sha256": "3069ab961b0a437eb08c5804fc2ff04f0aaceb86ff96803dc68f42b70c6c9968",
+      "byteSize": 60732334,
+      "freeSample": true,
+      "license": {
+        "status": "PROVIDER CLAIM from archive page",
+        "url": "https://creativecommons.org/licenses/by/4.0/",
+        "summary": "CC BY 4.0 link on archive listing (Wayback/page claim)"
+      },
+      "downloadTimeUtc": "2026-09-22T23:30:34Z"
+    },
+    {
+      "sourceUrl": "https://r2kalshi.pmxt.dev/kalshi_orderbook_2026-06-06T10.parquet",
+      "originalFilename": "kalshi_orderbook_2026-06-06T10.parquet",
+      "sha256": "9e5be152ff27ae343804f1ca687207fb6d4b22de19888238c44be0d5ddbce1ec",
+      "byteSize": 55941494,
+      "freeSample": true,
+      "license": {
+        "status": "PROVIDER CLAIM from archive page",
+        "url": "https://creativecommons.org/licenses/by/4.0/",
+        "summary": "CC BY 4.0 link on archive listing (Wayback/page claim)"
+      },
+      "downloadTimeUtc": "2026-09-22T23:30:34Z"
+    }
+  ]
+}

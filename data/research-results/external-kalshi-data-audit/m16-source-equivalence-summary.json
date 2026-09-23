@@ -1,0 +1,952 @@
+{
+  "verdict": "PASS WITH CAVEATS",
+  "criteria": {
+    "recordedBeforeResults": true,
+    "A_bboMidpointFidelity": "Directionally aligned with prior fidelity PASS; mid path should drive same setups",
+    "B_eligibleConfirmationIncidence": "Matched share of KB confirmations >= 0.80 at 1s on aggregate",
+    "C_exactSideAgreement": "Among matches, side agreement = 100% by construction of matcher",
+    "D_confirmationTiming": "Among matches at 1s, p95 |delta| <= 1000ms (by tolerance) and p50 preferably <= 500ms",
+    "E_stabilityAcrossDays": "No single day with match rate < 0.50 while others high",
+    "F_noBrokenDay": "Every day with KB confirmations has CS coverage",
+    "grades": [
+      "PASS",
+      "PASS WITH CAVEATS",
+      "MARGINAL",
+      "FAIL"
+    ]
+  },
+  "repoHead": "d7d958dcd770a44439d6858b1d30f25856d6efb5",
+  "branch": "feature/external-kalshi-data-audit",
+  "qualityAuditOnlyDates": [
+    "2026-09-08",
+    "2026-09-09",
+    "2026-09-14",
+    "2026-09-18",
+    "2026-09-20"
+  ],
+  "m16IdentitiesUnchanged": {
+    "familyDefinition": "e98e6180b1edc468d544cbc41a624b8201535b2e9e58121d7669079fcf5cbce0",
+    "evidenceContract": "2a06820dab24aea4a253d886460bfc1267d7bd438d0bce817cbb999fd934beb7",
+    "dependencePlan": "df947284e5ee7678280dafd6ba5c4456281ca894b10b793a5a05f584d7d2630d",
+    "feeContract": "86f5f152308096fb365bb4ef41dca8beb488a302f038a915c8b228c0b645b44d",
+    "prospectiveCohort": "a2b86dd7c7fc3864ce48c860b10cfea053bdde04e09723a4f6ae87adca31dd63",
+    "scientificProtocolClaimedUnchanged": "1aa47e106a069dad466e2e338ba4b50000fd52eeaac482239544e20161f5a824"
+  },
+  "selectedAdapter": "RAW-BBO-CHANGE",
+  "adapterIdentity": "3f37ecb76644ee0749c50f33cfdaf8921e8dcb1cf208abdc55719a461e27dc7d",
+  "adapterScores": {
+    "RAW-BBO-CHANGE": {
+      "recall": 0.7162162162162162,
+      "precision": 0.5988700564971752,
+      "matched": 106,
+      "kb": 148,
+      "cs": 177
+    },
+    "KALSHIBOT-MIRROR": {
+      "recall": 0.6486486486486487,
+      "precision": 0.5549132947976878,
+      "matched": 96,
+      "kb": 148,
+      "cs": 173
+    }
+  },
+  "perRun": [
+    {
+      "day": "2026-09-08",
+      "runId": "2026-09-08T05-12-34-856Z",
+      "adapter": "RAW-BBO-CHANGE",
+      "sharedTickers": 10,
+      "kb": {
+        "lines": 3419096,
+        "eligibleObs": 734011,
+        "midChanges": 3084,
+        "markets": 10,
+        "confirmations": 7,
+        "timeGateRejects": 0,
+        "downCrosses": 9
+      },
+      "cs": {
+        "obs": 18221,
+        "midChanges": 18219,
+        "confirmations": 7,
+        "downCrosses": 9
+      },
+      "matchAt1s": {
+        "matched": 4,
+        "unmatchedKb": 3,
+        "unmatchedCs": 3,
+        "kbConfirmations": 7,
+        "csConfirmations": 7,
+        "recall": 0.5714285714285714,
+        "precision": 0.5714285714285714,
+        "deltaP50": 5,
+        "deltaP95": 5,
+        "Lagree": 4
+      }
+    },
+    {
+      "day": "2026-09-08",
+      "runId": "2026-09-08T05-12-34-856Z",
+      "adapter": "KALSHIBOT-MIRROR",
+      "sharedTickers": 10,
+      "kb": {
+        "lines": 3419096,
+        "eligibleObs": 734011,
+        "midChanges": 3084,
+        "markets": 10,
+        "confirmations": 7,
+        "timeGateRejects": 0,
+        "downCrosses": 9
+      },
+      "cs": {
+        "obs": 13579,
+        "midChanges": 13513,
+        "confirmations": 7,
+        "downCrosses": 9
+      },
+      "matchAt1s": {
+        "matched": 4,
+        "unmatchedKb": 3,
+        "unmatchedCs": 3,
+        "kbConfirmations": 7,
+        "csConfirmations": 7,
+        "recall": 0.5714285714285714,
+        "precision": 0.5714285714285714,
+        "deltaP50": 5,
+        "deltaP95": 5,
+        "Lagree": 4
+      }
+    },
+    {
+      "day": "2026-09-08",
+      "runId": "2026-09-08T07-46-44-416Z",
+      "adapter": "RAW-BBO-CHANGE",
+      "sharedTickers": 34,
+      "kb": {
+        "lines": 11255230,
+        "eligibleObs": 3292537,
+        "midChanges": 13032,
+        "markets": 34,
+        "confirmations": 24,
+        "timeGateRejects": 0,
+        "downCrosses": 33
+      },
+      "cs": {
+        "obs": 54402,
+        "midChanges": 54389,
+        "confirmations": 29,
+        "downCrosses": 34
+      },
+      "matchAt1s": {
+        "matched": 17,
+        "unmatchedKb": 7,
+        "unmatchedCs": 12,
+        "kbConfirmations": 24,
+        "csConfirmations": 29,
+        "recall": 0.7083333333333334,
+        "precision": 0.5862068965517241,
+        "deltaP50": 6,
+        "deltaP95": 8,
+        "Lagree": 17
+      }
+    },
+    {
+      "day": "2026-09-08",
+      "runId": "2026-09-08T07-46-44-416Z",
+      "adapter": "KALSHIBOT-MIRROR",
+      "sharedTickers": 34,
+      "kb": {
+        "lines": 11255230,
+        "eligibleObs": 3292537,
+        "midChanges": 13032,
+        "markets": 34,
+        "confirmations": 24,
+        "timeGateRejects": 0,
+        "downCrosses": 33
+      },
+      "cs": {
+        "obs": 38675,
+        "midChanges": 38480,
+        "confirmations": 28,
+        "downCrosses": 34
+      },
+      "matchAt1s": {
+        "matched": 17,
+        "unmatchedKb": 7,
+        "unmatchedCs": 11,
+        "kbConfirmations": 24,
+        "csConfirmations": 28,
+        "recall": 0.7083333333333334,
+        "precision": 0.6071428571428571,
+        "deltaP50": 7,
+        "deltaP95": 15,
+        "Lagree": 17
+      }
+    },
+    {
+      "day": "2026-09-09",
+      "runId": "2026-09-09T06-39-04-259Z",
+      "adapter": "RAW-BBO-CHANGE",
+      "sharedTickers": 34,
+      "kb": {
+        "lines": 11712036,
+        "eligibleObs": 4019298,
+        "midChanges": 22752,
+        "markets": 34,
+        "confirmations": 20,
+        "timeGateRejects": 0,
+        "downCrosses": 32
+      },
+      "cs": {
+        "obs": 64493,
+        "midChanges": 64484,
+        "confirmations": 25,
+        "downCrosses": 36
+      },
+      "matchAt1s": {
+        "matched": 13,
+        "unmatchedKb": 7,
+        "unmatchedCs": 12,
+        "kbConfirmations": 20,
+        "csConfirmations": 25,
+        "recall": 0.65,
+        "precision": 0.52,
+        "deltaP50": 6,
+        "deltaP95": 7,
+        "Lagree": 13
+      }
+    },
+    {
+      "day": "2026-09-09",
+      "runId": "2026-09-09T06-39-04-259Z",
+      "adapter": "KALSHIBOT-MIRROR",
+      "sharedTickers": 34,
+      "kb": {
+        "lines": 11712036,
+        "eligibleObs": 4019298,
+        "midChanges": 22752,
+        "markets": 34,
+        "confirmations": 20,
+        "timeGateRejects": 0,
+        "downCrosses": 32
+      },
+      "cs": {
+        "obs": 46467,
+        "midChanges": 46243,
+        "confirmations": 24,
+        "downCrosses": 36
+      },
+      "matchAt1s": {
+        "matched": 10,
+        "unmatchedKb": 10,
+        "unmatchedCs": 14,
+        "kbConfirmations": 20,
+        "csConfirmations": 24,
+        "recall": 0.5,
+        "precision": 0.4166666666666667,
+        "deltaP50": 6,
+        "deltaP95": 7,
+        "Lagree": 9
+      }
+    },
+    {
+      "day": "2026-09-09",
+      "runId": "2026-09-09T20-37-36-719Z",
+      "adapter": "RAW-BBO-CHANGE",
+      "sharedTickers": 15,
+      "kb": {
+        "lines": 5694081,
+        "eligibleObs": 1539472,
+        "midChanges": 7251,
+        "markets": 18,
+        "confirmations": 11,
+        "timeGateRejects": 0,
+        "downCrosses": 15
+      },
+      "cs": {
+        "obs": 27487,
+        "midChanges": 27458,
+        "confirmations": 12,
+        "downCrosses": 16
+      },
+      "matchAt1s": {
+        "matched": 6,
+        "unmatchedKb": 5,
+        "unmatchedCs": 6,
+        "kbConfirmations": 11,
+        "csConfirmations": 12,
+        "recall": 0.5454545454545454,
+        "precision": 0.5,
+        "deltaP50": 7,
+        "deltaP95": 7,
+        "Lagree": 5
+      }
+    },
+    {
+      "day": "2026-09-09",
+      "runId": "2026-09-09T20-37-36-719Z",
+      "adapter": "KALSHIBOT-MIRROR",
+      "sharedTickers": 15,
+      "kb": {
+        "lines": 5694081,
+        "eligibleObs": 1539472,
+        "midChanges": 7251,
+        "markets": 18,
+        "confirmations": 11,
+        "timeGateRejects": 0,
+        "downCrosses": 15
+      },
+      "cs": {
+        "obs": 19205,
+        "midChanges": 19115,
+        "confirmations": 12,
+        "downCrosses": 16
+      },
+      "matchAt1s": {
+        "matched": 6,
+        "unmatchedKb": 5,
+        "unmatchedCs": 6,
+        "kbConfirmations": 11,
+        "csConfirmations": 12,
+        "recall": 0.5454545454545454,
+        "precision": 0.5,
+        "deltaP50": 7,
+        "deltaP95": 7,
+        "Lagree": 5
+      }
+    },
+    {
+      "day": "2026-09-14",
+      "runId": "2026-09-14T07-33-30-421Z",
+      "adapter": "RAW-BBO-CHANGE",
+      "sharedTickers": 34,
+      "kb": {
+        "lines": 14517729,
+        "eligibleObs": 6463912,
+        "midChanges": 38330,
+        "markets": 34,
+        "confirmations": 19,
+        "timeGateRejects": 1,
+        "downCrosses": 30
+      },
+      "cs": {
+        "obs": 92508,
+        "midChanges": 92475,
+        "confirmations": 23,
+        "downCrosses": 36
+      },
+      "matchAt1s": {
+        "matched": 15,
+        "unmatchedKb": 4,
+        "unmatchedCs": 8,
+        "kbConfirmations": 19,
+        "csConfirmations": 23,
+        "recall": 0.7894736842105263,
+        "precision": 0.6521739130434783,
+        "deltaP50": 6,
+        "deltaP95": 8,
+        "Lagree": 15
+      }
+    },
+    {
+      "day": "2026-09-14",
+      "runId": "2026-09-14T07-33-30-421Z",
+      "adapter": "KALSHIBOT-MIRROR",
+      "sharedTickers": 34,
+      "kb": {
+        "lines": 14517729,
+        "eligibleObs": 6463912,
+        "midChanges": 38330,
+        "markets": 34,
+        "confirmations": 19,
+        "timeGateRejects": 1,
+        "downCrosses": 30
+      },
+      "cs": {
+        "obs": 70080,
+        "midChanges": 69712,
+        "confirmations": 23,
+        "downCrosses": 36
+      },
+      "matchAt1s": {
+        "matched": 14,
+        "unmatchedKb": 5,
+        "unmatchedCs": 9,
+        "kbConfirmations": 19,
+        "csConfirmations": 23,
+        "recall": 0.7368421052631579,
+        "precision": 0.6086956521739131,
+        "deltaP50": 6,
+        "deltaP95": 11,
+        "Lagree": 13
+      }
+    },
+    {
+      "day": "2026-09-18",
+      "runId": "2026-09-18T07-59-28-489Z",
+      "adapter": "RAW-BBO-CHANGE",
+      "sharedTickers": 34,
+      "kb": {
+        "lines": 15933720,
+        "eligibleObs": 6012967,
+        "midChanges": 30066,
+        "markets": 34,
+        "confirmations": 18,
+        "timeGateRejects": 0,
+        "downCrosses": 29
+      },
+      "cs": {
+        "obs": 76134,
+        "midChanges": 76089,
+        "confirmations": 24,
+        "downCrosses": 35
+      },
+      "matchAt1s": {
+        "matched": 14,
+        "unmatchedKb": 4,
+        "unmatchedCs": 10,
+        "kbConfirmations": 18,
+        "csConfirmations": 24,
+        "recall": 0.7777777777777778,
+        "precision": 0.5833333333333334,
+        "deltaP50": 6,
+        "deltaP95": 7,
+        "Lagree": 14
+      }
+    },
+    {
+      "day": "2026-09-18",
+      "runId": "2026-09-18T07-59-28-489Z",
+      "adapter": "KALSHIBOT-MIRROR",
+      "sharedTickers": 34,
+      "kb": {
+        "lines": 15933720,
+        "eligibleObs": 6012967,
+        "midChanges": 30066,
+        "markets": 34,
+        "confirmations": 18,
+        "timeGateRejects": 0,
+        "downCrosses": 29
+      },
+      "cs": {
+        "obs": 54682,
+        "midChanges": 54371,
+        "confirmations": 23,
+        "downCrosses": 35
+      },
+      "matchAt1s": {
+        "matched": 9,
+        "unmatchedKb": 9,
+        "unmatchedCs": 14,
+        "kbConfirmations": 18,
+        "csConfirmations": 23,
+        "recall": 0.5,
+        "precision": 0.391304347826087,
+        "deltaP50": 6,
+        "deltaP95": 7,
+        "Lagree": 9
+      }
+    },
+    {
+      "day": "2026-09-18",
+      "runId": "2026-09-18T16-25-35-978Z",
+      "adapter": "RAW-BBO-CHANGE",
+      "sharedTickers": 32,
+      "kb": {
+        "lines": 15745400,
+        "eligibleObs": 5675409,
+        "midChanges": 28234,
+        "markets": 35,
+        "confirmations": 21,
+        "timeGateRejects": 1,
+        "downCrosses": 29
+      },
+      "cs": {
+        "obs": 104894,
+        "midChanges": 104823,
+        "confirmations": 27,
+        "downCrosses": 35
+      },
+      "matchAt1s": {
+        "matched": 15,
+        "unmatchedKb": 6,
+        "unmatchedCs": 12,
+        "kbConfirmations": 21,
+        "csConfirmations": 27,
+        "recall": 0.7142857142857143,
+        "precision": 0.5555555555555556,
+        "deltaP50": 6,
+        "deltaP95": 7,
+        "Lagree": 15
+      }
+    },
+    {
+      "day": "2026-09-18",
+      "runId": "2026-09-18T16-25-35-978Z",
+      "adapter": "KALSHIBOT-MIRROR",
+      "sharedTickers": 32,
+      "kb": {
+        "lines": 15745400,
+        "eligibleObs": 5675409,
+        "midChanges": 28234,
+        "markets": 35,
+        "confirmations": 21,
+        "timeGateRejects": 1,
+        "downCrosses": 29
+      },
+      "cs": {
+        "obs": 74108,
+        "midChanges": 73641,
+        "confirmations": 26,
+        "downCrosses": 35
+      },
+      "matchAt1s": {
+        "matched": 14,
+        "unmatchedKb": 7,
+        "unmatchedCs": 12,
+        "kbConfirmations": 21,
+        "csConfirmations": 26,
+        "recall": 0.6666666666666666,
+        "precision": 0.5384615384615384,
+        "deltaP50": 6,
+        "deltaP95": 9,
+        "Lagree": 14
+      }
+    },
+    {
+      "day": "2026-09-20",
+      "runId": "2026-09-20T02-52-53-859Z",
+      "adapter": "RAW-BBO-CHANGE",
+      "sharedTickers": 34,
+      "kb": {
+        "lines": 11577328,
+        "eligibleObs": 2272250,
+        "midChanges": 10235,
+        "markets": 34,
+        "confirmations": 28,
+        "timeGateRejects": 0,
+        "downCrosses": 35
+      },
+      "cs": {
+        "obs": 74257,
+        "midChanges": 74226,
+        "confirmations": 30,
+        "downCrosses": 38
+      },
+      "matchAt1s": {
+        "matched": 22,
+        "unmatchedKb": 6,
+        "unmatchedCs": 8,
+        "kbConfirmations": 28,
+        "csConfirmations": 30,
+        "recall": 0.7857142857142857,
+        "precision": 0.7333333333333333,
+        "deltaP50": 6,
+        "deltaP95": 9,
+        "Lagree": 22
+      }
+    },
+    {
+      "day": "2026-09-20",
+      "runId": "2026-09-20T02-52-53-859Z",
+      "adapter": "KALSHIBOT-MIRROR",
+      "sharedTickers": 34,
+      "kb": {
+        "lines": 11577328,
+        "eligibleObs": 2272250,
+        "midChanges": 10235,
+        "markets": 34,
+        "confirmations": 28,
+        "timeGateRejects": 0,
+        "downCrosses": 35
+      },
+      "cs": {
+        "obs": 54997,
+        "midChanges": 54719,
+        "confirmations": 30,
+        "downCrosses": 39
+      },
+      "matchAt1s": {
+        "matched": 22,
+        "unmatchedKb": 6,
+        "unmatchedCs": 8,
+        "kbConfirmations": 28,
+        "csConfirmations": 30,
+        "recall": 0.7857142857142857,
+        "precision": 0.7333333333333333,
+        "deltaP50": 6,
+        "deltaP95": 9,
+        "Lagree": 22
+      }
+    }
+  ],
+  "daySummaries": [
+    {
+      "day": "2026-09-08",
+      "adapter": "RAW-BBO-CHANGE",
+      "kbConfirmations": 31,
+      "csConfirmations": 36,
+      "matched": 21,
+      "unmatchedKb": 10,
+      "unmatchedCs": 15,
+      "recall": 0.6774193548387096,
+      "precision": 0.5833333333333334,
+      "deltaP50": 6,
+      "deltaP95": 8,
+      "governedKbConfirmations": 0,
+      "governedCsConfirmations": 0
+    },
+    {
+      "day": "2026-09-09",
+      "adapter": "RAW-BBO-CHANGE",
+      "kbConfirmations": 31,
+      "csConfirmations": 37,
+      "matched": 19,
+      "unmatchedKb": 12,
+      "unmatchedCs": 18,
+      "recall": 0.6129032258064516,
+      "precision": 0.5135135135135135,
+      "deltaP50": 6,
+      "deltaP95": 7,
+      "governedKbConfirmations": 4,
+      "governedCsConfirmations": 5
+    },
+    {
+      "day": "2026-09-14",
+      "adapter": "RAW-BBO-CHANGE",
+      "kbConfirmations": 19,
+      "csConfirmations": 23,
+      "matched": 15,
+      "unmatchedKb": 4,
+      "unmatchedCs": 8,
+      "recall": 0.7894736842105263,
+      "precision": 0.6521739130434783,
+      "deltaP50": 6,
+      "deltaP95": 8,
+      "governedKbConfirmations": 0,
+      "governedCsConfirmations": 0
+    },
+    {
+      "day": "2026-09-18",
+      "adapter": "RAW-BBO-CHANGE",
+      "kbConfirmations": 39,
+      "csConfirmations": 51,
+      "matched": 29,
+      "unmatchedKb": 10,
+      "unmatchedCs": 22,
+      "recall": 0.7435897435897436,
+      "precision": 0.5686274509803921,
+      "deltaP50": 6,
+      "deltaP95": 7,
+      "governedKbConfirmations": 10,
+      "governedCsConfirmations": 12
+    },
+    {
+      "day": "2026-09-20",
+      "adapter": "RAW-BBO-CHANGE",
+      "kbConfirmations": 28,
+      "csConfirmations": 30,
+      "matched": 22,
+      "unmatchedKb": 6,
+      "unmatchedCs": 8,
+      "recall": 0.7857142857142857,
+      "precision": 0.7333333333333333,
+      "deltaP50": 6,
+      "deltaP95": 9,
+      "governedKbConfirmations": 0,
+      "governedCsConfirmations": 0
+    },
+    {
+      "day": "2026-09-08",
+      "adapter": "KALSHIBOT-MIRROR",
+      "kbConfirmations": 31,
+      "csConfirmations": 35,
+      "matched": 21,
+      "unmatchedKb": 10,
+      "unmatchedCs": 14,
+      "recall": 0.6774193548387096,
+      "precision": 0.6,
+      "deltaP50": 6,
+      "deltaP95": 15,
+      "governedKbConfirmations": 0,
+      "governedCsConfirmations": 0
+    },
+    {
+      "day": "2026-09-09",
+      "adapter": "KALSHIBOT-MIRROR",
+      "kbConfirmations": 31,
+      "csConfirmations": 36,
+      "matched": 16,
+      "unmatchedKb": 15,
+      "unmatchedCs": 20,
+      "recall": 0.5161290322580645,
+      "precision": 0.4444444444444444,
+      "deltaP50": 6,
+      "deltaP95": 17,
+      "governedKbConfirmations": 4,
+      "governedCsConfirmations": 5
+    },
+    {
+      "day": "2026-09-14",
+      "adapter": "KALSHIBOT-MIRROR",
+      "kbConfirmations": 19,
+      "csConfirmations": 23,
+      "matched": 14,
+      "unmatchedKb": 5,
+      "unmatchedCs": 9,
+      "recall": 0.7368421052631579,
+      "precision": 0.6086956521739131,
+      "deltaP50": 6,
+      "deltaP95": 11,
+      "governedKbConfirmations": 0,
+      "governedCsConfirmations": 0
+    },
+    {
+      "day": "2026-09-18",
+      "adapter": "KALSHIBOT-MIRROR",
+      "kbConfirmations": 39,
+      "csConfirmations": 49,
+      "matched": 23,
+      "unmatchedKb": 16,
+      "unmatchedCs": 26,
+      "recall": 0.5897435897435898,
+      "precision": 0.46938775510204084,
+      "deltaP50": 6,
+      "deltaP95": 9,
+      "governedKbConfirmations": 10,
+      "governedCsConfirmations": 12
+    },
+    {
+      "day": "2026-09-20",
+      "adapter": "KALSHIBOT-MIRROR",
+      "kbConfirmations": 28,
+      "csConfirmations": 30,
+      "matched": 22,
+      "unmatchedKb": 6,
+      "unmatchedCs": 8,
+      "recall": 0.7857142857142857,
+      "precision": 0.7333333333333333,
+      "deltaP50": 6,
+      "deltaP95": 9,
+      "governedKbConfirmations": 0,
+      "governedCsConfirmations": 0
+    }
+  ],
+  "preSignal": [
+    {
+      "day": "2026-09-08",
+      "runId": "2026-09-08T05-12-34-856Z",
+      "adapter": "RAW-BBO-CHANGE",
+      "kbEligibleObs": 734011,
+      "kbMidChanges": 3084,
+      "csObs": 18221,
+      "csMidChanges": 18219,
+      "kbDownCross": 9,
+      "csDownCross": 9
+    },
+    {
+      "day": "2026-09-08",
+      "runId": "2026-09-08T05-12-34-856Z",
+      "adapter": "KALSHIBOT-MIRROR",
+      "kbEligibleObs": 734011,
+      "kbMidChanges": 3084,
+      "csObs": 13579,
+      "csMidChanges": 13513,
+      "kbDownCross": 9,
+      "csDownCross": 9
+    },
+    {
+      "day": "2026-09-08",
+      "runId": "2026-09-08T07-46-44-416Z",
+      "adapter": "RAW-BBO-CHANGE",
+      "kbEligibleObs": 3292537,
+      "kbMidChanges": 13032,
+      "csObs": 54402,
+      "csMidChanges": 54389,
+      "kbDownCross": 33,
+      "csDownCross": 34
+    },
+    {
+      "day": "2026-09-08",
+      "runId": "2026-09-08T07-46-44-416Z",
+      "adapter": "KALSHIBOT-MIRROR",
+      "kbEligibleObs": 3292537,
+      "kbMidChanges": 13032,
+      "csObs": 38675,
+      "csMidChanges": 38480,
+      "kbDownCross": 33,
+      "csDownCross": 34
+    },
+    {
+      "day": "2026-09-09",
+      "runId": "2026-09-09T06-39-04-259Z",
+      "adapter": "RAW-BBO-CHANGE",
+      "kbEligibleObs": 4019298,
+      "kbMidChanges": 22752,
+      "csObs": 64493,
+      "csMidChanges": 64484,
+      "kbDownCross": 32,
+      "csDownCross": 36
+    },
+    {
+      "day": "2026-09-09",
+      "runId": "2026-09-09T06-39-04-259Z",
+      "adapter": "KALSHIBOT-MIRROR",
+      "kbEligibleObs": 4019298,
+      "kbMidChanges": 22752,
+      "csObs": 46467,
+      "csMidChanges": 46243,
+      "kbDownCross": 32,
+      "csDownCross": 36
+    },
+    {
+      "day": "2026-09-09",
+      "runId": "2026-09-09T20-37-36-719Z",
+      "adapter": "RAW-BBO-CHANGE",
+      "kbEligibleObs": 1539472,
+      "kbMidChanges": 7251,
+      "csObs": 27487,
+      "csMidChanges": 27458,
+      "kbDownCross": 15,
+      "csDownCross": 16
+    },
+    {
+      "day": "2026-09-09",
+      "runId": "2026-09-09T20-37-36-719Z",
+      "adapter": "KALSHIBOT-MIRROR",
+      "kbEligibleObs": 1539472,
+      "kbMidChanges": 7251,
+      "csObs": 19205,
+      "csMidChanges": 19115,
+      "kbDownCross": 15,
+      "csDownCross": 16
+    },
+    {
+      "day": "2026-09-14",
+      "runId": "2026-09-14T07-33-30-421Z",
+      "adapter": "RAW-BBO-CHANGE",
+      "kbEligibleObs": 6463912,
+      "kbMidChanges": 38330,
+      "csObs": 92508,
+      "csMidChanges": 92475,
+      "kbDownCross": 30,
+      "csDownCross": 36
+    },
+    {
+      "day": "2026-09-14",
+      "runId": "2026-09-14T07-33-30-421Z",
+      "adapter": "KALSHIBOT-MIRROR",
+      "kbEligibleObs": 6463912,
+      "kbMidChanges": 38330,
+      "csObs": 70080,
+      "csMidChanges": 69712,
+      "kbDownCross": 30,
+      "csDownCross": 36
+    },
+    {
+      "day": "2026-09-18",
+      "runId": "2026-09-18T07-59-28-489Z",
+      "adapter": "RAW-BBO-CHANGE",
+      "kbEligibleObs": 6012967,
+      "kbMidChanges": 30066,
+      "csObs": 76134,
+      "csMidChanges": 76089,
+      "kbDownCross": 29,
+      "csDownCross": 35
+    },
+    {
+      "day": "2026-09-18",
+      "runId": "2026-09-18T07-59-28-489Z",
+      "adapter": "KALSHIBOT-MIRROR",
+      "kbEligibleObs": 6012967,
+      "kbMidChanges": 30066,
+      "csObs": 54682,
+      "csMidChanges": 54371,
+      "kbDownCross": 29,
+      "csDownCross": 35
+    },
+    {
+      "day": "2026-09-18",
+      "runId": "2026-09-18T16-25-35-978Z",
+      "adapter": "RAW-BBO-CHANGE",
+      "kbEligibleObs": 5675409,
+      "kbMidChanges": 28234,
+      "csObs": 104894,
+      "csMidChanges": 104823,
+      "kbDownCross": 29,
+      "csDownCross": 35
+    },
+    {
+      "day": "2026-09-18",
+      "runId": "2026-09-18T16-25-35-978Z",
+      "adapter": "KALSHIBOT-MIRROR",
+      "kbEligibleObs": 5675409,
+      "kbMidChanges": 28234,
+      "csObs": 74108,
+      "csMidChanges": 73641,
+      "kbDownCross": 29,
+      "csDownCross": 35
+    },
+    {
+      "day": "2026-09-20",
+      "runId": "2026-09-20T02-52-53-859Z",
+      "adapter": "RAW-BBO-CHANGE",
+      "kbEligibleObs": 2272250,
+      "kbMidChanges": 10235,
+      "csObs": 74257,
+      "csMidChanges": 74226,
+      "kbDownCross": 35,
+      "csDownCross": 38
+    },
+    {
+      "day": "2026-09-20",
+      "runId": "2026-09-20T02-52-53-859Z",
+      "adapter": "KALSHIBOT-MIRROR",
+      "kbEligibleObs": 2272250,
+      "kbMidChanges": 10235,
+      "csObs": 54997,
+      "csMidChanges": 54719,
+      "kbDownCross": 35,
+      "csDownCross": 39
+    }
+  ],
+  "blindIncidence": {
+    "label": "BLIND INCIDENCE PLANNING — not evidence of edge; no P&L inspected",
+    "selectedAdapter": "RAW-BBO-CHANGE",
+    "governedWindow": "18:00-22:00Z",
+    "eligibleConfirmationsPer4hDayAudit": {
+      "2026-09-08": 10,
+      "2026-09-09": 14,
+      "2026-09-14": 13,
+      "2026-09-18": 12,
+      "2026-09-20": 12
+    },
+    "mean": 12.2,
+    "median": 12,
+    "range": {
+      "min": 10,
+      "max": 14
+    },
+    "nRequirement": 268,
+    "gRequirement": 24,
+    "maxHoursConcept": 140,
+    "untouchedCandidateDaysAvailableRough": 30,
+    "possibleHoursRough": 120,
+    "projectedSignalCountRough": 366,
+    "feasibility268_24": "LIKELY_FEASIBLE_IF_PURCHASED_BLOCK_MATCHES_RATE",
+    "note": "Exact CryptoStruct shop inventory not re-fetched; planning uses post-2026-08-14 complete-recording claim and excludes QUALITY_AUDIT_ONLY + prospective M16 days."
+  },
+  "externalReplicationFeasibility": "YES WITH CAVEATS",
+  "scientificBoundaries": {
+    "existingM16Unchanged": true,
+    "prospectiveSchedulerRemainsArmed": true,
+    "m16OutcomesUnopened": true,
+    "noPnlInspected": true,
+    "noTargetStopInspected": true,
+    "noSettlementInspected": true,
+    "noAdapterSelectedUsingEconomics": true,
+    "noUntouchedCryptostructDateOpened": true,
+    "noNewPurchase": true,
+    "noLiveOrders": true
+  }
+}

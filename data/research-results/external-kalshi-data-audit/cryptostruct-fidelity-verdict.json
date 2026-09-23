@@ -1,0 +1,738 @@
+{
+  "overall": "PASS",
+  "purchaseRecommendation": "A",
+  "aggregate": {
+    "A_kalshiBot_to_cryptostruct": {
+      "100": {
+        "yb": {
+          "tickerSamples": 64,
+          "exactAgreementRateMean": 0.9464196371437774,
+          "within1cRateMean": 0.9901557209611039,
+          "maeMean": 0.08107232970816762,
+          "p95Mean": 0.53125,
+          "matchRateMean": 0.9359149854268178
+        },
+        "ya": {
+          "tickerSamples": 64,
+          "exactAgreementRateMean": 0.9465722716408401,
+          "within1cRateMean": 0.9899042022448024,
+          "maeMean": 0.08189122993909323,
+          "p95Mean": 0.5,
+          "matchRateMean": 0.9440765569484619
+        },
+        "nb": {
+          "tickerSamples": 64,
+          "exactAgreementRateMean": 0.9498813356643543,
+          "within1cRateMean": 0.9899048439318828,
+          "maeMean": 0.07857781112450066,
+          "p95Mean": 0.4375,
+          "matchRateMean": 0.9440765569484619
+        },
+        "na": {
+          "tickerSamples": 64,
+          "exactAgreementRateMean": 0.943784094016697,
+          "within1cRateMean": 0.990155046219221,
+          "maeMean": 0.08370835589239063,
+          "p95Mean": 0.5625,
+          "matchRateMean": 0.9359149854268178
+        },
+        "sp": {
+          "tickerSamples": 64,
+          "exactAgreementRateMean": 0.9365940834028676,
+          "within1cRateMean": 0.9939816064423164,
+          "maeMean": 0.07709733968409956,
+          "p95Mean": 0.625,
+          "matchRateMean": 0.8990486779535389
+        }
+      },
+      "500": {
+        "yb": {
+          "tickerSamples": 64,
+          "exactAgreementRateMean": 0.9465539567501494,
+          "within1cRateMean": 0.9901788684221964,
+          "maeMean": 0.0808780363278104,
+          "p95Mean": 0.53125,
+          "matchRateMean": 0.9399889412846185
+        },
+        "ya": {
+          "tickerSamples": 64,
+          "exactAgreementRateMean": 0.946704747224263,
+          "within1cRateMean": 0.989935958858299,
+          "maeMean": 0.08168374284058659,
+          "p95Mean": 0.5,
+          "matchRateMean": 0.948433841732095
+        },
+        "nb": {
+          "tickerSamples": 64,
+          "exactAgreementRateMean": 0.9500244648883592,
+          "within1cRateMean": 0.9899365468342614,
+          "maeMean": 0.07835973032875637,
+          "p95Mean": 0.4375,
+          "matchRateMean": 0.948433841732095
+        },
+        "na": {
+          "tickerSamples": 64,
+          "exactAgreementRateMean": 0.943927746927951,
+          "within1cRateMean": 0.990178204089748,
+          "maeMean": 0.08350471172722243,
+          "p95Mean": 0.5625,
+          "matchRateMean": 0.9399889412846185
+        },
+        "sp": {
+          "tickerSamples": 64,
+          "exactAgreementRateMean": 0.9366451098084254,
+          "within1cRateMean": 0.993991699463573,
+          "maeMean": 0.07702017978744197,
+          "p95Mean": 0.625,
+          "matchRateMean": 0.9014745955859841
+        }
+      },
+      "1000": {
+        "yb": {
+          "tickerSamples": 64,
+          "exactAgreementRateMean": 0.9465543369972829,
+          "within1cRateMean": 0.9901789809844928,
+          "maeMean": 0.08087740227547374,
+          "p95Mean": 0.53125,
+          "matchRateMean": 0.9399964875998479
+        },
+        "ya": {
+          "tickerSamples": 64,
+          "exactAgreementRateMean": 0.9467049937161163,
+          "within1cRateMean": 0.9899360260906223,
+          "maeMean": 0.08168335287605237,
+          "p95Mean": 0.5,
+          "matchRateMean": 0.9484388607085308
+        },
+        "nb": {
+          "tickerSamples": 64,
+          "exactAgreementRateMean": 0.9500247113802125,
+          "within1cRateMean": 0.9899366140665846,
+          "maeMean": 0.07835934036422215,
+          "p95Mean": 0.4375,
+          "matchRateMean": 0.9484388607085308
+        },
+        "na": {
+          "tickerSamples": 64,
+          "exactAgreementRateMean": 0.9439281474025127,
+          "within1cRateMean": 0.9901783167862548,
+          "maeMean": 0.0835040573132473,
+          "p95Mean": 0.5625,
+          "matchRateMean": 0.9399964875998479
+        },
+        "sp": {
+          "tickerSamples": 64,
+          "exactAgreementRateMean": 0.9366451098084254,
+          "within1cRateMean": 0.993991699463573,
+          "maeMean": 0.07702017978744197,
+          "p95Mean": 0.625,
+          "matchRateMean": 0.9014745955859841
+        }
+      },
+      "2000": {
+        "yb": {
+          "tickerSamples": 64,
+          "exactAgreementRateMean": 0.9465543369972829,
+          "within1cRateMean": 0.9901789809844928,
+          "maeMean": 0.08087740227547374,
+          "p95Mean": 0.53125,
+          "matchRateMean": 0.9399964875998479
+        },
+        "ya": {
+          "tickerSamples": 64,
+          "exactAgreementRateMean": 0.9467049937161163,
+          "within1cRateMean": 0.9899360260906223,
+          "maeMean": 0.08168335287605237,
+          "p95Mean": 0.5,
+          "matchRateMean": 0.9484388607085308
+        },
+        "nb": {
+          "tickerSamples": 64,
+          "exactAgreementRateMean": 0.9500247113802125,
+          "within1cRateMean": 0.9899366140665846,
+          "maeMean": 0.07835934036422215,
+          "p95Mean": 0.4375,
+          "matchRateMean": 0.9484388607085308
+        },
+        "na": {
+          "tickerSamples": 64,
+          "exactAgreementRateMean": 0.9439281474025127,
+          "within1cRateMean": 0.9901783167862548,
+          "maeMean": 0.0835040573132473,
+          "p95Mean": 0.5625,
+          "matchRateMean": 0.9399964875998479
+        },
+        "sp": {
+          "tickerSamples": 64,
+          "exactAgreementRateMean": 0.9366451098084254,
+          "within1cRateMean": 0.993991699463573,
+          "maeMean": 0.07702017978744197,
+          "p95Mean": 0.625,
+          "matchRateMean": 0.9014745955859841
+        }
+      },
+      "5000": {
+        "yb": {
+          "tickerSamples": 64,
+          "exactAgreementRateMean": 0.9465543369972829,
+          "within1cRateMean": 0.9901789809844928,
+          "maeMean": 0.08087740227547374,
+          "p95Mean": 0.53125,
+          "matchRateMean": 0.9399964875998479
+        },
+        "ya": {
+          "tickerSamples": 64,
+          "exactAgreementRateMean": 0.9467049937161163,
+          "within1cRateMean": 0.9899360260906223,
+          "maeMean": 0.08168335287605237,
+          "p95Mean": 0.5,
+          "matchRateMean": 0.9484388607085308
+        },
+        "nb": {
+          "tickerSamples": 64,
+          "exactAgreementRateMean": 0.9500247113802125,
+          "within1cRateMean": 0.9899366140665846,
+          "maeMean": 0.07835934036422215,
+          "p95Mean": 0.4375,
+          "matchRateMean": 0.9484388607085308
+        },
+        "na": {
+          "tickerSamples": 64,
+          "exactAgreementRateMean": 0.9439281474025127,
+          "within1cRateMean": 0.9901783167862548,
+          "maeMean": 0.0835040573132473,
+          "p95Mean": 0.5625,
+          "matchRateMean": 0.9399964875998479
+        },
+        "sp": {
+          "tickerSamples": 64,
+          "exactAgreementRateMean": 0.9366451098084254,
+          "within1cRateMean": 0.993991699463573,
+          "maeMean": 0.07702017978744197,
+          "p95Mean": 0.625,
+          "matchRateMean": 0.9014745955859841
+        }
+      }
+    },
+    "B_cryptostruct_to_kalshiBot": {
+      "100": {
+        "yb": {
+          "tickerSamples": 64,
+          "exactAgreementRateMean": 0.9057815263252065,
+          "within1cRateMean": 0.9752439551461258,
+          "maeMean": 0.17170209892374855,
+          "p95Mean": 1.109375,
+          "matchRateMean": 0.9172230150178096
+        },
+        "ya": {
+          "tickerSamples": 64,
+          "exactAgreementRateMean": 0.9048319329652592,
+          "within1cRateMean": 0.9752144809273979,
+          "maeMean": 0.17060628602959543,
+          "p95Mean": 1.109375,
+          "matchRateMean": 0.9256038897850467
+        },
+        "nb": {
+          "tickerSamples": 64,
+          "exactAgreementRateMean": 0.9090495690960501,
+          "within1cRateMean": 0.9752151480810851,
+          "maeMean": 0.16638492099766078,
+          "p95Mean": 1.046875,
+          "matchRateMean": 0.9256038897850467
+        },
+        "na": {
+          "tickerSamples": 64,
+          "exactAgreementRateMean": 0.902893111036215,
+          "within1cRateMean": 0.975229049676885,
+          "maeMean": 0.17460084087316616,
+          "p95Mean": 1.1187499999999773,
+          "matchRateMean": 0.9172230150178096
+        },
+        "sp": {
+          "tickerSamples": 64,
+          "exactAgreementRateMean": 0.887471021947214,
+          "within1cRateMean": 0.9839096695260996,
+          "maeMean": 0.15221682381037713,
+          "p95Mean": 1.0,
+          "matchRateMean": 0.8988636609628318
+        }
+      },
+      "500": {
+        "yb": {
+          "tickerSamples": 64,
+          "exactAgreementRateMean": 0.9060075622675938,
+          "within1cRateMean": 0.9753051780544051,
+          "maeMean": 0.17131456520234042,
+          "p95Mean": 1.09375,
+          "matchRateMean": 0.9206229017852823
+        },
+        "ya": {
+          "tickerSamples": 64,
+          "exactAgreementRateMean": 0.9050491608287212,
+          "within1cRateMean": 0.9752481793829059,
+          "maeMean": 0.17030572189798654,
+          "p95Mean": 1.109375,
+          "matchRateMean": 0.929947844828623
+        },
+        "nb": {
+          "tickerSamples": 64,
+          "exactAgreementRateMean": 0.9092697488131499,
+          "within1cRateMean": 0.9752488197956779,
+          "maeMean": 0.1660814278554548,
+          "p95Mean": 1.046875,
+          "matchRateMean": 0.929947844828623
+        },
+        "na": {
+          "tickerSamples": 64,
+          "exactAgreementRateMean": 0.9031164983099844,
+          "within1cRateMean": 0.9752903374167755,
+          "maeMean": 0.1742159190154258,
+          "p95Mean": 1.109375,
+          "matchRateMean": 0.9206229017852823
+        },
+        "sp": {
+          "tickerSamples": 64,
+          "exactAgreementRateMean": 0.8875447056547776,
+          "within1cRateMean": 0.983935321402253,
+          "maeMean": 0.15208807233080396,
+          "p95Mean": 1.0,
+          "matchRateMean": 0.9003561321861375
+        }
+      },
+      "1000": {
+        "yb": {
+          "tickerSamples": 64,
+          "exactAgreementRateMean": 0.9060436609788143,
+          "within1cRateMean": 0.9752908922474776,
+          "maeMean": 0.17141068473433319,
+          "p95Mean": 1.09375,
+          "matchRateMean": 0.920881332769059
+        },
+        "ya": {
+          "tickerSamples": 64,
+          "exactAgreementRateMean": 0.905024197818421,
+          "within1cRateMean": 0.9752157995753368,
+          "maeMean": 0.17048290446107534,
+          "p95Mean": 1.109375,
+          "matchRateMean": 0.9301292444229845
+        },
+        "nb": {
+          "tickerSamples": 64,
+          "exactAgreementRateMean": 0.9092447740714404,
+          "within1cRateMean": 0.9752164382915988,
+          "maeMean": 0.16625862362502838,
+          "p95Mean": 1.046875,
+          "matchRateMean": 0.9301292444229845
+        },
+        "na": {
+          "tickerSamples": 64,
+          "exactAgreementRateMean": 0.9031537458900657,
+          "within1cRateMean": 0.975276059564557,
+          "maeMean": 0.1743108807875315,
+          "p95Mean": 1.109375,
+          "matchRateMean": 0.920881332769059
+        },
+        "sp": {
+          "tickerSamples": 64,
+          "exactAgreementRateMean": 0.8875803030629921,
+          "within1cRateMean": 0.983941568687681,
+          "maeMean": 0.15204763627377063,
+          "p95Mean": 1.0,
+          "matchRateMean": 0.9004203779850632
+        }
+      },
+      "2000": {
+        "yb": {
+          "tickerSamples": 64,
+          "exactAgreementRateMean": 0.9056611718484081,
+          "within1cRateMean": 0.9752880106207666,
+          "maeMean": 0.17184951946727678,
+          "p95Mean": 1.1078125,
+          "matchRateMean": 0.9209836042630852
+        },
+        "ya": {
+          "tickerSamples": 64,
+          "exactAgreementRateMean": 0.9047897282971391,
+          "within1cRateMean": 0.9751951328315399,
+          "maeMean": 0.17079363760297,
+          "p95Mean": 1.109375,
+          "matchRateMean": 0.9302089953068177
+        },
+        "nb": {
+          "tickerSamples": 64,
+          "exactAgreementRateMean": 0.909010292632292,
+          "within1cRateMean": 0.9751957685683352,
+          "maeMean": 0.16656937166425645,
+          "p95Mean": 1.046875,
+          "matchRateMean": 0.9302089953068177
+        },
+        "na": {
+          "tickerSamples": 64,
+          "exactAgreementRateMean": 0.9027713939585091,
+          "within1cRateMean": 0.9752731795354055,
+          "maeMean": 0.17474957638634686,
+          "p95Mean": 1.1234375,
+          "matchRateMean": 0.9209836042630852
+        },
+        "sp": {
+          "tickerSamples": 64,
+          "exactAgreementRateMean": 0.8874342461998895,
+          "within1cRateMean": 0.9839600240816704,
+          "maeMean": 0.1521721258784467,
+          "p95Mean": 1.0,
+          "matchRateMean": 0.9004885345858966
+        }
+      },
+      "5000": {
+        "yb": {
+          "tickerSamples": 64,
+          "exactAgreementRateMean": 0.9058880275394822,
+          "within1cRateMean": 0.9753118514151546,
+          "maeMean": 0.1715892233849304,
+          "p95Mean": 1.09375,
+          "matchRateMean": 0.9211190116281933
+        },
+        "ya": {
+          "tickerSamples": 64,
+          "exactAgreementRateMean": 0.9048455216270215,
+          "within1cRateMean": 0.975191223909887,
+          "maeMean": 0.1707312041868025,
+          "p95Mean": 1.109375,
+          "matchRateMean": 0.9303444026719259
+        },
+        "nb": {
+          "tickerSamples": 64,
+          "exactAgreementRateMean": 0.909066046940149,
+          "within1cRateMean": 0.9751918498911759,
+          "maeMean": 0.16650698702562053,
+          "p95Mean": 1.046875,
+          "matchRateMean": 0.9303444026719259
+        },
+        "na": {
+          "tickerSamples": 64,
+          "exactAgreementRateMean": 0.902998304852656,
+          "within1cRateMean": 0.9752970203297934,
+          "maeMean": 0.1744892251009276,
+          "p95Mean": 1.109375,
+          "matchRateMean": 0.9211190116281933
+        },
+        "sp": {
+          "tickerSamples": 64,
+          "exactAgreementRateMean": 0.887615396684503,
+          "within1cRateMean": 0.9839925780821903,
+          "maeMean": 0.15195031054884017,
+          "p95Mean": 1.0,
+          "matchRateMean": 0.9006239419510049
+        }
+      }
+    }
+  },
+  "worstWithin1cAt1sYesBid": [
+    {
+      "day": "2026-09-08",
+      "runId": "2026-09-08T07-46-44-416Z",
+      "ticker": "KXBTC15M-26SEP080800-00",
+      "direction": "A_kb_to_cs",
+      "tolMs": 1000,
+      "field": "yb",
+      "exact": 0.9157330177695494,
+      "within1c": 0.9587540320271792,
+      "mae": 0.26749756646880307,
+      "p95": 1.0,
+      "max": 35.0
+    },
+    {
+      "day": "2026-09-09",
+      "runId": "2026-09-09T06-39-04-259Z",
+      "ticker": "KXBTC15M-26SEP090245-45",
+      "direction": "A_kb_to_cs",
+      "tolMs": 1000,
+      "field": "yb",
+      "exact": 0.9104246400583197,
+      "within1c": 0.9645525788226718,
+      "mae": 0.20407326407873155,
+      "p95": 1.0,
+      "max": 16.0
+    },
+    {
+      "day": "2026-09-08",
+      "runId": "2026-09-08T07-46-44-416Z",
+      "ticker": "KXBTC15M-26SEP080600-00",
+      "direction": "A_kb_to_cs",
+      "tolMs": 1000,
+      "field": "yb",
+      "exact": 0.9317093278894473,
+      "within1c": 0.9691229585427136,
+      "mae": 0.21150675251256282,
+      "p95": 1.0,
+      "max": 36.0
+    },
+    {
+      "day": "2026-09-08",
+      "runId": "2026-09-08T05-12-34-856Z",
+      "ticker": "KXBTC15M-26SEP080215-15",
+      "direction": "A_kb_to_cs",
+      "tolMs": 1000,
+      "field": "yb",
+      "exact": 0.9324596774193549,
+      "within1c": 0.974110343061956,
+      "mae": 0.1971006144393241,
+      "p95": 1.0,
+      "max": 19.0
+    },
+    {
+      "day": "2026-09-18",
+      "runId": "2026-09-18T16-25-35-978Z",
+      "ticker": "KXBTC15M-26SEP181830-30",
+      "direction": "A_kb_to_cs",
+      "tolMs": 1000,
+      "field": "yb",
+      "exact": 0.9161062009225677,
+      "within1c": 0.9769534138526005,
+      "mae": 0.1630339096447058,
+      "p95": 1.0,
+      "max": 21.0
+    },
+    {
+      "day": "2026-09-14",
+      "runId": "2026-09-14T07-33-30-421Z",
+      "ticker": "KXBTC15M-26SEP140645-45",
+      "direction": "A_kb_to_cs",
+      "tolMs": 1000,
+      "field": "yb",
+      "exact": 0.9295205619081154,
+      "within1c": 0.9770751867158398,
+      "mae": 0.14142219092273764,
+      "p95": 1.0,
+      "max": 23.0
+    },
+    {
+      "day": "2026-09-09",
+      "runId": "2026-09-09T06-39-04-259Z",
+      "ticker": "KXBTC15M-26SEP090645-45",
+      "direction": "A_kb_to_cs",
+      "tolMs": 1000,
+      "field": "yb",
+      "exact": 0.9391891891891891,
+      "within1c": 0.9793709638842382,
+      "mae": 0.10424140955114407,
+      "p95": 1.0,
+      "max": 15.0
+    },
+    {
+      "day": "2026-09-08",
+      "runId": "2026-09-08T05-12-34-856Z",
+      "ticker": "KXBTC15M-26SEP080245-45",
+      "direction": "A_kb_to_cs",
+      "tolMs": 1000,
+      "field": "yb",
+      "exact": 0.9411323771925441,
+      "within1c": 0.9798444189029367,
+      "mae": 0.10982293072143655,
+      "p95": 1.0,
+      "max": 16.0
+    },
+    {
+      "day": "2026-09-09",
+      "runId": "2026-09-09T06-39-04-259Z",
+      "ticker": "KXBTC15M-26SEP090945-45",
+      "direction": "A_kb_to_cs",
+      "tolMs": 1000,
+      "field": "yb",
+      "exact": 0.9072641246868912,
+      "within1c": 0.9800352537341126,
+      "mae": 0.12323963261898135,
+      "p95": 1.0,
+      "max": 13.0
+    },
+    {
+      "day": "2026-09-18",
+      "runId": "2026-09-18T16-25-35-978Z",
+      "ticker": "KXBTC15M-26SEP181230-30",
+      "direction": "A_kb_to_cs",
+      "tolMs": 1000,
+      "field": "yb",
+      "exact": 0.9046791382701368,
+      "within1c": 0.9804235466312948,
+      "mae": 0.16319809724191556,
+      "p95": 1.0,
+      "max": 27.0
+    },
+    {
+      "day": "2026-09-18",
+      "runId": "2026-09-18T07-59-28-489Z",
+      "ticker": "KXBTC15M-26SEP180800-00",
+      "direction": "A_kb_to_cs",
+      "tolMs": 1000,
+      "field": "yb",
+      "exact": 0.9355786484727782,
+      "within1c": 0.9808333169009918,
+      "mae": 0.12006783270561788,
+      "p95": 1.0,
+      "max": 26.0
+    },
+    {
+      "day": "2026-09-09",
+      "runId": "2026-09-09T20-37-36-719Z",
+      "ticker": "KXBTC15M-26SEP091745-45",
+      "direction": "A_kb_to_cs",
+      "tolMs": 1000,
+      "field": "yb",
+      "exact": 0.9360071700649787,
+      "within1c": 0.9815818955859288,
+      "mae": 0.11664799462245126,
+      "p95": 1.0,
+      "max": 21.0
+    },
+    {
+      "day": "2026-09-09",
+      "runId": "2026-09-09T06-39-04-259Z",
+      "ticker": "KXBTC15M-26SEP090745-45",
+      "direction": "A_kb_to_cs",
+      "tolMs": 1000,
+      "field": "yb",
+      "exact": 0.9482102486812358,
+      "within1c": 0.9815938206480783,
+      "mae": 0.09898266767143933,
+      "p95": 1.0,
+      "max": 13.0
+    },
+    {
+      "day": "2026-09-20",
+      "runId": "2026-09-20T02-52-53-859Z",
+      "ticker": "KXBTC15M-26SEP200100-00",
+      "direction": "A_kb_to_cs",
+      "tolMs": 1000,
+      "field": "yb",
+      "exact": 0.9340388067946416,
+      "within1c": 0.982927081894766,
+      "mae": 0.11165584863969065,
+      "p95": 1.0,
+      "max": 28.0
+    },
+    {
+      "day": "2026-09-09",
+      "runId": "2026-09-09T20-37-36-719Z",
+      "ticker": "KXBTC15M-26SEP091700-00",
+      "direction": "A_kb_to_cs",
+      "tolMs": 1000,
+      "field": "yb",
+      "exact": 0.9497082576606515,
+      "within1c": 0.9839058696240195,
+      "mae": 0.08659530893774875,
+      "p95": 1.0,
+      "max": 8.0
+    }
+  ],
+  "qualityAuditOnlyDays": [
+    "2026-09-08",
+    "2026-09-09",
+    "2026-09-14",
+    "2026-09-18",
+    "2026-09-20"
+  ],
+  "reservationStatuses": {
+    "2026-09-08": "QUALITY_AUDIT_ONLY",
+    "2026-09-09": "QUALITY_AUDIT_ONLY",
+    "2026-09-14": "QUALITY_AUDIT_ONLY",
+    "2026-09-18": "QUALITY_AUDIT_ONLY",
+    "2026-09-20": "QUALITY_AUDIT_ONLY"
+  },
+  "hashMatchAll": true,
+  "notes": [
+    "Primary ASOF uses KalshiBot receivedAtLocal vs CryptoStruct adapter receive timestamps.",
+    "CryptoStruct NO quotes derived via Kalshi complement from YES book.",
+    "KalshiBot TOB already stores YES/NO BBO in integer cents.",
+    "Tolerances predetermined; not tuned to agreement.",
+    "Per-run ticker samples capped for tractability; full shared ticker lists retained in artifacts."
+  ],
+  "researchSuitability": {
+    "exploratoryTRAIN": {
+      "grade": "PASS",
+      "why": "ASOF YES/NO BBO within-1c ~99% vs KalshiBot at 100ms\u20135s; causal reconstruction + prevEventId intact on sampled contracts."
+    },
+    "designMechanics": {
+      "grade": "PASS",
+      "why": "Snapshot+delta tape, trades, lifecycle headers, multi-contract day bundles verified."
+    },
+    "historicalValidation": {
+      "grade": "PASS WITH CAVEATS",
+      "why": "Strong overlap fidelity, but neither source is absolute ground truth; reserve separate dates from audit days; validate remaining clock/locked-book regimes."
+    },
+    "futureReservedHOLDOUT": {
+      "grade": "PASS WITH CAVEATS",
+      "why": "Eligible for FUTURE purchased days only after reservation ledger; these five overlap days are QUALITY_AUDIT_ONLY and must not be rebranded as untouched HOLDOUT."
+    },
+    "subSecondMicrostructure": {
+      "grade": "PASS WITH CAVEATS",
+      "why": "Receive-time density and 100ms ASOF agreement are excellent, but CS\u2192KB transition capture never-rate is high (~65% for \u22651c YES-bid jumps) due to vendor density vs KalshiBot sampling \u2014 do not treat KalshiBot as complete micro-event mirror."
+    },
+    "response_1_to_5s": {
+      "grade": "PASS",
+      "why": "1s/2s/5s ASOF agreement essentially identical to 100ms; MAE << 1 cent."
+    },
+    "response_5_to_30s": {
+      "grade": "PASS",
+      "why": "Same; no degradation at wider tolerances."
+    },
+    "minuteScale": {
+      "grade": "PASS",
+      "why": "Stable across multi-hour runs and five UTC days."
+    },
+    "lifecycle15m": {
+      "grade": "PASS WITH CAVEATS",
+      "why": "Shared tickers show concurrent coverage inside capture windows; day bundles also include prior-ET-evening contracts \u2014 map by ticker string, not UTC day label alone."
+    },
+    "crossContract": {
+      "grade": "PASS",
+      "why": "Series-day ZIPs contain ~98\u201399 KXBTC15M contracts; KalshiBot runs observe simultaneous neighbors."
+    },
+    "liquidityShock": {
+      "grade": "PASS WITH CAVEATS",
+      "why": "Event-level L2 + trades present; shock studies should prefer CryptoStruct primary tape and treat KalshiBot as fidelity check, not full transition census."
+    }
+  },
+  "purchaseDetail": {
+    "code": "A",
+    "label": "YES \u2014 suitable enough to build a substantial external historical reservoir",
+    "recommendedScope": "30\u201390 UTC series-days of kalshi-btc-15m after 2026-08-14 (complete open-window recording), regime-balanced; optionally expand toward full post-2026-08-14 archive after reservation ledger exists",
+    "importantExclusions": [
+      "Do not treat pre-2026-08-14 days as opening-window complete without explicit caveats (vendor late registration notice)",
+      "Thursday Kalshi maintenance windows are exchange downtime, not vendor gaps",
+      "The five fidelity-audit days (2026-09-08/09/14/18/20) are QUALITY_AUDIT_ONLY \u2014 not untouched HOLDOUT"
+    ],
+    "doNotPurchaseNow": true,
+    "remainingUncertainty": [
+      "Trade-stream fidelity vs KalshiBot cannot be verified (KalshiBot forward-quote captures lack authoritative trades)",
+      "High CS\u2192KB transition never-rate under dense microstructure",
+      "Sampled \u22648 tickers/run for compute tractability (full shared lists retained)",
+      "Page vs file trade-count discrepancy from free sample remains a marketing/file definition issue, not resolved by overlap BBO"
+    ]
+  },
+  "governance": {
+    "purchasedOverlapDaysStatus": {
+      "2026-09-08": "QUALITY_AUDIT_ONLY",
+      "2026-09-09": "QUALITY_AUDIT_ONLY",
+      "2026-09-14": "QUALITY_AUDIT_ONLY",
+      "2026-09-18": "QUALITY_AUDIT_ONLY",
+      "2026-09-20": "QUALITY_AUDIT_ONLY"
+    },
+    "minimalReservationFields": [
+      "provider",
+      "utcDate",
+      "rawZipSha256",
+      "acquisitionTimestampUtc",
+      "status"
+    ],
+    "allowedStatuses": [
+      "UNOPENED",
+      "QUALITY_AUDIT_ONLY",
+      "EXPLORATORY_TRAIN",
+      "DESIGN",
+      "VALIDATION_RESERVED",
+      "HOLDOUT_RESERVED",
+      "OPENED_VALIDATION",
+      "OPENED_HOLDOUT"
+    ]
+  }
+}

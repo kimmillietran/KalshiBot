@@ -1,0 +1,87 @@
+{
+  "100": {
+    "kbConfirmations": 148,
+    "csConfirmations": 177,
+    "matched": 106,
+    "unmatchedKb": 42,
+    "unmatchedCs": 71,
+    "recall": 0.7162162162162162,
+    "precision": 0.5988700564971752,
+    "sideExactAmongMatches": 106,
+    "LagreeAmongMatches": 105,
+    "deltaMs": {
+      "p50": 6,
+      "p90": 8,
+      "p95": 9,
+      "max": 57
+    }
+  },
+  "500": {
+    "kbConfirmations": 148,
+    "csConfirmations": 177,
+    "matched": 106,
+    "unmatchedKb": 42,
+    "unmatchedCs": 71,
+    "recall": 0.7162162162162162,
+    "precision": 0.5988700564971752,
+    "sideExactAmongMatches": 106,
+    "LagreeAmongMatches": 105,
+    "deltaMs": {
+      "p50": 6,
+      "p90": 8,
+      "p95": 9,
+      "max": 57
+    }
+  },
+  "1000": {
+    "kbConfirmations": 148,
+    "csConfirmations": 177,
+    "matched": 106,
+    "unmatchedKb": 42,
+    "unmatchedCs": 71,
+    "recall": 0.7162162162162162,
+    "precision": 0.5988700564971752,
+    "sideExactAmongMatches": 106,
+    "LagreeAmongMatches": 105,
+    "deltaMs": {
+      "p50": 6,
+      "p90": 8,
+      "p95": 9,
+      "max": 57
+    }
+  },
+  "2000": {
+    "kbConfirmations": 148,
+    "csConfirmations": 177,
+    "matched": 106,
+    "unmatchedKb": 42,
+    "unmatchedCs": 71,
+    "recall": 0.7162162162162162,
+    "precision": 0.5988700564971752,
+    "sideExactAmongMatches": 106,
+    "LagreeAmongMatches": 105,
+    "deltaMs": {
+      "p50": 6,
+      "p90": 8,
+      "p95": 9,
+      "max": 57
+    }
+  },
+  "5000": {
+    "kbConfirmations": 148,
+    "csConfirmations": 177,
+    "matched": 106,
+    "unmatchedKb": 42,
+    "unmatchedCs": 71,
+    "recall": 0.7162162162162162,
+    "precision": 0.5988700564971752,
+    "sideExactAmongMatches": 106,
+    "LagreeAmongMatches": 105,
+    "deltaMs": {
+      "p50": 6,
+      "p90": 8,
+      "p95": 9,
+      "max": 57
+    }
+  }
+}

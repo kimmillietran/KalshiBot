@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Local vendor samples (gitignored); never lint scraped/minified JS
+    "data/external-samples/**",
   ]),
 ]);
 

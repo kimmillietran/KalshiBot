@@ -1,0 +1,64 @@
+{
+  "verdict": "A",
+  "verdictLabel": "YES \u2014 SUITABLE FOR SUBSTANTIAL EXTERNAL HISTORICAL RESERVOIR (DO NOT BUY IN THIS STEP)",
+  "buyAnythingNow": false,
+  "provider": "cryptostruct",
+  "minimumPurchase": "Deferred \u2014 recommend 30\u201390 post-2026-08-14 series-days next, with UNOPENED/HOLDOUT reservation before opening",
+  "why": [
+    "Overlap ASOF fidelity vs pre-M16 KalshiBot captures: ~94.7% exact and ~99.0% within-1c YES bid at 100ms\u20135s (64 ticker-samples across 5 UTC days).",
+    "Zero CryptoStruct prevEventId chain breaks on reconstructed books; receive\u2212venue latency p50 ~5.6ms.",
+    "Larger archive justified for TRAIN/design/historical reservoir AFTER reservation governance; do not purchase in this audit step."
+  ],
+  "majorRemainingUncertainty": "Whether CryptoStruct books/trades match KalshiBot known-good captures on overlapping timestamps. PMXT is no longer \"unknown\" \u2014 it is audited and unsuitable as a CryptoStruct substitute for executable-quote research.",
+  "doNotBuyYet": [
+    "depthfeed subscription",
+    "pmxt",
+    "any purchase executed by the agent",
+    "pre-2026-08-14 days for opening-window-dependent studies without caveats"
+  ],
+  "comparisons": {
+    "cryptostruct": {
+      "archiveCoverageClaim": "Feb 2026\u2013present; ~208 days; ~72.9 GB compressed",
+      "eventLevelFidelityInSample": "HIGH (verified)",
+      "priceStructure": "\u20ac1 per series-day; credit packs; no subscription required",
+      "estimatedStorageCompressedGB": {
+        "7_days": 2.45,
+        "30_days": 10.51,
+        "90_days": 31.54,
+        "full_available_archive": 72.9,
+        "basis": "PROVIDER CLAIM total 72.9 GB / 208 days"
+      }
+    },
+    "depthfeed": {
+      "freeSampleResolution": "single top-8 snapshot \u2014 not research-grade history",
+      "paidSnapshotResolution": "PROVIDER CLAIM full stored series; Explorer pricing table says 60s minimum (docs conflict)",
+      "rawTickAvailability": "Desk only ($249/mo)",
+      "archiveRange": "plan-windowed (7/30/90/full)",
+      "tierActuallyNeededIfAny": "Unknown until Explorer key exists; for <=1\u20132s M17-style work Desk ticks likely required; REST-polled snapshots may never suffice for microstructure",
+      "purchaseNow": false,
+      "reason": "registration required; free surface insufficient; research value unproven without keyed density measurement"
+    },
+    "pmxt": {
+      "cost": "Free public archive (CC BY 4.0 claim) via r2kalshi.pmxt.dev",
+      "archiveCoverage": "VERIFIED ~2026-05-14T23 \u2192 2026-06-11T03 only; advertised hourly/current cadence NOT met",
+      "kxbtc15mAvailability": "YES in sampled hours (16\u201328 concurrent tickers) but snapshots empty",
+      "eventDensity": "HIGH deltas (focus ticker mean ~156 events/sec) \u2014 density without book seed is useless for BBO",
+      "depth": "Schema supports multi-level yes_bids/no_bids; KXBTC content empty in samples",
+      "trades": "NONE in schema",
+      "timestamps": "receive ms + venue us; many duplicate receive-ms; no seq IDs",
+      "sequenceGapDetectability": "NONE",
+      "executableReplayQuality": "FAIL for KXBTC15M (empty snaps; crossed books on empty-start recon)",
+      "overlapValidationAvailability": "NONE vs KalshiBot inventory",
+      "couldReplacePurchase": {
+        "exploratoryTRAIN": "NO for executable-quote / lag TRAIN",
+        "designMechanics": "PARTIAL only",
+        "historicalValidation": "NO",
+        "untouchedHOLDOUT": "NO"
+      },
+      "vsCryptoStruct": "CryptoStruct remains materially better for event fidelity, trades, seq/gap detection, and causal BBO. PMXT free archive does not remove the need for a CryptoStruct overlap pilot."
+    }
+  },
+  "pmxtSufficientForExploratoryButNotExactEventValidation": "PMXT is NOT sufficient even for exploratory executable-quote work on KXBTC15M. It may still illustrate packing/schema/event-rate mechanics, but that is not a substitute for CryptoStruct TRAIN or validation.",
+  "fidelityAuditComplete": true,
+  "fidelityOverall": "PASS"
+}

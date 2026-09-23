@@ -1,0 +1,22 @@
+{
+  "authority": "streamM16BlindIncidence / m16ValidationBlindIncidence / m16StateMachine",
+  "authoritativeTimestamp": "exchangeTimestampMs ?? receivedAtMs (TOB exchange often null → receive)",
+  "emissionSemantics": "Every top-of-book.jsonl line in file order is considered; machine steps only on eligible quotes",
+  "eligibility": "bookState===valid AND isEconomicallyValid===true AND finite yes/no bids AND quoteAgeMs present",
+  "midpointFormula": "yesMid = (yesBid + (100-noBid))/2 = 50 + (yesBid-noBid)/2",
+  "asks": "Derived via complement; not independently required for mid beyond noBid",
+  "unchangedBbo": "Eligible unchanged BBO rows still step the machine (usually no-ops)",
+  "depthOnly": "TOB file already represents top-of-book emissions; depth-only without TOB emit are invisible to M16",
+  "duplicateTimestamps": "Processed in file order; no coalescing in canonical streamer",
+  "throttling": "Capture config topOfBookThrottleMs=0 historically; M16 consumes file as-is",
+  "sideInvariance": "YES and NO machines both stepped; first confirmation claims the market",
+  "governedWindowNote": "Prospective M16 population is 18:00–22:00Z; equivalence uses full overlap windows",
+  "identitiesUnchanged": {
+    "familyDefinition": "e98e6180b1edc468d544cbc41a624b8201535b2e9e58121d7669079fcf5cbce0",
+    "evidenceContract": "2a06820dab24aea4a253d886460bfc1267d7bd438d0bce817cbb999fd934beb7",
+    "dependencePlan": "df947284e5ee7678280dafd6ba5c4456281ca894b10b793a5a05f584d7d2630d",
+    "feeContract": "86f5f152308096fb365bb4ef41dca8beb488a302f038a915c8b228c0b645b44d",
+    "prospectiveCohort": "a2b86dd7c7fc3864ce48c860b10cfea053bdde04e09723a4f6ae87adca31dd63",
+    "scientificProtocolClaimedUnchanged": "1aa47e106a069dad466e2e338ba4b50000fd52eeaac482239544e20161f5a824"
+  }
+}

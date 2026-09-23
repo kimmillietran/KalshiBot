@@ -1,0 +1,146 @@
+{
+  "provider": "cryptostruct",
+  "file": "kalshi-KXBTC15M-26SEP161415-15-2026-09-16.txt",
+  "verified_from_file": {
+    "lineCount": 1144938,
+    "distinctTickersInFile": 1,
+    "messageTypeCounts": {
+      "header": 1,
+      "instrument_state": 2,
+      "snapshot": 1,
+      "book_update": 1096953,
+      "trades": 47981
+    },
+    "eventCountExcludingHeader": 1144937,
+    "tradePrintCount": 47981,
+    "bookUpdateMessages": 1096953,
+    "snapshotMessages": 1,
+    "topOfBookMessages": 0,
+    "aggressorSidePresentOnTrades": 47981,
+    "tradeIdsPresent": 47981,
+    "duplicateExactLines": 0,
+    "malformedRows": 0,
+    "nullOrMissingCriticalFields": 0,
+    "impossiblePrices": 0,
+    "impossibleSizes": 0,
+    "timestamp": {
+      "exchange": {
+        "first": "2026-09-16T18:00:00.839398Z",
+        "last": "2026-09-16T18:15:00Z",
+        "regressions": 25544,
+        "exactDuplicates": 163931,
+        "maxGapMs": 369.0,
+        "interarrival": {
+          "count": 955458,
+          "min_ns": 1000,
+          "p50_ns": 390000,
+          "p90_ns": 2356000,
+          "p99_ns": 8027000,
+          "max_ns": 369000000,
+          "min_ms": 0.001,
+          "p50_ms": 0.39,
+          "p90_ms": 2.356,
+          "p99_ms": 8.027,
+          "max_ms": 369.0
+        },
+        "zeroTimestampOnMarketEvents": 1,
+        "nonzeroTimestampOnMarketEvents": 1144934,
+        "zeroRate": 8.734120277570342e-07
+      },
+      "adapterReceive": {
+        "first": "2026-09-16T18:00:00.904233Z",
+        "last": "2026-09-16T18:20:43.534195Z",
+        "durationSec": 1242.629961159,
+        "regressions": 0,
+        "exactDuplicates": 0,
+        "maxGapMs": 369.884828,
+        "interarrival": {
+          "count": 1144934,
+          "min_ns": 1,
+          "p50_ns": 32960,
+          "p90_ns": 2438286,
+          "p99_ns": 7788097,
+          "max_ns": 369884828,
+          "min_ms": 1e-06,
+          "p50_ms": 0.03296,
+          "p90_ms": 2.438286,
+          "p99_ms": 7.788097,
+          "max_ms": 369.884828
+        }
+      }
+    },
+    "sequence": {
+      "interpretation": "Event IDs are non-monotonic opaque identifiers (not contiguous integers). Gap detection must use prevEventId linkage per topic, not monotonic sequence arithmetic.",
+      "bookUpdatePrevEventIdChainBreaks": 0,
+      "tradesPrevEventIdChainBreaks": 0,
+      "eventIdsUnique": true,
+      "naiveGlobalMonotonicGapCount_DO_NOT_USE": 27467,
+      "naiveGlobalMonotonicRegressionCount_DO_NOT_USE": 27464,
+      "crossTopicInterleavingNote": "Book-update and trade topics maintain separate perfect prevEventId chains; mixing topics in file order creates false global breaks."
+    },
+    "bookReconstruction": {
+      "failClosedDeltaBeforeSnapshot": 0,
+      "deleteOfMissingLevel": 0,
+      "forceResetSnapshots": 0,
+      "crossedBookObservations": 0,
+      "lockedBookObservations": 0,
+      "emptyBookEvents": 3486,
+      "bboPointsRecorded": 1093468,
+      "complementSanityChecksOk": 1000,
+      "finalBidLevels": 269,
+      "finalAskLevels": 0,
+      "finalBestBid": 0.999,
+      "finalBestAsk": null,
+      "causalExecutableYesNoDerivable": true,
+      "method": "YES book absolute levels; NO bid=1-YES ask, NO ask=1-YES bid (Kalshi complement). No future rows used."
+    },
+    "eventRatePerSecond": {
+      "seconds_with_events": 901,
+      "events_per_sec_min": 16,
+      "events_per_sec_p50": 1275,
+      "events_per_sec_p90": 1869,
+      "events_per_sec_max": 2917,
+      "mean_events_per_sec": 1270.7380688124306
+    },
+    "instrument": {
+      "id": 17340163,
+      "code": "KXBTC15M-26SEP161415-15",
+      "start": "2026-09-16 18:00:00",
+      "expiry": "2026-09-16 18:15:00",
+      "ticksize": 0.001,
+      "exchange_code": "kalshi",
+      "btcReferenceIncludedInFile": false,
+      "officialSettlementIncludedInFile": false
+    },
+    "researchHorizons": {
+      "A_le_1s_microstructure": "GOOD",
+      "B_1_to_5s_response": "GOOD",
+      "C_5_to_30s_response": "GOOD",
+      "D_minute_scale": "GOOD",
+      "E_contract_lifecycle_15m": "GOOD",
+      "basis": "adapter_receive_interarrival",
+      "caveat_exchange_timestamp_mostly_zero": false,
+      "notes": {
+        "p50_ms": 0.03296,
+        "p90_ms": 2.438286,
+        "max_gap_ms": 369.884828,
+        "exchange_ts_zero_rate": 8.734120277570342e-07
+      }
+    },
+    "tradeCountNotes": {
+      "verifiedTradePrintsInFile": 47981,
+      "verifiedTradePrintsInContractWindow_18_00_18_15Z": 47981,
+      "providerPageClaimedTrades": 45156,
+      "discrepancy": "PROVIDER CLAIM 45156 vs VERIFIED FROM FILE 47981 (~6.3% higher in file). Do not treat page marketing stats as authoritative."
+    },
+    "timestampPrecision": {
+      "exchangeTimestamp": "VERIFIED microsecond precision encoded as integer ns (all sampled values divisible by 1000)",
+      "adapterReceiveTimestamp": "VERIFIED true nanosecond residuals present on receive timestamps",
+      "providerClaim": "nanosecond venue and receive timestamps"
+    },
+    "providerClaimByteIdenticalToPaid": {
+      "claim": "byte-identical to the files in the paid bundle",
+      "status": "PROVIDER CLAIM \u2014 not independently verifiable without purchasing a paid day containing the same contract"
+    }
+  }
+}

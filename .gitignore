@@ -29,7 +29,13 @@
 data/live-capture/
 
 # generated research/report artifacts (never commit)
-data/research-results/
+data/research-results/*
+!data/research-results/external-kalshi-data-audit/
+!data/research-results/external-kalshi-data-audit/**
+# row-level fidelity dumps stay local (summaries/verdicts are committed)
+data/research-results/external-kalshi-data-audit/cryptostruct-bbo-fidelity.json
+data/research-results/external-kalshi-data-audit/cryptostruct-transition-latency.json
+data/research-results/external-kalshi-data-audit/cryptostruct-overlap-inventory.json
 data/reports/
 
 *.log
@@ -61,3 +67,6 @@ yarn-error.log*
 /kalshi-api.key.txt
 /load-kalshi-env.sh
 /load-kalshi-env.ps1
+
+# External vendor samples (large; audit artifacts only in git)
+data/external-samples/

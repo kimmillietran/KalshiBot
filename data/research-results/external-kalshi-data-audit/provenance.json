@@ -1,0 +1,83 @@
+{
+  "auditId": "external-kalshi-kxbtc15m-free-sample-audit-2026-09-22",
+  "accessDateUtc": "2026-09-22",
+  "canonicalCheckout": {
+    "path": "/Users/builder/Developer/kalshi-builder2",
+    "branchAtAuditStart": "main",
+    "branchForArtifacts": "feature/external-kalshi-data-audit",
+    "headSha": "64e0d217981a3aa1898126e722486dac503dc66c",
+    "note": "Operational/development checkout /Users/builder/Developer/kalshi-builder2. Desktop KalshiBot primary exists at a different HEAD and was used only as a capture-inventory source."
+  },
+  "scientificBoundaries": {
+    "m16Unchanged": true,
+    "m16OutcomesUnopened": true,
+    "noM16HistoricalSubstitution": true,
+    "noLiveOrders": true,
+    "noPurchases": true,
+    "noFabricatedCredentials": true,
+    "noHypothesisPromotion": true
+  },
+  "downloads": [
+    {
+      "provider": "cryptostruct",
+      "sourceUrl": "https://cryptostruct.com/api/download/sample/17340163/2026-09-16?s=kalshi-btc-15m",
+      "pageUrl": "https://cryptostruct.com/prediction-markets/kalshi-btc-15m",
+      "downloadTimeUtc": "2026-09-22T23:11:15Z",
+      "sha256": "0525e0ba6e0793ffe513cc5e2c49fb6814999ac18a6d6edfdd0d0538e8317c97",
+      "byteSize": 32521007,
+      "originalFilename": "kalshi-KXBTC15M-26SEP161415-15-2026-09-16.txt.zst",
+      "storedAt": "data/external-samples/cryptostruct/raw/kalshi-KXBTC15M-26SEP161415-15-2026-09-16.txt.zst",
+      "licenseUrl": "https://cryptostruct.com/license",
+      "freeSample": true,
+      "sampleTicker": "KXBTC15M-26SEP161415-15",
+      "sampleDateUtc": "2026-09-16",
+      "instrumentId": 17340163
+    },
+    {
+      "provider": "depthfeed",
+      "sourceUrl": "https://api.depthfeed.com/v3/demo",
+      "docsUrl": "https://depthfeed.com/docs",
+      "pricingUrl": "https://kalshipricedata.com/pricing",
+      "downloadTimeUtc": "2026-09-22T23:11:15Z",
+      "sha256": "62c06e9e1472b493e96e22f1e449406e1d2175855bd8b9b4dfba1f7a4dfb01bb",
+      "byteSize": 1186,
+      "originalFilename": "v3-demo.json",
+      "storedAt": "data/external-samples/depthfeed/raw/v3-demo.json",
+      "freeSample": true,
+      "accessMode": "anonymous_keyless_demo",
+      "alsoSaved": [
+        "v3-health.json",
+        "v3-overview.json"
+      ]
+    },
+    {
+      "provider": "pmxt",
+      "sourceUrl": "https://r2kalshi.pmxt.dev/kalshi_orderbook_2026-06-06T09.parquet",
+      "listingUrl": "https://archive.pmxt.dev/Kalshi",
+      "homepageUrl": "https://archive.pmxt.dev/",
+      "objectStoreHost": "https://r2kalshi.pmxt.dev",
+      "downloadTimeUtc": "2026-09-22T23:30:34Z",
+      "sha256": "3069ab961b0a437eb08c5804fc2ff04f0aaceb86ff96803dc68f42b70c6c9968",
+      "byteSize": 60732334,
+      "originalFilename": "kalshi_orderbook_2026-06-06T09.parquet",
+      "storedAt": "data/external-samples/pmxt/raw/kalshi_orderbook_2026-06-06T09.parquet",
+      "freeSample": true,
+      "licenseClaim": "CC BY 4.0 (PROVIDER CLAIM from archive page / Wayback)",
+      "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+      "listingHostAtRetry": "TCP refused / WebFetch 500; objects served via R2"
+    },
+    {
+      "provider": "pmxt",
+      "sourceUrl": "https://r2kalshi.pmxt.dev/kalshi_orderbook_2026-06-06T10.parquet",
+      "downloadTimeUtc": "2026-09-22T23:30:34Z",
+      "sha256": "9e5be152ff27ae343804f1ca687207fb6d4b22de19888238c44be0d5ddbce1ec",
+      "byteSize": 55941494,
+      "originalFilename": "kalshi_orderbook_2026-06-06T10.parquet",
+      "storedAt": "data/external-samples/pmxt/raw/kalshi_orderbook_2026-06-06T10.parquet",
+      "freeSample": true,
+      "licenseClaim": "CC BY 4.0 (PROVIDER CLAIM)",
+      "licenseUrl": "https://creativecommons.org/licenses/by/4.0/"
+    }
+  ],
+  "pmxtRetryAccessTimeUtc": "2026-09-22T23:30:34Z"
+}

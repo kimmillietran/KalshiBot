@@ -1,0 +1,170 @@
+{
+  "classificationAxes": [
+    "TRAIN",
+    "historical_validation",
+    "untouched_HOLDOUT",
+    "confirmatory"
+  ],
+  "providers": {
+    "cryptostruct": {
+      "eventLevelOrSampled": "EVENT_LEVEL (VERIFIED) \u2014 1.096M book deltas + 47,981 trades over ~15m contract",
+      "executableYesNoCausalBBO": "YES (VERIFIED) \u2014 reconstruct YES book from snapshot+deltas; derive NO via complement; no future repair; 0 delta-before-snapshot failures",
+      "timestampTrustFor5_30s": "GOOD for receive-time research; exchange ts present at microsecond encoding; max receive gap ~370ms in sample",
+      "gapDetection": "GOOD via per-topic prevEventId chain (0 breaks). Monotonic seq arithmetic unsuitable.",
+      "contractLifecycleMapping": "GOOD \u2014 header includes start/expiry and ticker code",
+      "overlapVsKalshiBot": "NOT AVAILABLE for this sample",
+      "horizons": {
+        "A_le_1s_microstructure": "GOOD",
+        "B_1_to_5s_response": "GOOD",
+        "C_5_to_30s_response": "GOOD",
+        "D_minute_scale": "GOOD",
+        "E_contract_lifecycle_15m": "GOOD",
+        "basis": "adapter_receive_interarrival",
+        "caveat_exchange_timestamp_mostly_zero": false,
+        "notes": {
+          "p50_ms": 0.03296,
+          "p90_ms": 2.438286,
+          "max_gap_ms": 369.884828,
+          "exchange_ts_zero_rate": 8.734120277570342e-07
+        }
+      },
+      "usableExploratoryTRAIN": true,
+      "usableHistoricalValidation": "CONDITIONAL \u2014 after overlap day purchased/compared; sample alone is insufficient to certify absolute fidelity",
+      "potentiallyUntouchedHOLDOUT": "YES \u2014 if date ranges reserved BEFORE hypothesis evaluation; free sample day should be treated as already opened for schema/quality work, not as clean HOLDOUT",
+      "unsuitableForConfirmatorySolelyBecauseExternal": true,
+      "limitations": [
+        "No BTC reference in file \u2014 must join external BTC feed",
+        "No official settlement field in file",
+        "Exchange timestamps microsecond-aligned despite nanosecond claim",
+        "Page trade-count marketing disagrees with file",
+        "Byte-identical-to-paid claim unverified",
+        "License forbids redistributing raw data",
+        "Single-contract sample cannot prove multi-contract sync (M21)"
+      ]
+    },
+    "pmxt": {
+      "status": "AUDITED ON RETRY",
+      "eventLevelOrSampled": "EVENT_LEVEL ROWS (VERIFIED) \u2014 but KXBTC15M snapshots are empty shells; dense orderbook_delta only",
+      "executableYesNoCausalBBO": "NO (VERIFIED FAIL) \u2014 empty KXBTC snapshots; empty-start delta accumulation ~99.9% crossed YES books",
+      "timestampTrustFor5_30s": "RECEIVE CLOCK PRESENT but unsuitable for executable BBO research on KXBTC; unique receive-ms often ~500ms apart with many same-ms duplicates",
+      "gapDetection": "POOR \u2014 no sequence/event IDs; cannot detect dropped events",
+      "contractLifecycleMapping": "PARTIAL \u2014 market_ticker encodes contract; simultaneous neighbors present; no start/expiry header fields",
+      "overlapVsKalshiBot": "NONE \u2014 PMXT archive ends 2026-06-11; KalshiBot captures are Aug/Sep 2026",
+      "horizons": {
+        "A_le_1s_microstructure": "UNSUITABLE",
+        "B_1_to_5s_response": "UNSUITABLE",
+        "C_5_to_30s_response": "UNSUITABLE",
+        "D_minute_scale": "UNSUITABLE",
+        "E_contract_lifecycle_15m": "UNSUITABLE",
+        "basis": "causal_executable_BBO_reconstruction_failed_for_KXBTC15M",
+        "event_density_note": "Focus ticker KXBTC15M-26JUN060630-30 shows high delta arrival (mean ~156 events/sec, max ~1004/sec) \u2014 density without reconstructible book is not usable for BBO research"
+      },
+      "usableExploratoryTRAIN": "LIMITED \u2014 may inform event-rate / multi-ticker co-presence / schema mechanics only; NOT for executable-quote TRAIN",
+      "usableHistoricalValidation": false,
+      "potentiallyUntouchedHOLDOUT": false,
+      "unsuitableForConfirmatorySolelyBecauseExternal": true,
+      "canReplaceCryptoStructFor": {
+        "exploratoryTRAIN": "NO for BBO/lag work; maybe coarse mechanics only",
+        "designMechanics": "PARTIAL (event_type tape shape; YES/NO bid arrays; hourly packing)",
+        "historicalValidation": "NO",
+        "untouchedHOLDOUT": "NO"
+      },
+      "limitations": [
+        "Archive stale (~103 days behind access date; newest hour 2026-06-11T03)",
+        "Listing UI still down from this host (R2 objects work)",
+        "All sampled KXBTC15M orderbook_snapshot rows have empty yes_bids/no_bids",
+        "No trades / aggressor / sequence IDs",
+        "No overlap with KalshiBot captures",
+        "Empty-start reconstruction produces mechanically invalid crossed books"
+      ]
+    },
+    "depthfeed": {
+      "eventLevelOrSampled": "DEMO = single sampled snapshot (top-8). Paid snapshots claimed event-driven stored books; ticks Desk-only.",
+      "executableYesNoCausalBBO": "DEMO only shows truncated ladder at one instant \u2014 insufficient to prove causal reconstruction over time",
+      "timestampTrustFor5_30s": "UNKNOWN from free surface (need keyed history)",
+      "gapDetection": "UNKNOWN without historical series; Desk ticks claim Kalshi seq increments by 1",
+      "contractLifecycleMapping": "PROVIDER CLAIM via /v3/kalshi/markets discovery \u2014 not exercised (AUTH_MISSING)",
+      "overlapVsKalshiBot": "NOT PERFORMED \u2014 no historical sample without registration",
+      "horizons": {
+        "A_le_1s_microstructure": "UNSUITABLE from free demo; Desk ticks maybe later",
+        "B_1_to_5s_response": "UNKNOWN \u2014 requires keyed snapshot density measurement",
+        "C_5_to_30s_response": "UNKNOWN",
+        "D_minute_scale": "LIKELY if Explorer/Quant snapshots dense enough (UNVERIFIED)",
+        "E_contract_lifecycle_15m": "UNKNOWN"
+      },
+      "usableExploratoryTRAIN": false,
+      "usableHistoricalValidation": false,
+      "potentiallyUntouchedHOLDOUT": false,
+      "stoppedReason": "registration required for any historical Kalshi series; no credentials fabricated",
+      "limitations": [
+        "Keyless demo is not a historical archive",
+        "Explorer still needs interactive account creation",
+        "Pricing/docs conflict on Explorer snapshot resolution (60s vs full stored)",
+        "Raw ticks only on Desk ($249/mo)",
+        "Kalshi snapshots described as REST-polled \u2014 may be unsuitable for <=1s microstructure even when keyed"
+      ]
+    }
+  },
+  "researchFamilies": {
+    "M17_btc_impulse_kalshi_lag": {
+      "cryptostruct": "PROMISING for TRAIN after joining BTC feed; timestamps dense enough; needs overlap validation before trusting lag measurements",
+      "pmxt": "UNSUITABLE for executable BBO / lag research \u2014 KXBTC snapshots empty; no causal book. May only support non-quote mechanics notes (event rates, ticker co-presence). Archive ends June 2026.",
+      "depthfeed": "INSUFFICIENT from free surface; Desk ticks might qualify later if seq-complete and dense"
+    },
+    "M18_threshold_fair_value": {
+      "cryptostruct": "USABLE for exploratory TRAIN if BTC+threshold metadata joined; contract start/expiry present",
+      "pmxt": "UNSUITABLE for executable BBO / lag research \u2014 KXBTC snapshots empty; no causal book. May only support non-quote mechanics notes (event rates, ticker co-presence). Archive ends June 2026.",
+      "depthfeed": "Possibly on keyed snapshots (UNVERIFIED); registration blocked free audit"
+    },
+    "M19_vol_conditioned_continuation": {
+      "cryptostruct": "USABLE for exploratory TRAIN with external BTC series; seconds-scale OK",
+      "pmxt": "UNSUITABLE for executable BBO / lag research \u2014 KXBTC snapshots empty; no causal book. May only support non-quote mechanics notes (event rates, ticker co-presence). Archive ends June 2026.",
+      "depthfeed": "UNVERIFIED"
+    },
+    "M20_expiry_time_to_close": {
+      "cryptostruct": "GOOD lifecycle coverage on sample contract; seconds-to-expiry computable from header+timestamps",
+      "pmxt": "UNSUITABLE for executable BBO / lag research \u2014 KXBTC snapshots empty; no causal book. May only support non-quote mechanics notes (event rates, ticker co-presence). Archive ends June 2026.",
+      "depthfeed": "UNVERIFIED"
+    },
+    "M21_cross_contract_consistency": {
+      "cryptostruct": "SAMPLE INSUFFICIENT (single ticker); paid series-day bundle (\u00a3/\u20ac1) would be the right unit",
+      "pmxt": "UNSUITABLE for executable BBO / lag research \u2014 KXBTC snapshots empty; no causal book. May only support non-quote mechanics notes (event rates, ticker co-presence). Archive ends June 2026.",
+      "depthfeed": "UNVERIFIED; would need simultaneous multi-ticker pulls"
+    },
+    "M22_liquidity_shock_recovery": {
+      "cryptostruct": "STRONG candidate \u2014 event-level L2 + depth + gap detection via prevEventId",
+      "pmxt": "UNSUITABLE for executable BBO / lag research \u2014 KXBTC snapshots empty; no causal book. May only support non-quote mechanics notes (event rates, ticker co-presence). Archive ends June 2026.",
+      "depthfeed": "Desk ticks claimed; free demo unsuitable"
+    }
+  },
+  "untouchedDatasetDesign": {
+    "implementNow": false,
+    "reason": "Only one free sample file passed deep audit; design the ledger when purchasing begins",
+    "proposedIfPurchasing": {
+      "layout": [
+        "data/external-archives/<provider>/raw/<sha256>/...",
+        "data/external-archives/<provider>/manifests/provenance.jsonl",
+        "data/research-results/external-dataset-catalog/catalog.json",
+        "data/research-results/external-dataset-catalog/reservation-ledger.jsonl"
+      ],
+      "roles": [
+        "UNOPENED",
+        "EXPLORATORY_TRAIN",
+        "DESIGN",
+        "VALIDATION_RESERVED",
+        "HOLDOUT_RESERVED",
+        "OPENED_VALIDATION",
+        "OPENED_HOLDOUT"
+      ],
+      "rules": [
+        "Reserve dates/roles BEFORE any strategy outcome computation on those dates",
+        "Free sample day KXBTC15M-26SEP161415-15 / 2026-09-16 is already OPENED for quality audit \u2014 do not reclassify as untouched HOLDOUT",
+        "Do not select validation dates by strategy performance",
+        "Prefer chronological separation + regime diversity",
+        "Immutable raw blobs + SHA-256; never mutate latest as authority",
+        "External \u2260 untouched",
+        "Cannot replace or backfill M16 prospective validation"
+      ]
+    }
+  }
+}
