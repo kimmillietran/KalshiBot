@@ -1,0 +1,63 @@
+{
+  "studyId": "kalshi-kxbtc15m-settlement-friction-coverage-v0",
+  "eligibleUtcDays": [
+    "2026-08-14",
+    "2026-08-15",
+    "2026-08-16",
+    "2026-08-17",
+    "2026-08-18",
+    "2026-08-19",
+    "2026-08-20",
+    "2026-08-21",
+    "2026-08-22",
+    "2026-08-23",
+    "2026-08-24",
+    "2026-08-25",
+    "2026-08-26",
+    "2026-08-27",
+    "2026-08-28",
+    "2026-08-29",
+    "2026-08-30",
+    "2026-08-31",
+    "2026-09-01",
+    "2026-09-02",
+    "2026-09-03",
+    "2026-09-04",
+    "2026-09-05",
+    "2026-09-06",
+    "2026-09-07",
+    "2026-09-10",
+    "2026-09-11",
+    "2026-09-12",
+    "2026-09-13",
+    "2026-09-15",
+    "2026-09-16",
+    "2026-09-17",
+    "2026-09-19",
+    "2026-09-21"
+  ],
+  "sampling": {
+    "cadenceSeconds": 60,
+    "weighting": "equal-per-retained-sample; report utc-day means",
+    "side": "yes-taker",
+    "binsChosenByPnl": false
+  },
+  "costs": {
+    "entry": "half-spread + one standard taker fee",
+    "roundTrip": "entry+exit half-spreads + two standard taker fees",
+    "horizonsMs": [
+      5000,
+      15000,
+      30000
+    ],
+    "quantity": 1,
+    "feeSchedule": "standard",
+    "feeRole": "taker",
+    "rounding": "ceil-to-next-cent"
+  },
+  "settlementJoin": {
+    "labelsInScope": true,
+    "brtiPathInScope": false
+  },
+  "acceptanceDoc": "docs/research/m17-prep-settlement-friction-coverage-study-spec.md"
+}

@@ -1,0 +1,130 @@
+{
+  "generatedAtUtc": "2026-09-23T23:20:45.028Z",
+  "milestone": "m17-prep-settlement-state-feasibility",
+  "verdict": "blocked-on-identified-inputs",
+  "rows": [
+    {
+      "input": "kxbtc15m-payoff-rules-public-docs",
+      "status": "available",
+      "notes": "Help Center + CRYPTO15M/BTC terms + WS averaging semantics"
+    },
+    {
+      "input": "market-metadata-and-strikes",
+      "status": "available",
+      "notes": "floor_strike/close_time via Kalshi API/fixtures; strike_type live-unverified"
+    },
+    {
+      "input": "official-settlement-labels",
+      "status": "partially-available",
+      "notes": "result/expiration_value when populated; historical gaps known"
+    },
+    {
+      "input": "historical-brti-settlement-paths",
+      "status": "unavailable",
+      "notes": "none in-repo; passthrough not queried"
+    },
+    {
+      "input": "live-brti-with-received_at",
+      "status": "documented-unverified",
+      "notes": "WS docs require auth+entitlement; not exercised"
+    },
+    {
+      "input": "synchronized-kalshi-books-34-spent-days",
+      "status": "partially-available",
+      "notes": "CryptoStruct SPENT_VALIDATION books; no co-timed BRTI"
+    },
+    {
+      "input": "date-overlap-34-spent-m16er-days",
+      "status": "available",
+      "notes": "day list equality checkable vs reservoir"
+    },
+    {
+      "input": "causal-receipt-timestamps-historical",
+      "status": "unavailable",
+      "notes": "history values != live availability proof"
+    },
+    {
+      "input": "cfb-direct-license",
+      "status": "unverified",
+      "notes": "no credentials/cost quote in milestone"
+    },
+    {
+      "input": "coinbase-as-brti-proxy",
+      "status": "forbidden-unless-labeled-approximate",
+      "notes": "not used"
+    }
+  ],
+  "spentUtcDays": [
+    "2026-08-14",
+    "2026-08-15",
+    "2026-08-16",
+    "2026-08-17",
+    "2026-08-18",
+    "2026-08-19",
+    "2026-08-20",
+    "2026-08-21",
+    "2026-08-22",
+    "2026-08-23",
+    "2026-08-24",
+    "2026-08-25",
+    "2026-08-26",
+    "2026-08-27",
+    "2026-08-28",
+    "2026-08-29",
+    "2026-08-30",
+    "2026-08-31",
+    "2026-09-01",
+    "2026-09-02",
+    "2026-09-03",
+    "2026-09-04",
+    "2026-09-05",
+    "2026-09-06",
+    "2026-09-07",
+    "2026-09-10",
+    "2026-09-11",
+    "2026-09-12",
+    "2026-09-13",
+    "2026-09-15",
+    "2026-09-16",
+    "2026-09-17",
+    "2026-09-19",
+    "2026-09-21"
+  ],
+  "m16ErUtcDays": [
+    "2026-08-14",
+    "2026-08-15",
+    "2026-08-16",
+    "2026-08-17",
+    "2026-08-18",
+    "2026-08-19",
+    "2026-08-20",
+    "2026-08-21",
+    "2026-08-22",
+    "2026-08-23",
+    "2026-08-24",
+    "2026-08-25",
+    "2026-08-26",
+    "2026-08-27",
+    "2026-08-28",
+    "2026-08-29",
+    "2026-08-30",
+    "2026-08-31",
+    "2026-09-01",
+    "2026-09-02",
+    "2026-09-03",
+    "2026-09-04",
+    "2026-09-05",
+    "2026-09-06",
+    "2026-09-07",
+    "2026-09-10",
+    "2026-09-11",
+    "2026-09-12",
+    "2026-09-13",
+    "2026-09-15",
+    "2026-09-16",
+    "2026-09-17",
+    "2026-09-19",
+    "2026-09-21"
+  ],
+  "spentEqualsM16ErDays": true
+}

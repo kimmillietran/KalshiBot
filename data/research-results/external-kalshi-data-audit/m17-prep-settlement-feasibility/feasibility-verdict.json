@@ -1,0 +1,19 @@
+{
+  "milestone": "m17-prep-settlement-state-feasibility",
+  "baseSha": "93dacbf94746f9a5c19efec6a2380f6422505b1c",
+  "verdict": "blocked-on-identified-inputs",
+  "supportsNextFrictionCoverageStudy": true,
+  "supportsSettlementStateAlphaNow": false,
+  "blockers": [
+    "historical-brti-settlement-paths-absent-in-repo",
+    "cfb-passthrough-entitlement-and-history-not-verified-without-download",
+    "strike_type-inclusive-vs-strict-not-live-pinned",
+    "post-2026-05-18-brti-5hz-to-60-sample-mapping-unverified"
+  ],
+  "m16pDisposition": "suspended-collection",
+  "docs": [
+    "docs/research/m17-prep-m16p-suspension.md",
+    "docs/research/m17-prep-settlement-state-feasibility.md",
+    "docs/research/m17-prep-settlement-friction-coverage-study-spec.md"
+  ]
+}
