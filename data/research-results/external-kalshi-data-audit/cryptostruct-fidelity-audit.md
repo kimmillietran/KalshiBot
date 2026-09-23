@@ -1,8 +1,8 @@
 # CryptoStruct vs KalshiBot Fidelity Audit
 
-**Operational repo:** `/Users/builder/Developer/kalshi-builder2`  
-**Branch:** `feature/external-kalshi-data-audit`  
-**HEAD:** `d7d958dcd770a44439d6858b1d30f25856d6efb5`  
+**Operational repo:** `/Users/builder/Developer/kalshi-builder2`
+**Branch:** `feature/external-kalshi-data-audit`
+**HEAD:** `d7d958dcd770a44439d6858b1d30f25856d6efb5`
 **Scope:** Data fidelity only. No M16 outcomes. No strategy optimization. No live orders. No additional purchases.
 
 ## Verdict
@@ -56,8 +56,8 @@ Usable KalshiBot runs share tens of tickers with the corresponding CryptoStruct 
 | CryptoStruct | adapter receive (ns) | venue/exchange ts also present |
 | KalshiBot | `receivedAtLocal` | `exchangeTimestampMs` often null on TOB |
 
-CryptoStruct **receive − venue** latency (sampled contracts): p50 ≈ **5.6 ms**, p90 ≈ **7.1 ms**, p99 ≈ **8.9 ms**.  
-`prevEventId` book-chain breaks on reconstructed samples: **0**.  
+CryptoStruct **receive − venue** latency (sampled contracts): p50 ≈ **5.6 ms**, p90 ≈ **7.1 ms**, p99 ≈ **8.9 ms**.
+`prevEventId` book-chain breaks on reconstructed samples: **0**.
 No clock “correction” applied; primary comparisons use original timestamps.
 
 ## BBO Fidelity
