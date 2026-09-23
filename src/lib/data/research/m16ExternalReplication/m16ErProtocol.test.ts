@@ -20,14 +20,17 @@ import {
   buildM16ErIdentityBundle,
   buildM16ErPurchaseManifest,
   buildM16ErScientificProtocol,
+  buildM16ErSourceContract,
   computeM16ErClusteredPlanningTradeN,
   evaluateM16ErOutcomeOpenAuthorization,
   M16_ER_ADAPTER_IDENTITY,
   M16_ER_IID_BASELINE_TRADE_N,
+  M16_ER_OUTCOME_OPEN_BLOCKERS,
   M16_ER_PLANNING_AVG_TRADES_PER_UTC_DAY,
   M16_ER_REQUIRED_TRADE_N,
   M16_ER_ROLE,
   runM16ErSyntheticEvaluatorFixture,
+  type M16ErOutcomeOpenInput,
 } from "@/lib/data/research/m16ExternalReplication";
 import {
   M16_EXPECTED_COHORT_PLAN_IDENTITY,
@@ -38,6 +41,29 @@ import {
   buildM16ScientificProtocolIdentity,
 } from "@/lib/data/research/kalshiKxbtc15mSideInvariantReversal/m16ValidationAuthority";
 import { designEffect } from "@/lib/data/research/kalshiKxbtc15mSideInvariantReversal/m16DependencePlan";
+
+/** Explicit affirmative identity presentation for synthetic authorization tests. */
+function m16ErAffirmativeIdentityInputs(): Required<
+  Pick<
+    M16ErOutcomeOpenInput,
+    | "protocolIdentity"
+    | "cohortReservationIdentity"
+    | "adapterIdentity"
+    | "sourceContractIdentity"
+    | "dependencePlanIdentity"
+    | "feeContractIdentity"
+  >
+> {
+  return {
+    protocolIdentity: buildM16ErScientificProtocol().scientificProtocolIdentity,
+    cohortReservationIdentity:
+      buildM16ErFixedCohortPlan().cohortReservationIdentity,
+    adapterIdentity: M16_ER_ADAPTER_IDENTITY,
+    sourceContractIdentity: buildM16ErSourceContract().sourceContractIdentity,
+    dependencePlanIdentity: buildM16ErDependencePlan().dependencePlanIdentity,
+    feeContractIdentity: buildM16ErFeeContract().feeContractIdentity,
+  };
+}
 
 describe("cryptostruct dataset ledger", () => {
   it("seeds five QUALITY_AUDIT_ONLY dates as terminal", () => {
@@ -181,18 +207,21 @@ describe("m16-er protocol freeze", () => {
     expect(M16_EXPECTED_COHORT_PLAN_IDENTITY).toMatch(/^[0-9a-f]{64}$/);
   });
 
-  it("outcome gate seals economics until all prerequisites met", () => {
+  it("outcome gate fails closed by default and requires affirmative identities", () => {
     const sealed = evaluateM16ErOutcomeOpenAuthorization();
     expect(sealed.authorized).toBe(false);
     expect(sealed.sealed).toBe(true);
-    expect(sealed.blockers.length).toBeGreaterThan(0);
+    expect(sealed.blockers).toContain(
+      M16_ER_OUTCOME_OPEN_BLOCKERS.PROTOCOL_MISSING,
+    );
+    expect(sealed.blockers).toContain(
+      M16_ER_OUTCOME_OPEN_BLOCKERS.COHORT_MISSING,
+    );
     expect(sealed.forbiddenWhileSealed).toContain("pnl");
 
+    const identities = m16ErAffirmativeIdentityInputs();
     const open = evaluateM16ErOutcomeOpenAuthorization({
-      protocolIdentity: buildM16ErScientificProtocol().scientificProtocolIdentity,
-      adapterIdentity: M16_ER_ADAPTER_IDENTITY,
-      cohortReservationIdentity:
-        buildM16ErFixedCohortPlan().cohortReservationIdentity,
+      ...identities,
       purchasedZipSha256Verified: true,
       qualityAuditComplete: true,
       fixedCohortAdmissionComplete: true,
@@ -200,6 +229,181 @@ describe("m16-er protocol freeze", () => {
       pnlPreviouslyOpened: false,
     });
     expect(open.authorized).toBe(true);
+    expect(open.sealed).toBe(false);
+  });
+
+  it("rejects booleans-only authorization when protocol identity omitted", () => {
+    const identities = m16ErAffirmativeIdentityInputs();
+    const rest: M16ErOutcomeOpenInput = { ...identities };
+    delete rest.protocolIdentity;
+    const gate = evaluateM16ErOutcomeOpenAuthorization({
+      ...rest,
+      purchasedZipSha256Verified: true,
+      qualityAuditComplete: true,
+      fixedCohortAdmissionComplete: true,
+      sampleAdequacyMet: true,
+    });
+    expect(gate.authorized).toBe(false);
+    expect(gate.sealed).toBe(true);
+    expect(gate.blockers).toContain(
+      M16_ER_OUTCOME_OPEN_BLOCKERS.PROTOCOL_MISSING,
+    );
+  });
+
+  it("rejects booleans-only authorization when cohort identity omitted", () => {
+    const identities = m16ErAffirmativeIdentityInputs();
+    const rest: M16ErOutcomeOpenInput = { ...identities };
+    delete rest.cohortReservationIdentity;
+    const gate = evaluateM16ErOutcomeOpenAuthorization({
+      ...rest,
+      purchasedZipSha256Verified: true,
+      qualityAuditComplete: true,
+      fixedCohortAdmissionComplete: true,
+      sampleAdequacyMet: true,
+    });
+    expect(gate.authorized).toBe(false);
+    expect(gate.blockers).toContain(
+      M16_ER_OUTCOME_OPEN_BLOCKERS.COHORT_MISSING,
+    );
+  });
+
+  it("rejects mismatched and empty protocol/cohort identities", () => {
+    const identities = m16ErAffirmativeIdentityInputs();
+    const ops = {
+      purchasedZipSha256Verified: true,
+      qualityAuditComplete: true,
+      fixedCohortAdmissionComplete: true,
+      sampleAdequacyMet: true,
+    } as const;
+
+    expect(
+      evaluateM16ErOutcomeOpenAuthorization({
+        ...identities,
+        ...ops,
+        protocolIdentity: "0".repeat(64),
+      }).blockers,
+    ).toContain(M16_ER_OUTCOME_OPEN_BLOCKERS.PROTOCOL_MISMATCH);
+
+    expect(
+      evaluateM16ErOutcomeOpenAuthorization({
+        ...identities,
+        ...ops,
+        cohortReservationIdentity: "1".repeat(64),
+      }).blockers,
+    ).toContain(M16_ER_OUTCOME_OPEN_BLOCKERS.COHORT_MISMATCH);
+
+    expect(
+      evaluateM16ErOutcomeOpenAuthorization({
+        ...identities,
+        ...ops,
+        protocolIdentity: "",
+      }).blockers,
+    ).toContain(M16_ER_OUTCOME_OPEN_BLOCKERS.PROTOCOL_MISSING);
+
+    expect(
+      evaluateM16ErOutcomeOpenAuthorization({
+        ...identities,
+        ...ops,
+        cohortReservationIdentity: "",
+      }).blockers,
+    ).toContain(M16_ER_OUTCOME_OPEN_BLOCKERS.COHORT_MISSING);
+  });
+
+  it("rejects omitted/mismatched adapter, source, dependence, and fee identities", () => {
+    const identities = m16ErAffirmativeIdentityInputs();
+    const ops = {
+      purchasedZipSha256Verified: true,
+      qualityAuditComplete: true,
+      fixedCohortAdmissionComplete: true,
+      sampleAdequacyMet: true,
+    } as const;
+
+    const cases: Array<{
+      omit?: keyof typeof identities;
+      override?: Partial<typeof identities>;
+      blocker: string;
+    }> = [
+      {
+        omit: "adapterIdentity",
+        blocker: M16_ER_OUTCOME_OPEN_BLOCKERS.ADAPTER_MISSING,
+      },
+      {
+        override: { adapterIdentity: "bad" },
+        blocker: M16_ER_OUTCOME_OPEN_BLOCKERS.ADAPTER_MISMATCH,
+      },
+      {
+        omit: "sourceContractIdentity",
+        blocker: M16_ER_OUTCOME_OPEN_BLOCKERS.SOURCE_MISSING,
+      },
+      {
+        override: { sourceContractIdentity: "bad" },
+        blocker: M16_ER_OUTCOME_OPEN_BLOCKERS.SOURCE_MISMATCH,
+      },
+      {
+        omit: "dependencePlanIdentity",
+        blocker: M16_ER_OUTCOME_OPEN_BLOCKERS.DEPENDENCE_MISSING,
+      },
+      {
+        override: { dependencePlanIdentity: "bad" },
+        blocker: M16_ER_OUTCOME_OPEN_BLOCKERS.DEPENDENCE_MISMATCH,
+      },
+      {
+        omit: "feeContractIdentity",
+        blocker: M16_ER_OUTCOME_OPEN_BLOCKERS.FEE_MISSING,
+      },
+      {
+        override: { feeContractIdentity: "bad" },
+        blocker: M16_ER_OUTCOME_OPEN_BLOCKERS.FEE_MISMATCH,
+      },
+    ];
+
+    for (const c of cases) {
+      const base = { ...identities };
+      if (c.omit) {
+        delete base[c.omit];
+      }
+      const gate = evaluateM16ErOutcomeOpenAuthorization({
+        ...base,
+        ...c.override,
+        ...ops,
+      });
+      expect(gate.authorized).toBe(false);
+      expect(gate.blockers).toContain(c.blocker);
+    }
+  });
+
+  it("rejects when identities match but an operational prerequisite is false", () => {
+    const identities = m16ErAffirmativeIdentityInputs();
+    const gate = evaluateM16ErOutcomeOpenAuthorization({
+      ...identities,
+      purchasedZipSha256Verified: true,
+      qualityAuditComplete: true,
+      fixedCohortAdmissionComplete: true,
+      sampleAdequacyMet: false,
+    });
+    expect(gate.authorized).toBe(false);
+    expect(gate.blockers).toContain(M16_ER_OUTCOME_OPEN_BLOCKERS.ADEQUACY_SHORT);
+  });
+
+  it("keeps frozen scientific identities unchanged after gate hardening", () => {
+    expect(buildM16ErScientificProtocol().scientificProtocolIdentity).toBe(
+      "3f4fdf157b3eb6eb775c8e2f4bab4272e23cfa22a7179fed29fb135012207c65",
+    );
+    expect(buildM16ErFixedCohortPlan().cohortReservationIdentity).toBe(
+      "afdacb697216ba385e8d4d9627deec6610d90fafeb52c83b474bace7d9ae15c0",
+    );
+    expect(M16_ER_ADAPTER_IDENTITY).toBe(
+      "3f37ecb76644ee0749c50f33cfdaf8921e8dcb1cf208abdc55719a461e27dc7d",
+    );
+    expect(buildM16ErDependencePlan().dependencePlanIdentity).toBe(
+      "b81c49e9fe574f900c22099c0071cb4607ea1c059952757ef8c95cbc88928603",
+    );
+    expect(buildM16ErFeeContract().feeContractIdentity).toBe(
+      "2c1059ecc142dd6ca9b82375e03fd84b42f55ce6d6f1435a667111eea2d0548f",
+    );
+    expect(buildM16ErSourceContract().sourceContractIdentity).toBe(
+      "63049f060df62092aee62e07fad1691ee5318424d09ebf97c6953cd9dd7149f4",
+    );
   });
 
   it("purchase manifest does not execute purchase and fits Premium 50 credits", () => {
