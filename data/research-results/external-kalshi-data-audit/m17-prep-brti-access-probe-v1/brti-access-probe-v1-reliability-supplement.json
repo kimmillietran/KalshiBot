@@ -1,0 +1,226 @@
+{
+  "studyId": "kalshi-kxbtc15m-brti-access-probe-v0-follow-up",
+  "artifactKind": "v1-reliability-supplement",
+  "generatedAtUtc": "2026-09-24T03:27:35.565Z",
+  "classification": "access-available-with-identified-limitations",
+  "httpRequestCount": 3,
+  "campaignId": "kalshi-kxbtc15m-brti-access-probe-v1",
+  "preservedV0": {
+    "campaignId": "kalshi-kxbtc15m-brti-access-probe-v0",
+    "consumed": 13,
+    "limit": 10,
+    "overrun": true,
+    "furtherRequestsForbidden": true
+  },
+  "originalSnapshots": {
+    "v0Summary": "data/research-results/external-kalshi-data-audit/m17-prep-brti-access-probe/brti-access-probe-summary.json",
+    "v1Summary": "data/research-results/external-kalshi-data-audit/m17-prep-brti-access-probe-v1/brti-access-probe-v1-summary.json",
+    "note": "v0 and original v1 summaries are original campaign snapshots. Do not treat later supplement fields as if the original runner serialized them."
+  },
+  "historicalSemantics": {
+    "retrievedAtUtc": "2026-09-24",
+    "sources": [
+      "https://docs.kalshi.com/cfbenchmarks/rest-passthrough",
+      "https://docs.cfbenchmarks.com/api/rest/historical-values/"
+    ],
+    "acceptedTimespanDocumentedByKalshiExample": "HOUR",
+    "previouslyRejectedTimespan": "MINUTE",
+    "forbiddenTimespans": [
+      "DAY"
+    ],
+    "timestampRule": "truncated to timespan granularity",
+    "rangeSemantics": "timespan plus truncated timestamp define one fixed window",
+    "startEndBoundsDocumented": false,
+    "timespanMeaning": "response duration / lookback window of tick-level values, not an OHLC bar",
+    "paginationDocumented": false,
+    "retentionNote": "most recent values may be delayed up to 15 minutes",
+    "cadence": "tick-level; some indices intra-second"
+  },
+  "targetSelection": {
+    "rule": "existing early/middle/late SPENT trio; follow-up uses role=middle only",
+    "selectedBeforeObservingHistory": true,
+    "target": {
+      "role": "middle",
+      "utcDay": "2026-08-30",
+      "marketTicker": "KXBTC15M-26AUG301415-15"
+    },
+    "officialMetadataBind": "bound",
+    "officialClose": "2026-08-30T18:15:00Z",
+    "authorizedHourStartUtc": "2026-08-30T18:00:00.000Z",
+    "discrepancy": null
+  },
+  "officialMetadataBind": {
+    "status": "bound",
+    "metadata": {
+      "ticker": "KXBTC15M-26AUG301415-15",
+      "closeTimeUtc": "2026-08-30T18:15:00Z",
+      "expirationValue": "78833.97",
+      "provenance": {
+        "sourceId": "v0-official-rest-metadata",
+        "closeTimeField": "targets[].official.closeTime",
+        "expirationValueField": "targets[].official.expirationValue",
+        "retrievedVia": "v0 REST GET /markets/{ticker} (pass 2)"
+      }
+    },
+    "request": {
+      "ticker": "KXBTC15M-26AUG301415-15",
+      "closeTimeUtc": "2026-08-30T18:15:00Z",
+      "hourStartUtc": "2026-08-30T18:00:00.000Z",
+      "hourEndExclusiveUtc": "2026-08-30T19:00:00.000Z",
+      "settlementWindowInsideHour": true,
+      "matchesAuthorizedHour": true,
+      "discrepancy": null,
+      "expirationValue": "78833.97",
+      "expirationAvailableForComparison": true
+    }
+  },
+  "layers": {
+    "endpointDocumented": true,
+    "codeImplemented": true,
+    "credentialsAvailable": true,
+    "accessExercised": true,
+    "historicalCoverageDemonstrated": true,
+    "causalSuitabilityEstablished": false
+  },
+  "credentials": {
+    "status": "available",
+    "keyIdPresent": true,
+    "privateKeyLoaded": true,
+    "privateKeySource": "raw-env"
+  },
+  "httpBudget": {
+    "campaignId": "kalshi-kxbtc15m-brti-access-probe-v1",
+    "limit": 10,
+    "consumed": 3,
+    "entries": [
+      {
+        "id": "1:historical-brti",
+        "purpose": "historical-brti",
+        "status": "completed",
+        "httpStatus": 200,
+        "category": "success"
+      },
+      {
+        "id": "2:official-settlement-metadata",
+        "purpose": "official-settlement-metadata",
+        "status": "completed",
+        "httpStatus": 200,
+        "category": "success"
+      },
+      {
+        "id": "3:historical-brti",
+        "purpose": "historical-brti",
+        "status": "completed",
+        "httpStatus": 200,
+        "category": "success"
+      }
+    ]
+  },
+  "thisTaskHttpAttempts": 0,
+  "requestAccounting": {
+    "derivedOfflineFromLedger": true,
+    "v1ConsumedBeforeThisTask": 2,
+    "v1ConsumedAfterThisTask": 3,
+    "additionalHttpThisTask": 1,
+    "additionalHttpCapThisTask": 3,
+    "campaignLimit": 10,
+    "refetchEntryId": "3:historical-brti",
+    "refetchReservedAtUtc": "2026-09-24T03:26:51.163Z",
+    "originalHourBodyRecovered": false,
+    "originalRecordedBodyHash": "d85787f052bdb6bb09b14370e4ed008b4f2f8196e53b1b198f149187b8c9a66a",
+    "refetchBodyHash": "c6c6613033990431b917c298242776b0e3546dffd4d3198df0044593c9ef016b",
+    "offlineReinspectDispatchedHttp": 0,
+    "note": "The original HOUR body was absent locally. This task issued one identical HOUR GET. The supplement was then regenerated from the retained local body (0 additional HTTP). Do not treat thisTaskHttpAttempts=0 on the regenerate run as the task total."
+  },
+  "preservedLiveFinding": {
+    "source": "original-v1-snapshot",
+    "closeUtc": "2026-09-24T03:00:00.000Z",
+    "venueAverageRaw": "84349.74383333",
+    "officialExpirationRaw": "84349.74",
+    "status": "agree",
+    "interpretation": "one operational fidelity observation, not strategy validation or independent reconstruction"
+  },
+  "history": {
+    "attempted": true,
+    "source": "retained-local",
+    "status": 200,
+    "category": "success",
+    "bodyTextHash": "c6c6613033990431b917c298242776b0e3546dffd4d3198df0044593c9ef016b",
+    "timespan": "HOUR",
+    "timestamp": "2026-08-30T18:00:00.000Z",
+    "observationCount": 18000,
+    "observationsInRequestedHour": 18000,
+    "cadence": {
+      "observationCount": 18000,
+      "uniqueSecondBuckets": 3600,
+      "medianIntervalMs": 200,
+      "minIntervalMs": 200,
+      "maxIntervalMs": 200,
+      "looksOneHz": false,
+      "looksFiveHz": true,
+      "duplicateTimeCount": 0,
+      "outOfOrderCount": 0,
+      "missingTimeCount": 0
+    },
+    "reconstruction": {
+      "mapping": {
+        "supported": false,
+        "reason": "bucket-count-is-not-official-sample-mapping",
+        "observedWindowCount": 300,
+        "uniqueSecondBuckets": 61
+      },
+      "reconstructedAverage": null,
+      "officialExpirationParsed": {
+        "kind": "ok",
+        "original": "78833.97",
+        "value": 78833.97,
+        "usedThousandsSeparators": false
+      },
+      "agreement": "not-compared"
+    },
+    "coverageNote": "coverage is only the observations actually returned for this one hour",
+    "payloadKind": "observations-present"
+  },
+  "historyPayload": {
+    "topLevelKeys": [
+      "data"
+    ],
+    "recognizedContainers": [
+      "data.payload"
+    ],
+    "arrayLengths": {
+      "data.payload": 18000
+    },
+    "returnedCandidateCount": 18000,
+    "parsedObservationCount": 18000,
+    "rejectedObservationCount": 0,
+    "inHourCount": 18000,
+    "outOfHourCount": 0,
+    "untimedCount": 0,
+    "settlementMinuteCount": 300,
+    "responseError": null,
+    "indexId": null,
+    "kind": "observations-present",
+    "note": "coverage is only the observations actually returned for this one hour"
+  },
+  "live": {
+    "attempted": false
+  },
+  "officialComparison": {
+    "status": "not-attempted",
+    "reason": "live-not-attempted"
+  },
+  "causalLimitations": [
+    "Historical observation time is not provider publication/receipt time.",
+    "This live probe's local receipt timestamps cannot establish historical latency.",
+    "60 distinct one-second buckets do not identify the official settlement samples.",
+    "A trailing 60-second average is not the quarter-hour settlement average.",
+    "This live window is an operational access sample, not an untouched future validation cohort."
+  ],
+  "nextPrerequisite": "Treat HOUR ticks as retrospective mechanical coverage of one hour only. Live venue last_60s_windowed_average_15min remains one operational fidelity sample, not a historical backtest input.",
+  "reproducibility": {
+    "originalObservationsPreserved": true,
+    "timestampsNeedNotBeByteIdentical": true,
+    "codeIdentity": "kalshiBrtiAccessProbe/follow-up-reliability"
+  }
+}

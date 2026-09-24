@@ -1,0 +1,159 @@
+{
+  "studyId": "kalshi-kxbtc15m-brti-access-probe-v0-follow-up",
+  "generatedAtUtc": "2026-09-24T02:51:11.596Z",
+  "classification": "access-available-with-identified-limitations",
+  "campaignId": "kalshi-kxbtc15m-brti-access-probe-v1",
+  "preservedV0": {
+    "campaignId": "kalshi-kxbtc15m-brti-access-probe-v0",
+    "consumed": 13,
+    "limit": 10,
+    "overrun": true,
+    "furtherRequestsForbidden": true
+  },
+  "historicalSemantics": {
+    "retrievedAtUtc": "2026-09-24",
+    "sources": [
+      "https://docs.kalshi.com/cfbenchmarks/rest-passthrough",
+      "https://docs.cfbenchmarks.com/api/rest/historical-values/"
+    ],
+    "acceptedTimespanDocumentedByKalshiExample": "HOUR",
+    "previouslyRejectedTimespan": "MINUTE",
+    "forbiddenTimespans": [
+      "DAY"
+    ],
+    "timestampRule": "truncated to timespan granularity",
+    "rangeSemantics": "timespan plus truncated timestamp define one fixed window",
+    "startEndBoundsDocumented": false,
+    "timespanMeaning": "response duration / lookback window of tick-level values, not an OHLC bar",
+    "paginationDocumented": false,
+    "retentionNote": "most recent values may be delayed up to 15 minutes",
+    "cadence": "tick-level; some indices intra-second"
+  },
+  "targetSelection": {
+    "rule": "existing early/middle/late SPENT trio; follow-up uses role=middle only",
+    "selectedBeforeObservingHistory": true,
+    "target": {
+      "role": "middle",
+      "utcDay": "2026-08-30",
+      "marketTicker": "KXBTC15M-26AUG301415-15"
+    },
+    "officialClose": "2026-08-30T18:15:00Z"
+  },
+  "layers": {
+    "endpointDocumented": true,
+    "codeImplemented": true,
+    "credentialsAvailable": true,
+    "accessExercised": true,
+    "historicalCoverageDemonstrated": false,
+    "causalSuitabilityEstablished": false
+  },
+  "credentials": {
+    "status": "available",
+    "keyIdPresent": true,
+    "privateKeyLoaded": true,
+    "privateKeySource": "raw-env"
+  },
+  "httpBudget": {
+    "campaignId": "kalshi-kxbtc15m-brti-access-probe-v1",
+    "limit": 10,
+    "consumed": 2,
+    "entries": [
+      {
+        "id": "1:historical-brti",
+        "purpose": "historical-brti",
+        "status": "completed",
+        "httpStatus": 200,
+        "category": "success"
+      },
+      {
+        "id": "2:official-settlement-metadata",
+        "purpose": "official-settlement-metadata",
+        "status": "completed",
+        "httpStatus": 200,
+        "category": "success"
+      }
+    ]
+  },
+  "history": {
+    "status": 200,
+    "category": "success",
+    "bodyTextHash": "d85787f052bdb6bb09b14370e4ed008b4f2f8196e53b1b198f149187b8c9a66a",
+    "timespan": "HOUR",
+    "timestamp": "2026-08-30T18:00:00.000Z",
+    "observationCount": 0,
+    "observationsInRequestedHour": 0,
+    "cadence": {
+      "observationCount": 0,
+      "uniqueSecondBuckets": 0,
+      "medianIntervalMs": null,
+      "minIntervalMs": null,
+      "maxIntervalMs": null,
+      "looksOneHz": false,
+      "looksFiveHz": false,
+      "duplicateTimeCount": 0,
+      "outOfOrderCount": 0,
+      "missingTimeCount": 0
+    },
+    "reconstruction": {
+      "mapping": {
+        "supported": false,
+        "reason": "no-observations-in-official-window",
+        "observedWindowCount": 0,
+        "uniqueSecondBuckets": 0
+      },
+      "reconstructedAverage": null,
+      "officialExpirationParsed": {
+        "kind": "ok",
+        "original": "78833.97",
+        "value": 78833.97,
+        "usedThousandsSeparators": false
+      },
+      "agreement": "not-compared"
+    },
+    "coverageNote": "no historical observations in the requested hour",
+    "schemaNote": "HTTP 200 is not treated as entitlement denial. Zero extracted observations means empty data or unrecognized payload keys; raw body was not committed."
+  },
+  "live": {
+    "attempted": true,
+    "connected": true,
+    "connectionAttempts": 1,
+    "subscriptionAttempts": 1,
+    "channels": [
+      "cfbenchmarks_value"
+    ],
+    "plannedCloseUtc": "2026-09-24T03:00:00.000Z",
+    "plannedStartUtc": "2026-09-24T02:58:50.000Z",
+    "plannedStopUtc": "2026-09-24T03:00:20.000Z",
+    "durationMs": 546711,
+    "durationIncludesPreConnectWait": true,
+    "plannedCaptureMs": 90000,
+    "messagesReceived": 90,
+    "sawSettlementWindowAverage": true,
+    "venueSettlementAverage": {
+      "valueRaw": "84349.74383333",
+      "windowSize": 60,
+      "windowStartTsMs": 1790218740000,
+      "windowEndTsExclusive": 1790218800000
+    },
+    "stoppedAtCap": false,
+    "stoppedAtDeadline": true,
+    "firstLocalReceivedAtMs": 1790218730243,
+    "firstProviderReceivedAtMs": null,
+    "cohortStatus": "operational-data-access-sample-not-pristine-validation-cohort"
+  },
+  "officialComparison": {
+    "status": "agree",
+    "officialExpirationRaw": "84349.74",
+    "venueAverageRaw": "84349.74383333",
+    "reconstruction": "unverified",
+    "comparisonKind": "venue-provided-window-average-vs-official-expiration"
+  },
+  "causalLimitations": [
+    "Historical observation time is not provider publication/receipt time.",
+    "This live probe's local receipt timestamps cannot establish historical latency.",
+    "60 distinct one-second buckets do not identify the official settlement samples.",
+    "A trailing 60-second average is not the quarter-hour settlement average.",
+    "This live window is an operational access sample, not an untouched future validation cohort."
+  ],
+    "nextPrerequisite": "Resolve the HOUR history 200-with-zero-extracted-observations blocker (empty window vs unrecognized schema) before any broader historical download. Live venue last_60s_windowed_average_15min can support prospective synchronized collection only; it does not recover historical latency."
+}

@@ -1,0 +1,10 @@
+{
+  "campaignId": "kalshi-kxbtc15m-brti-access-probe-v0",
+  "limit": 10,
+  "consumed": 13,
+  "sealed": true,
+  "createdAtUtc": "2026-09-24T02:31:55.902Z",
+  "updatedAtUtc": "2026-09-24T02:34:06.158Z",
+  "note": "Original campaign recorded 13/10 HTTP attempts. Overrun is preserved; no further requests.",
+  "entries": []
+}

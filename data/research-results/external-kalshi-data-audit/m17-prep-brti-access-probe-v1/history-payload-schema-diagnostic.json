@@ -1,0 +1,77 @@
+{
+  "artifactKind": "sanitized-schema-diagnostic",
+  "bodyTextHash": "c6c6613033990431b917c298242776b0e3546dffd4d3198df0044593c9ef016b",
+  "httpStatus": 200,
+  "category": "success",
+  "request": {
+    "timespan": "HOUR",
+    "timestamp": "2026-08-30T18:00:00.000Z",
+    "ticker": "KXBTC15M-26AUG301415-15"
+  },
+  "classification": "observations-present",
+  "topLevelKeys": [
+    "data"
+  ],
+  "recognizedContainers": [
+    "data.payload"
+  ],
+  "arrayLengths": {
+    "data.payload": 18000
+  },
+  "indexId": null,
+  "responseError": null,
+  "observationCounts": {
+    "returned": 18000,
+    "parsed": 18000,
+    "rejected": 0,
+    "inHour": 18000,
+    "outOfHour": 0,
+    "untimed": 0,
+    "settlementMinute": 300
+  },
+  "note": "coverage is only the observations actually returned for this one hour",
+  "provenance": {
+    "historySource": "retained-local",
+    "officialMetadataBind": "bound",
+    "generatedAtUtc": "2026-09-24T03:27:35.565Z"
+  },
+  "schemaShape": {
+    "type": "object",
+    "keys": [
+      "data"
+    ],
+    "fields": {
+      "data": {
+        "type": "object",
+        "keys": [
+          "serverTime",
+          "payload"
+        ],
+        "fields": {
+          "serverTime": {
+            "type": "string"
+          },
+          "payload": {
+            "type": "array",
+            "length": 18000,
+            "item": {
+              "type": "object",
+              "keys": [
+                "time",
+                "value"
+              ],
+              "fields": {
+                "time": {
+                  "type": "number"
+                },
+                "value": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
