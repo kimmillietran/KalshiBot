@@ -65,6 +65,31 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+/** Classify WS capture outcome after connected+flushed. Exported for tests. */
+export function classifyConnectedCaptureStatus(input: {
+  stopReason: string | null | undefined;
+  closedCleanly: boolean;
+}): { capture: CaptureStatus; reason: string } {
+  const stopReason = input.stopReason ?? null;
+  if (stopReason?.startsWith("connection")) {
+    return { capture: "connect-failed", reason: stopReason };
+  }
+  if (
+    stopReason === "deadline"
+    || stopReason === "planned-stop"
+    || input.closedCleanly
+  ) {
+    return {
+      capture: "ok",
+      reason: stopReason ?? "capture-complete",
+    };
+  }
+  if (stopReason != null) {
+    return { capture: "limit-stop", reason: stopReason };
+  }
+  return { capture: "limit-stop", reason: "capture-unclean-shutdown" };
+}
+
 export type LiveOneCloseDeps = {
   unsignedGet?: typeof unsignedKalshiGet;
   resolveCredentials?: () => KalshiCaptureCredentials;
@@ -280,16 +305,12 @@ export async function executeLiveOneClose(input: {
           },
         });
         if (captureResult.connected && captureResult.flushed) {
-          captureStatus = captureResult.limits.stopReason?.startsWith("connection")
-            ? "connect-failed"
-            : captureResult.limits.stopReason === "deadline"
-              || captureResult.limits.stopReason === "planned-stop"
-              || captureResult.closedCleanly
-              ? "ok"
-              : captureResult.limits.stopReason
-                ? "limit-stop"
-                : "ok";
-          reason = captureResult.limits.stopReason ?? "capture-complete";
+          const classified = classifyConnectedCaptureStatus({
+            stopReason: captureResult.limits.stopReason,
+            closedCleanly: captureResult.closedCleanly,
+          });
+          captureStatus = classified.capture;
+          reason = classified.reason;
         } else {
           captureStatus = "connect-failed";
           reason = captureResult.handshakeErrorCategory ?? "ws-not-connected";

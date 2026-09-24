@@ -104,14 +104,19 @@ export function resolveRetentionPaths(input: {
   if (input.mode === "local-persistent-only") {
     return { primaryRoot, archiveRoot: null };
   }
-  const archiveRoot = env.KALSHI_FIDELITY_ARCHIVE_ROOT?.trim() || "";
-  if (!archiveRoot) {
-    return {
-      blocker:
-        "independent-archive-root-unset: set KALSHI_FIDELITY_ARCHIVE_ROOT to an off-disk/external mount",
-    };
+  if (input.mode === "independent-archive") {
+    const archiveRoot = env.KALSHI_FIDELITY_ARCHIVE_ROOT?.trim() || "";
+    if (!archiveRoot) {
+      return {
+        blocker:
+          "independent-archive-root-unset: set KALSHI_FIDELITY_ARCHIVE_ROOT to an off-disk/external mount",
+      };
+    }
+    return { primaryRoot, archiveRoot };
   }
-  return { primaryRoot, archiveRoot };
+  return {
+    blocker: `unsupported-retention-mode: ${String(input.mode)}`,
+  };
 }
 
 /**

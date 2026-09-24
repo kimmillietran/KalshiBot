@@ -32,7 +32,7 @@ export {
   createFilesystemOneCloseIo,
 } from "./runOneCloseSettlementFidelity";
 export type { OneCloseArgv, OneCloseRunResult } from "./runOneCloseSettlementFidelity";
-export { executeLiveOneClose } from "./executeLiveOneClose";
+export { executeLiveOneClose, classifyConnectedCaptureStatus } from "./executeLiveOneClose";
 export type { LiveOneCloseDeps, LiveOneCloseResult } from "./executeLiveOneClose";
 export {
   comparePublishedAverage,

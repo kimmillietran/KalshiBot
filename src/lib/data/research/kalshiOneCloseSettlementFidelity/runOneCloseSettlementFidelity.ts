@@ -153,13 +153,28 @@ export async function runOneCloseSettlementFidelity(input: {
   const existingPlanRaw = io.readFile(planPath);
   let plan: OneClosePlan;
   if (existingPlanRaw) {
-    const prior = JSON.parse(existingPlanRaw) as OneClosePlan;
+    const prior = JSON.parse(existingPlanRaw) as Partial<OneClosePlan> & {
+      closeMs: number;
+      closeUtc: string;
+      campaignId: string;
+    };
     if (input.argv.closeMs != null && prior.closeMs !== input.argv.closeMs) {
       throw new OneCloseFidelityError(
         `frozen-close-mismatch: plan=${prior.closeUtc} requested=${new Date(input.argv.closeMs).toISOString()}; substitution forbidden`,
       );
     }
-    plan = prior;
+    const retentionMode: RetentionMode = prior.retentionMode === "independent-archive"
+      || prior.retentionMode === "local-persistent-only"
+      ? prior.retentionMode
+      : (input.argv.retentionMode ?? "local-persistent-only");
+    plan = {
+      ...(prior as OneClosePlan),
+      retentionMode,
+      independentBackup: retentionMode === "independent-archive",
+      substitutionForbidden: true,
+      includeOrderbook: false,
+      indexSymbol: "BRTI",
+    };
   } else {
     plan = freezeOneClosePlan({
       nowMs,

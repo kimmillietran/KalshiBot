@@ -15,10 +15,12 @@ import {
 } from "@/lib/data/research/kalshiBrtiAccessProbe/campaignBudget";
 
 import { comparePublishedAverage, roundHalfEven2 } from "./compareMembershipAverages";
+import { classifyConnectedCaptureStatus } from "./executeLiveOneClose";
 import { classifyMissedSlot, freezeOneClosePlan } from "./freezeOneClose";
 import { runOneCloseSettlementFidelity } from "./runOneCloseSettlementFidelity";
 import {
   verifyRetentionReadiness,
+  resolveRetentionPaths,
   type RetentionIo,
 } from "./retentionReadiness";
 import { ONE_CLOSE_CAMPAIGN_ID, ONE_CLOSE_MAX_HTTP } from "./types";
@@ -167,6 +169,17 @@ describe("retention readiness", () => {
     });
     expect(readiness.ready).toBe(false);
     expect(readiness.blocker).toMatch(/roundtrip-failed|ENOSPC/);
+  });
+  it("rejects unsupported retention modes instead of treating them as archive", () => {
+    const io = memoryRetentionIo({ primaryDev: 1, archiveRoot: null });
+    const resolved = resolveRetentionPaths({
+      io,
+      mode: "not-a-mode" as never,
+    });
+    expect("blocker" in resolved).toBe(true);
+    if ("blocker" in resolved) {
+      expect(resolved.blocker).toMatch(/unsupported-retention-mode/);
+    }
   });
 });
 
@@ -320,6 +333,53 @@ describe("runOneCloseSettlementFidelity gates", () => {
     expect(second.disposition.rolledToLaterClose).toBe(false);
   });
 
+  it("normalizes legacy plans missing retentionMode to local-persistent-only", async () => {
+    const files = new Map<string, string>();
+    const legacyPlan = {
+      campaignId: ONE_CLOSE_CAMPAIGN_ID,
+      closeUtc: "2026-09-24T22:45:00.000Z",
+      closeMs: Date.parse("2026-09-24T22:45:00Z"),
+      connectEarliestMs: Date.parse("2026-09-24T22:45:00Z") - 75_000,
+      captureStartMs: Date.parse("2026-09-24T22:45:00Z") - 70_000,
+      captureStopMs: Date.parse("2026-09-24T22:45:00Z") + 15_000,
+      readinessCutoffMs: Date.parse("2026-09-24T22:45:00Z") - 100_000,
+      maxConnectedMs: 90_000,
+      indexSymbol: "BRTI",
+      includeOrderbook: false,
+      frozenAtUtc: "2026-09-24T22:30:00.000Z",
+      substitutionForbidden: true,
+    };
+    files.set("/repo/out/one-close-plan.json", `${JSON.stringify(legacyPlan, null, 2)}\n`);
+    const result = await runOneCloseSettlementFidelity({
+      repoRoot: "/repo",
+      argv: {
+        authorizeLive: false,
+        skipLive: true,
+        closeMs: Date.parse("2026-09-24T22:45:00Z"),
+        campaignId: ONE_CLOSE_CAMPAIGN_ID,
+        outDir: "out",
+        rawDir: "out/raw",
+        maxHttp: 12,
+        retentionMode: "local-persistent-only",
+      },
+      io: {
+        writeFile: (path, contents) => {
+          files.set(path, contents);
+        },
+        readFile: (path) => files.get(path) ?? null,
+        mkdir: () => undefined,
+        exists: (path) => files.has(path),
+        nowMs: () => Date.parse("2026-09-24T22:32:00Z"),
+      },
+      retentionIo: memoryRetentionIo({ primaryDev: 1, archiveRoot: null }),
+      campaignIo: memoryCampaignIo(files),
+    });
+    expect(result.plan.retentionMode).toBe("local-persistent-only");
+    expect(result.plan.independentBackup).toBe(false);
+    expect(result.retentionReadiness.ready).toBe(true);
+    expect(result.retentionReadiness.independentBackup).toBe(false);
+  });
+
   it("skips live when past readiness cutoff without substitution", async () => {
     const files = new Map<string, string>();
     const result = await runOneCloseSettlementFidelity({
@@ -349,6 +409,29 @@ describe("runOneCloseSettlementFidelity gates", () => {
     expect(result.liveExecution).toBe("skipped-past-readiness-cutoff");
     expect(result.disposition.rolledToLaterClose).toBe(false);
     expect(result.httpBudget.consumed).toBe(0);
+  });
+});
+
+describe("capture status classification", () => {
+  it("marks unclean shutdown without stopReason as limit-stop, not ok", () => {
+    expect(classifyConnectedCaptureStatus({
+      stopReason: null,
+      closedCleanly: false,
+    })).toEqual({
+      capture: "limit-stop",
+      reason: "capture-unclean-shutdown",
+    });
+  });
+
+  it("accepts planned-stop and clean close as ok", () => {
+    expect(classifyConnectedCaptureStatus({
+      stopReason: "planned-stop",
+      closedCleanly: false,
+    }).capture).toBe("ok");
+    expect(classifyConnectedCaptureStatus({
+      stopReason: null,
+      closedCleanly: true,
+    }).capture).toBe("ok");
   });
 });
 
