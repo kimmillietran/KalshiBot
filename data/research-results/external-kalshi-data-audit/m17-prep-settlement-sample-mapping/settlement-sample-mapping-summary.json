@@ -1,0 +1,278 @@
+{
+  "studyId": "kalshi-kxbtc15m-settlement-sample-mapping-v2",
+  "campaignId": "kalshi-kxbtc15m-settlement-sample-mapping-v2",
+  "generatedAtUtc": "2026-09-24T03:58:47.059Z",
+  "role": "data-fidelity-and-capture-readiness",
+  "notAnAlphaExperiment": true,
+  "offline": {
+    "retainedAvailable": true,
+    "retainedVerified": true,
+    "blockedReason": null,
+    "provenance": {
+      "ticker": "KXBTC15M-26AUG301415-15",
+      "selectedFollowUpTicker": "KXBTC15M-26AUG301415-15",
+      "authorizedHourStartUtc": "2026-08-30T18:00:00.000Z",
+      "hourStartUtc": "2026-08-30T18:00:00.000Z",
+      "hourEndExclusiveUtc": "2026-08-30T19:00:00.000Z",
+      "url": "https://external-api.kalshi.com/trade-api/v2/cfbenchmarks/history/values?id=BRTI&timespan=HOUR&timestamp=2026-08-30T18%3A00%3A00.000Z",
+      "signPath": "/trade-api/v2/cfbenchmarks/history/values",
+      "status": 200,
+      "category": "success",
+      "bodyTextHash": "c6c6613033990431b917c298242776b0e3546dffd4d3198df0044593c9ef016b",
+      "capturedAtUtc": "2026-09-24T03:26:51.162Z",
+      "expectedBodyTextHash": "c6c6613033990431b917c298242776b0e3546dffd4d3198df0044593c9ef016b"
+    },
+    "payloadKind": "observations-present",
+    "inHourCount": 18000,
+    "cadence": {
+      "observationCount": 18000,
+      "uniqueSecondBuckets": 3600,
+      "medianIntervalMs": 200,
+      "minIntervalMs": 200,
+      "maxIntervalMs": 200,
+      "looksOneHz": false,
+      "looksFiveHz": true,
+      "duplicateTimeCount": 0,
+      "outOfOrderCount": 0,
+      "missingTimeCount": 0
+    },
+    "hourPhase": {
+      "uniqueSecondBuckets": 3600,
+      "duplicateTimeCount": 0,
+      "missingSecondBuckets": [],
+      "phaseResiduesMs": [
+        0,
+        200,
+        400,
+        600,
+        800
+      ],
+      "dominantPhaseMs": 0,
+      "looksFiveHz": true,
+      "firstTimeMs": 1788112800000,
+      "lastTimeMs": 1788116399800
+    },
+    "officialExpirationRaw": "78833.97",
+    "officialCloseUtc": "2026-08-30T18:15:00Z",
+    "boundaryDiscrepancy": {
+      "documentedLiveAccumulation": "(close−60s, close]",
+      "payloadWindowIdentity": "[window_start_ts_ms, window_end_ts_exclusive)",
+      "officialHelpText": "average of 60 one-second RTI readings in the expiration minute",
+      "sameConcept": false,
+      "explanation": "The documented live accumulation interval and the payload [start, end) identity are two different 60-second intervals that differ at both endpoints. Official help describes 60 one-second readings, not a 5Hz mean and not a fitted offset. These are distinct concepts; a single matching average is not used to pick a boundary."
+    },
+    "candidates": [
+      {
+        "windowKind": "documented-live-accumulation",
+        "windowNotation": "(close−60s, close]",
+        "justification": "Kalshi WS docs for last_60s_windowed_average_15min accumulation; aggregation=last-tick-per-second (not fitted)",
+        "aggregation": "last-tick-per-second",
+        "observationCount": 61,
+        "uniqueSecondBuckets": 61,
+        "missingSecondCount": 0,
+        "duplicateTimeCount": 0,
+        "arithmeticJustified": true,
+        "meanRaw": "78834.16131147541",
+        "roundedUsd": "78834.16",
+        "officialComparison": {
+          "status": "disagree",
+          "candidateRounded": "78834.16",
+          "officialRounded": "78833.97",
+          "officialRaw": "78833.97"
+        },
+        "classification": "consistent-with-timestamps"
+      },
+      {
+        "windowKind": "documented-live-accumulation",
+        "windowNotation": "(close−60s, close]",
+        "justification": "Kalshi WS docs for last_60s_windowed_average_15min accumulation; aggregation=all-5hz-mean (not fitted)",
+        "aggregation": "all-5hz-mean",
+        "observationCount": 300,
+        "uniqueSecondBuckets": 61,
+        "missingSecondCount": 0,
+        "duplicateTimeCount": 0,
+        "arithmeticJustified": true,
+        "meanRaw": "78834.04623333331",
+        "roundedUsd": "78834.05",
+        "officialComparison": {
+          "status": "disagree",
+          "candidateRounded": "78834.05",
+          "officialRounded": "78833.97",
+          "officialRaw": "78833.97"
+        },
+        "classification": "consistent-with-timestamps"
+      },
+      {
+        "windowKind": "payload-start-inclusive-end-exclusive",
+        "windowNotation": "[close−60s, close)",
+        "justification": "Live payload window_start_ts_ms / window_end_ts_exclusive fields; aggregation=last-tick-per-second (not fitted)",
+        "aggregation": "last-tick-per-second",
+        "observationCount": 60,
+        "uniqueSecondBuckets": 60,
+        "missingSecondCount": 0,
+        "duplicateTimeCount": 0,
+        "arithmeticJustified": true,
+        "meanRaw": "78834.10083333333",
+        "roundedUsd": "78834.10",
+        "officialComparison": {
+          "status": "disagree",
+          "candidateRounded": "78834.10",
+          "officialRounded": "78833.97",
+          "officialRaw": "78833.97"
+        },
+        "classification": "supported-by-documentation"
+      },
+      {
+        "windowKind": "payload-start-inclusive-end-exclusive",
+        "windowNotation": "[close−60s, close)",
+        "justification": "Live payload window_start_ts_ms / window_end_ts_exclusive fields; aggregation=all-5hz-mean (not fitted)",
+        "aggregation": "all-5hz-mean",
+        "observationCount": 300,
+        "uniqueSecondBuckets": 60,
+        "missingSecondCount": 0,
+        "duplicateTimeCount": 0,
+        "arithmeticJustified": true,
+        "meanRaw": "78834.01763333334",
+        "roundedUsd": "78834.02",
+        "officialComparison": {
+          "status": "disagree",
+          "candidateRounded": "78834.02",
+          "officialRounded": "78833.97",
+          "officialRaw": "78833.97"
+        },
+        "classification": "consistent-with-timestamps"
+      },
+      {
+        "windowKind": "closed-both",
+        "windowNotation": "[close−60s, close]",
+        "justification": "Inclusive endpoints if both boundary ticks are settlement samples; aggregation=last-tick-per-second (not fitted)",
+        "aggregation": "last-tick-per-second",
+        "observationCount": 61,
+        "uniqueSecondBuckets": 61,
+        "missingSecondCount": 0,
+        "duplicateTimeCount": 0,
+        "arithmeticJustified": true,
+        "meanRaw": "78834.16131147541",
+        "roundedUsd": "78834.16",
+        "officialComparison": {
+          "status": "disagree",
+          "candidateRounded": "78834.16",
+          "officialRounded": "78833.97",
+          "officialRaw": "78833.97"
+        },
+        "classification": "consistent-with-timestamps"
+      },
+      {
+        "windowKind": "closed-both",
+        "windowNotation": "[close−60s, close]",
+        "justification": "Inclusive endpoints if both boundary ticks are settlement samples; aggregation=all-5hz-mean (not fitted)",
+        "aggregation": "all-5hz-mean",
+        "observationCount": 301,
+        "uniqueSecondBuckets": 61,
+        "missingSecondCount": 0,
+        "duplicateTimeCount": 0,
+        "arithmeticJustified": true,
+        "meanRaw": "78834.03016611295",
+        "roundedUsd": "78834.03",
+        "officialComparison": {
+          "status": "disagree",
+          "candidateRounded": "78834.03",
+          "officialRounded": "78833.97",
+          "officialRaw": "78833.97"
+        },
+        "classification": "consistent-with-timestamps"
+      },
+      {
+        "windowKind": "open-both",
+        "windowNotation": "(close−60s, close)",
+        "justification": "Exclusive endpoints; same duration, different endpoint ticks; aggregation=last-tick-per-second (not fitted)",
+        "aggregation": "last-tick-per-second",
+        "observationCount": 60,
+        "uniqueSecondBuckets": 60,
+        "missingSecondCount": 0,
+        "duplicateTimeCount": 0,
+        "arithmeticJustified": true,
+        "meanRaw": "78834.10083333333",
+        "roundedUsd": "78834.10",
+        "officialComparison": {
+          "status": "disagree",
+          "candidateRounded": "78834.10",
+          "officialRounded": "78833.97",
+          "officialRaw": "78833.97"
+        },
+        "classification": "consistent-with-timestamps"
+      },
+      {
+        "windowKind": "open-both",
+        "windowNotation": "(close−60s, close)",
+        "justification": "Exclusive endpoints; same duration, different endpoint ticks; aggregation=all-5hz-mean (not fitted)",
+        "aggregation": "all-5hz-mean",
+        "observationCount": 299,
+        "uniqueSecondBuckets": 60,
+        "missingSecondCount": 0,
+        "duplicateTimeCount": 0,
+        "arithmeticJustified": true,
+        "meanRaw": "78834.03371237457",
+        "roundedUsd": "78834.03",
+        "officialComparison": {
+          "status": "disagree",
+          "candidateRounded": "78834.03",
+          "officialRounded": "78833.97",
+          "officialRaw": "78833.97"
+        },
+        "classification": "consistent-with-timestamps"
+      }
+    ],
+    "remainingAmbiguities": [
+      "Index observation timestamps are not historical receipt times.",
+      "Official historical sample selection remains unverified.",
+      "A matching average from one hour is exploratory evidence, not the official sampling rule.",
+      "No fixed interpretation agrees with official expiration after USD rounding.",
+      "5Hz raw cadence versus the stated 60-sample convention is not resolved by historical ticks alone."
+    ]
+  },
+  "live": {
+    "planned": {
+      "closeMs": 1790222400000,
+      "plannedStartMs": 1790222310000,
+      "actualStartMs": 1790222327059,
+      "stopMs": 1790222430000,
+      "durationMs": 102941,
+      "lateStart": true,
+      "closeIso": "2026-09-24T04:00:00.000Z",
+      "plannedStartIso": "2026-09-24T03:58:30.000Z",
+      "actualStartIso": "2026-09-24T03:58:47.059Z",
+      "stopIso": "2026-09-24T04:00:30.000Z"
+    },
+    "discoveryStatus": "skipped",
+    "market": null,
+    "capture": null,
+    "analysis": null,
+    "officialComparison": {
+      "status": "not-attempted",
+      "reason": "live-capture-not-run"
+    },
+    "officialSettlementAttempts": 0
+  },
+  "httpBudget": {
+    "campaignId": "kalshi-kxbtc15m-settlement-sample-mapping-v2",
+    "consumed": 0,
+    "limit": 10,
+    "sealed": false,
+    "remaining": 10
+  },
+  "priorCampaignsPreserved": {
+    "v0": {
+      "campaignId": "kalshi-kxbtc15m-brti-access-probe-v0",
+      "sealedAt": "13/10"
+    },
+    "v1": {
+      "campaignId": "kalshi-kxbtc15m-brti-access-probe-v1",
+      "recordedUsageIntact": true
+    }
+  },
+  "limits": {
+    "maxHttp": 10,
+    "maxPostCloseSettlement": 3
+  }
+}

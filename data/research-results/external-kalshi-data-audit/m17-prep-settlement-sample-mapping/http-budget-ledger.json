@@ -1,0 +1,10 @@
+{
+  "campaignId": "kalshi-kxbtc15m-settlement-sample-mapping-v2",
+  "limit": 10,
+  "consumed": 0,
+  "sealed": false,
+  "createdAtUtc": "2026-09-24T03:58:47.005Z",
+  "updatedAtUtc": "2026-09-24T03:58:47.005Z",
+  "note": null,
+  "entries": []
+}

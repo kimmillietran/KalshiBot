@@ -103,6 +103,7 @@
     "research:settlement-friction-coverage": "tsx scripts/research/runSettlementFrictionCoverage.ts",
     "research:settlement-friction-label-backfill": "tsx scripts/research/runSettlementFrictionLabelBackfill.ts",
     "research:kalshi-brti-access-probe": "tsx scripts/research/runKalshiBrtiAccessProbe.ts",
+    "research:kalshi-settlement-sample-mapping": "tsx scripts/research/runKalshiSettlementSampleMapping.ts",
     "research:executable-confirmation-design": "tsx scripts/research/buildExecutableConfirmationDesign.ts",
     "research:parity-near-miss-analysis": "tsx scripts/research/buildParityNearMissAnalysis.ts",
     "research:btc-kalshi-lead-lag-analysis": "tsx scripts/research/buildBtcKalshiLeadLagAnalysis.ts",

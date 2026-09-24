@@ -1,0 +1,10 @@
+{
+  "studyId": "kalshi-kxbtc15m-settlement-sample-mapping-v2",
+  "files": [
+    "settlement-sample-mapping-summary.json",
+    "artifact-catalog.json",
+    "http-budget-ledger.json"
+  ],
+  "rawGitignored": true,
+  "rawDir": "data/research-results/external-kalshi-data-audit/m17-prep-settlement-sample-mapping/raw"
+}
