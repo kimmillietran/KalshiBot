@@ -42,9 +42,13 @@ import {
   type SynchronizedCaptureDeps,
   type SynchronizedCaptureResult,
 } from "@/lib/data/research/kalshiSettlementSampleMapping/runSynchronizedCapture";
-import { selectWindowObservations } from "@/lib/data/research/kalshiSettlementSampleMapping/windowBoundaries";
 
-import { comparePublishedAverage } from "./compareMembershipAverages";
+import {
+  comparePublishedAverageForStream,
+  QUARTER_HOUR_WINDOW_LABEL,
+  TRAILING_WINDOW_LABEL,
+  type StreamMembershipComparison,
+} from "./compareMembershipAverages";
 import { toSynchronizedWindowPlan } from "./freezeOneClose";
 import { sha256Buffer, type RetentionReadiness } from "./retentionReadiness";
 import {
@@ -131,7 +135,13 @@ export type LiveOneCloseResult = {
     officialReopened: boolean;
     officialHashMatched: boolean | null;
   };
-  membershipComparisons: ReturnType<typeof comparePublishedAverage>[];
+  membershipComparisons: StreamMembershipComparison[];
+  streamObservationCounts: {
+    cfb1Hz: number;
+    cfb5Hz: number;
+    cfb1HzWithSourceTs: number;
+    cfb5HzWithSourceTs: number;
+  };
   analysis: ReturnType<typeof analyzeSynchronizedSession> | null;
   officialComparison: ReturnType<typeof compareOfficialSettlementToObservedWindow> | {
     status: string;
@@ -440,39 +450,14 @@ export async function executeLiveOneClose(input: {
     })
     : null;
 
-  // Reproduce from verified 1Hz BRTI samples only (5Hz kept distinct / unused here).
-  const oneHzSamples = (captureResult?.rawBrti ?? []).map((item) => ({
-    timeRaw: item.sourceTsMs,
-    timeMs: item.sourceTsMs,
-    valueRaw: item.valueRaw,
-    value: item.valueRaw != null ? Number(item.valueRaw) : null,
-  })).filter((item) => (
-    item.timeMs != null
-    && item.value != null
-    && Number.isFinite(item.value)
-    && item.valueRaw != null
-    && item.valueRaw !== ""
-  ));
+  // Stream-separated membership: 1Hz only for published-field reproduction.
+  // Never feed combined rawBrti into a comparison labeled as 1Hz.
+  const oneHzCollection = captureResult?.rawBrti1Hz
+    ?? (captureResult?.rawBrti ?? []).filter((row) => row.channelHint === "cfb-1hz");
+  const fiveHzCollection = captureResult?.rawBrti5Hz
+    ?? (captureResult?.rawBrti ?? []).filter((row) => row.channelHint === "cfb-5hz");
 
-  const trailingSamples = selectWindowObservations(
-    oneHzSamples,
-    input.plan.closeMs,
-    "payload-start-inclusive-end-exclusive",
-  );
-  const quarterHourSamples = selectWindowObservations(
-    oneHzSamples,
-    input.plan.closeMs,
-    "documented-live-accumulation",
-  );
-
-  const membershipComparisons: ReturnType<typeof comparePublishedAverage>[] = [];
   const settlementPublished = analysis?.completedSettlementAverage?.valueRaw ?? null;
-  membershipComparisons.push(comparePublishedAverage({
-    fieldName: "last_60s_windowed_average_15min",
-    publishedRaw: settlementPublished,
-    sampleValueRaws: quarterHourSamples.map((s) => s.valueRaw as string),
-    officialRaw: officialExpirationRaw,
-  }));
   const trailingPublished = analysis?.exploratoryTrailingAtClose?.valueRaw
     ?? analysis?.venueAlignments?.find((row) => (
       row.update.fieldName === "avg_60s_data"
@@ -481,17 +466,38 @@ export async function executeLiveOneClose(input: {
       && row.update.windowEndTsExclusive === input.plan.closeMs
     ))?.update.valueRaw
     ?? null;
-  membershipComparisons.push(comparePublishedAverage({
-    fieldName: "avg_60s_data",
-    publishedRaw: trailingPublished,
-    sampleValueRaws: trailingSamples.map((s) => s.valueRaw as string),
-    officialRaw: officialExpirationRaw,
-  }));
+
+  const membershipComparisons = [
+    comparePublishedAverageForStream({
+      fieldName: "last_60s_windowed_average_15min",
+      publishedRaw: settlementPublished,
+      officialRaw: officialExpirationRaw,
+      sourceStream: "cfb-1hz",
+      membership: QUARTER_HOUR_WINDOW_LABEL,
+      closeMs: input.plan.closeMs,
+      streamObservations: oneHzCollection,
+    }),
+    comparePublishedAverageForStream({
+      fieldName: "avg_60s_data",
+      publishedRaw: trailingPublished,
+      officialRaw: officialExpirationRaw,
+      sourceStream: "cfb-1hz",
+      membership: TRAILING_WINDOW_LABEL,
+      closeMs: input.plan.closeMs,
+      streamObservations: oneHzCollection,
+    }),
+  ];
 
   const streamHints: Record<string, number> = {};
   for (const event of captureResult?.events ?? []) {
     streamHints[event.stream] = (streamHints[event.stream] ?? 0) + 1;
   }
+  const streamObservationCounts = {
+    cfb1Hz: oneHzCollection.length,
+    cfb5Hz: fiveHzCollection.length,
+    cfb1HzWithSourceTs: oneHzCollection.filter((row) => row.sourceTsMs != null).length,
+    cfb5HzWithSourceTs: fiveHzCollection.filter((row) => row.sourceTsMs != null).length,
+  };
 
   const officialComparison = officialBody != null && market != null
     ? compareOfficialSettlementToObservedWindow({
@@ -558,8 +564,9 @@ export async function executeLiveOneClose(input: {
     channelSemantics: {
       subscribed: captureResult?.channels ?? [],
       observedStreamHints: streamHints,
-      note: "1Hz carries averages; 5Hz is lean ticks without averages (docs). Counts are observed stream hints from classifyStream.",
+      note: "1Hz carries averages + nested data.time source timestamps; 5Hz is lean ticks with top-level source_ts_ms. Membership comparisons use cfb-1hz only and never mix streams.",
     },
+    streamObservationCounts,
     replay: {
       rawReopened,
       rawHashMatched,

@@ -1,0 +1,113 @@
+{
+  "artifactKind": "one-close-v2-stream-separation-diagnostic",
+  "version": "v1",
+  "campaignId": "kalshi-kxbtc15m-one-close-settlement-fidelity-v2",
+  "closeUtc": "2026-09-24T23:15:00.000Z",
+  "originalArtifactsPreserved": true,
+  "originalRawPath": "/Users/builder/Documents/KalshiResearchArchive/one-close-settlement-fidelity/kalshi-kxbtc15m-one-close-settlement-fidelity-v2/2026-09-24T23-15-00-000Z/raw/synchronized-capture.jsonl",
+  "originalRawSha256": "9fbe05369924b0e496a75ba1ca2f7a2fbd9a25856aaf8dfeb8cce263a95626c4",
+  "rootCause": {
+    "summary": "1Hz wire embeds source time in nested msg.data.time; summarizeLiveMessage previously only read msg.source_ts_ms (5Hz). All 89 stored 1Hz rawBrti rows had sourceTsMs=null. membershipComparisons then mapped ALL rawBrti without channelHint filter, so 300 5Hz source-timestamped ticks entered windows labeled as 1Hz reproduction.",
+    "notReceiptLatencyMatching": true,
+    "notWindowBoundaryBugPrimary": true,
+    "parserGap": "missing nested data.time \u2192 sourceTsMs",
+    "mixedStreamBug": "combined rawBrti used for membershipComparisons"
+  },
+  "reparseWithFixedSummarizer": {
+    "cfb1HzCount": 89,
+    "cfb5HzCount": 447,
+    "cfb1HzWithSourceTs": 89,
+    "cfb5HzWithSourceTs": 447,
+    "note": "Reparsed from retained raw JSONL; original disposition captureResult.rawBrti left unchanged."
+  },
+  "originalBuggyMembershipSampleCounts": [
+    {
+      "field": "last_60s_windowed_average_15min",
+      "sampleCount": 300
+    },
+    {
+      "field": "avg_60s_data",
+      "sampleCount": 300
+    }
+  ],
+  "corrected1HzMembershipComparisons": [
+    {
+      "fieldName": "last_60s_windowed_average_15min",
+      "publishedRaw": "84278.80883333",
+      "recomputedFromSamplesRaw": "84278.80883333",
+      "rawStringEqual": true,
+      "numericEqual": false,
+      "unroundedDiff": 3.346940502524376e-09,
+      "diagnosticRound2HalfEvenEqual": true,
+      "sampleCount": 60,
+      "limitation": null,
+      "vsOfficial": {
+        "unroundedDiff": -0.03116666999994777,
+        "rawStringEqual": false,
+        "diagnosticRound2HalfEvenEqual": false
+      },
+      "sourceStream": "cfb-1hz",
+      "membership": "(close\u221260s, close]",
+      "timestampDomain": "source",
+      "expectedSampleCount": 60,
+      "verifiedSourceTimestampedInStream": 89,
+      "verifiedSourceTimestampedInWindow": 60,
+      "missingSourceTimestampInStream": 0,
+      "receiptTimestampRangeMs": {
+        "min": 1790291626053,
+        "max": 1790291714040
+      },
+      "sourceTimestampRangeMs": {
+        "min": 1790291626000,
+        "max": 1790291714000
+      },
+      "status": "compared",
+      "unavailableReason": null
+    },
+    {
+      "fieldName": "avg_60s_data",
+      "publishedRaw": "84278.84333333",
+      "recomputedFromSamplesRaw": "84278.84333333",
+      "rawStringEqual": true,
+      "numericEqual": false,
+      "unroundedDiff": 3.3178366720676422e-09,
+      "diagnosticRound2HalfEvenEqual": true,
+      "sampleCount": 60,
+      "limitation": null,
+      "vsOfficial": {
+        "unroundedDiff": 0.003333330008899793,
+        "rawStringEqual": false,
+        "diagnosticRound2HalfEvenEqual": true
+      },
+      "sourceStream": "cfb-1hz",
+      "membership": "[close\u221260s, close)",
+      "timestampDomain": "source",
+      "expectedSampleCount": 60,
+      "verifiedSourceTimestampedInStream": 89,
+      "verifiedSourceTimestampedInWindow": 60,
+      "missingSourceTimestampInStream": 0,
+      "receiptTimestampRangeMs": {
+        "min": 1790291626053,
+        "max": 1790291714040
+      },
+      "sourceTimestampRangeMs": {
+        "min": 1790291626000,
+        "max": 1790291714000
+      },
+      "status": "compared",
+      "unavailableReason": null
+    }
+  ],
+  "vsOfficialPublishedOnly": {
+    "officialExpirationRaw": "84278.84",
+    "settlementPublishedRaw": "84278.80883333",
+    "trailingPublishedRaw": "84278.84333333",
+    "avg60sVsOfficialUnrounded": 0.003333330008899793,
+    "avg60sDiagnosticRound2HalfEvenEqual": true,
+    "settlementVsOfficialUnrounded": -0.03116666999994777,
+    "settlementDiagnosticRound2HalfEvenEqual": false,
+    "empiricalCandidate": "avg_60s_data",
+    "caveat": "After reparsing retained raw with nested 1Hz source timestamps, both published fields have status=compared with 60 verified cfb-1hz source-timestamped samples in the predeclared membership windows (rawStringEqual true). avg_60s_data remains a strong empirical candidate vs official expiration under diagnostic half-even 2dp on this close; not vendor-confirmed; does not prove Kalshi rounding or that every future close will yield 60 verified 1Hz ticks."
+  },
+  "generatedAtUtc": "2026-09-24T23:32:49.240Z"
+}

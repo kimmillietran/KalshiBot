@@ -41,5 +41,6 @@ export {
 } from "./captureLimits";
 export { bindLiveMarketToPlannedClose, officialSettlementMatchesBoundMarket } from "./bindLiveMarket";
 export { runSynchronizedCapture } from "./runSynchronizedCapture";
+export type { CapturedBrtiObservation, SynchronizedCaptureResult } from "./runSynchronizedCapture";
 export { analyzeSynchronizedSession } from "./analyzeSynchronizedSession";
 export { runSettlementSampleMapping, createFilesystemMappingIo } from "./runSettlementSampleMapping";

@@ -14,7 +14,13 @@ import {
   type CampaignBudgetIo,
 } from "@/lib/data/research/kalshiBrtiAccessProbe/campaignBudget";
 
-import { comparePublishedAverage, roundHalfEven2 } from "./compareMembershipAverages";
+import {
+  comparePublishedAverage,
+  comparePublishedAverageForStream,
+  QUARTER_HOUR_WINDOW_LABEL,
+  TRAILING_WINDOW_LABEL,
+  roundHalfEven2,
+} from "./compareMembershipAverages";
 import { classifyConnectedCaptureStatus } from "./executeLiveOneClose";
 import { classifyMissedSlot, freezeOneClosePlan } from "./freezeOneClose";
 import { runOneCloseSettlementFidelity } from "./runOneCloseSettlementFidelity";
@@ -432,6 +438,111 @@ describe("capture status classification", () => {
       stopReason: null,
       closedCleanly: true,
     }).capture).toBe("ok");
+  });
+});
+
+describe("stream-separated membership comparisons", () => {
+  const closeMs = Date.parse("2026-09-24T23:15:00Z");
+
+  function tick(input: {
+    sourceTsMs: number | null;
+    valueRaw: string;
+    channelHint: "cfb-1hz" | "cfb-5hz";
+    receivedAtMs?: number;
+  }) {
+    return {
+      sourceTsMs: input.sourceTsMs,
+      valueRaw: input.valueRaw,
+      localReceivedAtMs: input.receivedAtMs ?? (input.sourceTsMs ?? 0) + 10,
+      localReceivedAtMonoMs: 0,
+      channelHint: input.channelHint,
+    };
+  }
+
+  it("keeps 1Hz and 5Hz collections distinct and rejects mixed-stream input", () => {
+    const oneHz = [
+      tick({ sourceTsMs: closeMs - 1_000, valueRaw: "100.00", channelHint: "cfb-1hz" }),
+    ];
+    const fiveHz = [
+      tick({ sourceTsMs: closeMs - 1_000, valueRaw: "200.00", channelHint: "cfb-5hz" }),
+    ];
+    expect(oneHz.every((row) => row.channelHint === "cfb-1hz")).toBe(true);
+    expect(fiveHz.every((row) => row.channelHint === "cfb-5hz")).toBe(true);
+    expect(() => comparePublishedAverageForStream({
+      fieldName: "avg_60s_data",
+      publishedRaw: "100.00",
+      sourceStream: "cfb-1hz",
+      membership: TRAILING_WINDOW_LABEL,
+      closeMs,
+      streamObservations: [...oneHz, ...fiveHz],
+    })).toThrow(/stream-contamination/);
+  });
+
+  it("marks comparison unavailable when verified 1Hz source-ts samples are insufficient", () => {
+    const sparse = Array.from({ length: 2 }, (_, index) => tick({
+      sourceTsMs: closeMs - 60_000 + (index + 1) * 1_000,
+      valueRaw: "84278.00",
+      channelHint: "cfb-1hz",
+    }));
+    const result = comparePublishedAverageForStream({
+      fieldName: "avg_60s_data",
+      publishedRaw: "84278.84333333",
+      officialRaw: "84278.84",
+      sourceStream: "cfb-1hz",
+      membership: TRAILING_WINDOW_LABEL,
+      closeMs,
+      streamObservations: sparse,
+    });
+    expect(result.status).toBe("unavailable");
+    expect(result.sourceStream).toBe("cfb-1hz");
+    expect(result.timestampDomain).toBe("source");
+    expect(result.sampleCount).toBe(2);
+    expect(result.recomputedFromSamplesRaw).toBeNull();
+    expect(result.unavailableReason).toMatch(/need-60/);
+    expect(result.vsOfficial?.diagnosticRound2HalfEvenEqual).toBe(true);
+  });
+
+  it("does not substitute receipt timestamps for missing source timestamps", () => {
+    const receiptOnly = Array.from({ length: 60 }, (_, index) => tick({
+      sourceTsMs: null,
+      valueRaw: "84278.00",
+      channelHint: "cfb-1hz",
+      receivedAtMs: closeMs - 60_000 + (index + 1) * 1_000,
+    }));
+    const result = comparePublishedAverageForStream({
+      fieldName: "last_60s_windowed_average_15min",
+      publishedRaw: "84278.80883333",
+      sourceStream: "cfb-1hz",
+      membership: QUARTER_HOUR_WINDOW_LABEL,
+      closeMs,
+      streamObservations: receiptOnly,
+    });
+    expect(result.status).toBe("unavailable");
+    expect(result.missingSourceTimestampInStream).toBe(60);
+    expect(result.verifiedSourceTimestampedInWindow).toBe(0);
+  });
+
+  it("compares when exactly 60 verified 1Hz source-ts samples fill the membership window", () => {
+    const samples = Array.from({ length: 60 }, (_, index) => tick({
+      // trailing [close−60s, close): seconds close-60 ... close-1
+      sourceTsMs: closeMs - 60_000 + index * 1_000,
+      valueRaw: "84278.84",
+      channelHint: "cfb-1hz",
+    }));
+    const result = comparePublishedAverageForStream({
+      fieldName: "avg_60s_data",
+      publishedRaw: "84278.84000000",
+      officialRaw: "84278.84",
+      sourceStream: "cfb-1hz",
+      membership: TRAILING_WINDOW_LABEL,
+      closeMs,
+      streamObservations: samples,
+    });
+    expect(result.status).toBe("compared");
+    expect(result.sampleCount).toBe(60);
+    expect(result.sourceStream).toBe("cfb-1hz");
+    expect(result.rawStringEqual).toBe(true);
+    expect(Math.abs(result.unroundedDiff ?? 1)).toBeLessThan(1e-8);
   });
 });
 
