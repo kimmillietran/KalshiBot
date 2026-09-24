@@ -10,7 +10,7 @@
     "summary": "1Hz wire embeds source time in nested msg.data.time; summarizeLiveMessage previously only read msg.source_ts_ms (5Hz). All 89 stored 1Hz rawBrti rows had sourceTsMs=null. membershipComparisons then mapped ALL rawBrti without channelHint filter, so 300 5Hz source-timestamped ticks entered windows labeled as 1Hz reproduction.",
     "notReceiptLatencyMatching": true,
     "notWindowBoundaryBugPrimary": true,
-    "parserGap": "missing nested data.time → sourceTsMs",
+    "parserGap": "missing nested data.time \u2192 sourceTsMs",
     "mixedStreamBug": "combined rawBrti used for membershipComparisons"
   },
   "reparseWithFixedSummarizer": {
@@ -37,7 +37,7 @@
       "recomputedFromSamplesRaw": "84278.80883333",
       "rawStringEqual": true,
       "numericEqual": false,
-      "unroundedDiff": 3.346940502524376e-9,
+      "unroundedDiff": 3.346940502524376e-09,
       "diagnosticRound2HalfEvenEqual": true,
       "sampleCount": 60,
       "limitation": null,
@@ -47,7 +47,7 @@
         "diagnosticRound2HalfEvenEqual": false
       },
       "sourceStream": "cfb-1hz",
-      "membership": "(close−60s, close]",
+      "membership": "(close\u221260s, close]",
       "timestampDomain": "source",
       "expectedSampleCount": 60,
       "verifiedSourceTimestampedInStream": 89,
@@ -70,7 +70,7 @@
       "recomputedFromSamplesRaw": "84278.84333333",
       "rawStringEqual": true,
       "numericEqual": false,
-      "unroundedDiff": 3.3178366720676422e-9,
+      "unroundedDiff": 3.3178366720676422e-09,
       "diagnosticRound2HalfEvenEqual": true,
       "sampleCount": 60,
       "limitation": null,
@@ -80,7 +80,7 @@
         "diagnosticRound2HalfEvenEqual": true
       },
       "sourceStream": "cfb-1hz",
-      "membership": "[close−60s, close)",
+      "membership": "[close\u221260s, close)",
       "timestampDomain": "source",
       "expectedSampleCount": 60,
       "verifiedSourceTimestampedInStream": 89,
@@ -107,7 +107,7 @@
     "settlementVsOfficialUnrounded": -0.03116666999994777,
     "settlementDiagnosticRound2HalfEvenEqual": false,
     "empiricalCandidate": "avg_60s_data",
-    "caveat": "Strong empirical candidate only; not vendor-confirmed; insufficient verified 1Hz samples in window for sample-mean reproduction on this close after correct stream separation."
+    "caveat": "After reparsing retained raw with nested 1Hz source timestamps, both published fields have status=compared with 60 verified cfb-1hz source-timestamped samples in the predeclared membership windows (rawStringEqual true). avg_60s_data remains a strong empirical candidate vs official expiration under diagnostic half-even 2dp on this close; not vendor-confirmed; does not prove Kalshi rounding or that every future close will yield 60 verified 1Hz ticks."
   },
   "generatedAtUtc": "2026-09-24T23:32:49.240Z"
 }
