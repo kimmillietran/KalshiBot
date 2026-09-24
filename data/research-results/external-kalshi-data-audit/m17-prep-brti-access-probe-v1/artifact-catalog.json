@@ -15,7 +15,7 @@
     {
       "path": "data/research-results/external-kalshi-data-audit/m17-prep-brti-access-probe-v1/http-budget-ledger.json",
       "kind": "v1-persistent-campaign-ledger",
-      "note": "Authority for campaign request accounting. Last sealed observation in the original snapshot was 2/10; verify live file before any network use."
+      "note": "Authority for campaign request accounting. Original snapshot was 2/10. This task added one HOUR refetch (3/10). Do not reset or raise the limit."
     }
   ],
   "supplements": [

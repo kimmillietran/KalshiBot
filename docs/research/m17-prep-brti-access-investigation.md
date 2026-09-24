@@ -18,7 +18,7 @@ Prior v0 artifacts are preserved.
 | Campaign | Limit | Consumed | Status |
 | --- | --- | --- | --- |
 | `kalshi-kxbtc15m-brti-access-probe-v0` | 10 | **13** | Sealed. Overrun preserved. No further v0 requests. |
-| `kalshi-kxbtc15m-brti-access-probe-v1` | 10 | **2** | History HOUR 200 + one official-metadata 200 |
+| `kalshi-kxbtc15m-brti-access-probe-v1` | 10 | **3** | Original 2 (HOUR + official metadata) plus one authorized HOUR refetch |
 
 Budget repair: reservations persist to `http-budget-ledger.json` before dispatch;
 retries and failures consume slots; a restart cannot reset the campaign; missing,
@@ -100,26 +100,35 @@ selected before inspecting historical observations.
 
 | When | Request | Result |
 | --- | --- | --- |
-| 2026-09-24T02:51:11Z | `GET /cfbenchmarks/history/values?id=BRTI&timespan=HOUR&timestamp=2026-08-30T18:00:00.000Z` | **200 success** |
+| 2026-09-24T02:51:11Z | `GET /cfbenchmarks/history/values?id=BRTI&timespan=HOUR&timestamp=2026-08-30T18:00:00.000Z` | **200 success** (original body not retained) |
 | 2026-09-24T02:58:50Z–03:00:20Z | WS `cfbenchmarks_value` only (no 5Hz) | connected, 1 connection, 1 subscribe, **90 messages** |
 | 2026-09-24T03:00:20Z | `GET /markets?event_ticker=KXBTC15M-26SEP232300` | **200 success** |
+| 2026-09-24T03:26:51Z | identical authorized HOUR GET (refetch; original body absent) | **200 success**, 18000 ticks after parser fix |
 
 No DAY request, no second date, no pagination, no M16-P collector.
 
 ## 5. Access results
 
-| Question | v0 | v1 |
-| --- | --- | --- |
-| Credentials | Yes (`raw-env`) | Yes |
-| Latest REST BRTI | 200 | not re-requested |
-| Live BRTI | connected; missed settlement minute | connected; **captured settlement minute** |
-| Historical BRTI on a SPENT date | MINUTE 400; unproven | HOUR **200**, but **0 extracted observations** |
-| Official-window reconstruction | not performed | still **unverified** |
-| Causal suitability | false | false |
+| Question | v0 | original v1 snapshot | v1.1 supplement |
+| --- | --- | --- | --- |
+| Credentials | Yes (`raw-env`) | Yes | Yes |
+| Latest REST BRTI | 200 | not re-requested | not re-requested |
+| Live BRTI | connected; missed settlement minute | connected; **captured settlement minute** | not re-run |
+| Historical BRTI on a SPENT date | MINUTE 400; unproven | HOUR **200**, **0 extracted** (parser miss) | HOUR **200**, **18000 parsed in-hour 5Hz ticks** |
+| Official-window reconstruction | not performed | unverified | still **unverified** (300 window ticks / 61 second buckets ≠ official 60 samples) |
+| Causal suitability | false | false | false |
 
-Error taxonomy: v1 history 200 is **not** entitlement denial and **not** a MINUTE-style
-parameter error. Zero extracted observations means empty data **or** unrecognized
-payload keys. Coverage is only what was actually observed: **none**.
+The original HOUR body was **not** recovered. The original snapshot’s
+0-extracted result is consistent with a parser bug: `data.payload` is an array
+of `{time, value}` ticks, and `isRecord` previously treated that array as a
+keyed object. The refetch body hash
+`c6c6613033990431b917c298242776b0e3546dffd4d3198df0044593c9ef016b` is a new
+observation of the same authorized request and is not the original hash
+`d85787f052bdb6bb09b14370e4ed008b4f2f8196e53b1b198f149187b8c9a66a`.
+
+Returned ticks are raw 200ms index values for
+`2026-08-30T18:00:00Z`–`19:00:00Z` only. They are not venue window averages
+and not official settlement samples.
 
 ## 6. Live settlement-average and official comparison
 
@@ -158,26 +167,32 @@ Known PR #114 follow-ups remain open.
 
 Keep distinct:
 
-1. historical observation time (not obtained; HOUR 200 returned no extracted ticks)
+1. historical observation time (now obtained for one hour as event timestamps, not provider publication/receipt time)
 2. provider `received_at` / window timestamps (live venue average only)
 3. local receipt time (first live local receipt 2026-09-24T02:58:50.243Z)
 
-A new live timing sample cannot recover historical latency. Even a later
-successful history pull would support retrospective mechanical reconstruction
-at best, not a causally faithful execution backtest.
+A new live timing sample cannot recover historical latency. These HOUR ticks
+support retrospective mechanical inspection of one hour only, not a causally
+faithful execution backtest.
 
 Reservoir classifications were not changed.
 
 ## 9. Exact next prerequisite
 
-Resolve the **HOUR 200 payload classification** (valid empty history vs
-unrecognized schema vs provider/access limitation) before any broader
-historical download. Success on this one hour would still not prove coverage
-across the 34 SPENT days.
+The HOUR 200 / zero-extracted blocker is resolved as a **parser/schema issue**
+plus **demonstrated historical observations for this one hour**.
 
-Live `last_60s_windowed_average_15min` can support **prospective synchronized
-collection** of venue settlement averages. It does not make historical
-settlement-state research ready.
+Do **not** download the other 33 SPENT days from this result. Historical ticks
+lack contemporaneous availability/receipt timestamps, so they do not establish
+a causally faithful execution backtest. 300 ticks in `(close−60s, close]` do
+not identify the official 60 samples.
+
+Evidence-based next step: **prospective synchronized collection** of venue
+`last_60s_windowed_average_15min` with official expiration. That is the only
+observed path that already matched official settlement (one live close). A
+separately authorized one-hour mechanical inspection of these raw ticks is
+possible but would not recover official sample selection or historical
+latency.
 
 ## 10. Reliability corrections (do not rewrite original snapshots)
 
@@ -202,6 +217,9 @@ Corrections in code and in
 - Original HOUR response body was **not** present locally (v1 `raw/` had
   only `http-log.hash-only.json`). Restricted local retention now writes
   gitignored `raw/responses/*.json` without authorization headers.
+- One authorized HOUR refetch (v1 ledger 2→3/10) returned 18000 millisecond
+  `{time,value}` ticks in `data.payload`. The parser now treats that array as
+  observations instead of an unkeyed record.
 
 ## 11. Merge requirement
 

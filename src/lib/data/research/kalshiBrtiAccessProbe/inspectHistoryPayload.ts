@@ -6,7 +6,7 @@ import type {
 } from "./types";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function readTimeMs(value: unknown): { raw: string | number | null; timeMs: number | null } {

@@ -281,6 +281,30 @@ describe("history payload classification", () => {
       closeTimeMs: closeMs,
     }).kind).toBe("observations-unrecognized");
   });
+
+  it("parses the observed CFB data.payload array of millisecond ticks", () => {
+    const closeMs = Date.parse("2026-08-30T18:15:00.000Z");
+    const hourStartMs = Date.parse("2026-08-30T18:00:00.000Z");
+    const hourEndMs = Date.parse("2026-08-30T19:00:00.000Z");
+    const values = [
+      { time: hourStartMs, value: "100.00" },
+      { time: hourStartMs + 200, value: "100.20" },
+      { time: closeMs - 200, value: "101.00" },
+      { time: closeMs, value: "101.20" },
+    ];
+    const inspection = inspectHistoryPayload({
+      body: { data: { serverTime: "2026-09-24T03:26:51.509Z", payload: values } },
+      hourStartMs,
+      hourEndExclusiveMs: hourEndMs,
+      closeTimeMs: closeMs,
+    });
+    expect(inspection.kind).toBe("observations-present");
+    expect(inspection.recognizedContainers).toContain("data.payload");
+    expect(inspection.parsedObservationCount).toBe(4);
+    expect(inspection.inHourCount).toBe(4);
+    expect(inspection.settlementMinuteCount).toBe(2);
+    expect(inspection.arrayLengths["data.payload"]).toBe(4);
+  });
 });
 
 describe("follow-up summary, CLI, budget, and retention", () => {
