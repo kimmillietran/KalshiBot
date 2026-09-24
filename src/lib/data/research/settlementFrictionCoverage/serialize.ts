@@ -197,7 +197,6 @@ function renderReportMarkdown(
     "(result / expiration_value / floor_strike / close_time / settlement_ts) without",
     "API purchase/download in this study — or authorize a separate governed label",
     "backfill milestone. Settlement-**state** (BRTI path) remains blocked independently.",
-    "",
   );
   return `${lines.join("\n")}\n`;
 }

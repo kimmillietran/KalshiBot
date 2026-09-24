@@ -318,6 +318,8 @@ describe("end-to-end hermetic study", () => {
     expect(arts1.manifestContentSha256).toBe(arts2.manifestContentSha256);
     expect(arts1.samplesJsonl).toBe(arts2.samplesJsonl);
     expect(arts1.reportMarkdown).toContain("Settlement friction");
+    expect(arts1.reportMarkdown.endsWith("\n")).toBe(true);
+    expect(arts1.reportMarkdown.endsWith("\n\n")).toBe(false);
   });
 
   it("rejects ineligible days in quote stream", () => {
