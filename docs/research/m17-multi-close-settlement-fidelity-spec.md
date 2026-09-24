@@ -5,56 +5,78 @@
 > This document specifies a **bounded data-semantics / settlement-fidelity study**.
 > It does **not** authorize collection, live capture, trading, P&L analysis,
 > probability-model freeze, threshold selection, sample-size targets for economic
-> tests, sealed-outcome opens, or reservoir reclassification. Opening or merging
-> this documentation PR does **not** start the study.
+> tests, sealed-outcome opens, or reservoir reclassification.
+>
+> **Merging this document into `main` records a draft proposal only.** It does
+> **not** authorize execution. A separate explicit authorization is required
+> before any live run. Do not interpret merge as a green light to collect.
 
-**Spec id:** `kalshi-kxbtc15m-multi-close-settlement-fidelity-spec-v0`
+**Spec id:** `kalshi-kxbtc15m-multi-close-settlement-fidelity-spec-v1`
 **Branch:** `feature/m17-multi-close-settlement-fidelity-spec`
-**Base:** `origin/main` after PR #117 (`80c282289842b7a3895d39ffbfbef99e4defba66`)
-**Depends on:** merged PR #116 tip `e38030a` / merge `55c7cbe`; design draft PR #117
+**Versions cited (exact):**
+
+| Artifact | Version / SHA |
+| --- | --- |
+| PR #116 tip / merge | `e38030ad90233d17fd47e27c615a7e20d41eedb3` / `55c7cbe02e0565cbdeeeec719ce99cf0a03c742d` |
+| PR #117 tip / merge | `f0f10e0c3736dd0f2ab90736a9732bad870108f5` / `80c282289842b7a3895d39ffbfbef99e4defba66` |
+| PR #118 tip / merge (semantics memo) | `8a423b271d8170ff67f73cb45a8958cf25a6a6e8` / `90cd71c3ac2ed6a1b7e6d2435188ef8ad80f7458` |
+| Semantics memo path | `docs/research/m17-prep-brti-settlement-average-discrepancy-semantics.md` |
+
+Unmerged material is provisional and is not authority for this study.
 
 ---
 
 ## 1. Objective
 
-Determine whether the **same-window dual-field discrepancy** observed in PR #116
-repeats across a small fixed set of closes, and which claims the observed
-messages support about **completed** and **intermediate** settlement state.
+Determine whether the **dual-field discrepancy** observed in PR #116 repeats
+across a small fixed set of closes, and which claims the observed messages
+support about **completed** and **intermediate** settlement state.
 
-This is a **data-semantics study**, not a profitability experiment.
+This is a **data-semantics study**, not a profitability or strategy experiment.
 
 ### 1.1 Claims to keep separate
 
 | Claim family | Question | Not the same as |
 | --- | --- | --- |
-| **A. Official expiration agreement** | After rounding rules frozen for this study, does a completed field value match `expiration_value`? | Proof of intermediate banked samples |
-| **B. Field / window consistency** | For the same declared window, do `last_60s_windowed_average_15min` and `avg_60s_data` agree with each other? | Which field (if either) is official |
+| **A. Official expiration agreement** | Under this study’s frozen diagnostic rounding, does a completed field value match `expiration_value`? | Proof of intermediate banked samples; proof of Kalshi’s rounding rule |
+| **B. Field consistency under documented membership** | Do the two fields agree numerically when both report count 60 for the target close, **given** that documented sample memberships differ (§3.1)? | Identical payload `[start,end)` labels ⇒ identical samples |
 | **C. Official one-second sample mapping** | Do messages establish that intermediate running counts are the official 60×1s banked samples (or a proven 1:1 transform)? | Completed-value agreement alone |
-| **D. Pre-close usability** | Was a usable completed (or intermediate) value **received locally before close**? | Post-close fidelity diagnostics |
+| **D. Pre-close usability** | Was usable **intermediate** information received locally **before** close? Separately: when was the **first completed** (count-60) value received? | Treating a post-close completed value as pre-close knowledge |
 
-A completed field **first received after close** may be useful for fidelity
-diagnostics (A/B) but **cannot** be used for a pre-close trading decision (D).
+A post-close completed value does **not** invalidate an earlier intermediate
+observation’s availability for claim D, but it **cannot** serve as pre-close
+knowledge. Neither observation proves claim C.
 
 ---
 
-## 2. Background from merged #116 (cited, not re-proven here)
+## 2. Background (cited)
 
-1. One synchronized message carried two different averages for the **same
-   declared window**:
-   - settlement field `last_60s_windowed_average_15min` = `83817.61766667`
-   - trailing field `avg_60s_data` = `83817.70733333`
-   - recorded official expiration = `83817.71`
-2. Offline replay reported **no parser swap**. The trailing near-match remains
-   **exploratory**; do **not** select `avg_60s_data` because it matched one
-   expiration.
-3. Original synchronized raw capture
-   (`SHA-256 938cdde6…`, 6,111,585 bytes / 15,716 lines) is **unavailable in
-   the Project Lead environment**; independent replay is not possible there.
-   Durable off-VM retention was **not established**. Official HTTP response body
-   for that session was **never retained**.
-4. Code corrections (count-60 + target window; first-by-mono-receipt; explicit
-   growing vs unrelated windows; receipt-ordered quote alignment; computed
-   leakage) are merged; hermetic fixtures are synthetic, not original bytes.
+### 2.1 PR #116 (diagnostic)
+
+1. One synchronized message carried two different averages with the **same
+   declared payload window** `[close−60s, close)`:
+   - `last_60s_windowed_average_15min` = `83817.61766667`
+   - `avg_60s_data` = `83817.70733333`
+   - recorded official `expiration_value` = `83817.71`
+2. Offline replay reported **no parser swap**. Do **not** select either field
+   as official because of one-expiration numerical agreement.
+3. Raw synchronized capture unavailable in later environments (v4); durable
+   off-host retention was not established; official HTTP body was never retained.
+4. Selection/ordering/leakage corrections are merged; hermetic fixtures are
+   synthetic.
+
+### 2.2 PR #118 (documented field semantics)
+
+From the merged semantics memo (not a vendor confirmation of settlement binding):
+
+| Field | Documented window / membership (WS docs) |
+| --- | --- |
+| `avg_60s_data` | Trailing per tick: `[source_ts−60s, source_ts)`; **`window_size` counts prior ticks only** (excludes the current/closing tick of that update) |
+| `last_60s_windowed_average_15min` | Quarter-hour accumulation: `(close−60s, close]`; **start tick excluded; closing tick included**; count `:01→1` … close→`60` |
+
+**Identical payload boundary labels do not establish identical sample
+membership.** Claim B must report numeric agreement **and** preserve this
+documented membership distinction.
 
 ---
 
@@ -62,129 +84,192 @@ diagnostics (A/B) but **cannot** be used for a pre-close trading decision (D).
 
 ### 3.1 Fields (preserve identities)
 
-Track **both**, never collapse or rename:
+Track **both**, never collapse, rename, or prefer the one that matches official:
 
 1. `last_60s_windowed_average_15min`
-2. `avg_60s_data` **only when** its declared window exactly matches the target
-   settlement minute `[close−60s, close)` (same binding as #116
-   `selectCompletedWindowAverage`).
+2. `avg_60s_data` when its declared payload window equals the target settlement
+   minute schema pair used by #116 selection: `[close−60s, close)` **as labeled
+   in the payload**, while still recording that documented membership differs
+   from the quarter-hour field (§2.2).
 
 Do **not** search offsets, phases, weights, alternate windows, or other field
 names to force agreement with `expiration_value`.
 
 ### 3.2 Completed-update selection (frozen)
 
-Reuse merged #116 rules:
+Reuse merged #116 rules per field:
 
-- Completed requires **count = 60** and declared window exactly the target
-  settlement minute.
+- Completed requires **count = 60** and declared payload window exactly the
+  target settlement-minute label pair above.
 - Incomplete updates are **not** presented as completed.
 - Among repeated completed updates for that window: **first by monotonic
-  receipt** (then wall receipt as documented tie-break).
+  receipt**, then wall receipt as tie-break.
 - Record later repeats; do not silently overwrite chronology.
 
-### 3.3 Numeric comparison (freeze before collection)
+### 3.3 Numeric comparison (frozen diagnostic convention)
 
-Predeclare and record in the run config (do not tune on outcomes):
+Official Kalshi rounding for `expiration_value` remains **undocumented** in the
+reviewed #118 sources. This study therefore uses an explicit **diagnostic**
+convention — **not** Kalshi’s proven rule:
 
-- Decimal comparison of completed field value vs official `expiration_value`
-  after an explicit rounding rule (e.g. round half-even to 2 decimals — **must
-  be written into the campaign config before the first close**).
-- Exact string equality of raw decimal strings as a secondary diagnostic only.
-- Dual-field consistency: exact raw equality and rounded equality, reported
-  separately.
+| Rule | Definition |
+| --- | --- |
+| Parse | Interpret field/`expiration_value` strings as decimal rationals (reject non-finite) |
+| Diagnostic round | Round half to even (**IEEE 754 roundTiesToEven**) to **2** decimal places |
+| Primary match | Diagnostic-rounded field == diagnostic-rounded official |
+| Also report | Unrounded numeric difference (field − official) to full parsed precision; raw **string** equality (`===` on retained strings); numeric equality of parsed values before rounding |
 
-### 3.4 Timestamp interpretation (freeze before collection)
+Dual-field consistency reports the same four comparisons between the two
+fields. Do not retune the rounding rule after seeing outcomes.
 
-- Local wall receipt and monotonic receipt are primary for causal/availability
-  questions.
+### 3.4 Timestamp interpretation (frozen)
+
+- Local wall receipt and monotonic receipt are primary for availability (D).
 - Provider / venue timestamps are retained but **distinct**.
-- Quote alignment and leakage checks follow receipt ordering, including
-  timestamp ties, per merged #116.
+- Ordering for selection and repeats follows receipt order, including ties,
+  per merged #116.
 
-### 3.5 Intermediate-sample claim discipline
+### 3.5 Streams
 
-A finite collection of matching completed averages does **not** by itself prove
-that every intermediate running count represents official banked samples.
-Claim C requires either:
+| Stream | Requirement | Rationale |
+| --- | --- | --- |
+| `cfbenchmarks_value` (1Hz) | **Required** | Carries both average fields under study |
+| `cfbenchmarks_value_5hz` | **Optional** | Averages live on 1Hz only (#118); useful for cadence/diagnostics, not required for A–D as defined |
+| Order book | **Omitted** | Not needed for A–C; claim D here is about settlement-field availability, not executable quotes |
+| Official Kalshi HTTP settlement metadata | **Required** after close | `expiration_value` + market identity |
 
-- authoritative venue/CFB documentation of the banking rule, or
-- a predeclared transform validated against retained official sample identities
-  (not invented post hoc).
+### 3.6 Intermediate-sample claim discipline
+
+Matching completed averages do **not** prove intermediate running counts are
+official banked samples. Claim C needs authoritative documentation or a
+predeclared transform validated against official sample identities.
 
 ---
 
 ## 4. Bounded protocol (proposal only — not authorized)
 
-### 4.1 Close selection
+### 4.1 Immutable eight-slot plan
 
-- **N = 8** KXBTC15M closes (operational bound, **not** a statistical validation
-  sample size).
-- **Deterministic calendar rule:** the next 8 distinct `:00/:15/:30/:45` UTC
-  closes strictly after campaign `startAfterUtc`, skipping any close whose
-  planned sync window would overlap an already-recorded attempt for this
-  campaign id. No substitution based on market outcomes, volatility, or prior
-  agree/disagree results.
-- **No extension** because results disagree or fields are missing. Failed or
-  missing closes are recorded and count toward the 8 slots (see §4.4).
+Before any capture attempt, freeze an **immutable plan** of exactly **eight**
+slot records. Resume **must** reload this plan; slot close times **cannot** be
+replaced, shifted, or extended because a slot failed or disagreed.
 
-**Justification of scope (operational, not statistical):** eight closes is
-enough to see whether the #116 dual-field pattern **repeats or not** under
-fixed rules, while keeping HTTP/WS and operator burden small. It does **not**
-authorize inferring population rates, edge, or readiness for M17 economics.
+**Deterministic close list:**
 
-### 4.2 Exact budget ceilings (persistent across resumes)
+1. Operator supplies `planFrozenAtUtc` and `firstEligibleCloseAfterUtc`.
+2. Require **lead time:** `firstEligibleCloseAfterUtc ≥ planFrozenAtUtc + 120s`
+   so the first slot’s connect offset (§4.2) is reachable.
+3. Let `C0` = the earliest KXBTC15M quarter-hour close
+   (`:00/:15/:30/:45` UTC) with `close > firstEligibleCloseAfterUtc`.
+4. Slots `i = 0..7` have `closeUtc = C0 + i × 15 minutes` (contiguous quarter
+   hours). No skipping for overlap with other campaigns; this campaign owns
+   these eight wall-clock closes once frozen.
+5. Persist `{slotIndex, closeUtc, marketTicker: null, eventTicker: null,
+   indexSymbol: "BRTI", status skeleton}` to the campaign plan file.
+6. **Missed / failed slots consume their place** and are never replaced by a
+   later close.
 
-| Resource | Hard ceiling (whole campaign) | Notes |
+**Deterministic market binding (before observation for that slot):**
+
+- Series: `KXBTC15M`. Index: `BRTI`.
+- At or before connect time for slot `i`, discover the unique open market whose
+  `close_time` equals `closeUtc` (second precision as returned by the API).
+- Bind `marketTicker`, `eventTicker`, `close_time`, and strike identity into the
+  plan **before** recording any WS observation for that slot.
+- If discovery cannot bind uniquely within the slot’s HTTP budget and deadline
+  (§4.3), mark capture status `bind-failed` and do not open WS for that slot.
+
+### 4.2 Per-slot timing (within 90 s connected allowance)
+
+All offsets relative to bound `closeUtc` (= `T`). Connected time for the slot
+must not exceed **90 s**.
+
+| Phase | Offset | Action |
 | --- | --- | --- |
-| HTTP requests | **96** | ≤12 per close slot (discovery + official settlement metadata + bounded retries) |
-| HTTP retries | **16** total | Exponential backoff capped; no unbounded retry |
-| WS connections | **16** | ≤2 connection attempts per close slot |
-| WS duration | **90 s** connected time per close slot; **720 s** campaign total | Connect before window; stop at limit |
-| WS messages | **25,000** campaign total | Stop capture when hit |
-| WS raw bytes | **32 MiB** campaign total | Stop capture when hit |
-| Campaign wall clock | **4 hours** from first attempt | Resume allowed within ceiling |
+| Connect earliest | `T − 75s` | Open WS (1Hz required; 5Hz optional if enabled in config) |
+| Capture start | `T − 70s` | Begin counting messages/bytes toward caps; retain raw frames |
+| Close instant | `T` | Boundary for pre-close vs post-close receipt classification |
+| Capture stop | `min(T + 15s, connectStart + 90s)` | Stop WS receive for this slot |
+| Hard disconnect | `connectStart + 90s` | Force close if still open |
 
-Use a **new** campaign id (e.g. `kalshi-kxbtc15m-multi-close-settlement-fidelity-v0`)
-with a durable ledger under the existing campaign-budget pattern. Resumes must
-reload the ledger and **must not** reset counters.
+If the process starts a slot late such that `now > T − 75s`, still attempt
+connect immediately, but **do not** shift `T`. If `now ≥ T`, mark
+`capture.status = missed-slot` (no WS) — the slot is consumed.
 
-### 4.3 Streams (minimum necessary)
+Reconnects: at most **2** connection attempts per slot; reconnect time counts
+toward the 90 s connected allowance and toward campaign WS duration.
 
-**Required for this fidelity question:**
+### 4.3 HTTP budgets (retries included, not additive)
 
-- CFB / BRTI settlement-average channels that carry
-  `last_60s_windowed_average_15min` and `avg_60s_data` (same class as #116).
-- Official Kalshi HTTP settlement metadata for the bound market after close
-  (`expiration_value`, identity fields).
-- Local receipt clocks (wall + mono).
+| Scope | Ceiling | Contents |
+| --- | --- | --- |
+| Campaign HTTP | **96** total | **Every** attempt counts, including retries and failures |
+| Per-slot HTTP | **12** total | Discovery + post-close metadata + **all** retries for that slot |
+| Campaign HTTP retry attempts | **16** of the 96 | Sub-cap: at most 16 attempts may be classified `retry`; still increments the 96 and the per-slot 12 |
 
-**Order book:** **not required** for claims A–C (expiration agreement, dual-field
-consistency, sample-mapping semantics). Include order-book capture **only** if
-a separately authorized amendment adds claim D economic observability; default
-for this fidelity study is **omit** the book to reduce bytes and complexity.
-(#116 included book for readiness diagnostics; repeating that is not automatic.)
+**Discovery schedule (per slot, before connect):**
 
-### 4.4 Missing / failed close handling
+- Attempts at connect-planning time: up to 3 GETs (initial + ≤2 retries) for
+  market list / ticker resolution.
+- Deadline: connect earliest (`T − 75s`). After deadline → `bind-failed`.
 
-For each of the 8 slots, record exactly one of:
+**Post-close official metadata schedule (per slot):**
 
-- `captured-complete` — sync window finished within limits; official metadata
-  retrieved or explicitly exhausted under retry budget
-- `capture-failed` — connect/subscribe/limit/handshake failure
-- `official-unavailable` — capture ok; official label missing after budgeted polls
-- `skipped-overlap` — deterministic rule skipped (still consumes a slot)
+- Polls at `T + 5s`, `T + 20s`, `T + 45s` (each poll is one HTTP attempt;
+  failed transport retries for a poll count extra within the slot’s 12).
+- Stop early on definitive body with `expiration_value` for the bound ticker.
+- Deadline: `T + 60s` or per-slot HTTP exhaustion, whichever first.
+- Exhaustion without label → `official.status = unavailable` (capture may still
+  be `ok`).
 
-Do **not** add a 9th close to replace failures. Do **not** adaptively pick a
-“better” market.
+**WS campaign caps (unchanged ceilings):**
+
+| Resource | Ceiling |
+| --- | --- |
+| WS connections | **16** (failed attempts count) |
+| WS connected duration | **90 s**/slot; **720 s** campaign |
+| WS messages | **25,000** campaign |
+| WS raw bytes | **32 MiB** campaign |
+| Campaign wall clock | **4 hours** from first attempt |
+
+**Global exhaustion:** if campaign HTTP, WS duration/messages/bytes, connection
+count, or wall clock is exhausted, every **remaining** scheduled slot is
+recorded with `capture.status = campaign-exhausted` (and official/retention
+`not-attempted`). Slots are not replaced.
+
+Resumes reload ledgers and **must not** reset counters or rewrite frozen
+`closeUtc` values.
+
+Campaign id (new): `kalshi-kxbtc15m-multi-close-settlement-fidelity-v0`.
+
+### 4.4 Per-slot status model (three axes)
+
+Each of the eight slots **always** appears in the report with three independent
+statuses (plus optional detail codes):
+
+| Axis | Allowed values |
+| --- | --- |
+| **capture** | `pending` \| `ok` \| `bind-failed` \| `missed-slot` \| `connect-failed` \| `limit-stop` \| `campaign-exhausted` \| `not-attempted` |
+| **official** | `pending` \| `retrieved` \| `unavailable` \| `not-attempted` |
+| **retention** | `pending` \| `verified` \| `failed` \| `not-attempted` |
+
+Rules:
+
+- `capture=ok` means the WS window ran to the planned stop (or clean limit-stop
+  after close) and raw frames for the slot were locally written.
+- `official=unavailable` means budgeted post-close polls finished without a
+  usable `expiration_value` — **independent** of `capture=ok`.
+- `retention=failed` on any slot **stops the campaign**; later slots stay
+  `not-attempted` / `campaign-exhausted` as appropriate. Do not continue.
+- Do **not** collapse these into a single overlapping enum.
 
 ### 4.5 What this protocol does not do
 
 - No trading, recommendations, or executable evaluation.
 - No offset/phase/weight search.
-- No sealed M16-P / M14 opens.
-- No SPENT day reclassification.
-- No extending collection because fields disagree.
+- No sealed M16-P / M14 opens; no SPENT reclassification.
+- No extending or replacing slots because fields disagree.
+- No sending the #118 Kalshi support draft from this workstream.
 
 ---
 
@@ -192,80 +277,78 @@ Do **not** add a 9th close to replace failures. Do **not** adaptively pick a
 
 ### 5.1 Preconditions (all required)
 
-Before any future capture attempt:
-
-1. An **existing permitted private** artifact destination (no new storage
-   service signup / license acceptance in-session solely to unblock).
-2. **Verified upload/download round-trip** using a **non-sensitive** test
-   artifact; record hashes before upload and after download; require equality.
-3. Documented retention and retrieval process (who/where/how long/how to
-   re-fetch).
-4. Plan to retain: raw WS messages, relevant official metadata HTTP responses
-   (bodies), run configuration, campaign ledger, and provenance (git SHA,
-   campaign id, host identity without secrets).
-5. Secret-safe storage (no private keys, tokens, or `.env` in artifact bundles).
+1. An **existing permitted private** artifact destination.
+2. **Verified archive/retrieve round-trip** with a non-sensitive test artifact;
+   SHA-256 equality before archive and after retrieve into a **separate** path.
+3. Documented retention/retrieval process and limitations.
+4. Retain: raw WS messages, official metadata **HTTP bodies**, run config,
+   campaign ledger/plan, provenance (git SHA, campaign id, host without secrets).
+5. Secret-safe bundles (no keys, tokens, auth headers, `.env`).
 6. Hash verification of every retained raw object after retrieval.
 
-**Gitignored local files plus hashes alone are insufficient.** A same-VM copy
-is not durable off-VM retention.
+**Gitignored worktree paths plus hashes alone are insufficient** as the sole
+durability story.
+
+**Destination class for this local Project Lead workflow (proposed):**
+
+- **Primary:** persistent local directory **outside** disposable git worktrees
+  (operator home research archive), plus
+- **Independently recoverable copy:** same-host second path or Time Machine /
+  existing backup **only if verified** in the retention round-trip record.
+
+If an off-host destination is later required by policy, satisfy it or amend
+this section in a reviewed PR — do not silently weaken §5.
 
 ### 5.2 Failure handling
 
-| Failure | Required action |
+| Failure | Action |
 | --- | --- |
-| Round-trip test fails | **Do not start** collection |
-| Upload of a close’s raw bundle fails | Mark slot `retention-failed`; **stop campaign**; do not continue to later closes |
-| Retrieval verification fails later | Treat affected closes as **non-reproducible**; do not claim independent replay |
+| Round-trip pretest fails | Refuse to start collection |
+| Slot retention fails | `retention=failed`; **stop campaign** |
+| Later retrieval hash mismatch | Mark closes non-reproducible; no independent-replay claim |
 
-### 5.3 Current readiness
+### 5.3 Readiness
 
-As of this draft: durable retention remains **not established** (PR #116 v4).
-Therefore **collection is classified as blocked** until §5.1 is satisfied.
-Cloud VM disk survival must **not** be assumed.
+Until §5.1 is verified for the operator environment, **collection is blocked**.
 
 ---
 
-## 6. Decision rules (predeclared conclusions)
+## 6. Decision rules (predeclared)
 
-After the 8 slots (or earlier stop for retention failure), report only under
-these bins — no post hoc field shopping:
+After all eight slots (or earlier stop for retention/`campaign-exhausted`):
 
-| Observation pattern | Allowed conclusion | Forbidden inference |
+| Pattern | Allowed conclusion | Forbidden inference |
 | --- | --- | --- |
-| Both fields agree with each other and with official expiration (under frozen rounding) on a close | Completed-field agreement for that close | Intermediate counts are official banked samples |
-| Only `last_60s_windowed_average_15min` agrees with official | Settlement-window field matched; trailing did not | Trailing is wrong for all closes |
-| Only `avg_60s_data` (same window) agrees with official | Trailing matched this close; settlement-window did not | Select trailing as official because of match |
-| Neither agrees | Documented disagreement; mapping still unresolved | Force-fit alternate windows |
-| Missing or changing completed values / repeats after close | Chronology retained; availability claim D fails if first complete is post-close | Treat post-close revision as pre-close knowledge |
-| Official labels unavailable | Slot `official-unavailable`; no agreement claim | Impute expiration |
-| Mixed behavior across closes | Report per-close table; discrepancy **can repeat or not** | Claim population rate or economic readiness |
+| Both fields agree with each other and with official under diagnostic rounding | Completed-field agreement for that close | Intermediate counts are official banked samples; Kalshi rounding proven |
+| Only settlement-window field agrees with official | Settlement field matched; trailing did not | Trailing always wrong |
+| Only trailing (same payload label) agrees with official | Trailing matched; settlement field did not | Select trailing as official |
+| Neither agrees | Mapping unresolved for that close | Force-fit windows |
+| Intermediate received before close; completed only after | Intermediate availability recorded; completed is post-close diagnostic only | Treat completed as pre-close knowledge |
+| Official unavailable | No agreement claim | Impute expiration |
+| Mixed across closes | Per-close table; discrepancy can repeat or not | Population rate / economic readiness |
 
-**Authoritative follow-up needed for claim C:** venue/CFB documentation of the
-one-second banking rule, or a predeclared validation against official sample
-identities. Completed-value agreement is **not** sufficient.
+Claim C still needs authoritative documentation beyond completed-value matches.
 
 ---
 
 ## 7. Governance
 
-- All observations from this study (if ever authorized separately) are
-  **operational / exploratory fidelity data**, not untouched strategy
-  confirmation.
-- **No** sealed M16-P or M14 outcomes, pristine-data claims, P&L, fitting,
-  threshold selection, trading, or reservoir reclassification.
-- This specification PR must remain **draft / unmerged relative to execution**
-  until a later explicit authorization; **do not run** the study from this task.
+- Observations (if separately authorized) are operational/exploratory fidelity
+  data, not untouched strategy confirmation.
+- No sealed outcomes, pristine claims, P&L, fitting, trading, or reservoir
+  changes.
 - M17 profitability testing is **not** ready.
 
 ---
 
-## 8. Deliverables (when a future authorization exists)
+## 8. Deliverables (when separately authorized)
 
-1. Campaign ledger + config SHA.
-2. Per-close chronology tables (both fields; receipt times; official label).
-3. Retention manifest with hashes and retrieval verification records.
-4. Short fidelity report mapped to claims A–D and §6 bins.
-5. Explicit statement of what remains unresolved.
+1. Frozen plan + campaign ledger + config SHA.
+2. Per-slot three-axis statuses and chronologies (both fields; receipt times).
+3. Retention manifest with hashes and retrieval verification.
+4. Fidelity report mapped to claims A–D and §6.
+5. Explicit unresolved list (including official rounding and field→expiration
+   binding).
 
 ---
 
@@ -273,4 +356,5 @@ identities. Completed-value agreement is **not** sufficient.
 
 | Version | Date (UTC) | Notes |
 | --- | --- | --- |
-| spec-v0 | 2026-09-24 | Project Lead next-milestone spec after #116/#117 merge; collection blocked on durable retention |
+| spec-v0 | 2026-09-24 | Initial bounded fidelity proposal after #116/#117 |
+| spec-v1 | 2026-09-24 | Project Lead corrections: immutable slots/timing; inclusive retry budgets; three-axis statuses; frozen diagnostic rounding; #118 membership semantics; availability split; merge≠authorization |
