@@ -8,6 +8,7 @@ import { fileURLToPath } from "node:url";
 import {
   createFilesystemProbeIo,
   parseKalshiBrtiAccessProbeArgv,
+  runFollowUpBrtiCampaign,
   runKalshiBrtiAccessProbe,
   KalshiBrtiAccessProbeError,
 } from "@/lib/data/research/kalshiBrtiAccessProbe";
@@ -17,7 +18,8 @@ const ROOT = resolve(join(dirname(fileURLToPath(import.meta.url)), "../.."));
 async function main(): Promise<number> {
   try {
     const argv = parseKalshiBrtiAccessProbeArgv(process.argv.slice(2));
-    const summary = await runKalshiBrtiAccessProbe({
+    const runner = argv.followUp ? runFollowUpBrtiCampaign : runKalshiBrtiAccessProbe;
+    const summary = await runner({
       repoRoot: ROOT,
       argv,
       io: createFilesystemProbeIo(),

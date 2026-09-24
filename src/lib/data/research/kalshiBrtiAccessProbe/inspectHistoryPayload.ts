@@ -122,24 +122,14 @@ export function classifySettlementMapping(input: {
     windowObservations
       .map((observation) => Math.floor(observation.timeMs! / 1000)),
   );
-  if (windowObservations.length === 60 && secondBuckets.size === 60) {
-    return {
-      mapping: {
-        supported: true,
-        reason: "sixty-one-second-buckets-in-official-window",
-        sampleCount: 60,
-      },
-      windowObservations,
-    };
-  }
   return {
     mapping: {
       supported: false,
       reason: windowObservations.length === 0
         ? "no-observations-in-official-window"
-        : secondBuckets.size !== windowObservations.length
-          ? "multiple-observations-per-second-5hz-mapping-unverified"
-          : `window-sample-count-${windowObservations.length}-not-60`,
+        : "bucket-count-is-not-official-sample-mapping",
+      observedWindowCount: windowObservations.length,
+      uniqueSecondBuckets: secondBuckets.size,
     },
     windowObservations,
   };

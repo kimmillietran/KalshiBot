@@ -1,0 +1,47 @@
+{
+  "studyId": "kalshi-kxbtc15m-brti-access-probe-v1",
+  "authorizedAtUtc": "2026-09-24",
+  "authorization": "Follow-up: persistent budget repair, documented HOUR history for one SPENT target, and one live quarter-hour close probe. No purchase, license change, bulk download, M16-P, or trading.",
+  "documentationRetrievedAtUtc": "2026-09-24",
+  "documentationSources": [
+    "https://docs.kalshi.com/cfbenchmarks/rest-passthrough",
+    "https://docs.kalshi.com/websockets/cfbenchmarks-value",
+    "https://docs.cfbenchmarks.com/api/rest/historical-values/"
+  ],
+  "preservedV0": {
+    "campaignId": "kalshi-kxbtc15m-brti-access-probe-v0",
+    "consumed": 13,
+    "limit": 10,
+    "furtherRequestsForbidden": true
+  },
+  "campaign": {
+    "id": "kalshi-kxbtc15m-brti-access-probe-v1",
+    "httpLimit": 10,
+    "countsRetriesAndFailures": true,
+    "persistsAcrossPasses": true
+  },
+  "historical": {
+    "selectionRule": "existing early/middle/late SPENT trio; use role=middle only, selected before observing history values",
+    "targetUtcDay": "2026-08-30",
+    "targetTicker": "KXBTC15M-26AUG301415-15",
+    "officialClose": "2026-08-30T18:15:00Z",
+    "timespan": "HOUR",
+    "timestamp": "2026-08-30T18:00:00.000Z",
+    "maxCoverage": "one hour",
+    "forbidden": ["MINUTE retry", "DAY", "pagination", "additional dates"]
+  },
+  "live": {
+    "channels": ["cfbenchmarks_value"],
+    "window": "close-70s through close+20s",
+    "maxDurationSeconds": 90,
+    "maxMessages": 600,
+    "maxConnections": 2,
+    "noWaitWithOpenSocket": true,
+    "fiveHz": "not subscribed; protects settlement-window message budget"
+  },
+  "officialMetadata": {
+    "maxAttempts": 3,
+    "path": "GET /markets?event_ticker=KXBTC15M-...",
+    "ifUnavailable": "report comparison pending"
+  }
+}

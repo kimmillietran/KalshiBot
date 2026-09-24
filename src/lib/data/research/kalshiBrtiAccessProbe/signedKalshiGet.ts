@@ -3,6 +3,8 @@ import { createHash } from "node:crypto";
 import { createKalshiAuthHeaders } from "@/lib/data/live/kalshiWsCaptureSpike/kalshiAuthHeaders";
 import type { KalshiCaptureCredentials } from "@/lib/data/live/kalshiWsCaptureSpike/resolveKalshiCaptureCredentials";
 
+import type { CampaignBudgetIo, CampaignHttpPurpose, HttpReservation } from "./campaignBudget";
+import { completeHttpAttempt, reserveHttpAttempt } from "./campaignBudget";
 import { classifyHttpStatus, isRetryableCategory } from "./classifyHttpError";
 import { KalshiBrtiAccessProbeError, type SignedGetResult } from "./types";
 
@@ -10,10 +12,53 @@ export type HttpBudget = {
   remaining: number;
 };
 
+export type CampaignBudgetHook = {
+  ledgerPath: string;
+  lockPath: string;
+  campaignId: string;
+  limit: number;
+  purpose: CampaignHttpPurpose;
+  io: CampaignBudgetIo;
+};
+
 export type SignedGetDeps = {
   fetchImpl: typeof fetch;
   nowMs?: () => number;
+  campaign?: CampaignBudgetHook;
 };
+
+function reserveIfNeeded(deps: SignedGetDeps | undefined): HttpReservation | null {
+  if (!deps?.campaign) {
+    return null;
+  }
+  return reserveHttpAttempt({
+    ledgerPath: deps.campaign.ledgerPath,
+    lockPath: deps.campaign.lockPath,
+    campaignId: deps.campaign.campaignId,
+    limit: deps.campaign.limit,
+    purpose: deps.campaign.purpose,
+    io: deps.campaign.io,
+  });
+}
+
+function completeIfNeeded(
+  deps: SignedGetDeps | undefined,
+  reservation: HttpReservation | null,
+  result: { httpStatus: number | null; category: string | null; failed?: boolean },
+): void {
+  if (!deps?.campaign || !reservation) {
+    return;
+  }
+  completeHttpAttempt({
+    ledgerPath: deps.campaign.ledgerPath,
+    lockPath: deps.campaign.lockPath,
+    reservationId: reservation.id,
+    httpStatus: result.httpStatus,
+    category: result.category,
+    failed: result.failed,
+    io: deps.campaign.io,
+  });
+}
 
 export async function signedKalshiGet(input: {
   url: string;
@@ -31,10 +76,15 @@ export async function signedKalshiGet(input: {
   let last: SignedGetResult | null = null;
   const attempts = input.maxRetries + 1;
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
-    if (input.budget.remaining <= 0) {
+    const reservation = reserveIfNeeded(input.deps);
+    if (input.budget.remaining <= 0 && !reservation) {
       throw new KalshiBrtiAccessProbeError("http-request-budget-exhausted");
     }
-    input.budget.remaining -= 1;
+    if (!reservation) {
+      input.budget.remaining -= 1;
+    } else {
+      input.budget.remaining = reservation.limit - reservation.consumed;
+    }
     const headers = {
       Accept: "application/json",
       ...createKalshiAuthHeaders({
@@ -45,11 +95,21 @@ export async function signedKalshiGet(input: {
         timestampMs: String((input.deps.nowMs ?? Date.now)()),
       }),
     };
-    const response = await input.deps.fetchImpl(input.url, {
-      method: "GET",
-      headers,
-      cache: "no-store",
-    });
+    let response: Response;
+    try {
+      response = await input.deps.fetchImpl(input.url, {
+        method: "GET",
+        headers,
+        cache: "no-store",
+      });
+    } catch (error) {
+      completeIfNeeded(input.deps, reservation, {
+        httpStatus: null,
+        category: "upstream-or-transient",
+        failed: true,
+      });
+      throw error;
+    }
     const text = await response.text();
     let body: unknown = null;
     if (text.length > 0) {
@@ -68,6 +128,11 @@ export async function signedKalshiGet(input: {
       bodyTextHash: createHash("sha256").update(text).digest("hex"),
       attempt,
     };
+    completeIfNeeded(input.deps, reservation, {
+      httpStatus: last.status,
+      category: last.category,
+      failed: last.category !== "success" && last.category !== "empty-success",
+    });
     if (!isRetryableCategory(last.category) || attempt === attempts) {
       return last;
     }
@@ -85,15 +150,30 @@ export async function unsignedKalshiGet(input: {
   let last: SignedGetResult | null = null;
   const attempts = input.maxRetries + 1;
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
-    if (input.budget.remaining <= 0) {
+    const reservation = reserveIfNeeded(input.deps);
+    if (input.budget.remaining <= 0 && !reservation) {
       throw new KalshiBrtiAccessProbeError("http-request-budget-exhausted");
     }
-    input.budget.remaining -= 1;
-    const response = await input.deps.fetchImpl(input.url, {
-      method: "GET",
-      headers: { Accept: "application/json" },
-      cache: "no-store",
-    });
+    if (!reservation) {
+      input.budget.remaining -= 1;
+    } else {
+      input.budget.remaining = reservation.limit - reservation.consumed;
+    }
+    let response: Response;
+    try {
+      response = await input.deps.fetchImpl(input.url, {
+        method: "GET",
+        headers: { Accept: "application/json" },
+        cache: "no-store",
+      });
+    } catch (error) {
+      completeIfNeeded(input.deps, reservation, {
+        httpStatus: null,
+        category: "upstream-or-transient",
+        failed: true,
+      });
+      throw error;
+    }
     const text = await response.text();
     let body: unknown = null;
     if (text.length > 0) {
@@ -112,6 +192,11 @@ export async function unsignedKalshiGet(input: {
       bodyTextHash: createHash("sha256").update(text).digest("hex"),
       attempt,
     };
+    completeIfNeeded(input.deps, reservation, {
+      httpStatus: last.status,
+      category: last.category,
+      failed: last.category !== "success" && last.category !== "empty-success",
+    });
     if (!isRetryableCategory(last.category) || attempt === attempts) {
       return last;
     }

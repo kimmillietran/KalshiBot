@@ -18,6 +18,7 @@ import {
 } from "./inspectHistoryPayload";
 import { parseKalshiBrtiAccessProbeArgv } from "./parseArgv";
 import { parseOfficialNumericString } from "./parseOfficialNumericString";
+import { runFollowUpBrtiCampaign } from "./runFollowUpCampaign";
 import { runKalshiBrtiAccessProbe } from "./runKalshiBrtiAccessProbe";
 import { summarizeLiveMessage } from "./runLiveCfbProbe";
 import { signedKalshiGet } from "./signedKalshiGet";
@@ -128,8 +129,10 @@ describe("kalshiBrtiAccessProbe", () => {
       closeTimeMs: close,
       officialExpirationRaw: "100.25",
     });
-    expect(oneHzMapping.mapping.supported).toBe(true);
-    expect(oneHzMapping.agreement).toBe("agree");
+    expect(oneHzMapping.mapping.supported).toBe(false);
+    expect(oneHzMapping.mapping.reason).toBe("bucket-count-is-not-official-sample-mapping");
+    expect(oneHzMapping.reconstructedAverage).toBeNull();
+    expect(oneHzMapping.agreement).toBe("not-compared");
 
     const cadence = inspectCadence(fiveHz);
     expect(cadence.looksFiveHz).toBe(true);
@@ -267,6 +270,45 @@ describe("kalshiBrtiAccessProbe", () => {
     expect(summary.localReceivedAtMs).toBe(2000);
     expect(summary.providerReceivedAtMs).toBe(1000);
     expect(summary.hasLast60sWindowedAverage15min).toBe(true);
+  });
+
+  it("follow-up fixture does not invent official settlement values", async () => {
+    const root = mkdtempSync(join(tmpdir(), "brti-followup-"));
+    const audit = join(root, "data/research-results/external-kalshi-data-audit");
+    mkdirSync(join(audit, "m17-prep-settlement-friction-coverage"), { recursive: true });
+    mkdirSync(join(audit, "m17-prep-settlement-friction-label-coverage"), { recursive: true });
+    writeFileSync(join(audit, "m17-prep-settlement-friction-coverage/settlement-friction-coverage-manifest.json"), JSON.stringify({
+      calendar: { eligibleUtcDays: ["2026-08-14", "2026-08-30", "2026-09-21"] },
+    }));
+    writeFileSync(join(audit, "m16-er-blind-incidence.json"), JSON.stringify({
+      days: [
+        { utcDate: "2026-08-14", confirmations: [{ ticker: "KXBTC15M-26AUG141430-30", utcDayKey: "2026-08-14" }] },
+        { utcDate: "2026-08-30", confirmations: [{ ticker: "KXBTC15M-26AUG301415-15", utcDayKey: "2026-08-30" }] },
+        { utcDate: "2026-09-21", confirmations: [{ ticker: "KXBTC15M-26SEP211415-15", utcDayKey: "2026-09-21" }] },
+      ],
+    }));
+    writeFileSync(join(audit, "m17-prep-settlement-friction-label-coverage/incomplete-records.json"), JSON.stringify({
+      records: [],
+    }));
+    expect(() => parseKalshiBrtiAccessProbeArgv(["--follow-up"])).not.toThrow();
+    await expect(runFollowUpBrtiCampaign({
+      repoRoot: root,
+      argv: parseKalshiBrtiAccessProbeArgv(["--follow-up", "--campaign-id", "kalshi-kxbtc15m-brti-access-probe-v0"]),
+      io: { writeFile: () => undefined, mkdir: () => undefined },
+    })).rejects.toThrow(/sealed|13\/10|must not issue/);
+    const summary = await runFollowUpBrtiCampaign({
+      repoRoot: root,
+      argv: parseKalshiBrtiAccessProbeArgv([
+        "--follow-up",
+        "--fixture",
+        "--out-dir", join(root, "out"),
+        "--raw-dir", join(root, "raw"),
+        "--campaign-dir", join(root, "out"),
+      ]),
+      io: { writeFile: () => undefined, mkdir: () => undefined },
+    });
+    expect(summary.officialComparison).toMatchObject({ status: "not-attempted" });
+    expect(JSON.stringify(summary)).not.toMatch(/BEGIN PRIVATE KEY/);
   });
 });
 

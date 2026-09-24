@@ -1,3 +1,4 @@
+import { V0_CAMPAIGN_ID, V1_CAMPAIGN_ID } from "./campaignBudget";
 import {
   DEFAULT_PROBE_OUT_DIR,
   DEFAULT_PROBE_RAW_DIR,
@@ -6,6 +7,8 @@ import {
   LIVE_MESSAGE_CAP,
   MAX_HTTP_REQUESTS,
   MAX_RETRIES_PER_REQUEST,
+  V1_PROBE_OUT_DIR,
+  V1_PROBE_RAW_DIR,
   type ParsedProbeArgv,
 } from "./types";
 
@@ -51,13 +54,23 @@ export function parseKalshiBrtiAccessProbeArgv(argv: readonly string[]): ParsedP
   if (maxHttpRequests > MAX_HTTP_REQUESTS) {
     throw new KalshiBrtiAccessProbeError("HTTP budget may not exceed 10 requests");
   }
+  const followUp = argv.includes("--follow-up");
   return {
     fixture: argv.includes("--fixture") || argv.includes("--dry-run"),
     skipLive: argv.includes("--skip-live"),
     skipHttp: argv.includes("--skip-http"),
-    skipLatest: argv.includes("--skip-latest"),
-    outDir: readFlagValue(argv, "--out-dir") ?? DEFAULT_PROBE_OUT_DIR,
-    rawDir: readFlagValue(argv, "--raw-dir") ?? DEFAULT_PROBE_RAW_DIR,
+    skipLatest: argv.includes("--skip-latest") || followUp,
+    followUp,
+    campaignId: readFlagValue(argv, "--campaign-id")
+      ?? (followUp ? V1_CAMPAIGN_ID : V0_CAMPAIGN_ID),
+    campaignDir: readFlagValue(argv, "--campaign-dir")
+      ?? (followUp ? V1_PROBE_OUT_DIR : DEFAULT_PROBE_OUT_DIR),
+    skipHistory: argv.includes("--skip-history"),
+    waitForClose: argv.includes("--wait-for-close") || followUp,
+    outDir: readFlagValue(argv, "--out-dir")
+      ?? (followUp ? V1_PROBE_OUT_DIR : DEFAULT_PROBE_OUT_DIR),
+    rawDir: readFlagValue(argv, "--raw-dir")
+      ?? (followUp ? V1_PROBE_RAW_DIR : DEFAULT_PROBE_RAW_DIR),
     maxHttpRequests,
     maxRetriesPerRequest: readNumber(argv, "--max-retries", MAX_RETRIES_PER_REQUEST),
     liveDurationSeconds,

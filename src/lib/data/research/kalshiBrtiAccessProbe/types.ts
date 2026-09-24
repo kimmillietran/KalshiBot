@@ -5,6 +5,10 @@ export const DEFAULT_PROBE_OUT_DIR =
   "data/research-results/external-kalshi-data-audit/m17-prep-brti-access-probe" as const;
 export const DEFAULT_PROBE_RAW_DIR =
   "data/research-results/external-kalshi-data-audit/m17-prep-brti-access-probe/raw" as const;
+export const V1_PROBE_OUT_DIR =
+  "data/research-results/external-kalshi-data-audit/m17-prep-brti-access-probe-v1" as const;
+export const V1_PROBE_RAW_DIR =
+  "data/research-results/external-kalshi-data-audit/m17-prep-brti-access-probe-v1/raw" as const;
 
 export const FRICTION_MANIFEST_RELATIVE_PATH =
   "data/research-results/external-kalshi-data-audit/m17-prep-settlement-friction-coverage/settlement-friction-coverage-manifest.json" as const;
@@ -92,12 +96,14 @@ export type CadenceInspection = {
 export type SettlementMappingSupport =
   | {
       supported: true;
-      reason: "sixty-one-second-buckets-in-official-window";
+      reason: "venue-provided-window-average-documented";
       sampleCount: number;
     }
   | {
       supported: false;
       reason: string;
+      observedWindowCount?: number;
+      uniqueSecondBuckets?: number;
     };
 
 export type ParsedProbeArgv = {
@@ -105,6 +111,11 @@ export type ParsedProbeArgv = {
   skipLive: boolean;
   skipHttp: boolean;
   skipLatest: boolean;
+  followUp: boolean;
+  campaignId: string;
+  campaignDir: string;
+  skipHistory: boolean;
+  waitForClose: boolean;
   outDir: string;
   rawDir: string;
   maxHttpRequests: number;
