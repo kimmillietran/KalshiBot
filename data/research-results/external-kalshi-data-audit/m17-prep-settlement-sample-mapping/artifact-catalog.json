@@ -3,6 +3,7 @@
   "files": [
     "settlement-sample-mapping-summary.json",
     "settlement-average-discrepancy-v3.json",
+    "settlement-raw-capture-availability-v4.json",
     "artifact-catalog.json",
     "http-budget-ledger.json"
   ],
@@ -13,8 +14,12 @@
       "sha256": "938cdde6151ad61b7595d86825486f9b8b866fd38ffa21ae47d85b2f09943e33",
       "bytes": 6111585,
       "lines": 15716,
+      "currentEnvironmentStatus": "unavailable",
+      "classification": "original-raw-capture-unavailable-in-the-current-environment; independent-replay-not-possible",
+      "notProvenDeleted": true,
       "durableRetention": "not-established",
-      "note": "Local gitignored capture only. No approved private artifact-retrieval mechanism was available in this cloud task."
+      "availabilitySupplement": "settlement-raw-capture-availability-v4.json",
+      "note": "Expected identity preserved from prior agent verification. File not found in current environment; independent replay not possible. Same-VM/gitignored copy is not durable off-VM retention."
     }
   },
   "codeIdentity": {

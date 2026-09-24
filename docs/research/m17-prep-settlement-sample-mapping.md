@@ -167,6 +167,37 @@ reported settlement value does not change after the bind. Selection, quote
 ordering, causal tick filtering, and `futureQuoteLeakage` computation are
 corrected in code. See `settlement-average-discrepancy-v3.json`.
 
+### v4 raw-capture availability (Project Lead audit)
+
+**Current environment status:** the original synchronized JSONL is
+**unavailable** in this environment. Independent hash/size/line re-verification
+and byte-level replay are **not possible** here.
+
+| Expected identity | Value |
+| --- | --- |
+| Path | `.../raw/synchronized-capture.jsonl` |
+| SHA-256 | `938cdde6151ad61b7595d86825486f9b8b866fd38ffa21ae47d85b2f09943e33` |
+| Bytes / lines | 6,111,585 / 15,716 |
+
+This is **not** a proof of deletion. Searches of builder/review worktrees,
+Desktop KalshiBot paths, and size/name matches under the operator home did not
+locate the file. Prior agent reports that verified the bytes on a previous VM
+are preserved as historical provenance and are **not** independently repeated
+now.
+
+Durable off-VM retention remains **not established**. No permitted private
+artifact mechanism was available to store or retrieve the original bytes. A
+gitignored or same-VM copy would not count as durable retention even if
+present.
+
+The original official HTTP response body was **never retained**; that
+limitation is unchanged.
+
+Derived committed evidence that remains: original summary,
+`settlement-average-discrepancy-v3.json` chronology, and hermetic fixture tests
+(synthetic provenance — not original capture bytes). See
+`settlement-raw-capture-availability-v4.json`.
+
 ## What this can and cannot support
 
 Historical 5Hz ticks can support cadence, missing/duplicate, and candidate

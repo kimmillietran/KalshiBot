@@ -1,0 +1,53 @@
+{
+  "artifactKind": "versioned-correction-supplement",
+  "version": "v4-raw-availability",
+  "studyId": "kalshi-kxbtc15m-settlement-sample-mapping-v2",
+  "generatedAtUtc": "2026-09-24T21:35:00.000Z",
+  "projectLeadReviewHead": "058b10fb5f6148c49c064e75e56a0db9135cc459",
+  "role": "raw-capture-availability-audit",
+  "notAnAlphaExperiment": true,
+  "zeroNewKalshiRequests": true,
+  "originalSummaryPreserved": "settlement-sample-mapping-summary.json",
+  "v3SupplementPreserved": "settlement-average-discrepancy-v3.json",
+  "rawCapture": {
+    "expectedPath": "data/research-results/external-kalshi-data-audit/m17-prep-settlement-sample-mapping/raw/synchronized-capture.jsonl",
+    "expectedSha256": "938cdde6151ad61b7595d86825486f9b8b866fd38ffa21ae47d85b2f09943e33",
+    "expectedBytes": 6111585,
+    "expectedLines": 15716,
+    "currentEnvironmentStatus": "unavailable",
+    "classification": "original-raw-capture-unavailable-in-the-current-environment; independent-replay-not-possible",
+    "notProvenDeleted": true,
+    "searchedLocations": [
+      "kalshi-review worktree raw/",
+      "kalshi-builder2/3 raw paths",
+      "Desktop/KalshiBot raw paths",
+      "filesystem size match 6111585 bytes under /Users/builder",
+      "filename synchronized-capture.jsonl under /Users/builder"
+    ],
+    "priorAgentVerification": {
+      "source": "PR #116 comment and settlement-average-discrepancy-v3.json",
+      "claim": "Prior agent reported hash/size/line verification on a VM that still held the file",
+      "thisSessionIndependentlyRepeated": false,
+      "note": "Historical verification claims are preserved; they are not re-attested by this environment"
+    },
+    "durableOffVmRetention": "not-established",
+    "permittedPrivateArtifactMechanism": "none-available-in-this-environment",
+    "sameVmCopyIsNotDurable": true
+  },
+  "officialHttpResponse": {
+    "rawBodyRetained": false,
+    "limitationPreserved": "Original official HTTP response was never retained; only sanitized summary identity remains"
+  },
+  "derivedEvidenceStillValid": [
+    "settlement-sample-mapping-summary.json",
+    "settlement-average-discrepancy-v3.json",
+    "committed chronology of same-message dual-field values",
+    "hermetic fixture tests for selection/ordering/leakage (not original capture bytes)"
+  ],
+  "implications": [
+    "Independent byte-level replay of the synchronized session is not possible here",
+    "Code corrections remain reviewable via hermetic fixtures whose provenance is synthetic",
+    "Raw loss is a research-evidence limitation; it does not by itself invalidate correctly qualified diagnostic documentation",
+    "Future collection is blocked until verified durable private retention exists"
+  ]
+}
