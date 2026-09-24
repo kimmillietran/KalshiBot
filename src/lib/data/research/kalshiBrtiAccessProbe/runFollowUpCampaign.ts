@@ -259,11 +259,10 @@ export async function runFollowUpBrtiCampaign(input: {
   }
 
   const metadataAttempts: SignedGetResult[] = [];
-  let officialComparison = {
-    status: "not-attempted" as const,
+  let resolvedComparison: FollowUpSummary["officialComparison"] = {
+    status: "not-attempted",
     reason: live == null || live.attempted === false ? "live-not-attempted" : "pending",
   };
-  let resolvedComparison = officialComparison as FollowUpSummary["officialComparison"];
   if (!skipHttp && live?.attempted && credentials.status === "available") {
     const observedCloseIso = resolveObservedCloseIso({
       live,
