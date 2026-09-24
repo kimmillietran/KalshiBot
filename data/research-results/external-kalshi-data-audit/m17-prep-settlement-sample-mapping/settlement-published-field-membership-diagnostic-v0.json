@@ -1,0 +1,113 @@
+{
+  "artifactKind": "offline-published-field-membership-diagnostic",
+  "version": "v0",
+  "studyId": "kalshi-kxbtc15m-settlement-sample-mapping-v2",
+  "generatedAtUtc": "2026-09-24T22:05:00.000Z",
+  "inputs": {
+    "summary": "data/research-results/external-kalshi-data-audit/m17-prep-settlement-sample-mapping/settlement-sample-mapping-summary.json",
+    "v3": "data/research-results/external-kalshi-data-audit/m17-prep-settlement-sample-mapping/settlement-average-discrepancy-v3.json",
+    "marketTicker": "KXBTC15M-26SEP240015-15",
+    "closeTimeUtc": "2026-09-24T04:15:00Z",
+    "zeroNewData": true
+  },
+  "documentedConventions": {
+    "source": "PR #118 docs/research/m17-prep-brti-settlement-average-discrepancy-semantics.md",
+    "trailing": "[source_ts-60s, source_ts); prior ticks only",
+    "settlement": "(close-60s, close]; start excluded; close included",
+    "identicalPayloadLabelsDoNotImplyIdenticalMembership": true
+  },
+  "empiricalPatterns": {
+    "settlementFixedWindowStart": true,
+    "settlementCountPath": "1..60",
+    "settlementEndAdvanceMs": 1000,
+    "settlementImpliedSampleCount": 59,
+    "trailingAlwaysSlidesStartAndEndBy1000ms": true,
+    "trailingFixedStartGrowingCount": false,
+    "samePayloadWindowDualValues": {
+      "settlement": "83817.61766667",
+      "trailing": "83817.70733333",
+      "gap": "-0.08966666",
+      "sixtyTimesGap": "-5.37999960"
+    },
+    "trailingNextSecondEqualsSettlementRaw": true
+  },
+  "uncertaintyAwareDifferencing": {
+    "method": "x_n = n*A_n - (n-1)*A_{n-1} for settlement rows with same windowStart and delta count = 1",
+    "averageUncertaintyModel": "half-ulp of published decimal string (not Kalshi-proven)",
+    "internalMeanVsA60": "0E-8",
+    "maxPartialSumError": "0",
+    "x1": "83824.82000000",
+    "x60": "83818.44000041",
+    "x60UncertaintyHalfWidth": "5.95E-7"
+  },
+  "identitiesByConstruction": [
+    {
+      "id": "cumulative-average-inversion",
+      "statement": "Implied x_n from successive settlement averages is the unique number satisfying the cumulative-mean recurrence; partial-sum checks near zero only restate arithmetic."
+    },
+    {
+      "id": "swap-delta-from-peeled-T0",
+      "statement": "Once x1..x59 are taken from settlement and As, At are given, computing T0=60*At-sum(x1..x59) and comparing x60-T0 to 60*(As-At) is an algebraic identity, not an independent test of membership."
+    },
+    {
+      "id": "trailing-plus-1s-equals-settlement-under-shared-1Hz-membership",
+      "statement": "If both fields average the same underlying 1Hz series with #118 membership, trailing at close+1s must equal settlement at close. Observing equality supports that shared-membership hypothesis but is the predicted identity, not a separate constraint. It does not bind either field to official expiration.",
+      "observed": true
+    }
+  ],
+  "independentConstraints": [
+    {
+      "id": "settlement-monotone-growth",
+      "supported": true,
+      "detail": "One fixed windowStart; 60 updates; count 1..60; windowEnd advances +1000ms each step \u2014 consistent with documented quarter-hour accumulation."
+    },
+    {
+      "id": "trailing-slide-not-grow",
+      "supported": true,
+      "detail": "All 118 successive trailing transitions shift start and end by +1000ms; no fixed-start growing trailing series \u2014 consistent with documented trailing window."
+    },
+    {
+      "id": "dual-field-disagreement-same-payload-labels",
+      "supported": true,
+      "detail": "Same declared [close-60s, close) labels with count 60 yield As!=At (gap=-0.08966666). Supports #118 claim that identical payload labels need not imply identical membership."
+    },
+    {
+      "id": "pure-boundary-swap-identifies-T0-only-conditionally",
+      "supported": "conditional",
+      "detail": "Under swap model, 60*(As-At) equals T_close-T_start. Using settlement-implied x60 as T_close yields a numeric T_start, but T_start is not published as its own field; the peel from trailing is not an independent confirmation (see identities).",
+      "predicted_Tclose_minus_Tstart": "-5.37999960",
+      "settlement_implied_x60": "83818.44000041",
+      "T0_from_trailing_peel": "83823.82000001"
+    }
+  ],
+  "vsOfficialDescriptiveOnly": {
+    "officialRaw": "83817.71",
+    "diagnosticRound2HalfEven": {
+      "official": "83817.71",
+      "settlement": "83817.62",
+      "trailing": "83817.71",
+      "settlementMatches": false,
+      "trailingMatches": true
+    },
+    "selectionForbidden": true,
+    "note": "Trailing match after diagnostic rounding remains exploratory; not used to select an official field."
+  },
+  "unidentifiable": [
+    "Official field binding (neither average identified as expiration_value rule).",
+    "Underlying 1Hz tick list (only implied through averages; not retained raw 1Hz or 5Hz frames).",
+    "Whether implied x_n equal CFB 1Hz ticks vs some other second-selection from 5Hz.",
+    "Kalshi rounding rule for expiration_value (diagnostic half-even 2dp only).",
+    "T0 as a directly observed published value (only reconstructed under model assumptions)."
+  ],
+  "contradicted": [
+    {
+      "claim": "Identical payload window labels imply identical sample membership / equal averages",
+      "evidence": "As=83817.61766667 vs At=83817.70733333 on the same declared window labels"
+    }
+  ],
+  "notContradicted": [
+    "Documented settlement growing-window cadence (fixed start, +1s end, count 1..60).",
+    "Documented trailing slide (+1s both endpoints each update).",
+    "Shared-membership reading of trail(close+1s)==settlement(close) under #118 conventions."
+  ]
+}
