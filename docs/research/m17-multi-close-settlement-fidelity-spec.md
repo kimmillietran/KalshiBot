@@ -289,15 +289,15 @@ Rules:
 **Gitignored worktree paths plus hashes alone are insufficient** as the sole
 durability story.
 
-**Destination class for this local Project Lead workflow (proposed):**
+**Destination classes:**
 
-- **Primary:** persistent local directory **outside** disposable git worktrees
-  (operator home research archive), plus
-- **Independently recoverable copy:** same-host second path or Time Machine /
-  existing backup **only if verified** in the retention round-trip record.
+| Mode | When allowed | Independent backup |
+| --- | --- | --- |
+| `independent-archive` (default for multi-close / future campaigns) | Distinct-device / off-host archive with verified round-trip | `independentBackup: true` |
+| `local-persistent-only` | **Explicitly authorized** one-close diagnostics on a durable operator Mac path **outside** repos, disposable worktrees, and temp dirs; synthetic write/read SHA-256 required | `independentBackup: false` — must **not** be described as an independent backup |
 
-If an off-host destination is later required by policy, satisfy it or amend
-this section in a reviewed PR — do not silently weaken §5.
+Same-disk secondary directories still do **not** satisfy `independent-archive` mode.
+Do not silently weaken multi-close campaigns to local-only without a reviewed amendment.
 
 ### 5.2 Failure handling
 

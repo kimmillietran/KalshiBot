@@ -184,15 +184,20 @@ export async function runSynchronizedCapture(input: {
   market: LiveMarketIdentity;
   plan: SynchronizedWindowPlan;
   deps?: SynchronizedCaptureDeps;
+  /** When false, subscribe only to CFB 1Hz/5Hz (no order-book channel). Default true. */
+  includeOrderbook?: boolean;
 }): Promise<SynchronizedCaptureResult> {
   if (input.credentials.status !== "available" || !input.credentials.apiKeyId
     || !input.credentials.privateKeyMaterial.privateKeyPem) {
     throw new SettlementSampleMappingError("credentials-not-available");
   }
+  const includeOrderbook = input.includeOrderbook !== false;
   const nowMs = input.deps?.nowMs ?? Date.now;
   const monoMs = input.deps?.monoMs ?? (() => performance.now());
   const wait = input.deps?.sleep ?? sleep;
-  const channels = [CFB_1HZ_CHANNEL, CFB_5HZ_CHANNEL, ORDERBOOK_CHANNEL];
+  const channels = includeOrderbook
+    ? [CFB_1HZ_CHANNEL, CFB_5HZ_CHANNEL, ORDERBOOK_CHANNEL]
+    : [CFB_1HZ_CHANNEL, CFB_5HZ_CHANNEL];
   const result: SynchronizedCaptureResult = {
     attempted: true,
     connected: false,
@@ -228,11 +233,13 @@ export async function runSynchronizedCapture(input: {
     await wait(Math.min(250, input.plan.actualStartMs - nowMs()));
   }
 
-  const book = new OrderbookCaptureBook({
-    marketTicker: input.market.ticker,
-    seriesTicker: input.market.seriesTicker,
-    eventTicker: input.market.eventTicker,
-  });
+  const book = includeOrderbook
+    ? new OrderbookCaptureBook({
+      marketTicker: input.market.ticker,
+      seriesTicker: input.market.seriesTicker,
+      eventTicker: input.market.eventTicker,
+    })
+    : null;
   let reconnects = 0;
 
   while (
@@ -285,6 +292,9 @@ export async function runSynchronizedCapture(input: {
           bytes,
         });
         if (stream === "orderbook") {
+          if (book == null) {
+            return;
+          }
           const apply = maybeApplyBook(book, parsed, result.bookDiagnostics);
           if (apply === "snapshot" || apply === "delta" || apply === "gap") {
             const top = book.toTopOfBookRecord({
@@ -334,15 +344,17 @@ export async function runSynchronizedCapture(input: {
       result.actualStartMs = nowMs();
       await transport.connect(input.credentials.wsUrl ?? KALSHI_WS_URL, { headers });
       result.connected = true;
-      const subscribe = [
+      const subscribe: Array<Record<string, unknown>> = [
         { id: 1, cmd: "subscribe", params: { channels: [CFB_1HZ_CHANNEL], index_ids: [BRTI_INDEX_ID] } },
         { id: 2, cmd: "subscribe", params: { channels: [CFB_5HZ_CHANNEL], index_ids: [BRTI_INDEX_ID] } },
-        {
+      ];
+      if (includeOrderbook) {
+        subscribe.push({
           id: 3,
           cmd: "subscribe",
           params: { channels: [ORDERBOOK_CHANNEL], market_tickers: [input.market.ticker] },
-        },
-      ];
+        });
+      }
       for (const message of subscribe) {
         result.subscriptionAttempts += 1;
         transport.send(JSON.stringify(message));

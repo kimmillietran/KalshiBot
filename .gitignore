@@ -41,6 +41,8 @@ data/research-results/external-kalshi-data-audit/m17-prep-settlement-friction-la
 data/research-results/external-kalshi-data-audit/m17-prep-brti-access-probe/raw/
 data/research-results/external-kalshi-data-audit/m17-prep-brti-access-probe-v1/raw/
 data/research-results/external-kalshi-data-audit/m17-prep-settlement-sample-mapping/raw/
+data/research-results/external-kalshi-data-audit/m17-prep-one-close-settlement-fidelity/raw/
+data/research-results/external-kalshi-data-audit/m17-prep-one-close-settlement-fidelity-v1/raw/
 
 # local settlement-only import responses (raw; summaries only are committed)
 data/imports/
