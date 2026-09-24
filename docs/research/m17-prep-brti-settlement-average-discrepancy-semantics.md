@@ -156,11 +156,8 @@ already-banked official samples used for settlement.
 | --- | --- | --- | --- | --- |
 | Do the two WS averages use the same window? | **No** (prose): trailing `[ts−60s, ts)` vs settlement `(close−60s, close]` | S1 | Payload metadata can still show the same `[start, end)` pair (as in the committed sample) | Fidelity specs must not treat identical payload windows as identical sample sets |
 | Is `last_60s_windowed_average_15min` official expiration? | **Not stated** | S1 vs S4/S5 | Open | Do not gate M17 on this field matching `expiration_value` without confirmation |
-| Is `avg_60s_data` official expiration? | **Not stated**; exploratory rounding match on one window is **not** a rule | S1; PR116 v3 | Open | Same — exploratory only |
-| What stream feeds averages? | 1Hz channel ticks; 5Hz has no averages | S1, S2 | Second selection from 5Hz | Specs should record both channels separately |
-| Can documented precision explain the gap? | **No** for ~0.09 USD gaps | S7 0.01 dissemination; arithmetic | — | Do not close the issue as “rounding” |
-| Are Help / contract / API consistent? | Partially | S1,S4,S5 | Field→expiration binding missing | Vendor clarification is a dependency for settlement-state reconstruction |
-| Raw evidence durability | Raw capture unavailable; official HTTP not retained | PR116 v3/v4 | Independent replay blocked | Fidelity plan needs durable retention before new collection |
+| Is `avg_60s_data` official expiration? | **Not stated** by vendor. Empirically, diagnostic half-even 2dp matched official on the 04:15Z committed window and the retained 23:15Z one-close capture, while `last_60s_windowed_average_15min` did not — a **strong empirical candidate only**, not a confirmed binding or rounding rule | S1; PR116 v3; one-close v2 | Exact 1Hz selection + official rounding open | Do not select a field for gates; keep reporting both |
+| Raw evidence durability (04:15Z) | Raw capture unavailable; official HTTP not retained for that close | PR116 v3/v4 | Independent replay of 04:15Z ticks blocked | Later one-close campaigns retain raw WS + official HTTP under local-persistent-only |
 
 ---
 

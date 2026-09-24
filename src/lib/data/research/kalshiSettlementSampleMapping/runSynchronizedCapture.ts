@@ -54,6 +54,14 @@ export type CapturedStreamEvent = {
   bytes: number;
 };
 
+export type CapturedBrtiObservation = {
+  sourceTsMs: number | null;
+  valueRaw: string | null;
+  localReceivedAtMs: number;
+  localReceivedAtMonoMs: number;
+  channelHint: "cfb-1hz" | "cfb-5hz" | "unknown";
+};
+
 export type SynchronizedCaptureResult = {
   attempted: boolean;
   connected: boolean;
@@ -69,13 +77,10 @@ export type SynchronizedCaptureResult = {
   events: CapturedStreamEvent[];
   cfbSummaries: LiveCfbMessageSummary[];
   venueAverages: VenueAverageUpdate[];
-  rawBrti: Array<{
-    sourceTsMs: number | null;
-    valueRaw: string | null;
-    localReceivedAtMs: number;
-    localReceivedAtMonoMs: number;
-    channelHint: "cfb-1hz" | "cfb-5hz" | "unknown";
-  }>;
+  /** @deprecated Prefer rawBrti1Hz / rawBrti5Hz — never mix for stream-labeled comparisons. */
+  rawBrti: CapturedBrtiObservation[];
+  rawBrti1Hz: CapturedBrtiObservation[];
+  rawBrti5Hz: CapturedBrtiObservation[];
   quotes: ReceiptTimedQuote[];
   bookDiagnostics: {
     snapshots: number;
@@ -106,8 +111,18 @@ function classifyStream(payload: unknown, defaultHint: CapturedStreamEvent["stre
     return "orderbook";
   }
   const msg = isRecord(payload.msg) ? payload.msg : {};
+  // Prefer explicit wire type / channel before heuristic shape matching.
+  if (payload.type === "cfbenchmarks_value_5hz" || msg.channel === "cfbenchmarks_value_5hz") {
+    return "cfb-5hz";
+  }
+  if (payload.type === "cfbenchmarks_value" || msg.channel === "cfbenchmarks_value") {
+    return "cfb-1hz";
+  }
   if (isRecord(msg.last_60s_windowed_average_15min) || isRecord(msg.avg_60s_data)) {
     return "cfb-1hz";
+  }
+  if (typeof msg.source_ts_ms === "number" && typeof msg.value_usd === "string") {
+    return "cfb-5hz";
   }
   if (typeof msg.data === "string" && !isRecord(msg.last_60s_windowed_average_15min)) {
     return "cfb-5hz";
@@ -217,6 +232,8 @@ export async function runSynchronizedCapture(input: {
     cfbSummaries: [],
     venueAverages: [],
     rawBrti: [],
+    rawBrti1Hz: [],
+    rawBrti5Hz: [],
     quotes: [],
     bookDiagnostics: {
       snapshots: 0,
@@ -325,13 +342,21 @@ export async function runSynchronizedCapture(input: {
         }
         result.cfbSummaries.push(summary);
         if (summary.valuePresent) {
-          result.rawBrti.push({
+          const channelHint: CapturedBrtiObservation["channelHint"] =
+            stream === "cfb-5hz" || stream === "cfb-1hz" ? stream : "unknown";
+          const observation: CapturedBrtiObservation = {
             sourceTsMs: summary.sourceTsMs,
             valueRaw: summary.rawValue,
             localReceivedAtMs: receivedAtMs,
             localReceivedAtMonoMs: receivedAtMonoMs,
-            channelHint: stream === "cfb-5hz" || stream === "cfb-1hz" ? stream : "unknown",
-          });
+            channelHint,
+          };
+          result.rawBrti.push(observation);
+          if (channelHint === "cfb-1hz") {
+            result.rawBrti1Hz.push(observation);
+          } else if (channelHint === "cfb-5hz") {
+            result.rawBrti5Hz.push(observation);
+          }
         }
         pushAverage(result.venueAverages, summary, "last_60s_windowed_average_15min", receivedAtMonoMs);
         pushAverage(result.venueAverages, summary, "avg_60s_data", receivedAtMonoMs);

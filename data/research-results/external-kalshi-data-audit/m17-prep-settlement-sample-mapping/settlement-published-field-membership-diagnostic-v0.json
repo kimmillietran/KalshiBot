@@ -90,11 +90,13 @@
       "trailingMatches": true
     },
     "selectionForbidden": true,
-    "note": "Trailing match after diagnostic rounding remains exploratory; not used to select an official field."
+    "empiricalCandidateField": "avg_60s_data",
+    "empiricalCandidateCaveat": "Strong empirical candidate from diagnostic-rounded agreement with expiration_value on observed closes (04:15Z committed + 23:15Z retained); not vendor-confirmed; does not establish 1Hz selection or official rounding.",
+    "note": "Trailing match after diagnostic rounding is descriptive only; not used to select an official field for gates."
   },
   "unidentifiable": [
-    "Official field binding (neither average identified as expiration_value rule).",
-    "Underlying 1Hz tick list (only implied through averages; not retained raw 1Hz or 5Hz frames).",
+    "Vendor-confirmed official field binding (avg_60s_data remains an empirical candidate only).",
+    "Underlying 1Hz tick list for 04:15Z (only implied through averages; raw 1Hz/5Hz frames not retained for that close).",
     "Whether implied x_n equal CFB 1Hz ticks vs some other second-selection from 5Hz.",
     "Kalshi rounding rule for expiration_value (diagnostic half-even 2dp only).",
     "T0 as a directly observed published value (only reconstructed under model assumptions)."

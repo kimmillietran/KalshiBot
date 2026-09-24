@@ -272,6 +272,27 @@ describe("kalshiBrtiAccessProbe", () => {
     expect(summary.hasLast60sWindowedAverage15min).toBe(true);
   });
 
+  it("reads 1Hz source timestamp from nested msg.data.time when source_ts_ms is absent", () => {
+    const summary = summarizeLiveMessage(JSON.stringify({
+      type: "cfbenchmarks_value",
+      msg: {
+        index_id: "BRTI",
+        received_at: 1790291626052,
+        data: "{\"type\":\"value\",\"time\":1790291626000,\"id\":\"BRTI\",\"value\":\"84271.46\"}",
+        avg_60s_data: {
+          value: "84271.46000000",
+          window_size: 0,
+          window_start_ts_ms: 1790291566000,
+          window_end_ts_exclusive: 1790291626000,
+        },
+      },
+    }), 1790291626053);
+    expect(summary.sourceTsMs).toBe(1790291626000);
+    expect(summary.rawValue).toBe("84271.46");
+    expect(summary.localReceivedAtMs).toBe(1790291626053);
+    expect(summary.providerReceivedAtMs).toBe(1790291626052);
+  });
+
   it("follow-up fixture does not invent official settlement values", async () => {
     const root = mkdtempSync(join(tmpdir(), "brti-followup-"));
     const audit = join(root, "data/research-results/external-kalshi-data-audit");

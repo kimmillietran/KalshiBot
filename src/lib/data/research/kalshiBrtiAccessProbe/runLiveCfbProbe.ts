@@ -81,11 +81,18 @@ export function summarizeLiveMessage(
   const record = isRecord(parsed) ? parsed : {};
   const msg = isRecord(record.msg) ? record.msg : {};
   let rawValue: string | null = typeof msg.value_usd === "string" ? msg.value_usd : null;
+  let nestedSourceTsMs: number | null = null;
   if (typeof msg.data === "string") {
     try {
       const inner = JSON.parse(msg.data) as unknown;
-      if (isRecord(inner) && typeof inner.value === "string") {
-        rawValue = inner.value;
+      if (isRecord(inner)) {
+        if (typeof inner.value === "string") {
+          rawValue = inner.value;
+        }
+        // 1Hz CFB wire embeds source time inside msg.data JSON; 5Hz also exposes source_ts_ms.
+        if (typeof inner.time === "number") {
+          nestedSourceTsMs = inner.time;
+        }
       }
     } catch {
       // keep parsed value_usd or null
@@ -97,7 +104,9 @@ export function summarizeLiveMessage(
     providerReceivedAtMs: typeof msg.received_at === "number" ? msg.received_at : null,
     sourceTsMs: typeof msg.source_ts_ms === "number"
       ? msg.source_ts_ms
-      : typeof msg.time === "number" ? msg.time : null,
+      : typeof msg.time === "number"
+        ? msg.time
+        : nestedSourceTsMs,
     indexId: typeof msg.index_id === "string" ? msg.index_id : null,
     rawValue,
     trailingAvg60s: readWindowAverage(msg.avg_60s_data),

@@ -36,8 +36,16 @@ export { executeLiveOneClose, classifyConnectedCaptureStatus } from "./executeLi
 export type { LiveOneCloseDeps, LiveOneCloseResult } from "./executeLiveOneClose";
 export {
   comparePublishedAverage,
+  comparePublishedAverageForStream,
+  verifiedSourceTimestampedSamples,
   meanRawSamples,
   roundHalfEven2,
   TRAILING_WINDOW_LABEL,
   QUARTER_HOUR_WINDOW_LABEL,
+  EXPECTED_SETTLEMENT_SAMPLE_COUNT,
+} from "./compareMembershipAverages";
+export type {
+  AverageAgreement,
+  StreamMembershipComparison,
+  BrtiSourceStream,
 } from "./compareMembershipAverages";

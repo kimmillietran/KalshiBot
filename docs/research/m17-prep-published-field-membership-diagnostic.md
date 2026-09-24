@@ -72,17 +72,28 @@ This is a coherent story, not a unique identification of the tick series.
 
 ---
 
-## Still unidentifiable
+## Still unidentifiable / carefully stated empirical candidates
 
-- Which field (if either) is the official `expiration_value` rule (no selection performed; trailing’s diagnostic 2dp match remains exploratory only).
-- The actual 1Hz tick list (not retained); whether implied \(x_n\) equal CFB 1Hz prints vs another second-selection from 5Hz.
-- Kalshi’s normative rounding for `expiration_value`.
-- Direct observation of the excluded start tick as a published field.
+- Exact 1 Hz sample-selection rule and Kalshi’s normative rounding for
+  `expiration_value` remain **unproven**.
+- The actual 1Hz tick list was **not retained** for the 04:15Z offline window;
+  implied \(x_n\) cannot be independently replayed from raw CFB prints.
+- Direct observation of the excluded start tick as a published field is absent.
 
-**Descriptive only:** official `83817.71`; diagnostic half-even 2dp matches trailing, not settlement — **not** used to select an official field.
+**Empirical candidate (not vendor-confirmed):** across the committed 04:15Z
+window and the later retained 23:15Z one-close capture, official
+`expiration_value` matched `avg_60s_data` after diagnostic half-even rounding to
+two decimals, and did **not** match `last_60s_windowed_average_15min` under the
+same diagnostic. That makes `avg_60s_data` a **strong empirical candidate** for
+the official settlement average on the observed closes — **not** a confirmed
+binding, and **not** proof of the exact 1 Hz selection or official rounding
+rule. Do **not** treat this as field selection for trading or strategy gates.
+
+**Descriptive numbers (04:15Z):** official `83817.71`; diagnostic half-even 2dp
+matches trailing `83817.70733333`, not settlement `83817.61766667`.
 
 ---
 
 ## Bottom line
 
-Committed published averages for this one close are **consistent with** #118’s grow-vs-slide membership story and **inconsistent with** treating identical payload labels as identical samples. The striking `trail(+1s) = settlement` equality and the peel/`60Δ` arithmetic are largely **consequences of that story or of cumulative-mean algebra**, not independent proofs. Official binding and the underlying 1Hz series remain **unidentifiable** from these artifacts alone.
+Committed published averages for this one close are **consistent with** #118’s grow-vs-slide membership story and **inconsistent with** treating identical payload labels as identical samples. The striking `trail(+1s) = settlement` equality and the peel/`60Δ` arithmetic are largely **consequences of that story or of cumulative-mean algebra**, not independent proofs. Official binding remains **vendor-unconfirmed**; `avg_60s_data` is only a strong empirical candidate from observed diagnostic-rounded agreement with `expiration_value` on the retained closes, not a selected official field and not a proven 1 Hz / rounding rule.

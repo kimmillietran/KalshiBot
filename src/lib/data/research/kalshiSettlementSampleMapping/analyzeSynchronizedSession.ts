@@ -78,7 +78,10 @@ export function analyzeSynchronizedSession(input: {
     })
     : null;
 
-  const rawAsObservations = capture.rawBrti.map((item) => ({
+  const brtiPool = capture.rawBrti1Hz.length > 0
+    ? capture.rawBrti1Hz
+    : capture.rawBrti.filter((item) => item.channelHint !== "cfb-5hz");
+  const rawAsObservations = brtiPool.map((item) => ({
     timeRaw: item.sourceTsMs,
     timeMs: item.sourceTsMs,
     valueRaw: item.valueRaw,
