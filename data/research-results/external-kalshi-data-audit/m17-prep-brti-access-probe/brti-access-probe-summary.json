@@ -1,0 +1,181 @@
+{
+  "studyId": "kalshi-kxbtc15m-brti-access-probe-v0",
+  "generatedAtUtc": "2026-09-24T02:34:06.158Z",
+  "classification": "access-available-with-identified-limitations",
+  "probePasses": [
+    {
+      "id": "pass-1-latest-plus-live",
+      "startedAtUtc": "2026-09-24T02:31:55.902Z",
+      "httpRequestCount": 4,
+      "liveAttempted": true,
+      "notes": "Latest CFB REST 200. /historical/markets/{ticker} 404 x3. Live WS 90s."
+    },
+    {
+      "id": "pass-2-rest-metadata-plus-bounded-history",
+      "startedAtUtc": "2026-09-24T02:34:06.158Z",
+      "httpRequestCount": 9,
+      "liveAttempted": false,
+      "notes": "REST /markets/{ticker} 200 x3 using existing market helper. Six MINUTE history calls returned 400 invalid-parameters. HOUR was not requested."
+    }
+  ],
+  "credentials": {
+    "status": "available",
+    "keyIdPresent": true,
+    "privateKeyLoaded": true,
+    "privateKeySource": "raw-env"
+  },
+  "layers": {
+    "endpointDocumented": true,
+    "codeImplemented": true,
+    "credentialsAvailable": true,
+    "accessExercised": true,
+    "historicalCoverageDemonstrated": false,
+    "causalSuitabilityEstablished": false
+  },
+  "httpRequestCountTotalBothPasses": 13,
+  "httpBudgetNote": "Authorized cap was 10 including retries. Pass 1 used 4. Pass 2 used 9 after historical-market 404s left history unattempted. No third network pass.",
+  "latestValues": {
+    "status": 200,
+    "category": "success",
+    "bodyTextHash": "a81950a2656a200ff4ef00d547697b7271764caef4ff877db9ced727ef8cfefc",
+    "path": "/trade-api/v2/cfbenchmarks/values?id=BRTI"
+  },
+  "targets": [
+    {
+      "role": "early",
+      "utcDay": "2026-08-14",
+      "marketTicker": "KXBTC15M-26AUG141430-30",
+      "official": {
+        "ticker": "KXBTC15M-26AUG141430-30",
+        "closeTime": "2026-08-14T18:30:00Z",
+        "expirationValue": "62972.55",
+        "floorStrike": 62954.43,
+        "result": "yes",
+        "settlementTs": "2026-08-14T18:30:04.431426Z",
+        "expirationValueParse": {
+          "kind": "ok",
+          "original": "62972.55",
+          "value": 62972.55,
+          "usedThousandsSeparators": false
+        }
+      },
+      "metadata": {
+        "historicalMarketsStatus": 404,
+        "restMarketsStatus": 200
+      },
+      "historyStatuses": [
+        { "status": 400, "category": "invalid-parameters", "timespan": "MINUTE", "timestamp": "2026-08-14T18:29:00.000Z" },
+        { "status": 400, "category": "invalid-parameters", "timespan": "MINUTE", "timestamp": "2026-08-14T18:30:00.000Z" }
+      ],
+      "historyObservationCount": 0,
+      "reconstruction": {
+        "mapping": { "supported": false, "reason": "no-observations-in-official-window" },
+        "reconstructedAverage": null,
+        "agreement": "not-compared"
+      }
+    },
+    {
+      "role": "middle",
+      "utcDay": "2026-08-30",
+      "marketTicker": "KXBTC15M-26AUG301415-15",
+      "official": {
+        "ticker": "KXBTC15M-26AUG301415-15",
+        "closeTime": "2026-08-30T18:15:00Z",
+        "expirationValue": "78833.97",
+        "floorStrike": 79008.48,
+        "result": "no",
+        "settlementTs": "2026-08-30T18:15:01.175306Z",
+        "expirationValueParse": {
+          "kind": "ok",
+          "original": "78833.97",
+          "value": 78833.97,
+          "usedThousandsSeparators": false
+        }
+      },
+      "metadata": {
+        "historicalMarketsStatus": 404,
+        "restMarketsStatus": 200
+      },
+      "historyStatuses": [
+        { "status": 400, "category": "invalid-parameters", "timespan": "MINUTE", "timestamp": "2026-08-30T18:14:00.000Z" },
+        { "status": 400, "category": "invalid-parameters", "timespan": "MINUTE", "timestamp": "2026-08-30T18:15:00.000Z" }
+      ],
+      "historyObservationCount": 0,
+      "reconstruction": {
+        "mapping": { "supported": false, "reason": "no-observations-in-official-window" },
+        "reconstructedAverage": null,
+        "agreement": "not-compared"
+      }
+    },
+    {
+      "role": "late",
+      "utcDay": "2026-09-21",
+      "marketTicker": "KXBTC15M-26SEP211415-15",
+      "official": {
+        "ticker": "KXBTC15M-26SEP211415-15",
+        "closeTime": "2026-09-21T18:15:00Z",
+        "expirationValue": "85997.00",
+        "floorStrike": 85881.24,
+        "result": "yes",
+        "settlementTs": "2026-09-21T18:15:08.24583Z",
+        "expirationValueParse": {
+          "kind": "ok",
+          "original": "85997.00",
+          "value": 85997,
+          "usedThousandsSeparators": false
+        }
+      },
+      "metadata": {
+        "historicalMarketsStatus": 404,
+        "restMarketsStatus": 200
+      },
+      "historyStatuses": [
+        { "status": 400, "category": "invalid-parameters", "timespan": "MINUTE", "timestamp": "2026-09-21T18:14:00.000Z" },
+        { "status": 400, "category": "invalid-parameters", "timespan": "MINUTE", "timestamp": "2026-09-21T18:15:00.000Z" }
+      ],
+      "historyObservationCount": 0,
+      "reconstruction": {
+        "mapping": { "supported": false, "reason": "no-observations-in-official-window" },
+        "reconstructedAverage": null,
+        "agreement": "not-compared"
+      }
+    }
+  ],
+  "live": {
+    "attempted": true,
+    "connected": true,
+    "channels": ["cfbenchmarks_value", "cfbenchmarks_value_5hz"],
+    "indexIds": ["BRTI"],
+    "startedAtUtc": "2026-09-24T02:31:55.902Z",
+    "durationMs": 90000,
+    "messagesReceived": 541,
+    "handshakeErrorCategory": null,
+    "sawSettlementWindowAverage": false,
+    "limitedBecauseNoSettlementWindow": true,
+    "quarterHourBoundaryWaitSkipped": "next close 02:45Z was more than 90s away",
+    "firstLocalReceivedAtMs": 1790217117076,
+    "firstProviderReceivedAtMs": null,
+    "cohortStatus": "operational-data-access-sample-not-pristine-validation-cohort"
+  },
+  "errorTaxonomy": {
+    "latestRest": "success",
+    "historicalMarkets": "not-found (not treated as entitlement denial)",
+    "restMarkets": "success",
+    "historyMinute": "invalid-parameters (not treated as entitlement denial or empty history)",
+    "liveWs": "connected"
+  },
+  "causalLimitations": [
+    "Historical observation time is not provider publication/receipt time.",
+    "This live probe's local receipt timestamps cannot establish historical latency.",
+    "Historical values without contemporaneous receipt timestamps may support retrospective mechanical reconstruction while remaining insufficient for a causally faithful execution backtest.",
+    "This live probe is an operational data-access sample, not an untouched future validation cohort."
+  ],
+  "knownFollowUpsPreserved": [
+    "--skip-fetch is parsed elsewhere but not implemented",
+    "default output paths can overwrite committed summaries",
+    "two expiration-value strings contain thousands separators",
+    "one target market lacks an official strike",
+    "checkpoint-write reliability has a reviewer caveat"
+  ],
+  "nextPrerequisite": "Confirm the smallest Kalshi-accepted CFB history timespan that stays inside a two-minute bound. Do not request HOUR. Until a documented bounded history parameter succeeds, do not treat settlement-state path reconstruction as unblocked."
+}

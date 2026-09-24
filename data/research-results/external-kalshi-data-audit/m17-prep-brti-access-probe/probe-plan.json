@@ -1,0 +1,77 @@
+{
+  "studyId": "kalshi-kxbtc15m-brti-access-probe-v0",
+  "authorizedAtUtc": "2026-09-24",
+  "authorization": "Project-lead task: bounded read-only Kalshi CFB/BRTI investigation after PR #114 merge. No purchase, no new license, no economic experiment, no M16-P collector, no live book capture.",
+  "documentationRetrievedAtUtc": "2026-09-24",
+  "documentationSources": [
+    "https://docs.kalshi.com/cfbenchmarks/rest-passthrough",
+    "https://docs.kalshi.com/websockets/cfbenchmarks-value",
+    "https://docs.kalshi.com/websockets/cfbenchmarks-value-5hz",
+    "https://docs.cfbenchmarks.com/api/rest/historical-values/",
+    "docs/research/m17-prep-settlement-state-feasibility.md"
+  ],
+  "endpoints": [
+    {
+      "method": "GET",
+      "path": "/trade-api/v2/cfbenchmarks/values",
+      "query": { "id": "BRTI" },
+      "purpose": "latest REST BRTI access/entitlement check",
+      "signPath": "/trade-api/v2/cfbenchmarks/values"
+    },
+    {
+      "method": "GET",
+      "path": "/trade-api/v2/historical/markets/{ticker}",
+      "purpose": "already-admitted official market metadata for three SPENT targets",
+      "signPath": "/trade-api/v2/historical/markets/{ticker}",
+      "notes": "reuse existing historical market client; not a CFB download"
+    },
+    {
+      "method": "GET",
+      "path": "/trade-api/v2/cfbenchmarks/history/values",
+      "query": { "id": "BRTI", "timespan": "MINUTE" },
+      "purpose": "bounded historical BRTI for settlement minute plus one-minute start-boundary margin",
+      "signPath": "/trade-api/v2/cfbenchmarks/history/values",
+      "forbiddenTimespans": ["HOUR", "DAY"],
+      "maxMinutesPerTarget": 2
+    }
+  ],
+  "websocket": {
+    "url": "wss://external-api-ws.kalshi.com/trade-api/ws/v2",
+    "channels": ["cfbenchmarks_value", "cfbenchmarks_value_5hz"],
+    "indexIds": ["BRTI"],
+    "maxDurationSeconds": 90,
+    "maxMessages": 600,
+    "preferQuarterHourBoundary": true,
+    "maxWaitForBoundarySeconds": 90,
+    "notes": "Do not extend capture if settlement-window averages are absent."
+  },
+  "targetSelection": {
+    "calendarSource": "data/research-results/external-kalshi-data-audit/m17-prep-settlement-friction-coverage/settlement-friction-coverage-manifest.json",
+    "tickerSource": "data/research-results/external-kalshi-data-audit/m16-er-blind-incidence.json",
+    "rule": "eligibleUtcDays sorted; early=index 0; middle=floor((n-1)/2); late=n-1. First sorted unique ticker on that utcDayKey, excluding known missing-strike ticker KXBTC15M-26AUG140315-15.",
+    "selectionBeforeObservingBrti": true,
+    "expectedUtcDays": ["2026-08-14", "2026-08-30", "2026-09-21"]
+  },
+  "limits": {
+    "maxHistoricalOrMetadataHttpRequestsIncludingRetries": 10,
+    "maxRetriesPerRequest": 1,
+    "maxMinutesPerTarget": 2,
+    "liveDurationSeconds": 90,
+    "liveMessageCap": 600
+  },
+  "output": {
+    "sanitizedDir": "data/research-results/external-kalshi-data-audit/m17-prep-brti-access-probe",
+    "rawDir": "data/research-results/external-kalshi-data-audit/m17-prep-brti-access-probe/raw",
+    "rawGitignored": true
+  },
+  "forbidden": [
+    "HOUR/DAY historical windows",
+    "bulk history acquisition",
+    "M16-P collector",
+    "live Kalshi book capture",
+    "direct CF Benchmarks signup/payment",
+    "secret or authorization-header logging",
+    "reservoir reclassification",
+    "P&L / model fitting / sealed M16-P outcomes"
+  ]
+}
