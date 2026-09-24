@@ -1,9 +1,9 @@
 # Offline published-field membership diagnostic (committed artifacts only)
 
-**Role:** read-only diagnostic on PR #116 committed outputs.  
-**Not** a capture, fidelity-study execution, official-field selection, or collector change.  
-**Inputs:** `settlement-sample-mapping-summary.json` (`live.analysis.venueAlignments`) + `settlement-average-discrepancy-v3.json`.  
-**Conventions cited:** merged PR #118 semantics memo (trailing vs quarter-hour membership).  
+**Role:** read-only diagnostic on PR #116 committed outputs.
+**Not** a capture, fidelity-study execution, official-field selection, or collector change.
+**Inputs:** `settlement-sample-mapping-summary.json` (`live.analysis.venueAlignments`) + `settlement-average-discrepancy-v3.json`.
+**Conventions cited:** merged PR #118 semantics memo (trailing vs quarter-hour membership).
 **Machine-readable twin:** `settlement-published-field-membership-diagnostic-v0.json`
 
 Window: `KXBTC15M-26SEP240015-15`, close `2026-09-24T04:15:00Z`.

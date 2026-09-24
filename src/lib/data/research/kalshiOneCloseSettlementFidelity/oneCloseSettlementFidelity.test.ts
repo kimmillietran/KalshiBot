@@ -37,13 +37,17 @@ function memoryCampaignIo(files: Map<string, string>): CampaignBudgetIo {
 
 function memoryRetentionIo(input: {
   primaryDev: number;
-  archiveDev: number;
-  archiveRoot?: string;
+  archiveDev?: number;
+  archiveRoot?: string | null;
+  primaryRoot?: string;
 }): RetentionIo {
   const files = new Map<string, Buffer>();
   const dirs = new Set<string>();
-  const archiveRoot = input.archiveRoot ?? "/archive-vol/kalshi";
-  const primaryRoot = "/Users/tester/Documents/KalshiResearchArchive/one-close";
+  const primaryRoot = input.primaryRoot
+    ?? "/Users/tester/Documents/KalshiResearchArchive/one-close";
+  const archiveRoot = input.archiveRoot === null
+    ? null
+    : (input.archiveRoot ?? "/archive-vol/kalshi");
   return {
     exists: (path) => files.has(path) || dirs.has(path),
     mkdir: (path) => {
@@ -64,65 +68,105 @@ function memoryRetentionIo(input: {
       files.delete(from);
     },
     deviceId: (path) => {
-      if (path.startsWith(archiveRoot) || path === archiveRoot) return input.archiveDev;
+      if (archiveRoot && (path.startsWith(archiveRoot) || path === archiveRoot)) {
+        return input.archiveDev ?? 2;
+      }
       return input.primaryDev;
     },
     env: {
       HOME: "/Users/tester",
       KALSHI_FIDELITY_PRIMARY_ROOT: primaryRoot,
-      KALSHI_FIDELITY_ARCHIVE_ROOT: archiveRoot,
+      ...(archiveRoot
+        ? { KALSHI_FIDELITY_ARCHIVE_ROOT: archiveRoot }
+        : {}),
     },
   };
 }
 
 describe("freezeOneClosePlan", () => {
-  it("freezes next quarter-hour with #119 offsets", () => {
-    const nowMs = Date.parse("2026-09-24T22:24:03.976Z");
-    const plan = freezeOneClosePlan({ nowMs });
-    expect(plan.closeUtc).toBe("2026-09-24T22:30:00.000Z");
+  it("freezes next quarter-hour with authorized offsets", () => {
+    const nowMs = Date.parse("2026-09-24T22:31:57Z");
+    const plan = freezeOneClosePlan({ nowMs, retentionMode: "local-persistent-only" });
+    expect(plan.closeUtc).toBe("2026-09-24T22:45:00.000Z");
     expect(plan.connectEarliestMs).toBe(plan.closeMs - 75_000);
     expect(plan.captureStartMs).toBe(plan.closeMs - 70_000);
+    // min(close+20s, connect+90s) => close+15s when connect at -75s
     expect(plan.captureStopMs).toBe(plan.closeMs + 15_000);
-    expect(plan.readinessCutoffMs).toBe(plan.captureStartMs - 30_000);
+    expect(plan.readinessCutoffMs).toBe(plan.closeMs - 100_000);
     expect(plan.includeOrderbook).toBe(false);
+    expect(plan.independentBackup).toBe(false);
     expect(plan.substitutionForbidden).toBe(true);
   });
 
   it("classifies missed slot after close without substitution", () => {
     const plan = freezeOneClosePlan({
       nowMs: Date.parse("2026-09-24T22:00:00Z"),
-      closeMs: Date.parse("2026-09-24T22:30:00Z"),
+      closeMs: Date.parse("2026-09-24T22:45:00Z"),
     });
-    expect(classifyMissedSlot(plan, Date.parse("2026-09-24T22:30:00Z"))).toBe("missed-slot");
-    expect(classifyMissedSlot(plan, Date.parse("2026-09-24T22:29:00Z"))).toBe("late-but-before-close");
+    expect(classifyMissedSlot(plan, Date.parse("2026-09-24T22:45:00Z"))).toBe("missed-slot");
+    expect(classifyMissedSlot(plan, Date.parse("2026-09-24T22:44:00Z"))).toBe("late-but-before-close");
   });
 });
 
 describe("retention readiness", () => {
-  it("rejects same-device archive roots", () => {
+  it("accepts local-persistent-only with write/read round-trip and independentBackup=false", () => {
+    const readiness = verifyRetentionReadiness({
+      io: memoryRetentionIo({ primaryDev: 1, archiveRoot: null }),
+      mode: "local-persistent-only",
+      nowIso: "2026-09-24T22:32:00.000Z",
+      campaignId: ONE_CLOSE_CAMPAIGN_ID,
+    });
+    expect(readiness.ready).toBe(true);
+    expect(readiness.independentBackup).toBe(false);
+    expect(readiness.roundTripVerified).toBe(true);
+    expect(readiness.syntheticSha256).toBe(readiness.retrievedSha256);
+  });
+
+  it("rejects independent-archive when archive is same device", () => {
     const readiness = verifyRetentionReadiness({
       io: memoryRetentionIo({ primaryDev: 1, archiveDev: 1 }),
+      mode: "independent-archive",
     });
     expect(readiness.ready).toBe(false);
     expect(readiness.blocker).toMatch(/same-device/);
   });
 
-  it("accepts distinct-device archive after synthetic round-trip", () => {
+  it("accepts independent-archive on distinct devices", () => {
     const readiness = verifyRetentionReadiness({
       io: memoryRetentionIo({ primaryDev: 1, archiveDev: 2 }),
-      nowIso: "2026-09-24T22:25:00.000Z",
+      mode: "independent-archive",
+      nowIso: "2026-09-24T22:32:00.000Z",
     });
     expect(readiness.ready).toBe(true);
-    expect(readiness.roundTripVerified).toBe(true);
-    expect(readiness.syntheticSha256).toBe(readiness.retrievedSha256);
+    expect(readiness.independentBackup).toBe(true);
   });
 
-  it("blocks when archive env unset", () => {
-    const io = memoryRetentionIo({ primaryDev: 1, archiveDev: 2 });
-    io.env = { HOME: "/Users/tester" };
-    const readiness = verifyRetentionReadiness({ io });
+  it("rejects primary roots under temp/worktree paths", () => {
+    const readiness = verifyRetentionReadiness({
+      io: memoryRetentionIo({
+        primaryDev: 1,
+        archiveRoot: null,
+        primaryRoot: "/Users/tester/Developer/kalshi-builder2/tmp-archive",
+      }),
+      mode: "local-persistent-only",
+    });
     expect(readiness.ready).toBe(false);
-    expect(readiness.blocker).toMatch(/ARCHIVE_ROOT/);
+    expect(readiness.blocker).toMatch(/forbidden-location/);
+  });
+  it("rejects local write failure during round-trip", () => {
+    const base = memoryRetentionIo({ primaryDev: 1, archiveRoot: null });
+    const readiness = verifyRetentionReadiness({
+      io: {
+        ...base,
+        writeFile: () => {
+          throw new Error("ENOSPC");
+        },
+      },
+      mode: "local-persistent-only",
+      nowIso: "2026-09-24T22:32:00.000Z",
+    });
+    expect(readiness.ready).toBe(false);
+    expect(readiness.blocker).toMatch(/roundtrip-failed|ENOSPC/);
   });
 });
 
@@ -182,7 +226,6 @@ describe("capture deadline helpers", () => {
     const state = createSessionLimitState({ startedAtMs: 0, stopAtMs: 90_000 });
     expect(registerConnectionAttempt(state, "multiplexed-ws")).toBe(true);
     expect(registerConnectionAttempt(state, "multiplexed-ws")).toBe(true);
-    // mapping default is 2 per stream — third fails
     expect(registerConnectionAttempt(state, "multiplexed-ws")).toBe(false);
     requestCleanShutdown(state, "test");
     expect(state.shutdownRequested).toBe(true);
@@ -197,11 +240,12 @@ describe("runOneCloseSettlementFidelity gates", () => {
       argv: {
         authorizeLive: true,
         skipLive: false,
-        closeMs: Date.parse("2026-09-24T22:30:00Z"),
+        closeMs: Date.parse("2026-09-24T22:45:00Z"),
         campaignId: ONE_CLOSE_CAMPAIGN_ID,
         outDir: "out",
         rawDir: "out/raw",
         maxHttp: 12,
+        retentionMode: "local-persistent-only",
       },
       io: {
         writeFile: (path, contents) => {
@@ -210,17 +254,19 @@ describe("runOneCloseSettlementFidelity gates", () => {
         readFile: (path) => files.get(path) ?? null,
         mkdir: () => undefined,
         exists: (path) => files.has(path),
-        nowMs: () => Date.parse("2026-09-24T22:25:00Z"),
+        nowMs: () => Date.parse("2026-09-24T22:32:00Z"),
       },
-      retentionIo: memoryRetentionIo({ primaryDev: 1, archiveDev: 1 }),
+      retentionIo: memoryRetentionIo({
+        primaryDev: 1,
+        archiveRoot: null,
+        primaryRoot: "/tmp/not-allowed",
+      }),
       campaignIo: memoryCampaignIo(files),
     });
     expect(result.disposition.capture).toBe("refused-readiness");
     expect(result.disposition.retention).toBe("blocked-prerequisite");
-    expect(result.disposition.captured).toBe(false);
     expect(result.httpBudget.consumed).toBe(0);
-    expect(result.liveExecution).toBe("refused");
-    expect(result.comparisonsFrozenBeforeCapture.trailingMembership).toContain("close−60s");
+    expect(result.plan.independentBackup).toBe(false);
   });
 
   it("preserves frozen close on resume instead of rolling forward", async () => {
@@ -232,26 +278,27 @@ describe("runOneCloseSettlementFidelity gates", () => {
       readFile: (path: string) => files.get(path) ?? null,
       mkdir: () => undefined,
       exists: (path: string) => files.has(path),
-      nowMs: () => Date.parse("2026-09-24T22:25:00Z"),
+      nowMs: () => Date.parse("2026-09-24T22:32:00Z"),
     };
     const first = await runOneCloseSettlementFidelity({
       repoRoot: "/repo",
       argv: {
         authorizeLive: false,
         skipLive: true,
-        closeMs: Date.parse("2026-09-24T22:30:00Z"),
+        closeMs: Date.parse("2026-09-24T22:45:00Z"),
         campaignId: ONE_CLOSE_CAMPAIGN_ID,
         outDir: "out",
         rawDir: "out/raw",
         maxHttp: 12,
+        retentionMode: "local-persistent-only",
       },
       io,
-      retentionIo: memoryRetentionIo({ primaryDev: 1, archiveDev: 2 }),
+      retentionIo: memoryRetentionIo({ primaryDev: 1, archiveRoot: null }),
       campaignIo: memoryCampaignIo(files),
     });
-    expect(first.plan.closeUtc).toBe("2026-09-24T22:30:00.000Z");
+    expect(first.plan.closeUtc).toBe("2026-09-24T22:45:00.000Z");
 
-    io.nowMs = () => Date.parse("2026-09-24T22:40:00Z");
+    io.nowMs = () => Date.parse("2026-09-24T22:50:00Z");
     const second = await runOneCloseSettlementFidelity({
       repoRoot: "/repo",
       argv: {
@@ -262,14 +309,46 @@ describe("runOneCloseSettlementFidelity gates", () => {
         outDir: "out",
         rawDir: "out/raw",
         maxHttp: 12,
+        retentionMode: "local-persistent-only",
       },
       io,
-      retentionIo: memoryRetentionIo({ primaryDev: 1, archiveDev: 2 }),
+      retentionIo: memoryRetentionIo({ primaryDev: 1, archiveRoot: null }),
       campaignIo: memoryCampaignIo(files),
     });
-    expect(second.plan.closeUtc).toBe("2026-09-24T22:30:00.000Z");
+    expect(second.plan.closeUtc).toBe("2026-09-24T22:45:00.000Z");
     expect(second.disposition.capture).toBe("missed-slot");
     expect(second.disposition.rolledToLaterClose).toBe(false);
+  });
+
+  it("skips live when past readiness cutoff without substitution", async () => {
+    const files = new Map<string, string>();
+    const result = await runOneCloseSettlementFidelity({
+      repoRoot: "/repo",
+      argv: {
+        authorizeLive: true,
+        skipLive: false,
+        closeMs: Date.parse("2026-09-24T22:45:00Z"),
+        campaignId: ONE_CLOSE_CAMPAIGN_ID,
+        outDir: "out",
+        rawDir: "out/raw",
+        maxHttp: 12,
+        retentionMode: "local-persistent-only",
+      },
+      io: {
+        writeFile: (path, contents) => {
+          files.set(path, contents);
+        },
+        readFile: (path) => files.get(path) ?? null,
+        mkdir: () => undefined,
+        exists: (path) => files.has(path),
+        nowMs: () => Date.parse("2026-09-24T22:43:30Z"),
+      },
+      retentionIo: memoryRetentionIo({ primaryDev: 1, archiveRoot: null }),
+      campaignIo: memoryCampaignIo(files),
+    });
+    expect(result.liveExecution).toBe("skipped-past-readiness-cutoff");
+    expect(result.disposition.rolledToLaterClose).toBe(false);
+    expect(result.httpBudget.consumed).toBe(0);
   });
 });
 

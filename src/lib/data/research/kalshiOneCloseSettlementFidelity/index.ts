@@ -1,5 +1,6 @@
 export {
   ONE_CLOSE_CAMPAIGN_ID,
+  ONE_CLOSE_CAMPAIGN_ID_V0,
   ONE_CLOSE_STUDY_ID,
   ONE_CLOSE_MAX_HTTP,
   DEFAULT_ONE_CLOSE_OUT_DIR,
@@ -13,9 +14,10 @@ export type {
   CaptureStatus,
   OfficialStatus,
   RetentionStatus,
+  RetentionMode,
 } from "./types";
 
-export { freezeOneClosePlan, classifyMissedSlot } from "./freezeOneClose";
+export { freezeOneClosePlan, classifyMissedSlot, toSynchronizedWindowPlan } from "./freezeOneClose";
 export {
   verifyRetentionReadiness,
   assertRetentionReady,
@@ -30,6 +32,8 @@ export {
   createFilesystemOneCloseIo,
 } from "./runOneCloseSettlementFidelity";
 export type { OneCloseArgv, OneCloseRunResult } from "./runOneCloseSettlementFidelity";
+export { executeLiveOneClose } from "./executeLiveOneClose";
+export type { LiveOneCloseDeps, LiveOneCloseResult } from "./executeLiveOneClose";
 export {
   comparePublishedAverage,
   meanRawSamples,

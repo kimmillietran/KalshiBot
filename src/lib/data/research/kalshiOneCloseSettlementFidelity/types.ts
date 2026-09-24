@@ -1,23 +1,32 @@
-export const ONE_CLOSE_CAMPAIGN_ID =
+export const ONE_CLOSE_CAMPAIGN_ID_V0 =
   "kalshi-kxbtc15m-one-close-settlement-fidelity-v0" as const;
+
+/** Active one-close campaign for the 2026-09-24T22:45:00Z diagnostic. */
+export const ONE_CLOSE_CAMPAIGN_ID =
+  "kalshi-kxbtc15m-one-close-settlement-fidelity-v1" as const;
 
 export const ONE_CLOSE_STUDY_ID = ONE_CLOSE_CAMPAIGN_ID;
 
 export const DEFAULT_ONE_CLOSE_OUT_DIR =
-  "data/research-results/external-kalshi-data-audit/m17-prep-one-close-settlement-fidelity" as const;
+  "data/research-results/external-kalshi-data-audit/m17-prep-one-close-settlement-fidelity-v1" as const;
 
 export const DEFAULT_ONE_CLOSE_RAW_DIR =
-  "data/research-results/external-kalshi-data-audit/m17-prep-one-close-settlement-fidelity/raw" as const;
+  "data/research-results/external-kalshi-data-audit/m17-prep-one-close-settlement-fidelity-v1/raw" as const;
 
 /** Hard ceiling for this one-close task (discovery + metadata + all retries). */
 export const ONE_CLOSE_MAX_HTTP = 12;
 
 export const ONE_CLOSE_CONNECT_BEFORE_MS = 75_000;
 export const ONE_CLOSE_CAPTURE_START_BEFORE_MS = 70_000;
-export const ONE_CLOSE_CAPTURE_STOP_AFTER_MS = 15_000;
+export const ONE_CLOSE_CAPTURE_STOP_AFTER_MS = 20_000;
 export const ONE_CLOSE_MAX_CONNECTED_MS = 90_000;
 export const ONE_CLOSE_MAX_CONNECTIONS = 2;
-export const ONE_CLOSE_READINESS_LEAD_BEFORE_CAPTURE_START_MS = 30_000;
+/** Readiness cutoff = close − 100s (authorized for this one-close run). */
+export const ONE_CLOSE_READINESS_BEFORE_CLOSE_MS = 100_000;
+
+export const ONE_CLOSE_POST_CLOSE_POLL_OFFSETS_MS = [5_000, 20_000, 45_000] as const;
+export const ONE_CLOSE_OFFICIAL_DEADLINE_AFTER_CLOSE_MS = 60_000;
+export const ONE_CLOSE_MAX_RETRY_DELAY_MS = 2_000;
 
 export const TRAILING_MEMBERSHIP = "[close−60s, close)" as const;
 export const QUARTER_HOUR_MEMBERSHIP = "(close−60s, close]" as const;
@@ -28,6 +37,8 @@ export class OneCloseFidelityError extends Error {
     this.name = "OneCloseFidelityError";
   }
 }
+
+export type RetentionMode = "local-persistent-only" | "independent-archive";
 
 export type CaptureStatus =
   | "pending"
@@ -63,6 +74,8 @@ export type OneClosePlan = {
   maxConnectedMs: number;
   indexSymbol: "BRTI";
   includeOrderbook: false;
+  retentionMode: RetentionMode;
+  independentBackup: boolean;
   frozenAtUtc: string;
   substitutionForbidden: true;
 };

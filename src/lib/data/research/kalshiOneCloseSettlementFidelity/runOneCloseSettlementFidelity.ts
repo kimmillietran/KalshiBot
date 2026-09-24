@@ -4,12 +4,12 @@ import { dirname, join } from "node:path";
 
 import {
   campaignLedgerPath,
-  campaignLockPath,
   createFilesystemCampaignBudgetIo,
   loadOrCreateCampaignLedger,
   type CampaignBudgetIo,
 } from "@/lib/data/research/kalshiBrtiAccessProbe/campaignBudget";
 
+import { executeLiveOneClose, type LiveOneCloseDeps, type LiveOneCloseResult } from "./executeLiveOneClose";
 import { freezeOneClosePlan, classifyMissedSlot } from "./freezeOneClose";
 import {
   assertRetentionReady,
@@ -30,6 +30,7 @@ import {
   type CaptureStatus,
   type OfficialStatus,
   type OneClosePlan,
+  type RetentionMode,
   type RetentionStatus,
 } from "./types";
 
@@ -41,6 +42,7 @@ export type OneCloseArgv = {
   outDir: string;
   rawDir: string;
   maxHttp: number;
+  retentionMode: RetentionMode;
 };
 
 export type OneCloseIo = {
@@ -81,6 +83,10 @@ export function parseOneCloseArgv(argv: string[]): OneCloseArgv {
     closeMs = parsed;
   }
   const maxHttpRaw = read("--max-http");
+  const modeRaw = read("--retention-mode");
+  const retentionMode: RetentionMode = modeRaw === "independent-archive"
+    ? "independent-archive"
+    : "local-persistent-only";
   return {
     authorizeLive: argv.includes("--authorize-live"),
     skipLive: argv.includes("--skip-live") || !argv.includes("--authorize-live"),
@@ -89,6 +95,7 @@ export function parseOneCloseArgv(argv: string[]): OneCloseArgv {
     outDir: read("--out-dir") ?? DEFAULT_ONE_CLOSE_OUT_DIR,
     rawDir: read("--raw-dir") ?? DEFAULT_ONE_CLOSE_RAW_DIR,
     maxHttp: maxHttpRaw ? Number(maxHttpRaw) : ONE_CLOSE_MAX_HTTP,
+    retentionMode,
   };
 }
 
@@ -112,24 +119,21 @@ export type OneCloseRunResult = {
     noOffsetSearch: true;
     noOfficialFieldSelection: true;
   };
-  liveExecution: "refused" | "not-attempted-skip-live" | "would-run-if-authorized-and-ready";
+  liveExecution: "refused" | "not-attempted-skip-live" | "executed" | "skipped-past-readiness-cutoff";
+  live: LiveOneCloseResult | null;
 };
 
 function sha256Text(text: string): string {
   return createHash("sha256").update(text, "utf8").digest("hex");
 }
 
-/**
- * One-close settlement-fidelity runner. Live capture requires --authorize-live
- * AND verified distinct-device retention. Default path freezes the plan, checks
- * readiness, persists disposition, and refuses market-data requests.
- */
 export async function runOneCloseSettlementFidelity(input: {
   repoRoot: string;
   argv: OneCloseArgv;
   io?: OneCloseIo;
   retentionIo?: RetentionIo;
   campaignIo?: CampaignBudgetIo;
+  liveDeps?: LiveOneCloseDeps;
 }): Promise<OneCloseRunResult> {
   const io = input.io ?? createFilesystemOneCloseIo();
   const retentionIo = input.retentionIo ?? createFilesystemRetentionIo();
@@ -161,15 +165,14 @@ export async function runOneCloseSettlementFidelity(input: {
       nowMs,
       closeMs: input.argv.closeMs ?? undefined,
       campaignId: input.argv.campaignId,
+      retentionMode: input.argv.retentionMode,
       frozenAtUtc: new Date(nowMs).toISOString(),
     });
   }
   io.writeFile(planPath, `${JSON.stringify(plan, null, 2)}\n`);
 
-  const ledgerPath = campaignLedgerPath(campaignDir);
-  const lockPath = campaignLockPath(campaignDir);
   loadOrCreateCampaignLedger({
-    ledgerPath,
+    ledgerPath: campaignLedgerPath(campaignDir),
     campaignId: plan.campaignId,
     limit: input.argv.maxHttp,
     io: campaignIo,
@@ -177,16 +180,19 @@ export async function runOneCloseSettlementFidelity(input: {
 
   const retentionReadiness = verifyRetentionReadiness({
     io: retentionIo,
+    mode: plan.retentionMode,
     nowIso: new Date(nowMs).toISOString(),
+    campaignId: plan.campaignId,
   });
 
   const missed = classifyMissedSlot(plan, nowMs);
   let capture: CaptureStatus = "not-attempted";
-  const official: OfficialStatus = "not-attempted";
+  let official: OfficialStatus = "not-attempted";
   let retention: RetentionStatus = retentionReadiness.ready ? "pending" : "blocked-prerequisite";
   let reason = "awaiting-authorization-and-readiness";
   let liveExecution: OneCloseRunResult["liveExecution"] = "not-attempted-skip-live";
-  const captured = false;
+  let captured = false;
+  let live: LiveOneCloseResult | null = null;
 
   if (!retentionReadiness.ready) {
     capture = "refused-readiness";
@@ -200,80 +206,77 @@ export async function runOneCloseSettlementFidelity(input: {
   } else if (!input.argv.authorizeLive || input.argv.skipLive) {
     reason = "live-not-authorized: pass --authorize-live only when retention-ready and gates satisfied";
     liveExecution = "not-attempted-skip-live";
+  } else if (nowMs > plan.readinessCutoffMs) {
+    // Must start before readiness cutoff (−100s). Process then waits until connect (−75s).
+    capture = "missed-slot";
+    reason = "skipped-past-readiness-cutoff; substitution-forbidden";
+    liveExecution = "skipped-past-readiness-cutoff";
   } else {
-    // Live path gated: still require explicit retention assert before any network.
-    try {
-      assertRetentionReady(retentionReadiness);
-    } catch (error) {
-      capture = "refused-readiness";
-      retention = "blocked-prerequisite";
-      reason = error instanceof Error ? error.message : "retention-assert-failed";
-      liveExecution = "refused";
-      const result = buildResult();
-      persistDisposition(result);
-      return result;
-    }
-    // Intentionally not opening sockets here in default CI/offline flows.
-    // A follow-up that holds credentials + distinct-device archive may call the
-    // capture helpers; this runner refuses to start network I/O unless a
-    // dedicated live executor is wired (keeps unit tests hermetic).
-    liveExecution = "would-run-if-authorized-and-ready";
-    reason = "live-executor-not-wired-in-this-commit; capture not started";
-    capture = "not-attempted";
-  }
-
-  function buildResult(): OneCloseRunResult {
-    const ledger = loadOrCreateCampaignLedger({
-      ledgerPath,
-      campaignId: plan.campaignId,
-      limit: input.argv.maxHttp,
-      io: campaignIo,
-      requireExisting: true,
-    });
-    return {
-      studyId: ONE_CLOSE_STUDY_ID,
-      campaignId: plan.campaignId,
-      plan,
-      disposition: {
-        captured,
-        capture,
-        official,
-        retention,
-        reason,
-        rolledToLaterClose: false,
-      },
-      retentionReadiness,
-      httpBudget: {
-        campaignId: ledger.campaignId,
-        consumed: ledger.consumed,
-        limit: ledger.limit,
-      },
-      comparisonsFrozenBeforeCapture: {
-        trailingMembership: TRAILING_MEMBERSHIP,
-        quarterHourMembership: QUARTER_HOUR_MEMBERSHIP,
-        noOffsetSearch: true,
-        noOfficialFieldSelection: true,
-      },
-      liveExecution,
-    };
-  }
-
-  function persistDisposition(result: OneCloseRunResult): void {
-    const body = `${JSON.stringify({
-      ...result,
-      codeSha: io.codeSha?.() ?? null,
-      lockPath,
-      rawDir: input.argv.rawDir,
-      generatedAtUtc: new Date(io.nowMs()).toISOString(),
-    }, null, 2)}\n`;
-    io.writeFile(join(outAbs, "one-close-disposition.json"), body);
-    io.writeFile(
-      join(outAbs, "one-close-disposition.sha256"),
-      `${sha256Text(body)}\n`,
+    // Before readiness cutoff with authorize-live: execute waits internally until connect.
+    assertRetentionReady(retentionReadiness);
+    const persistentRawDir = join(
+      retentionReadiness.primaryRoot!,
+      plan.campaignId,
+      plan.closeUtc.replace(/[:.]/g, "-"),
+      "raw",
     );
+    live = await executeLiveOneClose({
+      plan,
+      campaignDir,
+      persistentRawDir,
+      retention: retentionReadiness,
+      deps: input.liveDeps,
+    });
+    capture = live.capture;
+    official = live.official;
+    retention = live.retention;
+    captured = live.captured;
+    reason = live.reason;
+    liveExecution = "executed";
   }
 
-  const result = buildResult();
-  persistDisposition(result);
+  const ledger = loadOrCreateCampaignLedger({
+    ledgerPath: campaignLedgerPath(campaignDir),
+    campaignId: plan.campaignId,
+    limit: input.argv.maxHttp,
+    io: campaignIo,
+    requireExisting: true,
+  });
+
+  const result: OneCloseRunResult = {
+    studyId: ONE_CLOSE_STUDY_ID,
+    campaignId: plan.campaignId,
+    plan,
+    disposition: {
+      captured,
+      capture,
+      official,
+      retention,
+      reason,
+      rolledToLaterClose: false,
+    },
+    retentionReadiness,
+    httpBudget: {
+      campaignId: ledger.campaignId,
+      consumed: ledger.consumed,
+      limit: ledger.limit,
+    },
+    comparisonsFrozenBeforeCapture: {
+      trailingMembership: TRAILING_MEMBERSHIP,
+      quarterHourMembership: QUARTER_HOUR_MEMBERSHIP,
+      noOffsetSearch: true,
+      noOfficialFieldSelection: true,
+    },
+    liveExecution,
+    live,
+  };
+
+  const body = `${JSON.stringify({
+    ...result,
+    codeSha: io.codeSha?.() ?? null,
+    generatedAtUtc: new Date(io.nowMs()).toISOString(),
+  }, null, 2)}\n`;
+  io.writeFile(join(outAbs, "one-close-disposition.json"), body);
+  io.writeFile(join(outAbs, "one-close-disposition.sha256"), `${sha256Text(body)}\n`);
   return result;
 }

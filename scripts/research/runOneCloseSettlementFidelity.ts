@@ -1,7 +1,8 @@
 /**
  * One-close settlement-fidelity diagnostic runner.
  * Default: freeze plan + retention gate + refuse live.
- * Live capture requires --authorize-live AND distinct-device archive readiness.
+ * Live capture requires --authorize-live AND retention readiness
+ * (`local-persistent-only` or `independent-archive`).
  */
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -35,7 +36,11 @@ async function main(): Promise<number> {
       httpConsumed: result.httpBudget.consumed,
       liveExecution: result.liveExecution,
       retentionReady: result.retentionReadiness.ready,
+      retentionMode: result.retentionReadiness.mode,
+      independentBackup: result.retentionReadiness.independentBackup,
       retentionBlocker: result.retentionReadiness.blocker,
+      rawCapturePath: result.live?.rawCapturePath ?? null,
+      rawCaptureSha256: result.live?.rawCaptureSha256 ?? null,
     })}\n`);
     return result.disposition.capture === "refused-readiness" || result.disposition.capture === "missed-slot"
       ? 2
