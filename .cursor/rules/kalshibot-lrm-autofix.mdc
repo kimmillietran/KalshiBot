@@ -219,7 +219,8 @@ Document and follow this cycle:
 7. Remove `autofix-ok` from the original PR.
 8. Add `autofix-ok` again only for another explicit autofix cycle.
 
-Do not add `automerge-ok` during autofix.
+Do not merge the original PR from autofix. Merge authority is exact-head Cursor
+LRM + Quality Gates (see `.github/workflows/auto-merge-after-cursor-lrm.yml`).
 
 ## Make and push the fix
 
@@ -259,12 +260,11 @@ Never:
 - open an autofix PR before committing
 - silently skip tests
 - commit generated reports, capture data, logs, secrets, or credentials
-- merge the original PR
+- merge the original PR (autofix only updates the feature branch via the nested PR)
 - recursively autofix an autofix PR without a fresh explicit trigger
 - cherry-pick autofix commits into builder worktrees
 - bypass worktree guards
 - approve the PR through GitHub approval
-- add `automerge-ok` during autofix
 
 ## Absolute constraints
 
