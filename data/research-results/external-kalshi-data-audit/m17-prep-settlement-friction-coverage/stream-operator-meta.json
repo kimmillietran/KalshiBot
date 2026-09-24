@@ -1,0 +1,357 @@
+{
+  "adapterId": "RAW-BBO-CHANGE",
+  "adapterIdentity": "3f37ecb76644ee0749c50f33cfdaf8921e8dcb1cf208abdc55719a461e27dc7d",
+  "eligibleDays": [
+    "2026-08-14",
+    "2026-08-15",
+    "2026-08-16",
+    "2026-08-17",
+    "2026-08-18",
+    "2026-08-19",
+    "2026-08-20",
+    "2026-08-21",
+    "2026-08-22",
+    "2026-08-23",
+    "2026-08-24",
+    "2026-08-25",
+    "2026-08-26",
+    "2026-08-27",
+    "2026-08-28",
+    "2026-08-29",
+    "2026-08-30",
+    "2026-08-31",
+    "2026-09-01",
+    "2026-09-02",
+    "2026-09-03",
+    "2026-09-04",
+    "2026-09-05",
+    "2026-09-06",
+    "2026-09-07",
+    "2026-09-10",
+    "2026-09-11",
+    "2026-09-12",
+    "2026-09-13",
+    "2026-09-15",
+    "2026-09-16",
+    "2026-09-17",
+    "2026-09-19",
+    "2026-09-21"
+  ],
+  "availableDays": [
+    "2026-08-14",
+    "2026-08-15",
+    "2026-08-16",
+    "2026-08-17",
+    "2026-08-18",
+    "2026-08-19",
+    "2026-08-20",
+    "2026-08-21",
+    "2026-08-22",
+    "2026-08-23",
+    "2026-08-24",
+    "2026-08-25",
+    "2026-08-26",
+    "2026-08-27",
+    "2026-08-28",
+    "2026-08-29",
+    "2026-08-30",
+    "2026-08-31",
+    "2026-09-01",
+    "2026-09-02",
+    "2026-09-03",
+    "2026-09-04",
+    "2026-09-05",
+    "2026-09-06",
+    "2026-09-07",
+    "2026-09-10",
+    "2026-09-11",
+    "2026-09-12",
+    "2026-09-13",
+    "2026-09-15",
+    "2026-09-16",
+    "2026-09-17",
+    "2026-09-19",
+    "2026-09-21"
+  ],
+  "exclusions": {
+    "missing-prices": 6463719,
+    "insufficient-size": 5656167,
+    "outside-session": 17,
+    "locked-book": 1
+  },
+  "generatedAtUtc": "2026-09-24T00:26:07.965307+00:00",
+  "dayNotes": [
+    {
+      "utcDayKey": "2026-08-14",
+      "status": "processed",
+      "reason": null,
+      "marketsSeen": 99,
+      "retainedSamples": 1404,
+      "sessionCoverageNote": "processed 99 markets; leftTruncatedMarkets=0; not all markets are guaranteed complete sessions"
+    },
+    {
+      "utcDayKey": "2026-08-15",
+      "status": "processed",
+      "reason": null,
+      "marketsSeen": 99,
+      "retainedSamples": 1439,
+      "sessionCoverageNote": "processed 99 markets; leftTruncatedMarkets=0; not all markets are guaranteed complete sessions"
+    },
+    {
+      "utcDayKey": "2026-08-16",
+      "status": "processed",
+      "reason": null,
+      "marketsSeen": 102,
+      "retainedSamples": 1426,
+      "sessionCoverageNote": "processed 102 markets; leftTruncatedMarkets=0; not all markets are guaranteed complete sessions"
+    },
+    {
+      "utcDayKey": "2026-08-17",
+      "status": "processed",
+      "reason": null,
+      "marketsSeen": 99,
+      "retainedSamples": 1412,
+      "sessionCoverageNote": "processed 99 markets; leftTruncatedMarkets=0; not all markets are guaranteed complete sessions"
+    },
+    {
+      "utcDayKey": "2026-08-18",
+      "status": "processed",
+      "reason": null,
+      "marketsSeen": 98,
+      "retainedSamples": 1413,
+      "sessionCoverageNote": "processed 98 markets; leftTruncatedMarkets=0; not all markets are guaranteed complete sessions"
+    },
+    {
+      "utcDayKey": "2026-08-19",
+      "status": "processed",
+      "reason": null,
+      "marketsSeen": 99,
+      "retainedSamples": 1411,
+      "sessionCoverageNote": "processed 99 markets; leftTruncatedMarkets=0; not all markets are guaranteed complete sessions"
+    },
+    {
+      "utcDayKey": "2026-08-20",
+      "status": "processed",
+      "reason": null,
+      "marketsSeen": 90,
+      "retainedSamples": 1192,
+      "sessionCoverageNote": "processed 90 markets; leftTruncatedMarkets=0; not all markets are guaranteed complete sessions"
+    },
+    {
+      "utcDayKey": "2026-08-21",
+      "status": "processed",
+      "reason": null,
+      "marketsSeen": 98,
+      "retainedSamples": 1401,
+      "sessionCoverageNote": "processed 98 markets; leftTruncatedMarkets=0; not all markets are guaranteed complete sessions"
+    },
+    {
+      "utcDayKey": "2026-08-22",
+      "status": "processed",
+      "reason": null,
+      "marketsSeen": 99,
+      "retainedSamples": 1404,
+      "sessionCoverageNote": "processed 99 markets; leftTruncatedMarkets=0; not all markets are guaranteed complete sessions"
+    },
+    {
+      "utcDayKey": "2026-08-23",
+      "status": "processed",
+      "reason": null,
+      "marketsSeen": 98,
+      "retainedSamples": 1417,
+      "sessionCoverageNote": "processed 98 markets; leftTruncatedMarkets=0; not all markets are guaranteed complete sessions"
+    },
+    {
+      "utcDayKey": "2026-08-24",
+      "status": "processed",
+      "reason": null,
+      "marketsSeen": 99,
+      "retainedSamples": 1384,
+      "sessionCoverageNote": "processed 99 markets; leftTruncatedMarkets=0; not all markets are guaranteed complete sessions"
+    },
+    {
+      "utcDayKey": "2026-08-25",
+      "status": "processed",
+      "reason": null,
+      "marketsSeen": 98,
+      "retainedSamples": 1392,
+      "sessionCoverageNote": "processed 98 markets; leftTruncatedMarkets=0; not all markets are guaranteed complete sessions"
+    },
+    {
+      "utcDayKey": "2026-08-26",
+      "status": "processed",
+      "reason": null,
+      "marketsSeen": 98,
+      "retainedSamples": 1412,
+      "sessionCoverageNote": "processed 98 markets; leftTruncatedMarkets=0; not all markets are guaranteed complete sessions"
+    },
+    {
+      "utcDayKey": "2026-08-27",
+      "status": "processed",
+      "reason": null,
+      "marketsSeen": 90,
+      "retainedSamples": 1298,
+      "sessionCoverageNote": "processed 90 markets; leftTruncatedMarkets=0; not all markets are guaranteed complete sessions"
+    },
+    {
+      "utcDayKey": "2026-08-28",
+      "status": "processed",
+      "reason": null,
+      "marketsSeen": 99,
+      "retainedSamples": 1400,
+      "sessionCoverageNote": "processed 99 markets; leftTruncatedMarkets=0; not all markets are guaranteed complete sessions"
+    },
+    {
+      "utcDayKey": "2026-08-29",
+      "status": "processed",
+      "reason": null,
+      "marketsSeen": 99,
+      "retainedSamples": 1430,
+      "sessionCoverageNote": "processed 99 markets; leftTruncatedMarkets=0; not all markets are guaranteed complete sessions"
+    },
+    {
+      "utcDayKey": "2026-08-30",
+      "status": "processed",
+      "reason": null,
+      "marketsSeen": 99,
+      "retainedSamples": 1408,
+      "sessionCoverageNote": "processed 99 markets; leftTruncatedMarkets=0; not all markets are guaranteed complete sessions"
+    },
+    {
+      "utcDayKey": "2026-08-31",
+      "status": "processed",
+      "reason": null,
+      "marketsSeen": 98,
+      "retainedSamples": 1404,
+      "sessionCoverageNote": "processed 98 markets; leftTruncatedMarkets=0; not all markets are guaranteed complete sessions"
+    },
+    {
+      "utcDayKey": "2026-09-01",
+      "status": "processed",
+      "reason": null,
+      "marketsSeen": 98,
+      "retainedSamples": 1391,
+      "sessionCoverageNote": "processed 98 markets; leftTruncatedMarkets=0; not all markets are guaranteed complete sessions"
+    },
+    {
+      "utcDayKey": "2026-09-02",
+      "status": "processed",
+      "reason": null,
+      "marketsSeen": 99,
+      "retainedSamples": 1383,
+      "sessionCoverageNote": "processed 99 markets; leftTruncatedMarkets=0; not all markets are guaranteed complete sessions"
+    },
+    {
+      "utcDayKey": "2026-09-03",
+      "status": "processed",
+      "reason": null,
+      "marketsSeen": 91,
+      "retainedSamples": 1269,
+      "sessionCoverageNote": "processed 91 markets; leftTruncatedMarkets=0; not all markets are guaranteed complete sessions"
+    },
+    {
+      "utcDayKey": "2026-09-04",
+      "status": "processed",
+      "reason": null,
+      "marketsSeen": 99,
+      "retainedSamples": 1416,
+      "sessionCoverageNote": "processed 99 markets; leftTruncatedMarkets=0; not all markets are guaranteed complete sessions"
+    },
+    {
+      "utcDayKey": "2026-09-05",
+      "status": "processed",
+      "reason": null,
+      "marketsSeen": 98,
+      "retainedSamples": 1446,
+      "sessionCoverageNote": "processed 98 markets; leftTruncatedMarkets=0; not all markets are guaranteed complete sessions"
+    },
+    {
+      "utcDayKey": "2026-09-06",
+      "status": "processed",
+      "reason": null,
+      "marketsSeen": 99,
+      "retainedSamples": 1430,
+      "sessionCoverageNote": "processed 99 markets; leftTruncatedMarkets=0; not all markets are guaranteed complete sessions"
+    },
+    {
+      "utcDayKey": "2026-09-07",
+      "status": "processed",
+      "reason": null,
+      "marketsSeen": 98,
+      "retainedSamples": 1422,
+      "sessionCoverageNote": "processed 98 markets; leftTruncatedMarkets=0; not all markets are guaranteed complete sessions"
+    },
+    {
+      "utcDayKey": "2026-09-10",
+      "status": "processed",
+      "reason": null,
+      "marketsSeen": 91,
+      "retainedSamples": 1302,
+      "sessionCoverageNote": "processed 91 markets; leftTruncatedMarkets=0; not all markets are guaranteed complete sessions"
+    },
+    {
+      "utcDayKey": "2026-09-11",
+      "status": "processed",
+      "reason": null,
+      "marketsSeen": 99,
+      "retainedSamples": 1406,
+      "sessionCoverageNote": "processed 99 markets; leftTruncatedMarkets=0; not all markets are guaranteed complete sessions"
+    },
+    {
+      "utcDayKey": "2026-09-12",
+      "status": "processed",
+      "reason": null,
+      "marketsSeen": 99,
+      "retainedSamples": 1450,
+      "sessionCoverageNote": "processed 99 markets; leftTruncatedMarkets=0; not all markets are guaranteed complete sessions"
+    },
+    {
+      "utcDayKey": "2026-09-13",
+      "status": "processed",
+      "reason": null,
+      "marketsSeen": 98,
+      "retainedSamples": 1433,
+      "sessionCoverageNote": "processed 98 markets; leftTruncatedMarkets=0; not all markets are guaranteed complete sessions"
+    },
+    {
+      "utcDayKey": "2026-09-15",
+      "status": "processed",
+      "reason": null,
+      "marketsSeen": 98,
+      "retainedSamples": 1423,
+      "sessionCoverageNote": "processed 98 markets; leftTruncatedMarkets=0; not all markets are guaranteed complete sessions"
+    },
+    {
+      "utcDayKey": "2026-09-16",
+      "status": "processed",
+      "reason": null,
+      "marketsSeen": 99,
+      "retainedSamples": 1420,
+      "sessionCoverageNote": "processed 99 markets; leftTruncatedMarkets=0; not all markets are guaranteed complete sessions"
+    },
+    {
+      "utcDayKey": "2026-09-17",
+      "status": "processed",
+      "reason": null,
+      "marketsSeen": 91,
+      "retainedSamples": 1283,
+      "sessionCoverageNote": "processed 91 markets; leftTruncatedMarkets=0; not all markets are guaranteed complete sessions"
+    },
+    {
+      "utcDayKey": "2026-09-19",
+      "status": "processed",
+      "reason": null,
+      "marketsSeen": 98,
+      "retainedSamples": 1409,
+      "sessionCoverageNote": "processed 98 markets; leftTruncatedMarkets=0; not all markets are guaranteed complete sessions"
+    },
+    {
+      "utcDayKey": "2026-09-21",
+      "status": "processed",
+      "reason": null,
+      "marketsSeen": 99,
+      "retainedSamples": 1377,
+      "sessionCoverageNote": "processed 99 markets; leftTruncatedMarkets=0; not all markets are guaranteed complete sessions"
+    }
+  ]
+}

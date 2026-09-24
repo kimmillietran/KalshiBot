@@ -1,0 +1,3 @@
+{"marketTicker":"KXBTC15M-FIXTURE-A","result":"yes","expirationValue":"65000.12","floorStrike":64980.5,"closeTime":"2026-08-14T12:15:00.000Z","settlementTs":"2026-08-14T12:20:00.000Z"}
+{"marketTicker":"KXBTC15M-FIXTURE-B","result":"no","expirationValue":"","floorStrike":null,"closeTime":null,"settlementTs":null}
+{"marketTicker":"KXBTC15M-FIXTURE-A","result":"yes","expirationValue":"65000.12","floorStrike":64980.5,"closeTime":"2026-08-14T12:15:00.000Z","settlementTs":"2026-08-14T12:20:00.000Z"}
