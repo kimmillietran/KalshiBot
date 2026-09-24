@@ -21,7 +21,8 @@ export type CampaignHttpPurpose =
   | "historical-markets"
   | "rest-markets"
   | "historical-brti"
-  | "official-settlement-metadata";
+  | "official-settlement-metadata"
+  | "live-market-discovery";
 
 export type CampaignLedgerEntry = {
   id: string;
