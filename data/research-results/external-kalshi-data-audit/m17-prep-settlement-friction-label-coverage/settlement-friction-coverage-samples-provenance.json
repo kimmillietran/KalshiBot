@@ -1,0 +1,6 @@
+{
+  "samplesLocalOnly": true,
+  "retainedSamples": 47307,
+  "samplesContentSha256": "065469157f997958c567a8119f5062e7ea892787a238adb09a0d5c0a0d9ebffb",
+  "note": "Sample-level JSONL omitted from out-dir by default for empirical runs; pass --write-samples to emit it. Local streamer path: data/external-samples/cryptostruct/m16-er/work/settlement-friction-coverage/samples.jsonl"
+}

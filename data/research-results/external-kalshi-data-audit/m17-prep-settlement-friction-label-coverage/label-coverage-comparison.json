@@ -1,0 +1,52 @@
+{
+  "denominatorTickers": 3228,
+  "frictionUnchanged": true,
+  "sampleIdentity": {
+    "samplesContentSha256": "3f2dad5062e566ad7feacff1fbe1c0b963bbaa4d45aaa20d2a619f31098c8728",
+    "configurationIdentity": "9c0863ba5a96cc0c8451077230510e5c73eee8f817efdbad433f85f3ada9b356",
+    "feeContractIdentity": "2c1059ecc142dd6ca9b82375e03fd84b42f55ce6d6f1435a667111eea2d0548f",
+    "adapterIdentity": "3f37ecb76644ee0749c50f33cfdaf8921e8dcb1cf208abdc55719a461e27dc7d",
+    "retainedSamples": 47307,
+    "eligibleUtcDayCount": 34
+  },
+  "before": {
+    "outputDir": "data/research-results/external-kalshi-data-audit/m17-prep-settlement-friction-coverage",
+    "labelsSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "settlementCoverage": {
+      "denominatorTickers": 3228,
+      "finalizedResultCount": 0,
+      "nonEmptyExpirationValueCount": 0,
+      "validNumericExpirationValueCount": 0,
+      "jointFinalizedAndNonEmptyExpirationCount": 0,
+      "finiteStrikeCount": 0,
+      "parseableCloseTimeCount": 0,
+      "parseableSettlementTsCount": 0,
+      "duplicateTickerCount": 0,
+      "conflictingTickerCount": 0
+    }
+  },
+  "after": {
+    "outputDir": "data/research-results/external-kalshi-data-audit/m17-prep-settlement-friction-label-coverage",
+    "labelsSha256": "7c869cd12d1e3189437db5ec3c3781cee3d988eb36421ef5f9043caddf2cfec7",
+    "settlementCoverage": {
+      "denominatorTickers": 3228,
+      "finalizedResultCount": 3228,
+      "nonEmptyExpirationValueCount": 3228,
+      "validNumericExpirationValueCount": 3226,
+      "jointFinalizedAndNonEmptyExpirationCount": 3228,
+      "finiteStrikeCount": 3227,
+      "parseableCloseTimeCount": 3228,
+      "parseableSettlementTsCount": 3228,
+      "duplicateTickerCount": 0,
+      "conflictingTickerCount": 0
+    }
+  },
+  "verification": {
+    "retainedSamplesUnchanged": true,
+    "pooledFrictionUnchanged": true,
+    "equalDayFrictionUnchanged": true,
+    "exclusionCountsUnchanged": true,
+    "denominatorUnchanged": true,
+    "originalReportPreserved": true
+  }
+}

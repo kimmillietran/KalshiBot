@@ -1,0 +1,52 @@
+{
+  "studyId": "kalshi-kxbtc15m-settlement-friction-label-backfill-v0",
+  "analysisVersion": "settlement-friction-label-backfill-v0",
+  "frictionStudyId": "kalshi-kxbtc15m-settlement-friction-coverage-v0",
+  "baseSha": "b682962e2b34cba5593a5162f781a7b58c86edda",
+  "tickerManifestIdentity": "8158d0a1b627962a6ff7d64836d7cd2bc0b57230ca993a1e4a9c392c7b4eb8ed",
+  "samplesContentSha256": "3f2dad5062e566ad7feacff1fbe1c0b963bbaa4d45aaa20d2a619f31098c8728",
+  "labelsContentSha256": "7c869cd12d1e3189437db5ec3c3781cee3d988eb36421ef5f9043caddf2cfec7",
+  "retainedSamples": 47307,
+  "distinctTickers": 3228,
+  "eligibleUtcDayCount": 34,
+  "localReuse": {
+    "completeBeforeFetch": 0,
+    "partialBeforeFetch": 0,
+    "missingBeforeFetch": 3228,
+    "conflicting": 0
+  },
+  "fetch": {
+    "mode": "settlement-only-historical-import",
+    "fetchedSettlementOnly": 3227,
+    "failed": 1
+  },
+  "completeness": {
+    "studyComplete": 3227,
+    "partial": 1,
+    "missing": 0,
+    "exportedLabelRows": 3228,
+    "note": "exportedLabelRows includes the incomplete denominator member; studyComplete requires result+expiration+floorStrike+closeTime+settlementTs"
+  },
+  "sourceCounts": {
+    "localImport": 0,
+    "fetchedSettlementOnly": 3227,
+    "absent": 0,
+    "partialLocalAfterFailedValidation": 1
+  },
+  "artifacts": {
+    "localWorkDir": "data/external-samples/cryptostruct/m16-er/work/settlement-friction-label-backfill/",
+    "localImportsDir": "data/imports/settlement-friction-label-backfill/",
+    "coverageRefreshOutDir": "data/research-results/external-kalshi-data-audit/m17-prep-settlement-friction-label-coverage/",
+    "originalCoverageDir": "data/research-results/external-kalshi-data-audit/m17-prep-settlement-friction-coverage/"
+  },
+  "reproductionCommands": [
+    "npm run research:settlement-friction-label-backfill -- --fixture",
+    "KALSHI_KEY_DIR=\"$HOME/.kalshi\" source ./load-kalshi-env.sh && npm run research:settlement-friction-label-backfill -- --concurrency 2 --max-retries 5 --retry-base-delay-ms 4000 --skip-coverage-refresh --work-dir data/external-samples/cryptostruct/m16-er/work/settlement-friction-label-backfill --imports-dir data/imports/settlement-friction-label-backfill",
+    "npm run research:settlement-friction-coverage -- --samples-jsonl data/external-samples/cryptostruct/m16-er/work/settlement-friction-coverage/samples.jsonl --labels-jsonl data/external-samples/cryptostruct/m16-er/work/settlement-friction-label-backfill/settlement-labels.jsonl --exclusions-json data/external-samples/cryptostruct/m16-er/work/settlement-friction-coverage/exclusions.json --available-days-json data/external-samples/cryptostruct/m16-er/work/settlement-friction-coverage/available-days.json --day-notes-json data/external-samples/cryptostruct/m16-er/work/settlement-friction-coverage/day-notes.json --out-dir data/research-results/external-kalshi-data-audit/m17-prep-settlement-friction-label-coverage"
+  ],
+  "scopeNotes": [
+    "Reused SETTLEMENT_ONLY historical import + forward-settlement checkpoint helpers via manifest adapter.",
+    "No fake capture-run directory; checkpoint bound to ticker-manifest identity.",
+    "No CryptoStruct purchase/restore, BRTI, alpha/P&L, or confirmatory SPENT reuse."
+  ]
+}

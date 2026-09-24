@@ -1,0 +1,74 @@
+{
+  "denominatorTickers": 3228,
+  "records": [
+    {
+      "marketTicker": "KXBTC15M-26AUG140315-15",
+      "classification": "partial",
+      "failureCategory": "normalization-failed",
+      "errorMessage": "import validation failed",
+      "presentOfficialFields": [
+        "result",
+        "expirationValue",
+        "closeTime",
+        "settlementTs"
+      ],
+      "missingOrInvalidFields": ["floorStrike"],
+      "observed": {
+        "result": "yes",
+        "expirationValue": "63011.58",
+        "floorStrike": null,
+        "closeTime": "2026-08-14T07:15:00Z",
+        "settlementTs": "2026-08-14T07:15:04.412306Z"
+      },
+      "notes": [
+        "Retained in ticker denominator; no outcome invented.",
+        "SETTLEMENT_ONLY import wrote a partial bronze payload that failed validation.",
+        "Not silently dropped from coverage."
+      ]
+    },
+    {
+      "marketTicker": "KXBTC15M-26AUG280800-00",
+      "classification": "field-coverage-gap",
+      "failureCategory": "non-numeric-expiration-value",
+      "presentOfficialFields": [
+        "result",
+        "expirationValue",
+        "floorStrike",
+        "closeTime",
+        "settlementTs"
+      ],
+      "missingOrInvalidFields": ["validNumericExpirationValue"],
+      "observed": {
+        "result": "no",
+        "expirationValue": "79,604.96",
+        "floorStrike": 79622.71
+      },
+      "notes": [
+        "Official expiration_value contains locale commas; coverage counts it as non-empty but not valid-numeric.",
+        "Not treated as invented; left as API-returned string."
+      ]
+    },
+    {
+      "marketTicker": "KXBTC15M-26SEP011630-30",
+      "classification": "field-coverage-gap",
+      "failureCategory": "non-numeric-expiration-value",
+      "presentOfficialFields": [
+        "result",
+        "expirationValue",
+        "floorStrike",
+        "closeTime",
+        "settlementTs"
+      ],
+      "missingOrInvalidFields": ["validNumericExpirationValue"],
+      "observed": {
+        "result": "no",
+        "expirationValue": "77,362.10",
+        "floorStrike": 77362.28
+      },
+      "notes": [
+        "Official expiration_value contains locale commas; coverage counts it as non-empty but not valid-numeric.",
+        "Not treated as invented; left as API-returned string."
+      ]
+    }
+  ]
+}
