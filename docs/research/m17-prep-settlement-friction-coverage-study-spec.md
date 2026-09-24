@@ -2,8 +2,9 @@
 
 **Study id:** `kalshi-kxbtc15m-settlement-friction-coverage-v0`
 
-**Status:** implementation-ready specification only. **Do not** run alpha,
-fit models, or select bins by P&L.
+**Status:** implementation-ready specification + bound runtime configuration
+(`settlement-friction-coverage-v0.1`). **Do not** run alpha, fit models, or
+select bins by P&L.
 
 **Eligible calendar:** the **34 SPENT_VALIDATION** M16-ER UTC days only
 (reservoir + M16-ER day clusters). No new purchases. No QUALITY_AUDIT_ONLY days.
@@ -25,7 +26,8 @@ at those sample points — **without** reconstructing BRTI settlement state and
 | Reservoir authority | `data/research-results/external-kalshi-data-audit/cryptostruct-reservoir-status.json` | Fail closed if day not `SPENT_VALIDATION` |
 | CryptoStruct books | Local raw under M16-ER acquisition ledger (gitignored raw store) | Same adapter identity as M16-ER (`RAW-BBO-CHANGE` / adapter `3f37ecb7…`); quality gates from M16-ER admission — **no P&L reopen** |
 | Kalshi settlement labels | Historical/public market fields: `result`, `expiration_value`, `settlement_ts`, `floor_strike`, `close_time` | Join by `marketTicker`; missing label → **coverage miss**, not imputed |
-| Fee contract | `computeKalshiScheduleFeeCents` STANDARD taker, qty=1, ceil-to-cent | Same family as M16-ER fee contract identity `2c1059ecc1…` (bind + assert) |
+| Fee contract | `computeKalshiScheduleFeeCents` STANDARD taker, qty=1, ceil-to-cent | Assert full M16-ER fee identity `2c1059ecc142dd6ca9b82375e03fd84b42f55ce6d6f1435a667111eea2d0548f` via `buildM16ErFeeContract()` |
+| Adapter | CryptoStruct RAW-BBO-CHANGE | Assert full identity `3f37ecb76644ee0749c50f33cfdaf8921e8dcb1cf208abdc55719a461e27dc7d` |
 
 **Forbidden inputs:** Coinbase-as-BRTI; sealed M16-P capture economics; AVAILABLE_UNOWNED purchases; QUALITY_AUDIT_ONLY days; M14 validation captures for “rescue.”
 
@@ -44,6 +46,27 @@ Fixed **before** any outcome inspection of this study’s outputs:
 
 **Do not** choose bins from profitable outcomes, reversal confirmations, or
 settlement YES/NO rates.
+
+### v0.1 bound sampling semantics (frozen before empirical run)
+
+| Choice | Binding |
+| --- | --- |
+| Timestamp basis | CryptoStruct admission time: `ad_ts_ns // 1_000_000` |
+| Bucket alignment | `floor(timestampMs / 60_000)` UTC wall-clock |
+| Quote ordering | Sort by `timestampMs` ascending, then stable file sequence; do **not** treat arbitrary zip member order across markets as chronology. Within a member, validate causal reconstruction; sort before cadence selection |
+| Quote age | `receive − exchange` when both exist; for single-clock CryptoStruct admission streams, `quoteAgeMs = 0` by documented definition (gate still `MAX_EVENT_QUOTE_AGE_MS = 2000`) |
+| Stale threshold | Momentum-family / M15 `MAX_EVENT_QUOTE_AGE_MS = 2000` |
+| Response match | M15/family rule: first eligible quote in `[t+H, t+H+250ms]`, strictly after t (`RESPONSE_MATCH_TOLERANCE_MS = 250`) |
+| Session | `instrument.start` as open; when `expiry` is null, close from ticker HHMM interpreted in `America/New_York` |
+| Cross-day | Samples attributed to the eligible zip `utcDayKey`, not inferred solely from timestamp |
+| Size | Require displayed size ≥ 1 on YES best bid and YES best ask |
+| Crossed/locked | Exclude |
+| Round-trip definition | `entryHalfSpread + responseHalfSpread + entryFee + exitFee` — **excludes mid drift**. Not an ask→future-bid return |
+
+Eligible calendar authority is **recomputed at runtime** from
+`m16-er-day-clusters.json` and reservoir `SPENT_VALIDATION` (set equality,
+duplicates fail closed). Hand-authored `spentEqualsM16ErDays` flags are not
+authority.
 
 ---
 
@@ -86,10 +109,13 @@ Missing response quote → **unobservable** for that horizon (not zero cost).
 
 | Metric | Definition |
 | --- | --- |
-| Label coverage | Fraction of sampled `marketTicker`s with finalized `result` ∈ {yes,no} and non-empty `expiration_value` |
-| Strike coverage | Fraction with finite `floor_strike` |
-| Timing coverage | Fraction with `close_time` / `settlement_ts` parseable |
-| **BRTI-path coverage** | Explicitly **out of scope / reported as N/A** unless a future milestone admits CFB history under governance |
+| Finalized result coverage | Fraction of sampled tickers with `result ∈ {yes,no}` |
+| Non-empty expiration-value | Non-empty string `expiration_value` |
+| Valid numeric expiration-value | Finite positive number parse (**added diagnostic**) |
+| Joint finalized + non-empty expiration | **v0 metric** (unchanged) |
+| Finite strike | Finite positive `floor_strike` |
+| Parseable close-time / settlement-time | `Date.parse` succeeds |
+| **BRTI-path coverage** | Report verbatim: “Not measured; historical BRTI paths and causal availability are not established.” |
 
 **Hard distinction:** high settlement-**label** coverage does **not** establish that
 settlement **state** (in-window BRTI) can be reconstructed.

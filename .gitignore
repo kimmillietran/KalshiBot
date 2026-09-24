@@ -36,6 +36,7 @@ data/research-results/*
 data/research-results/external-kalshi-data-audit/cryptostruct-bbo-fidelity.json
 data/research-results/external-kalshi-data-audit/cryptostruct-transition-latency.json
 data/research-results/external-kalshi-data-audit/cryptostruct-overlap-inventory.json
+data/research-results/external-kalshi-data-audit/m17-prep-settlement-friction-coverage/settlement-friction-coverage-samples.jsonl
 data/reports/
 
 *.log

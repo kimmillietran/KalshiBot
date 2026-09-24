@@ -1,0 +1,7 @@
+{
+  "samplesLocalOnly": true,
+  "localRelativePath": "data/external-samples/cryptostruct/m16-er/work/settlement-friction-coverage/samples.jsonl",
+  "retainedSamples": 47307,
+  "samplesContentSha256": "3f2dad5062e566ad7feacff1fbe1c0b963bbaa4d45aaa20d2a619f31098c8728",
+  "note": "Sample-level JSONL kept under gitignored external-samples work; pass --write-samples to emit into out-dir."
+}
