@@ -60,7 +60,7 @@ of the raw capture; live re-fetch of market metadata.
 | S4 | Crypto Markets (Help Center) | https://help.kalshi.com/en/articles/13823838-crypto-markets | 2026-09-24 | Page shows “Updated over a month ago” | Product settlement description (60×1s RTI average). |
 | S5 | CRYPTO15M contract terms PDF | https://assets.kalshi.com/contract_terms/CRYPTO15M.pdf | 2026-09-24 | Template PDF (fill-in terms; no revision stamp in extract) | Formal underlying: simple average of CF index for 60 seconds prior to `<time>`; post-Expiration revisions excluded. |
 | S6 | BTC contract terms PDF | https://assets.kalshi.com/contract_terms/BTC.pdf | 2026-09-24 | Template PDF | Explicit BRTI minute average; same revision exclusion. |
-| S7 | CME CF Real Time Indices Methodology | https://docs.cfbenchmarks.com/CME%20CF%20Real%20Time%20Indices%20Methodology.pdf | 2026-09-24 | **Version 17.0, 21 September 2026** | BRTI calculation / dissemination. **Note:** this PDF version date is **after** the 2026-09-24 observation; BRTI 200ms cadence changes land earlier (see S9 / methodology history). Label claims carefully. |
+| S7 | CME CF Real Time Indices Methodology | https://docs.cfbenchmarks.com/CME%20CF%20Real%20Time%20Indices%20Methodology.pdf | 2026-09-24 | **Version 17.0, 21 September 2026** | BRTI calculation / dissemination. **Note:** this PDF version date precedes the 2026-09-24 observation by three calendar days; an earlier publication/version date alone does not prove the methodology governed that observation. BRTI 200ms cadence changes land earlier (see methodology version history). Label claims carefully. |
 | S8 | BRTI product page | https://www.cfbenchmarks.com/data/indices/BRTI | 2026-09-24 | Live page | Marketing/summary: ~200ms calculation; Kalshi among settlement users. |
 | S9 | CF Benchmarks historical values API | https://docs.cfbenchmarks.com/api/rest/historical-values/ | 2026-09-24 | Live API docs | History endpoint semantics (timespan+timestamp; up to 15 min lag). |
 | S10 | Contact Kalshi Support | https://help.kalshi.com/en/articles/13823855-contact-kalshi-support | 2026-09-24 | Updated May 20, 2026 | Support channels. |
@@ -215,8 +215,10 @@ because it matched one expiration.
 - BRTI is calculated at up to **every 200 ms**, with standard dissemination
   approximately every second / top-of-second, dissemination precision **0.01 USD**
   (**S7** §7; **S8**). Methodology PDF retrieved here is v17.0 dated
-  **21 Sep 2026** — after the observation day; cadence change history cites
-  May 2026 updates for BRTI effective time (**S7** version history).
+  **21 Sep 2026** — three calendar days before the observation day; an earlier
+  version date alone does not prove verified effective applicability to that
+  observation. Cadence change history cites May 2026 updates for BRTI effective
+  time (**S7** version history).
 - Post-expiration underlying revisions are **excluded** from Expiration Value
   (**S5**, **S6**).
 
