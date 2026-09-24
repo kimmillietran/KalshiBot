@@ -1,0 +1,55 @@
+{
+  "studyId": "kalshi-kxbtc15m-one-close-settlement-fidelity-v0",
+  "campaignId": "kalshi-kxbtc15m-one-close-settlement-fidelity-v0",
+  "plan": {
+    "campaignId": "kalshi-kxbtc15m-one-close-settlement-fidelity-v0",
+    "closeUtc": "2026-09-24T22:30:00.000Z",
+    "closeMs": 1790289000000,
+    "connectEarliestMs": 1790288925000,
+    "captureStartMs": 1790288930000,
+    "captureStopMs": 1790289015000,
+    "readinessCutoffMs": 1790288900000,
+    "maxConnectedMs": 90000,
+    "indexSymbol": "BRTI",
+    "includeOrderbook": false,
+    "frozenAtUtc": "2026-09-24T22:27:36.161Z",
+    "substitutionForbidden": true
+  },
+  "disposition": {
+    "captured": false,
+    "capture": "refused-readiness",
+    "official": "not-attempted",
+    "retention": "blocked-prerequisite",
+    "reason": "independent-archive-root-unset: set KALSHI_FIDELITY_ARCHIVE_ROOT to an off-disk/external mount; same-disk directories are not accepted",
+    "rolledToLaterClose": false
+  },
+  "retentionReadiness": {
+    "ready": false,
+    "blocker": "independent-archive-root-unset: set KALSHI_FIDELITY_ARCHIVE_ROOT to an off-disk/external mount; same-disk directories are not accepted",
+    "primaryRoot": null,
+    "archiveRoot": null,
+    "primaryDeviceId": null,
+    "archiveDeviceId": null,
+    "sameDevice": null,
+    "roundTripVerified": false,
+    "syntheticSha256": null,
+    "retrievedSha256": null,
+    "note": "PR #119 requires an independently recoverable archive; same-disk copies are disallowed for this one-close run."
+  },
+  "httpBudget": {
+    "campaignId": "kalshi-kxbtc15m-one-close-settlement-fidelity-v0",
+    "consumed": 0,
+    "limit": 12
+  },
+  "comparisonsFrozenBeforeCapture": {
+    "trailingMembership": "[close−60s, close)",
+    "quarterHourMembership": "(close−60s, close]",
+    "noOffsetSearch": true,
+    "noOfficialFieldSelection": true
+  },
+  "liveExecution": "refused",
+  "codeSha": null,
+  "lockPath": "/Users/builder/Developer/kalshi-builder2/data/research-results/external-kalshi-data-audit/m17-prep-one-close-settlement-fidelity/http-budget-ledger.lock",
+  "rawDir": "data/research-results/external-kalshi-data-audit/m17-prep-one-close-settlement-fidelity/raw",
+  "generatedAtUtc": "2026-09-24T22:27:36.162Z"
+}

@@ -1,0 +1,62 @@
+{
+  "artifactKind": "one-close-campaign-freeze-and-disposition",
+  "version": "v0",
+  "campaignId": "kalshi-kxbtc15m-one-close-settlement-fidelity-v0",
+  "scopeChange": {
+    "from": "eight-close multi-close settlement-fidelity campaign (PR #119 spec)",
+    "to": "exactly-one-quarter-hour-close diagnostic",
+    "authorizedBy": "Project Lead task 2026-09-24: resume collector for one upcoming close",
+    "doesNotAuthorize": [
+      "eight-close-campaign",
+      "trading",
+      "vendor-messages",
+      "historical-downloads",
+      "unrelated-markets"
+    ]
+  },
+  "priorLedgersPreserved": [
+    "kalshi-kxbtc15m-brti-access-probe-v0",
+    "kalshi-kxbtc15m-brti-access-probe-v1",
+    "kalshi-kxbtc15m-settlement-sample-mapping-v2"
+  ],
+  "systemClockReadAtUtc": "2026-09-24T22:24:03.976683Z",
+  "frozenTarget": {
+    "closeUtc": "2026-09-24T22:30:00.000Z",
+    "closeEpochMs": 1790289000000,
+    "connectEarliestUtc": "2026-09-24T22:28:45.000Z",
+    "captureStartUtc": "2026-09-24T22:28:50.000Z",
+    "captureStopUtc": "2026-09-24T22:30:15.000Z",
+    "readinessCutoffUtc": "2026-09-24T22:28:20.000Z",
+    "substitutionForbidden": true
+  },
+  "disposition": {
+    "captured": false,
+    "capture": "not-attempted",
+    "official": "not-attempted",
+    "retention": "not-attempted",
+    "reason": "readiness-cutoff-blocker-independent-archive-unavailable",
+    "skippedBeforeMarketDataRequests": true,
+    "rolledToLaterClose": false
+  },
+  "retentionReadiness": {
+    "persistentLocalOutsideWorktrees": "available-in-principle (e.g. ~/Documents)",
+    "timeMachineDestinations": "none-configured",
+    "externalVolumes": "none (only Macintosh HD)",
+    "iCloudDrive": "unavailable",
+    "documentsDeviceId": 16777229,
+    "developerDeviceId": 16777229,
+    "sameDiskAsWorktrees": true,
+    "sameDiskSecondDirectoryCountsAsIndependentBackup": false,
+    "specRequirement": "PR #119 §5 independently recoverable archive; Project Lead instruction forbids treating another directory on the same disk as independent backup",
+    "verdict": "blocked",
+    "blocker": "No Time Machine destination, no external/off-host volume, and same-disk secondary paths are disallowed as the independent archive. Round-trip pretest therefore cannot satisfy #119 without silently weakening retention."
+  },
+  "httpAttemptsThisTask": 0,
+  "subscriptionsThisTask": 0,
+  "codeShaAtFreeze": "c30f5dea7c50dfd228dccad865abf9a26ca97474",
+  "referencedDocs": [
+    "docs/research/m17-multi-close-settlement-fidelity-spec.md (merged #119 tip cb603fc)",
+    "docs/research/m17-prep-brti-settlement-average-discrepancy-semantics.md (#118)",
+    "docs/research/m17-prep-published-field-membership-diagnostic.md (c30f5de)"
+  ]
+}
