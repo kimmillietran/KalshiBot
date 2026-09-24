@@ -22,23 +22,53 @@ export type AlignedQuote = {
   available: boolean;
   reason: string | null;
   bookAgeMs: number | null;
-  usedFutureQuote: false;
+  usedFutureQuote: boolean;
   quote: ReceiptTimedQuote | null;
   missingSize: boolean;
   stale: boolean;
 };
 
+export function quoteIsAfterObservation(input: {
+  quote: Pick<ReceiptTimedQuote, "receivedAtMs" | "receivedAtMonoMs">;
+  observationReceivedAtMs: number;
+  observationReceivedAtMonoMs?: number;
+}): boolean {
+  if (input.quote.receivedAtMs > input.observationReceivedAtMs) {
+    return true;
+  }
+  if (input.observationReceivedAtMonoMs == null) {
+    return false;
+  }
+  return input.quote.receivedAtMs === input.observationReceivedAtMs
+    && input.quote.receivedAtMonoMs > input.observationReceivedAtMonoMs;
+}
+
 export function quoteAsOf(input: {
   quotes: readonly ReceiptTimedQuote[];
   observationReceivedAtMs: number;
+  observationReceivedAtMonoMs?: number;
   staleAfterMs?: number;
 }): AlignedQuote {
   let selected: ReceiptTimedQuote | null = null;
   for (const quote of input.quotes) {
-    if (quote.receivedAtMs > input.observationReceivedAtMs) {
+    if (quoteIsAfterObservation({
+      quote,
+      observationReceivedAtMs: input.observationReceivedAtMs,
+      observationReceivedAtMonoMs: input.observationReceivedAtMonoMs,
+    })) {
       continue;
     }
-    if (selected == null || quote.receivedAtMs >= selected.receivedAtMs) {
+    if (selected == null) {
+      selected = quote;
+      continue;
+    }
+    if (quote.receivedAtMs !== selected.receivedAtMs) {
+      if (quote.receivedAtMs > selected.receivedAtMs) {
+        selected = quote;
+      }
+      continue;
+    }
+    if (quote.receivedAtMonoMs >= selected.receivedAtMonoMs) {
       selected = quote;
     }
   }

@@ -53,10 +53,33 @@ export function isTrailingAverage(fieldName: string): boolean {
  * produce multiple raw-tick matches; that is not treated as unique identity.
  */
 export function inferAddedSampleFromCountAverage(input: {
-  previous: Pick<VenueAverageUpdate, "valueRaw" | "count"> | null;
-  next: Pick<VenueAverageUpdate, "valueRaw" | "count">;
+  previous: Pick<VenueAverageUpdate, "valueRaw" | "count" | "windowStartTsMs" | "fieldName"> | null;
+  next: Pick<VenueAverageUpdate, "valueRaw" | "count" | "windowStartTsMs" | "fieldName">;
   candidateObservations?: readonly TimedObservation[];
 }): ImpliedSampleInference {
+  if (
+    input.previous != null
+    && (
+      input.previous.fieldName !== input.next.fieldName
+      || input.previous.windowStartTsMs !== input.next.windowStartTsMs
+    )
+  ) {
+    return {
+      mappingStatus: "unresolved",
+      documented: false,
+      consistentWithObservations: false,
+      uniquelyIdentified: false,
+      impliedValue: null,
+      impliedValueRaw: null,
+      matchingObservationValueRaws: [],
+      reason: "previous-update-has-different-window-identity",
+      deltaCount: input.next.count == null || input.previous.count == null
+        ? null
+        : input.next.count - input.previous.count,
+      previousCount: input.previous.count,
+      nextCount: input.next.count,
+    };
+  }
   const previousCount = input.previous?.count ?? null;
   const nextCount = input.next.count;
   if (nextCount == null || previousCount == null) {

@@ -27,7 +27,10 @@ export {
   isSettlementWindowAverage,
   isTrailingAverage,
 } from "./inferVenueAverageMapping";
-export { quoteAsOf, detectClockAdjustment, compareReceiptOrder } from "./alignQuotes";
+export { quoteAsOf, detectClockAdjustment, compareReceiptOrder, quoteIsAfterObservation } from "./alignQuotes";
+export { selectCompletedWindowAverage, updateMatchesTargetWindow } from "./selectCompletedWindowAverage";
+export { extractCloseBoundaryChronology, observationsAvailableAt } from "./extractCloseBoundaryChronology";
+export { computeFutureQuoteLeakage } from "./analyzeSynchronizedSession";
 export {
   planSynchronizedWindow,
   createSessionLimitState,

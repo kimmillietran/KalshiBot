@@ -1,7 +1,8 @@
 import { compareOfficialSettlementToObservedWindow } from "@/lib/data/research/kalshiBrtiAccessProbe";
 
-import { quoteAsOf, detectClockAdjustment, type AlignedQuote } from "./alignQuotes";
+import { quoteAsOf, detectClockAdjustment, quoteIsAfterObservation, type AlignedQuote } from "./alignQuotes";
 import type { LiveMarketIdentity } from "./bindLiveMarket";
+import { observationsAvailableAt } from "./extractCloseBoundaryChronology";
 import {
   inferAddedSampleFromCountAverage,
   isSettlementWindowAverage,
@@ -10,8 +11,8 @@ import {
   type VenueAverageUpdate,
 } from "./inferVenueAverageMapping";
 import type { SynchronizedCaptureResult } from "./runSynchronizedCapture";
-import { observationInWindow, selectWindowObservations } from "./windowBoundaries";
-import type { TimedObservation } from "./types";
+import { selectCompletedWindowAverage, type CompletedAverageSelection } from "./selectCompletedWindowAverage";
+import { selectWindowObservations } from "./windowBoundaries";
 
 export type VenueAverageAlignment = {
   update: VenueAverageUpdate;
@@ -28,9 +29,11 @@ export type SynchronizedSessionAnalysis = {
   usableVenueAverage: boolean;
   usableQuotes: boolean;
   clockAdjustment: ReturnType<typeof detectClockAdjustment> | null;
-  futureQuoteLeakage: false;
+  futureQuoteLeakage: boolean;
   venueAlignments: VenueAverageAlignment[];
   completedSettlementAverage: VenueAverageUpdate | null;
+  completedSettlementSelection: CompletedAverageSelection | null;
+  exploratoryTrailingAtClose: VenueAverageUpdate | null;
   officialComparison: ReturnType<typeof compareOfficialSettlementToObservedWindow> | null;
   coverage: {
     cfb1HzEvents: number;
@@ -42,6 +45,23 @@ export type SynchronizedSessionAnalysis = {
     trailingAverageUpdates: number;
   };
 };
+
+export function computeFutureQuoteLeakage(alignments: readonly VenueAverageAlignment[]): boolean {
+  return alignments.some((alignment) => {
+    if (alignment.quote.usedFutureQuote) {
+      return true;
+    }
+    const quote = alignment.quote.quote;
+    if (quote == null) {
+      return false;
+    }
+    return quoteIsAfterObservation({
+      quote,
+      observationReceivedAtMs: alignment.update.localReceivedAtMs,
+      observationReceivedAtMonoMs: alignment.update.localReceivedAtMonoMs,
+    });
+  });
+}
 
 export function analyzeSynchronizedSession(input: {
   capture: SynchronizedCaptureResult;
@@ -58,11 +78,13 @@ export function analyzeSynchronizedSession(input: {
     })
     : null;
 
-  const rawAsObservations: TimedObservation[] = capture.rawBrti.map((item) => ({
+  const rawAsObservations = capture.rawBrti.map((item) => ({
     timeRaw: item.sourceTsMs,
     timeMs: item.sourceTsMs,
     valueRaw: item.valueRaw,
     value: item.valueRaw != null ? Number(item.valueRaw) : null,
+    localReceivedAtMs: item.localReceivedAtMs,
+    localReceivedAtMonoMs: item.localReceivedAtMonoMs,
   }));
 
   const venueAlignments: VenueAverageAlignment[] = capture.venueAverages.map((update, index) => {
@@ -72,13 +94,17 @@ export function analyzeSynchronizedSession(input: {
       .find((item) => item.fieldName === update.fieldName) ?? null;
     const declaredWindowClose = update.windowEndTsExclusive
       ?? (update.windowStartTsMs != null ? update.windowStartTsMs + 60_000 : null);
+    const available = observationsAvailableAt({
+      observations: rawAsObservations,
+      receivedAtMs: update.localReceivedAtMs,
+      receivedAtMonoMs: update.localReceivedAtMonoMs,
+    });
     const inDeclaredWindow = declaredWindowClose == null || update.windowStartTsMs == null
       ? []
-      : rawAsObservations.filter((observation) => (
+      : available.filter((observation) => (
         observation.timeMs != null
         && observation.timeMs >= update.windowStartTsMs!
         && observation.timeMs < declaredWindowClose
-        && observationInWindow(observation.timeMs, declaredWindowClose, "payload-start-inclusive-end-exclusive")
       ));
     return {
       update,
@@ -90,7 +116,7 @@ export function analyzeSynchronizedSession(input: {
         previous,
         next: update,
         candidateObservations: selectWindowObservations(
-          rawAsObservations,
+          available,
           declaredWindowClose ?? 0,
           "payload-start-inclusive-end-exclusive",
         ),
@@ -98,16 +124,31 @@ export function analyzeSynchronizedSession(input: {
       quote: quoteAsOf({
         quotes: capture.quotes,
         observationReceivedAtMs: update.localReceivedAtMs,
+        observationReceivedAtMonoMs: update.localReceivedAtMonoMs,
       }),
     };
   });
 
-  const settlementUpdates = capture.venueAverages.filter((item) => isSettlementWindowAverage(item.fieldName));
-  const completedSettlementAverage = [...settlementUpdates]
-    .reverse()
-    .find((item) => item.count === 60)
-    ?? settlementUpdates.at(-1)
-    ?? null;
+  const closeMs = input.market != null ? Date.parse(input.market.closeTimeUtc) : Number.NaN;
+  const completedSettlementSelection = Number.isFinite(closeMs)
+    ? selectCompletedWindowAverage({
+      updates: capture.venueAverages,
+      closeMs,
+      fieldName: "last_60s_windowed_average_15min",
+    })
+    : null;
+  const completedSettlementAverage = completedSettlementSelection?.status === "completed"
+    || completedSettlementSelection?.status === "ambiguous"
+    ? completedSettlementSelection.selected
+    : null;
+
+  const exploratoryTrailingAtClose = Number.isFinite(closeMs)
+    ? selectCompletedWindowAverage({
+      updates: capture.venueAverages,
+      closeMs,
+      fieldName: "avg_60s_data",
+    }).selected
+    : null;
 
   const officialComparison = input.officialBody != null && input.market != null
     ? compareOfficialSettlementToObservedWindow({
@@ -123,9 +164,11 @@ export function analyzeSynchronizedSession(input: {
     usableVenueAverage: completedSettlementAverage != null,
     usableQuotes: capture.quotes.some((quote) => quote.bookState === "valid"),
     clockAdjustment,
-    futureQuoteLeakage: false,
+    futureQuoteLeakage: computeFutureQuoteLeakage(venueAlignments),
     venueAlignments,
     completedSettlementAverage,
+    completedSettlementSelection,
+    exploratoryTrailingAtClose,
     officialComparison,
     coverage: {
       cfb1HzEvents: capture.events.filter((event) => event.stream === "cfb-1hz").length,
@@ -133,7 +176,7 @@ export function analyzeSynchronizedSession(input: {
       orderbookEvents: capture.events.filter((event) => event.stream === "orderbook").length,
       rawBrtiCount: capture.rawBrti.length,
       validQuotes: capture.quotes.filter((quote) => quote.bookState === "valid").length,
-      settlementAverageUpdates: settlementUpdates.length,
+      settlementAverageUpdates: capture.venueAverages.filter((item) => isSettlementWindowAverage(item.fieldName)).length,
       trailingAverageUpdates: capture.venueAverages.filter((item) => isTrailingAverage(item.fieldName)).length,
     },
   };

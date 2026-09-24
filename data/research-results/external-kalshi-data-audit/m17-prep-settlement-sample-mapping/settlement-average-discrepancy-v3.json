@@ -1,0 +1,187 @@
+{
+  "artifactKind": "versioned-correction-supplement",
+  "version": "v3",
+  "studyId": "kalshi-kxbtc15m-settlement-sample-mapping-v2",
+  "generatedAtUtc": "2026-09-24T21:21:00.000Z",
+  "originalHead": "022ebdefc657c30737ffe92037fc7761e33bbb03",
+  "role": "offline-discrepancy-investigation",
+  "notAnAlphaExperiment": true,
+  "zeroNewKalshiRequests": true,
+  "originalSummaryPreserved": "settlement-sample-mapping-summary.json",
+  "rawEvidence": {
+    "path": "data/research-results/external-kalshi-data-audit/m17-prep-settlement-sample-mapping/raw/synchronized-capture.jsonl",
+    "sha256": "938cdde6151ad61b7595d86825486f9b8b866fd38ffa21ae47d85b2f09943e33",
+    "bytes": 6111585,
+    "lines": 15716,
+    "bytesUnchanged": true,
+    "durableRetention": "not-established",
+    "retrieval": "No permitted private artifact mechanism outside this VM was available. A gitignored or same-VM copy is not treated as durable retention."
+  },
+  "officialMetadata": {
+    "rawHttpResponseRetained": false,
+    "source": "committed sanitized summary after one post-close GET /markets/{ticker}",
+    "ticker": "KXBTC15M-26SEP240015-15",
+    "eventTicker": "KXBTC15M-26SEP240015",
+    "closeTimeUtc": "2026-09-24T04:15:00Z",
+    "expirationValue": "83817.71",
+    "identityMatchesSelectedMarket": true
+  },
+  "closeBoundaryChronology": [
+    {
+      "sequence": 1,
+      "jsonlLine": 15281,
+      "localReceivedAtMs": 1790223298133,
+      "localReceivedAtIso": "2026-09-24T04:14:58.133Z",
+      "localReceivedAtMonoMs": 716041.942105,
+      "providerReceivedAtMs": 1790223298091,
+      "messageType": "cfbenchmarks_value",
+      "fieldName": "last_60s_windowed_average_15min",
+      "count": 58,
+      "windowStartTsMs": 1790223240000,
+      "windowEndTsExclusive": 1790223298000,
+      "valueRaw": "83817.52879310"
+    },
+    {
+      "sequence": 2,
+      "jsonlLine": 15281,
+      "localReceivedAtMs": 1790223298133,
+      "localReceivedAtIso": "2026-09-24T04:14:58.133Z",
+      "localReceivedAtMonoMs": 716041.942105,
+      "providerReceivedAtMs": 1790223298091,
+      "messageType": "cfbenchmarks_value",
+      "fieldName": "avg_60s_data",
+      "count": 60,
+      "windowStartTsMs": 1790223238000,
+      "windowEndTsExclusive": 1790223298000,
+      "valueRaw": "83817.93133333"
+    },
+    {
+      "sequence": 3,
+      "jsonlLine": 15381,
+      "localReceivedAtMs": 1790223299088,
+      "localReceivedAtIso": "2026-09-24T04:14:59.088Z",
+      "localReceivedAtMonoMs": 716997.53156,
+      "providerReceivedAtMs": 1790223299047,
+      "messageType": "cfbenchmarks_value",
+      "fieldName": "last_60s_windowed_average_15min",
+      "count": 59,
+      "windowStartTsMs": 1790223240000,
+      "windowEndTsExclusive": 1790223299000,
+      "valueRaw": "83817.60372881"
+    },
+    {
+      "sequence": 4,
+      "jsonlLine": 15381,
+      "localReceivedAtMs": 1790223299088,
+      "localReceivedAtIso": "2026-09-24T04:14:59.088Z",
+      "localReceivedAtMonoMs": 716997.53156,
+      "providerReceivedAtMs": 1790223299047,
+      "messageType": "cfbenchmarks_value",
+      "fieldName": "avg_60s_data",
+      "count": 60,
+      "windowStartTsMs": 1790223239000,
+      "windowEndTsExclusive": 1790223299000,
+      "valueRaw": "83817.79616667"
+    },
+    {
+      "sequence": 5,
+      "jsonlLine": 15537,
+      "localReceivedAtMs": 1790223300120,
+      "localReceivedAtIso": "2026-09-24T04:15:00.120Z",
+      "localReceivedAtMonoMs": 718029.709259,
+      "providerReceivedAtMs": 1790223300075,
+      "messageType": "cfbenchmarks_value",
+      "fieldName": "last_60s_windowed_average_15min",
+      "count": 60,
+      "windowStartTsMs": 1790223240000,
+      "windowEndTsExclusive": 1790223300000,
+      "valueRaw": "83817.61766667"
+    },
+    {
+      "sequence": 6,
+      "jsonlLine": 15537,
+      "localReceivedAtMs": 1790223300120,
+      "localReceivedAtIso": "2026-09-24T04:15:00.120Z",
+      "localReceivedAtMonoMs": 718029.709259,
+      "providerReceivedAtMs": 1790223300075,
+      "messageType": "cfbenchmarks_value",
+      "fieldName": "avg_60s_data",
+      "count": 60,
+      "windowStartTsMs": 1790223240000,
+      "windowEndTsExclusive": 1790223300000,
+      "valueRaw": "83817.70733333"
+    },
+    {
+      "sequence": 7,
+      "jsonlLine": 15544,
+      "localReceivedAtMs": 1790223301098,
+      "localReceivedAtIso": "2026-09-24T04:15:01.098Z",
+      "localReceivedAtMonoMs": 719007.601556,
+      "providerReceivedAtMs": 1790223301056,
+      "messageType": "cfbenchmarks_value",
+      "fieldName": "avg_60s_data",
+      "count": 60,
+      "windowStartTsMs": 1790223241000,
+      "windowEndTsExclusive": 1790223301000,
+      "valueRaw": "83817.61766667"
+    },
+    {
+      "sequence": 8,
+      "jsonlLine": 15550,
+      "localReceivedAtMs": 1790223302129,
+      "localReceivedAtIso": "2026-09-24T04:15:02.129Z",
+      "localReceivedAtMonoMs": 720038.335103,
+      "providerReceivedAtMs": 1790223302086,
+      "messageType": "cfbenchmarks_value",
+      "fieldName": "avg_60s_data",
+      "count": 60,
+      "windowStartTsMs": 1790223242000,
+      "windowEndTsExclusive": 1790223302000,
+      "valueRaw": "83817.46266667"
+    },
+    {
+      "sequence": 9,
+      "jsonlLine": 15556,
+      "localReceivedAtMs": 1790223303118,
+      "localReceivedAtIso": "2026-09-24T04:15:03.118Z",
+      "localReceivedAtMonoMs": 721026.899861,
+      "providerReceivedAtMs": 1790223303076,
+      "messageType": "cfbenchmarks_value",
+      "fieldName": "avg_60s_data",
+      "count": 60,
+      "windowStartTsMs": 1790223243000,
+      "windowEndTsExclusive": 1790223303000,
+      "valueRaw": "83817.20116667"
+    }
+  ],
+  "findings": {
+    "parserSwap": false,
+    "completedSettlementFieldChangesAfterClose": false,
+    "onlyOneCount60SettlementUpdate": true,
+    "analyzerOriginallySelected": "last-count-60-settlement-field-without-window-bind",
+    "thatRecordAlsoMatchedTargetWindow": true,
+    "sameMessageSameWindowDifferentValues": true,
+    "officialMatchesTrailingAtCloseAfterUsdRounding": true,
+    "officialMatchesSettlementFieldAfterUsdRounding": false,
+    "trailingMatchIsExploratory": true
+  },
+  "priorConclusions": {
+    "unchanged": [
+      "Primary comparison remains last_60s_windowed_average_15min 83817.61766667 vs official 83817.71 → disagree after two-decimal rounding.",
+      "Historical HOUR fixed interpretations still disagree with 78833.97.",
+      "v0 13/10 sealed, v1 3/10, v2 2/10 unchanged; this supplement added zero Kalshi requests."
+    ],
+    "changed": [
+      "futureQuoteLeakage=false was hardcoded; it is now computed (still false on this session).",
+      "Completed-average selection now requires count 60 and [close−60s, close). Incomplete updates are not used as completed.",
+      "Count/average inference no longer crosses sliding windows or uses ticks received after the update.",
+      "Quote ties at identical wall-clock now use monotonic receipt.",
+      "The trailing field 83817.70733333 at the same declared window is recorded as an exploratory clue, not as the official settlement average."
+    ],
+    "unresolved": [
+      "Why the venue publishes two different averages for the same declared [04:14:00, 04:15:00) window.",
+      "Whether official expiration is defined as the trailing 60s mean, the settlement-window accumulator, or another unpublished sample set.",
+      "Raw official HTTP body was not retained; identity is taken from the sanitized summary only."
+    ]
+  }
+}

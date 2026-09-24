@@ -2,6 +2,7 @@
   "studyId": "kalshi-kxbtc15m-settlement-sample-mapping-v2",
   "files": [
     "settlement-sample-mapping-summary.json",
+    "settlement-average-discrepancy-v3.json",
     "artifact-catalog.json",
     "http-budget-ledger.json"
   ],

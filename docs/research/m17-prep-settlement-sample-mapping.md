@@ -135,6 +135,38 @@ window does not. That is recorded as operational mapping data, not a fitted rule
 HTTP campaign v2: **2/10** (discovery 200 + one post-close settlement 200).
 v0 remains sealed 13/10. v1 remains 3/10.
 
+### v3 offline discrepancy supplement (no new Kalshi requests)
+
+Original JSONL re-verified: SHA-256
+`938cdde6151ad61b7595d86825486f9b8b866fd38ffa21ae47d85b2f09943e33`,
+6,111,585 bytes, 15,716 lines. Bytes were not modified. Durable off-VM
+retention is still **not established**.
+
+Replay of the original payloads around close (same message, fields kept distinct):
+
+| Seq | Line | Local receipt | Provider | Field | Count | Declared window | Raw value |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 1 | 15281 | 04:14:58.133Z | 04:14:58.091Z | `last_60s_windowed_average_15min` | 58 | `[04:14:00, 04:14:58)` | `83817.52879310` |
+| 2 | 15281 | 04:14:58.133Z | 04:14:58.091Z | `avg_60s_data` | 60 | `[04:13:58, 04:14:58)` | `83817.93133333` |
+| 3 | 15381 | 04:14:59.088Z | 04:14:59.047Z | `last_60s_windowed_average_15min` | 59 | `[04:14:00, 04:14:59)` | `83817.60372881` |
+| 4 | 15381 | 04:14:59.088Z | 04:14:59.047Z | `avg_60s_data` | 60 | `[04:13:59, 04:14:59)` | `83817.79616667` |
+| 5 | 15537 | 04:15:00.120Z | 04:15:00.075Z | `last_60s_windowed_average_15min` | 60 | `[04:14:00, 04:15:00)` | `83817.61766667` |
+| 6 | 15537 | 04:15:00.120Z | 04:15:00.075Z | `avg_60s_data` | 60 | `[04:14:00, 04:15:00)` | `83817.70733333` |
+| 7 | 15544 | 04:15:01.098Z | 04:15:01.056Z | `avg_60s_data` | 60 | `[04:14:01, 04:15:01)` | `83817.61766667` |
+
+The completed settlement field does **not** reappear after that count-60 update.
+The next trailing update slides the window forward one second and happens to
+equal `83817.61766667`. Official `83817.71` matches the trailing value after
+USD rounding. That is an exploratory clue. It is **not** a relabel of
+`avg_60s_data` as the official settlement average.
+
+The original analyzer picked the last count-60 settlement update without binding
+the window to close. On this session that record was also the first and only
+count-60 settlement update and already declared `[04:14:00, 04:15:00)`, so the
+reported settlement value does not change after the bind. Selection, quote
+ordering, causal tick filtering, and `futureQuoteLeakage` computation are
+corrected in code. See `settlement-average-discrepancy-v3.json`.
+
 ## What this can and cannot support
 
 Historical 5Hz ticks can support cadence, missing/duplicate, and candidate
