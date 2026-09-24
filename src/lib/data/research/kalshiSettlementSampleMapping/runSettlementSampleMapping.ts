@@ -37,7 +37,6 @@ import {
   MAPPING_MAX_HTTP,
   MAPPING_MAX_RETRY_DELAY_MS,
   SETTLEMENT_SAMPLE_MAPPING_STUDY_ID,
-  V2_MAPPING_CAMPAIGN_ID,
   type ParsedMappingArgv,
 } from "./types";
 
@@ -269,7 +268,7 @@ export async function runSettlementSampleMapping(input: {
 
   const summary = {
     studyId: SETTLEMENT_SAMPLE_MAPPING_STUDY_ID,
-    campaignId: V2_MAPPING_CAMPAIGN_ID,
+    campaignId: input.argv.campaignId,
     generatedAtUtc: new Date(nowMs()).toISOString(),
     role: "data-fidelity-and-capture-readiness",
     notAnAlphaExperiment: true,
