@@ -24,10 +24,26 @@ export { classifyHttpStatus } from "./classifyHttpError";
 export {
   extractHistoryObservations,
   inspectCadence,
+  inspectHistoryPayload,
   reconstructOfficialAverageIfSupported,
 } from "./inspectHistoryPayload";
 export { runKalshiBrtiAccessProbe, createFilesystemProbeIo } from "./runKalshiBrtiAccessProbe";
 export { runFollowUpBrtiCampaign, sealV0CampaignLedger } from "./runFollowUpCampaign";
+export {
+  loadOfficialMetadataForSelectedTarget,
+  validateOfficialTargetMetadata,
+  bindHistoricalRequestToAuthorizedHour,
+  SELECTED_FOLLOW_UP_TICKER,
+  AUTHORIZED_FOLLOW_UP_HOUR_START_UTC,
+} from "./bindOfficialTargetMetadata";
+export { compareOfficialSettlementToObservedWindow } from "./compareOfficialSettlement";
+export { cliFollowUpPreview, serializeFollowUpSummary } from "./followUpSummary";
+export {
+  retainLocalHttpResponse,
+  sanitizeResponseHeaders,
+  loadRetainedHttpResponse,
+  buildSanitizedSchemaDiagnostic,
+} from "./retainLocalResponse";
 export { runLiveCfbProbe, summarizeLiveMessage } from "./runLiveCfbProbe";
 export {
   reserveHttpAttempt,

@@ -1,12 +1,16 @@
 import { join } from "node:path";
 
 import { DEFAULT_KALSHI_HISTORICAL_API_BASE } from "@/lib/data/importers/kalshi/historicalEndpoints";
-import { parseKalshiMarketWire } from "@/lib/data/importers/kalshi/kalshiSettlementRetrieval";
 import {
   resolveKalshiCaptureCredentials,
   type KalshiCaptureCredentials,
 } from "@/lib/data/live/kalshiWsCaptureSpike/resolveKalshiCaptureCredentials";
 
+import {
+  loadOfficialMetadataForSelectedTarget,
+  SELECTED_FOLLOW_UP_TICKER,
+  type OfficialTargetBindResult,
+} from "./bindOfficialTargetMetadata";
 import {
   V0_CAMPAIGN_ID,
   campaignLedgerPath,
@@ -14,34 +18,77 @@ import {
   createFilesystemCampaignBudgetIo,
   createSealedV0Ledger,
   loadOrCreateCampaignLedger,
+  parseCampaignLedger,
   type CampaignBudgetIo,
+  type CampaignLedger,
 } from "./campaignBudget";
+import { compareOfficialSettlementToObservedWindow } from "./compareOfficialSettlement";
 import {
   HISTORICAL_PARAMETER_SEMANTICS,
   buildCfbHistoryHourUrl,
-  plannedHistoryHourForClose,
   selectFollowUpHistoricalTarget,
 } from "./historicalSemantics";
 import {
   extractHistoryObservations,
   inspectCadence,
+  inspectHistoryPayload,
   reconstructOfficialAverageIfSupported,
+  type HistoryPayloadInspection,
 } from "./inspectHistoryPayload";
-import { parseOfficialNumericString } from "./parseOfficialNumericString";
+import {
+  classifyFollowUpCampaign,
+  followUpStudyId,
+  serializeFollowUpSummary,
+  ORIGINAL_SNAPSHOT_NOTE,
+  type FollowUpSummary,
+} from "./followUpSummary";
 import { formatKxbtc15mEventTicker, planLiveCloseWindow } from "./planLiveCloseWindow";
+import {
+  buildSanitizedSchemaDiagnostic,
+  loadRetainedHttpResponse,
+  retainLocalHttpResponse,
+  RETAINED_HISTORY_RESPONSE_NAME,
+} from "./retainLocalResponse";
 import { createFilesystemProbeIo, type ProbeIo, type ProbeRunDeps } from "./runKalshiBrtiAccessProbe";
 import { runLiveCfbProbe, type LiveCfbProbeResult } from "./runLiveCfbProbe";
 import { selectSpentTargetsFromRepo } from "./selectSpentTargets";
 import { signedKalshiGet, unsignedKalshiGet, type SignedGetDeps } from "./signedKalshiGet";
 import {
-  BRTI_ACCESS_PROBE_STUDY_ID,
   KalshiBrtiAccessProbeError,
   type ParsedProbeArgv,
   type SignedGetResult,
 } from "./types";
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
+const ORIGINAL_V1_SUMMARY_NAME = "brti-access-probe-v1-summary.json";
+const SUPPLEMENT_SUMMARY_NAME = "brti-access-probe-v1-reliability-supplement.json";
+const SCHEMA_DIAGNOSTIC_NAME = "history-payload-schema-diagnostic.json";
+
+function artifactExists(io: ProbeIo, path: string): boolean {
+  if (io.exists) {
+    return io.exists(path);
+  }
+  return io.readFile?.(path) != null;
+}
+
+function readExistingLedger(io: CampaignBudgetIo, ledgerPath: string): CampaignLedger | null {
+  const raw = io.readFile(ledgerPath);
+  if (raw == null) {
+    return null;
+  }
+  return parseCampaignLedger(raw);
+}
+
+function resolveObservedCloseIso(input: {
+  live: LiveCfbProbeResult;
+  nowMs: number;
+}): string {
+  if (input.live.venueSettlementAverage?.windowEndTsExclusive != null) {
+    return new Date(input.live.venueSettlementAverage.windowEndTsExclusive).toISOString();
+  }
+  if (input.live.summaries.length > 0) {
+    return planLiveCloseWindow(input.live.summaries[0]!.localReceivedAtMs).closeIso;
+  }
+  return planLiveCloseWindow(input.nowMs).closeIso;
 }
 
 export async function runFollowUpBrtiCampaign(input: {
@@ -50,7 +97,7 @@ export async function runFollowUpBrtiCampaign(input: {
   io: ProbeIo;
   budgetIo?: CampaignBudgetIo;
   deps?: ProbeRunDeps;
-}): Promise<Record<string, unknown>> {
+}): Promise<FollowUpSummary> {
   if (input.argv.campaignId === V0_CAMPAIGN_ID) {
     throw new KalshiBrtiAccessProbeError(
       "v0 campaign is sealed at 13/10 and must not issue further requests",
@@ -67,14 +114,28 @@ export async function runFollowUpBrtiCampaign(input: {
     limit: input.argv.maxHttpRequests,
     io: budgetIo,
   });
-  if (ledger.sealed || ledger.consumed >= ledger.limit && input.argv.skipHttp !== true && !input.argv.fixture) {
-    // allow fixture/skipHttp to write a report without dispatching
+  const skipHttp = input.argv.skipHttp || input.argv.fixture;
+  const budgetBlocksDispatch = ledger.sealed || ledger.consumed >= ledger.limit;
+  if (budgetBlocksDispatch && !skipHttp) {
+    throw new KalshiBrtiAccessProbeError(
+      `campaign-budget-exhausted: ${ledger.consumed}/${ledger.limit}`,
+    );
   }
 
   const targets = selectSpentTargetsFromRepo(input.repoRoot);
   const historicalTarget = selectFollowUpHistoricalTarget(targets);
+  if (historicalTarget.marketTicker !== SELECTED_FOLLOW_UP_TICKER) {
+    throw new KalshiBrtiAccessProbeError(
+      `follow-up middle target ${historicalTarget.marketTicker} is not the authorized ticker`,
+    );
+  }
+  const officialBind = loadOfficialMetadataForSelectedTarget({
+    repoRoot: input.repoRoot,
+    selectedTicker: historicalTarget.marketTicker,
+    readFile: input.deps?.readFile ?? input.io.readFile,
+    injected: input.deps?.officialMetadata,
+  });
   const credentials = (input.deps?.resolveCredentials ?? resolveKalshiCaptureCredentials)();
-  const skipHttp = input.argv.skipHttp || input.argv.fixture;
   const generatedAt = (input.deps?.nowIso ?? (() => new Date().toISOString()))();
   const campaignHookBase = {
     ledgerPath,
@@ -88,15 +149,34 @@ export async function runFollowUpBrtiCampaign(input: {
     nowMs: input.deps?.httpDeps?.nowMs,
     campaign: { ...campaignHookBase, purpose: "historical-brti" },
   };
+  const consumedBefore = ledger.consumed;
 
   let historyResult: SignedGetResult | null = null;
-  const officialClose = "2026-08-30T18:15:00Z";
-  if (!skipHttp && !input.argv.skipHistory && credentials.status === "available") {
-    const hour = plannedHistoryHourForClose(officialClose);
-    if (!hour.settlementWindowInsideHour) {
-      throw new KalshiBrtiAccessProbeError("planned HOUR window does not contain the settlement minute");
-    }
-    const built = buildCfbHistoryHourUrl({ hourStartUtc: hour.hourStartUtc });
+  let historySource: "network" | "retained-local" | "not-attempted" = "not-attempted";
+  const canPlanHistory = officialBind.status === "bound" && officialBind.request != null;
+  const retained = loadRetainedHttpResponse({
+    rawDir: input.argv.rawDir,
+    readFile: input.deps?.readFile ?? input.io.readFile,
+    name: RETAINED_HISTORY_RESPONSE_NAME,
+  });
+  if (retained) {
+    historyResult = {
+      url: retained.url,
+      signPath: retained.signPath,
+      status: retained.status,
+      category: retained.category as SignedGetResult["category"],
+      body: retained.body,
+      bodyTextHash: retained.bodyTextHash,
+      attempt: 0,
+    };
+    historySource = "retained-local";
+  } else if (
+    !skipHttp
+    && !input.argv.skipHistory
+    && credentials.status === "available"
+    && canPlanHistory
+  ) {
+    const built = buildCfbHistoryHourUrl({ hourStartUtc: officialBind.request.hourStartUtc });
     historyResult = await signedKalshiGet({
       url: built.url,
       signPath: built.signPath,
@@ -105,22 +185,49 @@ export async function runFollowUpBrtiCampaign(input: {
       maxRetries: 0,
       deps: { ...httpDeps, campaign: { ...campaignHookBase, purpose: "historical-brti" } },
     });
+    historySource = "network";
+    retainLocalHttpResponse({
+      io: input.io,
+      rawDir: input.argv.rawDir,
+      name: RETAINED_HISTORY_RESPONSE_NAME,
+      result: historyResult,
+      capturedAtUtc: generatedAt,
+    });
   }
 
+  const hourStartUtc = officialBind.request?.hourStartUtc ?? null;
+  const hourEndExclusiveUtc = officialBind.request?.hourEndExclusiveUtc ?? null;
+  const officialClose = officialBind.request?.closeTimeUtc ?? null;
+  const hourStartMs = hourStartUtc != null ? Date.parse(hourStartUtc) : Number.NaN;
+  const hourEndMs = hourEndExclusiveUtc != null ? Date.parse(hourEndExclusiveUtc) : Number.NaN;
+  const closeMs = officialClose != null ? Date.parse(officialClose) : Number.NaN;
   const observations = historyResult ? extractHistoryObservations(historyResult.body) : [];
-  const closeMs = Date.parse(officialClose);
-  const hourPlan = plannedHistoryHourForClose(officialClose);
-  const hourStartMs = Date.parse(hourPlan.hourStartUtc);
-  const hourEndMs = hourStartMs + 3_600_000;
-  const inHour = observations.filter((item) => item.timeMs != null && item.timeMs >= hourStartMs && item.timeMs < hourEndMs);
-  const reconstruction = reconstructOfficialAverageIfSupported({
-    observations,
-    closeTimeMs: closeMs,
-    officialExpirationRaw: "78833.97",
-  });
+  const inHour = observations.filter((item) => (
+    item.timeMs != null
+    && Number.isFinite(hourStartMs)
+    && item.timeMs >= hourStartMs
+    && item.timeMs < hourEndMs
+  ));
+  const payloadInspection: HistoryPayloadInspection | { kind: "not-attempted" } = historyResult && Number.isFinite(hourStartMs)
+    ? inspectHistoryPayload({
+      body: historyResult.body,
+      hourStartMs,
+      hourEndExclusiveMs: hourEndMs,
+      closeTimeMs: Number.isFinite(closeMs) ? closeMs : null,
+    })
+    : { kind: "not-attempted" };
+  const reconstruction = Number.isFinite(closeMs)
+    ? reconstructOfficialAverageIfSupported({
+      observations,
+      closeTimeMs: closeMs,
+      officialExpirationRaw: officialBind.request?.expirationAvailableForComparison
+        ? officialBind.request.expirationValue
+        : null,
+    })
+    : null;
 
   let live: LiveCfbProbeResult | null = null;
-  if (!input.argv.skipLive && !input.argv.fixture && credentials.status === "available") {
+  if (!input.argv.skipLive && !input.argv.fixture && credentials.status === "available" && !skipHttp) {
     const window = planLiveCloseWindow((input.deps?.httpDeps?.nowMs ?? Date.now)());
     live = await (input.deps?.liveProbe ?? runLiveCfbProbe)({
       credentials,
@@ -152,15 +259,17 @@ export async function runFollowUpBrtiCampaign(input: {
   }
 
   const metadataAttempts: SignedGetResult[] = [];
-  let officialComparison: Record<string, unknown> = {
-    status: "not-attempted",
+  let officialComparison = {
+    status: "not-attempted" as const,
     reason: live == null || live.attempted === false ? "live-not-attempted" : "pending",
   };
+  let resolvedComparison = officialComparison as FollowUpSummary["officialComparison"];
   if (!skipHttp && live?.attempted && credentials.status === "available") {
-    const closeForLive = live.summaries.length > 0
-      ? planLiveCloseWindow(live.summaries[0]!.localReceivedAtMs).closeIso
-      : planLiveCloseWindow((input.deps?.httpDeps?.nowMs ?? Date.now)()).closeIso;
-    const eventTicker = formatKxbtc15mEventTicker(Date.parse(closeForLive));
+    const observedCloseIso = resolveObservedCloseIso({
+      live,
+      nowMs: (input.deps?.httpDeps?.nowMs ?? Date.now)(),
+    });
+    const eventTicker = formatKxbtc15mEventTicker(Date.parse(observedCloseIso));
     const listUrl = `${DEFAULT_KALSHI_HISTORICAL_API_BASE}/markets?event_ticker=${encodeURIComponent(eventTicker)}&limit=20`;
     const listed = await unsignedKalshiGet({
       url: listUrl,
@@ -170,24 +279,44 @@ export async function runFollowUpBrtiCampaign(input: {
       deps: { ...httpDeps, campaign: { ...campaignHookBase, purpose: "official-settlement-metadata" } },
     });
     metadataAttempts.push(listed);
-    officialComparison = compareOfficialSettlement({
-      body: listed.body,
-      venueAverageRaw: live.venueSettlementAverage?.valueRaw ?? null,
-    });
-    if (officialComparison.status === "pending" && metadataAttempts.length < 3) {
-      officialComparison = {
-        status: "pending",
-        reason: "official-expiration-value-not-yet-available",
+    resolvedComparison = {
+      ...compareOfficialSettlementToObservedWindow({
+        body: listed.body,
+        venueAverageRaw: live.venueSettlementAverage?.valueRaw ?? null,
+        observedCloseIso,
+        expectedEventTicker: eventTicker,
+      }),
+      metadataAttempts: metadataAttempts.length,
+      eventTicker,
+    };
+    if (resolvedComparison.status === "pending") {
+      resolvedComparison = {
+        ...resolvedComparison,
+        reason: resolvedComparison.reason ?? "official-expiration-value-not-yet-available",
         eventTicker,
         metadataAttempts: metadataAttempts.length,
       };
     }
   }
 
-  const refreshed = parseCampaignLedgerSafe(budgetIo.readFile(ledgerPath));
-  const summary = {
-    studyId: `${BRTI_ACCESS_PROBE_STUDY_ID}-follow-up`,
+  const refreshed = readExistingLedger(budgetIo, ledgerPath) ?? ledger;
+  const thisTaskHttpAttempts = Math.max(0, refreshed.consumed - consumedBefore);
+  const payloadKind = payloadInspection.kind;
+  const classification = classifyFollowUpCampaign({
+    credentialsStatus: credentials.status,
+    historyCategory: historyResult?.category ?? null,
+    payloadKind,
+    inHourCount: payloadInspection.kind === "not-attempted" ? inHour.length : payloadInspection.inHourCount,
+    liveConnected: Boolean(live?.connected),
+    budgetBlockedNetwork: budgetBlocksDispatch,
+  });
+
+  const summary: FollowUpSummary = {
+    studyId: followUpStudyId(),
+    artifactKind: "v1-reliability-supplement",
     generatedAtUtc: generatedAt,
+    classification,
+    httpRequestCount: refreshed.consumed,
     campaignId: input.argv.campaignId,
     preservedV0: {
       campaignId: V0_CAMPAIGN_ID,
@@ -196,18 +325,29 @@ export async function runFollowUpBrtiCampaign(input: {
       overrun: true,
       furtherRequestsForbidden: true,
     },
+    originalSnapshots: {
+      v0Summary: "data/research-results/external-kalshi-data-audit/m17-prep-brti-access-probe/brti-access-probe-summary.json",
+      v1Summary: "data/research-results/external-kalshi-data-audit/m17-prep-brti-access-probe-v1/brti-access-probe-v1-summary.json",
+      note: ORIGINAL_SNAPSHOT_NOTE,
+    },
     historicalSemantics: HISTORICAL_PARAMETER_SEMANTICS,
     targetSelection: {
       rule: "existing early/middle/late SPENT trio; follow-up uses role=middle only",
       selectedBeforeObservingHistory: true,
       target: historicalTarget,
-      officialClose,
+      officialMetadataBind: officialBind.status,
+      officialClose: officialClose,
+      authorizedHourStartUtc: officialBind.request?.hourStartUtc ?? null,
+      discrepancy: officialBind.status === "rejected" ? officialBind.reason : officialBind.request?.discrepancy ?? null,
     },
+    officialMetadataBind: officialBind,
     layers: {
       endpointDocumented: true,
       codeImplemented: true,
       credentialsAvailable: credentials.status === "available",
-      accessExercised: historyResult?.category === "success" || Boolean(live?.connected),
+      accessExercised: historyResult?.category === "success"
+        || historyResult?.category === "empty-success"
+        || Boolean(live?.connected),
       historicalCoverageDemonstrated: inHour.length > 0,
       causalSuitabilityEstablished: false,
     },
@@ -219,32 +359,49 @@ export async function runFollowUpBrtiCampaign(input: {
     },
     httpBudget: {
       campaignId: input.argv.campaignId,
-      limit: input.argv.maxHttpRequests,
-      consumed: refreshed?.consumed ?? ledger.consumed,
-      entries: refreshed?.entries.map((entry) => ({
+      limit: refreshed.limit,
+      consumed: refreshed.consumed,
+      entries: refreshed.entries.map((entry) => ({
         id: entry.id,
         purpose: entry.purpose,
         status: entry.status,
         httpStatus: entry.httpStatus,
         category: entry.category,
-      })) ?? [],
+      })),
     },
+    thisTaskHttpAttempts,
     history: historyResult
       ? {
+          attempted: true,
+          source: historySource,
           status: historyResult.status,
           category: historyResult.category,
           bodyTextHash: historyResult.bodyTextHash,
           timespan: "HOUR",
-          timestamp: hourPlan.hourStartUtc,
+          timestamp: hourStartUtc,
           observationCount: observations.length,
           observationsInRequestedHour: inHour.length,
           cadence: inspectCadence(observations),
           reconstruction,
-          coverageNote: inHour.length === 0
-            ? "no historical observations in the requested hour"
-            : "coverage is only the observations actually returned for this one hour",
+          coverageNote: payloadInspection.kind === "not-attempted"
+            ? "history payload was not inspected"
+            : payloadInspection.note,
+          payloadKind,
         }
-      : { attempted: false },
+      : {
+          attempted: false,
+          source: historySource,
+          reason: budgetBlocksDispatch
+            ? "campaign-budget-exhausted-offline-report"
+            : !canPlanHistory
+              ? officialBind.status === "rejected"
+                ? officialBind.reason
+                : officialBind.reason
+              : skipHttp
+                ? "skip-http"
+                : "not-attempted",
+        },
+    historyPayload: payloadInspection,
     live: live
       ? {
           attempted: live.attempted,
@@ -263,7 +420,7 @@ export async function runFollowUpBrtiCampaign(input: {
           cohortStatus: "operational-data-access-sample-not-pristine-validation-cohort",
         }
       : { attempted: false },
-    officialComparison,
+    officialComparison: resolvedComparison,
     causalLimitations: [
       "Historical observation time is not provider publication/receipt time.",
       "This live probe's local receipt timestamps cannot establish historical latency.",
@@ -271,21 +428,48 @@ export async function runFollowUpBrtiCampaign(input: {
       "A trailing 60-second average is not the quarter-hour settlement average.",
       "This live window is an operational access sample, not an untouched future validation cohort.",
     ],
-    nextPrerequisite:
-      "If HOUR history returned ticks, treat them as retrospective mechanical coverage of one hour only. If the venue 15m window average compared to official expiration, that is a live fidelity sample, not a historical backtest input.",
+    nextPrerequisite: nextPrerequisiteFor(payloadKind, inHour.length),
+    reproducibility: {
+      originalObservationsPreserved: true,
+      timestampsNeedNotBeByteIdentical: true,
+      codeIdentity: "kalshiBrtiAccessProbe/follow-up-reliability",
+    },
   };
 
   input.io.mkdir(input.argv.outDir);
   input.io.mkdir(input.argv.rawDir);
-  input.io.writeFile(
-    join(input.argv.outDir, "brti-access-probe-v1-summary.json"),
-    `${JSON.stringify(summary, null, 2)}\n`,
-  );
+  const originalSummaryPath = join(input.argv.outDir, ORIGINAL_V1_SUMMARY_NAME);
+  if (!artifactExists(input.io, originalSummaryPath)) {
+    input.io.writeFile(originalSummaryPath, serializeFollowUpSummary(summary));
+  }
+  input.io.writeFile(join(input.argv.outDir, SUPPLEMENT_SUMMARY_NAME), serializeFollowUpSummary(summary));
+  if (historyResult && payloadInspection.kind !== "not-attempted") {
+    input.io.writeFile(
+      join(input.argv.outDir, SCHEMA_DIAGNOSTIC_NAME),
+      `${JSON.stringify(buildSanitizedSchemaDiagnostic({
+        body: historyResult.body,
+        bodyTextHash: historyResult.bodyTextHash,
+        status: historyResult.status,
+        category: historyResult.category,
+        inspection: payloadInspection,
+        request: {
+          timespan: "HOUR",
+          timestamp: hourStartUtc ?? "",
+          ticker: SELECTED_FOLLOW_UP_TICKER,
+        },
+        provenance: {
+          historySource,
+          officialMetadataBind: officialBind.status,
+          generatedAtUtc: generatedAt,
+        },
+      }), null, 2)}\n`,
+    );
+  }
   input.io.writeFile(
     join(input.argv.rawDir, "http-log.hash-only.json"),
     `${JSON.stringify({
       history: historyResult
-        ? { status: historyResult.status, category: historyResult.category, bodyTextHash: historyResult.bodyTextHash }
+        ? { status: historyResult.status, category: historyResult.category, bodyTextHash: historyResult.bodyTextHash, source: historySource }
         : null,
       metadata: metadataAttempts.map((item) => ({
         status: item.status,
@@ -297,62 +481,20 @@ export async function runFollowUpBrtiCampaign(input: {
   return summary;
 }
 
-function parseCampaignLedgerSafe(raw: string | null): ReturnType<typeof createSealedV0Ledger> | null {
-  if (raw == null) {
-    return null;
+function nextPrerequisiteFor(kind: HistoryPayloadInspection["kind"] | "not-attempted", inHourCount: number): string {
+  if (kind === "observations-present" && inHourCount > 0) {
+    return "Treat HOUR ticks as retrospective mechanical coverage of one hour only. Live venue last_60s_windowed_average_15min remains one operational fidelity sample, not a historical backtest input.";
   }
-  try {
-    return JSON.parse(raw) as ReturnType<typeof createSealedV0Ledger>;
-  } catch {
-    return null;
+  if (kind === "valid-empty-history") {
+    return "Documented HOUR request returned a valid empty container. Do not broaden dates. Next step is prospective synchronized collection or a separately authorized access diagnosis.";
   }
-}
-
-function compareOfficialSettlement(input: {
-  body: unknown;
-  venueAverageRaw: string | null;
-}): Record<string, unknown> {
-  const markets = extractMarkets(input.body);
-  const expirationRaw = markets
-    .map((market) => market.expiration_value)
-    .find((value): value is string => typeof value === "string" && value.trim() !== "");
-  if (expirationRaw == null) {
-    return { status: "pending", reason: "official-expiration-value-not-yet-available" };
+  if (kind === "unsupported-schema" || kind === "ambiguous-schema" || kind === "observations-unrecognized") {
+    return "Inspect the retained raw HOUR body and documented schema before another request. Zero extracted observations is not empty provider history.";
   }
-  const officialParsed = parseOfficialNumericString(expirationRaw);
-  const venueParsed = parseOfficialNumericString(input.venueAverageRaw);
-  if (officialParsed.kind !== "ok" || venueParsed.kind !== "ok") {
-    return {
-      status: "not-compared",
-      officialExpirationRaw: expirationRaw,
-      venueAverageRaw: input.venueAverageRaw,
-      reconstruction: "unverified",
-    };
+  if (kind === "response-error-in-200") {
+    return "HTTP 200 carried a response-level error. Diagnose that provider/access limitation before any broader historical download.";
   }
-  const roundedOfficial = officialParsed.value.toFixed(2);
-  const roundedVenue = Number(venueParsed.value).toFixed(2);
-  return {
-    status: roundedOfficial === roundedVenue ? "agree" : "disagree",
-    officialExpirationRaw: expirationRaw,
-    venueAverageRaw: input.venueAverageRaw,
-    reconstruction: "unverified",
-    comparisonKind: "venue-provided-window-average-vs-official-expiration",
-  };
-}
-
-function extractMarkets(body: unknown): Array<{ expiration_value?: string | null }> {
-  if (!isRecord(body)) {
-    return [];
-  }
-  const markets = body.markets;
-  if (!Array.isArray(markets)) {
-    const wire = parseKalshiMarketWire(body);
-    return wire ? [{ expiration_value: wire.expiration_value }] : [];
-  }
-  return markets.flatMap((item) => {
-    const wire = parseKalshiMarketWire({ market: item });
-    return wire ? [{ expiration_value: wire.expiration_value }] : [];
-  });
+  return "Resolve the HOUR history payload classification (empty window vs unrecognized schema vs provider limitation) before any broader historical download. Live venue last_60s_windowed_average_15min can support prospective synchronized collection only.";
 }
 
 export function sealV0CampaignLedger(input: { campaignDir: string; io: ProbeIo; nowIso?: string }): void {
@@ -366,3 +508,4 @@ export function sealV0CampaignLedger(input: { campaignDir: string; io: ProbeIo; 
 
 export { createFilesystemProbeIo };
 export type FollowUpCredentials = KalshiCaptureCredentials;
+export type { OfficialTargetBindResult };

@@ -24,7 +24,7 @@ Budget repair: reservations persist to `http-budget-ledger.json` before dispatch
 retries and failures consume slots; a restart cannot reset the campaign; missing,
 corrupt, or mismatched state fails closed; the ledger never stores credentials.
 
-Tests: `campaignBudget.test.ts` + `kalshiBrtiAccessProbe.test.ts` (20).
+Tests: `campaignBudget.test.ts` + `kalshiBrtiAccessProbe.test.ts` + `followUpReliability.test.ts`.
 
 ---
 
@@ -170,9 +170,41 @@ Reservoir classifications were not changed.
 
 ## 9. Exact next prerequisite
 
-Resolve the **HOUR 200 with zero extracted observations** blocker (empty hour vs
-unrecognized schema) before any broader historical download.
+Resolve the **HOUR 200 payload classification** (valid empty history vs
+unrecognized schema vs provider/access limitation) before any broader
+historical download. Success on this one hour would still not prove coverage
+across the 34 SPENT days.
 
 Live `last_60s_windowed_average_15min` can support **prospective synchronized
 collection** of venue settlement averages. It does not make historical
 settlement-state research ready.
+
+## 10. Reliability corrections (do not rewrite original snapshots)
+
+Original v0/v1 JSON files remain original snapshots. A later serializer must
+not be treated as the author of those files.
+
+Corrections in code and in
+`brti-access-probe-v1-reliability-supplement.json`:
+
+- Historical close/expiration are bound from permitted official metadata for
+  `KXBTC15M-26AUG301415-15` (`closeTime=2026-08-30T18:15:00Z` from v0 REST
+  `/markets/{ticker}`). The derived hour is checked against the authorized
+  `2026-08-30T18:00:00Z`–`19:00:00Z` window. A mismatch is reported; the
+  request is not silently retargeted.
+- Expiration is comparison-only. Missing expiration is not invented.
+- Live official comparison matches the observed close window and event
+  ticker. It does not take the first non-empty `expiration_value`.
+- Follow-up summary + CLI now share `classification` and persisted
+  `httpRequestCount` / `httpBudget.consumed`.
+- The empty ledger `if` is replaced by explicit fail-closed dispatch vs
+  offline reporting when `--skip-http` / `--fixture` is set.
+- Original HOUR response body was **not** present locally (v1 `raw/` had
+  only `http-log.hash-only.json`). Restricted local retention now writes
+  gitignored `raw/responses/*.json` without authorization headers.
+
+## 11. Merge requirement
+
+Merge PR #115 only after independent LRM approval and successful required
+checks on the **final** head. Prior approval of `d9b8b62` does not approve
+later commits.

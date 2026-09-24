@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { DEFAULT_KALSHI_HISTORICAL_API_BASE, buildHistoricalMarketPath } from "@/lib/data/importers/kalshi/historicalEndpoints";
@@ -14,6 +14,7 @@ import { assertHistoryUrlIsBounded, buildCfbHistoryMinuteUrl, buildCfbLatestValu
 import { extractHistoryObservations, inspectCadence, reconstructOfficialAverageIfSupported } from "./inspectHistoryPayload";
 import { parseOfficialNumericString } from "./parseOfficialNumericString";
 import { runLiveCfbProbe, type LiveCfbProbeDeps, type LiveCfbProbeResult } from "./runLiveCfbProbe";
+import type { OfficialTargetMetadata } from "./bindOfficialTargetMetadata";
 import { selectSpentTargetsFromRepo } from "./selectSpentTargets";
 import { signedKalshiGet, unsignedKalshiGet, type HttpBudget, type SignedGetDeps } from "./signedKalshiGet";
 import {
@@ -27,6 +28,8 @@ import {
 export type ProbeIo = {
   writeFile: (path: string, contents: string) => void;
   mkdir: (path: string) => void;
+  readFile?: (path: string) => string | null;
+  exists?: (path: string) => boolean;
 };
 
 export type ProbeRunDeps = {
@@ -37,6 +40,8 @@ export type ProbeRunDeps = {
   liveDeps?: LiveCfbProbeDeps;
   httpDeps?: SignedGetDeps;
   nowIso?: () => string;
+  officialMetadata?: OfficialTargetMetadata | null;
+  readFile?: (path: string) => string | null;
 };
 
 function sha256Json(value: unknown): string {
@@ -352,5 +357,12 @@ export function createFilesystemProbeIo(): ProbeIo {
     mkdir: (path) => {
       mkdirSync(path, { recursive: true });
     },
+    readFile: (path) => {
+      if (!existsSync(path)) {
+        return null;
+      }
+      return readFileSync(path, "utf8");
+    },
+    exists: (path) => existsSync(path),
   };
 }

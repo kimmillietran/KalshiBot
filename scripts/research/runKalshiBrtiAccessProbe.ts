@@ -6,6 +6,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
+  cliFollowUpPreview,
   createFilesystemProbeIo,
   parseKalshiBrtiAccessProbeArgv,
   runFollowUpBrtiCampaign,
@@ -18,12 +19,13 @@ const ROOT = resolve(join(dirname(fileURLToPath(import.meta.url)), "../.."));
 async function main(): Promise<number> {
   try {
     const argv = parseKalshiBrtiAccessProbeArgv(process.argv.slice(2));
-    const runner = argv.followUp ? runFollowUpBrtiCampaign : runKalshiBrtiAccessProbe;
-    const summary = await runner({
-      repoRoot: ROOT,
-      argv,
-      io: createFilesystemProbeIo(),
-    });
+    const io = createFilesystemProbeIo();
+    if (argv.followUp) {
+      const summary = await runFollowUpBrtiCampaign({ repoRoot: ROOT, argv, io });
+      process.stdout.write(`${JSON.stringify(cliFollowUpPreview(summary))}\n`);
+      return 0;
+    }
+    const summary = await runKalshiBrtiAccessProbe({ repoRoot: ROOT, argv, io });
     process.stdout.write(`${JSON.stringify({
       classification: summary.classification,
       httpRequestCount: summary.httpRequestCount,

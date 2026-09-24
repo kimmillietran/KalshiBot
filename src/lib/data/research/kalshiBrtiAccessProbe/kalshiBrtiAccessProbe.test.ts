@@ -308,6 +308,8 @@ describe("kalshiBrtiAccessProbe", () => {
       io: { writeFile: () => undefined, mkdir: () => undefined },
     });
     expect(summary.officialComparison).toMatchObject({ status: "not-attempted" });
+    expect(summary.classification).toBeTruthy();
+    expect(summary.httpRequestCount).toBe(0);
     expect(JSON.stringify(summary)).not.toMatch(/BEGIN PRIVATE KEY/);
   });
 });
