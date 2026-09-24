@@ -1,10 +1,31 @@
 {
   "campaignId": "kalshi-kxbtc15m-settlement-sample-mapping-v2",
   "limit": 10,
-  "consumed": 0,
+  "consumed": 2,
   "sealed": false,
   "createdAtUtc": "2026-09-24T03:58:47.005Z",
-  "updatedAtUtc": "2026-09-24T03:58:47.005Z",
+  "updatedAtUtc": "2026-09-24T04:15:30.194Z",
   "note": null,
-  "entries": []
+  "entries": [
+    {
+      "id": "1:live-market-discovery",
+      "purpose": "live-market-discovery",
+      "reservedAtUtc": "2026-09-24T04:03:02.365Z",
+      "completedAtUtc": "2026-09-24T04:03:02.572Z",
+      "status": "completed",
+      "httpStatus": 200,
+      "category": "success",
+      "urlHash": null
+    },
+    {
+      "id": "2:official-settlement-metadata",
+      "purpose": "official-settlement-metadata",
+      "reservedAtUtc": "2026-09-24T04:15:30.002Z",
+      "completedAtUtc": "2026-09-24T04:15:30.194Z",
+      "status": "completed",
+      "httpStatus": 200,
+      "category": "success",
+      "urlHash": null
+    }
+  ]
 }

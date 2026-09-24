@@ -99,6 +99,42 @@ One session around the next practical quarter-hour close:
 `avg_60s_data` is recorded as a trailing average and is never labeled the
 quarter-hour settlement average.
 
+### Live session 2026-09-24T04:15Z (one authorized window)
+
+Bound market: `KXBTC15M-26SEP240015-15`, event `KXBTC15M-26SEP240015`,
+strike `83903.22`, close `2026-09-24T04:15:00Z`.
+
+| Planned | Actual |
+| --- | --- |
+| 04:13:30Z–04:15:30Z (120s) | connected 04:13:30.003Z, stopped 04:15:30.001Z |
+
+| Stream | Result |
+| --- | --- |
+| Connection attempts | 1 multiplexed WS (limit 2) |
+| Subscriptions | `cfbenchmarks_value`, `cfbenchmarks_value_5hz`, `orderbook_delta` |
+| Messages / raw bytes | 15,716 / 4.12 MiB recorded (file 6.11 MiB, SHA-256 `938cdde6151ad61b7595d86825486f9b8b866fd38ffa21ae47d85b2f09943e33`) |
+| Stop | planned-stop; flushed; closed cleanly |
+| 1Hz / 5Hz / book events | 119 / 599 / 14,995 |
+| Book integrity | 3 snapshots, 14,992 deltas, 0 gaps, 0 reconnects |
+| Clock | wall/mono divergence 0.27 ms; no adjustment suspected |
+| Future-quote leakage | false |
+
+Completed venue settlement-window average:
+
+- field `last_60s_windowed_average_15min`
+- value `83817.61766667`, count `60`
+- payload window `[2026-09-24T04:14:00.000Z, 2026-09-24T04:15:00.000Z)`
+- 300 raw 5Hz observations in that declared window
+- count advanced by 1 each second; implied last sample did not uniquely match a raw 5Hz tick
+
+Official expiration for the bound ticker: `83817.71`.
+Rounded comparison: venue `83817.62` vs official `83817.71` → **disagree**.
+One earlier live window (PR #115, 03:00Z) had agreed after rounding. This
+window does not. That is recorded as operational mapping data, not a fitted rule.
+
+HTTP campaign v2: **2/10** (discovery 200 + one post-close settlement 200).
+v0 remains sealed 13/10. v1 remains 3/10.
+
 ## What this can and cannot support
 
 Historical 5Hz ticks can support cadence, missing/duplicate, and candidate

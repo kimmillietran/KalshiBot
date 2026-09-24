@@ -6,5 +6,18 @@
     "http-budget-ledger.json"
   ],
   "rawGitignored": true,
-  "rawDir": "data/research-results/external-kalshi-data-audit/m17-prep-settlement-sample-mapping/raw"
+  "rawDir": "data/research-results/external-kalshi-data-audit/m17-prep-settlement-sample-mapping/raw",
+  "rawArtifacts": {
+    "synchronized-capture.jsonl": {
+      "sha256": "938cdde6151ad61b7595d86825486f9b8b866fd38ffa21ae47d85b2f09943e33",
+      "bytes": 6111585,
+      "lines": 15716,
+      "durableRetention": "not-established",
+      "note": "Local gitignored capture only. No approved private artifact-retrieval mechanism was available in this cloud task."
+    }
+  },
+  "codeIdentity": {
+    "branch": "cursor/settlement-sample-mapping-878b",
+    "preLiveHead": "18af0de8d6c3bded342a5a53c78d1eea491ff2f8"
+  }
 }
