@@ -250,10 +250,12 @@ export async function executeLiveOneClose(input: {
   }
 
   if (market != null) {
-    const credentials = (input.deps?.resolveCredentials ?? resolveKalshiCaptureCredentials)();
+    const credentials = (input.deps?.resolveCredentials ?? resolveKalshiCaptureCredentials)({
+      readFile: (path) => readFileSync(path, "utf8"),
+    });
     if (credentials.status !== "available") {
       captureStatus = "connect-failed";
-      reason = "credentials-not-available";
+      reason = `credentials-not-available:${credentials.status}`;
     } else {
       // Wait until connect earliest if early
       while (nowMs() < input.plan.connectEarliestMs) {
