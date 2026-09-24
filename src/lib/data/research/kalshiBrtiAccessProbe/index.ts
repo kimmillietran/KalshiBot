@@ -42,6 +42,7 @@ export {
   retainLocalHttpResponse,
   sanitizeResponseHeaders,
   loadRetainedHttpResponse,
+  retainedHistoryMatchesBoundRequest,
   buildSanitizedSchemaDiagnostic,
 } from "./retainLocalResponse";
 export { runLiveCfbProbe, summarizeLiveMessage } from "./runLiveCfbProbe";

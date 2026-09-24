@@ -1,7 +1,8 @@
 import { join } from "node:path";
 
+import { DOCUMENTED_HISTORY_TIMESPAN } from "./historicalSemantics";
 import type { ProbeIo } from "./runKalshiBrtiAccessProbe";
-import type { SignedGetResult } from "./types";
+import { BRTI_INDEX_ID, CFB_HISTORY_SIGN_PATH, type SignedGetResult } from "./types";
 
 const SENSITIVE_HEADER = /authorization|cookie|set-cookie|kalshi-access|x-api-key|private-key|begin private|api[_-]?key/i;
 const RESPONSE_HEADER_ALLOWLIST = new Set(["content-type", "content-length", "date"]);
@@ -70,6 +71,40 @@ export function loadRetainedHttpResponse(input: {
     return null;
   }
   return parsed as RetainedHttpResponse;
+}
+
+function sameUtcInstant(left: string, right: string): boolean {
+  return Date.parse(left) === Date.parse(right);
+}
+
+export function retainedHistoryMatchesBoundRequest(input: {
+  retained: RetainedHttpResponse;
+  hourStartUtc: string;
+  expectedHash?: string;
+}): { matches: boolean; reason: string | null } {
+  if (input.retained.signPath !== CFB_HISTORY_SIGN_PATH) {
+    return { matches: false, reason: "retained-sign-path-mismatch" };
+  }
+  let parsed: URL;
+  try {
+    parsed = new URL(input.retained.url);
+  } catch {
+    return { matches: false, reason: "retained-url-unparseable" };
+  }
+  if (parsed.searchParams.get("id") !== BRTI_INDEX_ID) {
+    return { matches: false, reason: "retained-index-mismatch" };
+  }
+  if (parsed.searchParams.get("timespan") !== DOCUMENTED_HISTORY_TIMESPAN) {
+    return { matches: false, reason: "retained-timespan-mismatch" };
+  }
+  const timestamp = parsed.searchParams.get("timestamp");
+  if (timestamp == null || !sameUtcInstant(timestamp, input.hourStartUtc)) {
+    return { matches: false, reason: "retained-hour-mismatch" };
+  }
+  if (input.expectedHash != null && input.retained.bodyTextHash !== input.expectedHash) {
+    return { matches: false, reason: "retained-hash-mismatch" };
+  }
+  return { matches: true, reason: null };
 }
 
 export function retainLocalHttpResponse(input: {

@@ -23,7 +23,11 @@ import { compareOfficialSettlementToObservedWindow } from "./compareOfficialSett
 import { cliFollowUpPreview, serializeFollowUpSummary } from "./followUpSummary";
 import { inspectHistoryPayload } from "./inspectHistoryPayload";
 import { parseKalshiBrtiAccessProbeArgv } from "./parseArgv";
-import { retainLocalHttpResponse, sanitizeResponseHeaders } from "./retainLocalResponse";
+import {
+  retainLocalHttpResponse,
+  retainedHistoryMatchesBoundRequest,
+  sanitizeResponseHeaders,
+} from "./retainLocalResponse";
 import { runFollowUpBrtiCampaign } from "./runFollowUpCampaign";
 import type { OfficialTargetMetadata } from "./bindOfficialTargetMetadata";
 import type { CampaignBudgetIo } from "./campaignBudget";
@@ -516,6 +520,63 @@ describe("follow-up summary, CLI, budget, and retention", () => {
       Authorization: "secret",
       "content-type": "application/json",
     })).toEqual({ "content-type": "application/json" });
+  });
+
+  it("rejects a retained HOUR body that does not match the bound request", async () => {
+    const root = mkdtempSync(join(tmpdir(), "brti-stale-"));
+    writeSpentFixtures(root);
+    const rawDir = join(root, "raw");
+    const stale = {
+      capturedAtUtc: "2026-09-24T04:00:00.000Z",
+      name: "historical-brti-hour",
+      url: "https://example.test/trade-api/v2/cfbenchmarks/history/values?id=BRTI&timespan=HOUR&timestamp=2026-09-21T18:00:00.000Z",
+      signPath: "/trade-api/v2/cfbenchmarks/history/values",
+      status: 200,
+      category: "success",
+      bodyTextHash: "stale",
+      body: emptyHistoryBody(),
+      responseHeaders: {},
+    };
+    expect(retainedHistoryMatchesBoundRequest({
+      retained: stale,
+      hourStartUtc: AUTHORIZED_FOLLOW_UP_HOUR_START_UTC,
+    })).toEqual({ matches: false, reason: "retained-hour-mismatch" });
+    const calls: string[] = [];
+    const summary = await runFollowUpBrtiCampaign({
+      repoRoot: root,
+      argv: parseKalshiBrtiAccessProbeArgv([
+        "--follow-up",
+        "--skip-live",
+        "--out-dir", join(root, "out"),
+        "--raw-dir", rawDir,
+        "--campaign-dir", "out",
+      ]),
+      io: {
+        writeFile: () => undefined,
+        mkdir: () => undefined,
+        readFile: (path) => path.endsWith("historical-brti-hour.json") ? JSON.stringify(stale) : null,
+      },
+      deps: {
+        resolveCredentials: () => credentials,
+        officialMetadata: BOUND_METADATA,
+        readFile: (path) => path.endsWith("historical-brti-hour.json") ? JSON.stringify(stale) : null,
+        httpDeps: {
+          fetchImpl: (async () => {
+            calls.push("fetch");
+            return new Response(JSON.stringify(emptyHistoryBody()), { status: 200 });
+          }) as unknown as typeof fetch,
+        },
+      },
+    });
+    expect(calls).toHaveLength(1);
+    expect(summary.history).toMatchObject({ source: "network" });
+    expect(retainedHistoryMatchesBoundRequest({
+      retained: {
+        ...stale,
+        url: "https://example.test/trade-api/v2/cfbenchmarks/history/values?id=BRTI&timespan=HOUR&timestamp=2026-08-30T18:00:00.000Z",
+      },
+      hourStartUtc: AUTHORIZED_FOLLOW_UP_HOUR_START_UTC,
+    }).matches).toBe(true);
   });
 
   it("does not dispatch a history request when official metadata is mismatched", async () => {

@@ -90,7 +90,7 @@ Target selection happened **before** any BRTI values were observed:
 
 Combined HTTP: **13 against an authorized cap of 10**. This is not rewritten as compliant.
 
-## 4. v1 requests (new campaign, 2/10)
+## 4. v1 requests (new campaign, 3/10)
 
 Follow-up historical target rule: the existing early/middle/late trio, **role=middle only**,
 selected before inspecting historical observations.

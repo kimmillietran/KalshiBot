@@ -47,6 +47,7 @@ import {
   buildSanitizedSchemaDiagnostic,
   loadRetainedHttpResponse,
   retainLocalHttpResponse,
+  retainedHistoryMatchesBoundRequest,
   RETAINED_HISTORY_RESPONSE_NAME,
 } from "./retainLocalResponse";
 import { createFilesystemProbeIo, type ProbeIo, type ProbeRunDeps } from "./runKalshiBrtiAccessProbe";
@@ -159,7 +160,13 @@ export async function runFollowUpBrtiCampaign(input: {
     readFile: input.deps?.readFile ?? input.io.readFile,
     name: RETAINED_HISTORY_RESPONSE_NAME,
   });
-  if (retained) {
+  const retainedMatch = retained && officialBind.request
+    ? retainedHistoryMatchesBoundRequest({
+      retained,
+      hourStartUtc: officialBind.request.hourStartUtc,
+    })
+    : { matches: false, reason: retained ? "retained-unbound-hour" : "retained-absent" };
+  if (retained && retainedMatch.matches) {
     historyResult = {
       url: retained.url,
       signPath: retained.signPath,
