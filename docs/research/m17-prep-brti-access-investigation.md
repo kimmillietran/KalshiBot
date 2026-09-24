@@ -9,6 +9,25 @@ study, not a download, and not a claim that path reconstruction is ready.
 
 ---
 
+## 0. Follow-up campaign (v1)
+
+New isolated outputs:
+`data/research-results/external-kalshi-data-audit/m17-prep-brti-access-probe-v1/`.
+Prior v0 artifacts are preserved.
+
+| Campaign | Limit | Consumed | Status |
+| --- | --- | --- | --- |
+| `kalshi-kxbtc15m-brti-access-probe-v0` | 10 | **13** | Sealed. Overrun preserved. No further v0 requests. |
+| `kalshi-kxbtc15m-brti-access-probe-v1` | 10 | **2** | History HOUR 200 + one official-metadata 200 |
+
+Budget repair: reservations persist to `http-budget-ledger.json` before dispatch;
+retries and failures consume slots; a restart cannot reset the campaign; missing,
+corrupt, or mismatched state fails closed; the ledger never stores credentials.
+
+Tests: `campaignBudget.test.ts` + `kalshiBrtiAccessProbe.test.ts` (20).
+
+---
+
 ## 1. Existing code reused
 
 No second Kalshi client.
@@ -20,25 +39,34 @@ No second Kalshi client.
 | Authenticated WS transport | `NodeKalshiAuthenticatedWsClient` |
 | Historical + REST market paths | `buildHistoricalMarketPath`, `buildKalshiRestMarketPath`, `parseKalshiMarketWire` |
 | Eligible SPENT calendar | friction coverage manifest + M16-ER blind incidence |
-| Settlement window constant | documented 60×1s rule from PR #112 memo; reconstruction only if 60 distinct 1s buckets appear |
+| Settlement window | documented `(close−60s, close]` 60×1s rule; **bucket count is not treated as official sample mapping** |
 
 New diagnostic: `src/lib/data/research/kalshiBrtiAccessProbe/` and
-`npm run research:kalshi-brti-access-probe`.
+`npm run research:kalshi-brti-access-probe -- --follow-up`.
 
 ## 2. Documentation sources (retrieved 2026-09-24)
 
 | Source | Retrieved | Used for |
 | --- | --- | --- |
-| https://docs.kalshi.com/cfbenchmarks/rest-passthrough | 2026-09-24 | `/cfbenchmarks/values`, `/cfbenchmarks/history/values`, 50-token cost, sign path without query |
-| https://docs.kalshi.com/websockets/cfbenchmarks-value | 2026-09-24 | `BRTI` index id, `received_at`, `avg_60s_data`, `last_60s_windowed_average_15min` |
+| https://docs.kalshi.com/cfbenchmarks/rest-passthrough | 2026-09-24 | `/cfbenchmarks/values`, `/cfbenchmarks/history/values`, Kalshi worked example `timespan=HOUR` |
+| https://docs.kalshi.com/websockets/cfbenchmarks-value | 2026-09-24 | `BRTI`, `received_at`, `avg_60s_data`, `last_60s_windowed_average_15min` |
 | https://docs.kalshi.com/websockets/cfbenchmarks-value-5hz | 2026-09-24 | 5Hz raw ticks; no window averages |
-| https://docs.cfbenchmarks.com/api/rest/historical-values/ | 2026-09-24 | `timespan` + truncated `timestamp`; mentions `MINUTE` |
-| `docs/research/m17-prep-settlement-state-feasibility.md` | already in-repo (2026-09-23) | official 60s window, 200ms vs 60-sample caveat |
-| PR #113 / #114 committed manifests and incomplete-records | in-repo | SPENT calendar, thousands-separator / missing-strike follow-ups |
+| https://docs.cfbenchmarks.com/api/rest/historical-values/ | 2026-09-24 | range = `timespan` + truncated `timestamp`; tick-level; STREAM_HISTORICAL_VALUES; up to 15-minute recency lag |
+| `docs/research/m17-prep-settlement-state-feasibility.md` | in-repo (2026-09-23) | official 60s window, 200ms vs 60-sample caveat |
 
-Kalshi’s REST example uses `timespan=HOUR`. This probe **refuses HOUR/DAY**.
+Documented historical semantics used for v1:
 
-## 3. Requests actually attempted
+- accepted Kalshi example timespan: **HOUR**
+- previously rejected: **MINUTE** (v0, 400 invalid-parameters)
+- forbidden: **DAY**
+- timestamp must be truncated to the timespan granularity
+- timespan is a fixed lookback/duration of tick-level values, not an OHLC bar
+- no documented start/end bounds or pagination cursor for one window
+- a request can target a historical hour that contains a settlement minute
+
+v0 refused HOUR. v1 was newly authorized to request **one hour** for **one** SPENT target.
+
+## 3. v0 requests (preserved; 13/10 overrun)
 
 Target selection happened **before** any BRTI values were observed:
 
@@ -48,106 +76,103 @@ Target selection happened **before** any BRTI values were observed:
 | middle | 2026-08-30 | `KXBTC15M-26AUG301415-15` |
 | late | 2026-09-21 | `KXBTC15M-26SEP211415-15` |
 
-Rule: sorted 34-day SPENT manifest; `early=0`, `middle=floor((n-1)/2)`, `late=n-1`;
-first sorted incidence ticker excluding the known missing-strike market
-`KXBTC15M-26AUG140315-15`.
-
 ### Pass 1
 
 - `GET /cfbenchmarks/values?id=BRTI` → **200 success**
-- `GET /historical/markets/{ticker}` ×3 → **404 not-found** (not treated as entitlement)
-- Live WS `cfbenchmarks_value` + `cfbenchmarks_value_5hz` for **90s**, cap 600 →
-  **connected**, **541 messages**, no `last_60s_windowed_average_15min`
-- Next quarter-hour (02:45Z) was more than 90s away; capture was **not** extended
+- `GET /historical/markets/{ticker}` ×3 → **404 not-found** (not entitlement)
+- Live WS 90s / 541 messages; **missed the final settlement minute** (02:31–02:33Z)
 
-### Pass 2 (metadata fallback only; live skipped)
+### Pass 2
 
-- `GET /markets/{ticker}` ×3 → **200** official `close_time` / `expiration_value` / `floor_strike`
-- `GET /cfbenchmarks/history/values?id=BRTI&timespan=MINUTE&timestamp=<close minute>` ×6
-  → **400 invalid-parameters**
-- HOUR was not requested
+- `GET /markets/{ticker}` ×3 → **200**
+- `GET /cfbenchmarks/history/values?...&timespan=MINUTE` ×6 → **400 invalid-parameters**
+- HOUR was not requested in v0
 
-Combined HTTP count: **13**. The authorized cap was 10. Pass 2 existed only because
-pass 1’s historical-market 404s left history unattempted. No third pass.
+Combined HTTP: **13 against an authorized cap of 10**. This is not rewritten as compliant.
 
-## 4. Access results
+## 4. v1 requests (new campaign, 2/10)
 
-| Question | Result |
-| --- | --- |
-| Existing credentials resolve without a key path? | **Yes** (`raw-env`) |
-| Latest/live REST BRTI? | **Yes** (200) |
-| Live BRTI WS? | **Yes** (authenticated connect + 541 messages) |
-| Historical BRTI on SPENT dates? | **Not demonstrated**. Bounded `MINUTE` calls returned 400. |
-| Official settlement-window reconstruction? | **Not performed**. No historical observations. Mapping remains unsupported. |
-| Causal live-vs-historical latency? | **Not established.** Live local receipt ≠ historical availability. |
+Follow-up historical target rule: the existing early/middle/late trio, **role=middle only**,
+selected before inspecting historical observations.
 
-Error taxonomy: 401/403 did **not** occur. 404 on `/historical/markets` is missing
-historical-market path, not CFB entitlement. 400 on history is **invalid parameters**,
-not empty history and not a proven entitlement denial.
+- Target: `KXBTC15M-26AUG301415-15` close `2026-08-30T18:15:00Z`
+- One HOUR: `timestamp=2026-08-30T18:00:00.000Z`
 
-## 5. Returned schema / cadence
+| When | Request | Result |
+| --- | --- | --- |
+| 2026-09-24T02:51:11Z | `GET /cfbenchmarks/history/values?id=BRTI&timespan=HOUR&timestamp=2026-08-30T18:00:00.000Z` | **200 success** |
+| 2026-09-24T02:58:50Z–03:00:20Z | WS `cfbenchmarks_value` only (no 5Hz) | connected, 1 connection, 1 subscribe, **90 messages** |
+| 2026-09-24T03:00:20Z | `GET /markets?event_ticker=KXBTC15M-26SEP232300` | **200 success** |
 
-Live `cfbenchmarks_value` docs: raw `data` string plus `avg_60s_data` (trailing
-`[t-60s, t)`) and optional `last_60s_windowed_average_15min` only in the final
-minute before `:00/:15/:30/:45`. This 90s sample (02:31–02:33Z) was **outside**
-that final minute, so absence of the 15m field is expected, not an entitlement miss.
+No DAY request, no second date, no pagination, no M16-P collector.
 
-5Hz sibling carries `value_usd`, `source_ts_ms`, `received_at`, and raw `data`.
-It does **not** carry the official 60-sample settlement average.
+## 5. Access results
 
-Authoritative docs still distinguish:
+| Question | v0 | v1 |
+| --- | --- | --- |
+| Credentials | Yes (`raw-env`) | Yes |
+| Latest REST BRTI | 200 | not re-requested |
+| Live BRTI | connected; missed settlement minute | connected; **captured settlement minute** |
+| Historical BRTI on a SPENT date | MINUTE 400; unproven | HOUR **200**, but **0 extracted observations** |
+| Official-window reconstruction | not performed | still **unverified** |
+| Causal suitability | false | false |
 
-- upstream BRTI **200ms / 5Hz** (CME notice 2026-05-18)
-- Kalshi settlement description **60 × 1s** in `(close−60s, close]`
+Error taxonomy: v1 history 200 is **not** entitlement denial and **not** a MINUTE-style
+parameter error. Zero extracted observations means empty data **or** unrecognized
+payload keys. Coverage is only what was actually observed: **none**.
 
-This probe did **not** assume every fifth 5Hz tick is a settlement sample and did
-**not** interpolate or substitute Coinbase.
+## 6. Live settlement-average and official comparison
 
-## 6. Settlement-rule check
+Operational sample (not a validation cohort): close **2026-09-24T03:00:00Z**,
+start 02:58:50Z, stop 03:00:20Z.
 
-Official REST metadata for the three targets includes close times and raw
-expiration strings (`62972.55`, `78833.97`, `85997.00`). Those strings parsed
-without thousands separators. Reconstruction was skipped.
+Venue `last_60s_windowed_average_15min` at window_size 60:
 
-Known follow-ups from PR #114 remain open and were not “fixed” here:
+- value raw `84349.74383333`
+- `window_start_ts_ms` → 2026-09-24T02:59:00Z
+- `window_end_ts_exclusive` → 2026-09-24T03:00:00Z
 
-- `--skip-fetch` parsed but unimplemented
-- default output paths can overwrite committed summaries
-- two expiration values contain thousands separators (`79,604.96`, `77,362.10`)
-- one market lacks official strike (`KXBTC15M-26AUG140315-15`)
-- checkpoint-write reliability caveat
+Official expiration raw `84349.74`. Rounded comparison: **agree**.
 
-The thousands-separator parser exists for diagnostics only; this probe’s three
-targets did not need it.
+This is a **venue-provided window average vs official expiration** diagnostic on
+one live event. Reconstruction from raw ticks is **unverified**. Do not generalize
+to the 34-day SPENT cohort.
 
-## 7. Causal limitations
+Trailing `avg_60s_data` remains a per-tick lookback and is **not** the quarter-hour
+settlement average.
+
+## 7. Settlement-rule / mapping limits
+
+Do not assume:
+
+- 60 distinct one-second buckets identify the official 60 samples
+- every fifth 5Hz tick is a settlement sample
+- a trailing 60-second average equals the final-window average
+- historical timestamps establish contemporaneous availability
+
+No interpolation. No Coinbase substitute.
+
+Known PR #114 follow-ups remain open.
+
+## 8. Causal limitations
 
 Keep distinct:
 
-1. historical observation time (not obtained)
-2. provider `received_at` / `source_ts_ms` (live only; first summarized live
-   frame had no `received_at`, consistent with subscribe/control messages)
-3. local receipt time during this probe
+1. historical observation time (not obtained; HOUR 200 returned no extracted ticks)
+2. provider `received_at` / window timestamps (live venue average only)
+3. local receipt time (first live local receipt 2026-09-24T02:58:50.243Z)
 
-A 90s live sample cannot establish historical latency. Even a successful later
-history pull would support **retrospective mechanical reconstruction** at best,
-not a causally faithful execution backtest, unless contemporaneous receipt
-timestamps exist.
+A new live timing sample cannot recover historical latency. Even a later
+successful history pull would support retrospective mechanical reconstruction
+at best, not a causally faithful execution backtest.
 
-This live window is an **operational access sample**, not a pristine future
-validation cohort. Reservoir SPENT classifications were not changed.
-
-## 8. What remains missing
-
-- A Kalshi-accepted **≤2 minute** historical history parameter
-- Historical BRTI coverage of the 34 SPENT days
-- Verified 5Hz → 60×1s settlement-sample mapping
-- Per-ticker live `strike_type` confirmation
-- Direct CF Benchmarks license (not initiated; pricing not quoted here)
+Reservoir classifications were not changed.
 
 ## 9. Exact next prerequisite
 
-Confirm the smallest historical `timespan` Kalshi’s passthrough actually accepts
-that stays inside a two-minute bound. Until that documented parameter succeeds,
-do **not** treat settlement-state path reconstruction as unblocked, and do **not**
-request `HOUR`.
+Resolve the **HOUR 200 with zero extracted observations** blocker (empty hour vs
+unrecognized schema) before any broader historical download.
+
+Live `last_60s_windowed_average_15min` can support **prospective synchronized
+collection** of venue settlement averages. It does not make historical
+settlement-state research ready.

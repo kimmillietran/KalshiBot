@@ -1,0 +1,31 @@
+{
+  "campaignId": "kalshi-kxbtc15m-brti-access-probe-v1",
+  "limit": 10,
+  "consumed": 2,
+  "sealed": false,
+  "createdAtUtc": "2026-09-24T02:51:11.594Z",
+  "updatedAtUtc": "2026-09-24T03:00:20.191Z",
+  "note": null,
+  "entries": [
+    {
+      "id": "1:historical-brti",
+      "purpose": "historical-brti",
+      "reservedAtUtc": "2026-09-24T02:51:11.597Z",
+      "completedAtUtc": "2026-09-24T02:51:13.289Z",
+      "status": "completed",
+      "httpStatus": 200,
+      "category": "success",
+      "urlHash": null
+    },
+    {
+      "id": "2:official-settlement-metadata",
+      "purpose": "official-settlement-metadata",
+      "reservedAtUtc": "2026-09-24T03:00:20.020Z",
+      "completedAtUtc": "2026-09-24T03:00:20.191Z",
+      "status": "completed",
+      "httpStatus": 200,
+      "category": "success",
+      "urlHash": null
+    }
+  ]
+}
