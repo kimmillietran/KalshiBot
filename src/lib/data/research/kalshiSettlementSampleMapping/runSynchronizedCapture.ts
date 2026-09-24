@@ -3,7 +3,7 @@ import { NodeKalshiAuthenticatedWsClient } from "@/lib/data/live/kalshiWsCapture
 import { OrderbookCaptureBook } from "@/lib/data/live/kalshiWsCaptureSpike/orderbookCaptureBook";
 import type { KalshiCaptureCredentials } from "@/lib/data/live/kalshiWsCaptureSpike/resolveKalshiCaptureCredentials";
 import { KALSHI_WS_URL } from "@/features/market-data/orderbook/constants";
-import { summarizeLiveMessage, type LiveCfbMessageSummary } from "@/lib/data/research/kalshiBrtiAccessProbe";
+import { summarizeLiveMessage, type LiveCfbMessageSummary } from "@/lib/data/research/kalshiBrtiAccessProbe/runLiveCfbProbe";
 import { BRTI_INDEX_ID } from "@/lib/data/research/kalshiBrtiAccessProbe/types";
 import type {
   KalshiOrderbookDeltaMessage,

@@ -122,7 +122,7 @@ export function inspectHistoricalHour(input: {
   let provenance: Record<string, unknown> | null = null;
   let retainedAvailable = input.injectedBody !== undefined;
   let retainedVerified = input.injectedBody !== undefined;
-  let blockedReason: string | null = null;
+  const blockedReason: string | null = null;
 
   if (input.injectedBody === undefined) {
     const retained = loadRetainedHttpResponse({
