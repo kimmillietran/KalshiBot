@@ -205,10 +205,16 @@ export async function executeLiveOneClose(input: {
   campaignDir: string;
   persistentRawDir: string;
   retention: RetentionReadiness;
+  /** Per-close HTTP ceiling (default ONE_CLOSE_MAX_HTTP=12). */
+  httpLimit?: number;
   deps?: LiveOneCloseDeps;
 }): Promise<LiveOneCloseResult> {
   if (!input.retention.ready || !input.retention.primaryRoot) {
     throw new OneCloseFidelityError("execute-requires-retention-ready");
+  }
+  const httpLimit = input.httpLimit ?? ONE_CLOSE_MAX_HTTP;
+  if (!Number.isInteger(httpLimit) || httpLimit <= 0) {
+    throw new OneCloseFidelityError(`invalid-http-limit: ${httpLimit}`);
   }
   const nowMs = input.deps?.nowMs ?? Date.now;
   const wait = input.deps?.sleep ?? sleep;
@@ -218,13 +224,13 @@ export async function executeLiveOneClose(input: {
   loadOrCreateCampaignLedger({
     ledgerPath: campaignLedgerPath(input.campaignDir),
     campaignId: input.plan.campaignId,
-    limit: ONE_CLOSE_MAX_HTTP,
+    limit: httpLimit,
     io: campaignIo,
   });
   const ledgerForBudget = loadOrCreateCampaignLedger({
     ledgerPath: campaignLedgerPath(input.campaignDir),
     campaignId: input.plan.campaignId,
-    limit: ONE_CLOSE_MAX_HTTP,
+    limit: httpLimit,
     io: campaignIo,
     requireExisting: true,
   });
@@ -257,7 +263,7 @@ export async function executeLiveOneClose(input: {
       purpose: "live-market-discovery",
       campaignDir: input.campaignDir,
       campaignId: input.plan.campaignId,
-      limit: ONE_CLOSE_MAX_HTTP,
+      limit: httpLimit,
       budget,
       campaignIo,
       deps: input.deps,
@@ -346,7 +352,7 @@ export async function executeLiveOneClose(input: {
       const ledger = loadOrCreateCampaignLedger({
         ledgerPath: campaignLedgerPath(input.campaignDir),
         campaignId: input.plan.campaignId,
-        limit: ONE_CLOSE_MAX_HTTP,
+        limit: httpLimit,
         io: campaignIo,
         requireExisting: true,
       });
@@ -361,7 +367,7 @@ export async function executeLiveOneClose(input: {
           purpose: "official-settlement-metadata",
           campaignDir: input.campaignDir,
           campaignId: input.plan.campaignId,
-          limit: ONE_CLOSE_MAX_HTTP,
+          limit: httpLimit,
           budget,
           campaignIo,
           deps: input.deps,
@@ -526,7 +532,7 @@ export async function executeLiveOneClose(input: {
   const finalLedger = loadOrCreateCampaignLedger({
     ledgerPath: campaignLedgerPath(input.campaignDir),
     campaignId: input.plan.campaignId,
-    limit: ONE_CLOSE_MAX_HTTP,
+    limit: httpLimit,
     io: campaignIo,
     requireExisting: true,
   });

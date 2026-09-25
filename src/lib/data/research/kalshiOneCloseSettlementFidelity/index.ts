@@ -17,7 +17,8 @@ export type {
   RetentionMode,
 } from "./types";
 
-export { freezeOneClosePlan, classifyMissedSlot, toSynchronizedWindowPlan } from "./freezeOneClose";
+export { freezeOneClosePlan, classifyMissedSlot, toSynchronizedWindowPlan, O6_FIVE_CLOSE_TIMING, DEFAULT_ONE_CLOSE_TIMING } from "./freezeOneClose";
+export type { OneCloseTimingProfile } from "./freezeOneClose";
 export {
   verifyRetentionReadiness,
   assertRetentionReady,

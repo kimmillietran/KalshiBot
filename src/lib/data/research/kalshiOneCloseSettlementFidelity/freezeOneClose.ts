@@ -20,24 +20,54 @@ import {
  * Capture stop is min(close+20s, connect+90s) so the connected window never
  * exceeds 90s when connecting at close−75s (effective stop = close+15s).
  */
+export type OneCloseTimingProfile = {
+  connectBeforeMs: number;
+  captureStartBeforeMs: number;
+  captureStopAfterMs: number;
+  maxConnectedMs: number;
+  readinessBeforeCloseMs: number;
+};
+
+export const DEFAULT_ONE_CLOSE_TIMING: OneCloseTimingProfile = {
+  connectBeforeMs: ONE_CLOSE_CONNECT_BEFORE_MS,
+  captureStartBeforeMs: ONE_CLOSE_CAPTURE_START_BEFORE_MS,
+  captureStopAfterMs: ONE_CLOSE_CAPTURE_STOP_AFTER_MS,
+  maxConnectedMs: ONE_CLOSE_MAX_CONNECTED_MS,
+  readinessBeforeCloseMs: ONE_CLOSE_READINESS_BEFORE_CLOSE_MS,
+};
+
+/**
+ * O6 five-close protocol: connect ≥90s before close, capture ≥15s after,
+ * connected window covers the full interval (105s).
+ */
+export const O6_FIVE_CLOSE_TIMING: OneCloseTimingProfile = {
+  connectBeforeMs: 90_000,
+  captureStartBeforeMs: 85_000,
+  captureStopAfterMs: 15_000,
+  maxConnectedMs: 105_000,
+  readinessBeforeCloseMs: 120_000,
+};
+
 export function freezeOneClosePlan(input: {
   nowMs: number;
   frozenAtUtc?: string;
   closeMs?: number;
   campaignId?: string;
   retentionMode?: RetentionMode;
+  timing?: OneCloseTimingProfile;
 }): OneClosePlan {
+  const timing = input.timing ?? DEFAULT_ONE_CLOSE_TIMING;
   const closeMs = input.closeMs ?? nextQuarterHourCloseMs(input.nowMs);
   if (input.closeMs == null && closeMs <= input.nowMs) {
     throw new OneCloseFidelityError("freeze-failed: next-close-not-after-now");
   }
-  const connectEarliestMs = closeMs - ONE_CLOSE_CONNECT_BEFORE_MS;
-  const captureStartMs = closeMs - ONE_CLOSE_CAPTURE_START_BEFORE_MS;
+  const connectEarliestMs = closeMs - timing.connectBeforeMs;
+  const captureStartMs = closeMs - timing.captureStartBeforeMs;
   const captureStopMs = Math.min(
-    closeMs + ONE_CLOSE_CAPTURE_STOP_AFTER_MS,
-    connectEarliestMs + ONE_CLOSE_MAX_CONNECTED_MS,
+    closeMs + timing.captureStopAfterMs,
+    connectEarliestMs + timing.maxConnectedMs,
   );
-  const readinessCutoffMs = closeMs - ONE_CLOSE_READINESS_BEFORE_CLOSE_MS;
+  const readinessCutoffMs = closeMs - timing.readinessBeforeCloseMs;
   const retentionMode = input.retentionMode ?? "local-persistent-only";
   return {
     campaignId: input.campaignId ?? ONE_CLOSE_CAMPAIGN_ID,
@@ -47,7 +77,7 @@ export function freezeOneClosePlan(input: {
     captureStartMs,
     captureStopMs,
     readinessCutoffMs,
-    maxConnectedMs: ONE_CLOSE_MAX_CONNECTED_MS,
+    maxConnectedMs: timing.maxConnectedMs,
     indexSymbol: "BRTI",
     includeOrderbook: false,
     retentionMode,

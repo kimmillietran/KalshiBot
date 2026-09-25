@@ -240,6 +240,7 @@ export async function runOneCloseSettlementFidelity(input: {
       campaignDir,
       persistentRawDir,
       retention: retentionReadiness,
+      httpLimit: input.argv.maxHttp,
       deps: input.liveDeps,
     });
     capture = live.capture;
