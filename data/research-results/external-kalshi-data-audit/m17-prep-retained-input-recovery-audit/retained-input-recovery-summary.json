@@ -1,0 +1,22 @@
+{
+  "studyId": "kalshi-kxbtc15m-m17-retained-input-recovery-audit-v0",
+  "finalStatus": "blocked-missing-frozen-strategy-decision",
+  "purchaseMade": false,
+  "networkRequestsMade": 0,
+  "strategyPnlComputed": false,
+  "classificationCounts": {
+    "present-direct": 2,
+    "derivable-offline": 4,
+    "present-but-insufficient": 0,
+    "absent": 2,
+    "unsafe-to-derive": 1
+  },
+  "remainingBlockers": [
+    "settlement-state-to-yes-overpriced-entry-mapping-unfrozen",
+    "coinbase-pre-entry-realized-volatility-absent-on-spent-calendar",
+    "historical-brti-banked-paths-absent-on-spent-calendar",
+    "exact-5hz-to-1hz-window-identity-unfrozen-unsafe-to-derive"
+  ],
+  "exploratoryEvalExecutableWithoutPurchase": false,
+  "reportSha256": "18f16b7a5796d13a3559899218a1271ef96ce9c31f6bf2cf35895e3ad64df768"
+}
