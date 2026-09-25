@@ -25,7 +25,10 @@ import {
 import {
   OneCloseFidelityError,
   type CaptureStatus,
+  type OfficialStatus,
+  type RetentionStatus,
 } from "@/lib/data/research/kalshiOneCloseSettlementFidelity/types";
+import { campaignLedgerPath } from "@/lib/data/research/kalshiBrtiAccessProbe/campaignBudget";
 
 import {
   DEFAULT_O6_FIVE_CLOSE_OUT_DIR,
@@ -116,8 +119,46 @@ function mapCaptureToTargetStatus(capture: CaptureStatus): FiveCloseTargetStatus
   return "failed";
 }
 
+type SlotLiveResultArtifact = {
+  slotIndex: number;
+  closeUtc: string;
+  capture: CaptureStatus;
+  official: OfficialStatus;
+  retention: RetentionStatus;
+  httpConsumed: number;
+  reason: string | null;
+  completedAtUtc: string;
+};
+
 function writeJson(io: FiveCloseIo, path: string, value: unknown): void {
   io.writeFile(path, `${JSON.stringify(value, null, 2)}\n`);
+}
+
+function readJson<T>(io: FiveCloseIo, path: string): T | null {
+  const raw = io.readFile(path);
+  if (raw == null) return null;
+  try {
+    return JSON.parse(raw) as T;
+  } catch {
+    return null;
+  }
+}
+
+function slotLiveResultPath(outAbs: string, slotOutDirRel: string): string {
+  return join(outAbs, slotOutDirRel, "slot-live-result.json");
+}
+
+function persistentSlotRawDir(
+  primaryRoot: string,
+  slotIndex: number,
+  closeUtc: string,
+): string {
+  return join(
+    primaryRoot,
+    O6_FIVE_CLOSE_CAMPAIGN_ID,
+    `slot-${slotIndex}-${closeUtc.replace(/[:.]/g, "-")}`,
+    "raw",
+  );
 }
 
 function loadOrFreezeManifest(input: {
@@ -210,6 +251,92 @@ export async function runO6FiveCloseCampaign(input: {
     if (!slot) break;
 
     const nowMs = io.nowMs();
+    const slotOutAbs = join(outAbs, slot.slotOutDirRel);
+    const liveResultPath = slotLiveResultPath(outAbs, slot.slotOutDirRel);
+
+    // Resume: durable live result written before manifest terminalization.
+    if (slot.status === "in-progress") {
+      const recovered = readJson<SlotLiveResultArtifact>(io, liveResultPath);
+      if (recovered != null && recovered.slotIndex === slot.slotIndex) {
+        const status = mapCaptureToTargetStatus(recovered.capture);
+        manifest = markSlotTerminal(manifest, slot.slotIndex, {
+          status,
+          capture: recovered.capture,
+          official: recovered.official,
+          retention: recovered.retention,
+          httpConsumed: recovered.httpConsumed,
+          reason: recovered.reason ?? "recovered-from-slot-live-result",
+          completedAtUtc: recovered.completedAtUtc,
+        });
+        writeJson(io, manifestPath, manifest);
+        writeJson(io, join(slotOutAbs, "slot-disposition.json"), {
+          slotIndex: slot.slotIndex,
+          status,
+          capture: recovered.capture,
+          official: recovered.official,
+          retention: recovered.retention,
+          reason: recovered.reason ?? "recovered-from-slot-live-result",
+          recovered: true,
+        });
+        slotReports.push({
+          slotIndex: slot.slotIndex,
+          closeUtc: slot.closeUtc,
+          status,
+          live: null,
+        });
+        continue;
+      }
+
+      const partialRaw = retention.primaryRoot
+        ? join(
+          persistentSlotRawDir(
+            retention.primaryRoot,
+            slot.slotIndex,
+            slot.closeUtc,
+          ),
+          "synchronized-capture.jsonl",
+        )
+        : null;
+      if (partialRaw != null && io.exists(partialRaw)) {
+        // Do not re-append into a partial capture; treat as failed, no substitute.
+        const reason = "abandoned-in-progress-partial-raw; substitution-forbidden";
+        const ledgerRaw = io.readFile(campaignLedgerPath(slotOutAbs));
+        let httpConsumed = 0;
+        if (ledgerRaw != null) {
+          try {
+            const parsed = JSON.parse(ledgerRaw) as { consumed?: unknown };
+            if (typeof parsed.consumed === "number" && Number.isFinite(parsed.consumed)) {
+              httpConsumed = Math.max(0, Math.floor(parsed.consumed));
+            }
+          } catch {
+            httpConsumed = 0;
+          }
+        }
+        manifest = markSlotTerminal(manifest, slot.slotIndex, {
+          status: "failed",
+          capture: "connect-failed",
+          official: "not-attempted",
+          retention: "not-attempted",
+          httpConsumed,
+          reason,
+          completedAtUtc: new Date(nowMs).toISOString(),
+        });
+        writeJson(io, manifestPath, manifest);
+        writeJson(io, join(slotOutAbs, "slot-disposition.json"), {
+          slotIndex: slot.slotIndex,
+          status: "failed",
+          reason,
+        });
+        slotReports.push({
+          slotIndex: slot.slotIndex,
+          closeUtc: slot.closeUtc,
+          status: "failed",
+          live: null,
+        });
+        continue;
+      }
+    }
+
     const campaignHttp = manifest.campaignHttpConsumed;
     if (campaignHttp >= O6_HTTP_CAMPAIGN_CEILING) {
       manifest = markSlotTerminal(manifest, slot.slotIndex, {
@@ -234,8 +361,12 @@ export async function runO6FiveCloseCampaign(input: {
     const miss = classifyMissedSlot(slot.plan, nowMs);
     if (miss === "missed-slot" || nowMs > slot.plan.readinessCutoffMs) {
       const reason = miss === "missed-slot"
-        ? "missed-slot-after-close; substitution-forbidden"
-        : "skipped-past-readiness-cutoff; substitution-forbidden";
+        ? (slot.status === "in-progress"
+          ? "abandoned-in-progress-after-close; substitution-forbidden"
+          : "missed-slot-after-close; substitution-forbidden")
+        : (slot.status === "in-progress"
+          ? "abandoned-in-progress-past-readiness; substitution-forbidden"
+          : "skipped-past-readiness-cutoff; substitution-forbidden");
       manifest = markSlotTerminal(manifest, slot.slotIndex, {
         status: "missed-slot",
         capture: "missed-slot",
@@ -277,15 +408,13 @@ export async function runO6FiveCloseCampaign(input: {
     };
     writeJson(io, manifestPath, manifest);
 
-    const slotOutAbs = join(outAbs, slot.slotOutDirRel);
     io.mkdir(slotOutAbs);
     writeJson(io, join(slotOutAbs, "one-close-plan.json"), slot.plan);
 
-    const persistentRawDir = join(
+    const persistentRawDir = persistentSlotRawDir(
       retention.primaryRoot!,
-      O6_FIVE_CLOSE_CAMPAIGN_ID,
-      `slot-${slot.slotIndex}-${slot.closeUtc.replace(/[:.]/g, "-")}`,
-      "raw",
+      slot.slotIndex,
+      slot.closeUtc,
     );
 
     let live: LiveOneCloseResult | null = null;
@@ -325,6 +454,21 @@ export async function runO6FiveCloseCampaign(input: {
     }
 
     const status = mapCaptureToTargetStatus(live.capture);
+    const completedAtUtc = new Date(io.nowMs()).toISOString();
+    // Durable before campaign-manifest terminal write so restart can recover
+    // a finished live slot instead of mislabeling it missed-slot.
+    const liveArtifact: SlotLiveResultArtifact = {
+      slotIndex: slot.slotIndex,
+      closeUtc: slot.closeUtc,
+      capture: live.capture,
+      official: live.official,
+      retention: live.retention,
+      httpConsumed: live.httpConsumed,
+      reason: live.reason,
+      completedAtUtc,
+    };
+    writeJson(io, liveResultPath, liveArtifact);
+
     manifest = markSlotTerminal(manifest, slot.slotIndex, {
       status,
       capture: live.capture,
@@ -332,7 +476,7 @@ export async function runO6FiveCloseCampaign(input: {
       retention: live.retention,
       httpConsumed: live.httpConsumed,
       reason: live.reason,
-      completedAtUtc: new Date(io.nowMs()).toISOString(),
+      completedAtUtc,
     });
     writeJson(io, manifestPath, manifest);
 
