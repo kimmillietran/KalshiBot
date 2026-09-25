@@ -1,0 +1,78 @@
+{
+  "reportId": "kalshi-kxbtc15m-m17-o6-5hz-mapping-protocol-v0",
+  "generatedAtUtc": "2026-09-25T05:15:00.000Z",
+  "priorGateReportId": "kalshi-kxbtc15m-m17-o6-fidelity-gate-v0",
+  "priorCampaignId": "kalshi-kxbtc15m-o6-five-close-settlement-fidelity-v0",
+  "recommendation": "do-not-run-new-prospective-campaign-for-5hz-official-mapping",
+  "o6RemainsBlocked": true,
+  "overallFidelityGateStatus": "blocked-needs-prospective-evidence",
+  "authorized": false,
+  "campaignAuthorized": false,
+  "captureStarted": false,
+  "marketDataRequested": false,
+  "purchaseMade": false,
+  "vendorContacted": false,
+  "o3Decided": false,
+  "officialMappingFrozen": false,
+  "missedSlotSubstituted": false,
+  "existingCapturesAdequateForFiniteCadenceTests": true,
+  "exploratoryOnlyFindings": {
+    "label": "EXPLORATORY-NOT-INDEPENDENTLY-VALIDATED",
+    "kalshi1HzEqualsPhase000FiveHzNestedData": {
+      "slots": 4,
+      "ticksMatched": 416,
+      "ticksCompared": 416
+    },
+    "finiteCandidatesVsOfficialHalfEven2dp": {
+      "S0_x_Wavg": "4/4",
+      "SF_x_Wavg": "4/4",
+      "S0_x_Wwin": "1/4",
+      "S8_any": "0/4",
+      "SL_any": "0/4",
+      "SM_x_Wavg": "0/4",
+      "SM_x_Wwin": "1/4"
+    },
+    "exactEqualityVsOfficial": "0/4 for all finite candidates"
+  },
+  "predeclaredCandidateList": {
+    "selections": [
+      "S0_phase_000",
+      "S8_phase_800",
+      "SF_first_in_second",
+      "SL_last_in_second",
+      "SM_mean_in_second"
+    ],
+    "memberships": [
+      "Wavg_[close-60s,close)",
+      "Wwin_(close-60s,close]"
+    ],
+    "roundingAxes": [
+      "exact-decimal",
+      "diagnostic-half-even-2dp"
+    ],
+    "noOffsetSearch": true,
+    "noPostHocRuleAddition": true
+  },
+  "optionalConfirmatoryProtocol": {
+    "recommended": false,
+    "authorized": false,
+    "maxCloses": 2,
+    "purpose": "prospective-confirmation-of-kalshi-channel-identity-only",
+    "doesNotUnblockO6OfficialBank": true,
+    "retentionMode": "local-persistent-only",
+    "independentBackup": false,
+    "httpCeilingPerClose": 12,
+    "httpCeilingCampaign": 24,
+    "requiresSeparateAuthorization": true
+  },
+  "whatNewCampaignCannotEstablishWithoutAuthority": [
+    "official-banked-field-identity",
+    "production-expiration-rounding-stage",
+    "that-half-even-2dp-is-vendor-policy"
+  ],
+  "interpretativeLimits": {
+    "fourRoundedMatchesDoNotEstablishOfficialRule": true,
+    "exploratoryDiagnosisIsNotProspectiveValidation": true,
+    "matchesStrengthenOnlyTestedHypotheses": true
+  }
+}

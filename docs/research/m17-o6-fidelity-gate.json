@@ -12,15 +12,24 @@
   "tradeOrOrderPlaced": false,
   "pnlEvaluated": false,
   "prospectiveCaptureProtocol": {
-    "status": "proposed-only",
-    "authorized": false,
-    "executed": false,
+    "status": "later-authorized-and-executed-as-five-close-v0",
+    "authorizedInThisGatePr": false,
+    "fiveCloseCampaignId": "kalshi-kxbtc15m-o6-five-close-settlement-fidelity-v0",
+    "fiveCloseCapturedSlots": 4,
+    "fiveCloseMissedSlots": 1,
     "minimumCloses": 5,
     "channels": [
       "cfbenchmarks_value",
       "cfbenchmarks_value_5hz"
     ],
     "indexId": "BRTI"
+  },
+  "fiveHzFollowOnProtocol": {
+    "reportId": "kalshi-kxbtc15m-m17-o6-5hz-mapping-protocol-v0",
+    "path": "docs/research/m17-o6-5hz-to-1hz-mapping-protocol.md",
+    "recommendation": "do-not-run-new-prospective-campaign-for-5hz-official-mapping",
+    "authorized": false,
+    "o6StillBlocked": true
   },
   "o3DecisionsDeferred": [
     "official-bank-vs-research-state-estimand",
@@ -61,7 +70,12 @@
     {
       "ruleId": "5hz-to-1hz-official-mapping",
       "classification": "unresolved",
-      "limits": "Cadence documented; selection rule not."
+      "limits": "Cadence documented; official selection rule not. Exploratory post-campaign: Kalshi 1Hz nested equals 5Hz phase-000 nested on 4/4 captures; other finite phase/mean candidates failed offline official comparisons. Not an official freeze; more identical captures not recommended (see fiveHzFollowOnProtocol)."
+    },
+    {
+      "ruleId": "completed-avg-60s-as-expiration-candidate-after-five-close",
+      "classification": "empirically-supported-only",
+      "limits": "Now includes four captured five-close slots (plus prior closes); diagnostic half-even 2dp only; exact equality still fails; not vendor-confirmed; not intermediate bank proof."
     },
     {
       "ruleId": "ws-timestamp-fields-received-at-and-source",

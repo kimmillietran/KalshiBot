@@ -13,7 +13,8 @@
 | Overall fidelity-gate status | **`blocked-needs-prospective-evidence`** |
 | O6 outcome | **Remains blocked** (not passed) |
 | Strategy rule frozen | **No** |
-| Acquisition / capture / P&L | **None occurred** |
+| Acquisition / capture / P&L | **None in this gate PR**; five-close campaign later executed under separate auth (see below) |
+| Post-campaign 5Hz follow-on | **Not recommended** — `docs/research/m17-o6-5hz-to-1hz-mapping-protocol.md` |
 
 ---
 
@@ -106,11 +107,12 @@ Related completed-value candidate status (not this rule’s classification):
 
 ### 3.3 Upstream 5Hz → 1Hz mapping
 
-| Classification | **`unresolved`** |
+| Classification | **`unresolved`** (official); Kalshi **channel** identity remains research-only |
 | --- | --- |
 | Documented | BRTI publishes ~200 ms (D5, D6). Kalshi 1Hz channel emits ~1 tick/s and ignores duplicate/out-of-order upstream source timestamps (D2). 5Hz channel is lean ticks without averages (D3). |
-| Not documented | Which 5Hz phase/print becomes each official 1Hz settlement sample; whether official samples equal Kalshi 1Hz ticks, CFB “top-of-second,” or another rule. |
-| Empirical | v3 membership comparisons used **cfb-1Hz only** (60 verified source-timestamped 1Hz samples in predeclared windows); mixing 5Hz into averages is forbidden by that campaign’s stream-separation rule. That validates stream hygiene, **not** the official 5Hz→1Hz identity. |
+| Not documented | Which 5Hz phase/print becomes each **official** settlement sample; whether official samples equal Kalshi 1Hz ticks, CFB “top-of-second,” or another rule. |
+| Empirical (gate-era) | v3 membership comparisons used **cfb-1Hz only**; mixing 5Hz into averages forbidden — stream hygiene, not official identity. |
+| Post five-close (exploratory only) | On 4 captured closes, nested 5Hz phase-000 payloads matched Kalshi 1Hz nested payloads 416/416. That is **exploratory channel identity**, not an official-bank freeze. Finite other phase/mean candidates failed the same offline official comparisons. See `m17-o6-5hz-to-1hz-mapping-protocol.md`. **No new capture recommended** for this axis alone. |
 | Acquisition note | PR #127: purchasing raw BRTI does not resolve this identity. |
 
 ### 3.4 Timestamp domain, boundaries, and rounding
@@ -180,6 +182,18 @@ If the protocol yields persistent disagreement across all predeclared candidates
 deliverable is **documented mapping failure** → consider upgrading overall gate
 toward `failed-closed-unresolvable` in a later review (not declared here).
 
+### 5.3 Status after authorized five-close execution
+
+The §5.2 protocol was later authorized and executed as campaign
+`kalshi-kxbtc15m-o6-five-close-settlement-fidelity-v0` (4 captured, 1 missed;
+missed slot retained). Completed-field vs official comparisons behaved as the
+empirical candidate pattern (half-even 2dp of `avg_60s_data` on 4/4; exact fail).
+A follow-on protocol for 5Hz→official discrimination concludes **additional
+closes are not justified** for that axis:
+`docs/research/m17-o6-5hz-to-1hz-mapping-protocol.md` (not authorized).
+
+**O6 remains blocked.**
+
 ---
 
 ## 6. Still required before O3 (not decided here)
@@ -200,8 +214,10 @@ Do **not** freeze those in this task.
 
 ## 7. Attestation
 
-- No acquisition, subscription, capture, trade, order, or P&L occurred.
+- Gate PR itself: no acquisition, subscription, capture, trade, order, or P&L.
 - O6 fidelity gate: **`blocked-needs-prospective-evidence`** (remains blocked).
-- Prospective capture protocol: **proposed only**, not authorized, not executed.
+- Five-close campaign (separate auth) later executed; missed slot retained.
+- 5Hz follow-on: **not recommended / not authorized**
+  (`m17-o6-5hz-to-1hz-mapping-protocol.md`).
 - No strategy rule, threshold, or trading gate was frozen.
 - Historical reports from PR #127 / #128 were not overwritten.
