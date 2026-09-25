@@ -17,7 +17,6 @@ import {
   type CaptureStatus,
   type OfficialStatus,
   type OneClosePlan,
-  type RetentionMode,
   type RetentionStatus,
 } from "@/lib/data/research/kalshiOneCloseSettlementFidelity/types";
 
