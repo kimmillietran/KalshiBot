@@ -40,7 +40,7 @@
     {
       "ruleId": "official-banked-sample-field",
       "classification": "unresolved",
-      "limits": "No primary source names a WS field as official banked samples; avg_60s completed-value match is empirical-only (n=3)."
+      "limits": "No primary source names a WS field as official banked samples; avg_60s completed-value match is empirical-only (gate-era n=3; five-close extension tracked separately)."
     },
     {
       "ruleId": "official-60-sample-membership-window",
@@ -90,7 +90,7 @@
     {
       "ruleId": "existing-captures-verify-official-banked-identity",
       "classification": "unresolved",
-      "limits": "Captures support discrepancy + empirical candidate; insufficient for official banked verification."
+      "limits": "Captures support discrepancy + empirical candidate + exploratory channel identity; still insufficient for official banked verification."
     }
   ],
   "pr127StatusesRetained": {
@@ -117,5 +117,5 @@
     "https://www.cfbenchmarks.com/data/indices/BRTI"
   ],
   "markdownPath": "docs/research/m17-o6-fidelity-gate.md",
-  "markdownSha256": "482baf2aef6e1b341cf6df32870c4616492f26acb9226a7e2d994c8f70ccfe27"
+  "markdownSha256": "110e6384a599cc4a272d2974f0fa9e87b7f885196424603941da37ff6ad82981"
 }

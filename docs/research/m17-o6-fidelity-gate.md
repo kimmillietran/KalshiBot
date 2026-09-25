@@ -88,12 +88,13 @@ Each rule uses **exactly one** of:
 | --- | --- |
 | What *is* documented | Official **expiration** is the average of 60 CFB RTI one-second readings in the final minute (D1, D4). WS exposes two average fields with different documented memberships (D2). |
 | What is *not* documented | No primary source names `avg_60s_data`, `last_60s_windowed_average_15min`, or any other streamed field as the official **banked intermediate sample series** or as identical to `expiration_value`. |
-| Empirical only | On **three** closes, diagnostic half-even 2dp of completed `avg_60s_data` matched `expiration_value`; completed `last_60s_windowed_average_15min` did not (three-close evidence + v2/v3). That supports an **empirical completed-value candidate**, not an official banked-field binding. |
-| Limits | n=3; diagnostic rounding ≠ vendor-confirmed rounding; completed agreement ≠ intermediate bank membership (design draft claim C). |
+| Empirical only (gate-era) | On **three** closes, diagnostic half-even 2dp of completed `avg_60s_data` matched `expiration_value`; completed `last_60s_windowed_average_15min` did not (three-close evidence + v2/v3). That supports an **empirical completed-value candidate**, not an official banked-field binding. |
+| Post five-close (exploratory only) | Same half-even pattern on 4/4 captured slots; exact equality still fails. Still not an official-bank freeze — see `completed-avg-60s-as-expiration-candidate-after-five-close` in the companion JSON and §5.3. |
+| Limits | Gate-era n=3 plus four five-close captures still leave official-field identity open; diagnostic rounding ≠ vendor-confirmed rounding; completed agreement ≠ intermediate bank membership (design draft claim C). |
 | Must not claim | That `avg_60s_data` is the official banked path or a strategy gate input. |
 
 Related completed-value candidate status (not this rule’s classification):
-**`empirically-supported-only`** for “`avg_60s_data` @ count 60 often matches official after diagnostic 2dp” — research `SettlementEstimate` only (PR #123).
+**`empirically-supported-only`** for “`avg_60s_data` @ count 60 often matches official after diagnostic 2dp” — research `SettlementEstimate` only (PR #123); five-close extension tracked separately in JSON.
 
 ### 3.2 Sixty-sample membership window (official expiration)
 
@@ -130,9 +131,9 @@ Related completed-value candidate status (not this rule’s classification):
 
 | Classification | **`unresolved`** (captures insufficient to verify official banked identity) |
 | --- | --- |
-| What captures *do* support | Dual-field discrepancy at count 60; empirical completed-value candidate behavior on three closes; v2/v3 replayable raw + official HTTP with verified hashes; stream separation (1Hz vs 5Hz). |
-| What they *do not* support | A vendor-confirmed official intermediate banked field; a unique 60-sample membership proof; a unique 5Hz→1Hz rule; production rounding. |
-| Why not “contradicted” overall | Evidence does not prove official sampling is unknowable — only that current docs + n≤3 closes leave it open. |
+| What captures *do* support | Dual-field discrepancy at count 60; empirical completed-value candidate behavior on gate-era closes plus four five-close captures; v2/v3 + five-close replayable raw/official with verified hashes; stream separation (1Hz vs 5Hz); exploratory 5Hz phase-000 ≡ Kalshi 1Hz nested identity on those four slots. |
+| What they *do not* support | A vendor-confirmed official intermediate banked field; a unique 60-sample membership proof; a unique **official** 5Hz→1Hz rule; production rounding. |
+| Why not “contradicted” overall | Evidence does not prove official sampling is unknowable — only that current docs + retained closes still leave official identity open. |
 | Why not “passed” | Mapping gate in the design draft remains unmet. |
 
 ---

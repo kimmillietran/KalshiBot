@@ -12,7 +12,7 @@
 | Prior gate | PR #129 `docs/research/m17-o6-fidelity-gate.md` |
 | Prior campaign | `kalshi-kxbtc15m-o6-five-close-settlement-fidelity-v0` (4 captured + 1 missed) |
 | Recommendation | **Do not run a new prospective campaign for 5Hz→official mapping** |
-| O6 status | **Remains `blocked-needs-prospective-evidence`** (unchanged unblock) |
+| O6 status | **Remains `blocked-needs-prospective-evidence`** (unchanged; not unblocked) |
 
 ---
 
