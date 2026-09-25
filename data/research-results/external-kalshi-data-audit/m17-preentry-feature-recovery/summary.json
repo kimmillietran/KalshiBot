@@ -1,0 +1,40 @@
+{
+  "studyId": "kalshi-kxbtc15m-m17-preentry-feature-recovery-v0",
+  "analysisVersion": "m17-preentry-feature-recovery-v0.1",
+  "coverage": {
+    "rows": 47307,
+    "markets": 3228,
+    "utcDays": 34,
+    "bookOk": 47281,
+    "halfSpreadMismatch": 308,
+    "timeRemainingPresent": 47307,
+    "volatilityOk": 47307,
+    "marketTimeVolComplete": 47281,
+    "citedHighVolTrue": 3552,
+    "citedHighVolFalse": 43755,
+    "citedHighVolUnknown": 0
+  },
+  "coinbaseRetrieval": {
+    "attempted": true,
+    "usableWithoutCost": true,
+    "authenticationRequired": false,
+    "purchaseOrSubscriptionEncountered": false,
+    "blocker": null,
+    "retrievedUtcDays": 34,
+    "totalCandles": 97920,
+    "timestampConvention": "exchange-bucket-start-open; close=open+59999ms (frozen research)"
+  },
+  "attestation": {
+    "purchaseOccurred": false,
+    "subscriptionOccurred": false,
+    "tradeOrOrderOccurred": false,
+    "strategyPnlComputed": false,
+    "strategyResultClaimed": false,
+    "m17EntryRuleModifiedOrFrozen": false,
+    "o6SettlementFidelityResolved": false,
+    "settlementOutcomesUsedForRankingOrTuning": false,
+    "liveCaptureStarted": false,
+    "brtiOrBankedOr5hzIdentityInferred": false
+  },
+  "generatedAtUtc": "2026-09-25T04:15:56.376Z"
+}
