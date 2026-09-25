@@ -329,4 +329,67 @@ describe("O6 five-close campaign orchestration", () => {
     expect(result.manifest.targets.map((t) => t.closeUtc)).toEqual(frozen.targets.map((t) => t.closeUtc));
     expect(captureSpy).not.toHaveBeenCalled();
   });
+
+  it("retries in-progress slot after readiness cutoff when close is still ahead", async () => {
+    const nowMs = Date.parse("2026-09-25T03:24:00Z");
+    const frozen = freezeFiveCloseCampaign({
+      nowMs,
+      codeSha: "test-sha",
+      frozenAtUtc: "2026-09-25T03:24:00.000Z",
+    });
+    const slot0 = {
+      ...frozen.targets[0]!,
+      status: "in-progress" as const,
+      reason: "live-executing",
+    };
+    // Past readiness (close−120s) but still before connect (close−90s).
+    let clock = slot0.plan.readinessCutoffMs + 1_000;
+    expect(clock).toBeLessThan(slot0.plan.connectEarliestMs);
+    const manifest = {
+      ...frozen,
+      targets: [slot0, ...frozen.targets.slice(1)],
+    };
+    const io = memoryIo({
+      nowMs: clock,
+      files: {
+        "/repo/out/five-close-campaign-manifest.json": `${JSON.stringify(manifest, null, 2)}\n`,
+      },
+    });
+    io.nowMs = () => clock;
+    // After the first slot attempt, jump past the campaign so remaining slots miss.
+    io.sleep = async () => {
+      clock = Date.parse("2026-09-25T04:35:00Z");
+    };
+
+    const result = await runO6FiveCloseCampaign({
+      repoRoot: "/repo",
+      argv: {
+        authorizeLive: true,
+        freezeOnly: false,
+        outDir: "out",
+      },
+      io,
+      retentionIo: readyRetentionIo(
+        "/Users/tester/Documents/KalshiResearchArchive/o6-five-close",
+      ),
+      liveDeps: {
+        nowMs: () => clock,
+        sleep: async () => undefined,
+        // Fail ledger write immediately so executeLiveOneClose throws before
+        // filesystem capture paths — proves we entered live retry, not miss.
+        campaignIo: {
+          readFile: () => null,
+          writeFile: () => {
+            throw new Error("forced-ledger-fail-for-retry-test");
+          },
+          mkdir: () => undefined,
+          withExclusiveLock: (_lockPath, fn) => fn(),
+        },
+      },
+    });
+
+    expect(result.manifest.targets[0]!.status).toBe("failed");
+    expect(result.manifest.targets[0]!.reason).toMatch(/forced-ledger-fail-for-retry-test/);
+    expect(result.manifest.targets.slice(1).every((t) => t.status === "missed-slot")).toBe(true);
+  });
 });

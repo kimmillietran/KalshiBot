@@ -338,7 +338,8 @@ export async function runO6FiveCloseCampaign(input: {
     }
 
     const campaignHttp = manifest.campaignHttpConsumed;
-    if (campaignHttp >= O6_HTTP_CAMPAIGN_CEILING) {
+    const remainingCampaignHttp = O6_HTTP_CAMPAIGN_CEILING - campaignHttp;
+    if (remainingCampaignHttp <= 0) {
       manifest = markSlotTerminal(manifest, slot.slotIndex, {
         status: "limit-stop",
         capture: "limit-stop",
@@ -357,16 +358,21 @@ export async function runO6FiveCloseCampaign(input: {
       });
       continue;
     }
+    const slotHttpLimit = Math.min(O6_HTTP_PER_CLOSE, remainingCampaignHttp);
 
     const miss = classifyMissedSlot(slot.plan, nowMs);
-    if (miss === "missed-slot" || nowMs > slot.plan.readinessCutoffMs) {
+    // Pending slots must respect readiness cutoff. In-progress slots with no
+    // durable live-result / partial raw may still retry until close — marking
+    // in-progress happens ~5s before readinessCutoff, so a restart shortly
+    // after that cutoff must not abandon a still-open connect window.
+    const shouldMiss = miss === "missed-slot"
+      || (slot.status !== "in-progress" && nowMs > slot.plan.readinessCutoffMs);
+    if (shouldMiss) {
       const reason = miss === "missed-slot"
         ? (slot.status === "in-progress"
           ? "abandoned-in-progress-after-close; substitution-forbidden"
           : "missed-slot-after-close; substitution-forbidden")
-        : (slot.status === "in-progress"
-          ? "abandoned-in-progress-past-readiness; substitution-forbidden"
-          : "skipped-past-readiness-cutoff; substitution-forbidden");
+        : "skipped-past-readiness-cutoff; substitution-forbidden";
       manifest = markSlotTerminal(manifest, slot.slotIndex, {
         status: "missed-slot",
         capture: "missed-slot",
@@ -394,6 +400,41 @@ export async function runO6FiveCloseCampaign(input: {
     // Wait until near readiness / connect window (poll, do not busy-spin hard)
     while (io.nowMs() < slot.plan.readinessCutoffMs - 5_000) {
       await io.sleep(1_000);
+    }
+
+    // Re-validate after wait — a long suspension can cross readiness/close.
+    const nowAfterWait = io.nowMs();
+    const missAfterWait = classifyMissedSlot(slot.plan, nowAfterWait);
+    const shouldMissAfterWait = missAfterWait === "missed-slot"
+      || (slot.status !== "in-progress" && nowAfterWait > slot.plan.readinessCutoffMs);
+    if (shouldMissAfterWait) {
+      const reason = missAfterWait === "missed-slot"
+        ? (slot.status === "in-progress"
+          ? "abandoned-in-progress-after-close; substitution-forbidden"
+          : "missed-slot-after-close; substitution-forbidden")
+        : "skipped-past-readiness-cutoff; substitution-forbidden";
+      manifest = markSlotTerminal(manifest, slot.slotIndex, {
+        status: "missed-slot",
+        capture: "missed-slot",
+        official: "not-attempted",
+        retention: "not-attempted",
+        httpConsumed: 0,
+        reason,
+        completedAtUtc: new Date(nowAfterWait).toISOString(),
+      });
+      writeJson(io, manifestPath, manifest);
+      writeJson(
+        io,
+        join(outAbs, slot.slotOutDirRel, "slot-disposition.json"),
+        { slotIndex: slot.slotIndex, status: "missed-slot", reason },
+      );
+      slotReports.push({
+        slotIndex: slot.slotIndex,
+        closeUtc: slot.closeUtc,
+        status: "missed-slot",
+        live: null,
+      });
+      continue;
     }
 
     // Mark in-progress before live work (restart-safe)
@@ -424,7 +465,7 @@ export async function runO6FiveCloseCampaign(input: {
         campaignDir: slotOutAbs,
         persistentRawDir,
         retention,
-        httpLimit: O6_HTTP_PER_CLOSE,
+        httpLimit: slotHttpLimit,
         deps: input.liveDeps,
       });
     } catch (error) {
