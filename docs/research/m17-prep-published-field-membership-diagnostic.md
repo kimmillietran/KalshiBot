@@ -80,17 +80,23 @@ This is a coherent story, not a unique identification of the tick series.
   implied \(x_n\) cannot be independently replayed from raw CFB prints.
 - Direct observation of the excluded start tick as a published field is absent.
 
-**Empirical candidate (not vendor-confirmed):** across the committed 04:15Z
-window and the later retained 23:15Z one-close capture, official
-`expiration_value` matched `avg_60s_data` after diagnostic half-even rounding to
-two decimals, and did **not** match `last_60s_windowed_average_15min` under the
-same diagnostic. That makes `avg_60s_data` a **strong empirical candidate** for
-the official settlement average on the observed closes — **not** a confirmed
-binding, and **not** proof of the exact 1 Hz selection or official rounding
-rule. Do **not** treat this as field selection for trading or strategy gates.
+**Empirical candidate (not vendor-confirmed):** across three observed closes
+(04:15Z committed; 23:15Z v2 retained; 00:00Z v3 retained with 60 verified 1Hz
+samples), official `expiration_value` matched `avg_60s_data` after diagnostic
+half-even rounding to two decimals, and did **not** match
+`last_60s_windowed_average_15min` under the same diagnostic. On v3, the
+reconstructed 1Hz mean matched `avg_60s_data` under exact decimal equality.
+That makes `avg_60s_data` a **strong empirical candidate** for the official
+settlement average on the observed closes — **not** a confirmed binding, and
+**not** proof of the exact 1 Hz selection or official rounding rule. Kalshi
+support is non-blocking; these conclusions rely on retained empirical
+observations only. Do **not** treat this as field selection for trading or
+strategy gates.
 
 **Descriptive numbers (04:15Z):** official `83817.71`; diagnostic half-even 2dp
 matches trailing `83817.70733333`, not settlement `83817.61766667`.
+
+See also: `docs/research/m17-empirical-settlement-candidate-three-close-evidence.md`.
 
 ---
 

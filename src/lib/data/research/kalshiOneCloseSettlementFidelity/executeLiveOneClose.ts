@@ -49,6 +49,7 @@ import {
   TRAILING_WINDOW_LABEL,
   type StreamMembershipComparison,
 } from "./compareMembershipAverages";
+import { buildSettlementEstimateBundle, type SettlementEstimateBundle } from "./settlementEstimate";
 import { toSynchronizedWindowPlan } from "./freezeOneClose";
 import { sha256Buffer, type RetentionReadiness } from "./retentionReadiness";
 import {
@@ -136,6 +137,7 @@ export type LiveOneCloseResult = {
     officialHashMatched: boolean | null;
   };
   membershipComparisons: StreamMembershipComparison[];
+  settlementEstimate: SettlementEstimateBundle;
   streamObservationCounts: {
     cfb1Hz: number;
     cfb5Hz: number;
@@ -488,6 +490,19 @@ export async function executeLiveOneClose(input: {
     }),
   ];
 
+  const avgComparison = membershipComparisons.find((row) => row.fieldName === "avg_60s_data");
+  const settlementEstimate = buildSettlementEstimateBundle({
+    expirationValueRaw: officialExpirationRaw,
+    avg60sDataRaw: trailingPublished,
+    avg60sDataCount: analysis?.exploratoryTrailingAtClose?.count
+      ?? (avgComparison?.status === "compared" ? avgComparison.sampleCount : null),
+    last60sWindowedAverage15minRaw: settlementPublished,
+    last60sWindowedCount: analysis?.completedSettlementAverage?.count ?? null,
+    postClose: officialStatus === "retrieved" || officialStatus === "unavailable",
+    avg60sMatchesVerified1HzMean: avgComparison?.status === "compared"
+      && avgComparison.exactDecimalEqual === true,
+  });
+
   const streamHints: Record<string, number> = {};
   for (const event of captureResult?.events ?? []) {
     streamHints[event.stream] = (streamHints[event.stream] ?? 0) + 1;
@@ -574,6 +589,7 @@ export async function executeLiveOneClose(input: {
       officialHashMatched,
     },
     membershipComparisons,
+    settlementEstimate,
     analysis,
     officialComparison,
   };

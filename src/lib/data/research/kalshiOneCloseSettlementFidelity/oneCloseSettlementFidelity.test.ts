@@ -19,8 +19,8 @@ import {
   comparePublishedAverageForStream,
   QUARTER_HOUR_WINDOW_LABEL,
   TRAILING_WINDOW_LABEL,
-  roundHalfEven2,
 } from "./compareMembershipAverages";
+import { roundHalfEven2DecimalString } from "./decimalMarketValue";
 import { classifyConnectedCaptureStatus } from "./executeLiveOneClose";
 import { classifyMissedSlot, freezeOneClosePlan } from "./freezeOneClose";
 import { runOneCloseSettlementFidelity } from "./runOneCloseSettlementFidelity";
@@ -556,7 +556,9 @@ describe("membership average comparison", () => {
     });
     expect(agreement.sampleCount).toBe(3);
     expect(agreement.rawStringEqual).toBe(false);
+    expect(agreement.exactDecimalEqual).toBe(false);
     expect(typeof agreement.unroundedDiff).toBe("number");
-    expect(roundHalfEven2(83817.705)).toBe("83817.70");
+    expect(roundHalfEven2DecimalString("83817.705")).toBe("83817.70");
+    expect(roundHalfEven2DecimalString("83817.715")).toBe("83817.72");
   });
 });

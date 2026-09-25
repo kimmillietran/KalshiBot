@@ -49,3 +49,20 @@ export type {
   StreamMembershipComparison,
   BrtiSourceStream,
 } from "./compareMembershipAverages";
+export {
+  compareMarketDecimals,
+  exactDecimalEqual,
+  meanDecimalStrings,
+  DECLARED_DECIMAL_APPROX_TOLERANCE_RAW,
+  roundHalfEven2DecimalString,
+} from "./decimalMarketValue";
+export {
+  buildSettlementEstimateBundle,
+  diagnosticHalfEven2MatchesOfficial,
+  avg60sIsEmpiricalCandidateAgainstOfficial,
+} from "./settlementEstimate";
+export type {
+  SettlementEstimate,
+  SettlementEstimateBundle,
+  SettlementEstimateInputs,
+} from "./settlementEstimate";
