@@ -26,6 +26,26 @@ describe("decimalMarketValue exact equality", () => {
     expect(Number(published) === Number(mean.meanRaw)).toBe(true);
   });
 
+  it("keeps exact-decimal mean equality when IEEE float sum/divide === fails", () => {
+    // 30×99.99999999 + 30×100.00000001 → exact decimal mean 100.00000000
+    const published = "100.00000000";
+    const samples = [
+      ...Array.from({ length: 30 }, () => "99.99999999"),
+      ...Array.from({ length: 30 }, () => "100.00000001"),
+    ];
+    let floatSum = 0;
+    for (const sample of samples) {
+      floatSum += Number(sample);
+    }
+    const floatMean = floatSum / samples.length;
+    expect(floatMean === Number(published)).toBe(false);
+
+    const mean = meanDecimalStrings(samples, 8);
+    expect(mean.meanRaw).toBe(published);
+    expect(exactDecimalEqual(mean.meanRaw!, published)).toBe(true);
+    expect(compareMarketDecimals(mean.meanRaw!, published).exactDecimalEqual).toBe(true);
+  });
+
   it("does not report inequality from float noise when strings differ only by representation scale", () => {
     expect(exactDecimalEqual("84379.38516667", "84379.385166670")).toBe(true);
     expect(exactDecimalEqual("1.0", "1.00")).toBe(true);
