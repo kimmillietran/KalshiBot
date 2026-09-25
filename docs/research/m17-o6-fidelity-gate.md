@@ -22,11 +22,11 @@
 Inspected for whether **official** Kalshi settlement-state inputs can be identified
 from authoritative documentation plus retained captures:
 
-1. Official field used for banked settlement samples  
-2. 60-sample membership window  
-3. Upstream 5Hz BRTI → 1Hz sample mapping  
-4. Timestamp domain, boundary handling, and rounding stage  
-5. Whether retained captures suffice to verify those rules  
+1. Official field used for banked settlement samples
+2. 60-sample membership window
+3. Upstream 5Hz BRTI → 1Hz sample mapping
+4. Timestamp domain, boundary handling, and rounding stage
+5. Whether retained captures suffice to verify those rules
 
 PR #127 kept banked 60-sample path and exact 5Hz→1Hz as `unverified`. This gate
 **does not change** those acquisition classifications unless evidence below
@@ -52,8 +52,8 @@ gates; no using post-close labels as a pre-entry sampling rule.
 | D5 | CME CF Real Time Indices Methodology | https://docs.cfbenchmarks.com/CME%20CF%20Real%20Time%20Indices%20Methodology.pdf | BRTI dissemination ~every 200 ms (post May 2026 change); dissemination precision 0.01 USD (methodology specs) |
 | D6 | BRTI product page | https://www.cfbenchmarks.com/data/indices/BRTI | ~200 ms calculation; Kalshi among settlement users |
 
-Prior memo consolidating D1–D6 (2026-09-24 retrieval):  
-`docs/research/m17-prep-brti-settlement-average-discrepancy-semantics.md`  
+Prior memo consolidating D1–D6 (2026-09-24 retrieval):
+`docs/research/m17-prep-brti-settlement-average-discrepancy-semantics.md`
 (SHA-256 `f457fa0b625fe30fe0a001f78390998b2078eb46d0c999d58a616a71d9a8bc97`).
 
 ### 2.2 Retained captures / reports (hashes preserved; not overwritten)
@@ -91,7 +91,7 @@ Each rule uses **exactly one** of:
 | Limits | n=3; diagnostic rounding ≠ vendor-confirmed rounding; completed agreement ≠ intermediate bank membership (design draft claim C). |
 | Must not claim | That `avg_60s_data` is the official banked path or a strategy gate input. |
 
-Related completed-value candidate status (not this rule’s classification):  
+Related completed-value candidate status (not this rule’s classification):
 **`empirically-supported-only`** for “`avg_60s_data` @ count 60 often matches official after diagnostic 2dp” — research `SettlementEstimate` only (PR #123).
 
 ### 3.2 Sixty-sample membership window (official expiration)
