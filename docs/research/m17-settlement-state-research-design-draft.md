@@ -444,3 +444,8 @@ economics remain blocked.
 | --- | --- | --- |
 | draft-v0 | 2026-09-24 | Initial design draft parallel to PR #116 investigation |
 | draft-v1 | 2026-09-24 | Project Lead corrections: causal vs mechanical gates; #115 vs #112/#116 authority; #116 e38030a / dual-field / raw-availability; matching≠banked; durable retention before collection |
+
+**Related (not a freeze of this draft):** entry-rule decision options for
+human choice are collected in
+`docs/research/m17-entry-rule-decision-memo.md` (after PR #127). That memo does
+**not** freeze §C probability baseline or any trading gate.
