@@ -1,8 +1,8 @@
 # M17 settlement-join audit — `kalshi-kxbtc15m-m17-settlement-join-audit-v0`
 
-Generated: 2026-09-25T00:33:49.668Z
+Generated: 2026-09-25T00:38:30.177Z
 Analysis version: `m17-settlement-join-audit-v0.1`
-Code SHA: `14883c5fc5182967257ab14893bbd8cd10512f4c`
+Code SHA: `61d1762849a1d86c331a6c27499deb94ed20d2fb`
 
 Settlement-JOIN coverage only on retained SPENT_VALIDATION (M16-ER) executable friction samples. Exact marketTicker join; no outcome imputation. Not confirmatory validation; not alpha; no threshold tuning; BRTI/settlement-state path coverage not measured. Descriptive outcome counts (if present) are SPENT/exploratory only.
 
@@ -136,4 +136,3 @@ _SPENT_VALIDATION exploratory descriptive only — do not tune strategy_
 | 2026-09-17 | 1283 | 1283 | 100.0000% | 90 |
 | 2026-09-19 | 1409 | 1409 | 100.0000% | 98 |
 | 2026-09-21 | 1377 | 1377 | 100.0000% | 98 |
-

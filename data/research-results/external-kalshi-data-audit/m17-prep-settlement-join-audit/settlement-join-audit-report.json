@@ -2,8 +2,8 @@
   "studyId": "kalshi-kxbtc15m-m17-settlement-join-audit-v0",
   "analysisVersion": "m17-settlement-join-audit-v0.1",
   "disclaimer": "Settlement-JOIN coverage only on retained SPENT_VALIDATION (M16-ER) executable friction samples. Exact marketTicker join; no outcome imputation. Not confirmatory validation; not alpha; no threshold tuning; BRTI/settlement-state path coverage not measured. Descriptive outcome counts (if present) are SPENT/exploratory only.",
-  "generatedAtUtc": "2026-09-25T00:33:49.668Z",
-  "codeAuthoritySha": "14883c5fc5182967257ab14893bbd8cd10512f4c",
+  "generatedAtUtc": "2026-09-25T00:38:30.177Z",
+  "codeAuthoritySha": "61d1762849a1d86c331a6c27499deb94ed20d2fb",
   "strategyDefinitionFixed": {
     "name": "hold-to-settlement-terminal-mispricing",
     "side": "NO",

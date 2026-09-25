@@ -121,6 +121,5 @@ export function serializeM17SettlementJoinReportMarkdown(
       `| ${row.utcDayKey} | ${row.eligibleRecords} | ${row.validJoinedRecords} | ${pct(row.joinPercentage)} | ${row.independentMarkets} |`,
     );
   }
-  lines.push("");
   return `${lines.join("\n")}\n`;
 }
