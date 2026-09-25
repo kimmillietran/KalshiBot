@@ -74,7 +74,7 @@ Baseline B).
 Use live intermediate venue fields (e.g. growing window averages) **only** as
 declared research state for a heuristic comparison to YES price — **without**
 claiming official banked membership. Must keep PR #123 statuses:
-`avg_60s_data` may be `empirical-candidate` post-evidence; 
+`avg_60s_data` may be `empirical-candidate` post-evidence;
 `last_60s_windowed_average_15min` is diagnostic only; **never** wire
 `avg_60s_data` into strategy gates unless a **separate** human freeze explicitly
 overrides that standing rule (this memo does not).
