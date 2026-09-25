@@ -45,7 +45,7 @@ data/research-results/external-kalshi-data-audit/m17-prep-one-close-settlement-f
 data/research-results/external-kalshi-data-audit/m17-prep-one-close-settlement-fidelity-v1/raw/
 # O6 five-close live campaign runtime outputs (freeze/live; not retained audits)
 data/research-results/external-kalshi-data-audit/m17-o6-five-close-settlement-fidelity/
-
+data/research-results/external-kalshi-data-audit/m17-preentry-feature-recovery/work/
 # local settlement-only import responses (raw; summaries only are committed)
 data/imports/
 

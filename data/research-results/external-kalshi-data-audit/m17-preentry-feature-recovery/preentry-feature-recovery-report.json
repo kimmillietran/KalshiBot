@@ -1,0 +1,710 @@
+{
+  "studyId": "kalshi-kxbtc15m-m17-preentry-feature-recovery-v0",
+  "analysisVersion": "m17-preentry-feature-recovery-v0.1",
+  "disclaimer": "Feature-preparation coverage audit on M16-ER SPENT_VALIDATION retained executable samples only. Regenerates pre-entry book/time/volatility features for measurement. Does not compute strategy P&L, simulate entries, rank candidates by settlement outcomes, freeze the M17 entry rule, or resolve O6 settlement-fidelity questions. Feature coverage is not a strategy result.",
+  "generatedAtUtc": "2026-09-25T04:17:07.479Z",
+  "codeAuthoritySha": "73931676b6a986dcdca09dff724d0b73be346975",
+  "baseMainSha": "5b9d0f9855794f8c59e5496f8180445cca729192",
+  "volatilityContract": {
+    "instrument": "BTC-USD",
+    "provider": "coinbase-exchange-public-rest",
+    "sourceRecordType": "exchange-completed-1m-ohlc",
+    "lookbackBars": 10,
+    "requiredCloseCount": 11,
+    "candleCloseOffsetMs": 59999,
+    "returnIntervalMs": 60000,
+    "completedCandleEligibility": "closeTimeMs < entryTimestampMs",
+    "annualization": "log-return stdev * sqrt(MS_PER_YEAR / barIntervalMs)",
+    "formulaAuthority": "src/lib/data/strategies/fairValueDiffusion/fairValueDiffusionModel.ts#estimateRealizedVolatility",
+    "windowAuthority": "src/lib/data/research/calibrationFadeV2ForwardValidation/buildHistoricalReplicaVolatilityWindow.ts",
+    "citedHighVolMinInclusive": 0.6,
+    "regimeThresholdAuthority": "config/research/hypotheses/high-volatility-late-market-calibration-fade-v2.json"
+  },
+  "coinbasePublicSource": {
+    "baseUrl": "https://api.exchange.coinbase.com",
+    "path": "/products/BTC-USD/candles",
+    "granularitySeconds": 60,
+    "docsUrl": "https://docs.cdp.coinbase.com/exchange/reference/exchangerestapi_getproductcandles",
+    "authenticationRequired": false,
+    "purchaseRequired": false,
+    "notedInPr": 127
+  },
+  "inputs": {
+    "samplesPath": "data/external-samples/cryptostruct/m16-er/work/settlement-friction-coverage/samples.jsonl",
+    "samplesSha256": "3f2dad5062e566ad7feacff1fbe1c0b963bbaa4d45aaa20d2a619f31098c8728",
+    "samplesRowCount": 47307,
+    "rawZipDir": "data/external-samples/cryptostruct/m16-er/raw",
+    "rawZipCount": 34,
+    "adapterId": "RAW-BBO-CHANGE",
+    "adapterIdentity": "3f37ecb76644ee0749c50f33cfdaf8921e8dcb1cf208abdc55719a461e27dc7d",
+    "bookFeaturesPath": "data/research-results/external-kalshi-data-audit/m17-preentry-feature-recovery/work/book-features.jsonl",
+    "bookFeaturesSha256": "6846e7187fe89eb76c00b60ec0c44f1ae6fbfbafce20d90ab9582c54f5e44eaf",
+    "candlesDir": "data/research-results/external-kalshi-data-audit/m17-preentry-feature-recovery/work/coinbase-candles-1m"
+  },
+  "coinbaseRetrieval": {
+    "attempted": true,
+    "usableWithoutCost": true,
+    "authenticationRequired": false,
+    "purchaseOrSubscriptionEncountered": false,
+    "blocker": null,
+    "retrievedUtcDays": 34,
+    "totalCandles": 97920,
+    "timestampConvention": "exchange-bucket-start-open; close=open+59999ms (frozen research)"
+  },
+  "candleCoverageByDay": [
+    {
+      "utcDayKey": "2026-08-14",
+      "candleCount": 2880,
+      "expectedMinuteCount": 2880,
+      "gapCount": 0,
+      "firstOpenTimeMs": 1786579200000,
+      "lastOpenTimeMs": 1786751940000,
+      "sha256": "3c5ff5e2f0c3b0f12efd4a16c0554632e4980f92fe1651c719831bad5ec8dfd6",
+      "localPath": "data/research-results/external-kalshi-data-audit/m17-preentry-feature-recovery/work/coinbase-candles-1m/2026-08-14.jsonl"
+    },
+    {
+      "utcDayKey": "2026-08-15",
+      "candleCount": 2880,
+      "expectedMinuteCount": 2880,
+      "gapCount": 0,
+      "firstOpenTimeMs": 1786665600000,
+      "lastOpenTimeMs": 1786838340000,
+      "sha256": "e4171cf9756ae0cd908d3d87500aa686cdc48527f01c9c6e7930fd46f6f5d2ff",
+      "localPath": "data/research-results/external-kalshi-data-audit/m17-preentry-feature-recovery/work/coinbase-candles-1m/2026-08-15.jsonl"
+    },
+    {
+      "utcDayKey": "2026-08-16",
+      "candleCount": 2880,
+      "expectedMinuteCount": 2880,
+      "gapCount": 0,
+      "firstOpenTimeMs": 1786752000000,
+      "lastOpenTimeMs": 1786924740000,
+      "sha256": "d0f99d53732f5cc52324023d821c7441424137551eef2e1feaaf02b349078d68",
+      "localPath": "data/research-results/external-kalshi-data-audit/m17-preentry-feature-recovery/work/coinbase-candles-1m/2026-08-16.jsonl"
+    },
+    {
+      "utcDayKey": "2026-08-17",
+      "candleCount": 2880,
+      "expectedMinuteCount": 2880,
+      "gapCount": 0,
+      "firstOpenTimeMs": 1786838400000,
+      "lastOpenTimeMs": 1787011140000,
+      "sha256": "56a3bbe687b387ecd758b4b8fb0b7311ddfdd91dce7be839b7ee949c35ba26d6",
+      "localPath": "data/research-results/external-kalshi-data-audit/m17-preentry-feature-recovery/work/coinbase-candles-1m/2026-08-17.jsonl"
+    },
+    {
+      "utcDayKey": "2026-08-18",
+      "candleCount": 2880,
+      "expectedMinuteCount": 2880,
+      "gapCount": 0,
+      "firstOpenTimeMs": 1786924800000,
+      "lastOpenTimeMs": 1787097540000,
+      "sha256": "42fee67eb5db4ac7d39d11819f46b87a28ef43776d53f9b8b62cdc456d85ca83",
+      "localPath": "data/research-results/external-kalshi-data-audit/m17-preentry-feature-recovery/work/coinbase-candles-1m/2026-08-18.jsonl"
+    },
+    {
+      "utcDayKey": "2026-08-19",
+      "candleCount": 2880,
+      "expectedMinuteCount": 2880,
+      "gapCount": 0,
+      "firstOpenTimeMs": 1787011200000,
+      "lastOpenTimeMs": 1787183940000,
+      "sha256": "d34e2285c35198967eab553165fc6aae3f788d5cb8a72acfb33ee6a984282637",
+      "localPath": "data/research-results/external-kalshi-data-audit/m17-preentry-feature-recovery/work/coinbase-candles-1m/2026-08-19.jsonl"
+    },
+    {
+      "utcDayKey": "2026-08-20",
+      "candleCount": 2880,
+      "expectedMinuteCount": 2880,
+      "gapCount": 0,
+      "firstOpenTimeMs": 1787097600000,
+      "lastOpenTimeMs": 1787270340000,
+      "sha256": "3b6c0bc5382f89ee23a933eefb057fcb015a358054cd27f25171a0dc2712cea1",
+      "localPath": "data/research-results/external-kalshi-data-audit/m17-preentry-feature-recovery/work/coinbase-candles-1m/2026-08-20.jsonl"
+    },
+    {
+      "utcDayKey": "2026-08-21",
+      "candleCount": 2880,
+      "expectedMinuteCount": 2880,
+      "gapCount": 0,
+      "firstOpenTimeMs": 1787184000000,
+      "lastOpenTimeMs": 1787356740000,
+      "sha256": "c01254f36fd1e3cd4adbd8fbcd4aaf8a17488010ab0af32471a8cf5d0b28616e",
+      "localPath": "data/research-results/external-kalshi-data-audit/m17-preentry-feature-recovery/work/coinbase-candles-1m/2026-08-21.jsonl"
+    },
+    {
+      "utcDayKey": "2026-08-22",
+      "candleCount": 2880,
+      "expectedMinuteCount": 2880,
+      "gapCount": 0,
+      "firstOpenTimeMs": 1787270400000,
+      "lastOpenTimeMs": 1787443140000,
+      "sha256": "505fa95bde2332e7a3e9b2b9f061880af20a30d2bd7982a1b00f6e3ae9e10db7",
+      "localPath": "data/research-results/external-kalshi-data-audit/m17-preentry-feature-recovery/work/coinbase-candles-1m/2026-08-22.jsonl"
+    },
+    {
+      "utcDayKey": "2026-08-23",
+      "candleCount": 2880,
+      "expectedMinuteCount": 2880,
+      "gapCount": 0,
+      "firstOpenTimeMs": 1787356800000,
+      "lastOpenTimeMs": 1787529540000,
+      "sha256": "60f5e94b6e339ee03df3efd30adf00e63d346c4276e7e8d715729ca7df158d9f",
+      "localPath": "data/research-results/external-kalshi-data-audit/m17-preentry-feature-recovery/work/coinbase-candles-1m/2026-08-23.jsonl"
+    },
+    {
+      "utcDayKey": "2026-08-24",
+      "candleCount": 2880,
+      "expectedMinuteCount": 2880,
+      "gapCount": 0,
+      "firstOpenTimeMs": 1787443200000,
+      "lastOpenTimeMs": 1787615940000,
+      "sha256": "63542b25041bcde55e8531a778e524399d3f0d45abf14948fcd93eeecfa637d8",
+      "localPath": "data/research-results/external-kalshi-data-audit/m17-preentry-feature-recovery/work/coinbase-candles-1m/2026-08-24.jsonl"
+    },
+    {
+      "utcDayKey": "2026-08-25",
+      "candleCount": 2880,
+      "expectedMinuteCount": 2880,
+      "gapCount": 0,
+      "firstOpenTimeMs": 1787529600000,
+      "lastOpenTimeMs": 1787702340000,
+      "sha256": "f411c84c6ecd18bf0203f447b6ecdc11caa58c39c2610d1364dc1301ef552685",
+      "localPath": "data/research-results/external-kalshi-data-audit/m17-preentry-feature-recovery/work/coinbase-candles-1m/2026-08-25.jsonl"
+    },
+    {
+      "utcDayKey": "2026-08-26",
+      "candleCount": 2880,
+      "expectedMinuteCount": 2880,
+      "gapCount": 0,
+      "firstOpenTimeMs": 1787616000000,
+      "lastOpenTimeMs": 1787788740000,
+      "sha256": "6e9bff114fc5e568c9984d4e5c114d3d32ccf9864544053731d1e27a466fc89f",
+      "localPath": "data/research-results/external-kalshi-data-audit/m17-preentry-feature-recovery/work/coinbase-candles-1m/2026-08-26.jsonl"
+    },
+    {
+      "utcDayKey": "2026-08-27",
+      "candleCount": 2880,
+      "expectedMinuteCount": 2880,
+      "gapCount": 0,
+      "firstOpenTimeMs": 1787702400000,
+      "lastOpenTimeMs": 1787875140000,
+      "sha256": "1d09d5e098b723c067e87ce41d6b4e1ba2a819a0c66e309b0c965f8057238690",
+      "localPath": "data/research-results/external-kalshi-data-audit/m17-preentry-feature-recovery/work/coinbase-candles-1m/2026-08-27.jsonl"
+    },
+    {
+      "utcDayKey": "2026-08-28",
+      "candleCount": 2880,
+      "expectedMinuteCount": 2880,
+      "gapCount": 0,
+      "firstOpenTimeMs": 1787788800000,
+      "lastOpenTimeMs": 1787961540000,
+      "sha256": "2ba8a6440b711dd282312e164cf928c2f28b7992aca14e51a7c5e1a25f2df024",
+      "localPath": "data/research-results/external-kalshi-data-audit/m17-preentry-feature-recovery/work/coinbase-candles-1m/2026-08-28.jsonl"
+    },
+    {
+      "utcDayKey": "2026-08-29",
+      "candleCount": 2880,
+      "expectedMinuteCount": 2880,
+      "gapCount": 0,
+      "firstOpenTimeMs": 1787875200000,
+      "lastOpenTimeMs": 1788047940000,
+      "sha256": "66009716760216f1465d1960d3fb89cacf94c6639a6050d085eb48863e033f45",
+      "localPath": "data/research-results/external-kalshi-data-audit/m17-preentry-feature-recovery/work/coinbase-candles-1m/2026-08-29.jsonl"
+    },
+    {
+      "utcDayKey": "2026-08-30",
+      "candleCount": 2880,
+      "expectedMinuteCount": 2880,
+      "gapCount": 0,
+      "firstOpenTimeMs": 1787961600000,
+      "lastOpenTimeMs": 1788134340000,
+      "sha256": "b3107dd0dcda7cb369731b0864b7599120f93fc99cf7a274b58f728c33190aa5",
+      "localPath": "data/research-results/external-kalshi-data-audit/m17-preentry-feature-recovery/work/coinbase-candles-1m/2026-08-30.jsonl"
+    },
+    {
+      "utcDayKey": "2026-08-31",
+      "candleCount": 2880,
+      "expectedMinuteCount": 2880,
+      "gapCount": 0,
+      "firstOpenTimeMs": 1788048000000,
+      "lastOpenTimeMs": 1788220740000,
+      "sha256": "c4e6589d5347a5641def552a05990d1ecf89adfab566415be8eccb795a829c23",
+      "localPath": "data/research-results/external-kalshi-data-audit/m17-preentry-feature-recovery/work/coinbase-candles-1m/2026-08-31.jsonl"
+    },
+    {
+      "utcDayKey": "2026-09-01",
+      "candleCount": 2880,
+      "expectedMinuteCount": 2880,
+      "gapCount": 0,
+      "firstOpenTimeMs": 1788134400000,
+      "lastOpenTimeMs": 1788307140000,
+      "sha256": "c66e246590b153badf1f45e08c77301edf0fbf12723af7473fc39b43a09f672f",
+      "localPath": "data/research-results/external-kalshi-data-audit/m17-preentry-feature-recovery/work/coinbase-candles-1m/2026-09-01.jsonl"
+    },
+    {
+      "utcDayKey": "2026-09-02",
+      "candleCount": 2880,
+      "expectedMinuteCount": 2880,
+      "gapCount": 0,
+      "firstOpenTimeMs": 1788220800000,
+      "lastOpenTimeMs": 1788393540000,
+      "sha256": "8fa38ff572fa1b91c0cc96b1909582132ef4e462273e9db52d69006249e2eca6",
+      "localPath": "data/research-results/external-kalshi-data-audit/m17-preentry-feature-recovery/work/coinbase-candles-1m/2026-09-02.jsonl"
+    },
+    {
+      "utcDayKey": "2026-09-03",
+      "candleCount": 2880,
+      "expectedMinuteCount": 2880,
+      "gapCount": 0,
+      "firstOpenTimeMs": 1788307200000,
+      "lastOpenTimeMs": 1788479940000,
+      "sha256": "4cab15080931e8fa141d7757802a972150dea2ecd9fcce618709be10edf78a89",
+      "localPath": "data/research-results/external-kalshi-data-audit/m17-preentry-feature-recovery/work/coinbase-candles-1m/2026-09-03.jsonl"
+    },
+    {
+      "utcDayKey": "2026-09-04",
+      "candleCount": 2880,
+      "expectedMinuteCount": 2880,
+      "gapCount": 0,
+      "firstOpenTimeMs": 1788393600000,
+      "lastOpenTimeMs": 1788566340000,
+      "sha256": "d4a8c414c39c2627d7d65d5a8ebafd81a6e2bd8772e64ba02393d9efd8c4b568",
+      "localPath": "data/research-results/external-kalshi-data-audit/m17-preentry-feature-recovery/work/coinbase-candles-1m/2026-09-04.jsonl"
+    },
+    {
+      "utcDayKey": "2026-09-05",
+      "candleCount": 2880,
+      "expectedMinuteCount": 2880,
+      "gapCount": 0,
+      "firstOpenTimeMs": 1788480000000,
+      "lastOpenTimeMs": 1788652740000,
+      "sha256": "f43828e7a81fbc699d23f2bd4a8a1904e0be3f4a0cdd572a4d5761c8731b33fe",
+      "localPath": "data/research-results/external-kalshi-data-audit/m17-preentry-feature-recovery/work/coinbase-candles-1m/2026-09-05.jsonl"
+    },
+    {
+      "utcDayKey": "2026-09-06",
+      "candleCount": 2880,
+      "expectedMinuteCount": 2880,
+      "gapCount": 0,
+      "firstOpenTimeMs": 1788566400000,
+      "lastOpenTimeMs": 1788739140000,
+      "sha256": "2c3892c727af4bf49d4cbbdf728d9b6918cd89cb4ff45a87acb60ff9ee01e1af",
+      "localPath": "data/research-results/external-kalshi-data-audit/m17-preentry-feature-recovery/work/coinbase-candles-1m/2026-09-06.jsonl"
+    },
+    {
+      "utcDayKey": "2026-09-07",
+      "candleCount": 2880,
+      "expectedMinuteCount": 2880,
+      "gapCount": 0,
+      "firstOpenTimeMs": 1788652800000,
+      "lastOpenTimeMs": 1788825540000,
+      "sha256": "a5ffd985248799966d3c4fdd12b476dc666a4908535c7de786896e9344a3d157",
+      "localPath": "data/research-results/external-kalshi-data-audit/m17-preentry-feature-recovery/work/coinbase-candles-1m/2026-09-07.jsonl"
+    },
+    {
+      "utcDayKey": "2026-09-10",
+      "candleCount": 2880,
+      "expectedMinuteCount": 2880,
+      "gapCount": 0,
+      "firstOpenTimeMs": 1788912000000,
+      "lastOpenTimeMs": 1789084740000,
+      "sha256": "9cbe1224154fde7f9420236bfe12ab21e4cdaa878936a4915874f62e7ed62d79",
+      "localPath": "data/research-results/external-kalshi-data-audit/m17-preentry-feature-recovery/work/coinbase-candles-1m/2026-09-10.jsonl"
+    },
+    {
+      "utcDayKey": "2026-09-11",
+      "candleCount": 2880,
+      "expectedMinuteCount": 2880,
+      "gapCount": 0,
+      "firstOpenTimeMs": 1788998400000,
+      "lastOpenTimeMs": 1789171140000,
+      "sha256": "aa833326b7e3cad0d978d106ca0ef7f5a504980dfae37543106be99dc54a11eb",
+      "localPath": "data/research-results/external-kalshi-data-audit/m17-preentry-feature-recovery/work/coinbase-candles-1m/2026-09-11.jsonl"
+    },
+    {
+      "utcDayKey": "2026-09-12",
+      "candleCount": 2880,
+      "expectedMinuteCount": 2880,
+      "gapCount": 0,
+      "firstOpenTimeMs": 1789084800000,
+      "lastOpenTimeMs": 1789257540000,
+      "sha256": "b0dcf5041721b8191a180a5394814a2c1d2c07f1402de67620a0076647ea5154",
+      "localPath": "data/research-results/external-kalshi-data-audit/m17-preentry-feature-recovery/work/coinbase-candles-1m/2026-09-12.jsonl"
+    },
+    {
+      "utcDayKey": "2026-09-13",
+      "candleCount": 2880,
+      "expectedMinuteCount": 2880,
+      "gapCount": 0,
+      "firstOpenTimeMs": 1789171200000,
+      "lastOpenTimeMs": 1789343940000,
+      "sha256": "d4ddde907b8769bd4af7194bccaf2788af73640890c62cd8ef5f495e62a96199",
+      "localPath": "data/research-results/external-kalshi-data-audit/m17-preentry-feature-recovery/work/coinbase-candles-1m/2026-09-13.jsonl"
+    },
+    {
+      "utcDayKey": "2026-09-15",
+      "candleCount": 2880,
+      "expectedMinuteCount": 2880,
+      "gapCount": 0,
+      "firstOpenTimeMs": 1789344000000,
+      "lastOpenTimeMs": 1789516740000,
+      "sha256": "001dbaba202266514a5106508a0419e109f52f491fd7d3c5bdd3317db4033e7b",
+      "localPath": "data/research-results/external-kalshi-data-audit/m17-preentry-feature-recovery/work/coinbase-candles-1m/2026-09-15.jsonl"
+    },
+    {
+      "utcDayKey": "2026-09-16",
+      "candleCount": 2880,
+      "expectedMinuteCount": 2880,
+      "gapCount": 0,
+      "firstOpenTimeMs": 1789430400000,
+      "lastOpenTimeMs": 1789603140000,
+      "sha256": "26b3e90a6809b6e8dfbc4d3045ba5a16e0f747ae2e9c31088cdcf0da434aeb77",
+      "localPath": "data/research-results/external-kalshi-data-audit/m17-preentry-feature-recovery/work/coinbase-candles-1m/2026-09-16.jsonl"
+    },
+    {
+      "utcDayKey": "2026-09-17",
+      "candleCount": 2880,
+      "expectedMinuteCount": 2880,
+      "gapCount": 0,
+      "firstOpenTimeMs": 1789516800000,
+      "lastOpenTimeMs": 1789689540000,
+      "sha256": "a7cfaeb505a224a30b0033ecd18fd08ee53077ccef6ddb791e925b9e142c79e6",
+      "localPath": "data/research-results/external-kalshi-data-audit/m17-preentry-feature-recovery/work/coinbase-candles-1m/2026-09-17.jsonl"
+    },
+    {
+      "utcDayKey": "2026-09-19",
+      "candleCount": 2880,
+      "expectedMinuteCount": 2880,
+      "gapCount": 0,
+      "firstOpenTimeMs": 1789689600000,
+      "lastOpenTimeMs": 1789862340000,
+      "sha256": "75e4a94f9214cc8d4c1ef25acf75b33626e5ac76e3adb2cc1874464cf9e4ecb6",
+      "localPath": "data/research-results/external-kalshi-data-audit/m17-preentry-feature-recovery/work/coinbase-candles-1m/2026-09-19.jsonl"
+    },
+    {
+      "utcDayKey": "2026-09-21",
+      "candleCount": 2880,
+      "expectedMinuteCount": 2880,
+      "gapCount": 0,
+      "firstOpenTimeMs": 1789862400000,
+      "lastOpenTimeMs": 1790035140000,
+      "sha256": "53cdb8cc258da0d44ffd3d2e545d905a3bf36d16a7d1a223f1b543fb7e84e3e2",
+      "localPath": "data/research-results/external-kalshi-data-audit/m17-preentry-feature-recovery/work/coinbase-candles-1m/2026-09-21.jsonl"
+    }
+  ],
+  "coverage": {
+    "rows": 47307,
+    "markets": 3228,
+    "utcDays": 34,
+    "bookOk": 47281,
+    "halfSpreadMismatch": 308,
+    "timeRemainingPresent": 47307,
+    "volatilityOk": 47307,
+    "marketTimeVolComplete": 47281,
+    "citedHighVolTrue": 3552,
+    "citedHighVolFalse": 43755,
+    "citedHighVolUnknown": 0
+  },
+  "coverageByUtcDay": [
+    {
+      "utcDayKey": "2026-08-14",
+      "rows": 1404,
+      "bookOk": 1403,
+      "halfSpreadMismatch": 5,
+      "volatilityOk": 1404,
+      "marketTimeVolComplete": 1403
+    },
+    {
+      "utcDayKey": "2026-08-15",
+      "rows": 1439,
+      "bookOk": 1439,
+      "halfSpreadMismatch": 6,
+      "volatilityOk": 1439,
+      "marketTimeVolComplete": 1439
+    },
+    {
+      "utcDayKey": "2026-08-16",
+      "rows": 1426,
+      "bookOk": 1426,
+      "halfSpreadMismatch": 6,
+      "volatilityOk": 1426,
+      "marketTimeVolComplete": 1426
+    },
+    {
+      "utcDayKey": "2026-08-17",
+      "rows": 1412,
+      "bookOk": 1409,
+      "halfSpreadMismatch": 9,
+      "volatilityOk": 1412,
+      "marketTimeVolComplete": 1409
+    },
+    {
+      "utcDayKey": "2026-08-18",
+      "rows": 1413,
+      "bookOk": 1413,
+      "halfSpreadMismatch": 7,
+      "volatilityOk": 1413,
+      "marketTimeVolComplete": 1413
+    },
+    {
+      "utcDayKey": "2026-08-19",
+      "rows": 1411,
+      "bookOk": 1410,
+      "halfSpreadMismatch": 9,
+      "volatilityOk": 1411,
+      "marketTimeVolComplete": 1410
+    },
+    {
+      "utcDayKey": "2026-08-20",
+      "rows": 1192,
+      "bookOk": 1191,
+      "halfSpreadMismatch": 9,
+      "volatilityOk": 1192,
+      "marketTimeVolComplete": 1191
+    },
+    {
+      "utcDayKey": "2026-08-21",
+      "rows": 1401,
+      "bookOk": 1401,
+      "halfSpreadMismatch": 10,
+      "volatilityOk": 1401,
+      "marketTimeVolComplete": 1401
+    },
+    {
+      "utcDayKey": "2026-08-22",
+      "rows": 1404,
+      "bookOk": 1404,
+      "halfSpreadMismatch": 6,
+      "volatilityOk": 1404,
+      "marketTimeVolComplete": 1404
+    },
+    {
+      "utcDayKey": "2026-08-23",
+      "rows": 1417,
+      "bookOk": 1417,
+      "halfSpreadMismatch": 13,
+      "volatilityOk": 1417,
+      "marketTimeVolComplete": 1417
+    },
+    {
+      "utcDayKey": "2026-08-24",
+      "rows": 1384,
+      "bookOk": 1384,
+      "halfSpreadMismatch": 12,
+      "volatilityOk": 1384,
+      "marketTimeVolComplete": 1384
+    },
+    {
+      "utcDayKey": "2026-08-25",
+      "rows": 1392,
+      "bookOk": 1390,
+      "halfSpreadMismatch": 6,
+      "volatilityOk": 1392,
+      "marketTimeVolComplete": 1390
+    },
+    {
+      "utcDayKey": "2026-08-26",
+      "rows": 1412,
+      "bookOk": 1411,
+      "halfSpreadMismatch": 15,
+      "volatilityOk": 1412,
+      "marketTimeVolComplete": 1411
+    },
+    {
+      "utcDayKey": "2026-08-27",
+      "rows": 1298,
+      "bookOk": 1296,
+      "halfSpreadMismatch": 8,
+      "volatilityOk": 1298,
+      "marketTimeVolComplete": 1296
+    },
+    {
+      "utcDayKey": "2026-08-28",
+      "rows": 1400,
+      "bookOk": 1398,
+      "halfSpreadMismatch": 5,
+      "volatilityOk": 1400,
+      "marketTimeVolComplete": 1398
+    },
+    {
+      "utcDayKey": "2026-08-29",
+      "rows": 1430,
+      "bookOk": 1428,
+      "halfSpreadMismatch": 8,
+      "volatilityOk": 1430,
+      "marketTimeVolComplete": 1428
+    },
+    {
+      "utcDayKey": "2026-08-30",
+      "rows": 1408,
+      "bookOk": 1406,
+      "halfSpreadMismatch": 7,
+      "volatilityOk": 1408,
+      "marketTimeVolComplete": 1406
+    },
+    {
+      "utcDayKey": "2026-08-31",
+      "rows": 1404,
+      "bookOk": 1402,
+      "halfSpreadMismatch": 11,
+      "volatilityOk": 1404,
+      "marketTimeVolComplete": 1402
+    },
+    {
+      "utcDayKey": "2026-09-01",
+      "rows": 1391,
+      "bookOk": 1390,
+      "halfSpreadMismatch": 9,
+      "volatilityOk": 1391,
+      "marketTimeVolComplete": 1390
+    },
+    {
+      "utcDayKey": "2026-09-02",
+      "rows": 1383,
+      "bookOk": 1383,
+      "halfSpreadMismatch": 5,
+      "volatilityOk": 1383,
+      "marketTimeVolComplete": 1383
+    },
+    {
+      "utcDayKey": "2026-09-03",
+      "rows": 1269,
+      "bookOk": 1269,
+      "halfSpreadMismatch": 4,
+      "volatilityOk": 1269,
+      "marketTimeVolComplete": 1269
+    },
+    {
+      "utcDayKey": "2026-09-04",
+      "rows": 1416,
+      "bookOk": 1416,
+      "halfSpreadMismatch": 11,
+      "volatilityOk": 1416,
+      "marketTimeVolComplete": 1416
+    },
+    {
+      "utcDayKey": "2026-09-05",
+      "rows": 1446,
+      "bookOk": 1446,
+      "halfSpreadMismatch": 12,
+      "volatilityOk": 1446,
+      "marketTimeVolComplete": 1446
+    },
+    {
+      "utcDayKey": "2026-09-06",
+      "rows": 1430,
+      "bookOk": 1430,
+      "halfSpreadMismatch": 7,
+      "volatilityOk": 1430,
+      "marketTimeVolComplete": 1430
+    },
+    {
+      "utcDayKey": "2026-09-07",
+      "rows": 1422,
+      "bookOk": 1421,
+      "halfSpreadMismatch": 5,
+      "volatilityOk": 1422,
+      "marketTimeVolComplete": 1421
+    },
+    {
+      "utcDayKey": "2026-09-10",
+      "rows": 1302,
+      "bookOk": 1301,
+      "halfSpreadMismatch": 13,
+      "volatilityOk": 1302,
+      "marketTimeVolComplete": 1301
+    },
+    {
+      "utcDayKey": "2026-09-11",
+      "rows": 1406,
+      "bookOk": 1405,
+      "halfSpreadMismatch": 11,
+      "volatilityOk": 1406,
+      "marketTimeVolComplete": 1405
+    },
+    {
+      "utcDayKey": "2026-09-12",
+      "rows": 1450,
+      "bookOk": 1450,
+      "halfSpreadMismatch": 7,
+      "volatilityOk": 1450,
+      "marketTimeVolComplete": 1450
+    },
+    {
+      "utcDayKey": "2026-09-13",
+      "rows": 1433,
+      "bookOk": 1433,
+      "halfSpreadMismatch": 7,
+      "volatilityOk": 1433,
+      "marketTimeVolComplete": 1433
+    },
+    {
+      "utcDayKey": "2026-09-15",
+      "rows": 1423,
+      "bookOk": 1423,
+      "halfSpreadMismatch": 8,
+      "volatilityOk": 1423,
+      "marketTimeVolComplete": 1423
+    },
+    {
+      "utcDayKey": "2026-09-16",
+      "rows": 1420,
+      "bookOk": 1419,
+      "halfSpreadMismatch": 13,
+      "volatilityOk": 1420,
+      "marketTimeVolComplete": 1419
+    },
+    {
+      "utcDayKey": "2026-09-17",
+      "rows": 1283,
+      "bookOk": 1282,
+      "halfSpreadMismatch": 15,
+      "volatilityOk": 1283,
+      "marketTimeVolComplete": 1282
+    },
+    {
+      "utcDayKey": "2026-09-19",
+      "rows": 1409,
+      "bookOk": 1409,
+      "halfSpreadMismatch": 11,
+      "volatilityOk": 1409,
+      "marketTimeVolComplete": 1409
+    },
+    {
+      "utcDayKey": "2026-09-21",
+      "rows": 1377,
+      "bookOk": 1376,
+      "halfSpreadMismatch": 18,
+      "volatilityOk": 1377,
+      "marketTimeVolComplete": 1376
+    }
+  ],
+  "missingness": {
+    "bookStatusCounts": {
+      "ok": 47281,
+      "missing-bbo": 26
+    },
+    "volatilityStatusCounts": {
+      "ok": 47307
+    },
+    "exclusions": [
+      "Settlement labels / expiration_value never used as features",
+      "Post-close book updates excluded by admission-timestamp matching",
+      "In-progress and future candles excluded (closeTimeMs < entryTimestampMs)",
+      "Strategy P&L and entry simulation out of scope"
+    ]
+  },
+  "attestation": {
+    "purchaseOccurred": false,
+    "subscriptionOccurred": false,
+    "tradeOrOrderOccurred": false,
+    "strategyPnlComputed": false,
+    "strategyResultClaimed": false,
+    "m17EntryRuleModifiedOrFrozen": false,
+    "o6SettlementFidelityResolved": false,
+    "settlementOutcomesUsedForRankingOrTuning": false,
+    "liveCaptureStarted": false,
+    "brtiOrBankedOr5hzIdentityInferred": false
+  }
+}
