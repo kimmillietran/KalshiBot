@@ -102,6 +102,7 @@
     "research:m16-validation-collection": "tsx scripts/research/runM16ValidationCollection.ts",
     "research:settlement-friction-coverage": "tsx scripts/research/runSettlementFrictionCoverage.ts",
     "research:settlement-friction-label-backfill": "tsx scripts/research/runSettlementFrictionLabelBackfill.ts",
+    "research:m17-settlement-join-audit": "tsx scripts/research/runM17SettlementJoinAudit.ts",
     "research:kalshi-brti-access-probe": "tsx scripts/research/runKalshiBrtiAccessProbe.ts",
     "research:kalshi-settlement-sample-mapping": "tsx scripts/research/runKalshiSettlementSampleMapping.ts",
     "research:kalshi-one-close-settlement-fidelity": "tsx scripts/research/runOneCloseSettlementFidelity.ts",

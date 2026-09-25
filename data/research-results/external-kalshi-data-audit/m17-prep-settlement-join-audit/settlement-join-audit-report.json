@@ -1,0 +1,515 @@
+{
+  "studyId": "kalshi-kxbtc15m-m17-settlement-join-audit-v0",
+  "analysisVersion": "m17-settlement-join-audit-v0.1",
+  "disclaimer": "Settlement-JOIN coverage only on retained SPENT_VALIDATION (M16-ER) executable friction samples. Exact marketTicker join; no outcome imputation. Not confirmatory validation; not alpha; no threshold tuning; BRTI/settlement-state path coverage not measured. Descriptive outcome counts (if present) are SPENT/exploratory only.",
+  "generatedAtUtc": "2026-09-25T00:38:30.177Z",
+  "codeAuthoritySha": "61d1762849a1d86c331a6c27499deb94ed20d2fb",
+  "strategyDefinitionFixed": {
+    "name": "hold-to-settlement-terminal-mispricing",
+    "side": "NO",
+    "fee": "one-standard-taker",
+    "outcomeLabel": "official-expiration_value",
+    "avg60sDataWiredIntoGates": false
+  },
+  "inputIdentities": {
+    "samplesPath": "/Users/builder/Developer/kalshi-builder2/data/external-samples/cryptostruct/m16-er/work/settlement-friction-coverage/samples.jsonl",
+    "labelsPath": "/Users/builder/Developer/kalshi-builder2/data/external-samples/cryptostruct/m16-er/work/settlement-friction-label-backfill/settlement-labels.jsonl",
+    "samplesSha256": "3f2dad5062e566ad7feacff1fbe1c0b963bbaa4d45aaa20d2a619f31098c8728",
+    "labelsSha256": "7c869cd12d1e3189437db5ec3c3781cee3d988eb36421ef5f9043caddf2cfec7",
+    "labelBackfillCommit": "0b43ffe186e9246da53047e6a4ffcb08604d52aa",
+    "frictionCoverageMergeCommit": "b682962e2b34cba5593a5162f781a7b58c86edda",
+    "datasetRole": "SPENT_VALIDATION (M16-ER)",
+    "eligibleUniverse": "retained settlement-friction-coverage executable samples (exact marketTicker)",
+    "frictionLabelCoverageManifestSha256": "08807cf94231fa7e9390a34a03ca6e2d8083d4c2039208b13bf8254585bccda9",
+    "incompleteRecordsSha256": "1819619b548429b34e5e3fbd5fc5221ffdc589969938b2595f569038c642e0f7"
+  },
+  "excludedKnownIncompleteTicker": "KXBTC15M-26AUG140315-15",
+  "counts": {
+    "totalEligibleRecords": 47307,
+    "unambiguousMarketIdentity": 47307,
+    "ambiguousMarketIdentity": 0,
+    "validOfficialSettlementLabel": 47263,
+    "missingLabels": 0,
+    "normalizationOrImportValidationFailures": 0,
+    "conflictingOrDuplicateLabels": 0,
+    "excludedKnownIncompleteTicker": 14,
+    "nonNumericExpirationValue": 30,
+    "validExecutableBookInputs": 47307,
+    "validBtcSettlementPathInputs": 0,
+    "independentMarketsRepresented": 3228,
+    "eligibleDatesRepresented": 34,
+    "independentMarketsWithValidJoin": 3225,
+    "eligibleDatesWithValidJoin": 34
+  },
+  "coverageByDate": [
+    {
+      "utcDayKey": "2026-08-14",
+      "eligibleRecords": 1404,
+      "validJoinedRecords": 1390,
+      "joinPercentage": 0.99002849002849,
+      "independentMarkets": 98
+    },
+    {
+      "utcDayKey": "2026-08-15",
+      "eligibleRecords": 1439,
+      "validJoinedRecords": 1439,
+      "joinPercentage": 1,
+      "independentMarkets": 98
+    },
+    {
+      "utcDayKey": "2026-08-16",
+      "eligibleRecords": 1426,
+      "validJoinedRecords": 1426,
+      "joinPercentage": 1,
+      "independentMarkets": 98
+    },
+    {
+      "utcDayKey": "2026-08-17",
+      "eligibleRecords": 1412,
+      "validJoinedRecords": 1412,
+      "joinPercentage": 1,
+      "independentMarkets": 98
+    },
+    {
+      "utcDayKey": "2026-08-18",
+      "eligibleRecords": 1413,
+      "validJoinedRecords": 1413,
+      "joinPercentage": 1,
+      "independentMarkets": 98
+    },
+    {
+      "utcDayKey": "2026-08-19",
+      "eligibleRecords": 1411,
+      "validJoinedRecords": 1411,
+      "joinPercentage": 1,
+      "independentMarkets": 98
+    },
+    {
+      "utcDayKey": "2026-08-20",
+      "eligibleRecords": 1192,
+      "validJoinedRecords": 1192,
+      "joinPercentage": 1,
+      "independentMarkets": 84
+    },
+    {
+      "utcDayKey": "2026-08-21",
+      "eligibleRecords": 1401,
+      "validJoinedRecords": 1401,
+      "joinPercentage": 1,
+      "independentMarkets": 98
+    },
+    {
+      "utcDayKey": "2026-08-22",
+      "eligibleRecords": 1404,
+      "validJoinedRecords": 1404,
+      "joinPercentage": 1,
+      "independentMarkets": 98
+    },
+    {
+      "utcDayKey": "2026-08-23",
+      "eligibleRecords": 1417,
+      "validJoinedRecords": 1417,
+      "joinPercentage": 1,
+      "independentMarkets": 98
+    },
+    {
+      "utcDayKey": "2026-08-24",
+      "eligibleRecords": 1384,
+      "validJoinedRecords": 1384,
+      "joinPercentage": 1,
+      "independentMarkets": 98
+    },
+    {
+      "utcDayKey": "2026-08-25",
+      "eligibleRecords": 1392,
+      "validJoinedRecords": 1392,
+      "joinPercentage": 1,
+      "independentMarkets": 98
+    },
+    {
+      "utcDayKey": "2026-08-26",
+      "eligibleRecords": 1412,
+      "validJoinedRecords": 1412,
+      "joinPercentage": 1,
+      "independentMarkets": 98
+    },
+    {
+      "utcDayKey": "2026-08-27",
+      "eligibleRecords": 1298,
+      "validJoinedRecords": 1298,
+      "joinPercentage": 1,
+      "independentMarkets": 90
+    },
+    {
+      "utcDayKey": "2026-08-28",
+      "eligibleRecords": 1400,
+      "validJoinedRecords": 1385,
+      "joinPercentage": 0.9892857142857143,
+      "independentMarkets": 98
+    },
+    {
+      "utcDayKey": "2026-08-29",
+      "eligibleRecords": 1430,
+      "validJoinedRecords": 1430,
+      "joinPercentage": 1,
+      "independentMarkets": 98
+    },
+    {
+      "utcDayKey": "2026-08-30",
+      "eligibleRecords": 1408,
+      "validJoinedRecords": 1408,
+      "joinPercentage": 1,
+      "independentMarkets": 98
+    },
+    {
+      "utcDayKey": "2026-08-31",
+      "eligibleRecords": 1404,
+      "validJoinedRecords": 1404,
+      "joinPercentage": 1,
+      "independentMarkets": 98
+    },
+    {
+      "utcDayKey": "2026-09-01",
+      "eligibleRecords": 1391,
+      "validJoinedRecords": 1376,
+      "joinPercentage": 0.9892163910855499,
+      "independentMarkets": 98
+    },
+    {
+      "utcDayKey": "2026-09-02",
+      "eligibleRecords": 1383,
+      "validJoinedRecords": 1383,
+      "joinPercentage": 1,
+      "independentMarkets": 98
+    },
+    {
+      "utcDayKey": "2026-09-03",
+      "eligibleRecords": 1269,
+      "validJoinedRecords": 1269,
+      "joinPercentage": 1,
+      "independentMarkets": 90
+    },
+    {
+      "utcDayKey": "2026-09-04",
+      "eligibleRecords": 1416,
+      "validJoinedRecords": 1416,
+      "joinPercentage": 1,
+      "independentMarkets": 98
+    },
+    {
+      "utcDayKey": "2026-09-05",
+      "eligibleRecords": 1446,
+      "validJoinedRecords": 1446,
+      "joinPercentage": 1,
+      "independentMarkets": 98
+    },
+    {
+      "utcDayKey": "2026-09-06",
+      "eligibleRecords": 1430,
+      "validJoinedRecords": 1430,
+      "joinPercentage": 1,
+      "independentMarkets": 98
+    },
+    {
+      "utcDayKey": "2026-09-07",
+      "eligibleRecords": 1422,
+      "validJoinedRecords": 1422,
+      "joinPercentage": 1,
+      "independentMarkets": 98
+    },
+    {
+      "utcDayKey": "2026-09-10",
+      "eligibleRecords": 1302,
+      "validJoinedRecords": 1302,
+      "joinPercentage": 1,
+      "independentMarkets": 90
+    },
+    {
+      "utcDayKey": "2026-09-11",
+      "eligibleRecords": 1406,
+      "validJoinedRecords": 1406,
+      "joinPercentage": 1,
+      "independentMarkets": 98
+    },
+    {
+      "utcDayKey": "2026-09-12",
+      "eligibleRecords": 1450,
+      "validJoinedRecords": 1450,
+      "joinPercentage": 1,
+      "independentMarkets": 98
+    },
+    {
+      "utcDayKey": "2026-09-13",
+      "eligibleRecords": 1433,
+      "validJoinedRecords": 1433,
+      "joinPercentage": 1,
+      "independentMarkets": 98
+    },
+    {
+      "utcDayKey": "2026-09-15",
+      "eligibleRecords": 1423,
+      "validJoinedRecords": 1423,
+      "joinPercentage": 1,
+      "independentMarkets": 98
+    },
+    {
+      "utcDayKey": "2026-09-16",
+      "eligibleRecords": 1420,
+      "validJoinedRecords": 1420,
+      "joinPercentage": 1,
+      "independentMarkets": 98
+    },
+    {
+      "utcDayKey": "2026-09-17",
+      "eligibleRecords": 1283,
+      "validJoinedRecords": 1283,
+      "joinPercentage": 1,
+      "independentMarkets": 90
+    },
+    {
+      "utcDayKey": "2026-09-19",
+      "eligibleRecords": 1409,
+      "validJoinedRecords": 1409,
+      "joinPercentage": 1,
+      "independentMarkets": 98
+    },
+    {
+      "utcDayKey": "2026-09-21",
+      "eligibleRecords": 1377,
+      "validJoinedRecords": 1377,
+      "joinPercentage": 1,
+      "independentMarkets": 98
+    }
+  ],
+  "coverageByMarketTop": [
+    {
+      "marketTicker": "KXBTC15M-26AUG252000-00",
+      "eligibleRecords": 25,
+      "validJoinedRecords": 25,
+      "dispositionSummary": {
+        "joined-valid-official-label": 25
+      }
+    },
+    {
+      "marketTicker": "KXBTC15M-26AUG262000-00",
+      "eligibleRecords": 25,
+      "validJoinedRecords": 25,
+      "dispositionSummary": {
+        "joined-valid-official-label": 25
+      }
+    },
+    {
+      "marketTicker": "KXBTC15M-26AUG272000-00",
+      "eligibleRecords": 25,
+      "validJoinedRecords": 25,
+      "dispositionSummary": {
+        "joined-valid-official-label": 25
+      }
+    },
+    {
+      "marketTicker": "KXBTC15M-26SEP032000-00",
+      "eligibleRecords": 25,
+      "validJoinedRecords": 25,
+      "dispositionSummary": {
+        "joined-valid-official-label": 25
+      }
+    },
+    {
+      "marketTicker": "KXBTC15M-26SEP042000-00",
+      "eligibleRecords": 25,
+      "validJoinedRecords": 25,
+      "dispositionSummary": {
+        "joined-valid-official-label": 25
+      }
+    },
+    {
+      "marketTicker": "KXBTC15M-26SEP112000-00",
+      "eligibleRecords": 25,
+      "validJoinedRecords": 25,
+      "dispositionSummary": {
+        "joined-valid-official-label": 25
+      }
+    },
+    {
+      "marketTicker": "KXBTC15M-26SEP162000-00",
+      "eligibleRecords": 25,
+      "validJoinedRecords": 25,
+      "dispositionSummary": {
+        "joined-valid-official-label": 25
+      }
+    },
+    {
+      "marketTicker": "KXBTC15M-26AUG142000-00",
+      "eligibleRecords": 24,
+      "validJoinedRecords": 24,
+      "dispositionSummary": {
+        "joined-valid-official-label": 24
+      }
+    },
+    {
+      "marketTicker": "KXBTC15M-26AUG152000-00",
+      "eligibleRecords": 24,
+      "validJoinedRecords": 24,
+      "dispositionSummary": {
+        "joined-valid-official-label": 24
+      }
+    },
+    {
+      "marketTicker": "KXBTC15M-26AUG162000-00",
+      "eligibleRecords": 24,
+      "validJoinedRecords": 24,
+      "dispositionSummary": {
+        "joined-valid-official-label": 24
+      }
+    },
+    {
+      "marketTicker": "KXBTC15M-26AUG192000-00",
+      "eligibleRecords": 24,
+      "validJoinedRecords": 24,
+      "dispositionSummary": {
+        "joined-valid-official-label": 24
+      }
+    },
+    {
+      "marketTicker": "KXBTC15M-26AUG202000-00",
+      "eligibleRecords": 24,
+      "validJoinedRecords": 24,
+      "dispositionSummary": {
+        "joined-valid-official-label": 24
+      }
+    },
+    {
+      "marketTicker": "KXBTC15M-26SEP052000-00",
+      "eligibleRecords": 24,
+      "validJoinedRecords": 24,
+      "dispositionSummary": {
+        "joined-valid-official-label": 24
+      }
+    },
+    {
+      "marketTicker": "KXBTC15M-26SEP062000-00",
+      "eligibleRecords": 24,
+      "validJoinedRecords": 24,
+      "dispositionSummary": {
+        "joined-valid-official-label": 24
+      }
+    },
+    {
+      "marketTicker": "KXBTC15M-26SEP152000-00",
+      "eligibleRecords": 24,
+      "validJoinedRecords": 24,
+      "dispositionSummary": {
+        "joined-valid-official-label": 24
+      }
+    },
+    {
+      "marketTicker": "KXBTC15M-26SEP022000-00",
+      "eligibleRecords": 23,
+      "validJoinedRecords": 23,
+      "dispositionSummary": {
+        "joined-valid-official-label": 23
+      }
+    },
+    {
+      "marketTicker": "KXBTC15M-26AUG172000-00",
+      "eligibleRecords": 22,
+      "validJoinedRecords": 22,
+      "dispositionSummary": {
+        "joined-valid-official-label": 22
+      }
+    },
+    {
+      "marketTicker": "KXBTC15M-26AUG182000-00",
+      "eligibleRecords": 22,
+      "validJoinedRecords": 22,
+      "dispositionSummary": {
+        "joined-valid-official-label": 22
+      }
+    },
+    {
+      "marketTicker": "KXBTC15M-26AUG212000-00",
+      "eligibleRecords": 22,
+      "validJoinedRecords": 22,
+      "dispositionSummary": {
+        "joined-valid-official-label": 22
+      }
+    },
+    {
+      "marketTicker": "KXBTC15M-26AUG242000-00",
+      "eligibleRecords": 22,
+      "validJoinedRecords": 22,
+      "dispositionSummary": {
+        "joined-valid-official-label": 22
+      }
+    },
+    {
+      "marketTicker": "KXBTC15M-26AUG292000-00",
+      "eligibleRecords": 22,
+      "validJoinedRecords": 22,
+      "dispositionSummary": {
+        "joined-valid-official-label": 22
+      }
+    },
+    {
+      "marketTicker": "KXBTC15M-26AUG302000-00",
+      "eligibleRecords": 22,
+      "validJoinedRecords": 22,
+      "dispositionSummary": {
+        "joined-valid-official-label": 22
+      }
+    },
+    {
+      "marketTicker": "KXBTC15M-26AUG312000-00",
+      "eligibleRecords": 22,
+      "validJoinedRecords": 22,
+      "dispositionSummary": {
+        "joined-valid-official-label": 22
+      }
+    },
+    {
+      "marketTicker": "KXBTC15M-26SEP102000-00",
+      "eligibleRecords": 22,
+      "validJoinedRecords": 22,
+      "dispositionSummary": {
+        "joined-valid-official-label": 22
+      }
+    },
+    {
+      "marketTicker": "KXBTC15M-26SEP122000-00",
+      "eligibleRecords": 22,
+      "validJoinedRecords": 22,
+      "dispositionSummary": {
+        "joined-valid-official-label": 22
+      }
+    }
+  ],
+  "spentExploratoryOutcomeCounts": {
+    "label": "SPENT_VALIDATION exploratory descriptive only — do not tune strategy",
+    "yes": 23585,
+    "no": 23678,
+    "unlabeledOrExcluded": 44
+  },
+  "decision": {
+    "settlementJoinPercentage": 0.9990699050880419,
+    "meetsMinimumIndependentMarkets": true,
+    "minimumIndependentMarketsRequired": 5,
+    "dataAvailability": "sufficient-labels-on-spent-executable-samples",
+    "exploratoryUsability": "sufficient-for-exploratory-m17-analysis",
+    "confirmatoryValidity": "not-confirmatory-spent-validation",
+    "confirmatoryLimitation": "These 34 CryptoStruct days are classified SPENT_VALIDATION (M16-ER). They may support discovery and exploratory feasibility only; they are not an untouched pristine confirmatory / holdout partition.",
+    "pristineValidationPurchaseNeeds": [
+      "UTC days outside the M16-ER SPENT_VALIDATION calendar (not QUALITY_AUDIT_ONLY, not sealed M16-P)",
+      "CryptoStruct KXBTC15M executable books with the same RAW-BBO-CHANGE adapter identity",
+      "Official Kalshi settlement labels per marketTicker (result, expiration_value, floor_strike, close_time, settlement_ts) with study-complete field validity",
+      "Explicit pristine / holdout reservation before any exploratory peek",
+      "Optional: co-timed BRTI/settlement-sample paths only if the evaluation claims settlement-state causality (not required solely for label-join coverage)"
+    ],
+    "claimedPriorEntryAuditNote": "Claimed prior entry-filter output (20,923 records / 72 markets) was not found among retained in-repo artifacts. This audit joins the retained friction-study executable samples (prior BTC/executable/friction audit corpus) to PR #114 settlement labels by exact marketTicker."
+  },
+  "zeroNetworkConfirmation": {
+    "marketDataRequests": 0,
+    "websocketCaptures": 0,
+    "cryptostructPurchases": 0,
+    "trades": 0
+  }
+}

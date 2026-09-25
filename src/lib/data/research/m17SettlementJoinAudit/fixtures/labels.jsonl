@@ -1,0 +1,6 @@
+{"marketTicker":"KXBTC15M-26AUG140000-00","result":"yes","expirationValue":"65000.12","floorStrike":65000,"closeTime":"2026-08-14T00:00:00Z","settlementTs":"2026-08-14T00:00:01Z"}
+{"marketTicker":"KXBTC15M-26AUG140015-15","result":"no","expirationValue":"64900.00","floorStrike":64910,"closeTime":"2026-08-14T00:15:00Z","settlementTs":"2026-08-14T00:15:01Z"}
+{"marketTicker":"KXBTC15M-26AUG140030-30","result":"yes","expirationValue":"65100.50","floorStrike":65090,"closeTime":"2026-08-14T00:30:00Z","settlementTs":"2026-08-14T00:30:01Z"}
+{"marketTicker":"KXBTC15M-26AUG140045-45","result":"no","expirationValue":"64850.25","floorStrike":64860,"closeTime":"2026-08-14T00:45:00Z","settlementTs":"2026-08-14T00:45:01Z"}
+{"marketTicker":"KXBTC15M-26AUG140100-00","result":"yes","expirationValue":"65200.00","floorStrike":65190,"closeTime":"2026-08-14T01:00:00Z","settlementTs":"2026-08-14T01:00:01Z"}
+{"marketTicker":"KXBTC15M-26AUG140315-15","result":"yes","expirationValue":"63011.58","floorStrike":null,"closeTime":"2026-08-14T07:15:00Z","settlementTs":"2026-08-14T07:15:04Z"}
