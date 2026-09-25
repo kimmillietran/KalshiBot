@@ -135,9 +135,9 @@ Do not purchase pristine validation/holdout yet. The M17 entry mapping from sett
 | --- | --- |
 | `claimedPriorEntryArtifact` | `unavailable-not-found-in-retained-artifacts` |
 | `datasetProvenance` | `SPENT_VALIDATION (M16-ER)` |
-| `labelsPath` | `/Users/builder/Developer/kalshi-builder2/data/external-samples/cryptostruct/m16-er/work/settlement-friction-label-backfill/settlement-labels.jsonl` |
+| `labelsPath` | `data/external-samples/cryptostruct/m16-er/work/settlement-friction-label-backfill/settlement-labels.jsonl` |
 | `labelsSha256` | `7c869cd12d1e3189437db5ec3c3781cee3d988eb36421ef5f9043caddf2cfec7` |
 | `mode` | `retained-local` |
-| `samplesPath` | `/Users/builder/Developer/kalshi-builder2/data/external-samples/cryptostruct/m16-er/work/settlement-friction-coverage/samples.jsonl` |
+| `samplesPath` | `data/external-samples/cryptostruct/m16-er/work/settlement-friction-coverage/samples.jsonl` |
 | `samplesSha256` | `3f2dad5062e566ad7feacff1fbe1c0b963bbaa4d45aaa20d2a619f31098c8728` |
 | `settlementJoinAuditMergeSha` | `1bd0d631eea173445a919207772b6141af28a26f` |

@@ -17,7 +17,7 @@ import {
   readFileSync,
   writeFileSync,
 } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { dirname, join, relative, resolve } from "node:path";
 import readline from "node:readline";
 import { fileURLToPath } from "node:url";
 
@@ -46,6 +46,11 @@ const FIXTURE_DIR = join(
   ROOT,
   "src/lib/data/research/m17SpentHoldToSettlementEval/fixtures",
 );
+
+function repoRelativePath(path: string): string {
+  const rel = relative(ROOT, path);
+  return rel && !rel.startsWith("..") ? rel.replace(/\\/g, "/") : path;
+}
 
 function hasFlag(argv: readonly string[], name: string): boolean {
   return argv.includes(name);
@@ -107,8 +112,8 @@ async function main(): Promise<void> {
   const labels = await readJsonl<SettlementLabelRecord>(labelsPath);
 
   const inputIdentities: Record<string, string> = {
-    samplesPath,
-    labelsPath,
+    samplesPath: repoRelativePath(samplesPath),
+    labelsPath: repoRelativePath(labelsPath),
     samplesSha256: fileSha256(samplesPath),
     labelsSha256: fileSha256(labelsPath),
     datasetProvenance: "SPENT_VALIDATION (M16-ER)",

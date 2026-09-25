@@ -7,8 +7,8 @@
   "completionStatus": "blocked-missing-frozen-decisions",
   "datasetProvenance": "SPENT_VALIDATION (M16-ER)",
   "inputIdentities": {
-    "samplesPath": "/Users/builder/Developer/kalshi-builder2/data/external-samples/cryptostruct/m16-er/work/settlement-friction-coverage/samples.jsonl",
-    "labelsPath": "/Users/builder/Developer/kalshi-builder2/data/external-samples/cryptostruct/m16-er/work/settlement-friction-label-backfill/settlement-labels.jsonl",
+    "samplesPath": "data/external-samples/cryptostruct/m16-er/work/settlement-friction-coverage/samples.jsonl",
+    "labelsPath": "data/external-samples/cryptostruct/m16-er/work/settlement-friction-label-backfill/settlement-labels.jsonl",
     "samplesSha256": "3f2dad5062e566ad7feacff1fbe1c0b963bbaa4d45aaa20d2a619f31098c8728",
     "labelsSha256": "7c869cd12d1e3189437db5ec3c3781cee3d988eb36421ef5f9043caddf2cfec7",
     "datasetProvenance": "SPENT_VALIDATION (M16-ER)",

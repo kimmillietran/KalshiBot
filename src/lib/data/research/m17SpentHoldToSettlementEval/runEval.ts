@@ -79,35 +79,31 @@ export function runM17SpentHoldToSettlementEval(input: {
   const blocked = missingFrozen.length > 0
     || features.completeRequiredFeaturesForEntry === 0;
 
-  const performance = blocked
-    ? {
-        status: "blocked" as const,
-        reason:
-          "Stopped before P&L: missing frozen settlement-state→entry mapping and/or "
-          + "required pre-entry features absent on retained SPENT samples. "
-          + "Do not invent thresholds from these 34 days.",
-        noEntriesSimulated: 0,
-        grossTerminalOutcomeCentsSum: null,
-        oneTakerFeeAdjustedReturnCentsSum: null,
-        winRate: null,
-        averageReturnCents: null,
-        medianReturnCents: null,
-        varianceReturnCents: null,
-        maxDrawdownCents: null,
-      }
-    : {
-        // Unreachable on current retained SPENT inputs; kept for type completeness.
-        status: "computed-spent-exploratory" as const,
-        reason: null,
-        noEntriesSimulated: 0,
-        grossTerminalOutcomeCentsSum: null,
-        oneTakerFeeAdjustedReturnCentsSum: null,
-        winRate: null,
-        averageReturnCents: null,
-        medianReturnCents: null,
-        varianceReturnCents: null,
-        maxDrawdownCents: null,
-      };
+  if (!blocked) {
+    // Fail closed: inventory + feature gates alone must not imply P&L was computed.
+    // Entry simulation is intentionally unimplemented until the mapping is frozen.
+    throw new Error(
+      "M17 SPENT hold-to-settlement P&L simulation is not implemented. "
+        + "Freeze the settlement-state→entry mapping and implement authorized "
+        + "entry simulation before emitting computed exploratory performance.",
+    );
+  }
+
+  const performance = {
+    status: "blocked" as const,
+    reason:
+      "Stopped before P&L: missing frozen settlement-state→entry mapping and/or "
+      + "required pre-entry features absent on retained SPENT samples. "
+      + "Do not invent thresholds from these 34 days.",
+    noEntriesSimulated: 0,
+    grossTerminalOutcomeCentsSum: null,
+    oneTakerFeeAdjustedReturnCentsSum: null,
+    winRate: null,
+    averageReturnCents: null,
+    medianReturnCents: null,
+    varianceReturnCents: null,
+    maxDrawdownCents: null,
+  };
 
   return {
     studyId: M17_SPENT_HTS_STUDY_ID,
@@ -115,9 +111,7 @@ export function runM17SpentHoldToSettlementEval(input: {
     disclaimer: M17_SPENT_HTS_DISCLAIMER,
     generatedAtUtc: input.generatedAtUtc,
     codeAuthoritySha: input.codeAuthoritySha,
-    completionStatus: blocked
-      ? "blocked-missing-frozen-decisions"
-      : "complete-exploratory-spent",
+    completionStatus: "blocked-missing-frozen-decisions",
     datasetProvenance: M17_SPENT_DATASET_PROVENANCE,
     inputIdentities: input.inputIdentities,
     strategyDefinitionUsed: {
