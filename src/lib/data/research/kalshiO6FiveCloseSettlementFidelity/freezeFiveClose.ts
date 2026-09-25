@@ -76,10 +76,8 @@ export type FiveCloseCampaignManifest = {
   frozenAtUtc: string;
   retentionMode: "local-persistent-only";
   independentBackup: false;
-  retentionNote:
-    "Authorized local-persistent-only with independentBackup=false. "
-    + "Same-disk copies are not an independent backup. "
-    + "PR #129 durable-archive wording is superseded by this explicit authorization.";
+  /** Explicit local-persistent authorization note (not a durable off-host archive). */
+  retentionNote: string;
   httpCeilingPerClose: typeof O6_HTTP_PER_CLOSE;
   httpCeilingCampaign: typeof O6_HTTP_CAMPAIGN_CEILING;
   wsMaxConnectionsPerClose: typeof O6_WS_MAX_CONNECTIONS_PER_CLOSE;
