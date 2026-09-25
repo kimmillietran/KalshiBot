@@ -186,6 +186,13 @@ describe("runM17SettlementJoinAudit", () => {
     expect(report.decision.confirmatoryValidity).toBe(
       "not-confirmatory-spent-validation",
     );
+    expect(report.counts.eligibleDatesRepresented).toBe(3);
+    expect(report.decision.confirmatoryLimitation).toContain(
+      "These 3 CryptoStruct days",
+    );
+    expect(report.excludedKnownIncompleteTicker).toBe(
+      M17_KNOWN_INCOMPLETE_MARKET_TICKER,
+    );
     expect(report.strategyDefinitionFixed.avg60sDataWiredIntoGates).toBe(false);
     expect(report.spentExploratoryOutcomeCounts.yes).toBe(3);
     expect(report.spentExploratoryOutcomeCounts.no).toBe(2);

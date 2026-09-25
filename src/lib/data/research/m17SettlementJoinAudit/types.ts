@@ -94,7 +94,8 @@ export type M17SettlementJoinAuditReport = {
     avg60sDataWiredIntoGates: false;
   };
   inputIdentities: Record<string, string>;
-  excludedKnownIncompleteTicker: typeof M17_KNOWN_INCOMPLETE_MARKET_TICKER;
+  /** Defaults to {@link M17_KNOWN_INCOMPLETE_MARKET_TICKER}; overridable in audit input. */
+  excludedKnownIncompleteTicker: string;
   counts: M17SettlementJoinCounts;
   coverageByDate: Array<{
     utcDayKey: string;

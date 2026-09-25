@@ -217,7 +217,7 @@ export function runM17SettlementJoinAudit(input: {
       avg60sDataWiredIntoGates: false,
     },
     inputIdentities: input.inputIdentities,
-    excludedKnownIncompleteTicker: M17_KNOWN_INCOMPLETE_MARKET_TICKER,
+    excludedKnownIncompleteTicker: knownIncomplete,
     counts,
     coverageByDate,
     coverageByMarketTop,
@@ -387,9 +387,10 @@ function buildDecision(
       : "insufficient",
     confirmatoryValidity: "not-confirmatory-spent-validation",
     confirmatoryLimitation:
-      "These 34 CryptoStruct days are classified SPENT_VALIDATION (M16-ER). "
-      + "They may support discovery and exploratory feasibility only; they are "
-      + "not an untouched pristine confirmatory / holdout partition.",
+      `These ${counts.eligibleDatesRepresented} CryptoStruct days are classified `
+      + "SPENT_VALIDATION (M16-ER). They may support discovery and exploratory "
+      + "feasibility only; they are not an untouched pristine confirmatory / "
+      + "holdout partition.",
     pristineValidationPurchaseNeeds: [
       "UTC days outside the M16-ER SPENT_VALIDATION calendar (not QUALITY_AUDIT_ONLY, not sealed M16-P)",
       "CryptoStruct KXBTC15M executable books with the same RAW-BBO-CHANGE adapter identity",
