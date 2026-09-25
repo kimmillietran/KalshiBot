@@ -1,0 +1,50 @@
+{
+  "studyId": "kalshi-kxbtc15m-m17-settlement-join-audit-v0",
+  "counts": {
+    "totalEligibleRecords": 47307,
+    "unambiguousMarketIdentity": 47307,
+    "ambiguousMarketIdentity": 0,
+    "validOfficialSettlementLabel": 47263,
+    "missingLabels": 0,
+    "normalizationOrImportValidationFailures": 0,
+    "conflictingOrDuplicateLabels": 0,
+    "excludedKnownIncompleteTicker": 14,
+    "nonNumericExpirationValue": 30,
+    "validExecutableBookInputs": 47307,
+    "validBtcSettlementPathInputs": 0,
+    "independentMarketsRepresented": 3228,
+    "eligibleDatesRepresented": 34,
+    "independentMarketsWithValidJoin": 3225,
+    "eligibleDatesWithValidJoin": 34
+  },
+  "decision": {
+    "settlementJoinPercentage": 0.9990699050880419,
+    "meetsMinimumIndependentMarkets": true,
+    "minimumIndependentMarketsRequired": 5,
+    "dataAvailability": "sufficient-labels-on-spent-executable-samples",
+    "exploratoryUsability": "sufficient-for-exploratory-m17-analysis",
+    "confirmatoryValidity": "not-confirmatory-spent-validation",
+    "confirmatoryLimitation": "These 34 CryptoStruct days are classified SPENT_VALIDATION (M16-ER). They may support discovery and exploratory feasibility only; they are not an untouched pristine confirmatory / holdout partition.",
+    "pristineValidationPurchaseNeeds": [
+      "UTC days outside the M16-ER SPENT_VALIDATION calendar (not QUALITY_AUDIT_ONLY, not sealed M16-P)",
+      "CryptoStruct KXBTC15M executable books with the same RAW-BBO-CHANGE adapter identity",
+      "Official Kalshi settlement labels per marketTicker (result, expiration_value, floor_strike, close_time, settlement_ts) with study-complete field validity",
+      "Explicit pristine / holdout reservation before any exploratory peek",
+      "Optional: co-timed BRTI/settlement-sample paths only if the evaluation claims settlement-state causality (not required solely for label-join coverage)"
+    ],
+    "claimedPriorEntryAuditNote": "Claimed prior entry-filter output (20,923 records / 72 markets) was not found among retained in-repo artifacts. This audit joins the retained friction-study executable samples (prior BTC/executable/friction audit corpus) to PR #114 settlement labels by exact marketTicker."
+  },
+  "spentExploratoryOutcomeCounts": {
+    "label": "SPENT_VALIDATION exploratory descriptive only — do not tune strategy",
+    "yes": 23585,
+    "no": 23678,
+    "unlabeledOrExcluded": 44
+  },
+  "zeroNetworkConfirmation": {
+    "marketDataRequests": 0,
+    "websocketCaptures": 0,
+    "cryptostructPurchases": 0,
+    "trades": 0
+  },
+  "reportSha256": "72c434b13c8ad6872e36e4303c752d475835bc88d5061eeb1a3ae2318d19529b"
+}
