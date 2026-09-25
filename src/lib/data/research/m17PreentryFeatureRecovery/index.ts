@@ -35,3 +35,14 @@ export {
 } from "./buildReport";
 
 export { serializeM17PreentryFeatureRecoveryMarkdown } from "./serialize";
+
+export {
+  classifyHalfSpreadMismatchRow,
+  summarizeHalfSpreadMismatchClasses,
+  regeneratedHalfSpreadFromYesBbo,
+  regeneratedExecutableNoAskCents,
+  type HalfSpreadMismatchRow,
+  type HalfSpreadMismatchClass,
+  type ClassifiedHalfSpreadMismatch,
+  type HalfSpreadMismatchClassificationSummary,
+} from "./classifyHalfSpreadMismatches";

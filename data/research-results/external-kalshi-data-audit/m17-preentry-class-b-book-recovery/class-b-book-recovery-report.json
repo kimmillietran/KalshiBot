@@ -1,0 +1,36 @@
+{
+  "studyId": "kalshi-kxbtc15m-m17-preentry-class-b-book-recovery-v0",
+  "analysisVersion": "m17-preentry-class-b-book-recovery-v0.1",
+  "generatedAtUtc": "2026-09-25T05:40:00.000Z",
+  "baseMainSha": "fc069fe18cfa9aa50646272e735152925d35b1eb",
+  "mergedPr131Head": "7486dd008c3694f6c0bfb357604e45affda10974",
+  "admissionBboStatus": "uncertain",
+  "rawReplayPerformed": false,
+  "featureCoverageChanged": false,
+  "priorDiagnosticCounts": {
+    "halfSpreadMismatchTotal": 308,
+    "classADefinition": 249,
+    "classBRecoveryUncertainty": 59,
+    "note": "Prior PR #131 diagnostic split cited by Project Lead; not re-verified in this cloud environment because retained book-features.jsonl and RAW ZIPs were absent."
+  },
+  "reverifiedCounts": null,
+  "inputs": {
+    "samplesJsonlPresent": false,
+    "bookFeaturesJsonlPresent": false,
+    "rawZipDirPresent": false,
+    "expectedSamplesSha256": "3f2dad5062e566ad7feacff1fbe1c0b963bbaa4d45aaa20d2a619f31098c8728",
+    "expectedBookFeaturesSha256": "6846e7187fe89eb76c00b60ec0c44f1ae6fbfbafce20d90ab9582c54f5e44eaf",
+    "expectedRawZipCount": 34
+  },
+  "attestation": {
+    "purchaseOccurred": false,
+    "subscriptionOccurred": false,
+    "networkMarketDataRequestOccurred": false,
+    "full34DayRecoveryRerun": false,
+    "newCaptureStarted": false,
+    "strategyPnlComputed": false,
+    "avg60sWiredIntoGates": false
+  },
+  "disclaimer": "Offline Class B validation status only. Does not resolve O6, freeze M17 entry rules, compute P&L, or claim RAW replay results that were not executed.",
+  "reportMarkdownSha256": "41e69698800e66d62822e2ac9b86c9a0aeb81552e60161d10df7c395f75e4fd8"
+}

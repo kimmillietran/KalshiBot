@@ -1,0 +1,52 @@
+{
+  "memoId": "kalshi-kxbtc15m-m17-path-recommendation-v0",
+  "role": "recommendation-only-not-a-freeze",
+  "baseMainSha": "fc069fe18cfa9aa50646272e735152925d35b1eb",
+  "mergedPr131Head": "7486dd008c3694f6c0bfb357604e45affda10974",
+  "o6Status": "blocked-needs-prospective-evidence",
+  "fiveCloseCampaign": {
+    "id": "kalshi-kxbtc15m-o6-five-close-settlement-fidelity-v0",
+    "captured": 4,
+    "missed": 1,
+    "missedSlotSubstituted": false
+  },
+  "carriedForward": {
+    "oneHzEqualsFiveHzPhase000": "416/416 exploratory only",
+    "avg60sHalfEvenMatchOfficial": "4/4 exact-fail",
+    "pr132NewIdenticalCampaign": "not-recommended",
+    "pr131HistoricalBrtiOnSpent": false,
+    "strategyPnlExists": false,
+    "classBAdmissionBbo": "uncertain-inputs-absent-in-cloud"
+  },
+  "paths": {
+    "officialBankedO3": {
+      "leakageSafeExploratoryFrom34SpentDays": false,
+      "blocker": "no-historical-banked-brti-path; o6-blocked"
+    },
+    "researchStateO3O4": {
+      "leakageSafeExploratoryFrom34SpentDays": false,
+      "blocker": "spent-lacks-retained-venue-average-path; estimand-must-be-explicitly-non-official"
+    },
+    "suspendSettlementStateEntryFamily": {
+      "leakageSafeExploratoryFrom34SpentDays": null,
+      "avoidsFalseReadiness": true
+    }
+  },
+  "recommendation": {
+    "continueOfficialBankedO3Now": false,
+    "purchaseHistoricalOrPristineDataNow": false,
+    "wireAvg60sIntoGates": false,
+    "extendFrozenFiveCloseCampaign": false,
+    "preferredHumanChoice": [
+      "suspend-settlement-state-entry-family",
+      "or-explicit-research-state-prospective-design-on-new-periods-only"
+    ],
+    "canProduceLeakageSafeExploratoryFromRetainedSpentData": false
+  },
+  "attestation": {
+    "purchaseOccurred": false,
+    "captureStarted": false,
+    "strategyPnlComputed": false,
+    "strategyFrozen": false
+  }
+}
