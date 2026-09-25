@@ -421,3 +421,17 @@ export function entriesFromFrictionSamples(
     hasExecutableBookInputs: true,
   }));
 }
+
+/**
+ * Resolve CLI output directory. Fixture mode defaults away from the retained
+ * audit summary path so hermetic runs cannot clobber committed reports.
+ */
+export function resolveM17SettlementJoinAuditOutDir(input: {
+  fixture: boolean;
+  explicitOut: string | null;
+  defaultOut: string;
+  defaultFixtureOut: string;
+}): string {
+  if (input.explicitOut) return input.explicitOut;
+  return input.fixture ? input.defaultFixtureOut : input.defaultOut;
+}

@@ -17,6 +17,7 @@ export {
   joinEligibleEntryToSettlementLabel,
   runM17SettlementJoinAudit,
   entriesFromFrictionSamples,
+  resolveM17SettlementJoinAuditOutDir,
 } from "./joinEligibleEntries";
 
 export { serializeM17SettlementJoinReportMarkdown } from "./serialize";

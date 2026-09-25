@@ -54,10 +54,12 @@ Hold-to-settlement / terminal mispricing:
 ## Commands
 
 ```bash
-# Hermetic fixtures (CI)
+# Hermetic fixtures (CI) — writes under gitignored
+# data/research-results/m17-settlement-join-audit-fixture/ (does not clobber retained summaries)
 npm run research:m17-settlement-join-audit -- --fixture
 
-# Local retained artifacts (no network)
+# Local retained artifacts (no network) — writes retained summaries under
+# data/research-results/external-kalshi-data-audit/m17-prep-settlement-join-audit/
 npm run research:m17-settlement-join-audit
 ```
 

@@ -6,6 +6,7 @@ import {
   M17_KNOWN_INCOMPLETE_MARKET_TICKER,
   entriesFromFrictionSamples,
   joinEligibleEntryToSettlementLabel,
+  resolveM17SettlementJoinAuditOutDir,
   runM17SettlementJoinAudit,
   serializeM17SettlementJoinReportMarkdown,
 } from "./index";
@@ -202,5 +203,45 @@ describe("runM17SettlementJoinAudit", () => {
     expect(md).toContain("Settlement-join percentage");
     expect(md).toContain("not-confirmatory-spent-validation");
     expect(md).not.toMatch(/\bP&L\b|\bprofit\b/i);
+  });
+});
+
+describe("resolveM17SettlementJoinAuditOutDir", () => {
+  const retained =
+    "data/research-results/external-kalshi-data-audit/m17-prep-settlement-join-audit";
+  const fixtureOut =
+    "data/research-results/m17-settlement-join-audit-fixture";
+
+  it("keeps fixture default away from retained audit summaries", () => {
+    expect(
+      resolveM17SettlementJoinAuditOutDir({
+        fixture: true,
+        explicitOut: null,
+        defaultOut: retained,
+        defaultFixtureOut: fixtureOut,
+      }),
+    ).toBe(fixtureOut);
+  });
+
+  it("uses retained default for non-fixture runs", () => {
+    expect(
+      resolveM17SettlementJoinAuditOutDir({
+        fixture: false,
+        explicitOut: null,
+        defaultOut: retained,
+        defaultFixtureOut: fixtureOut,
+      }),
+    ).toBe(retained);
+  });
+
+  it("honors explicit --out in either mode", () => {
+    expect(
+      resolveM17SettlementJoinAuditOutDir({
+        fixture: true,
+        explicitOut: "/tmp/custom-out",
+        defaultOut: retained,
+        defaultFixtureOut: fixtureOut,
+      }),
+    ).toBe("/tmp/custom-out");
   });
 });

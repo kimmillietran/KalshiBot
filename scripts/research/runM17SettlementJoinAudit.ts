@@ -5,7 +5,8 @@
  * Does not download, purchase, capture, trade, or tune strategy gates.
  *
  * Modes:
- *   --fixture   hermetic tiny fixtures (CI-safe)
+ *   --fixture   hermetic tiny fixtures (CI-safe; writes under a gitignored
+ *               fixture out dir so retained audit summaries are not clobbered)
  *   default     local retained M16-ER work artifacts when present
  */
 import { createHash } from "node:crypto";
@@ -17,13 +18,14 @@ import {
   readFileSync,
   writeFileSync,
 } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { dirname, join, relative, resolve } from "node:path";
 import readline from "node:readline";
 import { fileURLToPath } from "node:url";
 
 import type { SettlementLabelRecord } from "@/lib/data/research/settlementFrictionCoverage";
 import {
   entriesFromFrictionSamples,
+  resolveM17SettlementJoinAuditOutDir,
   runM17SettlementJoinAudit,
   serializeM17SettlementJoinReportMarkdown,
   type M17EligibleEntryRecord,
@@ -43,10 +45,20 @@ const DEFAULT_OUT = join(
   ROOT,
   "data/research-results/external-kalshi-data-audit/m17-prep-settlement-join-audit",
 );
+/** Gitignored (`data/research-results/*`); keeps --fixture from clobbering retained summaries. */
+const DEFAULT_FIXTURE_OUT = join(
+  ROOT,
+  "data/research-results/m17-settlement-join-audit-fixture",
+);
 const FIXTURE_DIR = join(
   ROOT,
   "src/lib/data/research/m17SettlementJoinAudit/fixtures",
 );
+
+function repoRelativePath(path: string): string {
+  const rel = relative(ROOT, path);
+  return rel && !rel.startsWith("..") ? rel.replace(/\\/g, "/") : path;
+}
 
 function hasFlag(argv: readonly string[], name: string): boolean {
   return argv.includes(name);
@@ -93,7 +105,12 @@ async function main(): Promise<void> {
   const labelsPath = fixture
     ? join(FIXTURE_DIR, "labels.jsonl")
     : (argValue(argv, "--labels-jsonl") ?? DEFAULT_LABELS);
-  const outDir = argValue(argv, "--out") ?? DEFAULT_OUT;
+  const outDir = resolveM17SettlementJoinAuditOutDir({
+    fixture,
+    explicitOut: argValue(argv, "--out"),
+    defaultOut: DEFAULT_OUT,
+    defaultFixtureOut: DEFAULT_FIXTURE_OUT,
+  });
 
   if (!existsSync(samplesPath)) {
     throw new Error(`samples not found: ${samplesPath}`);
@@ -120,8 +137,8 @@ async function main(): Promise<void> {
   );
 
   const inputIdentities: Record<string, string> = {
-    samplesPath,
-    labelsPath,
+    samplesPath: repoRelativePath(samplesPath),
+    labelsPath: repoRelativePath(labelsPath),
     samplesSha256: fileSha256(samplesPath),
     labelsSha256: fileSha256(labelsPath),
     labelBackfillCommit: "0b43ffe186e9246da53047e6a4ffcb08604d52aa",
