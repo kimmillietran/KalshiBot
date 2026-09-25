@@ -1,0 +1,107 @@
+{
+  "reportId": "kalshi-kxbtc15m-m17-o6-fidelity-gate-v0",
+  "baseMainSha": "e35f5b6f424daeb5f0054cc84d6c07a3b537f7f1",
+  "generatedAtUtc": "2026-09-25T03:08:54.723Z",
+  "overallFidelityGateStatus": "blocked-needs-prospective-evidence",
+  "o6Passed": false,
+  "o6RemainsBlocked": true,
+  "strategyRuleFrozen": false,
+  "purchaseMade": false,
+  "subscriptionStarted": false,
+  "captureStarted": false,
+  "tradeOrOrderPlaced": false,
+  "pnlEvaluated": false,
+  "prospectiveCaptureProtocol": {
+    "status": "proposed-only",
+    "authorized": false,
+    "executed": false,
+    "minimumCloses": 5,
+    "channels": [
+      "cfbenchmarks_value",
+      "cfbenchmarks_value_5hz"
+    ],
+    "indexId": "BRTI"
+  },
+  "o3DecisionsDeferred": [
+    "official-bank-vs-research-state-estimand",
+    "remaining-sample-probability-model-class",
+    "overpriced-inequality-executable-fill-and-fee-rule"
+  ],
+  "ruleClassifications": [
+    {
+      "ruleId": "official-banked-sample-field",
+      "classification": "unresolved",
+      "limits": "No primary source names a WS field as official banked samples; avg_60s completed-value match is empirical-only (n=3)."
+    },
+    {
+      "ruleId": "official-60-sample-membership-window",
+      "classification": "unresolved",
+      "limits": "High-level 60\u00d71s final-minute is documented; exact official endpoints unresolved. WS field windows are documented for those fields only."
+    },
+    {
+      "ruleId": "ws-avg-60s-data-window",
+      "classification": "documented-authoritative",
+      "limits": "Documents the WS field only; not proven equal to official expiration membership."
+    },
+    {
+      "ruleId": "ws-last-60s-windowed-average-15min-window",
+      "classification": "documented-authoritative",
+      "limits": "Documents the WS field only; not proven equal to official expiration membership."
+    },
+    {
+      "ruleId": "completed-avg-60s-as-expiration-candidate",
+      "classification": "empirically-supported-only",
+      "limits": "Three closes; diagnostic half-even 2dp; not vendor-confirmed; not intermediate bank proof."
+    },
+    {
+      "ruleId": "naive-fixed-window-5hz-reconstructions-on-retained-hour",
+      "classification": "contradicted",
+      "limits": "Specific predeclared reconstructions on one HOUR body disagreed with official; does not identify the true rule."
+    },
+    {
+      "ruleId": "5hz-to-1hz-official-mapping",
+      "classification": "unresolved",
+      "limits": "Cadence documented; selection rule not."
+    },
+    {
+      "ruleId": "ws-timestamp-fields-received-at-and-source",
+      "classification": "documented-authoritative",
+      "limits": "API field meanings; not official expiration rounding."
+    },
+    {
+      "ruleId": "official-expiration-rounding-stage",
+      "classification": "unresolved",
+      "limits": "BRTI 0.01 dissemination and WS 8dp averages do not pin Kalshi expiration rounding."
+    },
+    {
+      "ruleId": "existing-captures-verify-official-banked-identity",
+      "classification": "unresolved",
+      "limits": "Captures support discrepancy + empirical candidate; insufficient for official banked verification."
+    }
+  ],
+  "pr127StatusesRetained": {
+    "historical-brti-banked-60-sample-path": "unverified",
+    "exact-5hz-to-1hz-window-identity": "unverified"
+  },
+  "localEvidenceSha256": {
+    "one-close-v3-report.json": "7c61fdae990544e65eb28f99f470946543ec2426abda6fb25a2cfc7de817c293",
+    "one-close-v2-replay-report.json": "0fa7f9cf991d2a7c391e78a0eace7d728e219110fcb9c62e1b521240780564b0",
+    "v3-raw-capture": "7a5422cbf582481dd5f7bf4decc9f1d76f838efafaa8e6137958f80ff503c857",
+    "v2-raw-capture": "9fbe05369924b0e496a75ba1ca2f7a2fbd9a25856aaf8dfeb8cce263a95626c4",
+    "v3-official-body": "fac75f4e5b56d6ceb3120e3613cf4c5c49705e9845a28de3ba884a435f84dedc",
+    "m17-prep-brti-settlement-average-discrepancy-semantics.md": "f457fa0b625fe30fe0a001f78390998b2078eb46d0c999d58a616a71d9a8bc97",
+    "m17-entry-rule-decision-memo.md": "38abab794f21c8e677b927dd33f8dc63c4a797d174de19733600afda0183547b",
+    "m17-data-acquisition-feasibility-report.json": "2ec10f7e8f6c3c03e7bd10752315ee405fedded26551e201463afbee235d6a50"
+  },
+  "publicEvidenceUrls": [
+    "https://help.kalshi.com/en/articles/13823838-crypto-markets",
+    "https://docs.kalshi.com/websockets/cfbenchmarks-value",
+    "https://docs.kalshi.com/websockets/cfbenchmarks-value-5hz",
+    "https://assets.kalshi.com/contract_terms/CRYPTO15M.pdf",
+    "https://assets.kalshi.com/contract_terms/BTC.pdf",
+    "https://docs.cfbenchmarks.com/CME%20CF%20Real%20Time%20Indices%20Methodology.pdf",
+    "https://www.cfbenchmarks.com/data/indices/BRTI"
+  ],
+  "markdownPath": "docs/research/m17-o6-fidelity-gate.md",
+  "markdownSha256": "482baf2aef6e1b341cf6df32870c4616492f26acb9226a7e2d994c8f70ccfe27"
+}

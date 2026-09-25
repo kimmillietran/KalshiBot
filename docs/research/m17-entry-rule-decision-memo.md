@@ -176,6 +176,9 @@ reason. Family A or E can be specified and useful without new purchases.
 | **O5 — Suspend family (Family E)** | Stop settlement-state entry research | Avoids false readiness; other M17 infra docs remain |
 | **O6 — Fidelity-first (Family F)** | No entry-family freeze until mapping gate passes or fails closed | Delays O2–O4; aligns with PR #127 blockers; may later unlock official-banked C/B |
 
+**O6 fidelity-gate outcome:** `docs/research/m17-o6-fidelity-gate.md` —
+`blocked-needs-prospective-evidence`. Does not freeze O3 or authorize capture.
+
 You may combine **O6 then O3** (sequence), but that is still two decisions, not
 a silent freeze of O3 today.
 
