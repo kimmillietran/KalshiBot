@@ -105,6 +105,7 @@
     "research:m17-settlement-join-audit": "tsx scripts/research/runM17SettlementJoinAudit.ts",
     "research:m17-spent-hold-to-settlement-eval": "tsx scripts/research/runM17SpentHoldToSettlementEval.ts",
     "research:m17-retained-input-recovery-audit": "tsx scripts/research/runM17RetainedInputRecoveryAudit.ts",
+    "research:m17-data-acquisition-feasibility": "tsx scripts/research/runM17DataAcquisitionFeasibility.ts",
     "research:kalshi-brti-access-probe": "tsx scripts/research/runKalshiBrtiAccessProbe.ts",
     "research:kalshi-settlement-sample-mapping": "tsx scripts/research/runKalshiSettlementSampleMapping.ts",
     "research:kalshi-one-close-settlement-fidelity": "tsx scripts/research/runOneCloseSettlementFidelity.ts",

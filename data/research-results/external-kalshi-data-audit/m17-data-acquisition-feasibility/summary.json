@@ -1,0 +1,24 @@
+{
+  "studyId": "kalshi-kxbtc15m-m17-data-acquisition-feasibility-v0",
+  "analysisVersion": "m17-data-acquisition-feasibility-v0.1",
+  "decisionStatus": "strategy-remains-blocked",
+  "purchaseMade": false,
+  "networkRequestsIncurringCost": 0,
+  "strategyPnlComputed": false,
+  "pristineHoldoutPurchaseRecommended": false,
+  "classificationCounts": {
+    "available-existing": 0,
+    "derivable-existing": 0,
+    "purchasable-historical": 2,
+    "prospective-only": 0,
+    "unverified": 2,
+    "not-obtainable": 1
+  },
+  "enablement": {
+    "exploratoryEvalOn34SpentDays": false,
+    "newExploratoryProspectiveStudy": true,
+    "confirmatoryHoldoutEvaluation": false
+  },
+  "reportJsonSha256": "2ec10f7e8f6c3c03e7bd10752315ee405fedded26551e201463afbee235d6a50",
+  "reportMdSha256": "9e21579cf82a75195c8ce72e31ab85e5389da404cab3e0e32630a1990545079d"
+}
