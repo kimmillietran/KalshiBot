@@ -13,7 +13,8 @@
 | Overall fidelity-gate status | **`blocked-needs-prospective-evidence`** |
 | O6 outcome | **Remains blocked** (not passed) |
 | Strategy rule frozen | **No** |
-| Acquisition / capture / P&L | **None occurred** |
+| Acquisition / capture / P&L | **None in this gate PR**; five-close campaign later executed under separate auth (see below) |
+| Post-campaign 5Hz follow-on | **Not recommended** — `docs/research/m17-o6-5hz-to-1hz-mapping-protocol.md` |
 
 ---
 
@@ -87,12 +88,13 @@ Each rule uses **exactly one** of:
 | --- | --- |
 | What *is* documented | Official **expiration** is the average of 60 CFB RTI one-second readings in the final minute (D1, D4). WS exposes two average fields with different documented memberships (D2). |
 | What is *not* documented | No primary source names `avg_60s_data`, `last_60s_windowed_average_15min`, or any other streamed field as the official **banked intermediate sample series** or as identical to `expiration_value`. |
-| Empirical only | On **three** closes, diagnostic half-even 2dp of completed `avg_60s_data` matched `expiration_value`; completed `last_60s_windowed_average_15min` did not (three-close evidence + v2/v3). That supports an **empirical completed-value candidate**, not an official banked-field binding. |
-| Limits | n=3; diagnostic rounding ≠ vendor-confirmed rounding; completed agreement ≠ intermediate bank membership (design draft claim C). |
+| Empirical only (gate-era) | On **three** closes, diagnostic half-even 2dp of completed `avg_60s_data` matched `expiration_value`; completed `last_60s_windowed_average_15min` did not (three-close evidence + v2/v3). That supports an **empirical completed-value candidate**, not an official banked-field binding. |
+| Post five-close (exploratory only) | Same half-even pattern on 4/4 captured slots; exact equality still fails. Still not an official-bank freeze — see `completed-avg-60s-as-expiration-candidate-after-five-close` in the companion JSON and §5.3. |
+| Limits | Gate-era n=3 plus four five-close captures still leave official-field identity open; diagnostic rounding ≠ vendor-confirmed rounding; completed agreement ≠ intermediate bank membership (design draft claim C). |
 | Must not claim | That `avg_60s_data` is the official banked path or a strategy gate input. |
 
 Related completed-value candidate status (not this rule’s classification):
-**`empirically-supported-only`** for “`avg_60s_data` @ count 60 often matches official after diagnostic 2dp” — research `SettlementEstimate` only (PR #123).
+**`empirically-supported-only`** for “`avg_60s_data` @ count 60 often matches official after diagnostic 2dp” — research `SettlementEstimate` only (PR #123); five-close extension tracked separately in JSON.
 
 ### 3.2 Sixty-sample membership window (official expiration)
 
@@ -106,11 +108,12 @@ Related completed-value candidate status (not this rule’s classification):
 
 ### 3.3 Upstream 5Hz → 1Hz mapping
 
-| Classification | **`unresolved`** |
+| Classification | **`unresolved`** (official); Kalshi **channel** identity remains research-only |
 | --- | --- |
 | Documented | BRTI publishes ~200 ms (D5, D6). Kalshi 1Hz channel emits ~1 tick/s and ignores duplicate/out-of-order upstream source timestamps (D2). 5Hz channel is lean ticks without averages (D3). |
-| Not documented | Which 5Hz phase/print becomes each official 1Hz settlement sample; whether official samples equal Kalshi 1Hz ticks, CFB “top-of-second,” or another rule. |
-| Empirical | v3 membership comparisons used **cfb-1Hz only** (60 verified source-timestamped 1Hz samples in predeclared windows); mixing 5Hz into averages is forbidden by that campaign’s stream-separation rule. That validates stream hygiene, **not** the official 5Hz→1Hz identity. |
+| Not documented | Which 5Hz phase/print becomes each **official** settlement sample; whether official samples equal Kalshi 1Hz ticks, CFB “top-of-second,” or another rule. |
+| Empirical (gate-era) | v3 membership comparisons used **cfb-1Hz only**; mixing 5Hz into averages forbidden — stream hygiene, not official identity. |
+| Post five-close (exploratory only) | On 4 captured closes, nested 5Hz phase-000 payloads matched Kalshi 1Hz nested payloads 416/416. That is **exploratory channel identity**, not an official-bank freeze. Finite other phase/mean candidates failed the same offline official comparisons. See `m17-o6-5hz-to-1hz-mapping-protocol.md`. **No new capture recommended** for this axis alone. |
 | Acquisition note | PR #127: purchasing raw BRTI does not resolve this identity. |
 
 ### 3.4 Timestamp domain, boundaries, and rounding
@@ -128,9 +131,9 @@ Related completed-value candidate status (not this rule’s classification):
 
 | Classification | **`unresolved`** (captures insufficient to verify official banked identity) |
 | --- | --- |
-| What captures *do* support | Dual-field discrepancy at count 60; empirical completed-value candidate behavior on three closes; v2/v3 replayable raw + official HTTP with verified hashes; stream separation (1Hz vs 5Hz). |
-| What they *do not* support | A vendor-confirmed official intermediate banked field; a unique 60-sample membership proof; a unique 5Hz→1Hz rule; production rounding. |
-| Why not “contradicted” overall | Evidence does not prove official sampling is unknowable — only that current docs + n≤3 closes leave it open. |
+| What captures *do* support | Dual-field discrepancy at count 60; empirical completed-value candidate behavior on gate-era closes plus four five-close captures; v2/v3 + five-close replayable raw/official with verified hashes; stream separation (1Hz vs 5Hz); exploratory 5Hz phase-000 ≡ Kalshi 1Hz nested identity on those four slots. |
+| What they *do not* support | A vendor-confirmed official intermediate banked field; a unique 60-sample membership proof; a unique **official** 5Hz→1Hz rule; production rounding. |
+| Why not “contradicted” overall | Evidence does not prove official sampling is unknowable — only that current docs + retained closes still leave official identity open. |
 | Why not “passed” | Mapping gate in the design draft remains unmet. |
 
 ---
@@ -180,6 +183,18 @@ If the protocol yields persistent disagreement across all predeclared candidates
 deliverable is **documented mapping failure** → consider upgrading overall gate
 toward `failed-closed-unresolvable` in a later review (not declared here).
 
+### 5.3 Status after authorized five-close execution
+
+The §5.2 protocol was later authorized and executed as campaign
+`kalshi-kxbtc15m-o6-five-close-settlement-fidelity-v0` (4 captured, 1 missed;
+missed slot retained). Completed-field vs official comparisons behaved as the
+empirical candidate pattern (half-even 2dp of `avg_60s_data` on 4/4; exact fail).
+A follow-on protocol for 5Hz→official discrimination concludes **additional
+closes are not justified** for that axis:
+`docs/research/m17-o6-5hz-to-1hz-mapping-protocol.md` (not authorized).
+
+**O6 remains blocked.**
+
 ---
 
 ## 6. Still required before O3 (not decided here)
@@ -200,8 +215,10 @@ Do **not** freeze those in this task.
 
 ## 7. Attestation
 
-- No acquisition, subscription, capture, trade, order, or P&L occurred.
+- Gate PR itself: no acquisition, subscription, capture, trade, order, or P&L.
 - O6 fidelity gate: **`blocked-needs-prospective-evidence`** (remains blocked).
-- Prospective capture protocol: **proposed only**, not authorized, not executed.
+- Five-close campaign (separate auth) later executed; missed slot retained.
+- 5Hz follow-on: **not recommended / not authorized**
+  (`m17-o6-5hz-to-1hz-mapping-protocol.md`).
 - No strategy rule, threshold, or trading gate was frozen.
 - Historical reports from PR #127 / #128 were not overwritten.
