@@ -1,0 +1,190 @@
+{
+  "studyId": "kalshi-kxbtc15m-m17-spent-hold-to-settlement-eval-v0",
+  "analysisVersion": "m17-spent-hold-to-settlement-eval-v0.1",
+  "disclaimer": "Exploratory analysis on M16-ER SPENT_VALIDATION data only. Not confirmatory, not pristine, not holdout, not evidence of live profitability. Do not tune thresholds or select markets from these results. avg_60s_data remains research-only and is not wired into strategy gates.",
+  "generatedAtUtc": "2026-09-25T01:08:27.320Z",
+  "codeAuthoritySha": "1bd0d631eea173445a919207772b6141af28a26f",
+  "completionStatus": "blocked-missing-frozen-decisions",
+  "datasetProvenance": "SPENT_VALIDATION (M16-ER)",
+  "inputIdentities": {
+    "samplesPath": "data/external-samples/cryptostruct/m16-er/work/settlement-friction-coverage/samples.jsonl",
+    "labelsPath": "data/external-samples/cryptostruct/m16-er/work/settlement-friction-label-backfill/settlement-labels.jsonl",
+    "samplesSha256": "3f2dad5062e566ad7feacff1fbe1c0b963bbaa4d45aaa20d2a619f31098c8728",
+    "labelsSha256": "7c869cd12d1e3189437db5ec3c3781cee3d988eb36421ef5f9043caddf2cfec7",
+    "datasetProvenance": "SPENT_VALIDATION (M16-ER)",
+    "settlementJoinAuditMergeSha": "1bd0d631eea173445a919207772b6141af28a26f",
+    "claimedPriorEntryArtifact": "unavailable-not-found-in-retained-artifacts",
+    "mode": "retained-local"
+  },
+  "strategyDefinitionUsed": {
+    "name": "hold-to-settlement-terminal-mispricing",
+    "side": "NO",
+    "fee": "one-standard-taker-schedule",
+    "outcomeLabel": "official-expiration_value-post-entry-only",
+    "avg60sDataWiredIntoGates": false,
+    "citedRegimeFilters": {
+      "sourceHypothesisPath": "config/research/hypotheses/high-volatility-late-market-calibration-fade-v2.json",
+      "yesMidpointInclusiveMin": 0.3333333333333333,
+      "yesMidpointExclusiveMax": 0.6666666666666666,
+      "timeRemainingMsExclusiveMax": 900000,
+      "volatilityMinInclusive": 0.6,
+      "calibrationDirection": "over",
+      "targetSide": "NO",
+      "note": "Cited as the previously specified late high-vol / mid-range / <15m regime. M17 settlement-state entry still requires a frozen mapping from settlement-state arithmetic to YES-overpriced; citing these filters does not authorize inventing that mapping on SPENT outcomes."
+    },
+    "settlementEstimateSemantics": {
+      "expirationValue": "authoritative-after-settlement-outcome-label-only",
+      "avg60sData": "research-only-empirical-candidate-not-a-gate",
+      "last60sWindowedAverage15min": "diagnostic-only"
+    }
+  },
+  "frozenDecisionInventory": [
+    {
+      "id": "hold-to-settlement-primary-track",
+      "status": "frozen",
+      "summary": "Primary economic track is enter on executable quote and hold to official settlement.",
+      "authority": "docs/research/m17-settlement-state-research-design-draft.md §D.1 (proposed primary; accepted as fixed for this family) + PR #124 strategyDefinitionFixed"
+    },
+    {
+      "id": "side-no-calibration-fade-direction-over",
+      "status": "frozen",
+      "summary": "Target side is NO under historical calibration direction “over” (fade overconfident YES).",
+      "authority": "config/research/hypotheses/high-volatility-late-market-calibration-fade-v2.json + PR #124 terminal-mispricing NO side"
+    },
+    {
+      "id": "one-standard-taker-fee",
+      "status": "frozen",
+      "summary": "Charge one STANDARD schedule taker fee at entry (qty=1, ceil-to-cent); not a flat 4¢ round-trip.",
+      "authority": "M16-ER / friction fee contract identity 2c1059ecc142dd6ca9b82375e03fd84b42f55ce6d6f1435a667111eea2d0548f"
+    },
+    {
+      "id": "outcome-label-official-expiration-value",
+      "status": "frozen",
+      "summary": "Official expiration_value / result is the post-entry outcome label only; never a pre-entry input.",
+      "authority": "PR #123 SettlementEstimate authoritative rule + PR #124 join audit"
+    },
+    {
+      "id": "avg60s-not-wired-into-gates",
+      "status": "frozen",
+      "summary": "avg_60s_data is research-only empirical candidate; not wired into strategy gates or orders.",
+      "authority": "PR #123 settlementEstimate.ts"
+    },
+    {
+      "id": "cited-late-high-vol-regime-bucket-bounds",
+      "status": "frozen",
+      "summary": "Cited regime bounds: high vol ≥0.6 annualized (Coinbase completed 1m OHLC), YES mid ∈ [1/3, 2/3), time remaining < 15 minutes.",
+      "authority": "config/research/hypotheses/high-volatility-late-market-calibration-fade-v2.json"
+    },
+    {
+      "id": "settlement-state-to-yes-overpriced-entry-mapping",
+      "status": "proposed-unfrozen",
+      "summary": "No frozen rule maps remaining-average threshold T (or SettlementEstimate) to “YES is overpriced → enter NO”. T is arithmetic reachability only; P(YES|F_t) requires a predeclared model that the M17 draft marks unresolved.",
+      "authority": "docs/research/m17-settlement-state-research-design-draft.md §C.1–C.2 (Proposed / unresolved)"
+    },
+    {
+      "id": "official-banked-sample-field-and-window-identity",
+      "status": "proposed-unfrozen",
+      "summary": "Official banked settlement-sample field identity and window semantics remain unresolved (5Hz→60×1s mapping not frozen).",
+      "authority": "PR #112 feasibility; PR #116 mapping diagnostic; M17 draft §0.1 #5–#6"
+    },
+    {
+      "id": "historical-brti-banked-paths-on-spent-cs-days",
+      "status": "absent-on-retained-data",
+      "summary": "Retained CryptoStruct executable books do not carry pre-entry BRTI / banked settlement-sample paths; PR #124 reported validBtcSettlementPathInputs = 0.",
+      "authority": "PR #113/#124 BRTI-path coverage note; local settlement-friction samples.jsonl schema"
+    },
+    {
+      "id": "retained-sample-regime-feature-columns",
+      "status": "absent-on-retained-data",
+      "summary": "Retained friction samples lack YES bid/ask midpoint, NO ask level, and Coinbase volatility columns required to recompute the cited regime filters without regenerating quote streams.",
+      "authority": "data/external-samples/cryptostruct/m16-er/work/settlement-friction-coverage/samples.jsonl"
+    }
+  ],
+  "missingFrozenDecisionsBlockingPnl": [
+    "settlement-state-to-yes-overpriced-entry-mapping",
+    "official-banked-sample-field-and-window-identity",
+    "historical-brti-banked-paths-on-spent-cs-days",
+    "retained-sample-regime-feature-columns"
+  ],
+  "featureAvailability": {
+    "executableBookSamples": 47307,
+    "unambiguousMarketIdentity": 47307,
+    "validOfficialSettlementJoin": 47263,
+    "incompleteTickerExcluded": 14,
+    "nonNumericExpirationExcluded": 30,
+    "yesMidpointPresent": 0,
+    "highVolatilityFeaturePresent": 0,
+    "timeRemainingFeaturePresent": 0,
+    "settlementStatePathPresent": 0,
+    "remainingAverageThresholdPresent": 0,
+    "completeRequiredFeaturesForEntry": 0
+  },
+  "candidatePopulation": {
+    "retainedExecutableSamples": 47307,
+    "claimedPriorEntryArtifact": "unavailable-not-found-in-retained-artifacts",
+    "recomputedUnderFrozenRegimeFilters": null,
+    "recomputedRegimeFilterNote": "Cannot recompute [1/3,2/3)×high-vol×<15m candidates from retained friction samples: YES midpoint, Coinbase realized volatility, and explicit timeRemainingMs columns are absent. Regenerating quote/vol streams was not authorized for this blocked evaluation. Claimed 20,923/72 artifact remains unavailable.",
+    "independentMarketsInRetainedExecutable": 3228,
+    "datesInRetainedExecutable": 34,
+    "validSettlementLabelCoverageShare": 0.9990699050880419
+  },
+  "performance": {
+    "status": "blocked",
+    "reason": "Stopped before P&L: missing frozen settlement-state→entry mapping and/or required pre-entry features absent on retained SPENT samples. Do not invent thresholds from these 34 days.",
+    "noEntriesSimulated": 0,
+    "grossTerminalOutcomeCentsSum": null,
+    "oneTakerFeeAdjustedReturnCentsSum": null,
+    "winRate": null,
+    "averageReturnCents": null,
+    "medianReturnCents": null,
+    "varianceReturnCents": null,
+    "maxDrawdownCents": null
+  },
+  "baselines": {
+    "noTrade": {
+      "meanFeeAdjustedReturnCents": 0,
+      "note": "No-trade baseline is definitionally 0; reported without inspecting outcomes for selection."
+    },
+    "marketImplied": {
+      "status": "not-computed",
+      "reason": "YES/NO market-implied baseline requires retained YES mid / NO ask levels on candidate rows; absent on friction samples."
+    },
+    "fixedSettlementThreshold": {
+      "status": "not-defined-in-frozen-m17-design",
+      "reason": "M17 draft §C.2 Baseline A is arithmetic-only (no trading claim). No frozen fixed settlement-threshold trading baseline exists."
+    }
+  },
+  "confirmatoryBoundary": {
+    "isSpentExploratory": true,
+    "canEstablishOutOfSamplePerformance": false,
+    "canJustifyLiveTrading": false,
+    "pristinePurchaseNeeds": [
+      "UTC days outside M16-ER SPENT_VALIDATION (not QUALITY_AUDIT_ONLY, not sealed M16-P)",
+      "Same CryptoStruct RAW-BBO-CHANGE adapter / executable book configuration",
+      "Study-complete official settlement labels per marketTicker",
+      "Pre-reserved pristine / holdout partition before any exploratory peek",
+      "Frozen settlement-state→entry mapping (probability model or explicit rule) registered before evaluation",
+      "Co-timed BRTI / banked settlement-sample paths if the claim is settlement-state causality"
+    ]
+  },
+  "pristinePurchaseRecommendation": {
+    "justifiedNow": false,
+    "rationale": "Do not purchase pristine validation/holdout yet. The M17 entry mapping from settlement-state arithmetic to YES-overpriced is still unfrozen, official banked-sample field identity is unresolved, and retained SPENT CryptoStruct days lack pre-entry BRTI settlement-state paths. Freeze the decision rule and establish settlement-state input availability before buying holdout data."
+  },
+  "zeroNetworkConfirmation": {
+    "marketDataRequests": 0,
+    "websocketCaptures": 0,
+    "cryptostructPurchases": 0,
+    "trades": 0,
+    "orderPlacements": 0
+  },
+  "leakageControlsApplied": [
+    "Use only information available at or before entryTimestampMs.",
+    "Do not use expiration_value as a pre-entry input.",
+    "Do not use post-close messages for pre-entry features.",
+    "Do not use completed settlement data to construct a pre-entry estimate.",
+    "Reject ambiguous market identity or timestamp joins.",
+    "Exclude known incomplete ticker and non-numeric expiration outcomes.",
+    "Official settlement is outcome-label / post-entry evaluation only."
+  ]
+}
