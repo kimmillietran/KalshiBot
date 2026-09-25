@@ -1,8 +1,8 @@
 # M17 data-acquisition feasibility — `kalshi-kxbtc15m-m17-data-acquisition-feasibility-v0`
 
-Generated: 2026-09-25T02:20:45.563Z
+Generated: 2026-09-25T02:21:10.828Z
 Analysis version: `m17-data-acquisition-feasibility-v0.1`
-Code SHA: `029aa1098102568aeec7f7258d4ec899b6296bde`
+Code SHA: `a5de9654fa334aa1b18404efd8cf9492541516b7`
 Base main SHA: `1c17f6851c872b403b100bf342a95451a21ecfca`
 Decision status: **strategy-remains-blocked**
 
