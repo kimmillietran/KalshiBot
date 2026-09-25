@@ -11,7 +11,7 @@ import {
   readdirSync,
   writeFileSync,
 } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
@@ -207,7 +207,7 @@ function main(): void {
         lastOpenTimeMs: bars[bars.length - 1]?.openTimeMs ?? null,
         sha256: null,
         localPath: existsSync(join(CANDLES_DIR, `${day}.jsonl`))
-          ? join(CANDLES_DIR, `${day}.jsonl`)
+          ? relative(ROOT, join(CANDLES_DIR, `${day}.jsonl`))
           : null,
       });
     }

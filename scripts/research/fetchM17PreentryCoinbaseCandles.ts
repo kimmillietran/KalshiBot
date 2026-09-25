@@ -13,7 +13,7 @@ import {
   readdirSync,
   writeFileSync,
 } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { CoinbaseHistoricalHttpAdapter } from "@/lib/data/importers/btc/coinbase/CoinbaseHistoricalHttpAdapter";
@@ -180,7 +180,7 @@ async function main(): Promise<void> {
         firstOpenTimeMs: opens[0] ?? null,
         lastOpenTimeMs: opens[opens.length - 1] ?? null,
         sha256: sha,
-        localPath: outPath,
+        localPath: relative(ROOT, outPath),
         skippedExisting: true,
       });
       totalCandles += opens.length;
@@ -235,7 +235,7 @@ async function main(): Promise<void> {
       firstOpenTimeMs: opens[0] ?? null,
       lastOpenTimeMs: opens[opens.length - 1] ?? null,
       sha256: sha,
-      localPath: outPath,
+      localPath: relative(ROOT, outPath),
       skippedExisting: false,
     });
     totalCandles += opens.length;
