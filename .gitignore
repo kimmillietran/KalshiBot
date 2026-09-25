@@ -43,6 +43,8 @@ data/research-results/external-kalshi-data-audit/m17-prep-brti-access-probe-v1/r
 data/research-results/external-kalshi-data-audit/m17-prep-settlement-sample-mapping/raw/
 data/research-results/external-kalshi-data-audit/m17-prep-one-close-settlement-fidelity/raw/
 data/research-results/external-kalshi-data-audit/m17-prep-one-close-settlement-fidelity-v1/raw/
+# O6 five-close live campaign runtime outputs (freeze/live; not retained audits)
+data/research-results/external-kalshi-data-audit/m17-o6-five-close-settlement-fidelity/
 
 # local settlement-only import responses (raw; summaries only are committed)
 data/imports/
