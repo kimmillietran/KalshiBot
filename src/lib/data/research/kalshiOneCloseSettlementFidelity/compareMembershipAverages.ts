@@ -1,8 +1,13 @@
-import {
-  parseOfficialNumericString,
-} from "@/lib/data/research/kalshiBrtiAccessProbe/parseOfficialNumericString";
 import { selectWindowObservations } from "@/lib/data/research/kalshiSettlementSampleMapping/windowBoundaries";
 import type { CapturedBrtiObservation } from "@/lib/data/research/kalshiSettlementSampleMapping/runSynchronizedCapture";
+
+import {
+  DECLARED_DECIMAL_APPROX_TOLERANCE_RAW,
+  compareMarketDecimals,
+  exactDecimalDiffRaw,
+  meanDecimalStrings,
+  roundHalfEven2DecimalString,
+} from "./decimalMarketValue";
 
 /** Frozen before capture — do not retune. */
 export const TRAILING_WINDOW_LABEL = "[close−60s, close)" as const;
@@ -17,8 +22,24 @@ export type AverageAgreement = {
   fieldName: string;
   publishedRaw: string | null;
   recomputedFromSamplesRaw: string | null;
+  /** Exact `===` on retained strings. */
   rawStringEqual: boolean | null;
+  /**
+   * Exact decimal equality after parsing (scale-normalized BigInt).
+   * Not IEEE-754 `===` on Number.
+   */
+  exactDecimalEqual: boolean | null;
+  /**
+   * @deprecated Alias of exactDecimalEqual — kept so callers distinguishing
+   * "numeric" from raw-string do not fall back to float equality.
+   */
   numericEqual: boolean | null;
+  /** |exactDiff| ≤ DECLARED_DECIMAL_APPROX_TOLERANCE_RAW. */
+  approximateEqual: boolean | null;
+  approximateToleranceRaw: typeof DECLARED_DECIMAL_APPROX_TOLERANCE_RAW;
+  /** Exact decimal difference recomputed − published (string), when both parse. */
+  exactDiffRaw: string | null;
+  /** Float view of exactDiffRaw for legacy charts only — not used for equality. */
   unroundedDiff: number | null;
   diagnosticRound2HalfEvenEqual: boolean | null;
   sampleCount: number;
@@ -38,26 +59,19 @@ export type StreamMembershipComparison = AverageAgreement & {
   receiptTimestampRangeMs: { min: number | null; max: number | null };
   sourceTimestampRangeMs: { min: number | null; max: number | null };
   vsOfficial?: {
+    exactDiffRaw: string | null;
     unroundedDiff: number | null;
     rawStringEqual: boolean | null;
+    exactDecimalEqual: boolean | null;
+    approximateEqual: boolean | null;
     diagnosticRound2HalfEvenEqual: boolean | null;
   };
 };
 
-/** Diagnostic half-even to 2dp — not Kalshi's proven rule. */
+/** Diagnostic half-even to 2dp — not Kalshi's proven rule. Delegates to decimal path. */
 export function roundHalfEven2(value: number): string {
-  const scaled = value * 100;
-  const floor = Math.floor(scaled);
-  const diff = scaled - floor;
-  let rounded: number;
-  if (diff > 0.5) {
-    rounded = floor + 1;
-  } else if (diff < 0.5) {
-    rounded = floor;
-  } else {
-    rounded = floor % 2 === 0 ? floor : floor + 1;
-  }
-  return (rounded / 100).toFixed(2);
+  // Prefer an explicit decimal string; Number→string can be binary-noisy near .xx5.
+  return roundHalfEven2DecimalString(value.toFixed(8)) ?? value.toFixed(2);
 }
 
 export function meanRawSamples(values: readonly string[]): {
@@ -66,30 +80,12 @@ export function meanRawSamples(values: readonly string[]): {
   count: number;
   parseFailures: number;
 } {
-  if (values.length === 0) {
-    return { meanRaw: null, meanNumeric: null, count: 0, parseFailures: 0 };
-  }
-  let sum = 0;
-  let ok = 0;
-  let failures = 0;
-  for (const value of values) {
-    const parsed = parseOfficialNumericString(value);
-    if (parsed.kind !== "ok") {
-      failures += 1;
-      continue;
-    }
-    sum += parsed.value;
-    ok += 1;
-  }
-  if (ok === 0) {
-    return { meanRaw: null, meanNumeric: null, count: 0, parseFailures: failures };
-  }
-  const mean = sum / ok;
+  const mean = meanDecimalStrings(values, 8);
   return {
-    meanRaw: mean.toFixed(8),
-    meanNumeric: mean,
-    count: ok,
-    parseFailures: failures,
+    meanRaw: mean.meanRaw,
+    meanNumeric: mean.meanRaw == null ? null : Number(mean.meanRaw),
+    count: mean.count,
+    parseFailures: mean.parseFailures,
   };
 }
 
@@ -129,92 +125,90 @@ export function verifiedSourceTimestampedSamples(
   return { verified, missingSourceTimestamp, wrongStream };
 }
 
+function emptyAgreement(
+  fieldName: string,
+  publishedRaw: string | null,
+  limitation: string,
+  sampleCount: number,
+  recomputedFromSamplesRaw: string | null = null,
+): AverageAgreement {
+  return {
+    fieldName,
+    publishedRaw,
+    recomputedFromSamplesRaw,
+    rawStringEqual: null,
+    exactDecimalEqual: null,
+    numericEqual: null,
+    approximateEqual: null,
+    approximateToleranceRaw: DECLARED_DECIMAL_APPROX_TOLERANCE_RAW,
+    exactDiffRaw: null,
+    unroundedDiff: null,
+    diagnosticRound2HalfEvenEqual: null,
+    sampleCount,
+    limitation,
+  };
+}
+
 export function comparePublishedAverage(input: {
   fieldName: string;
   publishedRaw: string | null;
   sampleValueRaws: readonly string[];
   officialRaw?: string | null;
 }): AverageAgreement & {
-  vsOfficial?: {
-    unroundedDiff: number | null;
-    rawStringEqual: boolean | null;
-    diagnosticRound2HalfEvenEqual: boolean | null;
-  };
+  vsOfficial?: NonNullable<StreamMembershipComparison["vsOfficial"]>;
 } {
-  const recomputed = meanRawSamples(input.sampleValueRaws);
+  const recomputed = meanDecimalStrings(input.sampleValueRaws, 8);
   if (input.publishedRaw == null) {
-    return {
-      fieldName: input.fieldName,
-      publishedRaw: null,
-      recomputedFromSamplesRaw: recomputed.meanRaw,
-      rawStringEqual: null,
-      numericEqual: null,
-      unroundedDiff: null,
-      diagnosticRound2HalfEvenEqual: null,
-      sampleCount: recomputed.count,
-      limitation: "published-average-missing",
-    };
+    return emptyAgreement(
+      input.fieldName,
+      null,
+      "published-average-missing",
+      recomputed.count,
+      recomputed.meanRaw,
+    );
   }
-  const published = parseOfficialNumericString(input.publishedRaw);
-  if (published.kind !== "ok") {
-    return {
-      fieldName: input.fieldName,
-      publishedRaw: input.publishedRaw,
-      recomputedFromSamplesRaw: recomputed.meanRaw,
-      rawStringEqual: null,
-      numericEqual: null,
-      unroundedDiff: null,
-      diagnosticRound2HalfEvenEqual: null,
-      sampleCount: recomputed.count,
-      limitation: "published-average-unparseable",
-    };
+  if (recomputed.meanRaw == null) {
+    return emptyAgreement(
+      input.fieldName,
+      input.publishedRaw,
+      recomputed.count === 0 && recomputed.parseFailures > 0
+        ? "published-average-unparseable-or-no-samples"
+        : "no-samples-for-declared-membership",
+      recomputed.count,
+    );
   }
-  if (recomputed.meanNumeric == null) {
-    return {
-      fieldName: input.fieldName,
-      publishedRaw: input.publishedRaw,
-      recomputedFromSamplesRaw: null,
-      rawStringEqual: null,
-      numericEqual: null,
-      unroundedDiff: null,
-      diagnosticRound2HalfEvenEqual: null,
-      sampleCount: 0,
-      limitation: "no-samples-for-declared-membership",
-    };
-  }
+
+  const vsPublished = compareMarketDecimals(recomputed.meanRaw, input.publishedRaw);
+  const exactDiffRaw = exactDecimalDiffRaw(recomputed.meanRaw, input.publishedRaw);
   const base: AverageAgreement = {
     fieldName: input.fieldName,
     publishedRaw: input.publishedRaw,
     recomputedFromSamplesRaw: recomputed.meanRaw,
-    rawStringEqual: input.publishedRaw === recomputed.meanRaw,
-    numericEqual: published.value === recomputed.meanNumeric,
-    unroundedDiff: recomputed.meanNumeric - published.value,
-    diagnosticRound2HalfEvenEqual:
-      roundHalfEven2(published.value) === roundHalfEven2(recomputed.meanNumeric),
+    rawStringEqual: vsPublished.rawStringEqual,
+    exactDecimalEqual: vsPublished.exactDecimalEqual,
+    numericEqual: vsPublished.exactDecimalEqual,
+    approximateEqual: vsPublished.approximateEqual,
+    approximateToleranceRaw: DECLARED_DECIMAL_APPROX_TOLERANCE_RAW,
+    exactDiffRaw,
+    unroundedDiff: vsPublished.approximateDiffNumber,
+    diagnosticRound2HalfEvenEqual: vsPublished.diagnosticRound2HalfEvenEqual,
     sampleCount: recomputed.count,
     limitation: recomputed.parseFailures > 0 ? "some-samples-failed-parse" : null,
   };
+
   if (input.officialRaw == null) {
     return base;
   }
-  const official = parseOfficialNumericString(input.officialRaw);
-  if (official.kind !== "ok") {
-    return {
-      ...base,
-      vsOfficial: {
-        unroundedDiff: null,
-        rawStringEqual: null,
-        diagnosticRound2HalfEvenEqual: null,
-      },
-    };
-  }
+  const vsOfficialCmp = compareMarketDecimals(input.publishedRaw, input.officialRaw);
   return {
     ...base,
     vsOfficial: {
-      unroundedDiff: published.value - official.value,
-      rawStringEqual: input.publishedRaw === input.officialRaw,
-      diagnosticRound2HalfEvenEqual:
-        roundHalfEven2(published.value) === roundHalfEven2(official.value),
+      exactDiffRaw: exactDecimalDiffRaw(input.publishedRaw, input.officialRaw),
+      unroundedDiff: vsOfficialCmp.approximateDiffNumber,
+      rawStringEqual: vsOfficialCmp.rawStringEqual,
+      exactDecimalEqual: vsOfficialCmp.exactDecimalEqual,
+      approximateEqual: vsOfficialCmp.approximateEqual,
+      diagnosticRound2HalfEvenEqual: vsOfficialCmp.diagnosticRound2HalfEvenEqual,
     },
   };
 }
@@ -282,17 +276,26 @@ export function comparePublishedAverageForStream(input: {
   };
 
   if (inWindow.length < EXPECTED_SETTLEMENT_SAMPLE_COUNT) {
-    const vsOfficial = officialVsPublishedOnly(input.publishedRaw, input.officialRaw ?? null);
+    const vsOfficial = input.publishedRaw != null && input.officialRaw != null
+      ? (() => {
+        const cmp = compareMarketDecimals(input.publishedRaw!, input.officialRaw!);
+        return {
+          exactDiffRaw: exactDecimalDiffRaw(input.publishedRaw!, input.officialRaw!),
+          unroundedDiff: cmp.approximateDiffNumber,
+          rawStringEqual: cmp.rawStringEqual,
+          exactDecimalEqual: cmp.exactDecimalEqual,
+          approximateEqual: cmp.approximateEqual,
+          diagnosticRound2HalfEvenEqual: cmp.diagnosticRound2HalfEvenEqual,
+        };
+      })()
+      : undefined;
     return {
-      fieldName: input.fieldName,
-      publishedRaw: input.publishedRaw,
-      recomputedFromSamplesRaw: null,
-      rawStringEqual: null,
-      numericEqual: null,
-      unroundedDiff: null,
-      diagnosticRound2HalfEvenEqual: null,
-      sampleCount: inWindow.length,
-      limitation: "insufficient-verified-source-timestamped-samples",
+      ...emptyAgreement(
+        input.fieldName,
+        input.publishedRaw,
+        "insufficient-verified-source-timestamped-samples",
+        inWindow.length,
+      ),
       status: "unavailable",
       unavailableReason:
         `need-${EXPECTED_SETTLEMENT_SAMPLE_COUNT}-verified-${input.sourceStream}-source-ts-in-window;have-${inWindow.length}`,
@@ -312,29 +315,5 @@ export function comparePublishedAverageForStream(input: {
     ...baseMeta,
     status: "compared",
     unavailableReason: null,
-  };
-}
-
-function officialVsPublishedOnly(
-  publishedRaw: string | null,
-  officialRaw: string | null,
-): StreamMembershipComparison["vsOfficial"] | null {
-  if (publishedRaw == null || officialRaw == null) {
-    return null;
-  }
-  const published = parseOfficialNumericString(publishedRaw);
-  const official = parseOfficialNumericString(officialRaw);
-  if (published.kind !== "ok" || official.kind !== "ok") {
-    return {
-      unroundedDiff: null,
-      rawStringEqual: null,
-      diagnosticRound2HalfEvenEqual: null,
-    };
-  }
-  return {
-    unroundedDiff: published.value - official.value,
-    rawStringEqual: publishedRaw === officialRaw,
-    diagnosticRound2HalfEvenEqual:
-      roundHalfEven2(published.value) === roundHalfEven2(official.value),
   };
 }

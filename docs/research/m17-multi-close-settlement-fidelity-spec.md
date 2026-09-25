@@ -321,7 +321,7 @@ After all eight slots (or earlier stop for retention/`campaign-exhausted`):
 | --- | --- | --- |
 | Both fields agree with each other and with official under diagnostic rounding | Completed-field agreement for that close | Intermediate counts are official banked samples; Kalshi rounding proven |
 | Only settlement-window field agrees with official | Settlement field matched; trailing did not | Trailing always wrong |
-| Only trailing (same payload label) agrees with official | Trailing matched; settlement field did not | Select trailing as official |
+| Only trailing (same payload label) agrees with official under diagnostic rounding | Trailing matched; settlement field did not; may record `avg_60s_data` as **empirical-candidate** (not vendor-confirmed) | Label trailing as official / vendor-confirmed; feed strategy gates |
 | Neither agrees | Mapping unresolved for that close | Force-fit windows |
 | Intermediate received before close; completed only after | Intermediate availability recorded; completed is post-close diagnostic only | Treat completed as pre-close knowledge |
 | Official unavailable | No agreement claim | Impute expiration |
