@@ -6,8 +6,8 @@ Feature-preparation coverage audit on M16-ER SPENT_VALIDATION retained executabl
 
 - Study: `kalshi-kxbtc15m-m17-preentry-feature-recovery-v0`
 - Analysis version: `m17-preentry-feature-recovery-v0.1`
-- Generated (UTC): 2026-09-25T04:15:56.376Z
-- Code authority SHA: `5b9d0f9855794f8c59e5496f8180445cca729192`
+- Generated (UTC): 2026-09-25T04:17:07.479Z
+- Code authority SHA: `73931676b6a986dcdca09dff724d0b73be346975`
 - Base main SHA: `5b9d0f9855794f8c59e5496f8180445cca729192`
 
 ## Attestation

@@ -2,8 +2,8 @@
   "studyId": "kalshi-kxbtc15m-m17-preentry-feature-recovery-v0",
   "analysisVersion": "m17-preentry-feature-recovery-v0.1",
   "disclaimer": "Feature-preparation coverage audit on M16-ER SPENT_VALIDATION retained executable samples only. Regenerates pre-entry book/time/volatility features for measurement. Does not compute strategy P&L, simulate entries, rank candidates by settlement outcomes, freeze the M17 entry rule, or resolve O6 settlement-fidelity questions. Feature coverage is not a strategy result.",
-  "generatedAtUtc": "2026-09-25T04:15:56.376Z",
-  "codeAuthoritySha": "5b9d0f9855794f8c59e5496f8180445cca729192",
+  "generatedAtUtc": "2026-09-25T04:17:07.479Z",
+  "codeAuthoritySha": "73931676b6a986dcdca09dff724d0b73be346975",
   "baseMainSha": "5b9d0f9855794f8c59e5496f8180445cca729192",
   "volatilityContract": {
     "instrument": "BTC-USD",
