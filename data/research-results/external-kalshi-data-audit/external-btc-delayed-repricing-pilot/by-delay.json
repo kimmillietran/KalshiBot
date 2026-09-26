@@ -1,0 +1,245 @@
+{
+  "250": {
+    "opportunityEnteredCount": 1270,
+    "preEntryRejectCount": 562,
+    "completedExitCount": 1215,
+    "unresolvedExitCount": 55,
+    "economicResultStatus": "incomplete-unresolved-exits",
+    "completedTradeUncertainty": {
+      "method": "cr2-cluster-robust-day-mean-two-sided-95ci-fragile-exploratory",
+      "label": "fragile-exploratory-G-le-5",
+      "n": 1215,
+      "g": 5,
+      "degreesOfFreedom": 4,
+      "meanNetPnlCents": -3.982716049382716,
+      "cr2StandardError": 0.21077513602540107,
+      "ciLowCents": -4.567921644097831,
+      "ciHighCents": -3.397510454667601,
+      "note": "G≤5 Friday-only clusters: CR2 CI is a fragile exploratory summary only. CI lower>0 alone is not sufficient evidence to proceed to confirmation. Distinguish negative economics, inconclusive evidence, and incomplete simulation."
+    },
+    "completedTotalNetPnlCents": -4839,
+    "completedMeanNetPnlCents": -3.982716049382716,
+    "allEntryLowerBoundTotalCents": -7991,
+    "allEntryUpperBoundTotalCents": -2491,
+    "allEntryLowerBoundMeanCents": -6.292125984251968,
+    "allEntryUpperBoundMeanCents": -1.9614173228346456,
+    "unresolvedMarkToMarketTotalCents": -52,
+    "unresolvedMarkToMarketMeanCents": -0.9454545454545454,
+    "delayClaimStatus": "diagnostic-only",
+    "clockAlignmentStatus": "unknown",
+    "daily": [
+      {
+        "utcDay": "2026-08-14",
+        "weekday": "Friday",
+        "primaryEventCount": 57,
+        "preEntryRejectCount": 5,
+        "enteredCount": 52,
+        "completedExitCount": 51,
+        "unresolvedExitCount": 1,
+        "completedMeanNetPnlCents": -5.470588235294118
+      },
+      {
+        "utcDay": "2026-08-21",
+        "weekday": "Friday",
+        "primaryEventCount": 872,
+        "preEntryRejectCount": 312,
+        "enteredCount": 560,
+        "completedExitCount": 530,
+        "unresolvedExitCount": 30,
+        "completedMeanNetPnlCents": -3.792452830188679
+      },
+      {
+        "utcDay": "2026-08-28",
+        "weekday": "Friday",
+        "primaryEventCount": 330,
+        "preEntryRejectCount": 94,
+        "enteredCount": 236,
+        "completedExitCount": 228,
+        "unresolvedExitCount": 8,
+        "completedMeanNetPnlCents": -4.491228070175438
+      },
+      {
+        "utcDay": "2026-09-04",
+        "weekday": "Friday",
+        "primaryEventCount": 250,
+        "preEntryRejectCount": 51,
+        "enteredCount": 199,
+        "completedExitCount": 192,
+        "unresolvedExitCount": 7,
+        "completedMeanNetPnlCents": -4.21875
+      },
+      {
+        "utcDay": "2026-09-11",
+        "weekday": "Friday",
+        "primaryEventCount": 323,
+        "preEntryRejectCount": 100,
+        "enteredCount": 223,
+        "completedExitCount": 214,
+        "unresolvedExitCount": 9,
+        "completedMeanNetPnlCents": -3.3457943925233646
+      }
+    ]
+  },
+  "1000": {
+    "opportunityEnteredCount": 1269,
+    "preEntryRejectCount": 563,
+    "completedExitCount": 1222,
+    "unresolvedExitCount": 47,
+    "economicResultStatus": "incomplete-unresolved-exits",
+    "completedTradeUncertainty": {
+      "method": "cr2-cluster-robust-day-mean-two-sided-95ci-fragile-exploratory",
+      "label": "fragile-exploratory-G-le-5",
+      "n": 1222,
+      "g": 5,
+      "degreesOfFreedom": 4,
+      "meanNetPnlCents": -3.955810147299509,
+      "cr2StandardError": 0.12341393339516911,
+      "ciLowCents": -4.298462158587728,
+      "ciHighCents": -3.6131581360112905,
+      "note": "G≤5 Friday-only clusters: CR2 CI is a fragile exploratory summary only. CI lower>0 alone is not sufficient evidence to proceed to confirmation. Distinguish negative economics, inconclusive evidence, and incomplete simulation."
+    },
+    "completedTotalNetPnlCents": -4834,
+    "completedMeanNetPnlCents": -3.955810147299509,
+    "allEntryLowerBoundTotalCents": -7733,
+    "allEntryUpperBoundTotalCents": -3033,
+    "allEntryLowerBoundMeanCents": -6.0937746256895196,
+    "allEntryUpperBoundMeanCents": -2.3900709219858154,
+    "unresolvedMarkToMarketTotalCents": -73,
+    "unresolvedMarkToMarketMeanCents": -1.553191489361702,
+    "delayClaimStatus": "scenario-assumption-unverified",
+    "clockAlignmentStatus": "unknown",
+    "daily": [
+      {
+        "utcDay": "2026-08-14",
+        "weekday": "Friday",
+        "primaryEventCount": 57,
+        "preEntryRejectCount": 6,
+        "enteredCount": 51,
+        "completedExitCount": 48,
+        "unresolvedExitCount": 3,
+        "completedMeanNetPnlCents": -5.1875
+      },
+      {
+        "utcDay": "2026-08-21",
+        "weekday": "Friday",
+        "primaryEventCount": 872,
+        "preEntryRejectCount": 311,
+        "enteredCount": 561,
+        "completedExitCount": 540,
+        "unresolvedExitCount": 21,
+        "completedMeanNetPnlCents": -3.977777777777778
+      },
+      {
+        "utcDay": "2026-08-28",
+        "weekday": "Friday",
+        "primaryEventCount": 330,
+        "preEntryRejectCount": 95,
+        "enteredCount": 235,
+        "completedExitCount": 226,
+        "unresolvedExitCount": 9,
+        "completedMeanNetPnlCents": -4.150442477876106
+      },
+      {
+        "utcDay": "2026-09-04",
+        "weekday": "Friday",
+        "primaryEventCount": 250,
+        "preEntryRejectCount": 53,
+        "enteredCount": 197,
+        "completedExitCount": 191,
+        "unresolvedExitCount": 6,
+        "completedMeanNetPnlCents": -3.9633507853403143
+      },
+      {
+        "utcDay": "2026-09-11",
+        "weekday": "Friday",
+        "primaryEventCount": 323,
+        "preEntryRejectCount": 98,
+        "enteredCount": 225,
+        "completedExitCount": 217,
+        "unresolvedExitCount": 8,
+        "completedMeanNetPnlCents": -3.4193548387096775
+      }
+    ]
+  },
+  "3000": {
+    "opportunityEnteredCount": 1244,
+    "preEntryRejectCount": 588,
+    "completedExitCount": 1196,
+    "unresolvedExitCount": 48,
+    "economicResultStatus": "incomplete-unresolved-exits",
+    "completedTradeUncertainty": {
+      "method": "cr2-cluster-robust-day-mean-two-sided-95ci-fragile-exploratory",
+      "label": "fragile-exploratory-G-le-5",
+      "n": 1196,
+      "g": 5,
+      "degreesOfFreedom": 4,
+      "meanNetPnlCents": -4.270903010033445,
+      "cr2StandardError": 0.18716463691364155,
+      "ciLowCents": -4.7905553500584395,
+      "ciHighCents": -3.7512506700084502,
+      "note": "G≤5 Friday-only clusters: CR2 CI is a fragile exploratory summary only. CI lower>0 alone is not sufficient evidence to proceed to confirmation. Distinguish negative economics, inconclusive evidence, and incomplete simulation."
+    },
+    "completedTotalNetPnlCents": -5108,
+    "completedMeanNetPnlCents": -4.270903010033445,
+    "allEntryLowerBoundTotalCents": -8016,
+    "allEntryUpperBoundTotalCents": -3216,
+    "allEntryLowerBoundMeanCents": -6.443729903536977,
+    "allEntryUpperBoundMeanCents": -2.585209003215434,
+    "unresolvedMarkToMarketTotalCents": -87,
+    "unresolvedMarkToMarketMeanCents": -1.8125,
+    "delayClaimStatus": "scenario-assumption-unverified",
+    "clockAlignmentStatus": "unknown",
+    "daily": [
+      {
+        "utcDay": "2026-08-14",
+        "weekday": "Friday",
+        "primaryEventCount": 57,
+        "preEntryRejectCount": 6,
+        "enteredCount": 51,
+        "completedExitCount": 50,
+        "unresolvedExitCount": 1,
+        "completedMeanNetPnlCents": -3.22
+      },
+      {
+        "utcDay": "2026-08-21",
+        "weekday": "Friday",
+        "primaryEventCount": 872,
+        "preEntryRejectCount": 325,
+        "enteredCount": 547,
+        "completedExitCount": 521,
+        "unresolvedExitCount": 26,
+        "completedMeanNetPnlCents": -4.522072936660269
+      },
+      {
+        "utcDay": "2026-08-28",
+        "weekday": "Friday",
+        "primaryEventCount": 330,
+        "preEntryRejectCount": 95,
+        "enteredCount": 235,
+        "completedExitCount": 228,
+        "unresolvedExitCount": 7,
+        "completedMeanNetPnlCents": -4.478070175438597
+      },
+      {
+        "utcDay": "2026-09-04",
+        "weekday": "Friday",
+        "primaryEventCount": 250,
+        "preEntryRejectCount": 57,
+        "enteredCount": 193,
+        "completedExitCount": 189,
+        "unresolvedExitCount": 4,
+        "completedMeanNetPnlCents": -4.169312169312169
+      },
+      {
+        "utcDay": "2026-09-11",
+        "weekday": "Friday",
+        "primaryEventCount": 323,
+        "preEntryRejectCount": 105,
+        "enteredCount": 218,
+        "completedExitCount": 208,
+        "unresolvedExitCount": 10,
+        "completedMeanNetPnlCents": -3.7596153846153846
+      }
+    ]
+  }
+}

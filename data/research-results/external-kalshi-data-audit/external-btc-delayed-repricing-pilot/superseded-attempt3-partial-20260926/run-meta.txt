@@ -13,3 +13,6 @@ attempt3_monitor=scripts/research/monitorExternalBtcDelayedRepricingPilot.sh
 attempt3_note=native_throughput_day1_~1.2M_msgs_per_sec_rss~320MB_at_5s
 attempt3_relaunch_iso=2026-09-26T20:23:03Z
 attempt3_launch=foreground_background_shell_block0
+attempt3_producer_exit=unknown/not_captured
+attempt3_validation_note=Producer exit status unknown/not captured; artifacts validated offline.
+attempt3_superseded=true
