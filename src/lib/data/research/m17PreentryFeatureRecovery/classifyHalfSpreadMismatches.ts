@@ -87,8 +87,10 @@ export function classifyHalfSpreadMismatchRow(
   }
   const regeneratedHalf = row.halfSpreadCents
     ?? regeneratedHalfSpreadFromYesBbo(row.yesBidCents, row.yesAskCents);
-  const regeneratedNoAsk = row.noAskCents
-    ?? regeneratedExecutableNoAskCents(row.yesBidCents);
+  // Class A stability is specifically bid-implied executable NO ask (100 − YES
+  // bid). Do not prefer row.noAskCents here — an inconsistent noAskCents would
+  // otherwise falsely claim a stable complement.
+  const regeneratedNoAsk = regeneratedExecutableNoAskCents(row.yesBidCents);
   const retainedNoAsk = row.retainedExecutableNoAskCents ?? null;
 
   const hasBid = row.yesBidCents != null && Number.isFinite(row.yesBidCents);

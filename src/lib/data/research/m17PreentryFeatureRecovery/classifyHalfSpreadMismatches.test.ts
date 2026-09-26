@@ -77,6 +77,24 @@ describe("half-spread mismatch classification", () => {
     expect(classified?.executableNoAskStable).toBe(false);
   });
 
+  it("uses 100−YES bid for stability even when noAskCents disagrees", () => {
+    const classified = classifyHalfSpreadMismatchRow(row({
+      yesBidCents: 40,
+      yesAskCents: 46,
+      // Inconsistent with bid-implied NO ask (60); must not mint Class A.
+      noAskCents: 59,
+      halfSpreadCents: 3,
+      retainedExecutableNoAskCents: 59,
+      halfSpreadMismatch: {
+        retainedHalfSpreadCents: 2.5,
+        regeneratedHalfSpreadCents: 3,
+      },
+    }));
+    expect(classified?.classification).toBe("class-b-recovery-uncertainty");
+    expect(classified?.executableNoAskStable).toBe(false);
+    expect(classified?.regeneratedExecutableNoAskCents).toBe(60);
+  });
+
   it("keeps Class A and Class B counts distinct in the summary", () => {
     const summary = summarizeHalfSpreadMismatchClasses([
       row({
