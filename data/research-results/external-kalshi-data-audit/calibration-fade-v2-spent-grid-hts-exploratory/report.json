@@ -1,0 +1,471 @@
+{
+  "studyId": "kalshi-kxbtc15m-calibration-fade-v2-spent-grid-hts-exploratory-v0",
+  "analysisVersion": "calibration-fade-v2-spent-grid-hts-exploratory-v0.1",
+  "disclaimer": "Exploratory SPENT_VALIDATION grid-entry hold-to-settlement simulation on M16-ER retained friction observations. Simulated P&L at observed quotes only — not live fills, not confirmatory, not pristine. Does not modify or rerun continuous-first-crossing calibration-fade v2. A negative grid result does not reject continuous-first-crossing; a positive result does not establish live fillability.",
+  "generatedAtUtc": "2026-09-26T01:50:03.339Z",
+  "codeAuthoritySha": "30dee7161cfecaa06510db8faf798efb21c77e0a",
+  "datasetProvenance": "SPENT_VALIDATION (M16-ER retained friction grid + settlement label backfill)",
+  "manifest": {
+    "studyId": "kalshi-kxbtc15m-calibration-fade-v2-spent-grid-hts-exploratory-v0",
+    "analysisVersion": "calibration-fade-v2-spent-grid-hts-exploratory-v0.1",
+    "disclaimer": "Exploratory SPENT_VALIDATION grid-entry hold-to-settlement simulation on M16-ER retained friction observations. Simulated P&L at observed quotes only — not live fills, not confirmatory, not pristine. Does not modify or rerun continuous-first-crossing calibration-fade v2. A negative grid result does not reject continuous-first-crossing; a positive result does not establish live fillability.",
+    "frozenAtUtc": "2026-09-26T01:50:03.339Z",
+    "codeAuthoritySha": "30dee7161cfecaa06510db8faf798efb21c77e0a",
+    "datasetProvenance": "SPENT_VALIDATION (M16-ER retained friction grid + settlement label backfill)",
+    "hypothesisPath": "config/research/hypotheses/high-volatility-late-market-calibration-fade-v2.json",
+    "hypothesisPreservedUnchanged": true,
+    "inputHashesVerified": true,
+    "expectedInputs": {
+      "preentryFeaturesRelativePath": "data/research-results/external-kalshi-data-audit/m17-preentry-feature-recovery/work/preentry-features.jsonl",
+      "preentryFeaturesSha256": "c7bba7a5e2c3ee7b8f5386f770f993752eb3d4053a10ef5f97e6231264b5e0d7",
+      "settlementLabelsRelativePath": "data/external-samples/cryptostruct/m16-er/work/settlement-friction-label-backfill/settlement-labels.jsonl",
+      "settlementLabelsSha256": "7c869cd12d1e3189437db5ec3c3781cee3d988eb36421ef5f9043caddf2cfec7",
+      "bookFeaturesRelativePath": "data/research-results/external-kalshi-data-audit/m17-preentry-feature-recovery/work/book-features.jsonl",
+      "bookFeaturesSha256": "6846e7187fe89eb76c00b60ec0c44f1ae6fbfbafce20d90ab9582c54f5e44eaf",
+      "samplesRelativePath": "data/external-samples/cryptostruct/m16-er/work/settlement-friction-coverage/samples.jsonl",
+      "samplesSha256": "3f2dad5062e566ad7feacff1fbe1c0b963bbaa4d45aaa20d2a619f31098c8728"
+    },
+    "differencesFromContinuousCrossingV2": [
+      "Entry unit is first eligible retained 60s friction-grid observation per market, not continuous first-crossing into eligibility on a full quote stream",
+      "Universe is the retained M16-ER settlement-friction admission grid (eligible quotes at 60s cadence), not continuous market coverage",
+      "Pre-entry features regenerated offline (book + Coinbase completed-1m vol); original continuous hypothesis config file is not modified"
+    ],
+    "frictionGridAdmissionFilters": {
+      "sampleCadenceMs": 60000,
+      "note": "Retained samples come from CryptoStruct RAW-BBO-CHANGE streams filtered to eligible non-crossed/non-locked books with min displayed size, quote-age gate, session bounds, and first qualifying BBO-change per 60s cadence bucket. This is not a continuous tape; generalization beyond the admitted grid is limited."
+    },
+    "eligibility": {
+      "yesMidpointMinInclusive": 0.3333333333333333,
+      "yesMidpointMaxExclusive": 0.6666666666666666,
+      "timeRemainingMsMinExclusive": 0,
+      "timeRemainingMsMaxExclusive": 900000,
+      "volatilityMinInclusive": 0.6,
+      "noAskCentsMinExclusive": 0,
+      "noAskCentsMaxExclusive": 100,
+      "requireBookFeatureStatusOk": true,
+      "requireCitedHighVolRegime": true,
+      "excludeCrossed": true,
+      "excludeLocked": true,
+      "requireNoAskEquals100MinusYesBid": true
+    },
+    "volatilityContract": {
+      "source": "preentry-features.annualizedRealizedVolatility / citedHighVolRegime",
+      "authority": "config/research/hypotheses/high-volatility-late-market-calibration-fade-v2.json",
+      "lookbackBars": 10,
+      "requiredCloseCount": 11,
+      "candleCloseOffsetMs": 59999,
+      "completedCandleEligibility": "closeTimeMs < entryTimestampMs",
+      "method": "realized-log-return-annualized",
+      "minInclusive": 0.6
+    },
+    "midpointUnits": {
+      "field": "yesMidpoint",
+      "formula": "(yesBidCents + yesAskCents) / 2 / 100",
+      "range": "[1/3, 2/3) as probability fraction"
+    },
+    "selection": {
+      "unit": "one-entry-per-marketTicker",
+      "rule": "earliest entryTimestampMs among eligible rows",
+      "tieBreak": "If multiple eligible rows share the same earliest entryTimestampMs for a market, flag as duplicate-conflict and do not select opportunistically",
+      "outcomeJoinAfterSelection": true,
+      "missingOutcomeDoesNotReselect": true
+    },
+    "executionAssumptions": {
+      "side": "NO",
+      "contracts": 1,
+      "entryPrice": "observed noAskCents",
+      "exit": "official settlement result label",
+      "quoteFillAssumption": "Simulated fill at displayed noAskCents; not a confirmed live fill",
+      "sizeEvidenceFields": [
+        "yesBidSize",
+        "yesAskSize"
+      ],
+      "freshnessEvidence": "Quote-age / exchange-vs-receive freshness not present on preentry-features rows; disclosed as missing"
+    },
+    "feeContract": {
+      "identity": "2c1059ecc142dd6ca9b82375e03fd84b42f55ce6d6f1435a667111eea2d0548f",
+      "schedule": "standard",
+      "role": "taker",
+      "quantity": 1,
+      "priceBasis": "noAskCents",
+      "roundTripFee": false,
+      "settlementFee": false,
+      "implementation": "src/lib/data/backtesting/costModel/computeKalshiScheduleFeeCents.ts"
+    },
+    "payoff": {
+      "resultNo": "grossPnlCents = 100 - noAskCents",
+      "resultYes": "grossPnlCents = -noAskCents",
+      "net": "grossPnlCents - entryFeeCents"
+    },
+    "bookReconstructionPolicy": {
+      "doNotExcludeAllHalfSpreadMismatches": true,
+      "classADefinitionMismatchNotTreatedAsInvalidNoAsk": true,
+      "classBSensitivityWhenPresent": "If selected entries include Class B uncertain books and classifier inputs exist, report a predefined sensitivity excluding those entries",
+      "classBResolvedNotInferredFromNoAskAlone": true
+    },
+    "statisticalMethod": {
+      "primaryMean": "mean net P&L cents per evaluable market",
+      "clusterUnit": "utcDayKey of selected entry",
+      "varianceEstimator": "CR2 intercept-only cluster-robust (M16 implementation)",
+      "inferenceMethod": "cr2-cluster-robust-intercept-only-mean-with-one-sided-t-df-G-minus-1",
+      "confidenceInterval": "two-sided 95% CI using CR2 SE and Student-t critical value with df = G−1",
+      "leaveOneDayOut": "descriptive means only; not used to revise eligibility"
+    },
+    "exploratoryDecisionRules": {
+      "dataIntegrityFirst": true,
+      "insufficientEvidence": "N < 50 or G < 10",
+      "doNotSupportProceeding": "sufficient incidence and meanNetPnlCents <= 0",
+      "evidenceAgainstPositiveMean": "CI upper bound <= 0",
+      "exploratoryPromise": "mean >= +1 cent AND G >= 15 AND CI lower bound > 0",
+      "otherwise": "inconclusive-or-below-material-promise-bar",
+      "note": "Screening criteria only. Negative grid ≠ reject continuous-first-crossing. Positive grid ≠ live fillability or independent confirmation."
+    },
+    "boundaries": {
+      "noPurchases": true,
+      "noMarketDataDownloads": true,
+      "noProspectiveCaptures": true,
+      "noLiveTrades": true,
+      "m17SettlementStateTestingPaused": true,
+      "avg60sOutOfStrategyFeatures": true,
+      "noThresholdSweeps": true,
+      "noVolAblation": true,
+      "noContinuousCrossingRerun": true
+    }
+  },
+  "coverage": {
+    "rowsScanned": 47307,
+    "eligibleRows": 1128,
+    "selectedMarkets": 321,
+    "evaluableMarkets": 321,
+    "unevaluableMarkets": 0,
+    "exclusionCounts": {
+      "cited-high-vol-false-or-missing": 43730,
+      "book-feature-not-ok": 26,
+      "yes-midpoint-out-of-range": 2423,
+      "label:missing-label": 0,
+      "label:invalid-result": 0,
+      "label:conflicting-labels": 0
+    },
+    "selectedWithHalfSpreadMismatch": 0,
+    "selectedClassBUncertain": 0
+  },
+  "economics": {
+    "n": 321,
+    "g": 24,
+    "meanNetPnlCents": -8.641744548286605,
+    "medianNetPnlCents": -43,
+    "totalNetPnlCents": -2774,
+    "meanGrossPnlCents": -6.641744548286605,
+    "meanFeeCents": 2,
+    "meanEntryPriceCents": 50.56697819314642,
+    "noSettlementRate": 0.4392523364485981,
+    "inference": {
+      "method": "cr2-cluster-robust-intercept-only-mean-with-one-sided-t-df-G-minus-1",
+      "n": 321,
+      "g": 24,
+      "degreesOfFreedom": 23,
+      "sampleMeanCents": -8.641744548286605,
+      "cr2StandardError": 1.7435310020802,
+      "tStatistic": -4.956461650510472,
+      "tCriticalTwoSided95": 2.0686576104191614,
+      "ci95LowerCents": -12.248513224741558,
+      "ci95UpperCents": -5.034975871831652,
+      "workingModel": "Intercept-only mean of market-level net P&L cents; clusters = utcDayKey; CR2 sandwich variance from M16 computeM16Cr2ClusterMeanInference; two-sided 95% CI uses Student-t critical value with df = G−1. Not labeled as ordinary row-level SE."
+    },
+    "perDay": [
+      {
+        "utcDayKey": "2026-08-19",
+        "marketCount": 19,
+        "meanNetPnlCents": -0.7368421052631579,
+        "totalNetPnlCents": -14
+      },
+      {
+        "utcDayKey": "2026-08-20",
+        "marketCount": 21,
+        "meanNetPnlCents": -4.904761904761905,
+        "totalNetPnlCents": -103
+      },
+      {
+        "utcDayKey": "2026-08-21",
+        "marketCount": 60,
+        "meanNetPnlCents": -8.05,
+        "totalNetPnlCents": -483
+      },
+      {
+        "utcDayKey": "2026-08-22",
+        "marketCount": 11,
+        "meanNetPnlCents": -17,
+        "totalNetPnlCents": -187
+      },
+      {
+        "utcDayKey": "2026-08-23",
+        "marketCount": 6,
+        "meanNetPnlCents": -38,
+        "totalNetPnlCents": -228
+      },
+      {
+        "utcDayKey": "2026-08-24",
+        "marketCount": 21,
+        "meanNetPnlCents": -9.380952380952381,
+        "totalNetPnlCents": -197
+      },
+      {
+        "utcDayKey": "2026-08-25",
+        "marketCount": 22,
+        "meanNetPnlCents": -7.7272727272727275,
+        "totalNetPnlCents": -170
+      },
+      {
+        "utcDayKey": "2026-08-26",
+        "marketCount": 6,
+        "meanNetPnlCents": -49.5,
+        "totalNetPnlCents": -297
+      },
+      {
+        "utcDayKey": "2026-08-27",
+        "marketCount": 13,
+        "meanNetPnlCents": -0.8461538461538461,
+        "totalNetPnlCents": -11
+      },
+      {
+        "utcDayKey": "2026-08-28",
+        "marketCount": 12,
+        "meanNetPnlCents": -2.4166666666666665,
+        "totalNetPnlCents": -29
+      },
+      {
+        "utcDayKey": "2026-08-30",
+        "marketCount": 5,
+        "meanNetPnlCents": 9.2,
+        "totalNetPnlCents": 46
+      },
+      {
+        "utcDayKey": "2026-08-31",
+        "marketCount": 11,
+        "meanNetPnlCents": -27.363636363636363,
+        "totalNetPnlCents": -301
+      },
+      {
+        "utcDayKey": "2026-09-01",
+        "marketCount": 7,
+        "meanNetPnlCents": -4.857142857142857,
+        "totalNetPnlCents": -34
+      },
+      {
+        "utcDayKey": "2026-09-02",
+        "marketCount": 4,
+        "meanNetPnlCents": -3.5,
+        "totalNetPnlCents": -14
+      },
+      {
+        "utcDayKey": "2026-09-03",
+        "marketCount": 13,
+        "meanNetPnlCents": -12.461538461538462,
+        "totalNetPnlCents": -162
+      },
+      {
+        "utcDayKey": "2026-09-04",
+        "marketCount": 12,
+        "meanNetPnlCents": 3.4166666666666665,
+        "totalNetPnlCents": 41
+      },
+      {
+        "utcDayKey": "2026-09-07",
+        "marketCount": 1,
+        "meanNetPnlCents": -48,
+        "totalNetPnlCents": -48
+      },
+      {
+        "utcDayKey": "2026-09-10",
+        "marketCount": 9,
+        "meanNetPnlCents": 15.666666666666666,
+        "totalNetPnlCents": 141
+      },
+      {
+        "utcDayKey": "2026-09-11",
+        "marketCount": 15,
+        "meanNetPnlCents": -10.4,
+        "totalNetPnlCents": -156
+      },
+      {
+        "utcDayKey": "2026-09-15",
+        "marketCount": 14,
+        "meanNetPnlCents": -4.5,
+        "totalNetPnlCents": -63
+      },
+      {
+        "utcDayKey": "2026-09-16",
+        "marketCount": 12,
+        "meanNetPnlCents": -9.5,
+        "totalNetPnlCents": -114
+      },
+      {
+        "utcDayKey": "2026-09-17",
+        "marketCount": 4,
+        "meanNetPnlCents": -27.5,
+        "totalNetPnlCents": -110
+      },
+      {
+        "utcDayKey": "2026-09-19",
+        "marketCount": 1,
+        "meanNetPnlCents": 48,
+        "totalNetPnlCents": 48
+      },
+      {
+        "utcDayKey": "2026-09-21",
+        "marketCount": 22,
+        "meanNetPnlCents": -14.954545454545455,
+        "totalNetPnlCents": -329
+      }
+    ],
+    "leaveOneDayOutMeansCents": [
+      {
+        "heldOutUtcDayKey": "2026-08-19",
+        "meanNetPnlCents": -9.139072847682119,
+        "nRemaining": 302
+      },
+      {
+        "heldOutUtcDayKey": "2026-08-20",
+        "meanNetPnlCents": -8.903333333333334,
+        "nRemaining": 300
+      },
+      {
+        "heldOutUtcDayKey": "2026-08-21",
+        "meanNetPnlCents": -8.777777777777779,
+        "nRemaining": 261
+      },
+      {
+        "heldOutUtcDayKey": "2026-08-22",
+        "meanNetPnlCents": -8.345161290322581,
+        "nRemaining": 310
+      },
+      {
+        "heldOutUtcDayKey": "2026-08-23",
+        "meanNetPnlCents": -8.082539682539682,
+        "nRemaining": 315
+      },
+      {
+        "heldOutUtcDayKey": "2026-08-24",
+        "meanNetPnlCents": -8.59,
+        "nRemaining": 300
+      },
+      {
+        "heldOutUtcDayKey": "2026-08-25",
+        "meanNetPnlCents": -8.709030100334449,
+        "nRemaining": 299
+      },
+      {
+        "heldOutUtcDayKey": "2026-08-26",
+        "meanNetPnlCents": -7.863492063492063,
+        "nRemaining": 315
+      },
+      {
+        "heldOutUtcDayKey": "2026-08-27",
+        "meanNetPnlCents": -8.970779220779221,
+        "nRemaining": 308
+      },
+      {
+        "heldOutUtcDayKey": "2026-08-28",
+        "meanNetPnlCents": -8.883495145631068,
+        "nRemaining": 309
+      },
+      {
+        "heldOutUtcDayKey": "2026-08-30",
+        "meanNetPnlCents": -8.924050632911392,
+        "nRemaining": 316
+      },
+      {
+        "heldOutUtcDayKey": "2026-08-31",
+        "meanNetPnlCents": -7.97741935483871,
+        "nRemaining": 310
+      },
+      {
+        "heldOutUtcDayKey": "2026-09-01",
+        "meanNetPnlCents": -8.726114649681529,
+        "nRemaining": 314
+      },
+      {
+        "heldOutUtcDayKey": "2026-09-02",
+        "meanNetPnlCents": -8.706624605678233,
+        "nRemaining": 317
+      },
+      {
+        "heldOutUtcDayKey": "2026-09-03",
+        "meanNetPnlCents": -8.480519480519481,
+        "nRemaining": 308
+      },
+      {
+        "heldOutUtcDayKey": "2026-09-04",
+        "meanNetPnlCents": -9.110032362459547,
+        "nRemaining": 309
+      },
+      {
+        "heldOutUtcDayKey": "2026-09-07",
+        "meanNetPnlCents": -8.51875,
+        "nRemaining": 320
+      },
+      {
+        "heldOutUtcDayKey": "2026-09-10",
+        "meanNetPnlCents": -9.342948717948717,
+        "nRemaining": 312
+      },
+      {
+        "heldOutUtcDayKey": "2026-09-11",
+        "meanNetPnlCents": -8.555555555555555,
+        "nRemaining": 306
+      },
+      {
+        "heldOutUtcDayKey": "2026-09-15",
+        "meanNetPnlCents": -8.830618892508143,
+        "nRemaining": 307
+      },
+      {
+        "heldOutUtcDayKey": "2026-09-16",
+        "meanNetPnlCents": -8.608414239482201,
+        "nRemaining": 309
+      },
+      {
+        "heldOutUtcDayKey": "2026-09-17",
+        "meanNetPnlCents": -8.40378548895899,
+        "nRemaining": 317
+      },
+      {
+        "heldOutUtcDayKey": "2026-09-19",
+        "meanNetPnlCents": -8.81875,
+        "nRemaining": 320
+      },
+      {
+        "heldOutUtcDayKey": "2026-09-21",
+        "meanNetPnlCents": -8.177257525083611,
+        "nRemaining": 299
+      }
+    ]
+  },
+  "interpretation": {
+    "status": "evidence-against-positive-mean",
+    "rationale": "CI upper bound -5.0350¢ ≤ 0 under CR2 df=G−1 assumptions for this grid variant."
+  },
+  "executionLimitations": [
+    "Simulated P&L at observed displayed noAskCents — not confirmed live fills",
+    "Quote-age / exchange-vs-receive freshness not present on preentry-feature rows",
+    "315/321 selected entries have yesBidSize ≥ 1; remaining size evidence missing or <1",
+    "Population is the retained 60s friction-admission grid, not continuous quote coverage",
+    "Hold-to-settlement charges one STANDARD taker entry fee only (no exit/round-trip fee)"
+  ],
+  "priorEvidenceNotes": [
+    "Sealed calibration-fade-v2 forward-validation / atlas artifacts are absent under data/research-results/calibration-fade-v2/ in this checkout — cannot verify the reported five-market unfavorable calibration-gap result with zero executable fee-adjusted evaluations against retained report files here.",
+    "Hypothesis config minimumEvidenceRequirements.minimumIndependentCandidateMarkets = 5; classificationRules include forward-rejects-hypothesis — design intent only without sealed run artifacts.",
+    "M16-ER fee-adjusted mean ≈ −4.427¢ (N=461, G=34) is a different strategy family (documented in m17-prep-m16p-suspension.md); not this grid variant.",
+    "All 34 SPENT days are SPENT_VALIDATION; no pristine subset."
+  ],
+  "attestation": {
+    "purchaseOccurred": false,
+    "subscriptionOccurred": false,
+    "tradeOrOrderOccurred": false,
+    "liveCaptureStarted": false,
+    "continuousCrossingHypothesisModified": false,
+    "thresholdSweepPerformed": false,
+    "avg60sUsedAsStrategyFeature": false,
+    "simulatedPnlAtObservedQuotes": true
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "command": "npm run research:calibration-fade-v2-spent-grid-hts-exploratory",
+  "inputHashes": {
+    "preentryFeatures": "c7bba7a5e2c3ee7b8f5386f770f993752eb3d4053a10ef5f97e6231264b5e0d7",
+    "settlementLabels": "7c869cd12d1e3189437db5ec3c3781cee3d988eb36421ef5f9043caddf2cfec7"
+  },
+  "outputHashes": {
+    "frozen-study-manifest.json": "12e4d658eb5b2a37d2b6e408c00c95265c950bf1c7a20118a7b9b3ad7c2d70ed",
+    "report.json": "4e0a197260d1b97192ed0d93b99c388e15db862001d3434d179d157702c40b08",
+    "report.md": "820d283eafe3b8509cca875436cb043e0be2a3123648b9eef76f1df1b92b7753",
+    "per-market-trades.jsonl": "904e9f5d505ae7ec016dadeff475be368c04f36a7f2f1cd834860bfff9bcb906",
+    "selected-entries.jsonl": "0597917bcb71a0c6623d133f10e18b435c59debb3a4c89da912f7d806d74db08"
+  },
+  "codeAuthoritySha": "30dee7161cfecaa06510db8faf798efb21c77e0a",
+  "generatedAtUtc": "2026-09-26T01:50:03.339Z",
+  "classBSensitivity": null
+}
