@@ -21,4 +21,3 @@
 - Valid Coinbase and Kalshi quote JSONL caches (expiry bug omitted contract sidecars only; quote reconstruction persisted)
 - Empty/wrong 08-14 and 08-21 contract sidecars (copied under `contract-sidecars-pre-repair/`)
 - Pre-repair day-result artifacts (copied under `day-results-pre-repair/` where applicable)
-
