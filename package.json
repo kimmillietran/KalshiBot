@@ -110,6 +110,7 @@
     "research:m17-preentry-book-features": "python3 scripts/research/streamM17PreentryBookFeatures.py",
     "research:m17-preentry-feature-recovery": "tsx scripts/research/runM17PreentryFeatureRecovery.ts",
     "research:calibration-fade-v2-spent-grid-hts-exploratory": "tsx scripts/research/runCalibrationFadeV2SpentGridHtsExploratory.ts",
+    "research:calibration-fade-v2-spent-grid-hts-yes-mirror-diagnostic": "tsx scripts/research/runCalibrationFadeV2SpentGridHtsYesMirrorDiagnostic.ts",
     "research:kalshi-brti-access-probe": "tsx scripts/research/runKalshiBrtiAccessProbe.ts",
     "research:kalshi-settlement-sample-mapping": "tsx scripts/research/runKalshiSettlementSampleMapping.ts",
     "research:kalshi-one-close-settlement-fidelity": "tsx scripts/research/runOneCloseSettlementFidelity.ts",

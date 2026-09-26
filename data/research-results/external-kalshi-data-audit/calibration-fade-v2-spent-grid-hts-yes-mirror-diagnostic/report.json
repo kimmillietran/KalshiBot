@@ -1,0 +1,371 @@
+{
+  "studyId": "kalshi-kxbtc15m-calibration-fade-v2-spent-grid-hts-yes-mirror-diagnostic-v0",
+  "analysisVersion": "calibration-fade-v2-spent-grid-hts-yes-mirror-diagnostic-v0.1",
+  "disclaimer": "Outcome-informed paired YES-side accounting/execution diagnostic on the exact PR #134 selected cohort. Simulated P&L at observed quotes only. Not a new independent mechanism, not confirmation, not live fills. Compression toward 50% does not imply a uniform YES trade throughout [1/3, 2/3). Confidence intervals do not remove outcome-informed selection bias.",
+  "generatedAtUtc": "2026-09-26T02:13:46.878Z",
+  "codeAuthoritySha": "ea71b8b76cc2433d1cf9ed3803d694ed05416f98",
+  "priorExposure": {
+    "noGridStudyId": "kalshi-kxbtc15m-calibration-fade-v2-spent-grid-hts-exploratory-v0",
+    "noGridResultSummary": "PR #134: N=321, G=24, mean net −8.6417¢, CR2 95% CI [−12.2485, −5.0350]¢, status evidence-against-positive-mean (buy NO grid HTS).",
+    "yesMirrorSelectedAfterObservingNoResult": true,
+    "isIndependentMechanismTest": false,
+    "isPreOutcomePreregistration": false,
+    "attemptedHistory": [
+      "no-grid-hts-exploratory-v0 (PR #134)",
+      "yes-mirror-diagnostic-v0 (this study; selected after observing #134)"
+    ]
+  },
+  "cohort": {
+    "sourceSelectedEntriesSha256": "0597917bcb71a0c6623d133f10e18b435c59debb3a4c89da912f7d806d74db08",
+    "sourcePerMarketTradesSha256": "904e9f5d505ae7ec016dadeff475be368c04f36a7f2f1cd834860bfff9bcb906",
+    "hashesVerified": true,
+    "originalN": 321,
+    "originalG": 24,
+    "reproducedNoMeanNetPnlCents": -8.641744548286605,
+    "noMeanMatchesRecordedPrecision": true,
+    "pairedN": 321,
+    "pairedG": 24,
+    "unevaluableCount": 0,
+    "unevaluableReasons": {},
+    "cohortDiffersFromOriginal321": false
+  },
+  "accounting": {
+    "identityFormula": "yesNetPnl + noNetPnl = -(yesAskCents - yesBidCents) - yesFeeCents - noFeeCents",
+    "identityHoldsForAllPairedRows": true,
+    "identityViolationCount": 0,
+    "meanNoNetPnlCents": -8.641744548286605,
+    "meanYesSpreadCents": 1.5763239875389408,
+    "meanYesFeeCents": 2,
+    "meanNoFeeCents": 2,
+    "meanYesNetFromIdentityCents": 3.065420560747664,
+    "meanYesNetDirectCents": 3.0654205607476634,
+    "identityDerivedVsDirectResidualCents": 4.440892098500626e-16
+  },
+  "economics": {
+    "n": 321,
+    "g": 24,
+    "meanNetPnlCents": 3.0654205607476634,
+    "medianNetPnlCents": 36,
+    "totalNetPnlCents": 984,
+    "meanGrossPnlCents": 5.065420560747664,
+    "meanEntryPriceCents": 51.00934579439252,
+    "yesSettlementRate": 0.5607476635514018,
+    "inference": {
+      "method": "cr2-cluster-robust-intercept-only-mean-with-one-sided-t-df-G-minus-1",
+      "n": 321,
+      "g": 24,
+      "degreesOfFreedom": 23,
+      "sampleMeanCents": 3.0654205607476634,
+      "cr2StandardError": 1.7589690634905666,
+      "tStatistic": 1.742737052273406,
+      "tCriticalTwoSided95": 2.0686576104191614,
+      "ci95LowerCents": -0.5732841789339624,
+      "ci95UpperCents": 6.70412530042929,
+      "workingModel": "Intercept-only mean of market-level net P&L cents; clusters = utcDayKey; CR2 sandwich variance from M16 computeM16Cr2ClusterMeanInference; two-sided 95% CI uses Student-t critical value with df = G−1. Not labeled as ordinary row-level SE."
+    },
+    "perDay": [
+      {
+        "utcDayKey": "2026-08-19",
+        "marketCount": 19,
+        "meanNetPnlCents": -5.105263157894737,
+        "totalNetPnlCents": -97
+      },
+      {
+        "utcDayKey": "2026-08-20",
+        "marketCount": 21,
+        "meanNetPnlCents": -0.7142857142857143,
+        "totalNetPnlCents": -15
+      },
+      {
+        "utcDayKey": "2026-08-21",
+        "marketCount": 60,
+        "meanNetPnlCents": 2.3833333333333333,
+        "totalNetPnlCents": 143
+      },
+      {
+        "utcDayKey": "2026-08-22",
+        "marketCount": 11,
+        "meanNetPnlCents": 11.636363636363637,
+        "totalNetPnlCents": 128
+      },
+      {
+        "utcDayKey": "2026-08-23",
+        "marketCount": 6,
+        "meanNetPnlCents": 32.5,
+        "totalNetPnlCents": 195
+      },
+      {
+        "utcDayKey": "2026-08-24",
+        "marketCount": 21,
+        "meanNetPnlCents": 4.142857142857143,
+        "totalNetPnlCents": 87
+      },
+      {
+        "utcDayKey": "2026-08-25",
+        "marketCount": 22,
+        "meanNetPnlCents": 0.5454545454545454,
+        "totalNetPnlCents": 12
+      },
+      {
+        "utcDayKey": "2026-08-26",
+        "marketCount": 6,
+        "meanNetPnlCents": 44.166666666666664,
+        "totalNetPnlCents": 265
+      },
+      {
+        "utcDayKey": "2026-08-27",
+        "marketCount": 13,
+        "meanNetPnlCents": -4.538461538461538,
+        "totalNetPnlCents": -59
+      },
+      {
+        "utcDayKey": "2026-08-28",
+        "marketCount": 12,
+        "meanNetPnlCents": -2.8333333333333335,
+        "totalNetPnlCents": -34
+      },
+      {
+        "utcDayKey": "2026-08-30",
+        "marketCount": 5,
+        "meanNetPnlCents": -14.4,
+        "totalNetPnlCents": -72
+      },
+      {
+        "utcDayKey": "2026-08-31",
+        "marketCount": 11,
+        "meanNetPnlCents": 22,
+        "totalNetPnlCents": 242
+      },
+      {
+        "utcDayKey": "2026-09-01",
+        "marketCount": 7,
+        "meanNetPnlCents": -0.42857142857142855,
+        "totalNetPnlCents": -3
+      },
+      {
+        "utcDayKey": "2026-09-02",
+        "marketCount": 4,
+        "meanNetPnlCents": -1.75,
+        "totalNetPnlCents": -7
+      },
+      {
+        "utcDayKey": "2026-09-03",
+        "marketCount": 13,
+        "meanNetPnlCents": 6.846153846153846,
+        "totalNetPnlCents": 89
+      },
+      {
+        "utcDayKey": "2026-09-04",
+        "marketCount": 12,
+        "meanNetPnlCents": -8.666666666666666,
+        "totalNetPnlCents": -104
+      },
+      {
+        "utcDayKey": "2026-09-07",
+        "marketCount": 1,
+        "meanNetPnlCents": 43,
+        "totalNetPnlCents": 43
+      },
+      {
+        "utcDayKey": "2026-09-10",
+        "marketCount": 9,
+        "meanNetPnlCents": -20.88888888888889,
+        "totalNetPnlCents": -188
+      },
+      {
+        "utcDayKey": "2026-09-11",
+        "marketCount": 15,
+        "meanNetPnlCents": 5.2,
+        "totalNetPnlCents": 78
+      },
+      {
+        "utcDayKey": "2026-09-15",
+        "marketCount": 14,
+        "meanNetPnlCents": -1.0714285714285714,
+        "totalNetPnlCents": -15
+      },
+      {
+        "utcDayKey": "2026-09-16",
+        "marketCount": 12,
+        "meanNetPnlCents": 4.166666666666667,
+        "totalNetPnlCents": 50
+      },
+      {
+        "utcDayKey": "2026-09-17",
+        "marketCount": 4,
+        "meanNetPnlCents": 21.75,
+        "totalNetPnlCents": 87
+      },
+      {
+        "utcDayKey": "2026-09-19",
+        "marketCount": 1,
+        "meanNetPnlCents": -53,
+        "totalNetPnlCents": -53
+      },
+      {
+        "utcDayKey": "2026-09-21",
+        "marketCount": 22,
+        "meanNetPnlCents": 9.636363636363637,
+        "totalNetPnlCents": 212
+      }
+    ],
+    "leaveOneDayOutMeansCents": [
+      {
+        "heldOutUtcDayKey": "2026-08-19",
+        "meanNetPnlCents": 3.5794701986754967,
+        "nRemaining": 302
+      },
+      {
+        "heldOutUtcDayKey": "2026-08-20",
+        "meanNetPnlCents": 3.33,
+        "nRemaining": 300
+      },
+      {
+        "heldOutUtcDayKey": "2026-08-21",
+        "meanNetPnlCents": 3.2222222222222223,
+        "nRemaining": 261
+      },
+      {
+        "heldOutUtcDayKey": "2026-08-22",
+        "meanNetPnlCents": 2.761290322580645,
+        "nRemaining": 310
+      },
+      {
+        "heldOutUtcDayKey": "2026-08-23",
+        "meanNetPnlCents": 2.5047619047619047,
+        "nRemaining": 315
+      },
+      {
+        "heldOutUtcDayKey": "2026-08-24",
+        "meanNetPnlCents": 2.99,
+        "nRemaining": 300
+      },
+      {
+        "heldOutUtcDayKey": "2026-08-25",
+        "meanNetPnlCents": 3.250836120401338,
+        "nRemaining": 299
+      },
+      {
+        "heldOutUtcDayKey": "2026-08-26",
+        "meanNetPnlCents": 2.2825396825396824,
+        "nRemaining": 315
+      },
+      {
+        "heldOutUtcDayKey": "2026-08-27",
+        "meanNetPnlCents": 3.3863636363636362,
+        "nRemaining": 308
+      },
+      {
+        "heldOutUtcDayKey": "2026-08-28",
+        "meanNetPnlCents": 3.294498381877023,
+        "nRemaining": 309
+      },
+      {
+        "heldOutUtcDayKey": "2026-08-30",
+        "meanNetPnlCents": 3.3417721518987342,
+        "nRemaining": 316
+      },
+      {
+        "heldOutUtcDayKey": "2026-08-31",
+        "meanNetPnlCents": 2.393548387096774,
+        "nRemaining": 310
+      },
+      {
+        "heldOutUtcDayKey": "2026-09-01",
+        "meanNetPnlCents": 3.143312101910828,
+        "nRemaining": 314
+      },
+      {
+        "heldOutUtcDayKey": "2026-09-02",
+        "meanNetPnlCents": 3.1261829652996846,
+        "nRemaining": 317
+      },
+      {
+        "heldOutUtcDayKey": "2026-09-03",
+        "meanNetPnlCents": 2.905844155844156,
+        "nRemaining": 308
+      },
+      {
+        "heldOutUtcDayKey": "2026-09-04",
+        "meanNetPnlCents": 3.5210355987055015,
+        "nRemaining": 309
+      },
+      {
+        "heldOutUtcDayKey": "2026-09-07",
+        "meanNetPnlCents": 2.940625,
+        "nRemaining": 320
+      },
+      {
+        "heldOutUtcDayKey": "2026-09-10",
+        "meanNetPnlCents": 3.7564102564102564,
+        "nRemaining": 312
+      },
+      {
+        "heldOutUtcDayKey": "2026-09-11",
+        "meanNetPnlCents": 2.9607843137254903,
+        "nRemaining": 306
+      },
+      {
+        "heldOutUtcDayKey": "2026-09-15",
+        "meanNetPnlCents": 3.254071661237785,
+        "nRemaining": 307
+      },
+      {
+        "heldOutUtcDayKey": "2026-09-16",
+        "meanNetPnlCents": 3.0226537216828477,
+        "nRemaining": 309
+      },
+      {
+        "heldOutUtcDayKey": "2026-09-17",
+        "meanNetPnlCents": 2.829652996845426,
+        "nRemaining": 317
+      },
+      {
+        "heldOutUtcDayKey": "2026-09-19",
+        "meanNetPnlCents": 3.240625,
+        "nRemaining": 320
+      },
+      {
+        "heldOutUtcDayKey": "2026-09-21",
+        "meanNetPnlCents": 2.5819397993311037,
+        "nRemaining": 299
+      }
+    ]
+  },
+  "liquidity": {
+    "yesAskSizeGe1": 315,
+    "yesAskSizeKnownInsufficient": 6,
+    "yesAskSizeMissing": 0,
+    "note": "YES purchases require YES ASK size. Original 315/321 yesBidSize≥1 check is NOT evidence of YES-ask fillability. Quote-age / exchange-vs-receive latency are not present on the #134 trade artifacts.",
+    "sensitivityAskSizeGe1": {
+      "n": 315,
+      "g": 24,
+      "meanNetPnlCents": 2.9015873015873015,
+      "ci95LowerCents": -1.034347050443332,
+      "ci95UpperCents": 6.8375216536179355
+    }
+  },
+  "interpretation": {
+    "status": "inconclusive-or-below-material-bar",
+    "rationale": "Positive mean 3.0654¢ meets the +1¢ screening level but remains uncertain (CR2 CI does not clear zero and/or G/CI conditions fail). Inconclusive — not exploratory promise.",
+    "meritsFreshPeriodTestDesign": false
+  },
+  "executionLimitations": [
+    "Simulated P&L at observed yesAskCents — not verified live fills",
+    "Quote-age / source-vs-receipt timestamps unavailable on #134 cohort artifacts",
+    "Cohort frozen from #134; no reselection of later timestamps for liquidity",
+    "Outcome-informed selection after observing NO-grid failure",
+    "M17 settlement-state remains paused; avg_60s_data not used"
+  ],
+  "attestation": {
+    "purchaseOccurred": false,
+    "subscriptionOccurred": false,
+    "tradeOrOrderOccurred": false,
+    "liveCaptureStarted": false,
+    "originalNoOutputsModified": false,
+    "simulatedPnlAtObservedQuotes": true,
+    "thresholdSweepPerformed": false,
+    "favorite085ExperimentRun": false,
+    "continuousCrossingRun": false
+  }
+}
