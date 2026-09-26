@@ -15,6 +15,7 @@ import {
   writeDayResult,
   type DayResultIdentity,
 } from "./checkpoint";
+import { CONTRACT_METADATA_VERSION } from "./contractMetadata";
 import {
   buildDiagnosticControls,
   detectExternalBtcEventsFromAsyncIterable,
@@ -116,6 +117,7 @@ export async function processOnePilotDay(input: {
       simulationSpecSha256: simulationSpecHash(),
       replayImplementation: REPLAY_IMPLEMENTATION_VERSION,
       quoteCacheSchemaVersion: QUOTE_CACHE_SCHEMA_VERSION,
+      contractMetadataVersion: CONTRACT_METADATA_VERSION,
       coinbaseRawSha256: coinbase.rawSha256,
       kalshiZipSha256: kalshi.zipSha256,
       utcDay: input.utcDay,
@@ -186,6 +188,7 @@ export async function processOnePilotDay(input: {
             completedNetPnlCents: null,
             allEntryLowerBoundNetCents: null,
             allEntryUpperBoundNetCents: null,
+            unresolvedMarkToMarketNetCents: null,
             preEntryRejectReason: "timing-quality-block",
             exitFailureReason: null,
             excluded: true,

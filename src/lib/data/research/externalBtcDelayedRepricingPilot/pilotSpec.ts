@@ -38,6 +38,8 @@ export const FROZEN_PILOT_SPEC = {
     "Friday-only label; fragile G≤5 CI; control isolation + retrospective placebo labeling",
     "Concrete M12.8 reconciliation with material fee-aware delayed-taker gap",
     "Memory-bounded per-day child workers + disk sparse JSONL caches (semantics unchanged)",
+    "Repair-v2: ticker HHMM America/New_York close when header expiry null; "
+      + "terminal payout envelopes 0−cost/100−cost; last-bid MTM labeled separately",
   ],
   hypothesis:
     "After an external Coinbase BTC-USD move, Kalshi KXBTC15M executable quotes may "

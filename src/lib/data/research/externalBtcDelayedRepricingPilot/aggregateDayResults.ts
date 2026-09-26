@@ -5,6 +5,7 @@
 import { readFileSync } from "node:fs";
 
 import type { DayResultArtifact } from "./checkpoint";
+import { CONTRACT_METADATA_VERSION } from "./contractMetadata";
 import { M128_RECONCILIATION } from "./m128Reconciliation";
 import { FROZEN_PILOT_SPEC } from "./pilotSpec";
 import { EXIT_FAILURE_POLICY } from "./simulateTrades";
@@ -30,6 +31,11 @@ function meanOrNull(values: readonly number[]): number | null {
   return values.reduce((a, b) => a + b, 0) / values.length;
 }
 
+function sumOrNull(values: readonly number[]): number | null {
+  if (values.length === 0) return null;
+  return values.reduce((a, b) => a + b, 0);
+}
+
 function economicsForDelay(
   delayMs: PilotDelayMs,
   trades: readonly SimulatedTrade[],
@@ -48,6 +54,19 @@ function economicsForDelay(
         ? "incomplete-unresolved-exits"
         : "complete";
 
+  const completedNets = completed
+    .map((t) => t.completedNetPnlCents)
+    .filter((v): v is number => v !== null);
+  const lowerVals = entered
+    .map((t) => t.allEntryLowerBoundNetCents)
+    .filter((v): v is number => v !== null);
+  const upperVals = entered
+    .map((t) => t.allEntryUpperBoundNetCents)
+    .filter((v): v is number => v !== null);
+  const mtmVals = entered
+    .map((t) => t.unresolvedMarkToMarketNetCents)
+    .filter((v): v is number => v !== null);
+
   return {
     opportunityEnteredCount: entered.length,
     preEntryRejectCount: primary.filter((t) => t.entryStatus === "rejected-pre-entry").length,
@@ -55,16 +74,14 @@ function economicsForDelay(
     unresolvedExitCount: unresolved.length,
     economicResultStatus,
     completedTradeUncertainty: summarizeCompletedTradeUncertainty(completed),
-    allEntryLowerBoundMeanCents: meanOrNull(
-      entered
-        .map((t) => t.allEntryLowerBoundNetCents)
-        .filter((v): v is number => v !== null),
-    ),
-    allEntryUpperBoundMeanCents: meanOrNull(
-      entered
-        .map((t) => t.allEntryUpperBoundNetCents)
-        .filter((v): v is number => v !== null),
-    ),
+    completedTotalNetPnlCents: sumOrNull(completedNets),
+    completedMeanNetPnlCents: meanOrNull(completedNets),
+    allEntryLowerBoundTotalCents: sumOrNull(lowerVals),
+    allEntryUpperBoundTotalCents: sumOrNull(upperVals),
+    allEntryLowerBoundMeanCents: meanOrNull(lowerVals),
+    allEntryUpperBoundMeanCents: meanOrNull(upperVals),
+    unresolvedMarkToMarketTotalCents: sumOrNull(mtmVals),
+    unresolvedMarkToMarketMeanCents: meanOrNull(mtmVals),
     delayClaimStatus: delayClaimSupport({
       delayMs,
       decisionClockDomain: CLOCK_POLICY.decisionClockDomain,
@@ -143,6 +160,7 @@ export function aggregateDayResults(input: {
       studyId: EXTERNAL_BTC_DELAYED_REPRICING_PILOT_STUDY_ID,
       replayImplementation: REPLAY_IMPLEMENTATION_VERSION,
       memoryArchitecture: "per-day-child-plus-disk-sparse-jsonl-v1",
+      contractMetadataVersion: CONTRACT_METADATA_VERSION,
     },
     events: allEvents,
     trades: allTrades,

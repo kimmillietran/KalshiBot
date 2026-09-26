@@ -123,6 +123,37 @@ export async function streamZipMemberZstd(
   await Promise.all([lineDone, exits]);
 }
 
+/**
+ * Peek the first decompressed line of a ZIP .txt.zst member (header JSON).
+ * Bounded: stops after one line via `head -n 1` so full members are not read.
+ */
+export function peekZipMemberFirstLine(
+  zipPath: string,
+  memberName: string,
+): string | null {
+  if (!existsSync(zipPath)) {
+    throw new Error(`missing zip: ${zipPath}`);
+  }
+  assertZstdAvailable();
+  const result = spawnSync(
+    "bash",
+    [
+      "-lc",
+      `unzip -p "$1" "$2" | zstd -dc | head -n 1`,
+      "peek",
+      zipPath,
+      memberName,
+    ],
+    { encoding: "utf8", maxBuffer: 8 * 1024 * 1024 },
+  );
+  if (result.error) {
+    throw result.error;
+  }
+  // head may SIGPIPE zstd/unzip; accept empty or partial with status 0/1/141
+  const line = (result.stdout ?? "").split("\n")[0]?.trim() ?? "";
+  return line.length > 0 ? line : null;
+}
+
 /** List member names inside a ZIP (via unzip -Z1). */
 export async function listZipMembers(zipPath: string): Promise<string[]> {
   return await new Promise((resolve, reject) => {

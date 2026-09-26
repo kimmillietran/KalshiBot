@@ -1,0 +1,15 @@
+reviewed_code_sha=56833bc45594a5f135e2f317600b1cee2a988a1b
+merge_commit=89908cb7d85ffa37bfafa4189f71c701d554f5f7
+pr=138
+order=01M3DTG2NK2SQRPA1C01RBNT9C
+attempt1_result=FAILED_OOM
+attempt1_log=run-stdout-attempt1-oom.log
+attempt2_result=NOT_RUNNING_AT_INSPECTION_cause_unknown
+attempt2_log=run-stdout-attempt2-16g-retry.log
+attempt3_start_iso=2026-09-26T20:22:24Z
+attempt3_node_options=--max-old-space-size=8192
+attempt3_architecture=per-day-child-plus-disk-sparse-jsonl-v1
+attempt3_monitor=scripts/research/monitorExternalBtcDelayedRepricingPilot.sh
+attempt3_note=native_throughput_day1_~1.2M_msgs_per_sec_rss~320MB_at_5s
+attempt3_relaunch_iso=2026-09-26T20:23:03Z
+attempt3_launch=foreground_background_shell_block0

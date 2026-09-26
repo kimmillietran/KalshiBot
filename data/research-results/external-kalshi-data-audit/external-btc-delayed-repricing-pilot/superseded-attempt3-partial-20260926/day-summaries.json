@@ -1,0 +1,52 @@
+[
+  {
+    "utcDay": "2026-08-14",
+    "weekday": "Friday",
+    "primaryEventCount": 57,
+    "preEntryRejectCount": 57,
+    "enteredCount": 0,
+    "completedExitCount": 0,
+    "unresolvedExitCount": 0,
+    "completedMeanNetPnlCents": null
+  },
+  {
+    "utcDay": "2026-08-21",
+    "weekday": "Friday",
+    "primaryEventCount": 872,
+    "preEntryRejectCount": 872,
+    "enteredCount": 0,
+    "completedExitCount": 0,
+    "unresolvedExitCount": 0,
+    "completedMeanNetPnlCents": null
+  },
+  {
+    "utcDay": "2026-08-28",
+    "weekday": "Friday",
+    "primaryEventCount": 330,
+    "preEntryRejectCount": 95,
+    "enteredCount": 235,
+    "completedExitCount": 226,
+    "unresolvedExitCount": 9,
+    "completedMeanNetPnlCents": -4.150442477876106
+  },
+  {
+    "utcDay": "2026-09-04",
+    "weekday": "Friday",
+    "primaryEventCount": 250,
+    "preEntryRejectCount": 53,
+    "enteredCount": 197,
+    "completedExitCount": 191,
+    "unresolvedExitCount": 6,
+    "completedMeanNetPnlCents": -3.9633507853403143
+  },
+  {
+    "utcDay": "2026-09-11",
+    "weekday": "Friday",
+    "primaryEventCount": 323,
+    "preEntryRejectCount": 98,
+    "enteredCount": 225,
+    "completedExitCount": 217,
+    "unresolvedExitCount": 8,
+    "completedMeanNetPnlCents": -3.4193548387096775
+  }
+]
