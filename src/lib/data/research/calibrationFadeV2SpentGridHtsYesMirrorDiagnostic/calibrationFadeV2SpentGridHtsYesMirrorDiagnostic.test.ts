@@ -216,6 +216,17 @@ describe("calibrationFadeV2SpentGridHtsYesMirrorDiagnostic", () => {
         ci95UpperCents: 3.5,
       }).status,
     ).toBe("exploratory-promise-only");
+    // Mirrors the real #134-cohort result: mean clears +1¢ but CR2 CI spans 0.
+    const inconclusive = interpretYesMirrorDiagnostic({
+      dataOk: true,
+      n: 321,
+      g: 24,
+      meanNetPnlCents: 3.0654,
+      ci95LowerCents: -0.5733,
+      ci95UpperCents: 6.7041,
+    });
+    expect(inconclusive.status).toBe("inconclusive-or-below-material-bar");
+    expect(inconclusive.meritsFreshPeriodTestDesign).toBe(false);
   });
 
   it("flags hash mismatch without inventing real-data P&L claims", () => {

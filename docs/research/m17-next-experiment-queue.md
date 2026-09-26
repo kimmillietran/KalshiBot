@@ -61,8 +61,9 @@ Buying YES throughout the frozen `[1/3, 2/3)` mid bucket does **not** test a cla
 the book is “underconfident.” Compression toward 50% does **not** imply the same trade
 direction throughout that interval.
 
-What PR #135 authorizes and delivers is an **outcome-informed paired accounting /
-execution diagnostic** of the opposite side of #134’s exact selected cohort:
+What this PR (#136) delivers — correcting the #135 planning framing — is an
+**outcome-informed paired accounting / execution diagnostic** of the opposite
+side of #134’s exact selected cohort:
 
 - Same 321 market tickers, entry timestamps, source rows, settlements, UTC entry days
 - One YES contract at observed `yesAskCents`, hold to the same official settlement

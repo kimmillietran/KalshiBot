@@ -1,8 +1,8 @@
 # CF-v2 SPENT grid HTS — YES-side mirror diagnostic
 
 - Study: `kalshi-kxbtc15m-calibration-fade-v2-spent-grid-hts-yes-mirror-diagnostic-v0` / `calibration-fade-v2-spent-grid-hts-yes-mirror-diagnostic-v0.1`
-- Generated (UTC): 2026-09-26T02:10:30.714Z
-- Code authority SHA: `b4c5a76643eac6ea42eca08114dffd0b56ed495b`
+- Generated (UTC): 2026-09-26T02:13:46.878Z
+- Code authority SHA: `ea71b8b76cc2433d1cf9ed3803d694ed05416f98`
 
 ## Framing
 
@@ -144,4 +144,3 @@ YES purchases require YES ASK size. Original 315/321 yesBidSize≥1 check is NOT
   "continuousCrossingRun": false
 }
 ```
-

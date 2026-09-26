@@ -191,7 +191,6 @@ export function renderYesMirrorReportMarkdown(report: YesMirrorDiagnosticReport)
   lines.push("```json");
   lines.push(JSON.stringify(report.attestation, null, 2));
   lines.push("```");
-  lines.push("");
   return `${lines.join("\n")}\n`;
 }
 
