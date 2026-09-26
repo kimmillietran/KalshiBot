@@ -1,0 +1,157 @@
+{
+  "studyId": "kalshi-kxbtc15m-external-btc-delayed-repricing-pilot-v0",
+  "generatedAtIso": "2026-09-26T02:30:00.000Z",
+  "selectionRule": "every-7th-m16-er-day-chronological-index-0-based",
+  "venue": {
+    "venueCode": "coinbase",
+    "instrumentCode": "BTC-USD",
+    "instrumentId": 15050
+  },
+  "kalshi": {
+    "seriesKey": "kalshi-btc-15m",
+    "bundleId": 9000000001,
+    "messageTypes": [
+      0,
+      1,
+      2
+    ]
+  },
+  "utcDates": [
+    "2026-08-14",
+    "2026-08-21",
+    "2026-08-28",
+    "2026-09-04",
+    "2026-09-11"
+  ],
+  "files": [
+    {
+      "utcDay": "2026-08-14",
+      "kind": "kalshi-series-day-zip",
+      "path": "/Users/builder/Developer/kalshi-builder2/data/external-samples/cryptostruct/m16-er/raw/kalshi-btc-15m_2026-08-14.zip",
+      "presentLocally": true,
+      "sizeBytesLocal": 1020075603,
+      "estimatedCompressedBytes": 1020075603,
+      "required": true
+    },
+    {
+      "utcDay": "2026-08-14",
+      "kind": "coinbase-btc-usd-tick",
+      "path": "/Users/builder/Developer/kalshi-builder2/data/external-samples/cryptostruct/coinbase-btc-usd/raw/coinbase-BTC-USD-2026-08-14.txt.zst",
+      "presentLocally": false,
+      "sizeBytesLocal": null,
+      "estimatedCompressedBytes": 1349725167,
+      "required": true
+    },
+    {
+      "utcDay": "2026-08-21",
+      "kind": "kalshi-series-day-zip",
+      "path": "/Users/builder/Developer/kalshi-builder2/data/external-samples/cryptostruct/m16-er/raw/kalshi-btc-15m_2026-08-21.zip",
+      "presentLocally": true,
+      "sizeBytesLocal": 1542280706,
+      "estimatedCompressedBytes": 1542280706,
+      "required": true
+    },
+    {
+      "utcDay": "2026-08-21",
+      "kind": "coinbase-btc-usd-tick",
+      "path": "/Users/builder/Developer/kalshi-builder2/data/external-samples/cryptostruct/coinbase-btc-usd/raw/coinbase-BTC-USD-2026-08-21.txt.zst",
+      "presentLocally": false,
+      "sizeBytesLocal": null,
+      "estimatedCompressedBytes": 1349725167,
+      "required": true
+    },
+    {
+      "utcDay": "2026-08-28",
+      "kind": "kalshi-series-day-zip",
+      "path": "/Users/builder/Developer/kalshi-builder2/data/external-samples/cryptostruct/m16-er/raw/kalshi-btc-15m_2026-08-28.zip",
+      "presentLocally": true,
+      "sizeBytesLocal": 1065838706,
+      "estimatedCompressedBytes": 1065838706,
+      "required": true
+    },
+    {
+      "utcDay": "2026-08-28",
+      "kind": "coinbase-btc-usd-tick",
+      "path": "/Users/builder/Developer/kalshi-builder2/data/external-samples/cryptostruct/coinbase-btc-usd/raw/coinbase-BTC-USD-2026-08-28.txt.zst",
+      "presentLocally": false,
+      "sizeBytesLocal": null,
+      "estimatedCompressedBytes": 1349725167,
+      "required": true
+    },
+    {
+      "utcDay": "2026-09-04",
+      "kind": "kalshi-series-day-zip",
+      "path": "/Users/builder/Developer/kalshi-builder2/data/external-samples/cryptostruct/m16-er/raw/kalshi-btc-15m_2026-09-04.zip",
+      "presentLocally": true,
+      "sizeBytesLocal": 1243498585,
+      "estimatedCompressedBytes": 1243498585,
+      "required": true
+    },
+    {
+      "utcDay": "2026-09-04",
+      "kind": "coinbase-btc-usd-tick",
+      "path": "/Users/builder/Developer/kalshi-builder2/data/external-samples/cryptostruct/coinbase-btc-usd/raw/coinbase-BTC-USD-2026-09-04.txt.zst",
+      "presentLocally": false,
+      "sizeBytesLocal": null,
+      "estimatedCompressedBytes": 1349725167,
+      "required": true
+    },
+    {
+      "utcDay": "2026-09-11",
+      "kind": "kalshi-series-day-zip",
+      "path": "/Users/builder/Developer/kalshi-builder2/data/external-samples/cryptostruct/m16-er/raw/kalshi-btc-15m_2026-09-11.zip",
+      "presentLocally": true,
+      "sizeBytesLocal": 1327632604,
+      "estimatedCompressedBytes": 1327632604,
+      "required": true
+    },
+    {
+      "utcDay": "2026-09-11",
+      "kind": "coinbase-btc-usd-tick",
+      "path": "/Users/builder/Developer/kalshi-builder2/data/external-samples/cryptostruct/coinbase-btc-usd/raw/coinbase-BTC-USD-2026-09-11.txt.zst",
+      "presentLocally": false,
+      "sizeBytesLocal": null,
+      "estimatedCompressedBytes": 1349725167,
+      "required": true
+    }
+  ],
+  "totals": {
+    "kalshiPresentCount": 5,
+    "coinbasePresentCount": 0,
+    "kalshiLocalBytes": 6199326204,
+    "coinbaseEstimatedCompressedBytes": 6748625835,
+    "missingCoinbaseDays": [
+      "2026-08-14",
+      "2026-08-21",
+      "2026-08-28",
+      "2026-09-04",
+      "2026-09-11"
+    ]
+  },
+  "creditQuote": {
+    "currency": "EUR",
+    "priceEurPerDay": 1,
+    "daysToAcquire": 5,
+    "totalEur": 5,
+    "totalCents": 500,
+    "cashChargeEur": 0,
+    "alreadyOwnedCoinbaseDays": 0,
+    "creditBalanceCentsAtQuote": 1600,
+    "creditCoverCents": 500,
+    "agentSpendWould": "approval",
+    "agentSpendReason": "approval_mode",
+    "purchaseAuthorizedInThisTask": false,
+    "quoteSource": "cryptostruct get_price_quote + preview_checkout (read-only)"
+  },
+  "downloadMethod": {
+    "whenAuthorized": "preview_checkout → create_checkout (approval_url) → get_checkout_status → get_order_files → HTTP download of .txt.zst",
+    "localDestination": "/Users/builder/Developer/kalshi-builder2/data/external-samples/cryptostruct/coinbase-btc-usd/raw",
+    "doNotRunInThisTask": true
+  },
+  "premiumTermsObserved": {
+    "premiumActive": true,
+    "creditBalanceCents": 1600,
+    "agentSpendMode": "approve",
+    "note": "Credits never spend without consent; default create_checkout returns approval_required."
+  }
+}
