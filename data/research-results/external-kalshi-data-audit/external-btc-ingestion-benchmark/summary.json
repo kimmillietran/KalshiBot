@@ -1,0 +1,11 @@
+{
+  "studyId": "kalshi-kxbtc15m-external-btc-ingestion-benchmark-v0",
+  "analysisVersion": "m17-external-btc-ingestion-benchmark-v0.1",
+  "pinnedCommitSha": "582ef668f269f87d6e06320a1ea0406ba90df3de",
+  "syntheticUsed": true,
+  "largestOpportunity": "Sync buffered lines + incremental BBO on deep-book (~3.53× synthetic)",
+  "bestLowRiskChange": "Replace per-line `for await` + async `onLine` with buffered synchronous line processing in local file replay helpers; keep streaming ZIP path but avoid awaiting no-op Promises per line.",
+  "nextImplementationChange": "Land a production-adjacent helper: sync buffered replay + incremental BBO behind a feature flag / separate function; keep current async ZIP streaming until native parity is rechecked on a Mac sample.",
+  "allParityOk": true,
+  "freeMemBytesAtEnd": 5140140032
+}

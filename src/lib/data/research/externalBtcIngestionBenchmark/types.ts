@@ -53,7 +53,10 @@ export type RunMetrics = {
   implementationId: ReplayImplementationId;
   workloadKind: WorkloadKind;
   profiled: boolean;
+  /** Total wall for the measured window (all repeats). Target 30–120s. */
   wallMs: number;
+  /** Mean wall per repeat (fair across differing repeat counts). */
+  wallMsPerRepeat: number;
   cpuUserMs: number;
   cpuSystemMs: number;
   messagesPerSec: number;

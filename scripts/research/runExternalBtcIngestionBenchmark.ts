@@ -51,14 +51,17 @@ async function main(): Promise<void> {
     "data/research-results/external-kalshi-data-audit/external-btc-ingestion-benchmark",
   );
 
+  const PR137_MERGE_SHA = "582ef668f269f87d6e06320a1ea0406ba90df3de";
   const report = await runExternalBtcIngestionBenchmark({
     workDir,
     outDir,
-    pinnedCommitSha: pinnedSha(root),
+    pinnedCommitSha: process.env.EXTERNAL_BTC_BENCH_PINNED_SHA ?? PR137_MERGE_SHA,
     maxTotalWallMs: 14 * 60_000,
-    profiledRepeats: 2,
-    unprofiledRepeats: 3,
+    // Repeats sized so each measured window is typically 30–120s on cloud 4-vCPU.
+    profiledRepeats: 6,
+    unprofiledRepeats: 8,
   });
+  console.error(`harnessHEAD=${pinnedSha(root)} pinnedIngestion=${report.pinnedCommitSha}`);
 
   console.log(
     JSON.stringify(

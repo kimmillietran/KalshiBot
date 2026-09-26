@@ -98,30 +98,55 @@ function synthesize(kind: WorkloadKind, targetMessages: number): SyntheticWorklo
   };
 
   if (kind === "typical-depth") {
-    notes.push("depth≈20; mixed away-from-best and occasional BBO touches");
+    notes.push("depth≈20; mixed away-from-best and frequent BBO size/price changes");
     pushSnap(20);
     while (lines.length < targetMessages) {
-      const away = lines.length % 5 !== 0;
-      if (away) {
+      const mode = lines.length % 5;
+      if (mode === 0 || mode === 1) {
+        // Away-from-best qty churn (should not emit if BBO unchanged)
         const price = Number((0.5 - 0.05 - (lines.length % 10) * 0.01).toFixed(2));
         lines.push(updateLine(eventId, eventId - 1, [[0, price, 3 + (lines.length % 4)]], i));
+      } else if (mode === 2) {
+        // Best-bid size change
+        lines.push(
+          updateLine(eventId, eventId - 1, [[0, 0.49, 10 + (lines.length % 7)]], i),
+        );
+      } else if (mode === 3) {
+        // Improve then restore best bid (forces price change emissions)
+        const improve = lines.length % 2 === 0;
+        lines.push(
+          updateLine(
+            eventId,
+            eventId - 1,
+            improve ? [[0, 0.50, 8]] : [[0, 0.50, 0], [0, 0.49, 12]],
+            i,
+          ),
+        );
       } else {
-        const bid = Number((0.49 + (lines.length % 3) * 0.01).toFixed(2));
-        lines.push(updateLine(eventId, eventId - 1, [[0, bid, 12]], i));
+        lines.push(
+          updateLine(eventId, eventId - 1, [[1, 0.51, 10 + (lines.length % 5)]], i),
+        );
       }
       eventId += 1;
       i += 1;
     }
   } else if (kind === "deep-book-high-update") {
-    notes.push("depth≈200; high update rate across deep levels");
+    notes.push("depth≈200; mostly deep updates + periodic BBO touches");
     pushSnap(200);
     while (lines.length < targetMessages) {
-      const d = lines.length % 180;
-      const side: 0 | 1 = lines.length % 2 === 0 ? 0 : 1;
-      const price = side === 0
-        ? Number((0.49 - d * 0.01).toFixed(2))
-        : Number((0.51 + d * 0.01).toFixed(2));
-      lines.push(updateLine(eventId, eventId - 1, [[side, price, 1 + (d % 7)]], i));
+      const step = lines.length % 20;
+      if (step === 0) {
+        lines.push(
+          updateLine(eventId, eventId - 1, [[0, 0.49, 10 + (lines.length % 9)]], i),
+        );
+      } else {
+        const d = 1 + (lines.length % 180);
+        const side: 0 | 1 = lines.length % 2 === 0 ? 0 : 1;
+        const price = side === 0
+          ? Number((0.49 - d * 0.01).toFixed(2))
+          : Number((0.51 + d * 0.01).toFixed(2));
+        lines.push(updateLine(eventId, eventId - 1, [[side, price, 1 + (d % 7)]], i));
+      }
       eventId += 1;
       i += 1;
     }
@@ -144,16 +169,21 @@ function synthesize(kind: WorkloadKind, targetMessages: number): SyntheticWorklo
   } else if (kind === "best-price-changes") {
     notes.push("best bid/ask price changes and best-level deletions");
     pushSnap(25);
+    // Oscillate deletes/restores so best pointer moves every few messages
     while (lines.length < targetMessages) {
-      const step = lines.length % 4;
+      const step = lines.length % 6;
       if (step === 0) {
         lines.push(updateLine(eventId, eventId - 1, [[0, 0.49, 0]], i)); // delete best bid
       } else if (step === 1) {
         lines.push(updateLine(eventId, eventId - 1, [[0, 0.48, 15]], i));
       } else if (step === 2) {
+        lines.push(updateLine(eventId, eventId - 1, [[0, 0.49, 14]], i)); // restore higher bid
+      } else if (step === 3) {
         lines.push(updateLine(eventId, eventId - 1, [[1, 0.51, 0]], i)); // delete best ask
-      } else {
+      } else if (step === 4) {
         lines.push(updateLine(eventId, eventId - 1, [[1, 0.52, 11]], i));
+      } else {
+        lines.push(updateLine(eventId, eventId - 1, [[1, 0.51, 13]], i)); // restore lower ask
       }
       eventId += 1;
       i += 1;

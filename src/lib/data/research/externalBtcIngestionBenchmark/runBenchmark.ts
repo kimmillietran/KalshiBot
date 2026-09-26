@@ -50,15 +50,21 @@ function speedup(baselineMs: number, candidateMs: number): number | null {
   return baselineMs / candidateMs;
 }
 
+function perRepeat(run: RunMetrics | undefined): number {
+  return run?.wallMsPerRepeat ?? 0;
+}
+
 export async function runExternalBtcIngestionBenchmark(
   options: RunBenchmarkOptions,
 ): Promise<BenchmarkReport> {
   mkdirSync(options.workDir, { recursive: true });
   mkdirSync(options.outDir, { recursive: true });
 
+  // Sized so measured windows land near 30–120s wall on cloud 4-vCPU while
+  // staying under the ~15 minute total budget (two timed workloads × variants).
   const workloads = buildSyntheticWorkloads({
-    typicalMessages: 100_000,
-    deepMessages: 80_000,
+    typicalMessages: 1_200_000,
+    deepMessages: 600_000,
   });
 
   const materialized: Partial<
@@ -253,10 +259,10 @@ export async function runExternalBtcIngestionBenchmark(
     {
       optimization: "Buffered synchronous line processing (remove per-line async iteration)",
       bottleneckShareEstimate: baselineTypical
-        ? `lineSplit+await overhead vs sync split; baseline wall ${baselineTypical.wallMs.toFixed(0)}ms`
+        ? `lineSplit+await overhead vs sync split; baseline wall/rep ${perRepeat(baselineTypical).toFixed(0)}ms`
         : "n/a",
-      isolatedSpeedup: speedup(baselineTypical?.wallMs ?? 0, syncTypical?.wallMs ?? 0),
-      combinedSpeedup: speedup(baselineTypical?.wallMs ?? 0, combinedTypical?.wallMs ?? 0),
+      isolatedSpeedup: speedup(perRepeat(baselineTypical), perRepeat(syncTypical)),
+      combinedSpeedup: speedup(perRepeat(baselineTypical), perRepeat(combinedTypical)),
       outputParity: parity
         .filter((p) => p.candidate === "opt-sync-buffered-lines")
         .every((p) => p.result.matched),
@@ -267,8 +273,8 @@ export async function runExternalBtcIngestionBenchmark(
       bottleneckShareEstimate: baselineTypical
         ? `bestScanNs=${baselineTypical.counters.bestScanNs} / bookMutationNs=${baselineTypical.counters.bookMutationNs}`
         : "n/a",
-      isolatedSpeedup: speedup(syncTypical?.wallMs ?? baselineTypical?.wallMs ?? 0, incrTypical?.wallMs ?? 0),
-      combinedSpeedup: speedup(baselineTypical?.wallMs ?? 0, combinedTypical?.wallMs ?? 0),
+      isolatedSpeedup: speedup(perRepeat(syncTypical) || perRepeat(baselineTypical), perRepeat(incrTypical)),
+      combinedSpeedup: speedup(perRepeat(baselineTypical), perRepeat(combinedTypical)),
       outputParity: parity
         .filter((p) => p.candidate === "opt-incremental-bbo")
         .every((p) => p.result.matched),
@@ -281,9 +287,10 @@ export async function runExternalBtcIngestionBenchmark(
         : "n/a",
       isolatedSpeedup: null,
       combinedSpeedup: speedup(
-        baselineTypical?.wallMs ?? 0,
-        runs.find((r) => r.implementationId === "opt-hash-during-read" && r.workloadKind === "typical-depth")
-          ?.wallMs ?? 0,
+        perRepeat(baselineTypical),
+        perRepeat(
+          runs.find((r) => r.implementationId === "opt-hash-during-read" && r.workloadKind === "typical-depth"),
+        ),
       ),
       outputParity: allParityOk,
       effortRisk: "low — provenance hashing only",
@@ -301,9 +308,29 @@ export async function runExternalBtcIngestionBenchmark(
     },
   ];
 
+  const baselineDeep = runs.find(
+    (r) =>
+      r.workloadKind === "deep-book-high-update"
+      && r.implementationId === "baseline-async-readline"
+      && r.profiled,
+  );
+  const combinedDeep = runs.find(
+    (r) =>
+      r.workloadKind === "deep-book-high-update"
+      && r.implementationId === "opt-sync-plus-incremental"
+      && r.profiled,
+  );
+  const typicalX = speedup(perRepeat(baselineTypical), perRepeat(combinedTypical));
+  const deepX = speedup(perRepeat(baselineDeep), perRepeat(combinedDeep));
+  const bestX = Math.max(typicalX ?? 0, deepX ?? 0);
+  const bestLabel =
+    (deepX ?? 0) >= (typicalX ?? 0)
+      ? `deep-book (~${deepX?.toFixed(2)}× synthetic)`
+      : `typical-depth (~${typicalX?.toFixed(2)}× synthetic)`;
+
   const profilingOverhead =
-    baselineTypical && unprofiledBaseline && unprofiledBaseline.wallMs > 0
-      ? baselineTypical.wallMs / unprofiledBaseline.wallMs
+    baselineTypical && unprofiledBaseline && unprofiledBaseline.wallMsPerRepeat > 0
+      ? baselineTypical.wallMsPerRepeat / unprofiledBaseline.wallMsPerRepeat
       : null;
 
   const report: BenchmarkReport = {
@@ -349,28 +376,38 @@ export async function runExternalBtcIngestionBenchmark(
     ranking,
     recommendations: {
       largestOpportunity:
-        combinedTypical && baselineTypical
-          ? `Sync buffered lines + incremental BBO (~${speedup(baselineTypical.wallMs, combinedTypical.wallMs)?.toFixed(2)}× on synthetic typical-depth)`
+        bestX > 0
+          ? `Sync buffered lines + incremental BBO on ${bestLabel}`
           : "Sync buffered processing + incremental BBO (measure on native sample)",
       bestLowRiskChange:
         "Replace per-line `for await` + async `onLine` with buffered synchronous line processing in local file replay helpers; keep streaming ZIP path but avoid awaiting no-op Promises per line.",
       dominantFactor:
-        baselineTypical
-          ? `On synthetic cloud runs: allocation/JSON parse + async iteration dominate; best-scan share bestScanNs/(bestScanNs+bookMutationNs+jsonParseNs)=${(
-            baselineTypical.counters.bestScanNs
-            / Math.max(
-              1,
+        baselineDeep && baselineTypical
+          ? `On synthetic cloud runs: deep-book best-scan share `
+            + `${(
+              baselineDeep.counters.bestScanNs
+              / Math.max(
+                1,
+                baselineDeep.counters.bestScanNs
+                  + baselineDeep.counters.bookMutationNs
+                  + baselineDeep.counters.jsonParseNs,
+              )
+            ).toFixed(3)}; typical depth share `
+            + `${(
               baselineTypical.counters.bestScanNs
-                + baselineTypical.counters.bookMutationNs
-                + baselineTypical.counters.jsonParseNs,
-            )
-          ).toFixed(3)}. Compressed size is not the parser workload.`
+              / Math.max(
+                1,
+                baselineTypical.counters.bestScanNs
+                  + baselineTypical.counters.bookMutationNs
+                  + baselineTypical.counters.jsonParseNs,
+              )
+            ).toFixed(3)}. JSON parse is large in both; book depth makes full BBO scans dominate deep workloads. Compressed size is not the parser workload.`
           : "insufficient timed baseline",
       nativeVsSynthetic:
         "All speedups below are SYNTHETIC cloud evidence only — not a production ETA for the Mac pilot.",
       variabilityNote:
         profilingOverhead != null
-          ? `Profiled/unprofiled baseline wall ratio ≈ ${profilingOverhead.toFixed(2)} on typical-depth; prefer unprofiled walls for speedup claims.`
+          ? `Profiled/unprofiled baseline wall-per-repeat ratio ≈ ${profilingOverhead.toFixed(2)}; prefer unprofiled walls for speedup claims. Compare wallMsPerRepeat across configs.`
           : "Insufficient repeats for variability estimate.",
       macPortabilityLimits:
         "Cloud has 4 vCPU / ~16 GiB and no Mac I/O path. Mac may be decompress+disk bound on multi-GB days; cloud synthetic CPU ratios will not match. Do not extrapolate remaining Mac ETA from these ratios.",
@@ -477,12 +514,13 @@ function renderMarkdownReport(report: BenchmarkReport): string {
   lines.push(`## Timed runs (selected)`);
   lines.push("");
   lines.push(
-    `| Impl | Workload | Profiled | Wall | msg/s | MB/s | Quotes | Best scans | Peak RSS |`,
+    `| Impl | Workload | Profiled | Wall (per-rep) | msg/s | MB/s | Quotes | Best scans | Peak RSS |`,
   );
   lines.push(`| --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |`);
   for (const r of report.runs) {
     lines.push(
-      `| ${r.implementationId} | ${r.workloadKind} | ${r.profiled} | ${fmtMs(r.wallMs)} | `
+      `| ${r.implementationId} | ${r.workloadKind} | ${r.profiled} | ${fmtMs(r.wallMs)} `
+        + `(${fmtMs(r.wallMsPerRepeat)}/rep ×${r.repeats}) | `
         + `${r.messagesPerSec.toFixed(0)} | ${r.decompressedMbPerSec.toFixed(1)} | `
         + `${r.counters.quotesEmitted} | ${r.counters.bestScans} | `
         + `${(r.peakRssBytes / (1024 ** 2)).toFixed(0)} MiB |`,

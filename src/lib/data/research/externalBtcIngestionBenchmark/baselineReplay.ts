@@ -261,11 +261,13 @@ export async function measureRun(input: {
   const mem = process.memoryUsage();
   const messageCount = last.counters.linesSeen * input.repeats;
   const decompressedBytes = last.decompressedBytes * input.repeats;
+  const wallMsPerRepeat = input.repeats > 0 ? wallMs / input.repeats : wallMs;
   return {
     implementationId: input.implementationId,
     workloadKind: input.workloadKind,
     profiled: input.profiled,
     wallMs,
+    wallMsPerRepeat,
     cpuUserMs: afterCpu.user - beforeCpu.user,
     cpuSystemMs: afterCpu.system - beforeCpu.system,
     messagesPerSec: wallMs > 0 ? (messageCount / wallMs) * 1000 : 0,
