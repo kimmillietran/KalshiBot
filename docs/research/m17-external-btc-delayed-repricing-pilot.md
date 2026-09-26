@@ -1,112 +1,81 @@
-# M17 — External BTC → delayed Kalshi KXBTC15M repricing pilot (preparation)
+# M17 — External BTC → delayed Kalshi KXBTC15M repricing pilot (correction-v1)
 
-> **PREPARATION ONLY — NO PURCHASES / CREDITS SPEND / EMPIRICAL P&L / LIVE TRADING**
+> **PREPARATION + FIXTURE-VERIFIED RUNNER — NO CREDITS / PURCHASES / EMPIRICAL P&L / LIVE TRADES**
 >
-> Runner + fixture tests + frozen spec + credit quote. Does not download chargeable
-> Coinbase ticks and does not claim independent confirmation.
+> Analysis version `2026-09-26-correction-v1` (preserves prep-v0 study id). Corrections below
+> must be read before any authorized empirical run.
 
 | Field | Value |
 | --- | --- |
 | Study id | `kalshi-kxbtc15m-external-btc-delayed-repricing-pilot-v0` |
+| Analysis version | `2026-09-26-correction-v1` (prior: `2026-09-26-prep-v0`) |
 | External venue | Coinbase `BTC-USD` (`instrument_id=15050`) |
-| Kalshi series | `kalshi-btc-15m` (retained M16-ER RAW ZIPs) |
-| Pilot UTC days | `2026-08-14`, `2026-08-21`, `2026-08-28`, `2026-09-04`, `2026-09-11` |
-| Day rule | Every 7th M16-ER day (chronological index 0,7,14,21,28) — outcome-blind |
-| Credit quote | **€5** (5 × €1/day), credits cover, `approval_required` — **not spent** |
-| Est. Coinbase download | ~6.75 GB compressed (catalog average) |
+| Kalshi series | `kalshi-btc-15m` retained M16-ER RAW ZIPs |
+| Pilot UTC days | `2026-08-14` … `2026-09-11` (**Friday-only**; not weekday-representative) |
+| Credit quote | **€5** — **not spent** |
+| Est. Coinbase download | ~6.75 GB compressed |
 
 ---
 
-## 1. Prior research that already answers the broad question
+## Corrections from prep-v0
 
-M12.8 `btcKalshiLeadLagAnalysis` on KalshiBot live-capture Coinbase spot → Kalshi TOB:
-
-| Field | Value |
-| --- | --- |
-| Classification | `no-directional-response` |
-| Recommended next action | `deprioritize-btc-lead-lag-family` |
-| Implication | A statistical lead does **not** imply a tradable edge |
-
-This pilot is **not** a revival of M14 Kalshi-only momentum or M16 reversal. It is a
-**different data plane** check: CryptoStruct tick books + explicit delay scenarios
-(250 ms / 1 s / 3 s) with taker fees. It does not reopen #134/#136 band/vol/side
-searches. M17 settlement-state remains paused.
+1. Streaming Coinbase `.txt.zst` + Kalshi ZIP member ingestion; `--run-real` path implemented (empirics gated by `--authorize-empirical-run`).
+2. Removed invented 50–250 ms cross-venue sync bound; delays never auto-promoted to verified tradability.
+3. Separated pre-entry reject vs entered + unresolved exit; frozen exit-failure policy with all-entry bounds.
+4. Friday-only label; fragile G≤5 CI; control isolation; time-sham labeled retrospective placebo.
+5. Concrete M12.8 reconciliation (fee-aware delayed-taker gap — not vendor novelty alone).
 
 ---
 
-## 2. Frozen primary parameter set
+## M12.8 reconciliation (concrete)
 
-| Parameter | Value | Rationale |
-| --- | --- | --- |
-| Event | \|BTC mid return\| crosses **5 bps** over **5 s** lookback | Frozen from M12.8 magnitude boundary cell — not fit on pilot P&L |
-| Direction | BTC up → buy YES; down → buy NO | Above-strike KXBTC15M semantics |
-| Contract | ATM YES mid closest to 50¢ among live window contracts | Single selection rule |
-| Primary delay | **1000 ms** | Defensible vs ~50–250 ms cross-venue clock uncertainty |
-| Sensitivity delays | 250 ms, 1 s, 3 s (all reported; no cherry-pick) | Prompt-required scenarios |
-| Hold | 15 s then taker exit at bid | Short delayed-repricing window |
-| Size | 1 contract | Prompt |
-| Fees | STANDARD taker entry **and** exit | Realistic round-trip |
-| Min size | displayed ≥ 1 | Else exclude |
-| Cooldown | 60 s; no overlapping positions | Dedup |
+**M12.8 answered:** Coinbase-spot → KalshiBot live-capture TOB **mid** directional response after magnitude-boundary crosses (observational lags 0–60s; fees not modeled) → `no-directional-response` / `deprioritize-btc-lead-lag-family` (1237 triggers).
 
-Controls (diagnostic only): sign-flip; time-sham at `t − 2·hold − delay`.
+**Material gap this pilot addresses:** STANDARD taker entry+exit net ¢, explicit 250ms/1s/3s **action-delay scenarios**, CryptoStruct native L2 ticks, unresolved-exit accounting.
 
-Primary metric: mean net ¢/contract at 1000 ms; CR2 day-cluster two-sided 95% CI.
+**Not sufficient justification alone:** renaming the study or switching vendors without a different estimand.
+
+**Decision:** Proceed as exploratory fee-aware delayed-taker check on Friday SPENT days — not a refutation of M12.8’s mid finding. Shelve if nonpositive / incomplete / inconclusive under fragile G≤5.
+
+Full JSON: `data/.../m128-reconciliation.json`.
 
 ---
 
-## 3. Timing quality (before claiming a lead)
+## Timing policy (evidence-based)
 
-- Schema: ns `exchangeTimestamp` + `adapterTimestamp`; event_id chain for gaps.
-- Kalshi retained sample: book/trade updates had non-zero exchangeTs; snapshots may be 0.
-- Coinbase (LTC free-sample proxy): adapter−exchange p50≈1.2 ms, p99≈21 ms.
-- Cross-venue exchange clocks: **conditionally comparable**; uncertainty band **50–250 ms**.
-- Joins: **causal as-of only** (last ≤ decision). Nearest-future joins forbidden.
-- 250 ms is **diagnostic-only** even with dual exchange clocks; do not claim subsecond
-  tradable edge if either leg lacks exchangeTs.
-
-Historical recorder receipt ≠ future bot receipt (extra RTT / queue / ack).
+- Decision clock domain: **adapter** (consistent; alignment **unknown**).
+- Preserve both exchange + adapter stamps; reconstruct in stream/event-id order.
+- No silent domain mix.
+- Historical exchange-time ≠ proof a bot could observe/act then.
+- Delay claims: 250ms `diagnostic-only`; 1s/3s `scenario-assumption-unverified` — **never** verified tradability.
+- Evidence required for verified tradability listed in `timing-quality.json`.
 
 ---
 
-## 4. Data manifest (exact)
+## Exit-failure policy
 
-See committed `data/research-results/external-kalshi-data-audit/external-btc-delayed-repricing-pilot/data-manifest.json`.
-
-| Leg | Local now | Action |
-| --- | --- | --- |
-| Kalshi series-day ZIPs (5 days) | **Present** under Developer M16-ER raw (~6.2 GB) | Reuse |
-| Coinbase BTC-USD ticks (5 days) | **Missing** | Quote €5; download only after explicit authorization |
-
-Premium active; credit balance at quote time **1600¢**; agent spend mode **approve**.
+`retain-entry-unresolved-v1`: once entered, failed exits stay in the cohort as unresolved; cooldown/overlap use intended exit time; completed-trade P&L excludes unresolved; all-entry lower/upper bounds reported; primary status `incomplete-unresolved-exits` if any unresolved. Do not claim profitability from completed trades alone.
 
 ---
 
-## 5. Runner
+## Frozen primary parameters (unchanged thresholds)
+
+5 bps / 5 s → YES/NO by BTC direction → ATM contract at event time (same through exit; reject insufficient TTE) → **primary delay 1000 ms** (sensitivities 250/1000/3000, no cherry-pick) → 15 s hold → 1 contract STANDARD taker entry+exit → min size ≥1 → 60 s cooldown.
+
+---
+
+## Runner
 
 ```bash
-# Write frozen spec + manifest (default)
 npm run research:external-btc-delayed-repricing-pilot
-
-# Synthetic fixture smoke (not empirical)
-npm run research:external-btc-delayed-repricing-pilot -- --fixture-smoke
-```
-
-Focused tests:
-
-```bash
+npm run research:external-btc-delayed-repricing-pilot -- --native-fixture
 npx vitest run src/lib/data/research/externalBtcDelayedRepricingPilot
+# After acquisition + explicit auth:
+npm run research:external-btc-delayed-repricing-pilot -- --run-real --authorize-empirical-run
 ```
 
 ---
 
-## 6. Next authorization prompt (copy/paste)
+## Next authorization prompt
 
-> Authorize **only**: (1) CryptoStruct credit checkout for Coinbase BTC-USD
-> `instrument_id=15050` on UTC days 2026-08-14, 2026-08-21, 2026-08-28, 2026-09-04,
-> 2026-09-11 (€5, approval_required — open approval URL; no card needed if credits
-> cover), download `.txt.zst` to
-> `/Users/builder/Developer/kalshi-builder2/data/external-samples/cryptostruct/coinbase-btc-usd/raw/`;
-> (2) run the frozen pilot on those days + retained Kalshi ZIPs; report SPENT exploratory
-> results for all delays without selecting the best delay afterward. Do not expand
-> parameters, unpause settlement-state, or trade live.
+> Authorize **only**: (1) CryptoStruct credit checkout for Coinbase BTC-USD `instrument_id=15050` on Friday UTC days 2026-08-14, 2026-08-21, 2026-08-28, 2026-09-04, 2026-09-11 (€5, approval_required), download `.txt.zst` to `/Users/builder/Developer/kalshi-builder2/data/external-samples/cryptostruct/coinbase-btc-usd/raw/`; (2) run `npm run research:external-btc-delayed-repricing-pilot -- --run-real --authorize-empirical-run`; report complete vs incomplete economics and all-entry bounds for **all** delays without selecting the best delay; do not claim verified tradability or expand parameters.

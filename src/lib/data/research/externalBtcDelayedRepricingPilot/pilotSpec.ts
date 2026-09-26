@@ -1,19 +1,23 @@
 /**
- * Frozen primary pilot specification (no profit optimization).
+ * Frozen primary pilot specification (correction-v1).
  *
- * Threshold/lookback are frozen from the M12.8 lead-lag discovery cell
- * (5 bps boundary over a short horizon), not re-fit on pilot Kalshi P&L.
- * Delays are scenario assumptions, not measured production latency.
+ * Threshold/lookback frozen from M12.8 5 bps cell — not fit on pilot P&L.
+ * Delays are scenario assumptions, not measured production latency / verified tradability.
+ * Prep-v0 preserved conceptually; corrections documented in `correctionsFromPrepV0`.
  */
 
+import { M128_RECONCILIATION } from "./m128Reconciliation";
+import { EXIT_FAILURE_POLICY } from "./simulateTrades";
+import { CLOCK_POLICY } from "./timingQuality";
 import {
   EXTERNAL_BTC_DELAYED_REPRICING_PILOT_ANALYSIS_VERSION,
   EXTERNAL_BTC_DELAYED_REPRICING_PILOT_DISCLAIMER,
+  EXTERNAL_BTC_DELAYED_REPRICING_PILOT_PRIOR_ANALYSIS_VERSION,
   EXTERNAL_BTC_DELAYED_REPRICING_PILOT_STUDY_ID,
   PILOT_DELAY_MS,
 } from "./types";
 
-/** Deterministic coverage-based day pick: every 7th M16-ER day by chronological index. */
+/** Every 7th M16-ER day — all Fridays; not representative weekday coverage. */
 export const PILOT_UTC_DAYS = [
   "2026-08-14",
   "2026-08-21",
@@ -25,21 +29,26 @@ export const PILOT_UTC_DAYS = [
 export const FROZEN_PILOT_SPEC = {
   studyId: EXTERNAL_BTC_DELAYED_REPRICING_PILOT_STUDY_ID,
   analysisVersion: EXTERNAL_BTC_DELAYED_REPRICING_PILOT_ANALYSIS_VERSION,
+  priorAnalysisVersion: EXTERNAL_BTC_DELAYED_REPRICING_PILOT_PRIOR_ANALYSIS_VERSION,
   disclaimer: EXTERNAL_BTC_DELAYED_REPRICING_PILOT_DISCLAIMER,
+  correctionsFromPrepV0: [
+    "Implemented streaming Coinbase/Kalshi ingestion and --run-real path (gated empirics)",
+    "Removed invented 50–250ms cross-venue sync bound; delays never auto-verified",
+    "Separated pre-entry reject vs entered+unresolved exit; exit-failure policy frozen",
+    "Friday-only label; fragile G≤5 CI; control isolation + retrospective placebo labeling",
+    "Concrete M12.8 reconciliation with material fee-aware delayed-taker gap",
+  ],
   hypothesis:
-    "After an external Coinbase BTC-USD move, Kalshi KXBTC15M executable quotes "
-    + "may adjust slowly enough that a delayed taker entry remains profitable "
-    + "after STANDARD fees and a fixed short hold.",
+    "After an external Coinbase BTC-USD move, Kalshi KXBTC15M executable quotes may "
+    + "adjust slowly enough that a delayed taker entry remains profitable after STANDARD "
+    + "fees and a fixed short hold — as a scenario study, not verified live tradability.",
+  m128Reconciliation: M128_RECONCILIATION,
   priorResearchAlreadyAnswered: {
     study: "btcKalshiLeadLagAnalysis / M12.8 TRAIN",
-    artifactHint:
-      "train-selected-run-lead-lag-analysis.json (KalshiBot live-capture Coinbase spot → Kalshi TOB)",
     interpretationClassification: "no-directional-response",
     recommendedNextAction: "deprioritize-btc-lead-lag-family",
-    note:
-      "A statistical lead on the live-capture plane does not authorize a tradable edge. "
-      + "This pilot is allowed only as a different data-plane / delay-scenario check "
-      + "on CryptoStruct tick books; it is not a revival of M14 momentum or M16 reversal.",
+    answeredQuestion: M128_RECONCILIATION.m128QuestionAnswered,
+    note: M128_RECONCILIATION.decision,
   },
   externalVenue: {
     venueCode: "coinbase",
@@ -47,25 +56,24 @@ export const FROZEN_PILOT_SPEC = {
     instrumentCode: "BTC-USD",
     instrumentId: 15050,
     rationale:
-      "Preferred by prompt when matched trade/BBO coverage exists. Catalog: 997 days, "
-      + "covers all 34 M16-ER days, trades + L2 book + BBO stream. Binance Spot BTCUSD "
-      + "is ~200× smaller/day but was not chosen: Coinbase is the stated preference and "
-      + "has adequate coverage for the overlapping M16-ER window.",
+      "Preferred when matched trade/BBO coverage exists. Catalog covers all 34 M16-ER days.",
   },
   kalshiSeries: {
     seriesKey: "kalshi-btc-15m",
     bundleId: 9000000001,
     messageTypesRequired: [0, 1, 2] as const,
-    note: "Use raw book/trade updates from retained M16-ER ZIPs — not the 60s friction grid.",
+    note: "Raw book/trade updates from retained M16-ER ZIPs — not the 60s friction grid.",
   },
   daySelection: {
     rule: "every-7th-m16-er-day-chronological-index-0-based",
     universe: "34 SPENT M16-ER days with local RAW ZIPs",
     selectedUtcDays: PILOT_UTC_DAYS,
     selectionIsOutcomeBlind: true,
+    fridayOnly: true,
+    weekdayCoverageClaim: "none — Friday-only exploratory sample; not representative weekdays",
   },
   eventDefinition: {
-    series: "Coinbase BTC-USD mid from reconstructed BBO (fallback: last trade)",
+    series: "Coinbase BTC-USD mid from reconstructed BBO (change-sparsified)",
     lookbackMs: 5_000,
     boundaryBps: 5,
     trigger: "absolute lookback return crosses 5 bps from below (boundary cross)",
@@ -77,20 +85,17 @@ export const FROZEN_PILOT_SPEC = {
   },
   kalshiContractSelection: {
     rule:
-      "Among KXBTC15M contracts whose [start,expiry) contains eventTimestampMs, "
-      + "pick the one with YES mid closest to 50¢ (ATM); ties → earlier expiry",
+      "At eventObservationTime: among KXBTC15M with start≤t<expiry and intended exit before "
+      + "expiry, pick YES mid closest to 50¢; ties → earlier expiry. Same contract through exit.",
+    insufficientTimeToExpiry: "pre-entry reject if event+delay+hold ≥ expiry",
   },
   timing: {
-    eventClock: "exchangeTimestamp when non-zero; else adapterTimestamp with timestampSource=adapter",
-    joinClock: "same policy on both legs; causal as-of only (last observation ≤ decision time)",
+    clockPolicy: CLOCK_POLICY,
     primaryDelayMs: PILOT_DELAY_MS.PRIMARY,
     sensitivityDelayMs: [...PILOT_DELAY_MS.SENSITIVITY],
     delaySemantics:
-      "Scenario assumptions for when a bot would act after observing the external event — "
-      + "not measured production latency",
-    subsecondClaimPolicy:
-      "Do not claim a subsecond opportunity if timing quality cannot support it; "
-      + "250 ms remains a reported sensitivity, not a claim of synchronized clocks",
+      "Scenario assumptions for modeled decision time — not measured production latency "
+      + "and not verified tradability. 250ms diagnostic-only; 1s/3s unverified scenarios.",
   },
   execution: {
     sizeContracts: 1,
@@ -103,39 +108,45 @@ export const FROZEN_PILOT_SPEC = {
     minDisplayedSize: 1,
     staleMaxAgeMs: 2_000,
   },
+  exitFailurePolicy: EXIT_FAILURE_POLICY,
   positionPolicy: {
     cooldownMs: 60_000,
-    overlappingPositions: "exclude-new-while-open",
-    eventDedup: "one primary event per boundary-cross per lookback stream; cooldown applies",
+    overlappingPositions: "exclude-new-while-open-through-intended-exit",
+    eventDedup: "boundary-cross cooldown on primary detection stream",
   },
   controls: {
-    signFlip: "trade opposite side of primary direction (diagnostic)",
+    signFlip:
+      "Outcome-sharing diagnostic (flipped side). Not independent evidence. Isolated state.",
     timeSham:
-      "for each primary event, place a sham event at eventTimestamp − 2×hold − delay "
-      + "with same magnitude metadata but no directional claim (diagnostic)",
-    note: "Controls are diagnostic only — not additional strategy searches.",
+      "Retrospective placebo using a future event's direction at an earlier timestamp. "
+      + "Not a deployable causal strategy. Isolated state.",
   },
   primaryMetric: {
-    name: "mean net P&L ¢/contract at primary delay",
-    uncertainty: "CR2 cluster-robust SE by UTC day; two-sided 95% Student-t CI, df=G−1",
-    unit: "cents",
+    name: "completed-trade mean net P&L ¢/contract at primary delay (1s)",
+    allEntryBounds: "report lower/upper means when unresolved exits exist",
+    uncertainty:
+      "Fragile exploratory CR2 day-cluster CI (G≤5 Friday-only) — not confirmation gate",
+    incompletePolicy:
+      "If any unresolved exits: economicResultStatus=incomplete-unresolved-exits; "
+      + "do not claim profitability from completed trades alone",
   },
   stopExpandCriteria: {
     stopIf:
-      "primary-delay mean ≤ 0, or CI entirely ≤ 0, or timing quality blocks ≤1s claims and "
-      + "1s/3s means are nonpositive",
+      "primary 1s all-entry bounds / completed economics nonpositive, or incomplete without "
+      + "defensible bounds, or no material fee-aware edge beyond M12.8's negative mid finding",
     expandOnlyIf:
-      "primary-delay mean > 0 with CI entirely > 0 on exploratory SPENT — still requires a "
-      + "separate preregistered fresh-period design before any confirmation claim",
+      "exploratory promise under complete accounting — still requires separate preregistered "
+      + "fresh-period design; CI lower>0 alone insufficient",
     neverAuthorize: [
       "M14 Kalshi-only momentum revival",
       "M16 reversal revival",
       "further band/vol/side searches from #134/#136",
       "M17 settlement-state unpause",
       "live trading",
+      "auto-promote 1s/3s to verified tradability",
     ],
   },
-  spentStatus: "all-pilot-days-exploratory-SPENT",
+  spentStatus: "all-pilot-days-exploratory-SPENT-friday-only",
 } as const;
 
 export type FrozenPilotSpec = typeof FROZEN_PILOT_SPEC;

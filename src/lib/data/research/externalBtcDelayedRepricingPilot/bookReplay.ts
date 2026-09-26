@@ -1,12 +1,30 @@
 /**
- * Minimal CryptoStruct L2 YES-book replay for Kalshi prediction contracts
- * and mid construction for Coinbase spot.
- *
- * Continuity + BBO complement rules mirror scripts/research/cryptostructM16AdapterRules.ts
- * without importing from scripts/ into src/.
+ * Minimal CryptoStruct L2 book replay + BBO emission (memory-bounded: keep book + sparse BBO).
  */
 
-export type BookLevel = { price: number; qty: number };
+import {
+  CLOCK_POLICY,
+  resolveDualTimestamps,
+  timestampInDomain,
+  type DualTimestamps,
+} from "./timingQuality";
+import type { ClockDomain, ExecutableQuote } from "./types";
+
+export type ReconstructedBook = {
+  bids: Map<number, number>;
+  asks: Map<number, number>;
+  lastEventId: string | null;
+  failClosed: boolean;
+};
+
+export function createEmptyBook(): ReconstructedBook {
+  return {
+    bids: new Map(),
+    asks: new Map(),
+    lastEventId: null,
+    failClosed: false,
+  };
+}
 
 function applyContinuityBreak(input: {
   lastEventId: string | null;
@@ -32,44 +50,6 @@ function applyContinuityBreak(input: {
   return { failClosed, chainBreak };
 }
 
-function bboCentsFromYesBook(
-  yesBid: number,
-  yesAsk: number,
-): {
-  yesBidCents: number;
-  yesAskCents: number;
-  noBidCents: number;
-  crossed: boolean;
-  locked: boolean;
-} {
-  const yesBidCents = Math.round(yesBid * 100);
-  const yesAskCents = Math.round(yesAsk * 100);
-  const noBidCents = Math.round((1 - yesAsk) * 100);
-  return {
-    yesBidCents,
-    yesAskCents,
-    noBidCents,
-    crossed: yesBid > yesAsk,
-    locked: yesBid === yesAsk,
-  };
-}
-
-export type ReconstructedBook = {
-  bids: Map<number, number>;
-  asks: Map<number, number>;
-  lastEventId: string | null;
-  failClosed: boolean;
-};
-
-export function createEmptyBook(): ReconstructedBook {
-  return {
-    bids: new Map(),
-    asks: new Map(),
-    lastEventId: null,
-    failClosed: false,
-  };
-}
-
 function applyLevels(
   book: ReconstructedBook,
   levels: ReadonlyArray<readonly [number, string, string, number?]>,
@@ -93,9 +73,7 @@ function applyLevels(
 function bestBid(book: ReconstructedBook): { price: number; qty: number } | null {
   let best: { price: number; qty: number } | null = null;
   for (const [price, qty] of book.bids) {
-    if (!best || price > best.price) {
-      best = { price, qty };
-    }
+    if (!best || price > best.price) best = { price, qty };
   }
   return best;
 }
@@ -103,9 +81,7 @@ function bestBid(book: ReconstructedBook): { price: number; qty: number } | null
 function bestAsk(book: ReconstructedBook): { price: number; qty: number } | null {
   let best: { price: number; qty: number } | null = null;
   for (const [price, qty] of book.asks) {
-    if (!best || price < best.price) {
-      best = { price, qty };
-    }
+    if (!best || price < best.price) best = { price, qty };
   }
   return best;
 }
@@ -122,7 +98,10 @@ export type TickEnvelope = {
 
 export type BboPoint = {
   timestampMs: number;
+  clockDomain: ClockDomain;
   timestampSource: "exchange" | "adapter";
+  adapterTimestampMs: number;
+  exchangeTimestampMs: number | null;
   bid: number;
   ask: number;
   bidSize: number;
@@ -156,18 +135,22 @@ export function applyTickToBook(
 
 export function bboFromBook(
   book: ReconstructedBook,
-  timestampMs: number,
-  timestampSource: "exchange" | "adapter",
+  dual: DualTimestamps,
   chainBreak: boolean,
+  domain: ClockDomain = CLOCK_POLICY.decisionClockDomain,
 ): BboPoint | null {
   const bid = bestBid(book);
   const ask = bestAsk(book);
-  if (!bid || !ask) {
-    return null;
-  }
+  if (!bid || !ask) return null;
+  const resolved = resolveDualTimestamps(dual);
+  const timestampMs = timestampInDomain(resolved, domain);
+  if (timestampMs === null) return null;
   return {
     timestampMs,
-    timestampSource,
+    clockDomain: domain,
+    timestampSource: domain,
+    adapterTimestampMs: resolved.adapterTimestampMs,
+    exchangeTimestampMs: resolved.exchangeTimestampMs,
     bid: bid.price,
     ask: ask.price,
     bidSize: bid.qty,
@@ -178,30 +161,73 @@ export function bboFromBook(
   };
 }
 
-/** Kalshi YES prices are in [0,1]; convert to cents BBO with NO complement. */
-export function kalshiExecutableFromYesBbo(bbo: BboPoint): {
-  yesBidCents: number;
-  yesAskCents: number;
-  yesBidSize: number;
-  yesAskSize: number;
-  noBidCents: number;
-  noAskCents: number;
-  noBidSize: number;
-  noAskSize: number;
-  crossed: boolean;
-  locked: boolean;
-} {
-  const cents = bboCentsFromYesBook(bbo.bid, bbo.ask);
+export function kalshiExecutableFromYesBbo(bbo: BboPoint): ExecutableQuote {
+  const yesBidCents = Math.round(bbo.bid * 100);
+  const yesAskCents = Math.round(bbo.ask * 100);
   return {
-    yesBidCents: cents.yesBidCents,
-    yesAskCents: cents.yesAskCents,
+    timestampMs: bbo.timestampMs,
+    clockDomain: bbo.clockDomain,
+    timestampSource: bbo.timestampSource,
+    adapterTimestampMs: bbo.adapterTimestampMs,
+    exchangeTimestampMs: bbo.exchangeTimestampMs,
+    yesBidCents,
+    yesAskCents,
     yesBidSize: bbo.bidSize,
     yesAskSize: bbo.askSize,
-    noBidCents: cents.noBidCents,
+    noBidCents: Math.round((1 - bbo.ask) * 100),
     noAskCents: Math.round((1 - bbo.bid) * 100),
     noBidSize: bbo.askSize,
     noAskSize: bbo.bidSize,
-    crossed: cents.crossed,
-    locked: cents.locked,
+    stale: false,
+    chainBreak: bbo.chainBreak,
+    failClosed: bbo.failClosed,
+  };
+}
+
+/** Emit BBO only when top-of-book changes (memory bound). */
+export function shouldEmitBbo(
+  previous: BboPoint | null,
+  next: BboPoint,
+): boolean {
+  if (!previous) return true;
+  return (
+    previous.bid !== next.bid
+    || previous.ask !== next.ask
+    || previous.bidSize !== next.bidSize
+    || previous.askSize !== next.askSize
+    || previous.failClosed !== next.failClosed
+    || previous.chainBreak !== next.chainBreak
+  );
+}
+
+export function parseTickLine(line: string): TickEnvelope | null {
+  const trimmed = line.trim();
+  if (!trimmed || trimmed[0] !== "[") return null;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(trimmed);
+  } catch {
+    return null;
+  }
+  if (!Array.isArray(parsed) || parsed.length < 6) return null;
+  const msgType = parsed[0];
+  if (typeof msgType !== "number") return null;
+  if (msgType === 5) return null; // instrument state — different shape
+  const prevEventId = parsed[2] == null ? null : String(parsed[2]);
+  const eventId = String(parsed[3]);
+  const adapterTimestampNs = Number(parsed[4]);
+  const exchangeTimestampNs = Number(parsed[5] ?? 0);
+  if (!Number.isFinite(adapterTimestampNs)) return null;
+  const levels = Array.isArray(parsed[6])
+    ? (parsed[6] as ReadonlyArray<readonly [number, string, string, number?]>)
+    : undefined;
+  return {
+    msgType,
+    prevEventId,
+    eventId,
+    adapterTimestampNs,
+    exchangeTimestampNs: Number.isFinite(exchangeTimestampNs) ? exchangeTimestampNs : 0,
+    levels,
+    isSnapshot: msgType === 0,
   };
 }

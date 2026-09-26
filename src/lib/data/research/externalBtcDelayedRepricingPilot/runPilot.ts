@@ -1,101 +1,137 @@
 /**
- * Offline pilot runner core — works on in-memory series (fixtures or loaded ticks).
+ * Offline pilot runner — in-memory or loaded streaming days.
  */
 
+import type { BboPoint } from "./bookReplay";
 import { buildDiagnosticControls, detectExternalBtcEvents } from "./detectExternalEvents";
+import { M128_RECONCILIATION } from "./m128Reconciliation";
 import { FROZEN_PILOT_SPEC } from "./pilotSpec";
-import { directionalSide, simulateDayTrades } from "./simulateTrades";
-import { delayClaimSupport } from "./timingQuality";
+import { EXIT_FAILURE_POLICY, simulateDayTrades } from "./simulateTrades";
+import { CLOCK_POLICY, delayClaimSupport } from "./timingQuality";
 import type {
   DaySummary,
+  DelayEconomics,
   ExecutableQuote,
   ExternalBtcEvent,
   PilotDelayMs,
   PilotRunReport,
+  SelectedContract,
   SimulatedTrade,
 } from "./types";
 import {
   EXTERNAL_BTC_DELAYED_REPRICING_PILOT_ANALYSIS_VERSION,
   EXTERNAL_BTC_DELAYED_REPRICING_PILOT_DISCLAIMER,
+  EXTERNAL_BTC_DELAYED_REPRICING_PILOT_PRIOR_ANALYSIS_VERSION,
   EXTERNAL_BTC_DELAYED_REPRICING_PILOT_STUDY_ID,
   PILOT_DELAY_MS,
 } from "./types";
-import { summarizePrimaryUncertainty } from "./uncertainty";
-import type { BboPoint } from "./bookReplay";
+import { summarizeCompletedTradeUncertainty } from "./uncertainty";
 
 export type DaySeriesInput = {
   utcDay: string;
   externalBbo: readonly BboPoint[];
-  kalshiQuotes: readonly ExecutableQuote[];
+  contracts: readonly SelectedContract[];
+  quotesByTicker: ReadonlyMap<string, readonly ExecutableQuote[]>;
 };
 
-/** Fail closed: any non-exchange Kalshi quote clock → adapter for claim support. */
-export function resolveKalshiClockSource(
-  quotes: readonly ExecutableQuote[],
-): "exchange" | "adapter" {
-  if (quotes.length === 0) {
-    return "adapter";
-  }
-  return quotes.every((q) => q.timestampSource === "exchange")
-    ? "exchange"
-    : "adapter";
+function weekdayFriday(utcDay: string): "Friday" {
+  // Spec-fixed Friday-only set; label without claiming calendar generality.
+  void utcDay;
+  return "Friday";
 }
 
-function externalClockSource(
-  event: ExternalBtcEvent,
-): "exchange" | "adapter" {
-  return event.timestampSource === "exchange" ? "exchange" : "adapter";
-}
-
-function timingBlockedTrade(
-  event: ExternalBtcEvent,
-  delayMs: PilotDelayMs,
-  holdMs: number,
-): SimulatedTrade {
-  const entryTimestampMs = event.eventTimestampMs + delayMs;
+function summarizeDay(
+  utcDay: string,
+  trades: readonly SimulatedTrade[],
+): DaySummary {
+  const primary = trades.filter((t) => t.controlKind === "primary");
+  const entered = primary.filter((t) => t.entryStatus === "entered");
+  const completed = entered.filter((t) => t.exitStatus === "completed");
+  const unresolved = entered.filter((t) => t.exitStatus === "unresolved");
+  const completedNets = completed
+    .map((t) => t.completedNetPnlCents)
+    .filter((v): v is number => v !== null);
   return {
-    eventId: event.eventId,
-    utcDay: event.utcDay,
-    delayMs,
-    controlKind: event.controlKind,
-    side: directionalSide(event),
-    entryTimestampMs,
-    exitTimestampMs: entryTimestampMs + holdMs,
-    entryPriceCents: 0,
-    exitPriceCents: 0,
-    entryFeeCents: 0,
-    exitFeeCents: 0,
-    grossPnlCents: 0,
-    netPnlCents: 0,
-    excluded: true,
-    exclusionReason: "timing-quality-block",
+    utcDay,
+    weekday: weekdayFriday(utcDay),
+    primaryEventCount: primary.length,
+    preEntryRejectCount: primary.filter((t) => t.entryStatus === "rejected-pre-entry").length,
+    enteredCount: entered.length,
+    completedExitCount: completed.length,
+    unresolvedExitCount: unresolved.length,
+    completedMeanNetPnlCents:
+      completedNets.length === 0
+        ? null
+        : completedNets.reduce((a, b) => a + b, 0) / completedNets.length,
   };
 }
 
-function daySummary(utcDay: string, trades: readonly SimulatedTrade[]): DaySummary {
-  const dayTrades = trades.filter((t) => t.utcDay === utcDay && t.controlKind === "primary");
-  const included = dayTrades.filter((t) => !t.excluded);
+function meanOrNull(values: readonly number[]): number | null {
+  if (values.length === 0) return null;
+  return values.reduce((a, b) => a + b, 0) / values.length;
+}
+
+function economicsForDelay(
+  delayMs: PilotDelayMs,
+  trades: readonly SimulatedTrade[],
+  days: readonly string[],
+): DelayEconomics {
+  const primary = trades.filter(
+    (t) => t.delayMs === delayMs && t.controlKind === "primary",
+  );
+  const entered = primary.filter((t) => t.entryStatus === "entered");
+  const completed = entered.filter((t) => t.exitStatus === "completed");
+  const unresolved = entered.filter((t) => t.exitStatus === "unresolved");
+  const economicResultStatus =
+    entered.length === 0
+      ? "no-entries"
+      : unresolved.length > 0
+        ? "incomplete-unresolved-exits"
+        : "complete";
+
+  const claim = delayClaimSupport({
+    delayMs,
+    decisionClockDomain: CLOCK_POLICY.decisionClockDomain,
+    eventClockDomain: CLOCK_POLICY.decisionClockDomain,
+    quoteClockDomain: CLOCK_POLICY.decisionClockDomain,
+    eventHasDomainTimestamp: true,
+    quoteHasDomainTimestamp: true,
+  });
+
   return {
-    utcDay,
-    eventCount: dayTrades.length,
-    tradeCount: included.length,
-    excludedCount: dayTrades.length - included.length,
-    meanNetPnlCents:
-      included.length === 0
-        ? null
-        : included.reduce((sum, t) => sum + t.netPnlCents, 0) / included.length,
+    opportunityEnteredCount: entered.length,
+    preEntryRejectCount: primary.filter((t) => t.entryStatus === "rejected-pre-entry").length,
+    completedExitCount: completed.length,
+    unresolvedExitCount: unresolved.length,
+    economicResultStatus,
+    completedTradeUncertainty: summarizeCompletedTradeUncertainty(completed),
+    allEntryLowerBoundMeanCents: meanOrNull(
+      entered
+        .map((t) => t.allEntryLowerBoundNetCents)
+        .filter((v): v is number => v !== null),
+    ),
+    allEntryUpperBoundMeanCents: meanOrNull(
+      entered
+        .map((t) => t.allEntryUpperBoundNetCents)
+        .filter((v): v is number => v !== null),
+    ),
+    delayClaimStatus: claim,
+    clockAlignmentStatus: "unknown",
+    daily: days.map((d) => summarizeDay(d, primary.filter((t) => t.utcDay === d))),
   };
 }
 
 export function runExternalBtcDelayedRepricingPilot(input: {
   days: readonly DaySeriesInput[];
   inputHashes?: Record<string, string>;
+  codeVersions?: Record<string, string>;
   delaysMs?: readonly PilotDelayMs[];
 }): PilotRunReport {
   const delays = input.delaysMs ?? PILOT_DELAY_MS.SENSITIVITY;
   const allEvents: ExternalBtcEvent[] = [];
   const allTrades: SimulatedTrade[] = [];
-  const timingExclusions: PilotRunReport["timingExclusions"] = [];
+  const timingNotes: PilotRunReport["timingNotes"] = [];
+  const dayIds = input.days.map((d) => d.utcDay);
 
   for (const day of input.days) {
     const detected = detectExternalBtcEvents({
@@ -112,112 +148,137 @@ export function runExternalBtcDelayedRepricingPilot(input: {
       FROZEN_PILOT_SPEC.execution.holdMs,
       PILOT_DELAY_MS.PRIMARY,
     );
-    const dayEvents = [...primary, ...controls];
-    allEvents.push(...dayEvents);
-    const kalshiSource = resolveKalshiClockSource(day.kalshiQuotes);
+    allEvents.push(...primary, ...controls);
 
     for (const delayMs of delays) {
       const runnablePrimary: ExternalBtcEvent[] = [];
-      for (const event of dayEvents.filter((e) => e.controlKind === "primary")) {
-        const support = delayClaimSupport({
+      for (const event of primary) {
+        const status = delayClaimSupport({
           delayMs,
-          externalSource: externalClockSource(event),
-          kalshiSource,
+          decisionClockDomain: CLOCK_POLICY.decisionClockDomain,
+          eventClockDomain: event.clockDomain,
+          quoteClockDomain: CLOCK_POLICY.decisionClockDomain,
+          eventHasDomainTimestamp: true,
+          quoteHasDomainTimestamp: true,
         });
-        if (support === "blocked") {
-          timingExclusions.push({
-            eventId: `${event.eventId}@${delayMs}`,
-            reason: "timing-quality-block",
+        timingNotes.push({
+          eventId: event.eventId,
+          delayMs,
+          status,
+        });
+        if (status === "blocked-domain-mix" || status === "blocked-missing-timestamps") {
+          // Fail closed: do not enter P&L for blocked timing claims.
+          allTrades.push({
+            eventId: event.eventId,
+            utcDay: event.utcDay,
+            delayMs,
+            controlKind: event.controlKind,
+            side: event.direction === "up" ? "YES" : "NO",
+            contract: null,
+            entryStatus: "rejected-pre-entry",
+            exitStatus: "not-applicable",
+            entryTimestampMs: event.eventTimestampMs + delayMs,
+            intendedExitTimestampMs:
+              event.eventTimestampMs + delayMs + FROZEN_PILOT_SPEC.execution.holdMs,
+            exitTimestampMs: null,
+            entryPriceCents: null,
+            exitPriceCents: null,
+            entryFeeCents: 0,
+            exitFeeCents: 0,
+            grossPnlCents: null,
+            completedNetPnlCents: null,
+            allEntryLowerBoundNetCents: null,
+            allEntryUpperBoundNetCents: null,
+            preEntryRejectReason: "timing-quality-block",
+            exitFailureReason: null,
+            excluded: true,
+            exclusionReason: "timing-quality-block",
           });
-          allTrades.push(
-            timingBlockedTrade(
-              event,
-              delayMs,
-              FROZEN_PILOT_SPEC.execution.holdMs,
-            ),
-          );
         } else {
           runnablePrimary.push(event);
         }
       }
 
-      const trades = simulateDayTrades({
+      // Primary strategy position state — controls never share this.
+      const primaryTrades = simulateDayTrades({
         events: runnablePrimary,
         delayMs,
         holdMs: FROZEN_PILOT_SPEC.execution.holdMs,
-        quotes: day.kalshiQuotes,
+        contracts: day.contracts,
+        quotesByTicker: day.quotesByTicker,
         minDisplayedSize: FROZEN_PILOT_SPEC.execution.minDisplayedSize,
         staleMaxAgeMs: FROZEN_PILOT_SPEC.execution.staleMaxAgeMs,
         cooldownMs: FROZEN_PILOT_SPEC.positionPolicy.cooldownMs,
+        decisionClockDomain: CLOCK_POLICY.decisionClockDomain,
       });
-      allTrades.push(...trades);
+      allTrades.push(...primaryTrades);
 
-      // Diagnostic controls simulated separately (no position interaction with primary).
-      for (const control of dayEvents.filter((e) => e.controlKind !== "primary")) {
-        const support = delayClaimSupport({
+      for (const control of controls) {
+        const status = delayClaimSupport({
           delayMs,
-          externalSource: externalClockSource(control),
-          kalshiSource,
+          decisionClockDomain: CLOCK_POLICY.decisionClockDomain,
+          eventClockDomain: control.clockDomain,
+          quoteClockDomain: CLOCK_POLICY.decisionClockDomain,
+          eventHasDomainTimestamp: true,
+          quoteHasDomainTimestamp: true,
         });
-        if (support === "blocked") {
-          allTrades.push(
-            timingBlockedTrade(
-              control,
-              delayMs,
-              FROZEN_PILOT_SPEC.execution.holdMs,
-            ),
-          );
+        if (status === "blocked-domain-mix" || status === "blocked-missing-timestamps") {
           continue;
         }
         const controlTrades = simulateDayTrades({
           events: [control],
           delayMs,
           holdMs: FROZEN_PILOT_SPEC.execution.holdMs,
-          quotes: day.kalshiQuotes,
+          contracts: day.contracts,
+          quotesByTicker: day.quotesByTicker,
           minDisplayedSize: FROZEN_PILOT_SPEC.execution.minDisplayedSize,
           staleMaxAgeMs: FROZEN_PILOT_SPEC.execution.staleMaxAgeMs,
           cooldownMs: FROZEN_PILOT_SPEC.positionPolicy.cooldownMs,
+          decisionClockDomain: CLOCK_POLICY.decisionClockDomain,
         });
         allTrades.push(...controlTrades);
       }
     }
   }
 
-  const byDelay: PilotRunReport["byDelay"] = {};
+  const byDelay: Record<string, DelayEconomics> = {};
   for (const delayMs of delays) {
-    const delayTrades = allTrades.filter(
-      (t) => t.delayMs === delayMs && t.controlKind === "primary",
-    );
-    byDelay[String(delayMs)] = {
-      opportunityCount: delayTrades.filter((t) => !t.excluded).length,
-      excludedCount: delayTrades.filter((t) => t.excluded).length,
-      uncertainty: summarizePrimaryUncertainty(delayTrades),
-    };
+    byDelay[String(delayMs)] = economicsForDelay(delayMs, allTrades, dayIds);
   }
-
-  const daySummaries = input.days.map((d) =>
-    daySummary(
-      d.utcDay,
-      allTrades.filter((t) => t.delayMs === PILOT_DELAY_MS.PRIMARY),
-    ),
-  );
 
   return {
     studyId: EXTERNAL_BTC_DELAYED_REPRICING_PILOT_STUDY_ID,
     analysisVersion: EXTERNAL_BTC_DELAYED_REPRICING_PILOT_ANALYSIS_VERSION,
+    priorAnalysisVersion: EXTERNAL_BTC_DELAYED_REPRICING_PILOT_PRIOR_ANALYSIS_VERSION,
     disclaimer: EXTERNAL_BTC_DELAYED_REPRICING_PILOT_DISCLAIMER,
     parameters: {
-      ...FROZEN_PILOT_SPEC.eventDefinition,
-      ...FROZEN_PILOT_SPEC.execution,
+      eventDefinition: FROZEN_PILOT_SPEC.eventDefinition,
+      execution: FROZEN_PILOT_SPEC.execution,
+      exitFailurePolicy: EXIT_FAILURE_POLICY,
+      clockPolicy: CLOCK_POLICY,
       delaysMs: [...delays],
       primaryDelayMs: PILOT_DELAY_MS.PRIMARY,
+      fridayOnly: true,
+      daySelection: FROZEN_PILOT_SPEC.daySelection,
     },
     inputHashes: input.inputHashes ?? {},
+    codeVersions: input.codeVersions ?? {
+      analysisVersion: EXTERNAL_BTC_DELAYED_REPRICING_PILOT_ANALYSIS_VERSION,
+      studyId: EXTERNAL_BTC_DELAYED_REPRICING_PILOT_STUDY_ID,
+    },
     events: allEvents,
     trades: allTrades,
-    daySummaries,
+    daySummaries: dayIds.map((d) =>
+      summarizeDay(
+        d,
+        allTrades.filter(
+          (t) => t.utcDay === d && t.delayMs === PILOT_DELAY_MS.PRIMARY && t.controlKind === "primary",
+        ),
+      ),
+    ),
     byDelay,
-    timingExclusions,
-    priorResearchNote: JSON.stringify(FROZEN_PILOT_SPEC.priorResearchAlreadyAnswered),
+    timingNotes,
+    m128Reconciliation: { ...M128_RECONCILIATION },
+    fridayOnly: true,
   };
 }

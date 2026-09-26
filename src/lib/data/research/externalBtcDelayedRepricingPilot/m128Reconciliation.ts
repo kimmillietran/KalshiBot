@@ -1,0 +1,47 @@
+/**
+ * Concrete M12.8 reconciliation — novelty requires a material unanswered question.
+ */
+
+export const M128_RECONCILIATION = {
+  m128QuestionAnswered:
+    "After Coinbase-spot magnitude-boundary crosses on KalshiBot live-capture "
+    + "(btc-spot.jsonl + top-of-book.jsonl), does Kalshi TOB show a directional / "
+    + "magnitude mid response at observational lag windows 0–60s?",
+  m128Result: {
+    interpretationClassification: "no-directional-response",
+    recommendedNextAction: "deprioritize-btc-lead-lag-family",
+    classificationRationale:
+      "Directional Kalshi response to BTC impulses is near random or negligible in magnitude.",
+    trainTriggers: 1237,
+    eligibleTriggers: 2346,
+    horizonsMs: [5000, 15000, 30000, 60000],
+    responseWindowsMs: [0, 1000, 2000, 5000, 10000, 15000, 30000, 60000],
+    feesModeled: false,
+    executableTakerPnlModeled: false,
+    delaysLike250ms1s3sAsActionScenarios: false,
+    timestampPolicy: "exchangeTimestampMs ?? receivedAtMs (silent fallback)",
+    artifact:
+      "kalshi-builder1/.../train-selected-run-lead-lag-analysis.json (run 2026-09-08T07-46-44-416Z)",
+  },
+  materialGapThisPilotAddresses: [
+    "Fee-aware STANDARD taker entry+exit net ¢/contract (M12.8 mid response; fees unfrozen)",
+    "Explicit action-delay scenarios 250ms/1s/3s + fixed 15s hold (M12.8 used observational "
+      + "lag windows on mid, not delayed-taker economics)",
+    "CryptoStruct native tick books (raw L2) vs KalshiBot capture TOB JSONL plane",
+    "Entry/exit separation with unresolved-exit accounting (not M12.8 scope)",
+  ],
+  whatDoesNotJustifyANewPilotAlone: [
+    "A new vendor name (CryptoStruct) without a different estimand",
+    "Renaming the study while repeating mid-response lead-lag characterization",
+    "Assuming ticks automatically overturn no-directional-response on mid",
+  ],
+  decision:
+    "Proceed with acquisition/pilot as an exploratory fee-aware delayed-taker check on "
+    + "Friday-only SPENT days — not as a refutation of M12.8's TOB mid-response finding. "
+    + "If fee-aware delayed-taker results are nonpositive / incomplete / inconclusive under "
+    + "fragile G≤5, shelve without expanding parameters.",
+  shelveIf:
+    "Primary 1s completed+bound economics are nonpositive, or simulation remains incomplete "
+    + "without defensible bounds, or no material edge beyond M12.8's already-negative "
+    + "directional characterization.",
+} as const;

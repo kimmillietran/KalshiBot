@@ -1,6 +1,6 @@
 {
   "studyId": "kalshi-kxbtc15m-external-btc-delayed-repricing-pilot-v0",
-  "generatedAtIso": "2026-09-26T02:30:00.000Z",
+  "generatedAtIso": "2026-09-26T03:00:00.000Z",
   "selectionRule": "every-7th-m16-er-day-chronological-index-0-based",
   "venue": {
     "venueCode": "coinbase",
@@ -153,5 +153,15 @@
     "creditBalanceCents": 1600,
     "agentSpendMode": "approve",
     "note": "Credits never spend without consent; default create_checkout returns approval_required."
-  }
+  },
+  "fridayOnly": true,
+  "analysisVersion": "2026-09-26-correction-v1",
+  "priorAnalysisVersion": "2026-09-26-prep-v0",
+  "correctionsFromPrepV0": [
+    "Implemented streaming Coinbase/Kalshi ingestion and --run-real path (gated empirics)",
+    "Removed invented 50–250ms cross-venue sync bound; delays never auto-verified",
+    "Separated pre-entry reject vs entered+unresolved exit; exit-failure policy frozen",
+    "Friday-only label; fragile G≤5 CI; control isolation + retrospective placebo labeling",
+    "Concrete M12.8 reconciliation with material fee-aware delayed-taker gap"
+  ]
 }

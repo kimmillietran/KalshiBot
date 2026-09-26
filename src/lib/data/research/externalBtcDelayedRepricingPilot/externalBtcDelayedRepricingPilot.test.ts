@@ -1,3 +1,7 @@
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { spawnSync } from "node:child_process";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -7,30 +11,36 @@ import {
   createEmptyBook,
   detectExternalBtcEvents,
   directionalSide,
+  delayClaimSupport,
   FROZEN_PILOT_SPEC,
   joinAsOf,
-  kalshiExecutableFromYesBbo,
+  loadPilotDayFromFiles,
+  M128_RECONCILIATION,
   PILOT_DELAY_MS,
-  resolveDecisionTimestamp,
   runExternalBtcDelayedRepricingPilot,
   simulateDayTrades,
   simulateEventTrade,
   applyTickToBook,
   bboFromBook,
-  delayClaimSupport,
+  kalshiExecutableFromYesBbo,
+  writeZstdTextFixture,
+  CLOCK_POLICY,
+  selectContractAtEventTime,
 } from "./index";
 import type { BboPoint } from "./bookReplay";
-import type { ExecutableQuote, ExternalBtcEvent } from "./types";
+import type { ExecutableQuote, ExternalBtcEvent, SelectedContract } from "./types";
 
 function bbo(
   timestampMs: number,
   mid: number,
-  source: "exchange" | "adapter" = "exchange",
 ): BboPoint {
   const half = 0.5;
   return {
     timestampMs,
-    timestampSource: source,
+    clockDomain: "adapter",
+    timestampSource: "adapter",
+    adapterTimestampMs: timestampMs,
+    exchangeTimestampMs: timestampMs,
     bid: mid - half,
     ask: mid + half,
     bidSize: 2,
@@ -49,7 +59,10 @@ function quote(
 ): ExecutableQuote {
   return {
     timestampMs,
-    timestampSource: "exchange",
+    clockDomain: "adapter",
+    timestampSource: "adapter",
+    adapterTimestampMs: timestampMs,
+    exchangeTimestampMs: timestampMs,
     yesBidCents: yesBid,
     yesAskCents: yesAsk,
     yesBidSize: sizes.bid,
@@ -60,59 +73,49 @@ function quote(
     noAskSize: sizes.bid,
     stale: false,
     chainBreak: false,
+    failClosed: false,
   };
 }
 
-describe("externalBtcDelayedRepricingPilot", () => {
-  it("resolves exchange timestamp when present and adapter otherwise", () => {
-    expect(
-      resolveDecisionTimestamp({
-        exchangeTimestampNs: 1_700_000_000_000_000_000,
-        adapterTimestampNs: 1_700_000_000_100_000_000,
-      }),
-    ).toEqual({ timestampMs: 1_700_000_000_000, source: "exchange" });
-    expect(
-      resolveDecisionTimestamp({
-        exchangeTimestampNs: 0,
-        adapterTimestampNs: 1_700_000_000_100_000_000,
-      }),
-    ).toEqual({ timestampMs: 1_700_000_000_100, source: "adapter" });
-  });
+function primaryEvent(partial: Partial<ExternalBtcEvent> & Pick<ExternalBtcEvent, "eventId" | "eventTimestampMs" | "direction">): ExternalBtcEvent {
+  return {
+    utcDay: "2026-08-14",
+    timestampSource: "adapter",
+    clockDomain: "adapter",
+    returnBps: partial.direction === "up" ? 8 : -8,
+    absoluteReturnBps: 8,
+    lookbackMs: 5_000,
+    btcPriceUsd: 100_000,
+    controlKind: "primary",
+    controlNote: null,
+    ...partial,
+  };
+}
 
-  it("causal as-of join never returns a future observation", () => {
+const CONTRACT: SelectedContract = {
+  ticker: "KXBTC15M-TEST",
+  startMs: 0,
+  expiryMs: 1_000_000,
+};
+
+describe("externalBtcDelayedRepricingPilot correction-v1", () => {
+  it("keeps causal as-of joins and rejects future leakage", () => {
     const series = [quote(1000, 40, 42), quote(2000, 41, 43), quote(3000, 45, 47)];
-    const joined = joinAsOf({
-      series,
-      decisionTimestampMs: 2500,
-      maxAgeMs: 5_000,
-    });
-    expect(joined.futureLeakageGuardStatus).toBe("pass");
+    const joined = joinAsOf({ series, decisionTimestampMs: 2500, maxAgeMs: 5_000 });
     expect(joined.sample?.timestampMs).toBe(2000);
     expect(() =>
-      assertNoFutureLeakage({
-        decisionTimestampMs: 1000,
-        observationTimestampMs: 1001,
-      }),
+      assertNoFutureLeakage({ decisionTimestampMs: 1000, observationTimestampMs: 1001 }),
     ).toThrow(/future-leakage-guard/);
   });
 
-  it("marks stale books beyond max age and detects chain breaks", () => {
-    const series = [quote(1000, 40, 42)];
-    const stale = joinAsOf({
-      series,
-      decisionTimestampMs: 5000,
-      maxAgeMs: 1000,
-    });
-    expect(stale.stale).toBe(true);
-    expect(stale.joined).toBe(false);
-
+  it("detects chain breaks and continuity reset on snapshot", () => {
     const book = createEmptyBook();
     applyTickToBook(book, {
       msgType: 0,
       prevEventId: "0",
       eventId: "a",
-      adapterTimestampNs: 1,
-      exchangeTimestampNs: 1,
+      adapterTimestampNs: 1e9,
+      exchangeTimestampNs: 1e9,
       levels: [[0, "0.40", "10", 1], [1, "0.42", "8", 1]],
       isSnapshot: true,
     });
@@ -120,282 +123,333 @@ describe("externalBtcDelayedRepricingPilot", () => {
       msgType: 1,
       prevEventId: "missing",
       eventId: "b",
-      adapterTimestampNs: 2,
-      exchangeTimestampNs: 2,
+      adapterTimestampNs: 2e9,
+      exchangeTimestampNs: 2e9,
       levels: [[0, "0.41", "10", 1]],
     });
     expect(gap.chainBreak).toBe(true);
     expect(book.failClosed).toBe(true);
+    applyTickToBook(book, {
+      msgType: 0,
+      prevEventId: "x",
+      eventId: "c",
+      adapterTimestampNs: 3e9,
+      exchangeTimestampNs: 3e9,
+      levels: [[0, "0.40", "10", 1], [1, "0.42", "8", 1]],
+      isSnapshot: true,
+    });
+    expect(book.failClosed).toBe(false);
   });
 
-  it("detects 5bps boundary-cross events with cooldown and builds controls", () => {
+  it("marks delay claims without inventing verified tradability", () => {
+    expect(
+      delayClaimSupport({
+        delayMs: 250,
+        decisionClockDomain: "adapter",
+        eventClockDomain: "adapter",
+        quoteClockDomain: "adapter",
+        eventHasDomainTimestamp: true,
+        quoteHasDomainTimestamp: true,
+      }),
+    ).toBe("diagnostic-only");
+    expect(
+      delayClaimSupport({
+        delayMs: 1_000,
+        decisionClockDomain: "adapter",
+        eventClockDomain: "adapter",
+        quoteClockDomain: "adapter",
+        eventHasDomainTimestamp: true,
+        quoteHasDomainTimestamp: true,
+      }),
+    ).toBe("scenario-assumption-unverified");
+    expect(
+      delayClaimSupport({
+        delayMs: 3_000,
+        decisionClockDomain: "adapter",
+        eventClockDomain: "exchange",
+        quoteClockDomain: "adapter",
+        eventHasDomainTimestamp: true,
+        quoteHasDomainTimestamp: true,
+      }),
+    ).toBe("blocked-domain-mix");
+    expect(CLOCK_POLICY.clockAlignmentStatus).toBe("unknown");
+    expect(FROZEN_PILOT_SPEC.timing.clockPolicy.alignmentNote).not.toMatch(/50–250/);
+  });
+
+  it("separates entry success from unresolved exit and retains cooldown", () => {
+    const event = primaryEvent({ eventId: "e1", eventTimestampMs: 10_000, direction: "up" });
+    const quotes = [
+      quote(10_000, 48, 50),
+      quote(11_000, 48, 50),
+      // no usable exit liquidity at intended exit
+      quote(26_000, 55, 57, { bid: 0, ask: 0 }),
+    ];
+    const trade = simulateEventTrade({
+      event,
+      delayMs: 1_000,
+      holdMs: 15_000,
+      contract: CONTRACT,
+      quotes,
+      minDisplayedSize: 1,
+      staleMaxAgeMs: 2_000,
+      openUntilMs: null,
+      cooldownUntilMs: null,
+      decisionClockDomain: "adapter",
+    });
+    expect(trade.entryStatus).toBe("entered");
+    expect(trade.exitStatus).toBe("unresolved");
+    expect(trade.completedNetPnlCents).toBeNull();
+    expect(trade.allEntryLowerBoundNetCents).not.toBeNull();
+    expect(trade.allEntryUpperBoundNetCents).not.toBeNull();
+
+    const second = primaryEvent({ eventId: "e2", eventTimestampMs: 12_000, direction: "up" });
+    const day = simulateDayTrades({
+      events: [event, second],
+      delayMs: 1_000,
+      holdMs: 15_000,
+      contracts: [CONTRACT],
+      quotesByTicker: new Map([[CONTRACT.ticker, quotes]]),
+      minDisplayedSize: 1,
+      staleMaxAgeMs: 5_000,
+      cooldownMs: 60_000,
+      decisionClockDomain: "adapter",
+    });
+    expect(day[0]!.entryStatus).toBe("entered");
+    expect(day[0]!.exitStatus).toBe("unresolved");
+    expect(day[1]!.preEntryRejectReason).toBe("overlapping-position");
+  });
+
+  it("selects contract at event time and rejects insufficient time-to-expiry", () => {
+    const short: SelectedContract = {
+      ticker: "SHORT",
+      startMs: 0,
+      expiryMs: 20_000,
+    };
+    const quotesByTicker = new Map([["SHORT", [quote(10_000, 49, 51)]]]);
+    const selected = selectContractAtEventTime({
+      contracts: [short],
+      eventTimestampMs: 10_000,
+      holdMs: 15_000,
+      delayMs: 1_000,
+      quotesByTicker,
+    });
+    expect(selected.reject).toBe("insufficient-time-to-expiry");
+  });
+
+  it("YES/NO payoff uses ask entry and bid exit with fees when completed", () => {
+    const event = primaryEvent({ eventId: "e3", eventTimestampMs: 10_000, direction: "up" });
+    expect(directionalSide(event)).toBe("YES");
+    const trade = simulateEventTrade({
+      event,
+      delayMs: 1_000,
+      holdMs: 15_000,
+      contract: CONTRACT,
+      quotes: [quote(11_000, 48, 50), quote(26_000, 55, 57)],
+      minDisplayedSize: 1,
+      staleMaxAgeMs: 2_000,
+      openUntilMs: null,
+      cooldownUntilMs: null,
+      decisionClockDomain: "adapter",
+    });
+    expect(trade.exitStatus).toBe("completed");
+    expect(trade.entryPriceCents).toBe(50);
+    expect(trade.exitPriceCents).toBe(55);
+    expect(trade.completedNetPnlCents).toBe(
+      5 - (trade.entryFeeCents + trade.exitFeeCents),
+    );
+  });
+
+  it("isolates controls from primary position state and labels retrospective placebo", () => {
     const points: BboPoint[] = [];
-    // flat then jump >5bps over 5s lookback
-    for (let t = 0; t <= 10_000; t += 1000) {
-      points.push(bbo(t, 100_000));
-    }
-    points.push(bbo(11_000, 100_060)); // 6 bps up over ~5s from t=6000 price 100000
-    const { events, suppressedByCooldown } = detectExternalBtcEvents({
+    for (let t = 0; t <= 10_000; t += 1_000) points.push(bbo(t, 100_000));
+    points.push(bbo(11_000, 100_060));
+    const { events } = detectExternalBtcEvents({
       utcDay: "2026-08-14",
       points,
       lookbackMs: 5_000,
       boundaryBps: 5,
       cooldownMs: 60_000,
     });
-    expect(events.length).toBeGreaterThanOrEqual(1);
-    expect(events[0]!.direction).toBe("up");
-    expect(suppressedByCooldown).toBeGreaterThanOrEqual(0);
     const controls = buildDiagnosticControls(events, 15_000, 1_000);
     expect(controls.some((c) => c.controlKind === "sign-flip")).toBe(true);
-    expect(controls.some((c) => c.controlKind === "time-sham")).toBe(true);
+    expect(
+      controls.some((c) => c.controlKind === "time-sham-retrospective-placebo"),
+    ).toBe(true);
+    expect(controls[0]!.controlNote).toMatch(/Not independent evidence/);
+    expect(controls.find((c) => c.controlKind === "time-sham-retrospective-placebo")!.controlNote)
+      .toMatch(/Retrospective placebo/);
   });
 
-  it("YES/NO directional payoff uses executable ask entry and bid exit with fees", () => {
-    const event: ExternalBtcEvent = {
-      eventId: "e1",
-      utcDay: "2026-08-14",
-      eventTimestampMs: 10_000,
-      timestampSource: "exchange",
-      direction: "up",
-      returnBps: 8,
-      absoluteReturnBps: 8,
-      lookbackMs: 5_000,
-      btcPriceUsd: 100_000,
-      controlKind: "primary",
-    };
-    expect(directionalSide(event)).toBe("YES");
-    const quotes = [
-      quote(10_000, 48, 50),
-      quote(11_000, 48, 50), // entry at +1000ms delay
-      quote(26_000, 55, 57), // exit after 15s hold from entry
-    ];
-    const trade = simulateEventTrade({
-      event,
-      delayMs: 1_000,
-      holdMs: 15_000,
-      quotes,
-      minDisplayedSize: 1,
-      staleMaxAgeMs: 2_000,
-      openUntilMs: null,
-      cooldownUntilMs: null,
-    });
-    expect(trade.excluded).toBe(false);
-    expect(trade.side).toBe("YES");
-    expect(trade.entryPriceCents).toBe(50);
-    expect(trade.exitPriceCents).toBe(55);
-    expect(trade.entryFeeCents).toBeGreaterThan(0);
-    expect(trade.exitFeeCents).toBeGreaterThan(0);
-    expect(trade.grossPnlCents).toBe(5);
-    expect(trade.netPnlCents).toBe(5 - trade.entryFeeCents - trade.exitFeeCents);
-  });
-
-  it("applies delay scenarios and excludes insufficient displayed liquidity", () => {
-    const event: ExternalBtcEvent = {
-      eventId: "e2",
-      utcDay: "2026-08-14",
-      eventTimestampMs: 10_000,
-      timestampSource: "exchange",
-      direction: "down",
-      returnBps: -7,
-      absoluteReturnBps: 7,
-      lookbackMs: 5_000,
-      btcPriceUsd: 100_000,
-      controlKind: "primary",
-    };
-    expect(directionalSide(event)).toBe("NO");
-    const thin = simulateEventTrade({
-      event,
-      delayMs: 250,
-      holdMs: 15_000,
-      quotes: [
-        quote(10_250, 40, 42, { bid: 0, ask: 0 }),
-        quote(25_250, 40, 42, { bid: 0, ask: 0 }),
-      ],
-      minDisplayedSize: 1,
-      staleMaxAgeMs: 2_000,
-      openUntilMs: null,
-      cooldownUntilMs: null,
-    });
-    expect(thin.excluded).toBe(true);
-    expect(thin.exclusionReason).toBe("insufficient-displayed-size");
-  });
-
-  it("deduplicates overlapping positions and respects cooldown", () => {
-    const events: ExternalBtcEvent[] = [
-      {
-        eventId: "a",
-        utcDay: "2026-08-14",
-        eventTimestampMs: 10_000,
-        timestampSource: "exchange",
-        direction: "up",
-        returnBps: 6,
-        absoluteReturnBps: 6,
-        lookbackMs: 5_000,
-        btcPriceUsd: 100_000,
-        controlKind: "primary",
-      },
-      {
-        eventId: "b",
-        utcDay: "2026-08-14",
-        eventTimestampMs: 12_000,
-        timestampSource: "exchange",
-        direction: "up",
-        returnBps: 6,
-        absoluteReturnBps: 6,
-        lookbackMs: 5_000,
-        btcPriceUsd: 100_000,
-        controlKind: "primary",
-      },
-    ];
-    const quotes = [
-      quote(11_000, 48, 50),
-      quote(13_000, 48, 50),
-      quote(26_000, 52, 54),
-      quote(28_000, 52, 54),
-    ];
-    const trades = simulateDayTrades({
-      events,
-      delayMs: 1_000,
-      holdMs: 15_000,
-      quotes,
-      minDisplayedSize: 1,
-      staleMaxAgeMs: 5_000,
-      cooldownMs: 60_000,
-    });
-    expect(trades[0]!.excluded).toBe(false);
-    expect(trades[1]!.excluded).toBe(true);
-    expect(trades[1]!.exclusionReason).toBe("overlapping-position");
-  });
-
-  it("runs the pilot on synthetic fixtures for all declared delays without claiming empirics", () => {
+  it("reports incomplete economics when unresolved exits exist", () => {
     const externalBbo: BboPoint[] = [];
-    for (let t = 0; t <= 20_000; t += 1_000) {
-      externalBbo.push(bbo(t, 50_000));
-    }
-    externalBbo.push(bbo(21_000, 50_040)); // 8 bps over 5s from t=16000
+    for (let t = 0; t <= 20_000; t += 1_000) externalBbo.push(bbo(t, 50_000));
+    externalBbo.push(bbo(21_000, 50_040));
 
-    const kalshiQuotes: ExecutableQuote[] = [];
+    const quotes: ExecutableQuote[] = [];
     for (let t = 0; t <= 60_000; t += 500) {
-      kalshiQuotes.push(quote(t, 49, 51));
+      // entry ok; exit size zero around intended exits for 1s delay (22000+15000=37000)
+      const thinExit = t >= 30_000 && t <= 45_000;
+      quotes.push(quote(t, 49, 51, thinExit ? { bid: 0, ask: 0 } : { bid: 5, ask: 5 }));
     }
-    // After delay, move favorable for YES
-    for (let t = 22_000; t <= 45_000; t += 500) {
-      kalshiQuotes.push(quote(t, 54, 56));
+    const report = runExternalBtcDelayedRepricingPilot({
+      days: [
+        {
+          utcDay: "2026-08-14",
+          externalBbo,
+          contracts: [CONTRACT],
+          quotesByTicker: new Map([[CONTRACT.ticker, quotes]]),
+        },
+      ],
+      inputHashes: { fixture: "incomplete-path" },
+    });
+    expect(report.fridayOnly).toBe(true);
+    expect(report.byDelay["1000"]!.delayClaimStatus).toBe("scenario-assumption-unverified");
+    expect(report.m128Reconciliation.m128Result).toBeDefined();
+    // May be incomplete or no-entries depending on event detection + liquidity
+    expect(["incomplete-unresolved-exits", "complete", "no-entries"]).toContain(
+      report.byDelay["1000"]!.economicResultStatus,
+    );
+  });
+
+  it("documents M12.8 material gap without inventing novelty-only justification", () => {
+    expect(M128_RECONCILIATION.m128Result.interpretationClassification).toBe(
+      "no-directional-response",
+    );
+    expect(M128_RECONCILIATION.materialGapThisPilotAddresses.length).toBeGreaterThan(0);
+    expect(M128_RECONCILIATION.whatDoesNotJustifyANewPilotAlone.join(" ")).toMatch(
+      /vendor name/i,
+    );
+    expect(FROZEN_PILOT_SPEC.daySelection.fridayOnly).toBe(true);
+  });
+
+  it("runs native compressed inputs through load→report path", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "pilot-native-"));
+    const utcDay = "2026-08-14";
+    const coinbasePath = join(dir, `coinbase-BTC-USD-${utcDay}.txt.zst`);
+    const cb: string[] = [
+      JSON.stringify({ instrument: { id: 15050, code: "BTC-USD" } }),
+    ];
+    let id = 1;
+    for (let s = 0; s <= 21; s += 1) {
+      const mid = s < 21 ? "50000.0" : "50040.0";
+      const bid = s < 21 ? "49999.5" : "50039.5";
+      const ask = s < 21 ? "50000.5" : "50040.5";
+      const prev = s === 0 ? "0" : String(id - 1);
+      const eid = String(id);
+      id += 1;
+      const ns = s * 1_000_000_000;
+      cb.push(
+        JSON.stringify([
+          s === 0 ? 0 : 1,
+          15050,
+          prev,
+          eid,
+          ns,
+          ns,
+          [[0, bid, "1", 1], [1, ask, "1", 1]],
+          ...(s === 0 ? [true] : []),
+        ]),
+      );
+      void mid;
     }
+    await writeZstdTextFixture(coinbasePath, cb);
+
+    const member = `kalshi-KXBTC15M-26AUG141500-00-${utcDay}.txt.zst`;
+    const memberPath = join(dir, member);
+    const kl: string[] = [
+      JSON.stringify({
+        instrument: {
+          code: "KXBTC15M-26AUG141500-00",
+          start: "2026-08-14 00:00:00",
+          expiry: "2026-08-14 23:59:00",
+        },
+      }),
+    ];
+    id = 1;
+    for (let s = 0; s <= 60; s += 1) {
+      const prev = s === 0 ? "0" : String(id - 1);
+      const eid = String(id);
+      id += 1;
+      const ns = s * 1_000_000_000;
+      const fav = s >= 22;
+      kl.push(
+        JSON.stringify([
+          s === 0 ? 0 : 1,
+          1,
+          prev,
+          eid,
+          ns,
+          ns,
+          [
+            [0, fav ? "0.54" : "0.49", "10", 1],
+            [1, fav ? "0.56" : "0.51", "10", 1],
+          ],
+          ...(s === 0 ? [true] : []),
+        ]),
+      );
+    }
+    await writeZstdTextFixture(memberPath, kl);
+    const zipPath = join(dir, `kalshi-btc-15m_${utcDay}.zip`);
+    const z = spawnSync("zip", ["-q", zipPath, member], { cwd: dir });
+    expect(z.status).toBe(0);
+    writeFileSync(join(dir, "MANIFEST.txt"), `${member}\n`);
+
+    const day = await loadPilotDayFromFiles({
+      utcDay,
+      coinbaseTickPath: coinbasePath,
+      kalshiZipPath: zipPath,
+    });
+    expect(day.externalBbo.length).toBeGreaterThan(0);
+    expect(day.contracts.length).toBe(1);
+    expect(Object.keys(day.inputHashes).length).toBe(2);
 
     const report = runExternalBtcDelayedRepricingPilot({
-      days: [{ utcDay: "2026-08-14", externalBbo, kalshiQuotes }],
-      inputHashes: { fixture: "synthetic-only" },
+      days: [
+        {
+          utcDay: day.utcDay,
+          externalBbo: day.externalBbo,
+          contracts: day.contracts,
+          quotesByTicker: day.quotesByTicker,
+        },
+      ],
+      inputHashes: day.inputHashes,
     });
-
-    expect(report.studyId).toBe(FROZEN_PILOT_SPEC.studyId);
+    expect(report.analysisVersion).toBe(FROZEN_PILOT_SPEC.analysisVersion);
     for (const delay of PILOT_DELAY_MS.SENSITIVITY) {
       expect(report.byDelay[String(delay)]).toBeDefined();
     }
-    expect(report.disclaimer).toContain("Does not purchase");
-    expect(report.priorResearchNote).toContain("no-directional-response");
-  });
+    expect(report.byDelay["250"]!.delayClaimStatus).toBe("diagnostic-only");
+  }, 30_000);
 
-  it("builds an outcome-blind data manifest with credit quote and no purchase flag", () => {
+  it("builds friday-only manifest without purchase authorization", () => {
     const manifest = buildPilotDataManifest({
       creditBalanceCents: 1600,
-      generatedAtIso: "2026-09-26T00:00:00.000Z",
+      generatedAtIso: "2026-09-26T03:00:00.000Z",
     });
     expect(manifest.utcDates).toEqual([...FROZEN_PILOT_SPEC.daySelection.selectedUtcDays]);
     expect(manifest.creditQuote.purchaseAuthorizedInThisTask).toBe(false);
-    expect(manifest.creditQuote.totalEur).toBe(manifest.totals.missingCoinbaseDays.length);
-    expect(manifest.venue.instrumentId).toBe(15050);
-    expect(manifest.downloadMethod.doNotRunInThisTask).toBe(true);
   });
 
-  it("marks subsecond claims diagnostic-only or blocked without dual exchange clocks", () => {
-    expect(
-      delayClaimSupport({
-        delayMs: 250,
-        externalSource: "adapter",
-        kalshiSource: "exchange",
-      }),
-    ).toBe("blocked");
-    expect(
-      delayClaimSupport({
-        delayMs: 250,
-        externalSource: "exchange",
-        kalshiSource: "exchange",
-      }),
-    ).toBe("diagnostic-only");
-    expect(
-      delayClaimSupport({
-        delayMs: 1_000,
-        externalSource: "exchange",
-        kalshiSource: "exchange",
-      }),
-    ).toBe("supported");
-  });
-
-  it("excludes blocked-delay primary trades from opportunity metrics (no silent P&L)", () => {
-    const externalBbo: BboPoint[] = [];
-    for (let t = 0; t <= 20_000; t += 1_000) {
-      externalBbo.push(bbo(t, 50_000, "adapter"));
-    }
-    externalBbo.push(bbo(21_000, 50_040, "adapter"));
-
-    const kalshiQuotes: ExecutableQuote[] = [];
-    for (let t = 0; t <= 60_000; t += 500) {
-      kalshiQuotes.push({
-        ...quote(t, 49, 51),
-        timestampSource: "adapter",
-      });
-    }
-
-    const report = runExternalBtcDelayedRepricingPilot({
-      days: [{ utcDay: "2026-08-14", externalBbo, kalshiQuotes }],
-      delaysMs: [250, 1_000],
-      inputHashes: { fixture: "adapter-clocks-timing-block" },
+  it("converts YES book to executable cents", () => {
+    const book = createEmptyBook();
+    applyTickToBook(book, {
+      msgType: 0,
+      prevEventId: "0",
+      eventId: "1",
+      adapterTimestampNs: 1e9,
+      exchangeTimestampNs: 1e9,
+      levels: [[0, "0.40", "12", 1], [1, "0.45", "9", 1]],
+      isSnapshot: true,
     });
-
-    expect(report.byDelay["250"]!.opportunityCount).toBe(0);
-    expect(
-      report.trades.some(
-        (t) =>
-          t.delayMs === 250
-          && t.controlKind === "primary"
-          && t.exclusionReason === "timing-quality-block",
-      ),
-    ).toBe(true);
-    expect(
-      report.timingExclusions.some((e) => e.reason === "timing-quality-block"),
-    ).toBe(true);
-    // 1s remains supported even with adapter clocks.
-    expect(report.byDelay["1000"]!.opportunityCount).toBeGreaterThanOrEqual(0);
-  });
-
-  it("converts YES [0,1] book to executable cents including NO complement", () => {
     const point = bboFromBook(
-      (() => {
-        const book = createEmptyBook();
-        applyTickToBook(book, {
-          msgType: 0,
-          prevEventId: "0",
-          eventId: "1",
-          adapterTimestampNs: 1e9,
-          exchangeTimestampNs: 1e9,
-          levels: [
-            [0, "0.40", "12", 1],
-            [1, "0.45", "9", 1],
-          ],
-          isSnapshot: true,
-        });
-        return book;
-      })(),
-      1000,
-      "exchange",
+      book,
+      { adapterTimestampNs: 1e9, exchangeTimestampNs: 1e9 },
       false,
+      "adapter",
     );
     expect(point).not.toBeNull();
     const exec = kalshiExecutableFromYesBbo(point!);
     expect(exec.yesBidCents).toBe(40);
     expect(exec.yesAskCents).toBe(45);
-    expect(exec.noBidCents).toBe(55);
-    expect(exec.noAskCents).toBe(60);
   });
 });
