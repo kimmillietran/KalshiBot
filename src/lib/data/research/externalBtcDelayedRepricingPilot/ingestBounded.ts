@@ -8,7 +8,6 @@ import {
   existsSync,
   mkdirSync,
   readFileSync,
-  writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
 import { createInterface } from "node:readline";
@@ -25,6 +24,7 @@ import {
   type BboPoint,
 } from "./bookReplay";
 import {
+  atomicWriteJson,
   coinbaseManifestPath,
   coinbaseSparsePath,
   createJsonlAppender,
@@ -262,23 +262,34 @@ export async function ingestKalshiDayQuotes(input: {
     });
 
   if (allCached) {
-    const saved = JSON.parse(readFileSync(sidecar, "utf8")) as {
-      contracts: SelectedContract[];
-      keys: Record<string, { key: string; quoteCount: number }>;
-    };
-    const quotesByTickerPaths = new Map<
-      string,
-      { key: string; jsonlPath: string; quoteCount: number }
-    >();
-    for (const [ticker, meta] of Object.entries(saved.keys)) {
-      quotesByTickerPaths.set(ticker, {
-        key: meta.key,
-        jsonlPath: kalshiSparsePath(input.cacheRoot, meta.key),
-        quoteCount: meta.quoteCount,
-      });
+    try {
+      const saved = JSON.parse(readFileSync(sidecar, "utf8")) as {
+        contracts: SelectedContract[];
+        keys: Record<string, { key: string; quoteCount: number }>;
+      };
+      if (
+        saved
+        && Array.isArray(saved.contracts)
+        && saved.keys
+        && typeof saved.keys === "object"
+      ) {
+        const quotesByTickerPaths = new Map<
+          string,
+          { key: string; jsonlPath: string; quoteCount: number }
+        >();
+        for (const [ticker, meta] of Object.entries(saved.keys)) {
+          quotesByTickerPaths.set(ticker, {
+            key: meta.key,
+            jsonlPath: kalshiSparsePath(input.cacheRoot, meta.key),
+            quoteCount: meta.quoteCount,
+          });
+        }
+        input.progress?.note(`reuse kalshi caches for ${input.utcDay}`);
+        return { zipSha256, contracts: saved.contracts, quotesByTickerPaths };
+      }
+    } catch {
+      // Corrupt sidecar: fall through and rebuild from zip members.
     }
-    input.progress?.note(`reuse kalshi caches for ${input.utcDay}`);
-    return { zipSha256, contracts: saved.contracts, quotesByTickerPaths };
   }
 
   const contracts: SelectedContract[] = [];
@@ -376,11 +387,7 @@ export async function ingestKalshiDayQuotes(input: {
   for (const [ticker, meta] of quotesByTickerPaths) {
     keys[ticker] = { key: meta.key, quoteCount: meta.quoteCount };
   }
-  writeFileSync(
-    sidecar,
-    `${JSON.stringify({ zipSha256, contracts, keys }, null, 2)}\n`,
-    "utf8",
-  );
+  atomicWriteJson(sidecar, { zipSha256, contracts, keys });
 
   return { zipSha256, contracts, quotesByTickerPaths };
 }

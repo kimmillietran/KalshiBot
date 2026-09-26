@@ -36,7 +36,12 @@ export {
   type BboPoint,
   type TickEnvelope,
 } from "./bookReplay";
-export { detectExternalBtcEvents, buildDiagnosticControls } from "./detectExternalEvents";
+export {
+  detectExternalBtcEvents,
+  detectExternalBtcEventsFromIterable,
+  detectExternalBtcEventsFromAsyncIterable,
+  buildDiagnosticControls,
+} from "./detectExternalEvents";
 export {
   simulateEventTrade,
   simulateDayTrades,

@@ -11,6 +11,95 @@ function basisPointsChange(start: number, end: number): number {
   return ((end - start) / start) * 10_000;
 }
 
+type DetectExternalBtcEventsCore = {
+  utcDay: string;
+  lookbackMs: number;
+  boundaryBps: number;
+  cooldownMs: number;
+};
+
+function createEventDetectorState(input: DetectExternalBtcEventsCore): {
+  consume: (point: BboPoint) => void;
+  result: () => {
+    events: ExternalBtcEvent[];
+    suppressedByCooldown: number;
+  };
+} {
+  const events: ExternalBtcEvent[] = [];
+  let suppressedByCooldown = 0;
+  let lastTriggerMs = Number.NEGATIVE_INFINITY;
+  let previousAbsolute = 0;
+  let counter = 0;
+
+  // Chronological buffer; lookbackStartIdx tracks last point at-or-before (t - lookback).
+  const window: BboPoint[] = [];
+  let lookbackStartIdx = 0;
+
+  return {
+    consume(point: BboPoint) {
+      window.push(point);
+      const lookbackTarget = point.timestampMs - input.lookbackMs;
+      while (
+        lookbackStartIdx + 1 < window.length - 1
+        && window[lookbackStartIdx + 1]!.timestampMs <= lookbackTarget
+      ) {
+        lookbackStartIdx += 1;
+      }
+      // Drop points that can no longer be a lookback start or current point.
+      if (lookbackStartIdx > 0) {
+        window.splice(0, lookbackStartIdx);
+        lookbackStartIdx = 0;
+      }
+
+      if (point.failClosed || point.chainBreak) return;
+      if (point.clockDomain !== CLOCK_POLICY.decisionClockDomain) return;
+
+      const start =
+        window.length >= 2 && window[0]!.timestampMs <= lookbackTarget
+          ? window[0]!
+          : null;
+      // If the first remaining point is still after lookbackTarget, no valid start.
+      if (!start || start.timestampMs > lookbackTarget) return;
+      // Ensure we use the last point at-or-before lookbackTarget within window.
+      let lookbackPoint = start;
+      for (let i = 0; i < window.length - 1; i += 1) {
+        const candidate = window[i]!;
+        if (candidate.timestampMs <= lookbackTarget) lookbackPoint = candidate;
+        else break;
+      }
+      if (lookbackPoint.timestampMs >= point.timestampMs) return;
+
+      const returnBps = basisPointsChange(lookbackPoint.mid, point.mid);
+      const absolute = Math.abs(returnBps);
+      const crossed = previousAbsolute < input.boundaryBps && absolute >= input.boundaryBps;
+      previousAbsolute = absolute;
+      if (!crossed || returnBps === 0) return;
+
+      if (point.timestampMs - lastTriggerMs < input.cooldownMs) {
+        suppressedByCooldown += 1;
+        return;
+      }
+      lastTriggerMs = point.timestampMs;
+      counter += 1;
+      events.push({
+        eventId: `${input.utcDay}-btc-${counter}`,
+        utcDay: input.utcDay,
+        eventTimestampMs: point.timestampMs,
+        timestampSource: point.timestampSource,
+        clockDomain: point.clockDomain,
+        direction: returnBps > 0 ? "up" : "down",
+        returnBps,
+        absoluteReturnBps: absolute,
+        lookbackMs: input.lookbackMs,
+        btcPriceUsd: point.mid,
+        controlKind: "primary",
+        controlNote: null,
+      });
+    },
+    result: () => ({ events, suppressedByCooldown }),
+  };
+}
+
 /**
  * Detect events while streaming points in timestamp order.
  * Keeps only a lookback window (+ one prior point) in memory.
@@ -25,78 +114,29 @@ export function detectExternalBtcEventsFromIterable(input: {
   events: ExternalBtcEvent[];
   suppressedByCooldown: number;
 } {
-  const events: ExternalBtcEvent[] = [];
-  let suppressedByCooldown = 0;
-  let lastTriggerMs = Number.NEGATIVE_INFINITY;
-  let previousAbsolute = 0;
-  let counter = 0;
-
-  // Chronological buffer; lookbackStartIdx tracks last point at-or-before (t - lookback).
-  const window: BboPoint[] = [];
-  let lookbackStartIdx = 0;
-
+  const detector = createEventDetectorState(input);
   for (const point of input.points) {
-    window.push(point);
-    const lookbackTarget = point.timestampMs - input.lookbackMs;
-    while (
-      lookbackStartIdx + 1 < window.length - 1
-      && window[lookbackStartIdx + 1]!.timestampMs <= lookbackTarget
-    ) {
-      lookbackStartIdx += 1;
-    }
-    // Drop points that can no longer be a lookback start or current point.
-    if (lookbackStartIdx > 0) {
-      window.splice(0, lookbackStartIdx);
-      lookbackStartIdx = 0;
-    }
-
-    if (point.failClosed || point.chainBreak) continue;
-    if (point.clockDomain !== CLOCK_POLICY.decisionClockDomain) continue;
-
-    const start =
-      window.length >= 2 && window[0]!.timestampMs <= lookbackTarget
-        ? window[0]!
-        : null;
-    // If the first remaining point is still after lookbackTarget, no valid start.
-    if (!start || start.timestampMs > lookbackTarget) continue;
-    // Ensure we use the last point at-or-before lookbackTarget within window.
-    let lookbackPoint = start;
-    for (let i = 0; i < window.length - 1; i += 1) {
-      const candidate = window[i]!;
-      if (candidate.timestampMs <= lookbackTarget) lookbackPoint = candidate;
-      else break;
-    }
-    if (lookbackPoint.timestampMs >= point.timestampMs) continue;
-
-    const returnBps = basisPointsChange(lookbackPoint.mid, point.mid);
-    const absolute = Math.abs(returnBps);
-    const crossed = previousAbsolute < input.boundaryBps && absolute >= input.boundaryBps;
-    previousAbsolute = absolute;
-    if (!crossed || returnBps === 0) continue;
-
-    if (point.timestampMs - lastTriggerMs < input.cooldownMs) {
-      suppressedByCooldown += 1;
-      continue;
-    }
-    lastTriggerMs = point.timestampMs;
-    counter += 1;
-    events.push({
-      eventId: `${input.utcDay}-btc-${counter}`,
-      utcDay: input.utcDay,
-      eventTimestampMs: point.timestampMs,
-      timestampSource: point.timestampSource,
-      clockDomain: point.clockDomain,
-      direction: returnBps > 0 ? "up" : "down",
-      returnBps,
-      absoluteReturnBps: absolute,
-      lookbackMs: input.lookbackMs,
-      btcPriceUsd: point.mid,
-      controlKind: "primary",
-      controlNote: null,
-    });
+    detector.consume(point);
   }
+  return detector.result();
+}
 
-  return { events, suppressedByCooldown };
+/** Async variant for JSONL / stream sources — same rolling-window semantics. */
+export async function detectExternalBtcEventsFromAsyncIterable(input: {
+  utcDay: string;
+  points: AsyncIterable<BboPoint>;
+  lookbackMs: number;
+  boundaryBps: number;
+  cooldownMs: number;
+}): Promise<{
+  events: ExternalBtcEvent[];
+  suppressedByCooldown: number;
+}> {
+  const detector = createEventDetectorState(input);
+  for await (const point of input.points) {
+    detector.consume(point);
+  }
+  return detector.result();
 }
 
 export function detectExternalBtcEvents(input: {

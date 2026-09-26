@@ -252,6 +252,10 @@ describe("multi-day aggregation parity with in-memory runner", () => {
     expect(report.daySummaries).toHaveLength(2);
     expect(report.byDelay["1000"]?.opportunityEnteredCount).toBe(0);
     expect(report.fridayOnly).toBe(true);
+    expect(report.byDelay["250"]?.delayClaimStatus).toBe("diagnostic-only");
+    expect(report.byDelay["1000"]?.delayClaimStatus).toBe(
+      "scenario-assumption-unverified",
+    );
 
     const mem = runExternalBtcDelayedRepricingPilot({
       days: [

@@ -3,8 +3,7 @@
  * Designed to run in a child process so heap is reclaimed between days.
  */
 
-import type { BboPoint } from "./bookReplay";
-import { REPLAY_IMPLEMENTATION_VERSION } from "./bookReplay";
+import { REPLAY_IMPLEMENTATION_VERSION, type BboPoint } from "./bookReplay";
 import {
   DAY_RESULT_SCHEMA_VERSION,
   dayResultIdentityKey,
@@ -16,7 +15,10 @@ import {
   writeDayResult,
   type DayResultIdentity,
 } from "./checkpoint";
-import { buildDiagnosticControls } from "./detectExternalEvents";
+import {
+  buildDiagnosticControls,
+  detectExternalBtcEventsFromAsyncIterable,
+} from "./detectExternalEvents";
 import {
   ingestCoinbaseSparseBbo,
   ingestKalshiDayQuotes,
@@ -58,73 +60,19 @@ function summarizeDayPrimary(utcDay: string, trades: readonly SimulatedTrade[]) 
   };
 }
 
-function basisPointsChange(start: number, end: number): number {
-  if (!(start > 0) || !(end > 0)) return 0;
-  return ((end - start) / start) * 10_000;
-}
-
-/** Stream Coinbase sparse BBO JSONL and emit primary events (rolling lookback). */
+/** Stream Coinbase sparse BBO JSONL through the shared rolling-lookback detector. */
 async function detectEventsFromCoinbaseJsonl(input: {
   utcDay: string;
   jsonlPath: string;
 }): Promise<ExternalBtcEvent[]> {
-  const lookbackMs = FROZEN_PILOT_SPEC.eventDefinition.lookbackMs;
-  const boundaryBps = FROZEN_PILOT_SPEC.eventDefinition.boundaryBps;
-  const cooldownMs = FROZEN_PILOT_SPEC.positionPolicy.cooldownMs;
-  const events: ExternalBtcEvent[] = [];
-  const window: BboPoint[] = [];
-  let lookbackStartIdx = 0;
-  let lastTriggerMs = Number.NEGATIVE_INFINITY;
-  let previousAbsolute = 0;
-  let counter = 0;
-
-  for await (const point of readJsonlRecords<BboPoint>(input.jsonlPath)) {
-    window.push(point);
-    const lookbackTarget = point.timestampMs - lookbackMs;
-    while (
-      lookbackStartIdx + 1 < window.length - 1
-      && window[lookbackStartIdx + 1]!.timestampMs <= lookbackTarget
-    ) {
-      lookbackStartIdx += 1;
-    }
-    if (lookbackStartIdx > 0) {
-      window.splice(0, lookbackStartIdx);
-      lookbackStartIdx = 0;
-    }
-    if (point.failClosed || point.chainBreak) continue;
-    if (point.clockDomain !== CLOCK_POLICY.decisionClockDomain) continue;
-    if (!(window.length >= 2 && window[0]!.timestampMs <= lookbackTarget)) continue;
-    let lookbackPoint = window[0]!;
-    for (let i = 0; i < window.length - 1; i += 1) {
-      const candidate = window[i]!;
-      if (candidate.timestampMs <= lookbackTarget) lookbackPoint = candidate;
-      else break;
-    }
-    if (lookbackPoint.timestampMs >= point.timestampMs) continue;
-    const returnBps = basisPointsChange(lookbackPoint.mid, point.mid);
-    const absolute = Math.abs(returnBps);
-    const crossed = previousAbsolute < boundaryBps && absolute >= boundaryBps;
-    previousAbsolute = absolute;
-    if (!crossed || returnBps === 0) continue;
-    if (point.timestampMs - lastTriggerMs < cooldownMs) continue;
-    lastTriggerMs = point.timestampMs;
-    counter += 1;
-    events.push({
-      eventId: `${input.utcDay}-btc-${counter}`,
-      utcDay: input.utcDay,
-      eventTimestampMs: point.timestampMs,
-      timestampSource: point.timestampSource,
-      clockDomain: point.clockDomain,
-      direction: returnBps > 0 ? "up" : "down",
-      returnBps,
-      absoluteReturnBps: absolute,
-      lookbackMs,
-      btcPriceUsd: point.mid,
-      controlKind: "primary",
-      controlNote: null,
-    });
-  }
-  return events;
+  const detected = await detectExternalBtcEventsFromAsyncIterable({
+    utcDay: input.utcDay,
+    points: readJsonlRecords<BboPoint>(input.jsonlPath),
+    lookbackMs: FROZEN_PILOT_SPEC.eventDefinition.lookbackMs,
+    boundaryBps: FROZEN_PILOT_SPEC.eventDefinition.boundaryBps,
+    cooldownMs: FROZEN_PILOT_SPEC.positionPolicy.cooldownMs,
+  });
+  return detected.events;
 }
 
 export async function processOnePilotDay(input: {

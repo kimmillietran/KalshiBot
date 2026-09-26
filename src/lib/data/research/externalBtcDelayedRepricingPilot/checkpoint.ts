@@ -129,7 +129,7 @@ export type DayResultArtifact = DayResultIdentity & {
   elapsedMs: number;
 };
 
-function atomicWriteJson(path: string, value: unknown): void {
+export function atomicWriteJson(path: string, value: unknown): void {
   mkdirSync(dirname(path), { recursive: true });
   const tmp = `${path}.partial.${process.pid}`;
   writeFileSync(tmp, `${JSON.stringify(value, null, 2)}\n`, "utf8");

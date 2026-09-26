@@ -8,7 +8,7 @@ import type { DayResultArtifact } from "./checkpoint";
 import { M128_RECONCILIATION } from "./m128Reconciliation";
 import { FROZEN_PILOT_SPEC } from "./pilotSpec";
 import { EXIT_FAILURE_POLICY } from "./simulateTrades";
-import { CLOCK_POLICY } from "./timingQuality";
+import { CLOCK_POLICY, delayClaimSupport } from "./timingQuality";
 import type {
   DelayEconomics,
   PilotDelayMs,
@@ -65,10 +65,14 @@ function economicsForDelay(
         .map((t) => t.allEntryUpperBoundNetCents)
         .filter((v): v is number => v !== null),
     ),
-    delayClaimStatus:
-      delayMs === 250
-        ? "diagnostic-only"
-        : "scenario-assumption-unverified",
+    delayClaimStatus: delayClaimSupport({
+      delayMs,
+      decisionClockDomain: CLOCK_POLICY.decisionClockDomain,
+      eventClockDomain: CLOCK_POLICY.decisionClockDomain,
+      quoteClockDomain: CLOCK_POLICY.decisionClockDomain,
+      eventHasDomainTimestamp: true,
+      quoteHasDomainTimestamp: true,
+    }),
     clockAlignmentStatus: "unknown",
     daily: dayResults.map((d) => {
       const dayPrimary = primary.filter((t) => t.utcDay === d.utcDay);
