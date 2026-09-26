@@ -10,7 +10,7 @@ import {
   readFileSync,
   unlinkSync,
 } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { createInterface } from "node:readline";
 
 import {
@@ -38,10 +38,17 @@ import {
   type QuoteCacheIdentity,
   QUOTE_CACHE_SCHEMA_VERSION,
 } from "./checkpoint";
+import {
+  CONTRACT_METADATA_VERSION,
+  isCurrentContractSidecar,
+  resolveContractWindow,
+  type ContractSidecarV1,
+} from "./contractMetadata";
 import type { createProgressReporter } from "./progress";
 import {
   hashFileSha256,
   listZipMembers,
+  peekZipMemberFirstLine,
   streamZipMemberZstd,
   streamZstdTextFile,
 } from "./streamCryptostructTick";
@@ -68,13 +75,6 @@ function invalidateQuoteCache(jsonlPath: string, manifestPath: string): void {
       // ignore missing
     }
   }
-}
-
-function parseIsoToMs(value: string | undefined): number | null {
-  if (!value) return null;
-  const normalized = value.includes("T") ? value : `${value.replace(" ", "T")}Z`;
-  const ms = Date.parse(normalized);
-  return Number.isFinite(ms) ? ms : null;
 }
 
 function tickerFromMember(member: string): string | null {
@@ -121,6 +121,31 @@ function contractsSidecarPath(cacheRoot: string, utcDay: string, zipSha: string)
     "kalshi",
     `contracts-${utcDay}-${zipSha.slice(0, 16)}.json`,
   );
+}
+
+function emptyDerivationStats(): ContractSidecarV1["derivationStats"] {
+  return {
+    headerExpiryUsed: 0,
+    tickerCloseUsed: 0,
+    rejected: 0,
+    rejectReasons: {},
+  };
+}
+
+function noteReject(
+  stats: ContractSidecarV1["derivationStats"],
+  source: string,
+): void {
+  stats.rejected += 1;
+  stats.rejectReasons[source] = (stats.rejectReasons[source] ?? 0) + 1;
+}
+
+function writeContractsSidecar(
+  sidecar: string,
+  payload: ContractSidecarV1,
+): void {
+  mkdirSync(dirname(sidecar), { recursive: true });
+  atomicWriteJson(sidecar, payload);
 }
 
 export async function* readJsonlRecords<T>(path: string): AsyncGenerator<T> {
@@ -242,6 +267,98 @@ export async function ingestCoinbaseSparseBbo(input: {
   };
 }
 
+type MemberMeta = {
+  member: string;
+  ticker: string;
+  identity: QuoteCacheIdentity;
+  key: string;
+  jsonlPath: string;
+  manifestPath: string;
+};
+
+async function allMemberQuoteCachesIntact(memberMeta: readonly MemberMeta[]): Promise<boolean> {
+  for (const m of memberMeta) {
+    const man = readCompleteQuoteCacheManifest(m.manifestPath, m.identity);
+    if (!man || !existsSync(m.jsonlPath)) return false;
+    if (!(await quoteCacheMatchesManifest(m.jsonlPath, man.outputSha256))) {
+      invalidateQuoteCache(m.jsonlPath, m.manifestPath);
+      return false;
+    }
+  }
+  return true;
+}
+
+/**
+ * Rebuild contract sidecar from headers + ticker close without re-streaming quotes.
+ * Used when quote JSONL caches are intact but contract metadata version changed
+ * (e.g. expiry-null recovery).
+ */
+function rebuildContractsFromCachedQuotes(input: {
+  utcDay: string;
+  kalshiZipPath: string;
+  zipSha256: string;
+  memberMeta: readonly MemberMeta[];
+  progress?: ReturnType<typeof createProgressReporter>;
+}): {
+  contracts: SelectedContract[];
+  quotesByTickerPaths: Map<string, { key: string; jsonlPath: string; quoteCount: number }>;
+  derivationStats: ContractSidecarV1["derivationStats"];
+} {
+  input.progress?.setStage("rebuild-contract-metadata", input.utcDay);
+  const contracts: SelectedContract[] = [];
+  const quotesByTickerPaths = new Map<
+    string,
+    { key: string; jsonlPath: string; quoteCount: number }
+  >();
+  const derivationStats = emptyDerivationStats();
+
+  for (const meta of input.memberMeta) {
+    const man = readCompleteQuoteCacheManifest(meta.manifestPath, meta.identity);
+    if (!man || !existsSync(meta.jsonlPath)) {
+      throw new Error(
+        `rebuild-contract-metadata requires intact quote cache for ${meta.ticker}`,
+      );
+    }
+    const headerLine = peekZipMemberFirstLine(input.kalshiZipPath, meta.member);
+    let headerStart: string | null = null;
+    let headerExpiry: string | null = null;
+    if (headerLine && headerLine[0] === "{") {
+      try {
+        const header = JSON.parse(headerLine) as {
+          instrument?: { start?: string | null; expiry?: string | null };
+        };
+        headerStart = header.instrument?.start ?? null;
+        headerExpiry = header.instrument?.expiry ?? null;
+      } catch {
+        // fall through to resolve rejection
+      }
+    }
+    const resolved = resolveContractWindow({
+      ticker: meta.ticker,
+      headerStart,
+      headerExpiry,
+    });
+    if (!resolved.ok) {
+      noteReject(derivationStats, resolved.source);
+      input.progress?.note(`skip contract ${meta.ticker}: ${resolved.reason}`);
+      continue;
+    }
+    if (resolved.source === "header-start+header-expiry") {
+      derivationStats.headerExpiryUsed += 1;
+    } else {
+      derivationStats.tickerCloseUsed += 1;
+    }
+    contracts.push(resolved.contract);
+    quotesByTickerPaths.set(meta.ticker, {
+      key: meta.key,
+      jsonlPath: meta.jsonlPath,
+      quoteCount: man.quoteCount,
+    });
+  }
+
+  return { contracts, quotesByTickerPaths, derivationStats };
+}
+
 export async function ingestKalshiDayQuotes(input: {
   utcDay: string;
   kalshiZipPath: string;
@@ -251,6 +368,10 @@ export async function ingestKalshiDayQuotes(input: {
   zipSha256: string;
   contracts: SelectedContract[];
   quotesByTickerPaths: Map<string, { key: string; jsonlPath: string; quoteCount: number }>;
+  contractMetadataVersion: typeof CONTRACT_METADATA_VERSION;
+  derivationStats: ContractSidecarV1["derivationStats"];
+  quotesReused: boolean;
+  sidecarRebuilt: boolean;
 }> {
   const zipSha256 = await hashFileSha256(input.kalshiZipPath);
   const sidecar = contractsSidecarPath(input.cacheRoot, input.utcDay, zipSha256);
@@ -258,14 +379,7 @@ export async function ingestKalshiDayQuotes(input: {
     (m) => m.endsWith(".txt.zst") && m.includes("KXBTC15M"),
   );
 
-  const memberMeta: Array<{
-    member: string;
-    ticker: string;
-    identity: QuoteCacheIdentity;
-    key: string;
-    jsonlPath: string;
-    manifestPath: string;
-  }> = [];
+  const memberMeta: MemberMeta[] = [];
 
   for (const member of members) {
     const ticker = tickerFromMember(member);
@@ -282,34 +396,12 @@ export async function ingestKalshiDayQuotes(input: {
     });
   }
 
-  const allCached =
-    existsSync(sidecar)
-    && (
-      await (async () => {
-        for (const m of memberMeta) {
-          const man = readCompleteQuoteCacheManifest(m.manifestPath, m.identity);
-          if (!man || !existsSync(m.jsonlPath)) return false;
-          if (!(await quoteCacheMatchesManifest(m.jsonlPath, man.outputSha256))) {
-            invalidateQuoteCache(m.jsonlPath, m.manifestPath);
-            return false;
-          }
-        }
-        return true;
-      })()
-    );
+  const quotesIntact = await allMemberQuoteCachesIntact(memberMeta);
 
-  if (allCached) {
+  if (quotesIntact && existsSync(sidecar)) {
     try {
-      const saved = JSON.parse(readFileSync(sidecar, "utf8")) as {
-        contracts: SelectedContract[];
-        keys: Record<string, { key: string; quoteCount: number }>;
-      };
-      if (
-        saved
-        && Array.isArray(saved.contracts)
-        && saved.keys
-        && typeof saved.keys === "object"
-      ) {
+      const saved = JSON.parse(readFileSync(sidecar, "utf8")) as unknown;
+      if (isCurrentContractSidecar(saved) && saved.zipSha256 === zipSha256) {
         const quotesByTickerPaths = new Map<
           string,
           { key: string; jsonlPath: string; quoteCount: number }
@@ -321,12 +413,61 @@ export async function ingestKalshiDayQuotes(input: {
             quoteCount: meta.quoteCount,
           });
         }
-        input.progress?.note(`reuse kalshi caches for ${input.utcDay}`);
-        return { zipSha256, contracts: saved.contracts, quotesByTickerPaths };
+        input.progress?.note(
+          `reuse kalshi caches+sidecar for ${input.utcDay} `
+            + `(contracts=${saved.contracts.length})`,
+        );
+        return {
+          zipSha256,
+          contracts: saved.contracts,
+          quotesByTickerPaths,
+          contractMetadataVersion: CONTRACT_METADATA_VERSION,
+          derivationStats: saved.derivationStats,
+          quotesReused: true,
+          sidecarRebuilt: false,
+        };
       }
     } catch {
-      // Corrupt sidecar: fall through and rebuild from zip members.
+      // Corrupt sidecar: rebuild metadata below when quotes intact.
     }
+  }
+
+  // Quote caches intact but sidecar missing/stale/wrong version → rebuild sidecar only.
+  if (quotesIntact && memberMeta.length > 0) {
+    const rebuilt = rebuildContractsFromCachedQuotes({
+      utcDay: input.utcDay,
+      kalshiZipPath: input.kalshiZipPath,
+      zipSha256,
+      memberMeta,
+      progress: input.progress,
+    });
+    const keys: Record<string, { key: string; quoteCount: number }> = {};
+    for (const [ticker, meta] of rebuilt.quotesByTickerPaths) {
+      keys[ticker] = { key: meta.key, quoteCount: meta.quoteCount };
+    }
+    writeContractsSidecar(sidecar, {
+      zipSha256,
+      contractMetadataVersion: CONTRACT_METADATA_VERSION,
+      contracts: rebuilt.contracts,
+      keys,
+      derivationStats: rebuilt.derivationStats,
+    });
+    input.progress?.note(
+      `rebuilt contract sidecar ${input.utcDay}: `
+        + `${rebuilt.contracts.length} contracts `
+        + `(header=${rebuilt.derivationStats.headerExpiryUsed}, `
+        + `ticker=${rebuilt.derivationStats.tickerCloseUsed}, `
+        + `rejected=${rebuilt.derivationStats.rejected})`,
+    );
+    return {
+      zipSha256,
+      contracts: rebuilt.contracts,
+      quotesByTickerPaths: rebuilt.quotesByTickerPaths,
+      contractMetadataVersion: CONTRACT_METADATA_VERSION,
+      derivationStats: rebuilt.derivationStats,
+      quotesReused: true,
+      sidecarRebuilt: true,
+    };
   }
 
   const contracts: SelectedContract[] = [];
@@ -334,6 +475,7 @@ export async function ingestKalshiDayQuotes(input: {
     string,
     { key: string; jsonlPath: string; quoteCount: number }
   >();
+  const derivationStats = emptyDerivationStats();
 
   for (const meta of memberMeta) {
     input.progress?.setStage("ingest-kalshi-member", meta.member);
@@ -341,8 +483,8 @@ export async function ingestKalshiDayQuotes(input: {
     const appender = createJsonlAppender(meta.jsonlPath);
     let previous: BboPoint | null = null;
     let headerDone = false;
-    let startMs: number | null = null;
-    let expiryMs: number | null = null;
+    let headerStart: string | null = null;
+    let headerExpiry: string | null = null;
     let quoteCount = 0;
     let messagesSeen = 0;
     let bookApplied = 0;
@@ -361,10 +503,10 @@ export async function ingestKalshiDayQuotes(input: {
         if (trimmed[0] === "{") {
           try {
             const header = JSON.parse(trimmed) as {
-              instrument?: { start?: string; expiry?: string };
+              instrument?: { start?: string | null; expiry?: string | null };
             };
-            startMs = parseIsoToMs(header.instrument?.start);
-            expiryMs = parseIsoToMs(header.instrument?.expiry);
+            headerStart = header.instrument?.start ?? null;
+            headerExpiry = header.instrument?.expiry ?? null;
           } catch {
             // ignore
           }
@@ -409,24 +551,49 @@ export async function ingestKalshiDayQuotes(input: {
       writtenAtIso: new Date().toISOString(),
     });
 
-    if (startMs !== null && expiryMs !== null) {
-      contracts.push({ ticker: meta.ticker, startMs, expiryMs });
-      quotesByTickerPaths.set(meta.ticker, {
-        key: meta.key,
-        jsonlPath: meta.jsonlPath,
-        quoteCount,
-      });
+    const resolved = resolveContractWindow({
+      ticker: meta.ticker,
+      headerStart,
+      headerExpiry,
+    });
+    if (!resolved.ok) {
+      noteReject(derivationStats, resolved.source);
+      continue;
     }
+    if (resolved.source === "header-start+header-expiry") {
+      derivationStats.headerExpiryUsed += 1;
+    } else {
+      derivationStats.tickerCloseUsed += 1;
+    }
+    contracts.push(resolved.contract);
+    quotesByTickerPaths.set(meta.ticker, {
+      key: meta.key,
+      jsonlPath: meta.jsonlPath,
+      quoteCount,
+    });
   }
 
-  mkdirSync(join(input.cacheRoot, "quotes", "kalshi"), { recursive: true });
   const keys: Record<string, { key: string; quoteCount: number }> = {};
   for (const [ticker, meta] of quotesByTickerPaths) {
     keys[ticker] = { key: meta.key, quoteCount: meta.quoteCount };
   }
-  atomicWriteJson(sidecar, { zipSha256, contracts, keys });
+  writeContractsSidecar(sidecar, {
+    zipSha256,
+    contractMetadataVersion: CONTRACT_METADATA_VERSION,
+    contracts,
+    keys,
+    derivationStats,
+  });
 
-  return { zipSha256, contracts, quotesByTickerPaths };
+  return {
+    zipSha256,
+    contracts,
+    quotesByTickerPaths,
+    contractMetadataVersion: CONTRACT_METADATA_VERSION,
+    derivationStats,
+    quotesReused: false,
+    sidecarRebuilt: false,
+  };
 }
 
 export async function loadQuotesArray(jsonlPath: string): Promise<ExecutableQuote[]> {

@@ -3,6 +3,7 @@
  */
 
 import type { BboPoint } from "./bookReplay";
+import { CONTRACT_METADATA_VERSION } from "./contractMetadata";
 import { buildDiagnosticControls, detectExternalBtcEvents } from "./detectExternalEvents";
 import { M128_RECONCILIATION } from "./m128Reconciliation";
 import { FROZEN_PILOT_SPEC } from "./pilotSpec";
@@ -98,6 +99,24 @@ function economicsForDelay(
     quoteHasDomainTimestamp: true,
   });
 
+  const completedNets = completed
+    .map((t) => t.completedNetPnlCents)
+    .filter((v): v is number => v !== null);
+  const lowerVals = entered
+    .map((t) => t.allEntryLowerBoundNetCents)
+    .filter((v): v is number => v !== null);
+  const upperVals = entered
+    .map((t) => t.allEntryUpperBoundNetCents)
+    .filter((v): v is number => v !== null);
+  const mtmVals = entered
+    .map((t) => t.unresolvedMarkToMarketNetCents)
+    .filter((v): v is number => v !== null);
+
+  function sumOrNull(values: readonly number[]): number | null {
+    if (values.length === 0) return null;
+    return values.reduce((a, b) => a + b, 0);
+  }
+
   return {
     opportunityEnteredCount: entered.length,
     preEntryRejectCount: primary.filter((t) => t.entryStatus === "rejected-pre-entry").length,
@@ -105,16 +124,14 @@ function economicsForDelay(
     unresolvedExitCount: unresolved.length,
     economicResultStatus,
     completedTradeUncertainty: summarizeCompletedTradeUncertainty(completed),
-    allEntryLowerBoundMeanCents: meanOrNull(
-      entered
-        .map((t) => t.allEntryLowerBoundNetCents)
-        .filter((v): v is number => v !== null),
-    ),
-    allEntryUpperBoundMeanCents: meanOrNull(
-      entered
-        .map((t) => t.allEntryUpperBoundNetCents)
-        .filter((v): v is number => v !== null),
-    ),
+    completedTotalNetPnlCents: sumOrNull(completedNets),
+    completedMeanNetPnlCents: meanOrNull(completedNets),
+    allEntryLowerBoundTotalCents: sumOrNull(lowerVals),
+    allEntryUpperBoundTotalCents: sumOrNull(upperVals),
+    allEntryLowerBoundMeanCents: meanOrNull(lowerVals),
+    allEntryUpperBoundMeanCents: meanOrNull(upperVals),
+    unresolvedMarkToMarketTotalCents: sumOrNull(mtmVals),
+    unresolvedMarkToMarketMeanCents: meanOrNull(mtmVals),
     delayClaimStatus: claim,
     clockAlignmentStatus: "unknown",
     daily: days.map((d) => summarizeDay(d, primary.filter((t) => t.utcDay === d))),
@@ -189,6 +206,7 @@ export function runExternalBtcDelayedRepricingPilot(input: {
             completedNetPnlCents: null,
             allEntryLowerBoundNetCents: null,
             allEntryUpperBoundNetCents: null,
+            unresolvedMarkToMarketNetCents: null,
             preEntryRejectReason: "timing-quality-block",
             exitFailureReason: null,
             excluded: true,
@@ -265,6 +283,7 @@ export function runExternalBtcDelayedRepricingPilot(input: {
     codeVersions: input.codeVersions ?? {
       analysisVersion: EXTERNAL_BTC_DELAYED_REPRICING_PILOT_ANALYSIS_VERSION,
       studyId: EXTERNAL_BTC_DELAYED_REPRICING_PILOT_STUDY_ID,
+      contractMetadataVersion: CONTRACT_METADATA_VERSION,
     },
     events: allEvents,
     trades: allTrades,

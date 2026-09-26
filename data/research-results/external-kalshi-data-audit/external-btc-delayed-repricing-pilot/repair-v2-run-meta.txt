@@ -1,0 +1,21 @@
+repair_version=2026-09-26-repair-v2
+repair_code_sha=9d8e0672518c4590d1787e8a8e997ffa8dbadbd0
+producer_exit=0
+monitor_result=SUCCESS
+empirical_valid=1
+monitor_status_file=run-monitor-status-20260926T215142Z.txt
+monitor_log=run-stdout-monitored-20260926T215142Z.log
+contract_metadata_version=ticker-hhmm-america-new-york-close-v1
+reproduction=NODE_OPTIONS='--max-old-space-size=8192' bash scripts/research/monitorExternalBtcDelayedRepricingPilot.sh -- --run-real --authorize-empirical-run --credit-balance-cents 1100
+primary_1000_entered=1269
+primary_1000_completed=1222
+primary_1000_unresolved=47
+primary_1000_completed_total_cents=-4834
+primary_1000_completed_mean_cents=-3.955810147299509
+primary_1000_envelope_floor_total_cents=-7733
+primary_1000_envelope_ceiling_total_cents=-3033
+primary_1000_mtm_total_cents=-73
+three_day_cohort_optimistic_exact_cents=-1390
+timing_alignment=unverified
+friday_only=true
+attempt3_note=Producer exit status unknown/not captured; artifacts validated offline.

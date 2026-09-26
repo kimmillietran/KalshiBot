@@ -1,0 +1,5 @@
+d633497ed04ad488542a20f89aaf3f0ff01baece8b286e83a093a48f217603d5  /Users/builder/Developer/kalshi-builder2/data/external-samples/cryptostruct/coinbase-btc-usd/raw/coinbase-BTC-USD-2026-08-14.txt.zst
+9df05f2710204b51e26b88f538d98cd2d50e116eb43debdb10226f98914cbfa5  /Users/builder/Developer/kalshi-builder2/data/external-samples/cryptostruct/coinbase-btc-usd/raw/coinbase-BTC-USD-2026-08-21.txt.zst
+198df7a1c62b2719c940d634b75c0bef562dac1bfbca9c1ee23ffc50173a9409  /Users/builder/Developer/kalshi-builder2/data/external-samples/cryptostruct/coinbase-btc-usd/raw/coinbase-BTC-USD-2026-08-28.txt.zst
+8a85f40fc44e9a80f9b40955dd023dc2f649350e0bfcd1640b82c172bc385311  /Users/builder/Developer/kalshi-builder2/data/external-samples/cryptostruct/coinbase-btc-usd/raw/coinbase-BTC-USD-2026-09-04.txt.zst
+2cd5e59db4b9a15925df5f7635c95ae9eb54793be9a579a3e4aee7bcd4f7c213  /Users/builder/Developer/kalshi-builder2/data/external-samples/cryptostruct/coinbase-btc-usd/raw/coinbase-BTC-USD-2026-09-11.txt.zst

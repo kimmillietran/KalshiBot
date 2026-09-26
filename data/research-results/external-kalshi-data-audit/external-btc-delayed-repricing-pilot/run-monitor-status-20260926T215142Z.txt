@@ -1,0 +1,16 @@
+monitor_start_iso=2026-09-26T21:51:42Z
+code_sha=9d8e0672518c4590d1787e8a8e997ffa8dbadbd0
+NODE_OPTIONS=--max-old-space-size=8192
+log=data/research-results/external-kalshi-data-audit/external-btc-delayed-repricing-pilot/run-stdout-monitored-20260926T215142Z.log
+pid_monitor=1350
+producer_exit=0
+tee_exit=0
+pipeline_exit=0
+monitor_end_iso=2026-09-26T21:53:31Z
+present_artifact=pilot-report.json size=18969805
+present_artifact=events.jsonl size=2236152
+present_artifact=trades.jsonl size=11549614
+present_artifact=day-summaries.json size=1292
+present_artifact=by-delay.json size=8539
+monitor_result=SUCCESS
+empirical_valid=1

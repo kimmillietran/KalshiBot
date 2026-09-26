@@ -22,6 +22,7 @@ import {
   BBO_EMISSION_POLICY,
   REPLAY_IMPLEMENTATION_VERSION,
 } from "./bookReplay";
+import { CONTRACT_METADATA_VERSION } from "./contractMetadata";
 import { FROZEN_PILOT_SPEC } from "./pilotSpec";
 import { EXIT_FAILURE_POLICY } from "./simulateTrades";
 import { CLOCK_POLICY } from "./timingQuality";
@@ -60,6 +61,7 @@ export function simulationSpecHash(): string {
         delaysMs: [...PILOT_DELAY_MS.SENSITIVITY],
         primaryDelayMs: PILOT_DELAY_MS.PRIMARY,
         exitFailurePolicy: EXIT_FAILURE_POLICY.id,
+        contractMetadataVersion: CONTRACT_METADATA_VERSION,
         clockPolicy: CLOCK_POLICY,
         daySelection: FROZEN_PILOT_SPEC.daySelection,
       }),
@@ -84,6 +86,8 @@ export type DayResultIdentity = {
   simulationSpecSha256: string;
   replayImplementation: typeof REPLAY_IMPLEMENTATION_VERSION;
   quoteCacheSchemaVersion: typeof QUOTE_CACHE_SCHEMA_VERSION;
+  /** Versioned separately from quote caches so expiry repair does not wipe JSONL. */
+  contractMetadataVersion: typeof CONTRACT_METADATA_VERSION;
   coinbaseRawSha256: string;
   kalshiZipSha256: string;
   utcDay: string;
@@ -110,6 +114,7 @@ export function dayResultIdentityKey(id: DayResultIdentity): string {
     simulationSpecSha256: id.simulationSpecSha256,
     replayImplementation: id.replayImplementation,
     quoteCacheSchemaVersion: id.quoteCacheSchemaVersion,
+    contractMetadataVersion: id.contractMetadataVersion,
     coinbaseRawSha256: id.coinbaseRawSha256,
     kalshiZipSha256: id.kalshiZipSha256,
     utcDay: id.utcDay,

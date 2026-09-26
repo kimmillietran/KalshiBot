@@ -80,4 +80,9 @@ export {
   DAY_RESULT_SCHEMA_VERSION,
   QUOTE_CACHE_SCHEMA_VERSION,
 } from "./checkpoint";
+export {
+  CONTRACT_METADATA_VERSION,
+  resolveContractWindow,
+  parseIsoToMs,
+} from "./contractMetadata";
 export { createProgressReporter } from "./progress";

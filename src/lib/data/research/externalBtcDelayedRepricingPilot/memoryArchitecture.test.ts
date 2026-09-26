@@ -32,6 +32,7 @@ import {
   QUOTE_CACHE_SCHEMA_VERSION,
   type DayResultIdentity,
 } from "./checkpoint";
+import { CONTRACT_METADATA_VERSION } from "./contractMetadata";
 import { aggregateDayResults, loadDayResultFile } from "./aggregateDayResults";
 import { EXTERNAL_BTC_DELAYED_REPRICING_PILOT_ANALYSIS_VERSION } from "./types";
 import { runExternalBtcDelayedRepricingPilot } from "./runPilot";
@@ -292,6 +293,7 @@ describe("checkpoint identity", () => {
       simulationSpecSha256: simulationSpecHash(),
       replayImplementation: REPLAY_IMPLEMENTATION_VERSION,
       quoteCacheSchemaVersion: QUOTE_CACHE_SCHEMA_VERSION,
+      contractMetadataVersion: CONTRACT_METADATA_VERSION,
       coinbaseRawSha256: "a".repeat(64),
       kalshiZipSha256: "b".repeat(64),
       utcDay: "2026-08-14",
@@ -343,6 +345,7 @@ describe("multi-day aggregation parity with in-memory runner", () => {
       simulationSpecSha256: simulationSpecHash(),
       replayImplementation: REPLAY_IMPLEMENTATION_VERSION,
       quoteCacheSchemaVersion: QUOTE_CACHE_SCHEMA_VERSION,
+      contractMetadataVersion: CONTRACT_METADATA_VERSION,
       coinbaseRawSha256: "c".repeat(64),
       kalshiZipSha256: "d".repeat(64),
       utcDay,

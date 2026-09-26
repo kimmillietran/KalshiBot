@@ -1,0 +1,11 @@
+monitor_start_iso=2026-09-26T20:23:03Z
+code_sha=56833bc45594a5f135e2f317600b1cee2a988a1b
+NODE_OPTIONS=--max-old-space-size=8192
+log=data/research-results/external-kalshi-data-audit/external-btc-delayed-repricing-pilot/run-stdout-monitored-20260926T202303Z.log
+pid_monitor=63376
+producer_exit=0  # inferred: npm/tsx gone, artifacts written, empiricalRunEmitted true, no OOM
+monitor_hang=tee_wait_after_producer_success
+offline_validation_iso=2026-09-26T21:15:44Z
+monitor_result=SUCCESS_OFFLINE_VALIDATED
+empirical_valid=1
+note=Monitor bash hung after producer wrote artifacts; Node workers exited. Validation completed offline against frozen artifacts.

@@ -1,14 +1,16 @@
 {
   "studyId": "kalshi-kxbtc15m-external-btc-delayed-repricing-pilot-v0",
-  "analysisVersion": "2026-09-26-correction-v1",
-  "priorAnalysisVersion": "2026-09-26-prep-v0",
+  "analysisVersion": "2026-09-26-repair-v2",
+  "priorAnalysisVersion": "2026-09-26-correction-v1",
   "disclaimer": "Offline fixture-verified pilot runner. Does not purchase CryptoStruct data, spend credits, place orders, or claim independent confirmation. All M16-ER pilot days remain exploratory SPENT and Friday-only. M12.8 already classified live-capture Coinbase→Kalshi TOB mid-response as no-directional-response; this pilot only addresses fee-aware delayed-taker economics on CryptoStruct ticks under declared scenario delays — not verified live tradability. Delay results are never auto-promoted.",
   "correctionsFromPrepV0": [
     "Implemented streaming Coinbase/Kalshi ingestion and --run-real path (gated empirics)",
     "Removed invented 50–250ms cross-venue sync bound; delays never auto-verified",
     "Separated pre-entry reject vs entered+unresolved exit; exit-failure policy frozen",
     "Friday-only label; fragile G≤5 CI; control isolation + retrospective placebo labeling",
-    "Concrete M12.8 reconciliation with material fee-aware delayed-taker gap"
+    "Concrete M12.8 reconciliation with material fee-aware delayed-taker gap",
+    "Memory-bounded per-day child workers + disk sparse JSONL caches (semantics unchanged)",
+    "Repair-v2: ticker HHMM America/New_York close when header expiry null; terminal payout envelopes 0−cost/100−cost; last-bid MTM labeled separately"
   ],
   "hypothesis": "After an external Coinbase BTC-USD move, Kalshi KXBTC15M executable quotes may adjust slowly enough that a delayed taker entry remains profitable after STANDARD fees and a fixed short hold — as a scenario study, not verified live tradability.",
   "m128Reconciliation": {
@@ -146,9 +148,10 @@
   },
   "exitFailurePolicy": {
     "id": "retain-entry-unresolved-v1",
-    "description": "After a successful entry, a failed exit marks the position unresolved but retains overlap/cooldown through intendedExitTimestampMs. Completed-trade P&L excludes unresolved rows. All-entry economics report explicit lower/upper bounds.",
-    "lowerBound": "Unresolved: treat exit bid = 0¢ (forfeit remaining value); exitFee = 0; net = 0 - entryPrice - entryFee",
-    "upperBound": "Unresolved: if a last same-side bid exists at/before intended exit, mark-to-market that bid minus entryFee (no exit fee); else flat at entryPrice before fees (net = -entryFee)",
+    "description": "After a successful entry, a failed exit marks the position unresolved but retains overlap/cooldown through intendedExitTimestampMs. Completed-trade P&L excludes unresolved rows. All-entry economics report terminal-payout envelopes (0−entryCost / 100−entryCost). Last-observed bid is a separate mark-to-market scenario, not an upper bound.",
+    "lowerBound": "Unresolved terminal-payout floor: exit value = 0¢; exitFee = 0; net = 0 − entryPrice − entryFee. STANDARD taker fee at price 0 is 0, so a modeled sell-at-0 cannot go below this floor under the frozen fee contract.",
+    "upperBound": "Unresolved terminal-payout ceiling: exit value = 100¢; exitFee = 0; net = 100 − entryPrice − entryFee (settlement win / sell at 100 with fee 0).",
+    "markToMarketScenario": "Unresolved MTM (not a bound): if a last same-side bid exists at/before intended exit, net = bid − entryPrice − entryFee (no exit fee); else null.",
     "primaryIfAnyUnresolved": "incomplete-unresolved-exits"
   },
   "positionPolicy": {

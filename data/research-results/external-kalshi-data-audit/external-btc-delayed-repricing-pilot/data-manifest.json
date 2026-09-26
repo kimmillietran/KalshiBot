@@ -37,9 +37,9 @@
       "utcDay": "2026-08-14",
       "kind": "coinbase-btc-usd-tick",
       "path": "/Users/builder/Developer/kalshi-builder2/data/external-samples/cryptostruct/coinbase-btc-usd/raw/coinbase-BTC-USD-2026-08-14.txt.zst",
-      "presentLocally": false,
-      "sizeBytesLocal": null,
-      "estimatedCompressedBytes": 1349725167,
+      "presentLocally": true,
+      "sizeBytesLocal": 924561856,
+      "estimatedCompressedBytes": 924561856,
       "required": true
     },
     {
@@ -55,9 +55,9 @@
       "utcDay": "2026-08-21",
       "kind": "coinbase-btc-usd-tick",
       "path": "/Users/builder/Developer/kalshi-builder2/data/external-samples/cryptostruct/coinbase-btc-usd/raw/coinbase-BTC-USD-2026-08-21.txt.zst",
-      "presentLocally": false,
-      "sizeBytesLocal": null,
-      "estimatedCompressedBytes": 1349725167,
+      "presentLocally": true,
+      "sizeBytesLocal": 2535512376,
+      "estimatedCompressedBytes": 2535512376,
       "required": true
     },
     {
@@ -73,9 +73,9 @@
       "utcDay": "2026-08-28",
       "kind": "coinbase-btc-usd-tick",
       "path": "/Users/builder/Developer/kalshi-builder2/data/external-samples/cryptostruct/coinbase-btc-usd/raw/coinbase-BTC-USD-2026-08-28.txt.zst",
-      "presentLocally": false,
-      "sizeBytesLocal": null,
-      "estimatedCompressedBytes": 1349725167,
+      "presentLocally": true,
+      "sizeBytesLocal": 1462256907,
+      "estimatedCompressedBytes": 1462256907,
       "required": true
     },
     {
@@ -91,9 +91,9 @@
       "utcDay": "2026-09-04",
       "kind": "coinbase-btc-usd-tick",
       "path": "/Users/builder/Developer/kalshi-builder2/data/external-samples/cryptostruct/coinbase-btc-usd/raw/coinbase-BTC-USD-2026-09-04.txt.zst",
-      "presentLocally": false,
-      "sizeBytesLocal": null,
-      "estimatedCompressedBytes": 1349725167,
+      "presentLocally": true,
+      "sizeBytesLocal": 1242763869,
+      "estimatedCompressedBytes": 1242763869,
       "required": true
     },
     {
@@ -109,35 +109,29 @@
       "utcDay": "2026-09-11",
       "kind": "coinbase-btc-usd-tick",
       "path": "/Users/builder/Developer/kalshi-builder2/data/external-samples/cryptostruct/coinbase-btc-usd/raw/coinbase-BTC-USD-2026-09-11.txt.zst",
-      "presentLocally": false,
-      "sizeBytesLocal": null,
-      "estimatedCompressedBytes": 1349725167,
+      "presentLocally": true,
+      "sizeBytesLocal": 1295027040,
+      "estimatedCompressedBytes": 1295027040,
       "required": true
     }
   ],
   "totals": {
     "kalshiPresentCount": 5,
-    "coinbasePresentCount": 0,
+    "coinbasePresentCount": 5,
     "kalshiLocalBytes": 6199326204,
-    "coinbaseEstimatedCompressedBytes": 6748625835,
-    "missingCoinbaseDays": [
-      "2026-08-14",
-      "2026-08-21",
-      "2026-08-28",
-      "2026-09-04",
-      "2026-09-11"
-    ]
+    "coinbaseEstimatedCompressedBytes": 7460122048,
+    "missingCoinbaseDays": []
   },
   "creditQuote": {
     "currency": "EUR",
     "priceEurPerDay": 1,
-    "daysToAcquire": 5,
-    "totalEur": 5,
-    "totalCents": 500,
+    "daysToAcquire": 0,
+    "totalEur": 0,
+    "totalCents": 0,
     "cashChargeEur": 0,
-    "alreadyOwnedCoinbaseDays": 0,
-    "creditBalanceCentsAtQuote": 1600,
-    "creditCoverCents": 500,
+    "alreadyOwnedCoinbaseDays": 5,
+    "creditBalanceCentsAtQuote": 1100,
+    "creditCoverCents": 0,
     "agentSpendWould": "approval",
     "agentSpendReason": "approval_mode",
     "purchaseAuthorizedInThisTask": false,
@@ -150,18 +144,20 @@
   },
   "premiumTermsObserved": {
     "premiumActive": true,
-    "creditBalanceCents": 1600,
+    "creditBalanceCents": 1100,
     "agentSpendMode": "approve",
     "note": "Credits never spend without consent; default create_checkout returns approval_required."
   },
   "fridayOnly": true,
-  "analysisVersion": "2026-09-26-correction-v1",
-  "priorAnalysisVersion": "2026-09-26-prep-v0",
+  "analysisVersion": "2026-09-26-repair-v2",
+  "priorAnalysisVersion": "2026-09-26-correction-v1",
   "correctionsFromPrepV0": [
     "Implemented streaming Coinbase/Kalshi ingestion and --run-real path (gated empirics)",
     "Removed invented 50–250ms cross-venue sync bound; delays never auto-verified",
     "Separated pre-entry reject vs entered+unresolved exit; exit-failure policy frozen",
     "Friday-only label; fragile G≤5 CI; control isolation + retrospective placebo labeling",
-    "Concrete M12.8 reconciliation with material fee-aware delayed-taker gap"
+    "Concrete M12.8 reconciliation with material fee-aware delayed-taker gap",
+    "Memory-bounded per-day child workers + disk sparse JSONL caches (semantics unchanged)",
+    "Repair-v2: ticker HHMM America/New_York close when header expiry null; terminal payout envelopes 0−cost/100−cost; last-bid MTM labeled separately"
   ]
 }

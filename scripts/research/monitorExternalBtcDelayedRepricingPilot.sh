@@ -21,6 +21,7 @@ cd "$ROOT"
 OUT="${PILOT_OUT_DIR:-data/research-results/external-kalshi-data-audit/external-btc-delayed-repricing-pilot}"
 mkdir -p "$OUT"
 
+# Colon-free stamp: `:` is illegal in Windows filenames and breaks checkout.
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 LOG="$OUT/run-stdout-monitored-${STAMP}.log"
 STATUS="$OUT/run-monitor-status-${STAMP}.txt"
@@ -43,6 +44,8 @@ EXPECTED_ARTIFACTS=(
 } | tee "$STATUS"
 
 # Keep machine awake while this monitor (and therefore the producer) lives (macOS).
+# IMPORTANT: do not `wait` on this job — caffeinate -w $$ blocks until the monitor
+# exits, so a bare `wait` deadlocks with it (attempt-3 hang).
 CAFFEINE_PID=""
 if command -v caffeinate >/dev/null 2>&1; then
   caffeinate -dims -w $$ >/tmp/pilot-caffeinate-monitor.log 2>&1 &
@@ -56,20 +59,29 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# Capture producer status independently of tee.
+# Live tee without process-substitution + bare-wait deadlock:
+# pipe stdout/stderr through tee; capture producer via PIPESTATUS[0].
 set +e
-npm run research:external-btc-delayed-repricing-pilot -- "$@" \
-  > >(tee -a "$LOG") \
-  2> >(tee -a "$LOG" >&2)
-producer_status=$?
+set -o pipefail
+npm run research:external-btc-delayed-repricing-pilot -- "$@" 2>&1 | tee -a "$LOG"
+# Capture PIPESTATUS immediately (before any other command). Under \`set -u\`,
+# index into a copy so missing tee slots do not abort.
+pipe_statuses=("${PIPESTATUS[@]}")
+# Fail closed if PIPESTATUS is somehow empty (do not default producer to 0).
+producer_status="${pipe_statuses[0]:-1}"
+tee_status="${pipe_statuses[1]:-0}"
+pipeline_status="$producer_status"
+if [[ "$tee_status" -ne 0 && "$pipeline_status" -eq 0 ]]; then
+  pipeline_status="$tee_status"
+fi
+set +o pipefail
 set -e
-
-# Wait for tee process substitutions to finish writing.
-wait 2>/dev/null || true
 sync
 
 {
   echo "producer_exit=$producer_status"
+  echo "tee_exit=$tee_status"
+  echo "pipeline_exit=$pipeline_status"
   echo "monitor_end_iso=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 } | tee -a "$STATUS"
 
@@ -130,6 +142,10 @@ if (report.fridayOnly !== true) {
 if (!report.codeVersions?.memoryArchitecture) {
   console.error("artifact_validation=missing_memory_architecture");
   process.exit(5);
+}
+if (!report.codeVersions?.contractMetadataVersion) {
+  console.error("artifact_validation=missing_contract_metadata_version");
+  process.exit(6);
 }
 console.log("artifact_validation=ok days=" + days.length);
 ' "$OUT" "${EXPECTED_DAYS[@]}"; then

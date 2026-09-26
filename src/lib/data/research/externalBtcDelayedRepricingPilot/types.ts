@@ -6,12 +6,12 @@
 export const EXTERNAL_BTC_DELAYED_REPRICING_PILOT_STUDY_ID =
   "kalshi-kxbtc15m-external-btc-delayed-repricing-pilot-v0" as const;
 
-/** Spec/code version after PR #137 corrections (preserves prep-v0 semantics where unchanged). */
+/** Spec/code version after expiry-recovery + payout-envelope repair. */
 export const EXTERNAL_BTC_DELAYED_REPRICING_PILOT_ANALYSIS_VERSION =
-  "2026-09-26-correction-v1" as const;
+  "2026-09-26-repair-v2" as const;
 
 export const EXTERNAL_BTC_DELAYED_REPRICING_PILOT_PRIOR_ANALYSIS_VERSION =
-  "2026-09-26-prep-v0" as const;
+  "2026-09-26-correction-v1" as const;
 
 export const EXTERNAL_BTC_DELAYED_REPRICING_PILOT_DISCLAIMER =
   "Offline fixture-verified pilot runner. Does not purchase CryptoStruct data, spend "
@@ -129,10 +129,21 @@ export type SimulatedTrade = {
   grossPnlCents: number | null;
   /** Completed-trade net only; null when rejected or unresolved. */
   completedNetPnlCents: number | null;
-  /** Lower economic bound for entered positions (always set when entered). */
+  /**
+   * Terminal-payout floor for entered positions: 0 − (entryPrice + entryFee).
+   * Assumes no further exit fee (settlement/forfeit). Sell-at-0 also has fee 0.
+   */
   allEntryLowerBoundNetCents: number | null;
-  /** Upper economic bound for entered positions (always set when entered). */
+  /**
+   * Terminal-payout ceiling for entered positions: 100 − (entryPrice + entryFee).
+   * Assumes no further exit costs (settlement win or sell at 100 with fee 0).
+   */
   allEntryUpperBoundNetCents: number | null;
+  /**
+   * Mark-to-market scenario using last same-side bid at/before intended exit
+   * (no exit fee). Not a terminal-payout bound. Null when rejected or no bid.
+   */
+  unresolvedMarkToMarketNetCents: number | null;
   preEntryRejectReason: PreEntryRejectReason | null;
   exitFailureReason: ExitFailureReason | null;
   /** @deprecated use entryStatus/exitStatus; true only for pre-entry rejects */
@@ -171,8 +182,14 @@ export type DelayEconomics = {
   unresolvedExitCount: number;
   economicResultStatus: EconomicResultStatus;
   completedTradeUncertainty: PilotUncertainty;
+  completedTotalNetPnlCents: number | null;
+  completedMeanNetPnlCents: number | null;
+  allEntryLowerBoundTotalCents: number | null;
+  allEntryUpperBoundTotalCents: number | null;
   allEntryLowerBoundMeanCents: number | null;
   allEntryUpperBoundMeanCents: number | null;
+  unresolvedMarkToMarketTotalCents: number | null;
+  unresolvedMarkToMarketMeanCents: number | null;
   delayClaimStatus: DelayClaimStatus;
   clockAlignmentStatus: "unknown";
   daily: DaySummary[];

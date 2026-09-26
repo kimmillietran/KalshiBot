@@ -1,0 +1,5 @@
+8baad55dcfa82101266c5f4419fe68a8bba7bd4204ef4dc3bf2d926dc420ee56  /Users/builder/Developer/kalshi-builder2/data/external-samples/cryptostruct/m16-er/raw/kalshi-btc-15m_2026-08-14.zip
+656c76db4bd11e8fc0e6fe09c16a59146d97919b0d6d6f28c2ba9201219f353c  /Users/builder/Developer/kalshi-builder2/data/external-samples/cryptostruct/m16-er/raw/kalshi-btc-15m_2026-08-21.zip
+3f05a5e711743e03df0f5c385a32a431120402d74d47cb3f33b43240010d4b49  /Users/builder/Developer/kalshi-builder2/data/external-samples/cryptostruct/m16-er/raw/kalshi-btc-15m_2026-08-28.zip
+1a2c18e3a121ac7dfc7fb21d711acd6232e980ae0f6704ad4800864867c86875  /Users/builder/Developer/kalshi-builder2/data/external-samples/cryptostruct/m16-er/raw/kalshi-btc-15m_2026-09-04.zip
+fa1039f7d6212b362c62679ed396ba4901a23802a50d447b1b66d5db88b2b113  /Users/builder/Developer/kalshi-builder2/data/external-samples/cryptostruct/m16-er/raw/kalshi-btc-15m_2026-09-11.zip

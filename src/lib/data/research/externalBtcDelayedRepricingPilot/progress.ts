@@ -6,6 +6,7 @@ export type ProgressStage =
   | "hash-inputs"
   | "ingest-coinbase"
   | "ingest-kalshi-member"
+  | "rebuild-contract-metadata"
   | "detect-events"
   | "simulate"
   | "write-day-result"

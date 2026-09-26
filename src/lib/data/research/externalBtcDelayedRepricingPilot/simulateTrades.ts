@@ -24,14 +24,19 @@ export const EXIT_FAILURE_POLICY = {
   description:
     "After a successful entry, a failed exit marks the position unresolved but retains "
     + "overlap/cooldown through intendedExitTimestampMs. Completed-trade P&L excludes "
-    + "unresolved rows. All-entry economics report explicit lower/upper bounds.",
+    + "unresolved rows. All-entry economics report terminal-payout envelopes "
+    + "(0−entryCost / 100−entryCost). Last-observed bid is a separate mark-to-market "
+    + "scenario, not an upper bound.",
   lowerBound:
-    "Unresolved: treat exit bid = 0¢ (forfeit remaining value); exitFee = 0; "
-    + "net = 0 - entryPrice - entryFee",
+    "Unresolved terminal-payout floor: exit value = 0¢; exitFee = 0; "
+    + "net = 0 − entryPrice − entryFee. STANDARD taker fee at price 0 is 0, so a "
+    + "modeled sell-at-0 cannot go below this floor under the frozen fee contract.",
   upperBound:
-    "Unresolved: if a last same-side bid exists at/before intended exit, mark-to-market "
-    + "that bid minus entryFee (no exit fee); else flat at entryPrice before fees "
-    + "(net = -entryFee)",
+    "Unresolved terminal-payout ceiling: exit value = 100¢; exitFee = 0; "
+    + "net = 100 − entryPrice − entryFee (settlement win / sell at 100 with fee 0).",
+  markToMarketScenario:
+    "Unresolved MTM (not a bound): if a last same-side bid exists at/before intended "
+    + "exit, net = bid − entryPrice − entryFee (no exit fee); else null.",
   primaryIfAnyUnresolved: "incomplete-unresolved-exits",
 } as const;
 
@@ -89,6 +94,7 @@ function makeReject(input: {
     completedNetPnlCents: null,
     allEntryLowerBoundNetCents: null,
     allEntryUpperBoundNetCents: null,
+    unresolvedMarkToMarketNetCents: null,
     preEntryRejectReason: input.reason,
     exitFailureReason: null,
     excluded: true,
@@ -210,7 +216,10 @@ export function simulateEventTrade(input: {
   }
 
   const entryFeeCents = takerFee(entry.price);
-  const lowerBound = 0 - entry.price - entryFeeCents;
+  const entryCostCents = entry.price + entryFeeCents;
+  // Terminal-payout envelopes (not frozen-15s exit executions).
+  const payoutFloorNetCents = 0 - entryCostCents;
+  const payoutCeilingNetCents = 100 - entryCostCents;
   const lastBeforeExit = joinAsOf({
     series: input.quotes,
     decisionTimestampMs: intendedExitTimestampMs,
@@ -219,8 +228,8 @@ export function simulateEventTrade(input: {
   const lastBid = lastBeforeExit.sample
     ? exitBid(lastBeforeExit.sample, side).price
     : null;
-  const upperBound =
-    lastBid !== null ? lastBid - entry.price - entryFeeCents : 0 - entryFeeCents;
+  const markToMarketNetCents =
+    lastBid !== null ? lastBid - entry.price - entryFeeCents : null;
 
   const unresolved = (reason: ExitFailureReason): SimulatedTrade => ({
     eventId: input.event.eventId,
@@ -240,8 +249,9 @@ export function simulateEventTrade(input: {
     exitFeeCents: 0,
     grossPnlCents: null,
     completedNetPnlCents: null,
-    allEntryLowerBoundNetCents: lowerBound,
-    allEntryUpperBoundNetCents: upperBound,
+    allEntryLowerBoundNetCents: payoutFloorNetCents,
+    allEntryUpperBoundNetCents: payoutCeilingNetCents,
+    unresolvedMarkToMarketNetCents: markToMarketNetCents,
     preEntryRejectReason: null,
     exitFailureReason: reason,
     excluded: false,
@@ -291,6 +301,7 @@ export function simulateEventTrade(input: {
     completedNetPnlCents,
     allEntryLowerBoundNetCents: completedNetPnlCents,
     allEntryUpperBoundNetCents: completedNetPnlCents,
+    unresolvedMarkToMarketNetCents: null,
     preEntryRejectReason: null,
     exitFailureReason: null,
     excluded: false,

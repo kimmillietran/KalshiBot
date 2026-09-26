@@ -246,6 +246,12 @@ describe("externalBtcDelayedRepricingPilot correction-v1", () => {
     expect(trade.completedNetPnlCents).toBeNull();
     expect(trade.allEntryLowerBoundNetCents).not.toBeNull();
     expect(trade.allEntryUpperBoundNetCents).not.toBeNull();
+    const cost = trade.entryPriceCents! + trade.entryFeeCents;
+    expect(trade.allEntryLowerBoundNetCents).toBe(0 - cost);
+    expect(trade.allEntryUpperBoundNetCents).toBe(100 - cost);
+    // Last bid is MTM only — must not equal the terminal ceiling when mid-book.
+    expect(trade.unresolvedMarkToMarketNetCents).toBe(55 - cost);
+    expect(trade.allEntryUpperBoundNetCents).not.toBe(trade.unresolvedMarkToMarketNetCents);
 
     const second = primaryEvent({ eventId: "e2", eventTimestampMs: 12_000, direction: "up" });
     const day = simulateDayTrades({
