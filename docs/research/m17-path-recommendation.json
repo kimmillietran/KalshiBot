@@ -48,5 +48,6 @@
     "captureStarted": false,
     "strategyPnlComputed": false,
     "strategyFrozen": false
-  }
+  },
+  "markdownSha256": "054f21e41f6f73b88fb6d4e3002d9587a54a728e7c8cf0ea444bfac333bdf8fb"
 }

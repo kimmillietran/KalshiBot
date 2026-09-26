@@ -31,9 +31,13 @@ failure.
 ## Classifier added for when inputs are available
 
 `classifyHalfSpreadMismatches.ts` (hermetic tests included) implements the
-Class A / Class B split from retained `book-features.jsonl` rows without live
-requests. Targeted RAW replay for Class B is still required on a machine that
-holds the gitignored ZIPs before Class B can move off `uncertain`.
+Class A / Class B split for mismatch rows **enriched** with an explicit
+retained executable NO ask (samples join). `book-features.jsonl` alone does
+**not** carry `retainedExecutableNoAskCents`; without that field the
+classifier fails closed into Class B and will not reproduce the cited 249/59
+split. No live requests. Targeted RAW replay for Class B is still required on
+a machine that holds the gitignored ZIPs before Class B can move off
+`uncertain`.
 
 ## Feature coverage
 

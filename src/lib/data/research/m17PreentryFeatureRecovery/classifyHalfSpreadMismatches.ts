@@ -4,11 +4,14 @@
  * Class A — definition mismatch: executable NO ask (100 − YES bid) is stable
  * while the retained friction half-spread disagrees with regenerated
  * (YES ask − YES bid) / 2. Ask-side / mid definition differs; bid-implied NO
- * ask does not.
+ * ask does not. Class A requires an explicit retained executable NO ask to
+ * compare against; missing retained values fail closed into Class B.
  *
  * Class B — recovery uncertainty: mismatch remains without a stable
- * bid-implied NO ask, or YES bid itself cannot be treated as confirmed.
- * Admission-time BBO reconstruction then needs retained RAW replay.
+ * bid-implied NO ask, retained NO ask is absent, or YES bid itself cannot be
+ * treated as confirmed. Admission-time BBO reconstruction then needs retained
+ * RAW replay (and usually a samples join for retained executable NO ask —
+ * book-features.jsonl alone does not carry that field).
  */
 
 export type HalfSpreadMismatchRow = {
@@ -89,11 +92,13 @@ export function classifyHalfSpreadMismatchRow(
   const retainedNoAsk = row.retainedExecutableNoAskCents ?? null;
 
   const hasBid = row.yesBidCents != null && Number.isFinite(row.yesBidCents);
-  const executableNoAskStable = hasBid && regeneratedNoAsk != null && (
-    retainedNoAsk == null
-      ? true
-      : Math.abs(retainedNoAsk - regeneratedNoAsk) <= EPS
-  );
+  // Fail closed: without an explicit retained executable NO ask, do not claim
+  // Class A "stable NO ask" — book-features rows omit that field until joined.
+  const executableNoAskStable = hasBid
+    && regeneratedNoAsk != null
+    && retainedNoAsk != null
+    && Number.isFinite(retainedNoAsk)
+    && Math.abs(retainedNoAsk - regeneratedNoAsk) <= EPS;
 
   const halfSpreadDisagrees = Math.abs(
     row.halfSpreadMismatch.retainedHalfSpreadCents

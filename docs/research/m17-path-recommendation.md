@@ -101,8 +101,9 @@ without a **separate explicit human decision**.
      periods only, with the estimand labeled non-official, **without** wiring
      `avg_60s_data` unless the human separately overrides that ban, and
      **without** treating SPENT as the evaluation cohort for settlement state.
-5. If Class B must be closed: run the targeted RAW replay on the machine that
-   already holds the gitignored M16-ER ZIPs (no re-download). That resolves
+5. If Class B must be closed: join retained executable NO ask onto mismatch
+   rows, run the offline classifier, then targeted RAW replay on the machine
+   that already holds the gitignored M16-ER ZIPs (no re-download). That resolves
    book-recovery uncertainty only; it does **not** unlock O3/O6.
 
 **Not recommended:** another identical multi-close 5Hz→official mapping

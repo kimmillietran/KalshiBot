@@ -31,6 +31,6 @@
     "strategyPnlComputed": false,
     "avg60sWiredIntoGates": false
   },
-  "disclaimer": "Offline Class B validation status only. Does not resolve O6, freeze M17 entry rules, compute P&L, or claim RAW replay results that were not executed.",
-  "reportMarkdownSha256": "41e69698800e66d62822e2ac9b86c9a0aeb81552e60161d10df7c395f75e4fd8"
+  "disclaimer": "Offline Class B validation status only. Does not resolve O6, freeze M17 entry rules, compute P&L, or claim RAW replay results that were not executed. Classifier requires retained executable NO ask enrichment; book-features alone fail closed to Class B.",
+  "reportMarkdownSha256": "d8bf91db3b14443f53a68c49e8bac8dff7496d8ba4437e88773430a462b9c172"
 }

@@ -61,6 +61,22 @@ describe("half-spread mismatch classification", () => {
     expect(classified?.executableNoAskStable).toBe(false);
   });
 
+  it("fails closed to Class B when retained executable NO ask is absent", () => {
+    const classified = classifyHalfSpreadMismatchRow(row({
+      yesBidCents: 40,
+      yesAskCents: 46,
+      noAskCents: 60,
+      halfSpreadCents: 3,
+      retainedExecutableNoAskCents: null,
+      halfSpreadMismatch: {
+        retainedHalfSpreadCents: 2.5,
+        regeneratedHalfSpreadCents: 3,
+      },
+    }));
+    expect(classified?.classification).toBe("class-b-recovery-uncertainty");
+    expect(classified?.executableNoAskStable).toBe(false);
+  });
+
   it("keeps Class A and Class B counts distinct in the summary", () => {
     const summary = summarizeHalfSpreadMismatchClasses([
       row({
