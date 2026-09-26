@@ -42,8 +42,8 @@
    gates). Negative result survived review and merge.
 2. Result is **exploratory SPENT_VALIDATION**, simulated execution at observed
    `noAskCents` — not live fills, not confirmatory, not pristine.
-3. **Original continuous-first-crossing CF-v2 remains untested** (see §4 why it is
-   not the automatic next test).
+3. **Original continuous-first-crossing CF-v2 remains untested** (see §3 Candidate 3
+   why it is not the automatic next test).
 4. **M17 settlement-state entry remains paused** (O6 blocked; no `avg_60s_data`
    gates; Path C / no paid BRTI for SPENT backtests).
 
@@ -68,7 +68,7 @@ No correctness fix was required post-merge; original outputs remain authoritativ
 
 | Lineage | Disposition | Constraint on next tests |
 | --- | --- | --- |
-| CF-v2 continuous crossing | Untested | Untested ≠ automatic next; need timing mechanism (§4) |
+| CF-v2 continuous crossing | Untested | Untested ≠ automatic next; need timing mechanism (§3) |
 | CF-v2 **grid** HTS NO fade | **Stop** (PR #134) | Do not retune vol/mid/time to rescue NO fade |
 | M16-ER / M16-P | Fail-to-reject H0 / suspended | Side-invariant reversal spent; sealed M16-P closed |
 | M14 momentum validation | `validation-failed` / stop-lineage | No alternate W/X/H, no reversal, no validation-event reuse |
@@ -229,14 +229,15 @@ settlement-labels.jsonl
 ## Freeze manifest before outcomes
 Reuse CF-v2 gates from
 config/research/hypotheses/high-volatility-late-market-calibration-fade-v2.json
-and PR #134 eligibility:
+and identical PR #134 eligibility (do not retarget the ask-side exclusive range):
 - bookFeatureStatus=="ok"
 - citedHighVolRegime==true (vol contract unchanged)
 - yesMidpoint in [1/3, 2/3)
 - 0 < timeRemainingMs < 900000
-- not crossed/locked; valid finite BBO
-- integer yesAskCents in (0,100)
-- noAskCents == 100 - yesBidCents (sanity; entry uses yesAsk)
+- not crossed/locked; integer yesBidCents/yesAskCents in [0,100]
+- integer noAskCents in (0,100)
+- noAskCents == 100 - yesBidCents
+Entry price is observed yesAskCents (payoff only); eligibility stays NO-ask gated as in #134.
 Earliest entryTimestampMs per marketTicker; duplicate conflicts flagged not selected.
 Join labels only after selection.
 
