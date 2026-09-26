@@ -17,6 +17,7 @@ import {
   loadPilotDayFromFiles,
   M128_RECONCILIATION,
   PILOT_DELAY_MS,
+  parseTickLine,
   runExternalBtcDelayedRepricingPilot,
   simulateDayTrades,
   simulateEventTrade,
@@ -139,6 +140,50 @@ describe("externalBtcDelayedRepricingPilot correction-v1", () => {
       isSnapshot: true,
     });
     expect(book.failClosed).toBe(false);
+  });
+
+  it("does not apply CryptoStruct TOB (msgType 6) into the L2 depth book", () => {
+    const book = createEmptyBook();
+    applyTickToBook(book, {
+      msgType: 0,
+      prevEventId: "0",
+      eventId: "1",
+      adapterTimestampNs: 1e9,
+      exchangeTimestampNs: 1e9,
+      levels: [
+        [0, "0.40", "10", 1],
+        [0, "0.39", "5", 1],
+        [1, "0.42", "8", 1],
+        [1, "0.43", "4", 1],
+      ],
+      isSnapshot: true,
+    });
+    expect(book.bids.size).toBe(2);
+    expect(book.asks.size).toBe(2);
+
+    // Loader must skip type 6; if applied as an update it would stamp only BBO
+    // levels onto the depth book and leave stale deeper levels (forbidden).
+    const tob = parseTickLine(
+      JSON.stringify([
+        6,
+        1,
+        "1",
+        "2",
+        2e9,
+        2e9,
+        [
+          [0, "0.41", "99", 1],
+          [1, "0.42", "99", 1],
+        ],
+      ]),
+    );
+    expect(tob?.msgType).toBe(6);
+    // Simulate the loadPilotDay filter: only 0+1 are book-applied.
+    const accepted = tob && (tob.msgType === 0 || tob.msgType === 1);
+    expect(accepted).toBe(false);
+    expect(book.bids.size).toBe(2);
+    expect(book.asks.get(0.43)).toBe(4);
+    expect(FROZEN_PILOT_SPEC.kalshiSeries.note).toMatch(/never feed TOB\(6\)/);
   });
 
   it("marks delay claims without inventing verified tradability", () => {

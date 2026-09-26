@@ -60,4 +60,5 @@ export {
   listZipMembers,
   hashFileSha256,
   writeZstdTextFixture,
+  assertZstdAvailable,
 } from "./streamCryptostructTick";

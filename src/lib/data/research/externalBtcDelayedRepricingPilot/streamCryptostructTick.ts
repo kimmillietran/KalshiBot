@@ -60,6 +60,7 @@ export async function streamZstdTextFile(
   if (!existsSync(path)) {
     throw new Error(`missing tick file: ${path}`);
   }
+  assertZstdAvailable();
   const child = spawnChecked("zstd", ["-dc", path]);
   const lineDone = forEachLineFromReadable(child.stdout as Readable, onLine);
   await Promise.all([lineDone, awaitChild(child, `zstd -dc ${path}`)]);
@@ -76,6 +77,7 @@ export async function streamZipMemberZstd(
   if (!existsSync(zipPath)) {
     throw new Error(`missing zip: ${zipPath}`);
   }
+  assertZstdAvailable();
   const unzip = spawnChecked("unzip", ["-p", zipPath, memberName]);
   const zstd = spawn("zstd", ["-dc"], { stdio: ["pipe", "pipe", "pipe"] });
   unzip.stdout!.pipe(zstd.stdin!);
@@ -137,11 +139,24 @@ export async function listZipMembers(zipPath: string): Promise<string[]> {
   });
 }
 
+/** Require system `zstd` (used for .txt.zst streaming + fixtures). */
+export function assertZstdAvailable(): void {
+  const probe = spawnSync("zstd", ["--version"], { encoding: "utf8" });
+  if (probe.error || probe.status !== 0) {
+    throw new Error(
+      "System `zstd` is required for CryptoStruct .txt.zst streaming "
+        + "(install via apt/brew). "
+        + (probe.error?.message ?? probe.stderr ?? "zstd --version failed"),
+    );
+  }
+}
+
 /** Write a tiny native .txt.zst fixture from lines (for tests). */
 export async function writeZstdTextFixture(
   path: string,
   lines: readonly string[],
 ): Promise<void> {
+  assertZstdAvailable();
   const body = `${lines.join("\n")}\n`;
   const tmpPlain = `${path}.plain`;
   writeFileSync(tmpPlain, body, "utf8");
@@ -150,7 +165,9 @@ export async function writeZstdTextFixture(
       encoding: "utf8",
     });
     if (result.status !== 0) {
-      throw new Error(`zstd compress failed: ${result.stderr}`);
+      throw new Error(
+        `zstd compress failed: ${result.stderr || result.error?.message || `exit ${result.status}`}`,
+      );
     }
   } finally {
     try {

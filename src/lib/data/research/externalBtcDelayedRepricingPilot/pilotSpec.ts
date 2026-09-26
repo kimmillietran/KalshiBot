@@ -62,7 +62,9 @@ export const FROZEN_PILOT_SPEC = {
     seriesKey: "kalshi-btc-15m",
     bundleId: 9000000001,
     messageTypesRequired: [0, 1, 2] as const,
-    note: "Raw book/trade updates from retained M16-ER ZIPs — not the 60s friction grid.",
+    note:
+      "Day files should include snapshot(0)+update(1)+trades(2). Book reconstruction "
+      + "applies only 0+1; never feed TOB(6) into the L2 depth book. Not the 60s friction grid.",
   },
   daySelection: {
     rule: "every-7th-m16-er-day-chronological-index-0-based",

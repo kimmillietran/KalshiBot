@@ -62,7 +62,10 @@ async function replayToSparseBbo(
       if (trimmed[0] === "{") return; // masterdata
     }
     const tick = parseTickLine(trimmed);
-    if (!tick || (tick.msgType !== 0 && tick.msgType !== 1 && tick.msgType !== 6)) {
+    // L2 reconstruction uses snapshot(0)+update(1) only.
+    // Never apply TOB(6) into the depth book (CryptoStruct: separate stream).
+    // Trades(2) are inventory-required in the day file but not book-applied.
+    if (!tick || (tick.msgType !== 0 && tick.msgType !== 1)) {
       return;
     }
     const { chainBreak } = applyTickToBook(book, tick);
@@ -143,7 +146,8 @@ export async function loadPilotDayFromFiles(input: {
         return;
       }
       const tick = parseTickLine(trimmed);
-      if (!tick || (tick.msgType !== 0 && tick.msgType !== 1 && tick.msgType !== 6)) {
+      // L2 reconstruction: snapshot(0)+update(1) only — never TOB(6) into depth.
+      if (!tick || (tick.msgType !== 0 && tick.msgType !== 1)) {
         return;
       }
       const { chainBreak } = applyTickToBook(book, tick);
