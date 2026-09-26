@@ -1,0 +1,49 @@
+{
+  "studyId": "kalshi-kxbtc15m-calibration-fade-v2-spent-grid-hts-yes-mirror-diagnostic-v0",
+  "analysisVersion": "calibration-fade-v2-spent-grid-hts-yes-mirror-diagnostic-v0.1",
+  "generatedAtUtc": "2026-09-26T02:09:46.216Z",
+  "codeAuthoritySha": "245c92719fd62877c51d3d01cb25b678ebfa2463",
+  "priorExposure": {
+    "noGridStudyId": "kalshi-kxbtc15m-calibration-fade-v2-spent-grid-hts-exploratory-v0",
+    "noGridResultSummary": "PR #134: N=321, G=24, mean net −8.6417¢, CR2 95% CI [−12.2485, −5.0350]¢, status evidence-against-positive-mean (buy NO grid HTS).",
+    "yesMirrorSelectedAfterObservingNoResult": true,
+    "isIndependentMechanismTest": false,
+    "isPreOutcomePreregistration": false,
+    "attemptedHistory": [
+      "no-grid-hts-exploratory-v0 (PR #134)",
+      "yes-mirror-diagnostic-v0 (this study; selected after observing #134)"
+    ]
+  },
+  "cohort": {
+    "sourceSelectedEntriesSha256": "0597917bcb71a0c6623d133f10e18b435c59debb3a4c89da912f7d806d74db08",
+    "sourcePerMarketTradesSha256": "904e9f5d505ae7ec016dadeff475be368c04f36a7f2f1cd834860bfff9bcb906",
+    "hashesVerified": true,
+    "pairedN": 321,
+    "pairedG": 24
+  },
+  "economics": {
+    "meanNetPnlCents": 3.0654205607476634,
+    "ci95LowerCents": -0.5732841789339624,
+    "ci95UpperCents": 6.70412530042929,
+    "interpretationStatus": "inconclusive-or-below-material-bar",
+    "meritsFreshPeriodTestDesign": false
+  },
+  "accountingIdentityHolds": true,
+  "artifactSha256": {
+    "report.json": "014e1b897ed0a0f449260c5dde87cc6b3960af7310a4a4c594e8118c477feabd",
+    "report.md": "2729e677cfa33369224a40d2dee8e2c2101dd23a44c2805f325a8527a6a70553",
+    "paired-markets.json": "3178bd737decabe3d8cca42c8d65406ff6e7cb1129cb311a24e75bb3989956ea"
+  },
+  "reproductionCommand": "npm run research:calibration-fade-v2-spent-grid-hts-yes-mirror-diagnostic",
+  "attestation": {
+    "purchaseOccurred": false,
+    "subscriptionOccurred": false,
+    "tradeOrOrderOccurred": false,
+    "liveCaptureStarted": false,
+    "originalNoOutputsModified": false,
+    "simulatedPnlAtObservedQuotes": true,
+    "thresholdSweepPerformed": false,
+    "favorite085ExperimentRun": false,
+    "continuousCrossingRun": false
+  }
+}
