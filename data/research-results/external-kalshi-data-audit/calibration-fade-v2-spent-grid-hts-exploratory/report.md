@@ -118,5 +118,5 @@ Exclusion counts: `{"cited-high-vol-false-or-missing":43730,"book-feature-not-ok
 - Continuous-first-crossing hypothesis config not modified
 - No threshold sweep / vol ablation / avg_60s strategy feature
 
-Code authority SHA: `021a9ac93bc7c1754c5580dd79a1298f6333a8fd`
-Generated (UTC): 2026-09-26T01:49:10.250Z
+Code authority SHA: `30dee7161cfecaa06510db8faf798efb21c77e0a`
+Generated (UTC): 2026-09-26T01:50:03.339Z
