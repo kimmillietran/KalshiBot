@@ -1,0 +1,182 @@
+{
+  "studyId": "kalshi-kxbtc15m-external-btc-delayed-repricing-pilot-v0",
+  "analysisVersion": "2026-09-26-correction-v1",
+  "priorAnalysisVersion": "2026-09-26-prep-v0",
+  "disclaimer": "Offline fixture-verified pilot runner. Does not purchase CryptoStruct data, spend credits, place orders, or claim independent confirmation. All M16-ER pilot days remain exploratory SPENT and Friday-only. M12.8 already classified live-capture Coinbase→Kalshi TOB mid-response as no-directional-response; this pilot only addresses fee-aware delayed-taker economics on CryptoStruct ticks under declared scenario delays — not verified live tradability. Delay results are never auto-promoted.",
+  "correctionsFromPrepV0": [
+    "Implemented streaming Coinbase/Kalshi ingestion and --run-real path (gated empirics)",
+    "Removed invented 50–250ms cross-venue sync bound; delays never auto-verified",
+    "Separated pre-entry reject vs entered+unresolved exit; exit-failure policy frozen",
+    "Friday-only label; fragile G≤5 CI; control isolation + retrospective placebo labeling",
+    "Concrete M12.8 reconciliation with material fee-aware delayed-taker gap"
+  ],
+  "hypothesis": "After an external Coinbase BTC-USD move, Kalshi KXBTC15M executable quotes may adjust slowly enough that a delayed taker entry remains profitable after STANDARD fees and a fixed short hold — as a scenario study, not verified live tradability.",
+  "m128Reconciliation": {
+    "m128QuestionAnswered": "After Coinbase-spot magnitude-boundary crosses on KalshiBot live-capture (btc-spot.jsonl + top-of-book.jsonl), does Kalshi TOB show a directional / magnitude mid response at observational lag windows 0–60s?",
+    "m128Result": {
+      "interpretationClassification": "no-directional-response",
+      "recommendedNextAction": "deprioritize-btc-lead-lag-family",
+      "classificationRationale": "Directional Kalshi response to BTC impulses is near random or negligible in magnitude.",
+      "trainTriggers": 1237,
+      "eligibleTriggers": 2346,
+      "horizonsMs": [
+        5000,
+        15000,
+        30000,
+        60000
+      ],
+      "responseWindowsMs": [
+        0,
+        1000,
+        2000,
+        5000,
+        10000,
+        15000,
+        30000,
+        60000
+      ],
+      "feesModeled": false,
+      "executableTakerPnlModeled": false,
+      "delaysLike250ms1s3sAsActionScenarios": false,
+      "timestampPolicy": "exchangeTimestampMs ?? receivedAtMs (silent fallback)",
+      "artifact": "kalshi-builder1/.../train-selected-run-lead-lag-analysis.json (run 2026-09-08T07-46-44-416Z)"
+    },
+    "materialGapThisPilotAddresses": [
+      "Fee-aware STANDARD taker entry+exit net ¢/contract (M12.8 mid response; fees unfrozen)",
+      "Explicit action-delay scenarios 250ms/1s/3s + fixed 15s hold (M12.8 used observational lag windows on mid, not delayed-taker economics)",
+      "CryptoStruct native tick books (raw L2) vs KalshiBot capture TOB JSONL plane",
+      "Entry/exit separation with unresolved-exit accounting (not M12.8 scope)"
+    ],
+    "whatDoesNotJustifyANewPilotAlone": [
+      "A new vendor name (CryptoStruct) without a different estimand",
+      "Renaming the study while repeating mid-response lead-lag characterization",
+      "Assuming ticks automatically overturn no-directional-response on mid"
+    ],
+    "decision": "Proceed with acquisition/pilot as an exploratory fee-aware delayed-taker check on Friday-only SPENT days — not as a refutation of M12.8's TOB mid-response finding. If fee-aware delayed-taker results are nonpositive / incomplete / inconclusive under fragile G≤5, shelve without expanding parameters.",
+    "shelveIf": "Primary 1s completed+bound economics are nonpositive, or simulation remains incomplete without defensible bounds, or no material edge beyond M12.8's already-negative directional characterization."
+  },
+  "priorResearchAlreadyAnswered": {
+    "study": "btcKalshiLeadLagAnalysis / M12.8 TRAIN",
+    "interpretationClassification": "no-directional-response",
+    "recommendedNextAction": "deprioritize-btc-lead-lag-family",
+    "answeredQuestion": "After Coinbase-spot magnitude-boundary crosses on KalshiBot live-capture (btc-spot.jsonl + top-of-book.jsonl), does Kalshi TOB show a directional / magnitude mid response at observational lag windows 0–60s?",
+    "note": "Proceed with acquisition/pilot as an exploratory fee-aware delayed-taker check on Friday-only SPENT days — not as a refutation of M12.8's TOB mid-response finding. If fee-aware delayed-taker results are nonpositive / incomplete / inconclusive under fragile G≤5, shelve without expanding parameters."
+  },
+  "externalVenue": {
+    "venueCode": "coinbase",
+    "venueName": "Coinbase",
+    "instrumentCode": "BTC-USD",
+    "instrumentId": 15050,
+    "rationale": "Preferred when matched trade/BBO coverage exists. Catalog covers all 34 M16-ER days."
+  },
+  "kalshiSeries": {
+    "seriesKey": "kalshi-btc-15m",
+    "bundleId": 9000000001,
+    "messageTypesRequired": [
+      0,
+      1,
+      2
+    ],
+    "note": "Day files should include snapshot(0)+update(1)+trades(2). Book reconstruction applies only 0+1; never feed TOB(6) into the L2 depth book. Not the 60s friction grid."
+  },
+  "daySelection": {
+    "rule": "every-7th-m16-er-day-chronological-index-0-based",
+    "universe": "34 SPENT M16-ER days with local RAW ZIPs",
+    "selectedUtcDays": [
+      "2026-08-14",
+      "2026-08-21",
+      "2026-08-28",
+      "2026-09-04",
+      "2026-09-11"
+    ],
+    "selectionIsOutcomeBlind": true,
+    "fridayOnly": true,
+    "weekdayCoverageClaim": "none — Friday-only exploratory sample; not representative weekdays"
+  },
+  "eventDefinition": {
+    "series": "Coinbase BTC-USD mid from reconstructed BBO (change-sparsified)",
+    "lookbackMs": 5000,
+    "boundaryBps": 5,
+    "trigger": "absolute lookback return crosses 5 bps from below (boundary cross)",
+    "direction": "sign of lookback return (up|down)",
+    "normalization": "basis points vs lookback start price",
+    "thresholdSource": "Frozen from M12.8 MAGNITUDE_BOUNDARIES_BPS lower cell (5 bps); not estimated on pilot P&L",
+    "calibrationSplit": null
+  },
+  "kalshiContractSelection": {
+    "rule": "At eventObservationTime: among KXBTC15M with start≤t<expiry and intended exit before expiry, pick YES mid closest to 50¢; ties → earlier expiry. Same contract through exit.",
+    "insufficientTimeToExpiry": "pre-entry reject if event+delay+hold ≥ expiry"
+  },
+  "timing": {
+    "clockPolicy": {
+      "id": "adapter-domain-consistent-v1",
+      "bookReconstructionOrder": "Native file/stream order with prevEventId continuity; never reorder by exchangeTs",
+      "preserveBothTimestamps": true,
+      "decisionClockDomain": "adapter",
+      "clockAlignmentStatus": "unknown",
+      "alignmentNote": "Cross-venue exchange-clock alignment is unknown. No independently established millisecond uncertainty band is claimed. Prior same-venue CryptoStruct↔KalshiBot receive lag (~5–6ms p50) is not an external BTC lead measurement and does not calibrate Coinbase↔Kalshi absolute sync.",
+      "eventObservationTime": "adapterTimestampMs of the external BBO point that crosses the magnitude boundary",
+      "decisionTime": "eventObservationTime + scenarioDelayMs in the same adapter domain",
+      "simulatedOrderArrival": "Modeled equal to decisionTime. No extra RTT/queue/ack. This is a scenario assumption, not measured production latency and not proof of live feasibility.",
+      "forbidSilentDomainMix": true,
+      "evidenceRequiredForVerifiedTradability": [
+        "Documented absolute UTC alignment (or bounded skew) between Coinbase and Kalshi exchange timestamps, or a single co-located receive clock for both feeds",
+        "Measured detection + order RTT distribution for the intended bot path",
+        "Explicit mapping from historical stamps to bot observation/act times"
+      ]
+    },
+    "primaryDelayMs": 1000,
+    "sensitivityDelayMs": [
+      250,
+      1000,
+      3000
+    ],
+    "delaySemantics": "Scenario assumptions for modeled decision time — not measured production latency and not verified tradability. 250ms diagnostic-only; 1s/3s unverified scenarios."
+  },
+  "execution": {
+    "sizeContracts": 1,
+    "entry": "taker buy of directional side at ask after delay",
+    "exit": "taker sell at bid after fixed hold",
+    "holdMs": 15000,
+    "feeSchedule": "STANDARD",
+    "feeRole": "taker",
+    "feeSides": "entry+exit",
+    "minDisplayedSize": 1,
+    "staleMaxAgeMs": 2000
+  },
+  "exitFailurePolicy": {
+    "id": "retain-entry-unresolved-v1",
+    "description": "After a successful entry, a failed exit marks the position unresolved but retains overlap/cooldown through intendedExitTimestampMs. Completed-trade P&L excludes unresolved rows. All-entry economics report explicit lower/upper bounds.",
+    "lowerBound": "Unresolved: treat exit bid = 0¢ (forfeit remaining value); exitFee = 0; net = 0 - entryPrice - entryFee",
+    "upperBound": "Unresolved: if a last same-side bid exists at/before intended exit, mark-to-market that bid minus entryFee (no exit fee); else flat at entryPrice before fees (net = -entryFee)",
+    "primaryIfAnyUnresolved": "incomplete-unresolved-exits"
+  },
+  "positionPolicy": {
+    "cooldownMs": 60000,
+    "overlappingPositions": "exclude-new-while-open-through-intended-exit",
+    "eventDedup": "boundary-cross cooldown on primary detection stream"
+  },
+  "controls": {
+    "signFlip": "Outcome-sharing diagnostic (flipped side). Not independent evidence. Isolated state.",
+    "timeSham": "Retrospective placebo using a future event's direction at an earlier timestamp. Not a deployable causal strategy. Isolated state."
+  },
+  "primaryMetric": {
+    "name": "completed-trade mean net P&L ¢/contract at primary delay (1s)",
+    "allEntryBounds": "report lower/upper means when unresolved exits exist",
+    "uncertainty": "Fragile exploratory CR2 day-cluster CI (G≤5 Friday-only) — not confirmation gate",
+    "incompletePolicy": "If any unresolved exits: economicResultStatus=incomplete-unresolved-exits; do not claim profitability from completed trades alone"
+  },
+  "stopExpandCriteria": {
+    "stopIf": "primary 1s all-entry bounds / completed economics nonpositive, or incomplete without defensible bounds, or no material fee-aware edge beyond M12.8's negative mid finding",
+    "expandOnlyIf": "exploratory promise under complete accounting — still requires separate preregistered fresh-period design; CI lower>0 alone insufficient",
+    "neverAuthorize": [
+      "M14 Kalshi-only momentum revival",
+      "M16 reversal revival",
+      "further band/vol/side searches from #134/#136",
+      "M17 settlement-state unpause",
+      "live trading",
+      "auto-promote 1s/3s to verified tradability"
+    ]
+  },
+  "spentStatus": "all-pilot-days-exploratory-SPENT-friday-only"
+}

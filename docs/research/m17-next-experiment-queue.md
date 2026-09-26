@@ -161,7 +161,20 @@ Artifacts:
 
 ---
 
-## 7. Attestation
+## 7. Independent next prep (not authorized by #134/#136 economics)
+
+External BTC → delayed Kalshi repricing pilot preparation:
+`docs/research/m17-external-btc-delayed-repricing-pilot.md` (**correction-v1** on PR #137).
+
+- Does **not** reopen NO-grid fade, YES-mirror promotion, band/vol/side searches,
+  or settlement-state.
+- M12.8 already classified live-capture Coinbase→Kalshi **mid** response as
+  `no-directional-response`; this pilot only addresses fee-aware delayed-taker
+  economics on CryptoStruct ticks (Friday-only, fragile G≤5).
+- Coinbase tick acquisition requires a **separate** authorization prompt (€5 quote).
+- Delays are scenario assumptions — never auto-verified tradability.
+
+## 8. Attestation
 
 - PR #134 closeout preserved; NO outputs unmodified.
 - Offline simulated P&L at observed quotes only for the paired YES diagnostic.
