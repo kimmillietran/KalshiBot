@@ -21,7 +21,8 @@ cd "$ROOT"
 OUT="${PILOT_OUT_DIR:-data/research-results/external-kalshi-data-audit/external-btc-delayed-repricing-pilot}"
 mkdir -p "$OUT"
 
-STAMP="$(date -u +%Y%m%dT%H:%M:%SZ)"
+# Colon-free stamp: `:` is illegal in Windows filenames and breaks checkout.
+STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 LOG="$OUT/run-stdout-monitored-${STAMP}.log"
 STATUS="$OUT/run-monitor-status-${STAMP}.txt"
 CODE_SHA="$(git rev-parse HEAD)"
@@ -66,7 +67,8 @@ npm run research:external-btc-delayed-repricing-pilot -- "$@" 2>&1 | tee -a "$LO
 # Capture PIPESTATUS immediately (before any other command). Under \`set -u\`,
 # index into a copy so missing tee slots do not abort.
 pipe_statuses=("${PIPESTATUS[@]}")
-producer_status="${pipe_statuses[0]:-0}"
+# Fail closed if PIPESTATUS is somehow empty (do not default producer to 0).
+producer_status="${pipe_statuses[0]:-1}"
 tee_status="${pipe_statuses[1]:-0}"
 pipeline_status="$producer_status"
 if [[ "$tee_status" -ne 0 && "$pipeline_status" -eq 0 ]]; then

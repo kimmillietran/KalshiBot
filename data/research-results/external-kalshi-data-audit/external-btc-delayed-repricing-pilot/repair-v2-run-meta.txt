@@ -3,8 +3,8 @@ repair_code_sha=9d8e0672518c4590d1787e8a8e997ffa8dbadbd0
 producer_exit=0
 monitor_result=SUCCESS
 empirical_valid=1
-monitor_status_file=run-monitor-status-20260926T21:51:42Z.txt
-monitor_log=run-stdout-monitored-20260926T21:51:42Z.log
+monitor_status_file=run-monitor-status-20260926T215142Z.txt
+monitor_log=run-stdout-monitored-20260926T215142Z.log
 contract_metadata_version=ticker-hhmm-america-new-york-close-v1
 reproduction=NODE_OPTIONS='--max-old-space-size=8192' bash scripts/research/monitorExternalBtcDelayedRepricingPilot.sh -- --run-real --authorize-empirical-run --credit-balance-cents 1100
 primary_1000_entered=1269

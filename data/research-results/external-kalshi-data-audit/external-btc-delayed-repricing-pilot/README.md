@@ -1,6 +1,6 @@
 See `REPAIR-V2-RESULTS.md` for the corrected five-day repair-v2 economics (supersedes attempt-3 partial).
 
-# External BTC → delayed Kalshi repricing pilot (correction-v1)
+# External BTC → delayed Kalshi repricing pilot (repair-v2)
 
 Offline fixture-verified pilot runner. Does not purchase CryptoStruct data, spend credits, place orders, or claim independent confirmation. All M16-ER pilot days remain exploratory SPENT and Friday-only. M12.8 already classified live-capture Coinbase→Kalshi TOB mid-response as no-directional-response; this pilot only addresses fee-aware delayed-taker economics on CryptoStruct ticks under declared scenario delays — not verified live tradability. Delay results are never auto-promoted.
 

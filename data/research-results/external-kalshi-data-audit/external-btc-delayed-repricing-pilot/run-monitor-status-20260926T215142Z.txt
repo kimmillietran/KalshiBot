@@ -1,7 +1,7 @@
 monitor_start_iso=2026-09-26T21:51:42Z
 code_sha=9d8e0672518c4590d1787e8a8e997ffa8dbadbd0
 NODE_OPTIONS=--max-old-space-size=8192
-log=data/research-results/external-kalshi-data-audit/external-btc-delayed-repricing-pilot/run-stdout-monitored-20260926T21:51:42Z.log
+log=data/research-results/external-kalshi-data-audit/external-btc-delayed-repricing-pilot/run-stdout-monitored-20260926T215142Z.log
 pid_monitor=1350
 producer_exit=0
 tee_exit=0

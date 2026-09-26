@@ -3,7 +3,7 @@
  * and bounded historical-data replay parity.
  */
 
-import { writeFileSync, chmodSync, existsSync } from "node:fs";
+import { writeFileSync, chmodSync, existsSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { mkdtempSync } from "node:fs";
@@ -207,6 +207,16 @@ describe("unresolved payout envelopes", () => {
 });
 
 describe("monitor producer-status capture", () => {
+  it("keeps monitor status stamp colon-free for Windows paths", () => {
+    const src = readFileSync(
+      join(process.cwd(), "scripts/research/monitorExternalBtcDelayedRepricingPilot.sh"),
+      "utf8",
+    );
+    expect(src).toMatch(/STAMP="\$\(date -u \+%Y%m%dT%H%M%SZ\)"/);
+    expect(src).not.toMatch(/STAMP="\$\(date -u \+%Y%m%dT%H:%M:%SZ\)"/);
+    expect(src).toMatch(/producer_status="\$\{pipe_statuses\[0\]:-1\}"/);
+  });
+
   function writeMonitor(dir: string): string {
     const monitor = join(dir, "monitor.sh");
     // Replica of the fixed pipefail + PIPESTATUS pattern (no bare wait / no caffeinate deadlock).
@@ -228,7 +238,7 @@ set +e
 set -o pipefail
 bash "$PRODUCER" 2>&1 | tee -a "$LOG"
 pipe_statuses=("\${PIPESTATUS[@]}")
-producer_status="\${pipe_statuses[0]:-0}"
+producer_status="\${pipe_statuses[0]:-1}"
 tee_status="\${pipe_statuses[1]:-0}"
 pipeline_status="\$producer_status"
 if [[ "\$tee_status" -ne 0 && "\$pipeline_status" -eq 0 ]]; then

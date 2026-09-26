@@ -3,6 +3,7 @@
  */
 
 import type { BboPoint } from "./bookReplay";
+import { CONTRACT_METADATA_VERSION } from "./contractMetadata";
 import { buildDiagnosticControls, detectExternalBtcEvents } from "./detectExternalEvents";
 import { M128_RECONCILIATION } from "./m128Reconciliation";
 import { FROZEN_PILOT_SPEC } from "./pilotSpec";
@@ -282,6 +283,7 @@ export function runExternalBtcDelayedRepricingPilot(input: {
     codeVersions: input.codeVersions ?? {
       analysisVersion: EXTERNAL_BTC_DELAYED_REPRICING_PILOT_ANALYSIS_VERSION,
       studyId: EXTERNAL_BTC_DELAYED_REPRICING_PILOT_STUDY_ID,
+      contractMetadataVersion: CONTRACT_METADATA_VERSION,
     },
     events: allEvents,
     trades: allTrades,
