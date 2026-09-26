@@ -31,7 +31,7 @@ export const TIMING_QUALITY = {
   },
   resolutionVsAccuracy: {
     resolution: "integer nanoseconds in file schema",
-   accuracy:
+    accuracy:
       "Resolution ≠ accuracy. Treat sub-50ms cross-venue claims as unsupported; "
       + "250ms sensitivity may sit inside the uncertainty band; 1s and 3s are the "
       + "defensible decision horizons for tradability claims.",

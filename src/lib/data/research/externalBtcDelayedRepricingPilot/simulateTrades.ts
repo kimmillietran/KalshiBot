@@ -107,6 +107,9 @@ export function simulateEventTrade(input: {
   if (exitJoin.sample.chainBreak) {
     return exclude("chain-break");
   }
+  if (exitJoin.sample.stale) {
+    return exclude("stale-book");
+  }
 
   const exit = exitBid(exitJoin.sample, side);
   if (exit.size < input.minDisplayedSize) {

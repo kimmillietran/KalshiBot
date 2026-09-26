@@ -4,7 +4,7 @@
 
 import { buildDiagnosticControls, detectExternalBtcEvents } from "./detectExternalEvents";
 import { FROZEN_PILOT_SPEC } from "./pilotSpec";
-import { simulateDayTrades } from "./simulateTrades";
+import { directionalSide, simulateDayTrades } from "./simulateTrades";
 import { delayClaimSupport } from "./timingQuality";
 import type {
   DaySummary,
@@ -28,6 +28,49 @@ export type DaySeriesInput = {
   externalBbo: readonly BboPoint[];
   kalshiQuotes: readonly ExecutableQuote[];
 };
+
+/** Fail closed: any non-exchange Kalshi quote clock → adapter for claim support. */
+export function resolveKalshiClockSource(
+  quotes: readonly ExecutableQuote[],
+): "exchange" | "adapter" {
+  if (quotes.length === 0) {
+    return "adapter";
+  }
+  return quotes.every((q) => q.timestampSource === "exchange")
+    ? "exchange"
+    : "adapter";
+}
+
+function externalClockSource(
+  event: ExternalBtcEvent,
+): "exchange" | "adapter" {
+  return event.timestampSource === "exchange" ? "exchange" : "adapter";
+}
+
+function timingBlockedTrade(
+  event: ExternalBtcEvent,
+  delayMs: PilotDelayMs,
+  holdMs: number,
+): SimulatedTrade {
+  const entryTimestampMs = event.eventTimestampMs + delayMs;
+  return {
+    eventId: event.eventId,
+    utcDay: event.utcDay,
+    delayMs,
+    controlKind: event.controlKind,
+    side: directionalSide(event),
+    entryTimestampMs,
+    exitTimestampMs: entryTimestampMs + holdMs,
+    entryPriceCents: 0,
+    exitPriceCents: 0,
+    entryFeeCents: 0,
+    exitFeeCents: 0,
+    grossPnlCents: 0,
+    netPnlCents: 0,
+    excluded: true,
+    exclusionReason: "timing-quality-block",
+  };
+}
 
 function daySummary(utcDay: string, trades: readonly SimulatedTrade[]): DaySummary {
   const dayTrades = trades.filter((t) => t.utcDay === utcDay && t.controlKind === "primary");
@@ -71,24 +114,35 @@ export function runExternalBtcDelayedRepricingPilot(input: {
     );
     const dayEvents = [...primary, ...controls];
     allEvents.push(...dayEvents);
+    const kalshiSource = resolveKalshiClockSource(day.kalshiQuotes);
 
     for (const delayMs of delays) {
-      for (const event of dayEvents) {
+      const runnablePrimary: ExternalBtcEvent[] = [];
+      for (const event of dayEvents.filter((e) => e.controlKind === "primary")) {
         const support = delayClaimSupport({
           delayMs,
-          externalSource: event.timestampSource === "exchange" ? "exchange" : "adapter",
-          kalshiSource: "exchange",
+          externalSource: externalClockSource(event),
+          kalshiSource,
         });
-        if (support === "blocked" && event.controlKind === "primary") {
+        if (support === "blocked") {
           timingExclusions.push({
             eventId: `${event.eventId}@${delayMs}`,
             reason: "timing-quality-block",
           });
+          allTrades.push(
+            timingBlockedTrade(
+              event,
+              delayMs,
+              FROZEN_PILOT_SPEC.execution.holdMs,
+            ),
+          );
+        } else {
+          runnablePrimary.push(event);
         }
       }
 
       const trades = simulateDayTrades({
-        events: dayEvents.filter((e) => e.controlKind === "primary"),
+        events: runnablePrimary,
         delayMs,
         holdMs: FROZEN_PILOT_SPEC.execution.holdMs,
         quotes: day.kalshiQuotes,
@@ -100,6 +154,21 @@ export function runExternalBtcDelayedRepricingPilot(input: {
 
       // Diagnostic controls simulated separately (no position interaction with primary).
       for (const control of dayEvents.filter((e) => e.controlKind !== "primary")) {
+        const support = delayClaimSupport({
+          delayMs,
+          externalSource: externalClockSource(control),
+          kalshiSource,
+        });
+        if (support === "blocked") {
+          allTrades.push(
+            timingBlockedTrade(
+              control,
+              delayMs,
+              FROZEN_PILOT_SPEC.execution.holdMs,
+            ),
+          );
+          continue;
+        }
         const controlTrades = simulateDayTrades({
           events: [control],
           delayMs,

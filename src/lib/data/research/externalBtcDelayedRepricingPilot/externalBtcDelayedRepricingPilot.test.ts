@@ -332,6 +332,43 @@ describe("externalBtcDelayedRepricingPilot", () => {
     ).toBe("supported");
   });
 
+  it("excludes blocked-delay primary trades from opportunity metrics (no silent P&L)", () => {
+    const externalBbo: BboPoint[] = [];
+    for (let t = 0; t <= 20_000; t += 1_000) {
+      externalBbo.push(bbo(t, 50_000, "adapter"));
+    }
+    externalBbo.push(bbo(21_000, 50_040, "adapter"));
+
+    const kalshiQuotes: ExecutableQuote[] = [];
+    for (let t = 0; t <= 60_000; t += 500) {
+      kalshiQuotes.push({
+        ...quote(t, 49, 51),
+        timestampSource: "adapter",
+      });
+    }
+
+    const report = runExternalBtcDelayedRepricingPilot({
+      days: [{ utcDay: "2026-08-14", externalBbo, kalshiQuotes }],
+      delaysMs: [250, 1_000],
+      inputHashes: { fixture: "adapter-clocks-timing-block" },
+    });
+
+    expect(report.byDelay["250"]!.opportunityCount).toBe(0);
+    expect(
+      report.trades.some(
+        (t) =>
+          t.delayMs === 250
+          && t.controlKind === "primary"
+          && t.exclusionReason === "timing-quality-block",
+      ),
+    ).toBe(true);
+    expect(
+      report.timingExclusions.some((e) => e.reason === "timing-quality-block"),
+    ).toBe(true);
+    // 1s remains supported even with adapter clocks.
+    expect(report.byDelay["1000"]!.opportunityCount).toBeGreaterThanOrEqual(0);
+  });
+
   it("converts YES [0,1] book to executable cents including NO complement", () => {
     const point = bboFromBook(
       (() => {

@@ -23,7 +23,7 @@ export {
 } from "./bookReplay";
 export { detectExternalBtcEvents, buildDiagnosticControls } from "./detectExternalEvents";
 export { simulateEventTrade, simulateDayTrades, directionalSide } from "./simulateTrades";
-export { runExternalBtcDelayedRepricingPilot } from "./runPilot";
+export { runExternalBtcDelayedRepricingPilot, resolveKalshiClockSource } from "./runPilot";
 export {
   buildPilotDataManifest,
   DEFAULT_KALSHI_RAW_ROOT,
