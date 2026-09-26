@@ -85,3 +85,8 @@ yarn-error.log*
 
 # External vendor samples (large; audit artifacts only in git)
 data/external-samples/
+
+# External BTC delayed-repricing pilot bulky caches (licensed raw stays out of git)
+data/research-results/external-kalshi-data-audit/external-btc-delayed-repricing-pilot/cache/
+data/external-samples/cryptostruct/coinbase-btc-usd/
+data/external-samples/cryptostruct/benchmark/

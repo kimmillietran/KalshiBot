@@ -1,6 +1,11 @@
 /**
- * Minimal CryptoStruct L2 book replay + BBO emission (memory-bounded: keep book + sparse BBO).
+ * CryptoStruct L2 book replay + sparse BBO emission.
+ *
+ * Production path uses incremental best-bid/ask pointers (parity-tested against
+ * full-map scan). Full-scan helpers remain for tests only.
  */
+
+import { createHash } from "node:crypto";
 
 import {
   CLOCK_POLICY,
@@ -10,9 +15,17 @@ import {
 } from "./timingQuality";
 import type { ClockDomain, ExecutableQuote } from "./types";
 
+/** Replay implementation identity for cache/checkpoint invalidation. */
+export const REPLAY_IMPLEMENTATION_VERSION = "incremental-bbo-v1" as const;
+
+export const BBO_EMISSION_POLICY = "emit-on-bbo-change-v1" as const;
+
 export type ReconstructedBook = {
   bids: Map<number, number>;
   asks: Map<number, number>;
+  /** Incremental best pointers — null when side empty. */
+  bestBidPrice: number | null;
+  bestAskPrice: number | null;
   lastEventId: string | null;
   failClosed: boolean;
 };
@@ -21,6 +34,8 @@ export function createEmptyBook(): ReconstructedBook {
   return {
     bids: new Map(),
     asks: new Map(),
+    bestBidPrice: null,
+    bestAskPrice: null,
     lastEventId: null,
     failClosed: false,
   };
@@ -50,27 +65,26 @@ function applyContinuityBreak(input: {
   return { failClosed, chainBreak };
 }
 
-function applyLevels(
-  book: ReconstructedBook,
-  levels: ReadonlyArray<readonly [number, string, string, number?]>,
-): void {
-  for (const level of levels) {
-    const side = level[0];
-    const price = Number(level[1]);
-    const qty = Number(level[2]);
-    if (!Number.isFinite(price) || !Number.isFinite(qty)) {
-      continue;
-    }
-    const sideMap = side === 0 ? book.bids : book.asks;
-    if (qty <= 0) {
-      sideMap.delete(price);
-    } else {
-      sideMap.set(price, qty);
-    }
+function recomputeBestBid(book: ReconstructedBook): void {
+  let best: number | null = null;
+  for (const price of book.bids.keys()) {
+    if (best === null || price > best) best = price;
   }
+  book.bestBidPrice = best;
 }
 
-function bestBid(book: ReconstructedBook): { price: number; qty: number } | null {
+function recomputeBestAsk(book: ReconstructedBook): void {
+  let best: number | null = null;
+  for (const price of book.asks.keys()) {
+    if (best === null || price < best) best = price;
+  }
+  book.bestAskPrice = best;
+}
+
+/** Full-map scan — reference semantics for parity tests. */
+export function bestBidFullScan(
+  book: Pick<ReconstructedBook, "bids">,
+): { price: number; qty: number } | null {
   let best: { price: number; qty: number } | null = null;
   for (const [price, qty] of book.bids) {
     if (!best || price > best.price) best = { price, qty };
@@ -78,7 +92,9 @@ function bestBid(book: ReconstructedBook): { price: number; qty: number } | null
   return best;
 }
 
-function bestAsk(book: ReconstructedBook): { price: number; qty: number } | null {
+export function bestAskFullScan(
+  book: Pick<ReconstructedBook, "asks">,
+): { price: number; qty: number } | null {
   let best: { price: number; qty: number } | null = null;
   for (const [price, qty] of book.asks) {
     if (!best || price < best.price) best = { price, qty };
@@ -111,7 +127,68 @@ export type BboPoint = {
   failClosed: boolean;
 };
 
+/**
+ * Apply L2 tick with incremental best maintenance.
+ * Rescan a side only when its current best is deleted/emptied.
+ */
 export function applyTickToBook(
+  book: ReconstructedBook,
+  tick: TickEnvelope,
+): { chainBreak: boolean; bestRescans: number } {
+  const continuity = applyContinuityBreak({
+    lastEventId: book.lastEventId,
+    prevEventId: tick.prevEventId,
+    isSnapshot: Boolean(tick.isSnapshot || tick.msgType === 0),
+    failClosed: book.failClosed,
+  });
+  book.failClosed = continuity.failClosed;
+  let bestRescans = 0;
+  if (tick.isSnapshot || tick.msgType === 0) {
+    book.bids.clear();
+    book.asks.clear();
+    book.bestBidPrice = null;
+    book.bestAskPrice = null;
+  }
+  if (tick.levels) {
+    for (const level of tick.levels) {
+      const side = level[0];
+      const price = Number(level[1]);
+      const qty = Number(level[2]);
+      if (!Number.isFinite(price) || !Number.isFinite(qty)) {
+        continue;
+      }
+      const sideMap = side === 0 ? book.bids : book.asks;
+      if (qty <= 0) {
+        sideMap.delete(price);
+        if (side === 0 && book.bestBidPrice === price) {
+          recomputeBestBid(book);
+          bestRescans += 1;
+        }
+        if (side === 1 && book.bestAskPrice === price) {
+          recomputeBestAsk(book);
+          bestRescans += 1;
+        }
+      } else {
+        sideMap.set(price, qty);
+        if (side === 0) {
+          if (book.bestBidPrice === null || price > book.bestBidPrice) {
+            book.bestBidPrice = price;
+          }
+        } else if (book.bestAskPrice === null || price < book.bestAskPrice) {
+          book.bestAskPrice = price;
+        }
+      }
+    }
+  }
+  book.lastEventId = tick.eventId;
+  return { chainBreak: continuity.chainBreak, bestRescans };
+}
+
+/**
+ * Legacy full-scan apply (no incremental pointers). Used only in parity tests.
+ * Mutates a book that may lack reliable best* pointers.
+ */
+export function applyTickToBookFullScan(
   book: ReconstructedBook,
   tick: TickEnvelope,
 ): { chainBreak: boolean } {
@@ -125,11 +202,24 @@ export function applyTickToBook(
   if (tick.isSnapshot || tick.msgType === 0) {
     book.bids.clear();
     book.asks.clear();
+    book.bestBidPrice = null;
+    book.bestAskPrice = null;
   }
   if (tick.levels) {
-    applyLevels(book, tick.levels);
+    for (const level of tick.levels) {
+      const side = level[0];
+      const price = Number(level[1]);
+      const qty = Number(level[2]);
+      if (!Number.isFinite(price) || !Number.isFinite(qty)) continue;
+      const sideMap = side === 0 ? book.bids : book.asks;
+      if (qty <= 0) sideMap.delete(price);
+      else sideMap.set(price, qty);
+    }
   }
   book.lastEventId = tick.eventId;
+  // Refresh pointers from full scan so bboFromBookFullScan is consistent.
+  recomputeBestBid(book);
+  recomputeBestAsk(book);
   return { chainBreak: continuity.chainBreak };
 }
 
@@ -139,8 +229,38 @@ export function bboFromBook(
   chainBreak: boolean,
   domain: ClockDomain = CLOCK_POLICY.decisionClockDomain,
 ): BboPoint | null {
-  const bid = bestBid(book);
-  const ask = bestAsk(book);
+  if (book.bestBidPrice == null || book.bestAskPrice == null) return null;
+  const bidQty = book.bids.get(book.bestBidPrice);
+  const askQty = book.asks.get(book.bestAskPrice);
+  if (bidQty == null || askQty == null) return null;
+  const resolved = resolveDualTimestamps(dual);
+  const timestampMs = timestampInDomain(resolved, domain);
+  if (timestampMs === null) return null;
+  return {
+    timestampMs,
+    clockDomain: domain,
+    timestampSource: domain,
+    adapterTimestampMs: resolved.adapterTimestampMs,
+    exchangeTimestampMs: resolved.exchangeTimestampMs,
+    bid: book.bestBidPrice,
+    ask: book.bestAskPrice,
+    bidSize: bidQty,
+    askSize: askQty,
+    mid: (book.bestBidPrice + book.bestAskPrice) / 2,
+    chainBreak,
+    failClosed: book.failClosed,
+  };
+}
+
+/** Full-scan BBO (parity reference). */
+export function bboFromBookFullScan(
+  book: ReconstructedBook,
+  dual: DualTimestamps,
+  chainBreak: boolean,
+  domain: ClockDomain = CLOCK_POLICY.decisionClockDomain,
+): BboPoint | null {
+  const bid = bestBidFullScan(book);
+  const ask = bestAskFullScan(book);
   if (!bid || !ask) return null;
   const resolved = resolveDualTimestamps(dual);
   const timestampMs = timestampInDomain(resolved, domain);
@@ -184,7 +304,7 @@ export function kalshiExecutableFromYesBbo(bbo: BboPoint): ExecutableQuote {
   };
 }
 
-/** Emit BBO only when top-of-book changes (memory bound). */
+/** Emit BBO only when top-of-book changes (sparse emission). */
 export function shouldEmitBbo(
   previous: BboPoint | null,
   next: BboPoint,
@@ -230,4 +350,12 @@ export function parseTickLine(line: string): TickEnvelope | null {
     levels,
     isSnapshot: msgType === 0,
   };
+}
+
+export function hashBookState(book: ReconstructedBook): string {
+  const bids = [...book.bids.entries()].sort((a, b) => a[0] - b[0]);
+  const asks = [...book.asks.entries()].sort((a, b) => a[0] - b[0]);
+  return createHash("sha256")
+    .update(JSON.stringify({ bids, asks, failClosed: book.failClosed, lastEventId: book.lastEventId }))
+    .digest("hex");
 }

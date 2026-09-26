@@ -25,6 +25,10 @@ import {
   writeZstdTextFixture,
   PILOT_UTC_DAYS,
   EXTERNAL_BTC_DELAYED_REPRICING_PILOT_ANALYSIS_VERSION,
+  processOnePilotDay,
+  aggregateDayResults,
+  loadDayResultFile,
+  hashFileSha256,
 } from "@/lib/data/research/externalBtcDelayedRepricingPilot";
 
 function parseArg(flag: string): string | null {
@@ -165,6 +169,38 @@ async function main(): Promise<void> {
     );
   mkdirSync(outDir, { recursive: true });
 
+  // Child-worker entry: process exactly one day and exit (memory reclaim).
+  const oneDay = parseArg("--process-one-day");
+  if (oneDay) {
+    if (!(PILOT_UTC_DAYS as readonly string[]).includes(oneDay)) {
+      throw new Error(`--process-one-day ${oneDay} is not in frozen Friday set`);
+    }
+    const result = await processOnePilotDay({
+      utcDay: oneDay,
+      coinbaseTickPath: defaultCoinbasePath(DEFAULT_COINBASE_DEST_ROOT, oneDay),
+      kalshiZipPath: defaultKalshiZipPath(DEFAULT_KALSHI_RAW_ROOT, oneDay),
+      outDir,
+    });
+    const inputHashes = {
+      [`coinbase:${oneDay}`]: await hashFileSha256(
+        defaultCoinbasePath(DEFAULT_COINBASE_DEST_ROOT, oneDay),
+      ),
+      [`kalshi-zip:${oneDay}`]: await hashFileSha256(
+        defaultKalshiZipPath(DEFAULT_KALSHI_RAW_ROOT, oneDay),
+      ),
+    };
+    console.log(
+      JSON.stringify({
+        utcDay: oneDay,
+        dayResultPath: result.path,
+        dayResultKey: result.dayResultKey,
+        reused: result.reused,
+        inputHashes,
+      }),
+    );
+    return;
+  }
+
   const manifest = buildPilotDataManifest({
     creditBalanceCents: Number(parseArg("--credit-balance-cents") ?? 1600),
     generatedAtIso: parseArg("--generated-at") ?? "2026-09-26T03:00:00.000Z",
@@ -206,7 +242,7 @@ async function main(): Promise<void> {
       );
     }
     if (!hasFlag("--authorize-empirical-run")) {
-      // Path is implemented; empirics remain gated.
+      // Path is implemented; empirics remain gated. Smoke-load day 0 only.
       const smokeDay = PILOT_UTC_DAYS[0];
       const day = await loadPilotDayFromFiles({
         utcDay: smokeDay,
@@ -216,7 +252,7 @@ async function main(): Promise<void> {
       console.log(
         JSON.stringify(
           {
-            runRealPath: "implemented",
+            runRealPath: "implemented-per-day-child-v1",
             empiricalAuthorized: false,
             loadedDay: smokeDay,
             externalBboPoints: day.externalBbo.length,
@@ -235,29 +271,61 @@ async function main(): Promise<void> {
       return;
     }
 
-    const days = [];
+    // Memory-bounded empirical path: one sequential child process per day.
     const hashes: Record<string, string> = {};
+    const dayResultPaths: string[] = [];
+    const nodeOptions = process.env.NODE_OPTIONS ?? "--max-old-space-size=8192";
+
     for (const utcDay of PILOT_UTC_DAYS) {
-      const day = await loadPilotDayFromFiles({
-        utcDay,
-        coinbaseTickPath: defaultCoinbasePath(DEFAULT_COINBASE_DEST_ROOT, utcDay),
-        kalshiZipPath: defaultKalshiZipPath(DEFAULT_KALSHI_RAW_ROOT, utcDay),
-      });
-      Object.assign(hashes, day.inputHashes);
-      days.push({
-        utcDay: day.utcDay,
-        externalBbo: day.externalBbo,
-        contracts: day.contracts,
-        quotesByTicker: day.quotesByTicker,
-      });
+      const child = spawnSync(
+        "npx",
+        [
+          "tsx",
+          "scripts/research/runExternalBtcDelayedRepricingPilot.ts",
+          "--process-one-day",
+          utcDay,
+          "--out-dir",
+          outDir,
+          "--credit-balance-cents",
+          String(parseArg("--credit-balance-cents") ?? 1100),
+        ],
+        {
+          cwd: process.cwd(),
+          env: { ...process.env, NODE_OPTIONS: nodeOptions },
+          encoding: "utf8",
+          maxBuffer: 32 * 1024 * 1024,
+        },
+      );
+      if (child.status !== 0) {
+        console.error(child.stderr || child.stdout);
+        throw new Error(
+          `Day worker failed for ${utcDay}: status=${child.status} signal=${child.signal}`,
+        );
+      }
+      const lines = (child.stdout || "").trim().split("\n").filter(Boolean);
+      const last = lines[lines.length - 1];
+      if (!last) throw new Error(`Day worker produced no stdout for ${utcDay}`);
+      const parsed = JSON.parse(last) as {
+        utcDay: string;
+        dayResultPath: string;
+        dayResultKey: string;
+        reused: boolean;
+        inputHashes: Record<string, string>;
+      };
+      Object.assign(hashes, parsed.inputHashes);
+      dayResultPaths.push(parsed.dayResultPath);
+      console.error(
+        JSON.stringify({
+          parentProgress: "day-complete",
+          utcDay,
+          reused: parsed.reused,
+          dayResultKey: parsed.dayResultKey.slice(0, 16),
+        }),
+      );
     }
-    report = runExternalBtcDelayedRepricingPilot({
-      days,
-      inputHashes: hashes,
-      codeVersions: {
-        analysisVersion: EXTERNAL_BTC_DELAYED_REPRICING_PILOT_ANALYSIS_VERSION,
-      },
-    });
+
+    const dayResults = dayResultPaths.map((p) => loadDayResultFile(p));
+    report = aggregateDayResults({ dayResults, inputHashes: hashes });
   }
 
   const { paths, hashes } = writePreparationArtifacts({ outDir, manifest, report });

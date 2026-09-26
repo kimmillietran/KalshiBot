@@ -37,6 +37,7 @@ export const FROZEN_PILOT_SPEC = {
     "Separated pre-entry reject vs entered+unresolved exit; exit-failure policy frozen",
     "Friday-only label; fragile G≤5 CI; control isolation + retrospective placebo labeling",
     "Concrete M12.8 reconciliation with material fee-aware delayed-taker gap",
+    "Memory-bounded per-day child workers + disk sparse JSONL caches (semantics unchanged)",
   ],
   hypothesis:
     "After an external Coinbase BTC-USD move, Kalshi KXBTC15M executable quotes may "
