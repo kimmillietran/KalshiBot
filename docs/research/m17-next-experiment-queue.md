@@ -86,10 +86,10 @@ All 34 days remain **SPENT_VALIDATION**. Exploratory P&L allowed; independent co
 
 ### Ranking criteria
 
-1. Mechanism credibility  
-2. Difference from failed tests  
-3. Execution feasibility  
-4. Data availability / cost of an answer  
+1. Mechanism credibility
+2. Difference from failed tests
+3. Execution feasibility
+4. Data availability / cost of an answer
 
 | Rank | Candidate | Mechanism | Diff from failures | Feasibility | Data | Verdict |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -166,7 +166,7 @@ crossing) that does not retune vol/mid/time thresholds.
 | Side choice | YES side chosen **after** observing NO-side failure (outcome-informed) |
 | Bound | **One** predeclared mirror: identical gates, buy YES at `yesAskCents`, one fee, HTS |
 | Forbidden in the run | Vol ablation, band changes, continuous crossing, multi-cell search |
-| Logging | Manifest must list attempted variants = `{mirror-yes-grid-hts-v0}` only |
+| Logging | Manifest must list attempted variants = `{yes-mirror-grid-hts-v0}` only |
 | Confirmation | Even a positive result is **exploratory SPENT only** — not independent confirmation |
 
 ---
