@@ -25,6 +25,7 @@ import {
 } from "./bookReplay";
 import {
   CONTRACT_METADATA_VERSION,
+  isCurrentContractSidecar,
   resolveContractWindow,
 } from "./contractMetadata";
 import { simulateEventTrade } from "./simulateTrades";
@@ -134,6 +135,39 @@ describe("contract metadata expiry recovery", () => {
     expect(resolved.ok).toBe(false);
     if (resolved.ok) return;
     expect(resolved.source).toBe("rejected-missing-start");
+  });
+
+  it("rejects pre-repair / incomplete contract sidecars", () => {
+    expect(
+      isCurrentContractSidecar({
+        zipSha256: "a".repeat(64),
+        contracts: [],
+        keys: {},
+      }),
+    ).toBe(false);
+    expect(
+      isCurrentContractSidecar({
+        zipSha256: "a".repeat(64),
+        contractMetadataVersion: CONTRACT_METADATA_VERSION,
+        contracts: [],
+        keys: {},
+        // missing derivationStats
+      }),
+    ).toBe(false);
+    expect(
+      isCurrentContractSidecar({
+        zipSha256: "a".repeat(64),
+        contractMetadataVersion: CONTRACT_METADATA_VERSION,
+        contracts: [],
+        keys: {},
+        derivationStats: {
+          headerExpiryUsed: 0,
+          tickerCloseUsed: 0,
+          rejected: 0,
+          rejectReasons: {},
+        },
+      }),
+    ).toBe(true);
   });
 });
 

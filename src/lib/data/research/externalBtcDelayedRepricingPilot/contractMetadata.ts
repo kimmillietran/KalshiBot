@@ -158,11 +158,23 @@ export function isCurrentContractSidecar(
 ): value is ContractSidecarV1 {
   if (!value || typeof value !== "object") return false;
   const v = value as Record<string, unknown>;
+  if (
+    v.contractMetadataVersion !== CONTRACT_METADATA_VERSION
+    || typeof v.zipSha256 !== "string"
+    || !Array.isArray(v.contracts)
+    || v.keys == null
+    || typeof v.keys !== "object"
+  ) {
+    return false;
+  }
+  const stats = v.derivationStats;
+  if (!stats || typeof stats !== "object") return false;
+  const s = stats as Record<string, unknown>;
   return (
-    v.contractMetadataVersion === CONTRACT_METADATA_VERSION
-    && typeof v.zipSha256 === "string"
-    && Array.isArray(v.contracts)
-    && v.keys != null
-    && typeof v.keys === "object"
+    typeof s.headerExpiryUsed === "number"
+    && typeof s.tickerCloseUsed === "number"
+    && typeof s.rejected === "number"
+    && s.rejectReasons != null
+    && typeof s.rejectReasons === "object"
   );
 }

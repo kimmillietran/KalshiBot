@@ -8,7 +8,7 @@
 
 2. **Unresolved-position "upper bound" mislabel.** `allEntryUpperBoundNetCents` for unresolved rows used last-observed same-side bid mark-to-market, incorrectly labeled as an optimistic upper bound. True terminal-payout envelopes are `0 − entryCost` (floor) and `100 − entryCost` (ceiling). Last-bid MTM is a separate scenario.
 
-3. **Producer exit status was not captured.** Monitor hung on bare `wait` (deadlock with `caffeinate -w $$`). Attempt-3 artifacts were validated offline after the monitor was killed. Do **not** claim producer exit was observed as zero.
+3. **Producer exit status was not captured.** Monitor hung on bare `wait` (deadlock with `caffeinate -w $$`). Attempt-3 artifacts were validated offline after the monitor was killed. Do **not** claim producer exit was observed as zero. Ignore `producer_exit=0` / `empirical_valid=1` lines in archived `run-monitor-status-*.txt` — those were offline inferences, not an observed monitor success.
 
 ## Historical attempt-3 wording (required)
 
@@ -20,4 +20,4 @@
 - Raw CryptoStruct inputs (unchanged under external-samples)
 - Valid Coinbase and Kalshi quote JSONL caches (expiry bug omitted contract sidecars only; quote reconstruction persisted)
 - Empty/wrong 08-14 and 08-21 contract sidecars (copied under `contract-sidecars-pre-repair/`)
-- Pre-repair day-result artifacts (copied under `day-results-pre-repair/` where applicable)
+- Pre-repair day-result artifacts were retained locally where applicable (not all copied into this superseded tree; empty/wrong contract sidecars for 08-14/08-21 are under `contract-sidecars-pre-repair/`)
