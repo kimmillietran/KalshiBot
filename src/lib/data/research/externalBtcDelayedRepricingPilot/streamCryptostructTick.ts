@@ -24,8 +24,12 @@ async function forEachLineFromReadable(
   onLine: (line: string) => void | Promise<void>,
 ): Promise<void> {
   const rl = createInterface({ input: readable, crlfDelay: Infinity });
+  // Prefer sync path: awaiting every line creates per-line microtasks and GC pressure.
   for await (const line of rl) {
-    await onLine(line);
+    const result = onLine(line);
+    if (result !== undefined && typeof (result as Promise<void>).then === "function") {
+      await result;
+    }
   }
 }
 

@@ -24,14 +24,24 @@ export { findLastAtOrBefore, joinAsOf, assertNoFutureLeakage } from "./causalAsO
 export {
   createEmptyBook,
   applyTickToBook,
+  applyTickToBookFullScan,
   bboFromBook,
+  bboFromBookFullScan,
   kalshiExecutableFromYesBbo,
   parseTickLine,
   shouldEmitBbo,
+  hashBookState,
+  REPLAY_IMPLEMENTATION_VERSION,
+  BBO_EMISSION_POLICY,
   type BboPoint,
   type TickEnvelope,
 } from "./bookReplay";
-export { detectExternalBtcEvents, buildDiagnosticControls } from "./detectExternalEvents";
+export {
+  detectExternalBtcEvents,
+  detectExternalBtcEventsFromIterable,
+  detectExternalBtcEventsFromAsyncIterable,
+  buildDiagnosticControls,
+} from "./detectExternalEvents";
 export {
   simulateEventTrade,
   simulateDayTrades,
@@ -40,6 +50,8 @@ export {
   EXIT_FAILURE_POLICY,
 } from "./simulateTrades";
 export { runExternalBtcDelayedRepricingPilot } from "./runPilot";
+export { processOnePilotDay } from "./processOneDay";
+export { aggregateDayResults, loadDayResultFile } from "./aggregateDayResults";
 export {
   buildPilotDataManifest,
   DEFAULT_KALSHI_RAW_ROOT,
@@ -62,3 +74,10 @@ export {
   writeZstdTextFixture,
   assertZstdAvailable,
 } from "./streamCryptostructTick";
+export {
+  simulationSpecHash,
+  defaultCacheRoot,
+  DAY_RESULT_SCHEMA_VERSION,
+  QUOTE_CACHE_SCHEMA_VERSION,
+} from "./checkpoint";
+export { createProgressReporter } from "./progress";
