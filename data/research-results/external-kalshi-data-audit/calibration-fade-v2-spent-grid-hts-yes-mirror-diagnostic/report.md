@@ -1,8 +1,8 @@
 # CF-v2 SPENT grid HTS — YES-side mirror diagnostic
 
 - Study: `kalshi-kxbtc15m-calibration-fade-v2-spent-grid-hts-yes-mirror-diagnostic-v0` / `calibration-fade-v2-spent-grid-hts-yes-mirror-diagnostic-v0.1`
-- Generated (UTC): 2026-09-26T02:09:46.216Z
-- Code authority SHA: `245c92719fd62877c51d3d01cb25b678ebfa2463`
+- Generated (UTC): 2026-09-26T02:10:04.011Z
+- Code authority SHA: `3e89e1a158b81546512830c597386f8c2cf710f0`
 
 ## Framing
 

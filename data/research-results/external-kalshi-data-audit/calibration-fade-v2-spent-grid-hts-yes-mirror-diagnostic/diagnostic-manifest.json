@@ -1,8 +1,8 @@
 {
   "studyId": "kalshi-kxbtc15m-calibration-fade-v2-spent-grid-hts-yes-mirror-diagnostic-v0",
   "analysisVersion": "calibration-fade-v2-spent-grid-hts-yes-mirror-diagnostic-v0.1",
-  "generatedAtUtc": "2026-09-26T02:09:46.216Z",
-  "codeAuthoritySha": "245c92719fd62877c51d3d01cb25b678ebfa2463",
+  "generatedAtUtc": "2026-09-26T02:10:04.011Z",
+  "codeAuthoritySha": "3e89e1a158b81546512830c597386f8c2cf710f0",
   "priorExposure": {
     "noGridStudyId": "kalshi-kxbtc15m-calibration-fade-v2-spent-grid-hts-exploratory-v0",
     "noGridResultSummary": "PR #134: N=321, G=24, mean net −8.6417¢, CR2 95% CI [−12.2485, −5.0350]¢, status evidence-against-positive-mean (buy NO grid HTS).",
@@ -30,8 +30,8 @@
   },
   "accountingIdentityHolds": true,
   "artifactSha256": {
-    "report.json": "014e1b897ed0a0f449260c5dde87cc6b3960af7310a4a4c594e8118c477feabd",
-    "report.md": "2729e677cfa33369224a40d2dee8e2c2101dd23a44c2805f325a8527a6a70553",
+    "report.json": "068cccf4adb0c3b16c357e32182f8217a57a44f15a3ff746b6c7ba7c510ed573",
+    "report.md": "3a29690f1c3509708eb367c00b462922ff0ea157cf0d05ae338e8e03d5f02ecb",
     "paired-markets.json": "3178bd737decabe3d8cca42c8d65406ff6e7cb1129cb311a24e75bb3989956ea"
   },
   "reproductionCommand": "npm run research:calibration-fade-v2-spent-grid-hts-yes-mirror-diagnostic",
