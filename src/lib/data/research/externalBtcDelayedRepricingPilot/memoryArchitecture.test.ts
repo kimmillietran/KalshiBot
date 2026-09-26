@@ -38,6 +38,7 @@ import { runExternalBtcDelayedRepricingPilot } from "./runPilot";
 import { processOnePilotDay } from "./processOneDay";
 import { writeZstdTextFixture } from "./streamCryptostructTick";
 import { loadPilotDayFromFiles } from "./loadPilotDay";
+import { ingestCoinbaseSparseBbo } from "./ingestBounded";
 
 function tick(
   msgType: 0 | 1,
@@ -157,6 +158,127 @@ describe("event detection rolling lookback", () => {
     });
     expect(detected.events.length).toBeGreaterThanOrEqual(1);
     expect(detected.events[0]!.direction).toBe("up");
+  });
+
+  it("matches reference findLastAtOrBefore semantics across irregular gaps", () => {
+    const points: BboPoint[] = [];
+    const push = (t: number, mid: number, flags?: { failClosed?: boolean }) => {
+      points.push({
+        timestampMs: t,
+        clockDomain: "adapter",
+        timestampSource: "adapter",
+        adapterTimestampMs: t,
+        exchangeTimestampMs: t,
+        bid: mid - 0.5,
+        ask: mid + 0.5,
+        bidSize: 1,
+        askSize: 1,
+        mid,
+        chainBreak: false,
+        failClosed: flags?.failClosed ?? false,
+      });
+    };
+    for (let t = 0; t <= 100_000; t += 2_500) {
+      if (t === 50_000) {
+        push(t, 40_000, { failClosed: true }); // retained for lookback, skipped as trigger
+      } else {
+        push(t, 40_000 + t / 1_000);
+      }
+    }
+    push(102_500, 40_200);
+
+    const lookbackMs = 10_000;
+    const boundaryBps = 5;
+    const cooldownMs = 0;
+
+    const reference = (() => {
+      const events: Array<{ t: number; direction: "up" | "down" }> = [];
+      let previousAbsolute = 0;
+      let lastTriggerMs = Number.NEGATIVE_INFINITY;
+      const findLast = (ts: number) => {
+        let result: BboPoint | null = null;
+        for (const p of points) {
+          if (p.timestampMs <= ts) result = p;
+          else break;
+        }
+        return result;
+      };
+      for (const point of points) {
+        if (point.failClosed || point.chainBreak) continue;
+        const start = findLast(point.timestampMs - lookbackMs);
+        if (!start || start.timestampMs >= point.timestampMs) continue;
+        const returnBps = ((point.mid - start.mid) / start.mid) * 10_000;
+        const absolute = Math.abs(returnBps);
+        const crossed = previousAbsolute < boundaryBps && absolute >= boundaryBps;
+        previousAbsolute = absolute;
+        if (!crossed || returnBps === 0) continue;
+        if (point.timestampMs - lastTriggerMs < cooldownMs) continue;
+        lastTriggerMs = point.timestampMs;
+        events.push({
+          t: point.timestampMs,
+          direction: returnBps > 0 ? "up" : "down",
+        });
+      }
+      return events;
+    })();
+
+    const detected = detectExternalBtcEvents({
+      utcDay: "2026-08-14",
+      points,
+      lookbackMs,
+      boundaryBps,
+      cooldownMs,
+    });
+    expect(detected.events.map((e) => ({ t: e.eventTimestampMs, direction: e.direction }))).toEqual(
+      reference,
+    );
+  });
+});
+
+describe("quote cache integrity", () => {
+  it("rebuilds when manifest outputSha256 does not match JSONL bytes", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "pilot-cache-integrity-"));
+    const utcDay = "2026-08-14";
+    const coinbasePath = join(dir, `coinbase-BTC-USD-${utcDay}.txt.zst`);
+    const cbLines: string[] = [
+      JSON.stringify({ instrument: { id: 15050, code: "BTC-USD" } }),
+      JSON.stringify([
+        0,
+        15050,
+        "0",
+        "1",
+        0,
+        0,
+        [
+          [0, "49999.5", "1.5"],
+          [1, "50000.5", "1.5"],
+        ],
+      ]),
+    ];
+    await writeZstdTextFixture(coinbasePath, cbLines);
+    const cacheRoot = join(dir, "cache");
+    const first = await ingestCoinbaseSparseBbo({
+      utcDay,
+      coinbaseTickPath: coinbasePath,
+      cacheRoot,
+    });
+    expect(first.reused).toBe(false);
+
+    // Corrupt the sparse JSONL while leaving the complete manifest in place.
+    writeFileSync(first.jsonlPath, '{"tampered":true}\n', "utf8");
+    const second = await ingestCoinbaseSparseBbo({
+      utcDay,
+      coinbaseTickPath: coinbasePath,
+      cacheRoot,
+    });
+    expect(second.reused).toBe(false);
+    expect(second.key).toBe(first.key);
+    const third = await ingestCoinbaseSparseBbo({
+      utcDay,
+      coinbaseTickPath: coinbasePath,
+      cacheRoot,
+    });
+    expect(third.reused).toBe(true);
   });
 });
 

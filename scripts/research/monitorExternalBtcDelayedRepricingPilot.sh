@@ -42,12 +42,17 @@ EXPECTED_ARTIFACTS=(
   echo "pid_monitor=$$"
 } | tee "$STATUS"
 
-# Keep machine awake while this monitor (and therefore the producer) lives.
-caffeinate -dims -w $$ >/tmp/pilot-caffeinate-monitor.log 2>&1 &
-CAFFEINE_PID=$!
+# Keep machine awake while this monitor (and therefore the producer) lives (macOS).
+CAFFEINE_PID=""
+if command -v caffeinate >/dev/null 2>&1; then
+  caffeinate -dims -w $$ >/tmp/pilot-caffeinate-monitor.log 2>&1 &
+  CAFFEINE_PID=$!
+fi
 
 cleanup() {
-  kill "$CAFFEINE_PID" 2>/dev/null || true
+  if [[ -n "$CAFFEINE_PID" ]]; then
+    kill "$CAFFEINE_PID" 2>/dev/null || true
+  fi
 }
 trap cleanup EXIT
 

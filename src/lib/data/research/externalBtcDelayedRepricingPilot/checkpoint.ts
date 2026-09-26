@@ -5,15 +5,28 @@
 
 import { createHash } from "node:crypto";
 import {
+  closeSync,
   createWriteStream,
   existsSync,
+  fsyncSync,
   mkdirSync,
+  openSync,
   readFileSync,
   renameSync,
   statSync,
   writeFileSync,
 } from "node:fs";
 import { dirname, join } from "node:path";
+
+/** Flush file contents to durable storage before exposing the final path. */
+function fsyncPath(path: string): void {
+  const fd = openSync(path, "r");
+  try {
+    fsyncSync(fd);
+  } finally {
+    closeSync(fd);
+  }
+}
 
 import {
   BBO_EMISSION_POLICY,
@@ -133,6 +146,7 @@ export function atomicWriteJson(path: string, value: unknown): void {
   mkdirSync(dirname(path), { recursive: true });
   const tmp = `${path}.partial.${process.pid}`;
   writeFileSync(tmp, `${JSON.stringify(value, null, 2)}\n`, "utf8");
+  fsyncPath(tmp);
   renameSync(tmp, path);
 }
 
@@ -209,7 +223,7 @@ export function dayResultPath(cacheRoot: string, key: string): string {
   return join(cacheRoot, "day-results", `${key}.json`);
 }
 
-/** Append-only JSONL writer with fsync on close. */
+/** Append-only JSONL writer with fsync on close before rename. */
 export function createJsonlAppender(path: string): {
   writeLine: (value: unknown) => void;
   bytesWritten: () => number;
@@ -219,6 +233,7 @@ export function createJsonlAppender(path: string): {
   const tmp = `${path}.partial.${process.pid}`;
   const stream = createWriteStream(tmp, { flags: "w" });
   let bytes = 0;
+  let settled = false;
   return {
     writeLine(value: unknown) {
       const line = `${JSON.stringify(value)}\n`;
@@ -228,15 +243,22 @@ export function createJsonlAppender(path: string): {
     bytesWritten: () => bytes,
     async close() {
       await new Promise<void>((resolve, reject) => {
+        const finish = (error?: unknown) => {
+          if (settled) return;
+          settled = true;
+          if (error) reject(error);
+          else resolve();
+        };
+        stream.on("error", (error) => finish(error));
         stream.end(() => {
           try {
+            fsyncPath(tmp);
             renameSync(tmp, path);
-            resolve();
+            finish();
           } catch (error) {
-            reject(error);
+            finish(error);
           }
         });
-        stream.on("error", reject);
       });
     },
   };

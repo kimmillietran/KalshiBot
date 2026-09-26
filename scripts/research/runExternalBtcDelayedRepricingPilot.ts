@@ -294,10 +294,13 @@ async function main(): Promise<void> {
           env: { ...process.env, NODE_OPTIONS: nodeOptions },
           encoding: "utf8",
           maxBuffer: 32 * 1024 * 1024,
+          // Inherit stderr so [pilot-progress] heartbeats reach the monitor log live.
+          stdio: ["ignore", "pipe", "inherit"],
         },
       );
       if (child.status !== 0) {
-        console.error(child.stderr || child.stdout);
+        // stderr already inherited live; stdout may still hold the last JSON attempt.
+        if (child.stdout) console.error(child.stdout);
         throw new Error(
           `Day worker failed for ${utcDay}: status=${child.status} signal=${child.signal}`,
         );

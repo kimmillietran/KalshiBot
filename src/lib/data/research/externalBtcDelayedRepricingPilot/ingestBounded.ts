@@ -8,6 +8,7 @@ import {
   existsSync,
   mkdirSync,
   readFileSync,
+  unlinkSync,
 } from "node:fs";
 import { join } from "node:path";
 import { createInterface } from "node:readline";
@@ -46,6 +47,28 @@ import {
 } from "./streamCryptostructTick";
 import { CLOCK_POLICY } from "./timingQuality";
 import type { ExecutableQuote, SelectedContract } from "./types";
+
+async function quoteCacheMatchesManifest(
+  jsonlPath: string,
+  expectedSha256: string,
+): Promise<boolean> {
+  try {
+    const actual = await hashFileSha256(jsonlPath);
+    return actual === expectedSha256;
+  } catch {
+    return false;
+  }
+}
+
+function invalidateQuoteCache(jsonlPath: string, manifestPath: string): void {
+  for (const path of [jsonlPath, manifestPath]) {
+    try {
+      unlinkSync(path);
+    } catch {
+      // ignore missing
+    }
+  }
+}
 
 function parseIsoToMs(value: string | undefined): number | null {
   if (!value) return null;
@@ -132,15 +155,20 @@ export async function ingestCoinbaseSparseBbo(input: {
   const manifestPath = coinbaseManifestPath(input.cacheRoot, key);
   const existing = readCompleteQuoteCacheManifest(manifestPath, identity);
   if (existing && existsSync(jsonlPath)) {
-    input.progress?.note(`reuse coinbase cache ${key.slice(0, 12)}`);
-    return {
-      identity,
-      key,
-      jsonlPath,
-      quoteCount: existing.quoteCount,
-      rawSha256,
-      reused: true,
-    };
+    const intact = await quoteCacheMatchesManifest(jsonlPath, existing.outputSha256);
+    if (intact) {
+      input.progress?.note(`reuse coinbase cache ${key.slice(0, 12)}`);
+      return {
+        identity,
+        key,
+        jsonlPath,
+        quoteCount: existing.quoteCount,
+        rawSha256,
+        reused: true,
+      };
+    }
+    input.progress?.note(`rebuild coinbase cache (hash mismatch) ${key.slice(0, 12)}`);
+    invalidateQuoteCache(jsonlPath, manifestPath);
   }
 
   input.progress?.setStage("ingest-coinbase", input.coinbaseTickPath);
@@ -256,10 +284,19 @@ export async function ingestKalshiDayQuotes(input: {
 
   const allCached =
     existsSync(sidecar)
-    && memberMeta.every((m) => {
-      const man = readCompleteQuoteCacheManifest(m.manifestPath, m.identity);
-      return Boolean(man && existsSync(m.jsonlPath));
-    });
+    && (
+      await (async () => {
+        for (const m of memberMeta) {
+          const man = readCompleteQuoteCacheManifest(m.manifestPath, m.identity);
+          if (!man || !existsSync(m.jsonlPath)) return false;
+          if (!(await quoteCacheMatchesManifest(m.jsonlPath, man.outputSha256))) {
+            invalidateQuoteCache(m.jsonlPath, m.manifestPath);
+            return false;
+          }
+        }
+        return true;
+      })()
+    );
 
   if (allCached) {
     try {
