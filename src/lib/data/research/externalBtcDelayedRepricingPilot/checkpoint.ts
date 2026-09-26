@@ -18,6 +18,23 @@ import {
 } from "node:fs";
 import { dirname, join } from "node:path";
 
+import {
+  BBO_EMISSION_POLICY,
+  REPLAY_IMPLEMENTATION_VERSION,
+} from "./bookReplay";
+import { FROZEN_PILOT_SPEC } from "./pilotSpec";
+import { EXIT_FAILURE_POLICY } from "./simulateTrades";
+import { CLOCK_POLICY } from "./timingQuality";
+import {
+  EXTERNAL_BTC_DELAYED_REPRICING_PILOT_ANALYSIS_VERSION,
+  EXTERNAL_BTC_DELAYED_REPRICING_PILOT_STUDY_ID,
+  PILOT_DELAY_MS,
+  type DaySummary,
+  type ExternalBtcEvent,
+  type SelectedContract,
+  type SimulatedTrade,
+} from "./types";
+
 /** Flush file contents to durable storage before exposing the final path. */
 function fsyncPath(path: string): void {
   const fd = openSync(path, "r");
@@ -27,23 +44,6 @@ function fsyncPath(path: string): void {
     closeSync(fd);
   }
 }
-
-import {
-  BBO_EMISSION_POLICY,
-  REPLAY_IMPLEMENTATION_VERSION,
-} from "./bookReplay";
-import { CLOCK_POLICY } from "./timingQuality";
-import {
-  EXTERNAL_BTC_DELAYED_REPRICING_PILOT_ANALYSIS_VERSION,
-  EXTERNAL_BTC_DELAYED_REPRICING_PILOT_STUDY_ID,
-  type DaySummary,
-  type ExternalBtcEvent,
-  type SelectedContract,
-  type SimulatedTrade,
-} from "./types";
-import { FROZEN_PILOT_SPEC } from "./pilotSpec";
-import { EXIT_FAILURE_POLICY } from "./simulateTrades";
-import { PILOT_DELAY_MS } from "./types";
 
 export const QUOTE_CACHE_SCHEMA_VERSION = "sparse-jsonl-v1" as const;
 export const DAY_RESULT_SCHEMA_VERSION = "day-result-v1" as const;

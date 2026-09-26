@@ -170,8 +170,15 @@ async function main(): Promise<void> {
   mkdirSync(outDir, { recursive: true });
 
   // Child-worker entry: process exactly one day and exit (memory reclaim).
+  // Same empirical gate as --run-real: day results contain simulated strategy P&L.
   const oneDay = parseArg("--process-one-day");
   if (oneDay) {
+    if (!hasFlag("--authorize-empirical-run")) {
+      throw new Error(
+        "--process-one-day requires --authorize-empirical-run "
+          + "(writes day-result trades with simulated P&L).",
+      );
+    }
     if (!(PILOT_UTC_DAYS as readonly string[]).includes(oneDay)) {
       throw new Error(`--process-one-day ${oneDay} is not in frozen Friday set`);
     }
@@ -284,6 +291,7 @@ async function main(): Promise<void> {
           "scripts/research/runExternalBtcDelayedRepricingPilot.ts",
           "--process-one-day",
           utcDay,
+          "--authorize-empirical-run",
           "--out-dir",
           outDir,
           "--credit-balance-cents",
